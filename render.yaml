@@ -30,6 +30,10 @@ services:
         value: https://evidencemd.ai/api/v1
       - key: EVIDENCEMD_MODEL
         value: evidencemd-pro
+      - key: OPENROUTER_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-4o
       - key: ANTHROPIC_MODEL
         value: claude-3-5-sonnet-latest
       - key: OPENAI_MODEL
@@ -39,6 +43,8 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: EVIDENCEMD_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false

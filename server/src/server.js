@@ -100,9 +100,9 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
   console.log(`  environment      →  ${env.NODE_ENV}`);
   console.log(`  free daily limit →  ${env.FREE_DAILY_AI_LIMIT} AI queries/user`);
   if (!hasVisionProvider) {
-    console.warn('  ⚠️  no ANTHROPIC_API_KEY / OPENAI_API_KEY — image modules fall back to local OCR\n');
+    console.warn('  ⚠️  no OPENROUTER_API_KEY — image modules fall back to local OCR\n');
   } else {
-    console.log('');
+    console.log(`  ✓ vision via OpenRouter (${env.OPENROUTER_MODEL || 'fallback'})\n`);
   }
 });
 

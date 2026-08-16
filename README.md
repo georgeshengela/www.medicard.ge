@@ -213,9 +213,19 @@ git push -u origin main
 | Variable | Value |
 | --- | --- |
 | `DATABASE_URL` | Neon **pooled** (`-pooler`) connection string |
-| `EVIDENCEMD_API_KEY` | EvidenceMD key |
-| `ANTHROPIC_API_KEY` | optional, for imaging / skin |
+| `EVIDENCEMD_API_KEY` | EvidenceMD key (chat / clinical reasoning) |
+| `OPENROUTER_API_KEY` | OpenRouter key (X-ray / labs / derm vision) |
+| `ANTHROPIC_API_KEY` | optional fallback vision |
 | `OPENAI_API_KEY` | optional fallback vision |
+
+Also set (or rely on Blueprint defaults):
+
+| Variable | Suggested value |
+| --- | --- |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` |
+| `OPENROUTER_MODEL` | `openai/gpt-4o` |
+| `EVIDENCEMD_BASE_URL` | `https://evidencemd.ai/api/v1` |
+| `EVIDENCEMD_MODEL` | `evidencemd-pro` |
 
 `JWT_SECRET` is generated. `PORT` is set by Render. Frankfurt is the closest region to Georgia.
 

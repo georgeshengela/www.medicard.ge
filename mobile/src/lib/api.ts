@@ -6,12 +6,13 @@ import { getToken } from './storage';
 /**
  * Resolves the API base URL.
  *
- * On a physical device `localhost` points at the phone, so we reuse the LAN IP that
- * Metro is already serving from. Override with EXPO_PUBLIC_API_URL for staging/production.
+ * Priority: EXPO_PUBLIC_API_URL → app.json `extra.apiUrl` → LAN / emulator defaults.
  */
 function resolveBaseUrl(): string {
-  const explicit = process.env.EXPO_PUBLIC_API_URL;
-  if (explicit) return explicit.replace(/\/$/, '');
+  const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
+  const fromExtra = Constants.expoConfig?.extra?.apiUrl as string | undefined;
+  const explicit = (fromEnv || fromExtra || '').replace(/\/$/, '');
+  if (explicit) return explicit;
 
   // Production web is served from the same Express origin as /api and /health.
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -28,7 +29,6 @@ function resolveBaseUrl(): string {
   if (lanHost && lanHost !== 'localhost' && lanHost !== '127.0.0.1') {
     return `http://${lanHost}:${port}`;
   }
-  // The Android emulator reaches the host machine through 10.0.2.2.
   if (Platform.OS === 'android') return `http://10.0.2.2:${port}`;
   return `http://localhost:${port}`;
 }

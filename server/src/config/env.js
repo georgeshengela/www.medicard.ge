@@ -14,6 +14,12 @@ const schema = z.object({
   EVIDENCEMD_BASE_URL: z.string().url().default('https://evidencemd.ai/api/v1'),
   EVIDENCEMD_MODEL: z.string().default('evidencemd-pro'),
 
+  // Vision: OpenRouter first (X-ray / labs / derm). Chat stays on EvidenceMD.
+  OPENROUTER_API_KEY: z.string().default(''),
+  OPENROUTER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
+  // GPT-4o: strong medical-image description before EvidenceMD reasoning.
+  OPENROUTER_MODEL: z.string().default('openai/gpt-4o'),
+
   ANTHROPIC_API_KEY: z.string().default(''),
   ANTHROPIC_MODEL: z.string().default('claude-3-5-sonnet-latest'),
   OPENAI_API_KEY: z.string().default(''),
@@ -32,4 +38,6 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 
-export const hasVisionProvider = Boolean(env.ANTHROPIC_API_KEY || env.OPENAI_API_KEY);
+export const hasVisionProvider = Boolean(
+  env.OPENROUTER_API_KEY || env.ANTHROPIC_API_KEY || env.OPENAI_API_KEY,
+);

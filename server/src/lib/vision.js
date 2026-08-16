@@ -7,10 +7,23 @@ import { AiEngineError } from './evidencemd.js';
 /**
  * Vision pre-processing layer.
  *
- * Claude 3.5 Sonnet is the primary describer; GPT-4o is the automatic fallback.
- * Neither model is allowed to diagnose — they only turn pixels into structured
- * English notes, which are then handed to EvidenceMD for the clinical reasoning.
+ * Order: OpenRouter (preferred) → Anthropic → OpenAI direct.
+ * These models only turn pixels into structured English notes; EvidenceMD does
+ * the clinical reasoning in Georgian afterwards.
  */
+
+const openrouter = env.OPENROUTER_API_KEY
+  ? new OpenAI({
+      apiKey: env.OPENROUTER_API_KEY,
+      baseURL: env.OPENROUTER_BASE_URL,
+      timeout: 120_000,
+      maxRetries: 1,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://medicard.ge',
+        'X-Title': 'Medicard.GE',
+      },
+    })
+  : null;
 
 const anthropic = env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, timeout: 120_000, maxRetries: 1 })
@@ -31,9 +44,9 @@ export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', '
  * @returns {Promise<{notes: string, provider: string, model: string}>}
  */
 export async function describeImage({ buffer, mimeType, kind, patientContext }) {
-  if (!anthropic && !openai) {
+  if (!openrouter && !anthropic && !openai) {
     throw new AiEngineError(
-      'გამოსახულების ანალიზის სერვისი არ არის კონფიგურირებული. დაამატეთ ANTHROPIC_API_KEY ან OPENAI_API_KEY.',
+      'გამოსახულების ანალიზის სერვისი არ არის კონფიგურირებული. დაამატეთ OPENROUTER_API_KEY.',
       { status: 503 },
     );
   }
@@ -46,6 +59,21 @@ export async function describeImage({ buffer, mimeType, kind, patientContext }) 
   const base64 = buffer.toString('base64');
   const errors = [];
 
+  if (openrouter) {
+    try {
+      return await describeWithOpenAiCompatible({
+        client: openrouter,
+        model: env.OPENROUTER_MODEL,
+        provider: 'openrouter',
+        base64,
+        mimeType,
+        prompt,
+      });
+    } catch (error) {
+      errors.push(`openrouter: ${error?.message ?? error}`);
+    }
+  }
+
   if (anthropic) {
     try {
       return await describeWithClaude({ base64, mimeType, prompt });
@@ -56,7 +84,14 @@ export async function describeImage({ buffer, mimeType, kind, patientContext }) 
 
   if (openai) {
     try {
-      return await describeWithOpenAi({ base64, mimeType, prompt });
+      return await describeWithOpenAiCompatible({
+        client: openai,
+        model: env.OPENAI_MODEL,
+        provider: 'openai',
+        base64,
+        mimeType,
+        prompt,
+      });
     } catch (error) {
       errors.push(`openai: ${error?.message ?? error}`);
     }
@@ -94,9 +129,9 @@ async function describeWithClaude({ base64, mimeType, prompt }) {
   return { notes, provider: 'anthropic', model: response.model ?? env.ANTHROPIC_MODEL };
 }
 
-async function describeWithOpenAi({ base64, mimeType, prompt }) {
-  const response = await openai.chat.completions.create({
-    model: env.OPENAI_MODEL,
+async function describeWithOpenAiCompatible({ client, model, provider, base64, mimeType, prompt }) {
+  const response = await client.chat.completions.create({
+    model,
     max_tokens: 2000,
     temperature: 0,
     messages: [
@@ -104,7 +139,10 @@ async function describeWithOpenAi({ base64, mimeType, prompt }) {
         role: 'user',
         content: [
           { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}`, detail: 'high' } },
+          {
+            type: 'image_url',
+            image_url: { url: `data:${mimeType};base64,${base64}`, detail: 'high' },
+          },
         ],
       },
     ],
@@ -112,5 +150,5 @@ async function describeWithOpenAi({ base64, mimeType, prompt }) {
 
   const notes = response.choices?.[0]?.message?.content?.trim();
   if (!notes) throw new Error('empty response');
-  return { notes, provider: 'openai', model: response.model ?? env.OPENAI_MODEL };
+  return { notes, provider, model: response.model ?? model };
 }
