@@ -211,6 +211,20 @@ adminRouter.patch(
       data.packageId = pkg.id;
     }
 
+    // Past expiry would silently keep FREE metering after a paid upgrade.
+    const nextExpires =
+      data.packageExpiresAt !== undefined
+        ? data.packageExpiresAt
+        : undefined;
+    if (
+      body.packageCode &&
+      body.packageCode !== 'FREE' &&
+      nextExpires instanceof Date &&
+      nextExpires.getTime() < Date.now()
+    ) {
+      data.packageExpiresAt = null;
+    }
+
     try {
       const user = await prisma.user.update({
         where: { id: req.params.id },

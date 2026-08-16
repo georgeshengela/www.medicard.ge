@@ -222,7 +222,11 @@ authRouter.patch(
   asyncHandler(async (req, res) => {
     const data = updateProfileSchema.parse(req.body);
 
-    const user = await prisma.user.update({ where: { id: req.user.id }, data });
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data,
+      include: { package: true },
+    });
 
     return res.json({ user: publicUser(user) });
   }),

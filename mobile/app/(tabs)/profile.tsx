@@ -24,7 +24,7 @@ const GENDER_LABELS: Record<Gender, string> = {
   OTHER: ka.auth.genderOther,
 };
 
-const APP_VERSION = '3.0.4';
+const APP_VERSION = '3.0.5';
 
 export default function Profile() {
   const { user, stats, refresh, signOut } = useAuth();
@@ -117,26 +117,7 @@ export default function Profile() {
       </View>
 
       <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.subscription}</Text>
-      <Card>
-        <View className="flex-row items-center">
-          <View className="h-10 w-10 items-center justify-center rounded-xl bg-bg-200">
-            <ShieldCheck size={18} color={colors.primary200} strokeWidth={2.1} />
-          </View>
-          <View className="ml-3 flex-1">
-            <Text className="text-base font-bold text-text-100">{ka.profile.freePlan}</Text>
-            <Text className="mt-0.5 text-sm text-text-300">{ka.profile.freePlanDetail}</Text>
-          </View>
-          <Badge label="FREE" tone="neutral" />
-        </View>
-
-        <View className="mt-3.5">
-          <Button
-            label={ka.usage.upsellCta}
-            icon={Crown}
-            onPress={() => Alert.alert(ka.usage.upsellTitle, ka.usage.premiumSoon)}
-          />
-        </View>
-      </Card>
+      <PackageCard />
 
       <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.settings}</Text>
       <Card padded={false}>
@@ -176,6 +157,54 @@ export default function Profile() {
  * Sex and age drive every AI interpretation, so accounts created over SMS — which
  * cannot collect them — get an inline editor here instead of a dead-end label.
  */
+function PackageCard() {
+  const { user, usage } = useAuth();
+  const colors = useThemeColors();
+  const code = (user?.package?.code ?? 'FREE') as 'FREE' | 'STANDARD' | 'ULTIMATE';
+  const meta =
+    code === 'ULTIMATE'
+      ? { title: ka.profile.ultimatePlan, detail: ka.profile.ultimatePlanDetail, tone: 'success' as const }
+      : code === 'STANDARD'
+        ? { title: ka.profile.standardPlan, detail: ka.profile.standardPlanDetail, tone: 'brand' as const }
+        : { title: ka.profile.freePlan, detail: ka.profile.freePlanDetail, tone: 'neutral' as const };
+
+  const limitLabel =
+    usage?.unlimited || (user?.package?.unlimited ?? user?.package?.dailyAiLimit === -1)
+      ? '∞ / დღე'
+      : `${usage?.limit ?? user?.package?.dailyAiLimit ?? 3} / დღე`;
+
+  const expires = user?.packageExpiresAt ? formatDate(user.packageExpiresAt) : null;
+
+  return (
+    <Card>
+      <View className="flex-row items-center">
+        <View className="h-10 w-10 items-center justify-center rounded-xl bg-bg-200">
+          <ShieldCheck size={18} color={colors.primary200} strokeWidth={2.1} />
+        </View>
+        <View className="ml-3 flex-1">
+          <Text className="text-base font-bold text-text-100">{meta.title}</Text>
+          <Text className="mt-0.5 text-sm text-text-300">{meta.detail}</Text>
+          <Text className="mt-1 text-xs font-semibold text-primary-100">
+            AI ლიმიტი: {limitLabel}
+            {expires ? ` · ${ka.profile.planExpires}: ${expires}` : ''}
+          </Text>
+        </View>
+        <Badge label={code} tone={meta.tone} />
+      </View>
+
+      {code === 'FREE' ? (
+        <View className="mt-3.5">
+          <Button
+            label={ka.usage.upsellCta}
+            icon={Crown}
+            onPress={() => Alert.alert(ka.usage.upsellTitle, ka.usage.premiumSoon)}
+          />
+        </View>
+      ) : null}
+    </Card>
+  );
+}
+
 function MedicalProfileCard() {
   const { user, updateProfile } = useAuth();
 
