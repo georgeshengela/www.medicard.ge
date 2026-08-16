@@ -18,6 +18,8 @@ const MAX_BYTES = 12 * 1024 * 1024;
 
 type Picked = { uri: string; name: string; mimeType: string; isPdf: boolean };
 
+type BodyRegion = { id: string; ka: string; en: string };
+
 type Props = {
   kind: 'LAB' | 'IMAGING' | 'SKIN';
   icon: LucideIcon;
@@ -26,6 +28,9 @@ type Props = {
   contextLabel: string;
   contextPlaceholder: string;
   allowPdf?: boolean;
+  bodyRegions?: BodyRegion[];
+  regionLabel?: string;
+  regionRequired?: string;
 };
 
 export function AnalysisModule({
@@ -36,11 +41,15 @@ export function AnalysisModule({
   contextLabel,
   contextPlaceholder,
   allowPdf = false,
+  bodyRegions,
+  regionLabel,
+  regionRequired,
 }: Props) {
   const { applyUsage } = useAuth();
   const colors = useThemeColors();
 
   const [picked, setPicked] = useState<Picked | null>(null);
+  const [regionId, setRegionId] = useState<string | null>(null);
   const [context, setContext] = useState('');
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<string>('');
@@ -111,6 +120,12 @@ export function AnalysisModule({
       return;
     }
 
+    const region = bodyRegions?.find((item) => item.id === regionId);
+    if (bodyRegions?.length && !region) {
+      setError(regionRequired ?? ka.modules.imaging.regionRequired);
+      return;
+    }
+
     setBusy(true);
     setError(null);
     setStage(picked.isPdf ? ka.upload.reading : ka.upload.processing);
@@ -119,13 +134,18 @@ export function AnalysisModule({
     // the extraction step has plausibly finished rather than leaving it stuck.
     const stageTimer = setTimeout(() => setStage(ka.upload.reasoning), 6000);
 
+    const regionContext = region
+      ? `AUTHORITATIVE BODY REGION (stated by the patient; do not override with chest/spine unless landmarks clearly contradict): ${region.en} (${region.ka}).`
+      : '';
+    const combinedContext = [regionContext, context.trim()].filter(Boolean).join('\n') || undefined;
+
     try {
       const response = await api.ai.analyzeImage({
         uri: picked.uri,
         name: picked.name,
         mimeType: picked.mimeType,
         kind,
-        context: context.trim() || undefined,
+        context: combinedContext,
       });
 
       setResult({ analysis: response.analysis, record: response.record });
@@ -142,10 +162,11 @@ export function AnalysisModule({
       setBusy(false);
       setStage('');
     }
-  }, [picked, context, kind, applyUsage]);
+  }, [picked, context, kind, applyUsage, bodyRegions, regionId, regionRequired]);
 
   const reset = useCallback(() => {
     setPicked(null);
+    setRegionId(null);
     setContext('');
     setResult(null);
     setError(null);
@@ -227,6 +248,38 @@ export function AnalysisModule({
               )}
             </Card>
 
+            {bodyRegions?.length ? (
+              <Card className="mt-3">
+                <Text className="mb-2 text-sm font-semibold text-text-200">{regionLabel}</Text>
+                <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+                  {bodyRegions.map((item) => {
+                    const selected = regionId === item.id;
+                    return (
+                      <Pressable
+                        key={item.id}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        onPress={() => {
+                          setRegionId(item.id);
+                          setError(null);
+                        }}
+                        className={`rounded-full border px-3 py-2 active:opacity-70 ${
+                          selected ? 'border-primary-200 bg-primary-200' : 'border-bg-300 bg-bg-100'
+                        }`}
+                      >
+                        <Text
+                          style={{ fontSize: 14, lineHeight: 20 }}
+                          className={`font-semibold ${selected ? 'text-white' : 'text-text-200'}`}
+                        >
+                          {item.ka}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </Card>
+            ) : null}
+
             <Card className="mt-3">
               <Text className="mb-1.5 text-sm font-semibold text-text-200">
                 {contextLabel} <Text className="font-normal text-text-300">({ka.common.optional})</Text>
@@ -264,7 +317,7 @@ export function AnalysisModule({
                 icon={Sparkles}
                 size="lg"
                 loading={busy}
-                disabled={!picked}
+                disabled={!picked || Boolean(bodyRegions?.length && !regionId)}
                 onPress={analyze}
               />
             </View>

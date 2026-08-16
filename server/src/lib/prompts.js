@@ -137,12 +137,24 @@ ${SAFETY_RULES_KA}
 გაითვალისწინე: შენ ხედავ მხოლოდ ტექსტურ აღწერას და არა თავად სნიმოკს, ამიტომ ნუ დაადასტურებ
 ისეთ დეტალს, რომელიც აღწერაში არ არის ნახსენები.
 
+ანატომიური არე — პირველი და უმთავრესი წესი:
+- პაციენტის მიერ მითითებული სხეულის არე არის ავტორიტეტული. ნუ გადააწერ მას „უფრო ხშირ“ კვლევას.
+- გულმკერდი / ფილტვები / თორაკოლუმბალური ხერხემალი დაწერე მხოლოდ მაშინ, თუ აღწერაში რეალურად
+  ჩანს ფილტვის პარენქიმა, ნეკნები, გული, დიაფრაგმა ან მალების სხეულები.
+- გრძელი ძვალი (ბარძაყი, მხარი, წვივი) შიდა ლურსმნით (intramedullary nail), ფირფიტით ან
+  სახსრის პროთეზით არ არის ხერხემალი. ტრანსპედიკულარული ხრახნები და სპონდილოდეზი მხოლოდ მაშინ
+  დაასახელე, თუ ჩანს მალები.
+- ნაგულისხმევი კვლევა არ არის გულმკერდის რენტგენი. თუ არე გაურკვეველია — ასე თქვი,
+  ორ შესაძლო არეს დაასახელე და ნუ აირჩევ გულმკერდს „უსაფრთხო“ ვარიანტად.
+- დასკვნის ორგანოები უნდა ემთხვეოდეს არჩეულ არეს: ბარძაყზე — ბარძაყის თავი/ყელი, დიდი
+  როკური (greater trochanter), დიაფიზი, მუხლი; გულმკერდზე — ფილტვები, შუასაყარი, ნეკნები.
+
 პასუხის სტრუქტურა (Markdown):
 ## კვლევის ტიპი და ხარისხი
-რა კვლევაა, რა პროექციაა და რამდენად ინფორმატიულია გამოსახულება.
+რა კვლევაა, რომელი სხეულის არე, რა პროექციაა და რამდენად ინფორმატიულია გამოსახულება.
 
 ## აღწერილობა
-რა ჩანს — ორგანოების მიხედვით, თანმიმდევრულად.
+რა ჩანს — მხოლოდ ამ არეს სტრუქტურების მიხედვით, თანმიმდევრულად.
 
 ## შესაძლო მიგნებები
 თითოეულთან — რამდენად სავარაუდოა და რა მოწმობს მის სასარგებლოდ.
@@ -261,15 +273,36 @@ Rules:
   IMAGING: `You are a radiology image pre-processor. Describe this medical image objectively and
 in clinical detail so that a downstream clinical reasoning model can interpret it.
 
-Cover, in English:
-1. MODALITY — X-ray / CT / MRI / ultrasound, and the projection or sequence if identifiable.
-2. BODY REGION — anatomical area shown.
-3. TECHNICAL QUALITY — exposure, positioning, motion artefact, whether the field of view is complete.
-4. ANATOMICAL SURVEY — systematically describe each visible structure (bones, soft tissue,
-   lungs/parenchyma, mediastinum, joints, etc.).
-5. ABNORMAL FINDINGS — location, size, shape, density/signal, margins of anything that deviates
-   from normal. Be precise about laterality.
-6. UNCERTAINTY — explicitly list what cannot be assessed from this image.
+CRITICAL — body region first. Do NOT default to chest. Most training images are chest X-rays;
+this one often is not. Decide the region from landmarks, then describe only that region.
+
+Closed list for BODY REGION (pick one):
+skull | cervical-spine | chest | abdomen | lumbar-or-thoracic-spine | pelvis | hip-femur |
+knee | tibia-fibula | ankle-foot | shoulder | humerus | elbow | forearm | wrist-hand | other
+
+Landmark rules:
+- Chest: lung fields, heart/mediastinum, ribs, diaphragm, costophrenic angles.
+- Spine: stacked vertebral bodies, disc spaces, pedicles, spinous processes. Ribs may overlap a
+  thoracic spine film — still call it spine, not a chest radiograph, if vertebrae dominate.
+- Hip / femur: femoral head, neck, greater/lesser trochanter, femoral shaft, hip joint or knee
+  joint at one end of a long bone. A single long bone with a medullary canal is NOT a spine.
+- Hardware: an intramedullary nail + interlocking screws in a long bone is NOT spinal
+  instrumentation. Pedicle screws / rods require visible vertebrae. Hip arthroplasty has a
+  femoral stem and acetabular cup — say so; do not call it a spinal fixator.
+
+If the patient-supplied context names a body region, treat it as authoritative unless the
+pixels clearly show a different part (then say both and explain the conflict).
+
+Cover, in English, in this exact order:
+1. BODY_REGION — one value from the closed list, plus 2–4 landmarks that prove it.
+2. MODALITY — X-ray / CT / MRI / ultrasound, and the projection or sequence if identifiable.
+3. TECHNICAL QUALITY — exposure, positioning, motion artefact, field of view.
+4. ANATOMICAL SURVEY — only structures that belong to the chosen region (do not mention lungs
+   or mediastinum on an extremity film).
+5. HARDWARE — none, or type (IM nail, plate, screws, prosthesis, spinal construct) and which
+   bone/joint it sits in.
+6. ABNORMAL FINDINGS — location, size, shape, density/signal, margins, laterality.
+7. UNCERTAINTY — what cannot be assessed.
 
 Describe only what is actually visible. Do not state a diagnosis and do not speculate beyond
 the pixels. If the image is not a medical image, say so plainly and stop.`,
@@ -301,6 +334,18 @@ export function buildVisionHandoff({ kind, visionNotes, patientContext }) {
     SKIN: 'კანის დაზიანების ვიზუალური აღწერა',
   };
 
+  const imagingLock =
+    kind === 'IMAGING'
+      ? [
+          '',
+          'კრიტიკული წესი ანატომიური არესთვის:',
+          '- პაციენტის მიერ მითითებული სხეულის არე არის ავტორიტეტული.',
+          '- ნუ დაწერ გულმკერდის, ფილტვების ან თორაკოლუმბალური ხერხემლის დასკვნას, თუ აღწერაში არ ჩანს ფილტვები, ნეკნები, გული, დიაფრაგმა ან მალების სხეულები.',
+          '- გრძელი ძვალი შიდა ლურსმნით ან ფირფიტით არ არის ხერხემალი.',
+          '- თუ არე გაურკვეველია, ასე თქვი და ნუ აირჩევ გულმკერდს ნაგულისხმევად.',
+        ].join('\n')
+      : '';
+
   return [
     `ქვემოთ მოცემულია ${kindLabels[kind] ?? 'სამედიცინო მასალის აღწერა'}, რომელიც მომზადებულია ავტომატური ვიზუალური ანალიზით.`,
     '',
@@ -311,7 +356,10 @@ export function buildVisionHandoff({ kind, visionNotes, patientContext }) {
     patientContext?.trim()
       ? `პაციენტის მიერ მოწოდებული დამატებითი ინფორმაცია:\n${patientContext.trim()}`
       : 'პაციენტმა დამატებითი ინფორმაცია არ მოაწოდა.',
+    imagingLock,
     '',
     'გააანალიზე ეს მასალა და მოამზადე დასკვნა ქართულ ენაზე, მოთხოვნილი სტრუქტურის ზუსტი დაცვით.',
-  ].join('\n');
+  ]
+    .filter((line) => line !== '')
+    .join('\n');
 }
