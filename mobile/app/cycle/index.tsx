@@ -20,6 +20,7 @@ import {
   CycleActionRow,
   CycleAtmosphere,
   CycleFab,
+  CycleFeatureTile,
   CycleLoading,
   formatCycleDateKa,
   cycleNavHeader,
@@ -324,8 +325,8 @@ export default function CycleHome() {
         </View>
 
         <View style={{ marginTop: 18 }}>
-          <CycleActionPanel>
-            <CycleActionRow
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <CycleFeatureTile
               icon={CalendarHeart}
               title={ka.cycle.logToday}
               subtitle={ka.cycle.logHint}
@@ -335,35 +336,34 @@ export default function CycleHome() {
                 router.push({ pathname: '/cycle/log', params: { date: selected } } as never)
               }
             />
-            <CycleActionRow
+            <CycleFeatureTile
               icon={FileText}
               title={ka.cycle.summary}
               subtitle={ka.cycle.summaryHint}
               color={c.lavender}
               delay={80}
-              last={
-                !(
-                  bundle?.profile.mode === 'TRY_TO_CONCEIVE' ||
-                  bundle?.profile.mode === 'PREGNANCY'
-                )
-              }
               onPress={() => router.push('/cycle/summary' as never)}
             />
-            {bundle?.profile.mode === 'TRY_TO_CONCEIVE' ||
-            bundle?.profile.mode === 'PREGNANCY' ? (
-              <CycleActionRow
-                icon={Sparkles}
-                title={
-                  bundle.profile.mode === 'PREGNANCY' ? ka.cycle.pregnancy : ka.cycle.modeTtc
-                }
-                subtitle={ka.modules.cycle.subtitle}
-                color={c.blushDeep}
-                delay={120}
-                last
-                onPress={() => router.push('/cycle/pregnancy' as never)}
-              />
-            ) : null}
-          </CycleActionPanel>
+          </View>
+
+          {bundle?.profile.mode === 'TRY_TO_CONCEIVE' ||
+          bundle?.profile.mode === 'PREGNANCY' ? (
+            <View style={{ marginTop: 10 }}>
+              <CycleActionPanel>
+                <CycleActionRow
+                  icon={Sparkles}
+                  title={
+                    bundle.profile.mode === 'PREGNANCY' ? ka.cycle.pregnancy : ka.cycle.modeTtc
+                  }
+                  subtitle={ka.modules.cycle.subtitle}
+                  color={c.blushDeep}
+                  delay={120}
+                  last
+                  onPress={() => router.push('/cycle/pregnancy' as never)}
+                />
+              </CycleActionPanel>
+            </View>
+          ) : null}
         </View>
 
         {!bundle?.profile.lastPeriodStart ? (

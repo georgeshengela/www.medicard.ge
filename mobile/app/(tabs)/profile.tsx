@@ -24,7 +24,7 @@ const GENDER_LABELS: Record<Gender, string> = {
   OTHER: ka.auth.genderOther,
 };
 
-const APP_VERSION = '3.0.3';
+const APP_VERSION = '3.0.4';
 
 export default function Profile() {
   const { user, stats, refresh, signOut } = useAuth();

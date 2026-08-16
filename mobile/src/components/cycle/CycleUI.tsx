@@ -391,6 +391,114 @@ export function CycleActionPanel({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Square-ish feature tile — better for long Georgian titles than list rows. */
+export function CycleFeatureTile({
+  icon: Icon,
+  title,
+  subtitle,
+  color,
+  onPress,
+  delay = 0,
+}: {
+  icon: LucideIcon;
+  title: string;
+  subtitle: string;
+  color: string;
+  onPress: () => void;
+  delay?: number;
+}) {
+  const c = useCycleColors();
+  return (
+    <Animated.View entering={FadeInUp.delay(delay).duration(380)} style={{ flex: 1, minWidth: 0 }}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${title}. ${subtitle}`}
+        style={({ pressed }) => ({
+          backgroundColor: c.card,
+          borderRadius: 22,
+          paddingTop: 16,
+          paddingBottom: 14,
+          paddingHorizontal: 12,
+          minHeight: 148,
+          borderWidth: 1,
+          borderColor: c.border,
+          opacity: pressed ? 0.9 : 1,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+          ...cycleShadow.card,
+        })}
+      >
+        <View
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            backgroundColor: withAlpha(color, 0.16),
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 12,
+          }}
+        >
+          <Icon size={22} color={color} strokeWidth={2.15} />
+        </View>
+
+        <Text
+          numberOfLines={2}
+          style={{
+            color: c.ink,
+            fontWeight: '800',
+            fontSize: 14,
+            lineHeight: 19,
+            includeFontPadding: false,
+            marginBottom: 6,
+          }}
+        >
+          {title}
+        </Text>
+        <Text
+          numberOfLines={2}
+          style={{
+            color: c.muted,
+            fontSize: 11,
+            lineHeight: 15,
+            includeFontPadding: false,
+            flexGrow: 1,
+          }}
+        >
+          {subtitle}
+        </Text>
+
+        <View
+          style={{
+            marginTop: 12,
+            alignSelf: 'flex-start',
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: withAlpha(color, 0.12),
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: 999,
+          }}
+        >
+          <Text style={{ color: color, fontWeight: '700', fontSize: 11, marginRight: 4 }}>
+            გახსნა
+          </Text>
+          <View
+            style={{
+              width: 6,
+              height: 6,
+              borderTopWidth: 1.5,
+              borderRightWidth: 1.5,
+              borderColor: color,
+              transform: [{ rotate: '45deg' }],
+            }}
+          />
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export function CycleActionRow({
   icon: Icon,
   title,
@@ -418,7 +526,7 @@ export function CycleActionRow({
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
-          minHeight: 74,
+          minHeight: 72,
           paddingVertical: 14,
           paddingHorizontal: 14,
           opacity: pressed ? 0.88 : 1,
@@ -428,26 +536,27 @@ export function CycleActionRow({
       >
         <View
           style={{
-            width: 46,
-            height: 46,
-            borderRadius: 15,
+            width: 44,
+            height: 44,
+            borderRadius: 14,
             backgroundColor: withAlpha(color, 0.14),
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
           }}
         >
-          <Icon size={21} color={color} strokeWidth={2.15} />
+          <Icon size={20} color={color} strokeWidth={2.15} />
         </View>
 
-        <View style={{ marginLeft: 12, flex: 1, flexShrink: 1, minWidth: 0, paddingRight: 10 }}>
+        <View style={{ marginLeft: 12, flex: 1, flexShrink: 1, minWidth: 0, paddingRight: 8 }}>
           <Text
-            numberOfLines={2}
+            numberOfLines={1}
+            ellipsizeMode="tail"
             style={{
               color: c.ink,
               fontWeight: '700',
               fontSize: 15,
-              lineHeight: 21,
+              lineHeight: 20,
               includeFontPadding: false,
             }}
           >
@@ -459,7 +568,7 @@ export function CycleActionRow({
             style={{
               color: c.muted,
               fontSize: 12,
-              marginTop: 4,
+              marginTop: 3,
               lineHeight: 16,
               includeFontPadding: false,
             }}
@@ -470,9 +579,9 @@ export function CycleActionRow({
 
         <View
           style={{
-            width: 30,
-            height: 30,
-            borderRadius: 15,
+            width: 28,
+            height: 28,
+            borderRadius: 14,
             backgroundColor: c.roseSoft,
             alignItems: 'center',
             justifyContent: 'center',
@@ -481,13 +590,13 @@ export function CycleActionRow({
         >
           <View
             style={{
-              width: 8,
-              height: 8,
+              width: 7,
+              height: 7,
               borderTopWidth: 2,
               borderRightWidth: 2,
               borderColor: c.rose,
               transform: [{ rotate: '45deg' }],
-              marginLeft: -2,
+              marginLeft: -1,
             }}
           />
         </View>

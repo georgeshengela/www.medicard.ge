@@ -1,6 +1,6 @@
 {
   "name": "medicard-ge",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "main": "expo-router/entry",
   "dependencies": {
     "expo": "~54.0.0",
