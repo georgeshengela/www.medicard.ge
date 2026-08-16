@@ -1,0 +1,25 @@
+{
+  "name": "medicard-ge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Medicard.GE — Georgian-language AI medical assistant (Expo + Express + Neon)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix mobile install",
+    "db:push": "npm --prefix server run prisma:push",
+    "db:studio": "npm --prefix server run prisma:studio",
+    "server": "npm --prefix server run dev",
+    "mobile": "npm --prefix mobile run start",
+    "mobile:web": "npm --prefix mobile run web",
+    "mobile:clean": "npm --prefix mobile run start:clean",
+    "mobile:web:clean": "npm --prefix mobile run web:clean",
+    "test:api": "node server/scripts/smoke.js",
+    "test:ai": "node --experimental-default-type=module server/scripts/check-evidencemd.js",
+    "typecheck": "npm --prefix mobile run typecheck",
+    "build": "npm --prefix server ci --include=dev && npm --prefix server run prisma:generate && npm --prefix mobile ci --include=dev && npm --prefix mobile run export:web",
+    "release": "npm --prefix server run prisma:push",
+    "start": "npm --prefix server start"
+  }
+}

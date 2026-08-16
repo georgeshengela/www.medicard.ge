@@ -1,0 +1,34 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Expo
+.expo/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Native
+android/
+ios/
+
+# Server
+server/uploads/
+server/generated/
+
+# Generated verification artefacts
+mobile/screenshots/
+mobile/.expo-export-check/
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-error.log*

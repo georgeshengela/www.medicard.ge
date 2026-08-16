@@ -1,0 +1,46 @@
+# Medicard.GE — Render Blueprint
+# Dashboard: New → Blueprint → this repo (https://github.com/georgeshengela/www.medicard.ge)
+#
+# After the first deploy, set DNS at your medicard.ge registrar (see README).
+
+services:
+  - type: web
+    name: medicard-ge
+    runtime: node
+    plan: starter
+    region: frankfurt
+    branch: main
+    buildCommand: npm run build
+    preDeployCommand: npm run release
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    domains:
+      - medicard.ge
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 30d
+      - key: EVIDENCEMD_BASE_URL
+        value: https://evidencemd.ai/api/v1
+      - key: EVIDENCEMD_MODEL
+        value: evidencemd-pro
+      - key: ANTHROPIC_MODEL
+        value: claude-3-5-sonnet-latest
+      - key: OPENAI_MODEL
+        value: gpt-4o
+      - key: FREE_DAILY_AI_LIMIT
+        value: "3"
+      - key: DATABASE_URL
+        sync: false
+      - key: EVIDENCEMD_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

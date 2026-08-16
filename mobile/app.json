@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "Medicard.GE",
+    "slug": "medicard-ge",
+    "scheme": "medicard",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#f5f7f7",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ge.medicard.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენისა და კანის ფოტოს გადასაღებად.",
+        "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა სამედიცინო დოკუმენტებისა და ფოტოების ასატვირთად."
+      }
+    },
+    "android": {
+      "package": "ge.medicard.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#26A69A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["CAMERA", "READ_MEDIA_IMAGES", "POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#f5f7f7",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Medicard-ს სჭირდება გალერეაზე წვდომა ანალიზებისა და ფოტოების ასატვირთად.",
+          "cameraPermission": "Medicard-ს სჭირდება კამერაზე წვდომა სამედიცინო ფოტოს გადასაღებად."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#26A69A",
+          "defaultChannel": "medication-reminders"
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:4000"
+    }
+  }
+}

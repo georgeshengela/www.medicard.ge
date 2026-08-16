@@ -1,0 +1,76 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String               @id @default(uuid())
+  email         String               @unique
+  passwordHash  String
+  fullName      String
+  phone         String?              @unique
+  // Clinical demographics. Nullable because accounts created through the phone flow
+  // (and everyone who registered before these fields existed) fill them in later.
+  gender        String? // 'MALE' | 'FEMALE' | 'OTHER'
+  birthDate     DateTime?            @db.Date
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  records       MedicalRecord[]
+  chats         ChatSession[]
+  medications   MedicationSchedule[]
+  dailyUsages   DailyUsage[]
+}
+
+model DailyUsage {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String // Format: YYYY-MM-DD
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model MedicalRecord {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String // 'LAB', 'XRAY', 'CT_MRI', 'SKIN', 'SKINCARE', 'PRESCRIPTION'
+  imageUrl   String?
+  aiAnalysis String // JSON or Markdown string in Georgian
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model ChatSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String   @default("ახალი საუბარი")
+  mode      String   @default("DOCTOR") // 'DOCTOR' | 'CONSILIUM'
+  messages  Json // Array of message objects { role, content, timestamp }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@index([userId, updatedAt])
+}
+
+model MedicationSchedule {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medName   String
+  dosage    String
+  frequency String // e.g., '09:00, 15:00, 21:00'
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([userId, active])
+}

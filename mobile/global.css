@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Every colour token is a CSS variable so the whole app re-themes from one place.
+ * Values are space-separated RGB channels rather than hex, which is what lets
+ * Tailwind's `<alpha-value>` slot work (`bg-primary-200/40` and friends).
+ */
+@layer base {
+  :root {
+    /* Surfaces */
+    --color-bg-100: 245 247 247; /* page canvas */
+    --color-bg-200: 234 238 239; /* subtle fills, chips, icon tiles */
+    --color-bg-300: 221 227 228; /* hairlines, dividers, borders */
+    --color-surface: 255 255 255; /* cards */
+    --color-surface-raised: 255 255 255; /* floating bar, sheets */
+
+    /* Brand — teal */
+    --color-primary-100: 22 119 109; /* strongest: text on tints, pressed fills */
+    --color-primary-200: 38 166 154; /* brand */
+    --color-primary-300: 77 182 172; /* secondary emphasis */
+    --color-accent-100: 210 237 234; /* soft tint backgrounds */
+    --color-accent-200: 143 210 202; /* tint borders */
+
+    /* Type */
+    --color-text-100: 15 26 28;
+    --color-text-200: 70 86 90;
+    --color-text-300: 123 139 143;
+
+    /* Status */
+    --color-success: 15 138 95;
+    --color-success-bg: 227 244 236;
+    --color-warning: 184 116 0;
+    --color-warning-bg: 251 240 222;
+    --color-danger: 198 43 63;
+    --color-danger-bg: 251 234 236;
+  }
+
+  .dark,
+  .dark:root {
+    --color-bg-100: 13 18 20;
+    --color-bg-200: 26 34 37;
+    --color-bg-300: 39 50 54;
+    --color-surface: 20 27 29;
+    --color-surface-raised: 26 34 37;
+
+    /* Teal is lifted so it keeps its contrast ratio against a dark canvas. */
+    --color-primary-100: 122 226 214;
+    --color-primary-200: 45 190 175;
+    --color-primary-300: 95 211 198;
+    --color-accent-100: 18 58 55;
+    --color-accent-200: 55 121 111;
+
+    --color-text-100: 234 240 240;
+    --color-text-200: 166 180 183;
+    --color-text-300: 116 133 138;
+
+    --color-success: 52 211 153;
+    --color-success-bg: 14 42 33;
+    --color-warning: 251 191 36;
+    --color-warning-bg: 46 34 11;
+    --color-danger: 248 113 113;
+    --color-danger-bg: 46 20 22;
+  }
+}
