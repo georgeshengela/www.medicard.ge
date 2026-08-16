@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { UsageBanner } from '@/components/UsageBanner';
 import { Disclaimer } from '@/components/Disclaimer';
-import { MODULE_TILES, type ModuleTile } from '@/constants/modules';
+import { MODULE_TILES, modulesForGender, type ModuleTile } from '@/constants/modules';
 import { ka } from '@/i18n/ka';
 import { api, type ChatSummary, type ScheduledDose } from '@/lib/api';
 import { formatRelative, greeting, nextDoseTime } from '@/lib/format';
@@ -49,7 +49,8 @@ export default function Home() {
   const nextDose = upcoming ? schedule.find((dose) => dose.time === upcoming) : undefined;
 
   const firstName = user?.fullName?.split(' ')[0] ?? '';
-  const [primary, ...secondary] = MODULE_TILES;
+  const tiles = modulesForGender(user?.gender);
+  const [primary, ...secondary] = tiles.length ? tiles : MODULE_TILES;
 
   return (
     <ScrollView

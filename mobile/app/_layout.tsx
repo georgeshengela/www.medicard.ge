@@ -1,34 +1,60 @@
 import '../global.css';
 
-import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { enableScreens } from 'react-native-screens';
+import Constants from 'expo-constants';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
 import { useThemeColors } from '@/theme/colors';
 import { AuthProvider, useAuth } from '@/store/AuthContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
+import { api } from '@/lib/api';
 
-// Keep screens in the JS tree so a root-level tab bar is never covered by a
-// native full-window host view.
 enableScreens(false);
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+const APP_VERSION = Constants.expoConfig?.version ?? '3.0.0';
 
 /** Redirects between the auth stack and the app shell as the session changes. */
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { ready: authReady, user } = useAuth();
   const { ready: themeReady } = useTheme();
   const ready = authReady && themeReady;
+  const colors = useThemeColors();
 
   const segments = useSegments();
   const router = useRouter();
+  const [gate, setGate] = useState<{ kind: 'ok' } | { kind: 'maintenance' | 'update'; message: string }>({
+    kind: 'ok',
+  });
 
   useEffect(() => {
-    if (!ready) return;
+    api.app
+      .status(APP_VERSION)
+      .then((status) => {
+        if (status.settings.maintenanceMode) {
+          setGate({ kind: 'maintenance', message: status.settings.maintenanceMessage });
+          return;
+        }
+        if (status.client.blockedByForceUpdate) {
+          setGate({
+            kind: 'update',
+            message: `განაახლეთ აპლიკაცია ვერსიამდე ${status.settings.minAppVersion} ან უფრო ახალამდე.`,
+          });
+          return;
+        }
+        setGate({ kind: 'ok' });
+      })
+      .catch(() => setGate({ kind: 'ok' }));
+  }, []);
+
+  useEffect(() => {
+    if (!ready || gate.kind !== 'ok') return;
 
     SplashScreen.hideAsync().catch(() => undefined);
 
@@ -38,9 +64,20 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     } else if (user && inAuthGroup) {
       router.replace('/(tabs)/home');
     }
-  }, [ready, user, segments, router]);
+  }, [ready, user, segments, router, gate.kind]);
 
-  if (!ready) return <View className="flex-1 bg-bg-100" />;
+  if (gate.kind !== 'ok') {
+    return (
+      <View className="flex-1 items-center justify-center bg-bg-100 px-8">
+        <Text className="text-center text-2xl font-bold text-text-100">
+          {gate.kind === 'maintenance' ? 'განახლება მიმდინარეობს' : 'საჭიროა განახლება'}
+        </Text>
+        <Text className="mt-3 text-center text-base leading-6 text-text-200">{gate.message}</Text>
+      </View>
+    );
+  }
+
+  if (!ready) return <View className="flex-1" style={{ backgroundColor: colors.bg100 }} />;
   return <>{children}</>;
 }
 
@@ -73,6 +110,11 @@ function AppShell() {
               <Stack.Screen name="module/imaging" options={{ headerBackTitle: 'უკან' }} />
               <Stack.Screen name="module/skin" options={{ headerBackTitle: 'უკან' }} />
               <Stack.Screen name="module/skincare" options={{ headerBackTitle: 'უკან' }} />
+              <Stack.Screen name="cycle/index" options={{ headerBackTitle: 'უკან' }} />
+              <Stack.Screen name="cycle/log" options={{ headerBackTitle: 'უკან' }} />
+              <Stack.Screen name="cycle/settings" options={{ headerBackTitle: 'უკან' }} />
+              <Stack.Screen name="cycle/pregnancy" options={{ headerBackTitle: 'უკან' }} />
+              <Stack.Screen name="cycle/summary" options={{ headerBackTitle: 'უკან' }} />
               <Stack.Screen name="record/[id]" options={{ headerBackTitle: 'უკან' }} />
             </Stack>
           </View>

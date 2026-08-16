@@ -8,21 +8,138 @@ generator client {
 }
 
 model User {
-  id            String               @id @default(uuid())
-  email         String               @unique
-  passwordHash  String
-  fullName      String
-  phone         String?              @unique
-  // Clinical demographics. Nullable because accounts created through the phone flow
-  // (and everyone who registered before these fields existed) fill them in later.
-  gender        String? // 'MALE' | 'FEMALE' | 'OTHER'
-  birthDate     DateTime?            @db.Date
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  records       MedicalRecord[]
-  chats         ChatSession[]
-  medications   MedicationSchedule[]
-  dailyUsages   DailyUsage[]
+  id               String               @id @default(uuid())
+  email            String               @unique
+  passwordHash     String
+  fullName         String
+  phone            String?              @unique
+  gender           String? // 'MALE' | 'FEMALE' | 'OTHER'
+  birthDate        DateTime?            @db.Date
+  /// ACTIVE | BLOCKED
+  status           String               @default("ACTIVE")
+  packageId        String?
+  package          Package?             @relation(fields: [packageId], references: [id])
+  packageExpiresAt DateTime?
+  adminNote        String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  records          MedicalRecord[]
+  chats            ChatSession[]
+  medications      MedicationSchedule[]
+  dailyUsages      DailyUsage[]
+  cycleProfile     CycleProfile?
+  cycleLogs        CycleLog[]
+  pregnancyLogs    PregnancyLog[]
+
+  @@index([status])
+  @@index([packageId])
+}
+
+/// Women's health — one profile per user (FEMALE-gated in API)
+model CycleProfile {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// TRACK_PERIOD | TRY_TO_CONCEIVE | PREGNANCY
+  mode             String    @default("TRACK_PERIOD")
+  avgCycleLength   Int       @default(28)
+  avgPeriodLength  Int       @default(5)
+  lastPeriodStart  DateTime? @db.Date
+  isIrregular      Boolean   @default(false)
+  dueDate          DateTime? @db.Date
+  /// Local privacy — client enforces; stored hash optional
+  privacyEnabled   Boolean   @default(false)
+  partnerShareCode String?   @unique
+  /// Cached Flo-style AI recommendations (JSON)
+  aiInsights       Json?
+  aiInsightsAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model CycleLog {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// YYYY-MM-DD (Asia/Tbilisi calendar day)
+  date            String
+  /// none | spotting | light | medium | heavy
+  flow            String?
+  /// string[] symptom keys
+  symptoms        Json     @default("[]")
+  /// string[] mood keys
+  moods           Json     @default("[]")
+  sexualActivity  Boolean?
+  libido          Int? // 1-5
+  bbt             Float?
+  /// dry | sticky | creamy | watery | eggwhite
+  cervicalMucus   String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model PregnancyLog {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        String
+  currentWeek Int?
+  weightKg    Float?
+  symptoms    Json     @default("[]")
+  kickCount   Int      @default(0)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model Package {
+  id            String   @id @default(uuid())
+  /// FREE | STANDARD | ULTIMATE
+  code          String   @unique
+  nameKa        String
+  nameEn        String
+  descriptionKa String
+  /// -1 = unlimited AI queries per day
+  dailyAiLimit  Int
+  priceGel      Float    @default(0)
+  /// JSON feature flags / module access
+  features      Json
+  sortOrder     Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  users         User[]
+}
+
+model Admin {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// Singleton row id = "default"
+model AppSettings {
+  id                 String   @id @default("default")
+  /// When true, mobile/API refuse non-admin traffic with maintenance message
+  maintenanceMode    Boolean  @default(false)
+  maintenanceMessage String   @default("აპლიკაცია დროებით განახლების რეჟიმშია. გთხოვთ, სცადოთ მოგვიანებით.")
+  /// Soft gate: clients below this see an update prompt
+  minAppVersion      String   @default("1.0.0")
+  /// Hard gate: clients below minAppVersion cannot use the API
+  forceUpdate        Boolean  @default(false)
+  allowRegistrations Boolean  @default(true)
+  supportEmail       String   @default("support@medicard.ge")
+  updatedAt          DateTime @updatedAt
 }
 
 model DailyUsage {

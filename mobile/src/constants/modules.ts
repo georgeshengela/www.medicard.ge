@@ -1,6 +1,7 @@
 import {
   Bot,
   CalendarClock,
+  CalendarHeart,
   FlaskConical,
   ScanLine,
   Sparkles,
@@ -19,6 +20,8 @@ export type ModuleTile = {
   /** Tailwind classes for the icon tile — each module gets its own tint. */
   tint: string;
   iconColor: string;
+  /** When set, tile only shows for this gender. */
+  gender?: 'FEMALE' | 'MALE';
 };
 
 export const MODULE_TILES: ModuleTile[] = [
@@ -30,6 +33,16 @@ export const MODULE_TILES: ModuleTile[] = [
     href: '/chat/doctor',
     tint: 'bg-primary-200',
     iconColor: '#ffffff',
+  },
+  {
+    key: 'cycle',
+    title: ka.modules.cycle.title,
+    subtitle: ka.modules.cycle.subtitle,
+    icon: CalendarHeart,
+    href: '/cycle',
+    tint: 'bg-[#F7C6D0]',
+    iconColor: '#D4738A',
+    gender: 'FEMALE',
   },
   {
     key: 'lab',
@@ -86,3 +99,7 @@ export const MODULE_TILES: ModuleTile[] = [
     iconColor: '#26A69A',
   },
 ];
+
+export function modulesForGender(gender: string | null | undefined): ModuleTile[] {
+  return MODULE_TILES.filter((tile) => !tile.gender || tile.gender === gender);
+}

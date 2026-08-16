@@ -25,7 +25,7 @@ import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 
 export default function ChatScreen() {
-  const params = useLocalSearchParams<{ mode?: string; sessionId?: string }>();
+  const params = useLocalSearchParams<{ mode?: string; sessionId?: string; prefill?: string }>();
   const isConsilium = params.mode === 'consilium';
   const mode = isConsilium ? 'CONSILIUM' : 'DOCTOR';
   const copy = isConsilium ? ka.modules.consilium : ka.modules.doctor;
@@ -37,7 +37,7 @@ export default function ChatScreen() {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | undefined>(params.sessionId);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(typeof params.prefill === 'string' ? params.prefill : '');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);

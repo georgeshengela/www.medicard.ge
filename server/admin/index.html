@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ka" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Medicard Control</title>
+  <script>
+    (function () {
+      var token = localStorage.getItem('medicard.admin.token');
+      var theme = localStorage.getItem('medicard.admin.theme');
+      if (!theme) theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.dataset.ready = token ? 'app' : 'login';
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./admin.css?v=dash6" />
+</head>
+<body>
+  <div id="login-view" class="login-shell">
+    <aside class="login-rail">
+      <div class="mark">M</div>
+      <p class="rail-kicker">Medicard.GE</p>
+      <h1>Control</h1>
+      <p class="rail-copy">ოპერაციული კონსოლი — მომხმარებლები, პაკეტები, ლიმიტები და აპის რეჟიმი.</p>
+      <ul class="rail-list">
+        <li data-icon="users">ცოცხალი ცხრილები და ფილტრები</li>
+        <li data-icon="layers">პაკეტის მინიჭება ერთი კლიკით</li>
+        <li data-icon="shield">Offline / force-update რეჟიმი</li>
+      </ul>
+    </aside>
+    <form id="login-form" class="login-card" autocomplete="on">
+      <p class="kicker">შესვლა</p>
+      <h2>ადმინისტრატორი</h2>
+      <label class="field">
+        <span>ელ-ფოსტა</span>
+        <input id="login-email" type="email" required value="admin@medicard.ge" />
+      </label>
+      <label class="field">
+        <span>პაროლი</span>
+        <input id="login-password" type="password" required />
+      </label>
+      <p id="login-error" class="error hidden"></p>
+      <button type="submit" class="btn primary wide" data-icon="arrow">შესვლა კონსოლში</button>
+    </form>
+  </div>
+
+  <div id="app-view" class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark sm">M</div>
+        <div>
+          <strong>Medicard</strong>
+          <span>Control</span>
+        </div>
+      </div>
+      <nav>
+        <button data-tab="overview" class="nav active" data-icon="layout">მიმოხილვა</button>
+        <button data-tab="users" class="nav" data-icon="users">მომხმარებლები</button>
+        <button data-tab="packages" class="nav" data-icon="layers">პაკეტები</button>
+        <button data-tab="settings" class="nav" data-icon="settings">აპის რეჟიმი</button>
+      </nav>
+      <div class="sidebar-foot">
+        <button id="theme-toggle" class="ghost" type="button" data-icon="sun">თემა</button>
+        <button id="logout" class="ghost" type="button" data-icon="logout">გასვლა</button>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="kicker" id="page-kicker">ოპერაციები</p>
+          <h2 id="page-title">მიმოხილვა</h2>
+        </div>
+        <div class="topbar-right">
+          <div id="live-pill" class="status-pill ok">სისტემა აქტიურია</div>
+          <div id="admin-chip" class="who"></div>
+        </div>
+      </header>
+      <p id="page-sub" class="lede"></p>
+
+      <section id="tab-overview" class="panel"><div class="empty">იტვირთება…</div></section>
+      <section id="tab-users" class="panel hidden"></section>
+      <section id="tab-packages" class="panel hidden"></section>
+      <section id="tab-settings" class="panel hidden"></section>
+    </div>
+  </div>
+
+  <div id="drawer" class="drawer hidden" aria-hidden="true">
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
+    <aside class="drawer-panel" id="drawer-body"></aside>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
+  <script src="./admin.js?v=dash6"></script>
+</body>
+</html>

@@ -37,7 +37,14 @@ export class AiEngineError extends Error {
  * @param {string} [opts.context] Extra clinical context prepended as a system message.
  * @param {number} [opts.temperature]
  */
-export async function askEvidenceMd({ mode = 'DOCTOR', messages, context, temperature = 0.2 }) {
+export async function askEvidenceMd({
+  mode = 'DOCTOR',
+  messages,
+  context,
+  temperature = 0.2,
+  maxTokens = 2400,
+  skipDisclaimer = false,
+}) {
   const systemPrompt = SYSTEM_PROMPTS[mode] ?? SYSTEM_PROMPTS.DOCTOR;
 
   const payload = [
@@ -51,7 +58,7 @@ export async function askEvidenceMd({ mode = 'DOCTOR', messages, context, temper
       model: env.EVIDENCEMD_MODEL,
       messages: payload,
       temperature,
-      max_tokens: 2400,
+      max_tokens: maxTokens,
     });
 
     const answer = completion.choices?.[0]?.message?.content?.trim();
@@ -60,7 +67,7 @@ export async function askEvidenceMd({ mode = 'DOCTOR', messages, context, temper
     }
 
     return {
-      content: ensureDisclaimer(answer),
+      content: skipDisclaimer ? answer : ensureDisclaimer(answer),
       model: completion.model ?? env.EVIDENCEMD_MODEL,
       usage: completion.usage ?? null,
     };

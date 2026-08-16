@@ -41,10 +41,23 @@ export type Usage = {
   limit: number;
   remaining: number;
   exceeded: boolean;
+  unlimited?: boolean;
   resetsInMs: number;
 };
 
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
+
+export type UserPackage = {
+  id: string;
+  code: string;
+  nameKa: string;
+  nameEn: string;
+  descriptionKa: string;
+  dailyAiLimit: number;
+  unlimited: boolean;
+  priceGel: number;
+  features: Record<string, boolean>;
+};
 
 export type User = {
   id: string;
@@ -55,6 +68,9 @@ export type User = {
   /** `YYYY-MM-DD`, or null for accounts that predate the medical profile. */
   birthDate: string | null;
   age: number | null;
+  status?: 'ACTIVE' | 'BLOCKED';
+  package?: UserPackage | null;
+  packageExpiresAt?: string | null;
   createdAt: string;
 };
 
@@ -125,8 +141,113 @@ export class ApiError extends Error {
   }
 }
 
+export type CycleMode = 'TRACK_PERIOD' | 'TRY_TO_CONCEIVE' | 'PREGNANCY';
+
+export type CycleInsightCard = {
+  id: string;
+  tone: 'calm' | 'energy' | 'care' | 'fertile' | 'pregnancy' | 'mood' | string;
+  title: string;
+  body: string;
+  action: string | null;
+};
+
+export type CycleInsights = {
+  headline: string;
+  phaseLabel?: string | null;
+  cards: CycleInsightCard[];
+  source: 'ai' | 'local' | 'local_fallback' | string;
+  generatedAt: string;
+};
+
+export type CycleProfile = {
+  id: string;
+  userId: string;
+  mode: CycleMode;
+  avgCycleLength: number;
+  avgPeriodLength: number;
+  lastPeriodStart: string | null;
+  isIrregular: boolean;
+  dueDate: string | null;
+  privacyEnabled: boolean;
+  partnerShareCode: string | null;
+  aiInsights?: CycleInsights | null;
+  aiInsightsAt?: string | null;
+};
+
+export type CycleLog = {
+  id: string;
+  userId: string;
+  date: string;
+  flow: string | null;
+  symptoms: string[];
+  moods: string[];
+  sexualActivity: boolean | null;
+  libido: number | null;
+  bbt: number | null;
+  cervicalMucus: string | null;
+  notes: string | null;
+};
+
+export type PregnancyLog = {
+  id: string;
+  userId: string;
+  date: string;
+  currentWeek: number | null;
+  weightKg: number | null;
+  symptoms: string[];
+  kickCount: number;
+  notes: string | null;
+};
+
+export type CycleDayMark = {
+  period?: boolean;
+  fertile?: boolean;
+  ovulation?: boolean;
+  predicted?: boolean;
+  logged?: boolean;
+  flow?: string;
+};
+
+export type CycleBundle = {
+  profile: CycleProfile;
+  logs: CycleLog[];
+  pregnancyLogs: PregnancyLog[];
+  predictions: {
+    nextPeriodStart: string | null;
+    nextPeriodEnd: string | null;
+    ovulationDate: string | null;
+    fertileWindow: { start: string; end: string } | null;
+    calendar: Record<string, CycleDayMark>;
+  };
+  pregnancy: {
+    dueDate: string;
+    age: { week: number; day: number; dayOfPregnancy: number; trimester: number } | null;
+    insight: { week: number; size: string; note: string };
+  } | null;
+  inferred: {
+    avgCycleLength: number;
+    avgPeriodLength: number;
+    lastPeriodStart: string | null;
+  };
+  summary: {
+    mode: CycleMode;
+    avgCycleLength: number;
+    avgPeriodLength: number;
+    isIrregular: boolean;
+    loggedDays: number;
+    periodDaysLogged: number;
+    nextPeriodStart: string | null;
+    ovulationDate: string | null;
+    fertileWindow: { start: string; end: string } | null;
+    topSymptoms: { key: string; count: number }[];
+    topMoods: { key: string; count: number }[];
+    generatedAt: string;
+  };
+  localInsights?: CycleInsights;
+};
+
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
   formData?: FormData;
   token?: string | null;
@@ -187,6 +308,21 @@ type AuthResponse = { token: string; user: User; usage: Usage };
 
 export const api = {
   health: () => request<{ status: string }>('/health', { token: null }),
+
+  app: {
+    status: (version: string) =>
+      request<{
+        settings: {
+          maintenanceMode: boolean;
+          maintenanceMessage: string;
+          minAppVersion: string;
+          forceUpdate: boolean;
+          allowRegistrations: boolean;
+          supportEmail: string;
+        };
+        client: { version: string; needsUpdate: boolean; blockedByForceUpdate: boolean };
+      }>(`/api/app/status?version=${encodeURIComponent(version)}`, { token: null, timeoutMs: 15_000 }),
+  },
 
   auth: {
     register: (body: {
@@ -298,6 +434,53 @@ export const api = {
     update: (id: string, body: Partial<{ medName: string; dosage: string; frequency: string; notes: string; active: boolean }>) =>
       request<{ medication: Medication }>(`/api/medications/${id}`, { method: 'PATCH', body }),
     remove: (id: string) => request<{ deleted: boolean }>(`/api/medications/${id}`, { method: 'DELETE' }),
+  },
+
+  cycle: {
+    get: () => request<CycleBundle>('/api/cycle'),
+    updateProfile: (body: Partial<{
+      mode: CycleMode;
+      avgCycleLength: number;
+      avgPeriodLength: number;
+      lastPeriodStart: string | null;
+      isIrregular: boolean;
+      dueDate: string | null;
+      privacyEnabled: boolean;
+      enablePartnerShare: boolean;
+    }>) => request<CycleBundle>('/api/cycle/profile', { method: 'PATCH', body }),
+    upsertLog: (
+      date: string,
+      body: Partial<{
+        flow: string | null;
+        symptoms: string[];
+        moods: string[];
+        sexualActivity: boolean | null;
+        libido: number | null;
+        bbt: number | null;
+        cervicalMucus: string | null;
+        notes: string | null;
+      }>,
+    ) => request<{ log: CycleLog; bundle: CycleBundle }>(`/api/cycle/logs/${date}`, { method: 'PUT', body }),
+    removeLog: (date: string) => request<CycleBundle>(`/api/cycle/logs/${date}`, { method: 'DELETE' }),
+    upsertPregnancy: (
+      date: string,
+      body: Partial<{
+        currentWeek: number | null;
+        weightKg: number | null;
+        symptoms: string[];
+        kickCount: number;
+        notes: string | null;
+      }>,
+    ) => request<{ log: PregnancyLog; bundle: CycleBundle }>(`/api/cycle/pregnancy/${date}`, { method: 'PUT', body }),
+    insights: (refresh = false) =>
+      request<{
+        insights: CycleInsights;
+        cached: boolean;
+        localInsights?: CycleInsights;
+        model?: string;
+        engine?: string;
+        usage?: Usage;
+      }>('/api/cycle/insights', { method: 'POST', body: { refresh } }),
   },
 };
 

@@ -1,12 +1,11 @@
-import { consumeUsage, getUsage } from '../lib/usage.js';
+import { getUsage } from '../lib/usage.js';
+import { consumeUsage } from '../lib/usage.js';
 
 export const QUOTA_EXCEEDED_MESSAGE_KA =
-  'დღიური 3 უფასო შეკითხვა ამოიწურა. გთხოვთ, სცადეთ ხვალ.';
+  'დღიური ლიმიტი ამოიწურა. განაახლეთ პაკეტი ან სცადეთ ხვალ.';
 
 /**
- * Enforces the free tier before any AI engine is called, then hands the route a
- * `req.consumeAiCredit()` callback. The credit is only spent once a generation has
- * actually succeeded, so a failed upstream call never costs the user a query.
+ * Enforces the user's package quota before any AI engine is called.
  */
 export async function enforceAiQuota(req, res, next) {
   try {
@@ -17,8 +16,8 @@ export async function enforceAiQuota(req, res, next) {
         error: QUOTA_EXCEEDED_MESSAGE_KA,
         code: 'DAILY_LIMIT_REACHED',
         upsell: {
-          title: 'გახსენით Medicard Premium',
-          body: 'შეუზღუდავი AI კონსულტაციები, ანალიზების გაშიფვრა და კონსილიუმი — თვეში 19.99 ₾.',
+          title: 'გახსენით უკეთესი პაკეტი',
+          body: 'სტანდარტი ან ულტიმატი — მეტი AI კონსულტაცია და სრული მოდულები.',
           cta: 'გეგმის არჩევა',
         },
         usage: quota,

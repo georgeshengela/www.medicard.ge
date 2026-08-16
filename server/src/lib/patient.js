@@ -68,6 +68,20 @@ export function toDateOnly(birthDate) {
 
 /** The user shape safe to return over the wire — never includes the password hash. */
 export function publicUser(user) {
+  const pkg = user.package
+    ? {
+        id: user.package.id,
+        code: user.package.code,
+        nameKa: user.package.nameKa,
+        nameEn: user.package.nameEn,
+        descriptionKa: user.package.descriptionKa,
+        dailyAiLimit: user.package.dailyAiLimit,
+        unlimited: user.package.dailyAiLimit < 0,
+        priceGel: user.package.priceGel,
+        features: user.package.features ?? {},
+      }
+    : null;
+
   return {
     id: user.id,
     email: user.email,
@@ -76,6 +90,9 @@ export function publicUser(user) {
     gender: user.gender ?? null,
     birthDate: toDateOnly(user.birthDate),
     age: calculateAge(user.birthDate),
+    status: user.status ?? 'ACTIVE',
+    package: pkg,
+    packageExpiresAt: user.packageExpiresAt ?? null,
     createdAt: user.createdAt,
   };
 }

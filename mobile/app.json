@@ -3,7 +3,7 @@
     "name": "Medicard.GE",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0",
+    "version": "3.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",

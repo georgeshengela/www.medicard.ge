@@ -20,6 +20,10 @@ export function errorHandler(error, req, res, next) {
     return res.status(error.status).json({ error: error.message, code: 'AI_ENGINE_ERROR' });
   }
 
+  if (typeof error?.status === 'number' && error.status >= 400 && error.status < 600) {
+    return res.status(error.status).json({ error: error.message || 'მოთხოვნა უარყოფილია.' });
+  }
+
   if (error instanceof multer.MulterError) {
     const message =
       error.code === 'LIMIT_FILE_SIZE'

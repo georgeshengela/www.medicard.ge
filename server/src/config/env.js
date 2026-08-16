@@ -26,6 +26,10 @@ const schema = z.object({
   OPENAI_MODEL: z.string().default('gpt-4o'),
 
   FREE_DAILY_AI_LIMIT: z.coerce.number().int().positive().default(3),
+
+  ADMIN_EMAIL: z.string().email().default('admin@medicard.ge'),
+  ADMIN_PASSWORD: z.string().min(8).default('MedicardAdmin1!'),
+  ADMIN_FULL_NAME: z.string().default('Medicard Admin'),
 });
 
 const parsed = schema.safeParse(process.env);

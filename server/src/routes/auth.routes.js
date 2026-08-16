@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { getUsage } from '../lib/usage.js';
+import { ensureFreePackageId } from '../lib/packages.js';
+import { getAppSettings } from '../lib/settings.js';
 import { birthDateSchema, genderSchema, publicUser } from '../lib/patient.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
@@ -21,7 +23,6 @@ const registerSchema = z.object({
   email: z.string().trim().toLowerCase().email('ელ-ფოსტის ფორმატი არასწორია'),
   password: z.string().min(8, 'პაროლი უნდა შეიცავდეს მინიმუმ 8 სიმბოლოს').max(128),
   phone: georgianPhone.optional(),
-  // Required at sign-up: every AI answer is calibrated against sex and age.
   gender: genderSchema,
   birthDate: birthDateSchema,
 });
@@ -31,9 +32,24 @@ const loginSchema = z.object({
   password: z.string().min(1, 'შეიყვანეთ პაროლი'),
 });
 
+async function loadUserBundle(userId) {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    include: { package: true },
+  });
+}
+
 authRouter.post(
   '/register',
   asyncHandler(async (req, res) => {
+    const settings = await getAppSettings();
+    if (!settings.allowRegistrations) {
+      return res.status(403).json({
+        error: 'რეგისტრაცია დროებით გამორთულია. გთხოვთ, სცადოთ მოგვიანებით.',
+        code: 'REGISTRATIONS_CLOSED',
+      });
+    }
+
     const data = registerSchema.parse(req.body);
 
     const existing = await prisma.user.findUnique({ where: { email: data.email } });
@@ -41,7 +57,8 @@ authRouter.post(
       return res.status(409).json({ error: 'ამ ელ-ფოსტით მომხმარებელი უკვე რეგისტრირებულია.' });
     }
 
-    const user = await prisma.user.create({
+    const packageId = await ensureFreePackageId();
+    const created = await prisma.user.create({
       data: {
         email: data.email,
         fullName: data.fullName,
@@ -49,8 +66,11 @@ authRouter.post(
         gender: data.gender,
         birthDate: data.birthDate,
         passwordHash: await bcrypt.hash(data.password, 12),
+        packageId,
+        status: 'ACTIVE',
       },
     });
+    const user = await loadUserBundle(created.id);
 
     return res.status(201).json({
       token: signToken(user),
@@ -65,17 +85,27 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const data = loginSchema.parse(req.body);
 
-    const user = await prisma.user.findUnique({ where: { email: data.email } });
-    const valid = user ? await bcrypt.compare(data.password, user.passwordHash) : false;
+    const found = await prisma.user.findUnique({
+      where: { email: data.email },
+      include: { package: true },
+    });
+    const valid = found ? await bcrypt.compare(data.password, found.passwordHash) : false;
 
-    if (!user || !valid) {
+    if (!found || !valid) {
       return res.status(401).json({ error: 'ელ-ფოსტა ან პაროლი არასწორია.' });
     }
 
+    if (found.status === 'BLOCKED') {
+      return res.status(403).json({
+        error: 'თქვენი ანგარიში დაბლოკილია. დაგვიკავშირდით მხარდაჭერას.',
+        code: 'ACCOUNT_BLOCKED',
+      });
+    }
+
     return res.json({
-      token: signToken(user),
-      user: publicUser(user),
-      usage: await getUsage(user.id),
+      token: signToken(found),
+      user: publicUser(found),
+      usage: await getUsage(found.id),
     });
   }),
 );
@@ -120,9 +150,10 @@ authRouter.post(
       return res.status(401).json({ error: 'დამადასტურებელი კოდი არასწორია.' });
     }
 
-    let user = await prisma.user.findUnique({ where: { phone } });
+    let user = await prisma.user.findUnique({ where: { phone }, include: { package: true } });
     if (!user) {
-      user = await prisma.user.create({
+      const packageId = await ensureFreePackageId();
+      const created = await prisma.user.create({
         data: {
           phone,
           email: `${phone.replace('+', '')}@phone.medicard.ge`,
@@ -130,7 +161,17 @@ authRouter.post(
           gender: gender ?? null,
           birthDate: birthDate ?? null,
           passwordHash: await bcrypt.hash(`phone:${phone}:${Date.now()}`, 12),
+          packageId,
+          status: 'ACTIVE',
         },
+      });
+      user = await loadUserBundle(created.id);
+    }
+
+    if (user.status === 'BLOCKED') {
+      return res.status(403).json({
+        error: 'თქვენი ანგარიში დაბლოკილია. დაგვიკავშირდით მხარდაჭერას.',
+        code: 'ACCOUNT_BLOCKED',
       });
     }
 
