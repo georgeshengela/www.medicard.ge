@@ -28,9 +28,23 @@ import { asyncHandler } from './middleware/error.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const WEB_DIST = path.resolve(__dirname, '../../mobile/dist');
-const ADMIN_DIST = path.resolve(__dirname, '../admin');
+
+/** Resolve admin UI from several cwd layouts (local, Render, npm --prefix). */
+function resolveAdminDist() {
+  const candidates = [
+    path.resolve(__dirname, '../admin'),
+    path.resolve(process.cwd(), 'server/admin'),
+    path.resolve(process.cwd(), 'admin'),
+  ];
+  for (const dir of candidates) {
+    if (existsSync(path.join(dir, 'index.html'))) return dir;
+  }
+  return null;
+}
+
+const ADMIN_DIST = resolveAdminDist();
 const serveWeb = env.NODE_ENV === 'production' && existsSync(path.join(WEB_DIST, 'index.html'));
-const serveAdmin = existsSync(path.join(ADMIN_DIST, 'index.html'));
+const serveAdmin = Boolean(ADMIN_DIST);
 
 app.set('trust proxy', 1);
 app.use(
@@ -78,6 +92,8 @@ app.get('/health', (req, res) => {
     service: 'medicard-ge',
     time: new Date().toISOString(),
     engines: { evidencemd: true, vision: hasVisionProvider },
+    admin: serveAdmin,
+    web: serveWeb,
   });
 });
 
@@ -95,11 +111,24 @@ app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 
 if (serveAdmin) {
-  app.use('/admin', express.static(ADMIN_DIST, { index: false, maxAge: 0, etag: false }));
-  app.get(['/admin', '/admin/'], (_req, res) => {
+  // Must be registered before the Expo web SPA fallback, otherwise /admin becomes the mobile app.
+  app.use(
+    '/admin',
+    express.static(ADMIN_DIST, {
+      index: false,
+      maxAge: 0,
+      etag: false,
+      setHeaders(res) {
+        res.setHeader('Cache-Control', 'no-store');
+      },
+    }),
+  );
+  app.get(['/admin', '/admin/', '/admin/index.html'], (_req, res) => {
     res.set('Cache-Control', 'no-store');
     res.sendFile(path.join(ADMIN_DIST, 'index.html'));
   });
+} else {
+  console.warn('[medicard] Admin UI not found — /admin will not be available.');
 }
 
 if (serveWeb) {
@@ -110,7 +139,8 @@ if (serveWeb) {
     if (
       p.startsWith('/api') ||
       p.startsWith('/uploads') ||
-      p.startsWith('/admin') ||
+      p === '/admin' ||
+      p.startsWith('/admin/') ||
       p === '/health'
     ) {
       return next();
@@ -124,7 +154,8 @@ app.use(errorHandler);
 
 const server = app.listen(env.PORT, '0.0.0.0', () => {
   console.log(`\n  Medicard.GE API  →  http://localhost:${env.PORT}`);
-  if (serveAdmin) console.log(`  admin panel     →  http://localhost:${env.PORT}/admin`);
+  if (serveAdmin) console.log(`  admin panel     →  http://localhost:${env.PORT}/admin  (${ADMIN_DIST})`);
+  else console.warn('  admin panel     →  MISSING (server/admin/index.html not found)');
   if (serveWeb) console.log(`  web app          →  ${WEB_DIST}`);
   console.log(`  environment      →  ${env.NODE_ENV}`);
   console.log(`  free daily limit →  ${env.FREE_DAILY_AI_LIMIT} (FREE package default)`);
