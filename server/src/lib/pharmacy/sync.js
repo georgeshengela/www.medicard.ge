@@ -149,8 +149,53 @@ export async function getCatalogStats() {
   return { products, offers, comparedProducts, offersBySource };
 }
 
+async function getPharmacyInsights() {
+  const [tripleCompare, inStockOffers, dealCandidates] = await Promise.all([
+    prisma.catalogProduct.count({ where: { offerCount: { gte: 3 } } }),
+    prisma.pharmacyOffer.count({ where: { inStock: true } }),
+    prisma.catalogProduct.findMany({
+      where: { offerCount: { gte: 2 } },
+      select: {
+        id: true,
+        name: true,
+        bestPriceGel: true,
+        bestSourceId: true,
+        offerCount: true,
+        offers: { select: { priceGel: true, sourceId: true } },
+        bestSource: { select: { nameKa: true } },
+      },
+      take: 180,
+      orderBy: { updatedAt: 'desc' },
+    }),
+  ]);
+
+  const topDeals = dealCandidates
+    .map((product) => {
+      const prices = product.offers.map((o) => o.priceGel).filter((p) => p > 0);
+      if (prices.length < 2) return null;
+      const min = Math.min(...prices);
+      const max = Math.max(...prices);
+      if (max <= min) return null;
+      return {
+        id: product.id,
+        name: product.name,
+        bestPriceGel: product.bestPriceGel ?? min,
+        bestSource: product.bestSource?.nameKa ?? product.bestSourceId ?? '—',
+        offerCount: product.offerCount,
+        maxPriceGel: max,
+        saveGel: Math.round((max - min) * 100) / 100,
+        savePct: Math.round(((max - min) / max) * 100),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.savePct - a.savePct || b.saveGel - a.saveGel)
+    .slice(0, 6);
+
+  return { tripleCompare, inStockOffers, topDeals };
+}
+
 export async function getPharmacyAdminStats() {
-  const [catalog, syncMeta, running, recentFailures] = await Promise.all([
+  const [catalog, syncMeta, running, recentFailures, insights] = await Promise.all([
     getCatalogStats(),
     getSyncMeta(),
     prisma.syncRun.findFirst({
@@ -162,6 +207,7 @@ export async function getPharmacyAdminStats() {
       orderBy: { startedAt: 'desc' },
       take: 5,
     }),
+    getPharmacyInsights(),
   ]);
 
   const sourceStatus = {};
@@ -181,7 +227,7 @@ export async function getPharmacyAdminStats() {
       : null;
   }
 
-  return { catalog, syncMeta, running, sourceStatus, recentFailures };
+  return { catalog, syncMeta, running, sourceStatus, recentFailures, insights };
 }
 
 export async function listSyncRuns({ limit = 50, offset = 0 } = {}) {

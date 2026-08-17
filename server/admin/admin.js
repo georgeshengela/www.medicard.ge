@@ -1752,13 +1752,121 @@ function syncDuration(startedAt, finishedAt) {
   return `${min}წ ${rem}წ`;
 }
 
+function gel(value) {
+  if (value == null || Number.isNaN(Number(value))) return '—';
+  return `${Number(value).toFixed(2)} ₾`;
+}
+
+function pharmSourceTone(status) {
+  if (status === 'DONE') return 'ok';
+  if (status === 'FAILED') return 'bad';
+  if (status === 'RUNNING') return 'std';
+  return 'neutral';
+}
+
+function pharmSourceCard(src, catalog, sourceStatus, syncMeta) {
+  const last = sourceStatus[src.id];
+  const offers = catalog.offersBySource[src.id] || 0;
+  const meta = syncMeta[src.id];
+  const share = catalog.offers ? Math.round((offers / catalog.offers) * 100) : 0;
+  const tone = pharmSourceTone(last?.status);
+  const badge =
+    last?.status === 'DONE'
+      ? '<span class="badge ok">LIVE</span>'
+      : last?.status === 'FAILED'
+        ? '<span class="badge bad">FAILED</span>'
+        : last?.status === 'RUNNING'
+          ? '<span class="badge std">SYNC</span>'
+          : '<span class="badge neutral">OFF</span>';
+
+  return `
+    <article class="pharm-source ${tone}">
+      <div class="pharm-source-top">
+        ${iconTile('pill', tone === 'ok' ? 'teal' : tone === 'bad' ? 'bad' : tone === 'std' ? 'std' : '')}
+        <div class="pharm-source-copy">
+          <strong>${escapeHtml(src.label)}</strong>
+          <span class="muted">${meta ? `ბოლო · ${fmtDateShort(meta.finishedAt)}` : 'ჯერ არ გაუშვებულა'}</span>
+        </div>
+        ${badge}
+      </div>
+      <div class="pharm-source-balance">${offers.toLocaleString('ka-GE')}</div>
+      <div class="pharm-source-meta">
+        <span>შეთავაზება</span>
+        <strong class="mono">${share}% კატალოგის</strong>
+      </div>
+      <div class="bar teal"><span style="width:${Math.max(share, 2)}%"></span></div>
+      <div class="pharm-source-stats">
+        <div><span>ჩატვირთული</span><strong class="mono">${last?.itemsFetched ?? '—'}</strong></div>
+        <div><span>ხანგრძლ.</span><strong class="mono">${last ? syncDuration(last.startedAt, last.finishedAt) : '—'}</strong></div>
+      </div>
+      ${last?.error ? `<p class="pharm-source-error">${escapeHtml(last.error.slice(0, 140))}${last.error.length > 140 ? '…' : ''}</p>` : ''}
+    </article>
+  `;
+}
+
+function pharmDealRow(deal, rank) {
+  return `
+    <div class="pharm-deal">
+      <div class="pharm-deal-rank">${rank}</div>
+      <div class="pharm-deal-body">
+        <strong>${escapeHtml(deal.name.slice(0, 64))}${deal.name.length > 64 ? '…' : ''}</strong>
+        <span class="muted">${deal.offerCount} აფთიაქი · საუკეთესო · ${escapeHtml(deal.bestSource)}</span>
+      </div>
+      <div class="pharm-deal-prices">
+        <span class="pharm-deal-best mono">${gel(deal.bestPriceGel)}</span>
+        <span class="pharm-deal-was mono muted">${gel(deal.maxPriceGel)}</span>
+        <span class="pharm-deal-save">−${deal.savePct}%</span>
+      </div>
+    </div>
+  `;
+}
+
+function pharmSyncPreview() {
+  return `
+    <div class="pharm-preview">
+      <div class="pharm-preview-label">აპში გამოჩენა</div>
+      <div class="pharm-preview-phone">
+        <div class="pharm-preview-head">
+          <span>ფასების შედარება</span>
+          <span class="mono muted">3 აფთიაქი</span>
+        </div>
+        <div class="pharm-preview-product">
+          <div class="pharm-preview-thumb">${icon('pill')}</div>
+          <div>
+            <strong>ამოქსიცილინი 500 მგ</strong>
+            <span class="muted">20 ტაბლეტი</span>
+          </div>
+        </div>
+        <div class="pharm-preview-rows">
+          <div class="pharm-preview-row best">
+            <span>ფარმადეპო</span>
+            <strong class="mono">12.40 ₾</strong>
+          </div>
+          <div class="pharm-preview-row">
+            <span>ავერსი</span>
+            <strong class="mono">14.90 ₾</strong>
+          </div>
+          <div class="pharm-preview-row">
+            <span>PSP</span>
+            <strong class="mono">15.20 ₾</strong>
+          </div>
+        </div>
+        <div class="pharm-preview-foot">
+          <span class="pharm-preview-save">დაზოგავთ 2.80 ₾</span>
+          <span class="muted">18% უფრო იაფი</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 async function renderPharmacy() {
   if (pharmacyPollTimer) {
     clearInterval(pharmacyPollTimer);
     pharmacyPollTimer = null;
   }
 
-  const [{ catalog, syncMeta, running, sourceStatus, recentFailures }, { runs, total }] = await Promise.all([
+  const [{ catalog, syncMeta, running, sourceStatus, recentFailures, insights }, { runs, total }] = await Promise.all([
     api('/pharmacy/stats'),
     api('/pharmacy/sync-runs?limit=40'),
   ]);
@@ -1772,77 +1880,120 @@ async function renderPharmacy() {
   const comparedPct = catalog.products
     ? Math.round((catalog.comparedProducts / catalog.products) * 100)
     : 0;
-
-  function sourceCard(src) {
-    const last = sourceStatus[src.id];
-    const offers = catalog.offersBySource[src.id] || 0;
-    const meta = syncMeta[src.id];
-    const tone =
-      last?.status === 'DONE' ? 'ok' : last?.status === 'FAILED' ? 'bad' : last?.status === 'RUNNING' ? 'std' : '';
-    return `
-      <article class="ai-kpi ${src.tone ? `tone-${src.tone}` : ''}">
-        <div class="label">${escapeHtml(src.label)}</div>
-        <div class="value">${offers}</div>
-        <div class="hint">${meta ? `ბოლო · ${fmtDateShort(meta.finishedAt)}` : 'ჯერ არ გაუშვებულა'}</div>
-        <div style="margin-top:8px">${last ? syncRunBadge(last.status) : '<span class="badge neutral">—</span>'}</div>
-        ${last?.error ? `<p class="muted" style="margin:6px 0 0;font-size:11px">${escapeHtml(last.error.slice(0, 120))}${last.error.length > 120 ? '…' : ''}</p>` : ''}
-      </article>
-    `;
-  }
+  const triplePct = catalog.products
+    ? Math.round((insights.tripleCompare / catalog.products) * 100)
+    : 0;
+  const stockPct = catalog.offers
+    ? Math.round((insights.inStockOffers / catalog.offers) * 100)
+    : 0;
+  const ringTone = comparedPct >= 70 ? 'ok' : comparedPct >= 40 ? 'std' : catalog.products ? 'bad' : 'neutral';
+  const runningSource = running?.source ? escapeHtml(running.source) : '';
+  const runningDur = running ? syncDuration(running.startedAt, null) : '';
 
   $('tab-pharmacy').innerHTML = `
-    <div class="ai-page pharmacy-page">
-      <section class="ai-hero">
+    <div class="pharm-page">
+      ${running ? `
+        <div class="pharm-live-banner">
+          ${icon('activity')}
+          <div>
+            <strong>სინქრონიზაცია მიმდინარეობს</strong>
+            <span>${runningSource} · ${runningDur} · ${running.itemsFetched ?? 0} ჩანაწერი</span>
+          </div>
+          <span class="pharm-live-dot" aria-hidden="true"></span>
+        </div>
+      ` : ''}
+
+      <section class="pharm-hero ai-hero">
         <div class="ai-hero-copy">
-          <p class="kicker" style="margin:0 0 8px">კატალოგი</p>
+          <p class="kicker">კატალოგი · Pharmadepot · Aversi · PSP</p>
           <h3>ფასების შედარება</h3>
-          <p>Pharmadepot, Aversi და PSP — სინქრონიზებული კატალოგი, ფასების შედარება და სინქის ისტორია.</p>
+          <p>სამი აფთიაქის ერთიანი კატალოგი — ავტომატური მატჩინგი, საუკეთესო ფასის გამოთვლა და მობილურ აპში ცოცხალი შედარება.</p>
           <div class="ai-hero-meta">
-            <span class="ai-pill teal">${icon('pill')} პროდუქტები <strong>${catalog.products}</strong></span>
-            <span class="ai-pill">${icon('layers')} შეთავაზებები <strong>${catalog.offers}</strong></span>
-            <span class="ai-pill ok">${icon('check')} შედარება <strong>${catalog.comparedProducts}</strong></span>
-            <span class="ai-pill ${running ? 'std' : recentFailures.length ? 'warn' : 'ok'}">${running ? icon('activity') : icon('shield')} ${running ? 'მიმდინარეობს…' : recentFailures.length ? `${recentFailures.length} შეცდომა` : 'მზადაა'}</span>
+            <span class="ai-pill teal">${icon('pill')} პროდუქტი <strong>${catalog.products.toLocaleString('ka-GE')}</strong></span>
+            <span class="ai-pill">${icon('layers')} offer <strong>${catalog.offers.toLocaleString('ka-GE')}</strong></span>
+            <span class="ai-pill ok">${icon('check')} 2+ წყარო <strong>${catalog.comparedProducts.toLocaleString('ka-GE')}</strong></span>
+            <span class="ai-pill ${insights.tripleCompare ? 'teal' : ''}">${icon('spark')} 3-გზიანი <strong>${insights.tripleCompare.toLocaleString('ka-GE')}</strong></span>
+            <span class="ai-pill ${running ? 'std' : recentFailures.length ? 'warn' : 'ok'}">${running ? icon('activity') : icon('shield')} ${running ? 'სინქი…' : recentFailures.length ? `${recentFailures.length} შეცდომა` : 'სტაბილური'}</span>
           </div>
         </div>
-        ${dashHealthRing(
-          catalog.comparedProducts,
-          catalog.products,
-          catalog.products ? `${comparedPct}% მრავალწყარო · ${catalog.offers} offer` : '—',
-        )}
+        <div class="ai-hero-score">
+          <div class="ai-score-ring ${ringTone}" style="--pct:${Math.min(100, comparedPct)}">
+            <div class="ai-score-inner">
+              <span class="ai-score-val">${catalog.products ? comparedPct : '—'}</span>
+              <span class="ai-score-lbl">${catalog.products ? '%' : ''}</span>
+            </div>
+          </div>
+          <p class="ai-score-caption">${catalog.products ? `${comparedPct}% შედარებადი · ${triplePct}% სამივეში` : 'კატალოგი ცარიელია'}</p>
+        </div>
       </section>
 
+      <div class="pharm-funnel">
+        <div class="pharm-funnel-step">
+          <span class="pharm-funnel-num">1</span>
+          <div>
+            <strong>კატალოგი</strong>
+            <span>${catalog.products.toLocaleString('ka-GE')} SKU</span>
+          </div>
+        </div>
+        <div class="pharm-funnel-line"></div>
+        <div class="pharm-funnel-step">
+          <span class="pharm-funnel-num">2</span>
+          <div>
+            <strong>შეთავაზებები</strong>
+            <span>${catalog.offers.toLocaleString('ka-GE')} offer · ${stockPct}% stock</span>
+          </div>
+        </div>
+        <div class="pharm-funnel-line"></div>
+        <div class="pharm-funnel-step on">
+          <span class="pharm-funnel-num">3</span>
+          <div>
+            <strong>შედარება</strong>
+            <span>${catalog.comparedProducts.toLocaleString('ka-GE')} მრავალწყარო</span>
+          </div>
+        </div>
+      </div>
+
       <div class="ai-kpi-grid">
-        <article class="ai-kpi">
+        <article class="ai-kpi tone-teal">
           <div class="label">კატალოგი</div>
-          <div class="value">${catalog.products}</div>
+          <div class="value">${catalog.products.toLocaleString('ka-GE')}</div>
           <div class="hint">კანონიკური პროდუქტი</div>
         </article>
         <article class="ai-kpi">
           <div class="label">შეთავაზებები</div>
-          <div class="value">${catalog.offers}</div>
-          <div class="hint">ყველა აფთიაქიდან</div>
+          <div class="value">${catalog.offers.toLocaleString('ka-GE')}</div>
+          <div class="hint">${insights.inStockOffers.toLocaleString('ka-GE')} მარაგში</div>
         </article>
         <article class="ai-kpi">
-          <div class="label">3-გზიანი შედარება</div>
-          <div class="value">${catalog.comparedProducts}</div>
-          <div class="hint">${comparedPct}% კატალოგის</div>
+          <div class="label">2-წყარო+</div>
+          <div class="value">${catalog.comparedProducts.toLocaleString('ka-GE')}</div>
+          <div class="hint">${comparedPct}% დაფარვა</div>
         </article>
         <article class="ai-kpi">
-          <div class="label">ბოლო ALL სინქი</div>
-          <div class="value">${syncMeta.ALL?.itemsFetched ?? '—'}</div>
-          <div class="hint">${syncMeta.ALL ? fmtDateShort(syncMeta.ALL.finishedAt) : '—'}</div>
+          <div class="label">3-წყარო</div>
+          <div class="value">${insights.tripleCompare.toLocaleString('ka-GE')}</div>
+          <div class="hint">${triplePct}% სრული შედარება</div>
         </article>
       </div>
 
-      <div class="ai-kpi-grid" style="margin-top:0">
-        ${sources.map(sourceCard).join('')}
+      <div class="pharm-sources-wrap">
+        <div class="pharm-section-head">
+          ${iconTile('globe', 'teal')}
+          <div>
+            <h3>აფთიაქის წყაროები</h3>
+            <p class="muted">offer-ების წილი, ბოლო სინქი და სტატუსი თითო პროვაიდერზე</p>
+          </div>
+        </div>
+        <div class="pharm-sources">
+          ${sources.map((src) => pharmSourceCard(src, catalog, sourceStatus, syncMeta)).join('')}
+        </div>
       </div>
 
-      <div class="ai-split">
-        <div class="card push-compose-card">
-          <div class="card-head">${iconTile('pill', 'teal')}<div><h3>სინქრონიზაცია</h3><p class="muted" style="margin:2px 0 0;font-size:12px">CLI ან cron-ის გარდა — ხელით გაშვება აქ</p></div></div>
-          <div class="push-compose-body">
-            <div class="push-compose-form">
+      <div class="ai-split pharm-split">
+        <div class="card pharm-sync-card">
+          <div class="card-head">${iconTile('refresh', 'teal')}<div><h3>სინქრონიზაცია</h3><p class="muted" style="margin:2px 0 0;font-size:12px">CLI/cron-ის გარდა — ხელით გაშვება აქ · ავტო-refresh სინქის დროს</p></div></div>
+          <div class="pharm-sync-body">
+            <div class="pharm-sync-form">
               <div class="field"><span>წყარო</span>
                 <select id="pharm-source">
                   <option value="ALL">ყველა (Pharmadepot + Aversi + PSP)</option>
@@ -1851,56 +2002,99 @@ async function renderPharmacy() {
                   <option value="PSP">PSP</option>
                 </select>
               </div>
-              <div class="field"><span>მაქს. გვერდები (არასავალდებულო)</span><input id="pharm-pages" type="number" min="1" max="500" placeholder="მაგ. 20 — ცარიელი = სრული" /></div>
+              <div class="field"><span>მაქს. გვერდები</span><input id="pharm-pages" type="number" min="1" max="500" placeholder="ცარიელი = სრული კატალოგი" /></div>
               <button class="btn primary" id="pharm-sync" ${running ? 'disabled' : ''}>${icon('activity')} ${running ? 'სინქრონიზაცია მიმდინარეობს…' : 'სინქის გაშვება'}</button>
-              <p class="push-compose-note">სრული Pharmadepot კატალოგი ~3300 SKU · 30–90 წუთი. Aversi/PSP შეიძლება დაბლოკილი იყოს bot-ებისგან.</p>
+              <p class="pharm-sync-note">Pharmadepot ~3300 SKU · 30–90 წთ. Aversi/PSP შეიძლება bot-დაცვით დაბლოკილი იყოს.</p>
+              <div class="pharm-sync-meta">
+                <div><span>ბოლო ALL</span><strong class="mono">${syncMeta.ALL ? fmtDateShort(syncMeta.ALL.finishedAt) : '—'}</strong></div>
+                <div><span>ჩატვირთული</span><strong class="mono">${syncMeta.ALL?.itemsFetched?.toLocaleString('ka-GE') ?? '—'}</strong></div>
+              </div>
             </div>
+            ${pharmSyncPreview()}
           </div>
         </div>
-        <div class="card">
-          <div class="card-head">${iconTile('alert', recentFailures.length ? 'warn' : 'ok')}<div><h3>ბოლო შეცდომები</h3><p class="muted" style="margin:2px 0 0;font-size:12px">${recentFailures.length ? 'გადახედეთ და გაუშვით ხელახლა' : 'შეცდომები არ ფიქსირდება'}</p></div></div>
-          <div class="detail-list">
-            ${
-              recentFailures.length
-                ? recentFailures
-                    .map(
-                      (r) => `
-              <div class="detail">
-                <span>${escapeHtml(r.source)} · ${fmtDateShort(r.startedAt)}</span>
-                <strong class="mono" style="font-size:11px;max-width:220px;text-align:right">${escapeHtml((r.error || '—').slice(0, 80))}</strong>
-              </div>`,
-                    )
-                    .join('')
-                : '<p class="muted" style="padding:12px 0">ყველა წყარო სტაბილურია.</p>'
-            }
-          </div>
+
+        <div class="card pharm-deals-card">
+          <div class="card-head">${iconTile('wallet', 'ok')}<div><h3>ტოპ დაზოგვები</h3><p class="muted" style="margin:2px 0 0;font-size:12px">ყველაზე დიდი ფასის სpread მრავალწყარო პროდუქტებში</p></div></div>
+          ${
+            insights.topDeals.length
+              ? `<div class="pharm-deals">${insights.topDeals.map((d, i) => pharmDealRow(d, i + 1)).join('')}</div>`
+              : '<div class="empty"><strong>ჯერ არ არის შედარება</strong>გაუშვით სინქი — დაზოგვის ტოპი აქ გამოჩნდება.</div>'
+          }
         </div>
       </div>
 
-      <div class="table-card" style="margin-top:16px">
-        <div class="card-head">${iconTile('activity', 'teal')}<div><h3>სინქის ისტორია</h3><p class="muted" style="margin:2px 0 0;font-size:12px">${total} ჩანაწერი · ბოლო 40</p></div></div>
+      ${
+        recentFailures.length
+          ? `
+        <div class="pharm-alert-card">
+          ${iconTile('alert', 'bad')}
+          <div class="pharm-alert-copy">
+            <strong>${recentFailures.length} ბოლო შეცდომა</strong>
+            <p class="muted">გადახედეთ და გაუშვით ხელახლა დაბლოკილი წყარო</p>
+          </div>
+          <div class="pharm-alert-list">
+            ${recentFailures
+              .map(
+                (r) => `
+              <div class="pharm-alert-item">
+                <span class="badge bad">${escapeHtml(r.source)}</span>
+                <span class="mono muted">${fmtDateShort(r.startedAt)}</span>
+                <span>${escapeHtml((r.error || '—').slice(0, 100))}${(r.error || '').length > 100 ? '…' : ''}</span>
+              </div>`,
+              )
+              .join('')}
+          </div>
+        </div>`
+          : ''
+      }
+
+      <div class="table-card pharm-log-card">
+        <div class="card-head">
+          ${iconTile('activity', 'teal')}
+          <div>
+            <h3>სინქის ისტორია</h3>
+            <p class="muted" style="margin:2px 0 0;font-size:12px">${total.toLocaleString('ka-GE')} ჩანაწერი · ბოლო 40</p>
+          </div>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>წყარო</th><th>სტატუსი</th><th>ჩატვირთული</th><th>დრო</th><th>ხანგრძლ.</th><th>შეცდომა</th></tr>
+              <tr><th>წყარო</th><th>სტატუსი</th><th>ჩატვირთული</th><th>დაწყება</th><th>ხანგრძლ.</th><th>შეცდომა</th></tr>
             </thead>
             <tbody>
               ${
                 runs.length
                   ? runs
-                      .map(
-                        (r) => `
-                <tr>
+                      .map((r) => {
+                        const durSec = r.startedAt
+                          ? Math.max(
+                              0,
+                              Math.round(
+                                ((r.finishedAt ? new Date(r.finishedAt) : new Date()).getTime() -
+                                  new Date(r.startedAt).getTime()) /
+                                  1000,
+                              ),
+                            )
+                          : 0;
+                        const durPct = Math.min(100, Math.round((durSec / 3600) * 100));
+                        return `
+                <tr class="pharm-run-row ${r.status === 'RUNNING' ? 'running' : ''}">
                   <td><strong>${escapeHtml(r.source)}</strong></td>
                   <td>${syncRunBadge(r.status)}</td>
-                  <td class="mono">${r.itemsFetched ?? 0}</td>
+                  <td class="mono">${(r.itemsFetched ?? 0).toLocaleString('ka-GE')}</td>
                   <td class="mono">${fmtDateShort(r.startedAt)}</td>
-                  <td class="mono">${syncDuration(r.startedAt, r.finishedAt)}</td>
-                  <td class="muted" style="max-width:240px;font-size:11px">${escapeHtml((r.error || '—').slice(0, 100))}</td>
-                </tr>`,
-                      )
+                  <td>
+                    <div class="pharm-dur">
+                      <span class="mono">${syncDuration(r.startedAt, r.finishedAt)}</span>
+                      <div class="bar teal"><span style="width:${durPct || 4}%"></span></div>
+                    </div>
+                  </td>
+                  <td class="pharm-run-error">${escapeHtml((r.error || '—').slice(0, 80))}${(r.error || '').length > 80 ? '…' : ''}</td>
+                </tr>`;
+                      })
                       .join('')
-                  : '<tr><td colspan="6" class="muted">სინქი ჯერ არ გაუშვებულა</td></tr>'
+                  : '<tr><td colspan="6" class="muted">სინქი ჯერ არ გაუშვებულა — დაიწყეთ ზემოთ.</td></tr>'
               }
             </tbody>
           </table>
