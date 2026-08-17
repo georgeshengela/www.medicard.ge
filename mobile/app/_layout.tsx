@@ -110,12 +110,18 @@ function AppShell() {
         if (data?.type === 'cycle_reminder' && data?.route) {
           openRoute(data.route);
         }
+        if (data?.type === 'visit_reminder' && data?.route) {
+          openRoute(data.route);
+        }
       })
       .catch(() => undefined);
 
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
       if (data?.type === 'cycle_reminder' && data?.route) {
+        openRoute(data.route);
+      }
+      if (data?.type === 'visit_reminder' && data?.route) {
         openRoute(data.route);
       }
     });
@@ -146,6 +152,8 @@ function AppShell() {
               <Stack.Screen name="module/skin" options={{ headerBackTitle: 'უკან' }} />
               <Stack.Screen name="module/skincare" options={{ headerBackTitle: 'უკან' }} />
               <Stack.Screen name="cycle" options={{ headerShown: false }} />
+              <Stack.Screen name="visits" options={{ headerShown: false }} />
+              <Stack.Screen name="pharmacy" options={{ headerShown: false }} />
               <Stack.Screen name="record/[id]" options={{ headerBackTitle: 'უკან' }} />
             </Stack>
           </View>

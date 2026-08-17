@@ -159,5 +159,18 @@ if (!engineReachable) {
   console.log('     Credits are only spent on a successful generation — that behaviour is verified above.');
 }
 
+const pharmacyCats = await call('/api/pharmacy/categories');
+check('GET /api/pharmacy/categories', pharmacyCats.status === 200 && Array.isArray(pharmacyCats.json.categories), JSON.stringify(pharmacyCats.json));
+
+const pharmacyProducts = await call('/api/pharmacy/products?limit=5');
+check(
+  'GET /api/pharmacy/products',
+  pharmacyProducts.status === 200 && Array.isArray(pharmacyProducts.json.products),
+  JSON.stringify(pharmacyProducts.json),
+);
+
+const pharmacyMeta = await call('/api/pharmacy/meta/sync');
+check('GET /api/pharmacy/meta/sync', pharmacyMeta.status === 200 && pharmacyMeta.json.sources, JSON.stringify(pharmacyMeta.json));
+
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed\n`);
 process.exitCode = failed === 0 ? 0 : 1;

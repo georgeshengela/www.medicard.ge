@@ -16,6 +16,7 @@ export const PUSH_CHANNEL_ID = 'medicard-push';
 export const NOTIF_PREFIX = {
   med: 'med:',
   cycle: 'cycle:',
+  visit: 'visit:',
 } as const;
 
 Notifications.setNotificationHandler({

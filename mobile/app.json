@@ -3,7 +3,7 @@
     "name": "Medicard.GE",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "3.4.12",
+    "version": "4.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -70,7 +70,8 @@
         "expo-build-properties",
         {
           "android": {
-            "minSdkVersion": 26
+            "minSdkVersion": 26,
+            "softwareKeyboardLayoutMode": "resize"
           }
         }
       ]

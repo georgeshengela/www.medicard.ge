@@ -19,11 +19,13 @@ import { aiRouter } from './routes/ai.routes.js';
 import { chatsRouter } from './routes/chats.routes.js';
 import { recordsRouter } from './routes/records.routes.js';
 import { medicationsRouter } from './routes/medications.routes.js';
+import { visitsRouter } from './routes/visits.routes.js';
 import { usageRouter } from './routes/usage.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { appRouter } from './routes/app.routes.js';
 import { cycleRouter, partnerShareHandler } from './routes/cycle.routes.js';
 import { pushRouter } from './routes/push.routes.js';
+import { pharmacyRouter } from './routes/pharmacy.routes.js';
 import { asyncHandler } from './middleware/error.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -105,10 +107,12 @@ app.use('/api/ai', aiRouter);
 app.use('/api/chats', chatsRouter);
 app.use('/api/records', recordsRouter);
 app.use('/api/medications', medicationsRouter);
+app.use('/api/visits', visitsRouter);
 app.use('/api/cycle', cycleRouter);
 app.get('/api/cycle/share/:code', asyncHandler(partnerShareHandler));
 app.use('/api/usage', usageRouter);
 app.use('/api/push', pushRouter);
+app.use('/api/pharmacy', pharmacyRouter);
 app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 

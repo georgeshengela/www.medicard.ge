@@ -417,12 +417,12 @@ async function boot() {
   try {
     const me = await apiRetry('/me');
     rememberAdmin(me.admin);
-    const tab = ['overview', 'users', 'packages', 'push', 'ai', 'settings'].includes(state.tab) ? state.tab : 'overview';
+    const tab = ['overview', 'users', 'packages', 'push', 'pharmacy', 'ai', 'settings'].includes(state.tab) ? state.tab : 'overview';
     await switchTab(tab);
   } catch (err) {
     if (err.status === 401 || err.status === 403) return;
     toast(err.message || 'სერვერთან კავშირი ვერ დამყარდა.', 'bad');
-    const tab = ['overview', 'users', 'packages', 'push', 'ai', 'settings'].includes(state.tab) ? state.tab : 'overview';
+    const tab = ['overview', 'users', 'packages', 'push', 'pharmacy', 'ai', 'settings'].includes(state.tab) ? state.tab : 'overview';
     try { await switchTab(tab); } catch { /* keep chrome visible */ }
   }
 }
@@ -461,6 +461,7 @@ async function switchTab(tab) {
     users: ['რეესტრი', 'მომხმარებლები', 'ძებნა, სორტი, პაკეტის მინიჭება, ბლოკი და წაშლა. Ctrl/⌘+K — ძებნა.'],
     packages: ['კომერცია', 'პაკეტები', 'ყველა გეგმა თვიურია — AI ლიმიტი 30-დღიან პერიოდში.'],
     push: ['კომუნიკაცია', 'Push შეტყობინებები', 'გაუგზავნეთ broadcast მომხმარებლებს სეგმენტის მიხედვით.'],
+    pharmacy: ['კატალოგი', 'ფასების შედარება', 'აფთიაქების სინქრონიზაცია, პროდუქტები და სინქის ისტორია.'],
     ai: ['AI Engine', 'ხარისხის ანალიზი', 'ყველა AI პასუხი იწერება, შეფასდება და გაუმჯობესდება კონტროლირებულად.'],
     settings: ['კონტროლი', 'აპის რეჟიმი', 'Offline, იძულებითი განახლება და რეგისტრაციის კარიბჭე.'],
   };
@@ -472,6 +473,7 @@ async function switchTab(tab) {
   if (tab === 'users') await renderUsers();
   if (tab === 'packages') await renderPackages();
   if (tab === 'push') await renderPush();
+  if (tab === 'pharmacy') await renderPharmacy();
   if (tab === 'ai') await renderAi();
   if (tab === 'settings') await renderSettings();
 }
@@ -1729,6 +1731,212 @@ async function renderSettings() {
     toast('რეჟიმი შენახულია');
     await renderSettings();
   };
+}
+
+let pharmacyPollTimer = null;
+
+function syncRunBadge(status) {
+  if (status === 'DONE') return '<span class="badge ok">DONE</span>';
+  if (status === 'FAILED') return '<span class="badge bad">FAILED</span>';
+  if (status === 'RUNNING') return '<span class="badge std">RUNNING</span>';
+  return `<span class="badge neutral">${escapeHtml(status || '—')}</span>`;
+}
+
+function syncDuration(startedAt, finishedAt) {
+  if (!startedAt) return '—';
+  const end = finishedAt ? new Date(finishedAt).getTime() : Date.now();
+  const sec = Math.max(0, Math.round((end - new Date(startedAt).getTime()) / 1000));
+  if (sec < 60) return `${sec}წ`;
+  const min = Math.floor(sec / 60);
+  const rem = sec % 60;
+  return `${min}წ ${rem}წ`;
+}
+
+async function renderPharmacy() {
+  if (pharmacyPollTimer) {
+    clearInterval(pharmacyPollTimer);
+    pharmacyPollTimer = null;
+  }
+
+  const [{ catalog, syncMeta, running, sourceStatus, recentFailures }, { runs, total }] = await Promise.all([
+    api('/pharmacy/stats'),
+    api('/pharmacy/sync-runs?limit=40'),
+  ]);
+
+  const sources = [
+    { id: 'PHARMADEPOT', label: 'ფარმადეპო', tone: 'teal' },
+    { id: 'AVERSI', label: 'ავერსი', tone: '' },
+    { id: 'PSP', label: 'PSP', tone: '' },
+  ];
+
+  const comparedPct = catalog.products
+    ? Math.round((catalog.comparedProducts / catalog.products) * 100)
+    : 0;
+
+  function sourceCard(src) {
+    const last = sourceStatus[src.id];
+    const offers = catalog.offersBySource[src.id] || 0;
+    const meta = syncMeta[src.id];
+    const tone =
+      last?.status === 'DONE' ? 'ok' : last?.status === 'FAILED' ? 'bad' : last?.status === 'RUNNING' ? 'std' : '';
+    return `
+      <article class="ai-kpi ${src.tone ? `tone-${src.tone}` : ''}">
+        <div class="label">${escapeHtml(src.label)}</div>
+        <div class="value">${offers}</div>
+        <div class="hint">${meta ? `ბოლო · ${fmtDateShort(meta.finishedAt)}` : 'ჯერ არ გაუშვებულა'}</div>
+        <div style="margin-top:8px">${last ? syncRunBadge(last.status) : '<span class="badge neutral">—</span>'}</div>
+        ${last?.error ? `<p class="muted" style="margin:6px 0 0;font-size:11px">${escapeHtml(last.error.slice(0, 120))}${last.error.length > 120 ? '…' : ''}</p>` : ''}
+      </article>
+    `;
+  }
+
+  $('tab-pharmacy').innerHTML = `
+    <div class="ai-page pharmacy-page">
+      <section class="ai-hero">
+        <div class="ai-hero-copy">
+          <p class="kicker" style="margin:0 0 8px">კატალოგი</p>
+          <h3>ფასების შედარება</h3>
+          <p>Pharmadepot, Aversi და PSP — სინქრონიზებული კატალოგი, ფასების შედარება და სინქის ისტორია.</p>
+          <div class="ai-hero-meta">
+            <span class="ai-pill teal">${icon('pill')} პროდუქტები <strong>${catalog.products}</strong></span>
+            <span class="ai-pill">${icon('layers')} შეთავაზებები <strong>${catalog.offers}</strong></span>
+            <span class="ai-pill ok">${icon('check')} შედარება <strong>${catalog.comparedProducts}</strong></span>
+            <span class="ai-pill ${running ? 'std' : recentFailures.length ? 'warn' : 'ok'}">${running ? icon('activity') : icon('shield')} ${running ? 'მიმდინარეობს…' : recentFailures.length ? `${recentFailures.length} შეცდომა` : 'მზადაა'}</span>
+          </div>
+        </div>
+        ${dashHealthRing(
+          catalog.comparedProducts,
+          catalog.products,
+          catalog.products ? `${comparedPct}% მრავალწყარო · ${catalog.offers} offer` : '—',
+        )}
+      </section>
+
+      <div class="ai-kpi-grid">
+        <article class="ai-kpi">
+          <div class="label">კატალოგი</div>
+          <div class="value">${catalog.products}</div>
+          <div class="hint">კანონიკური პროდუქტი</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">შეთავაზებები</div>
+          <div class="value">${catalog.offers}</div>
+          <div class="hint">ყველა აფთიაქიდან</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">3-გზიანი შედარება</div>
+          <div class="value">${catalog.comparedProducts}</div>
+          <div class="hint">${comparedPct}% კატალოგის</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">ბოლო ALL სინქი</div>
+          <div class="value">${syncMeta.ALL?.itemsFetched ?? '—'}</div>
+          <div class="hint">${syncMeta.ALL ? fmtDateShort(syncMeta.ALL.finishedAt) : '—'}</div>
+        </article>
+      </div>
+
+      <div class="ai-kpi-grid" style="margin-top:0">
+        ${sources.map(sourceCard).join('')}
+      </div>
+
+      <div class="ai-split">
+        <div class="card push-compose-card">
+          <div class="card-head">${iconTile('pill', 'teal')}<div><h3>სინქრონიზაცია</h3><p class="muted" style="margin:2px 0 0;font-size:12px">CLI ან cron-ის გარდა — ხელით გაშვება აქ</p></div></div>
+          <div class="push-compose-body">
+            <div class="push-compose-form">
+              <div class="field"><span>წყარო</span>
+                <select id="pharm-source">
+                  <option value="ALL">ყველა (Pharmadepot + Aversi + PSP)</option>
+                  <option value="PHARMADEPOT">Pharmadepot</option>
+                  <option value="AVERSI">Aversi shop</option>
+                  <option value="PSP">PSP</option>
+                </select>
+              </div>
+              <div class="field"><span>მაქს. გვერდები (არასავალდებულო)</span><input id="pharm-pages" type="number" min="1" max="500" placeholder="მაგ. 20 — ცარიელი = სრული" /></div>
+              <button class="btn primary" id="pharm-sync" ${running ? 'disabled' : ''}>${icon('activity')} ${running ? 'სინქრონიზაცია მიმდინარეობს…' : 'სინქის გაშვება'}</button>
+              <p class="push-compose-note">სრული Pharmadepot კატალოგი ~3300 SKU · 30–90 წუთი. Aversi/PSP შეიძლება დაბლოკილი იყოს bot-ებისგან.</p>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">${iconTile('alert', recentFailures.length ? 'warn' : 'ok')}<div><h3>ბოლო შეცდომები</h3><p class="muted" style="margin:2px 0 0;font-size:12px">${recentFailures.length ? 'გადახედეთ და გაუშვით ხელახლა' : 'შეცდომები არ ფიქსირდება'}</p></div></div>
+          <div class="detail-list">
+            ${
+              recentFailures.length
+                ? recentFailures
+                    .map(
+                      (r) => `
+              <div class="detail">
+                <span>${escapeHtml(r.source)} · ${fmtDateShort(r.startedAt)}</span>
+                <strong class="mono" style="font-size:11px;max-width:220px;text-align:right">${escapeHtml((r.error || '—').slice(0, 80))}</strong>
+              </div>`,
+                    )
+                    .join('')
+                : '<p class="muted" style="padding:12px 0">ყველა წყარო სტაბილურია.</p>'
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card" style="margin-top:16px">
+        <div class="card-head">${iconTile('activity', 'teal')}<div><h3>სინქის ისტორია</h3><p class="muted" style="margin:2px 0 0;font-size:12px">${total} ჩანაწერი · ბოლო 40</p></div></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>წყარო</th><th>სტატუსი</th><th>ჩატვირთული</th><th>დრო</th><th>ხანგრძლ.</th><th>შეცდომა</th></tr>
+            </thead>
+            <tbody>
+              ${
+                runs.length
+                  ? runs
+                      .map(
+                        (r) => `
+                <tr>
+                  <td><strong>${escapeHtml(r.source)}</strong></td>
+                  <td>${syncRunBadge(r.status)}</td>
+                  <td class="mono">${r.itemsFetched ?? 0}</td>
+                  <td class="mono">${fmtDateShort(r.startedAt)}</td>
+                  <td class="mono">${syncDuration(r.startedAt, r.finishedAt)}</td>
+                  <td class="muted" style="max-width:240px;font-size:11px">${escapeHtml((r.error || '—').slice(0, 100))}</td>
+                </tr>`,
+                      )
+                      .join('')
+                  : '<tr><td colspan="6" class="muted">სინქი ჯერ არ გაუშვებულა</td></tr>'
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  $('pharm-sync')?.addEventListener('click', async () => {
+    const source = $('pharm-source').value;
+    const pagesRaw = $('pharm-pages').value.trim();
+    const maxPages = pagesRaw ? parseInt(pagesRaw, 10) : undefined;
+    if (pagesRaw && (Number.isNaN(maxPages) || maxPages < 1)) {
+      toast('maxPages არასწორია', 'bad');
+      return;
+    }
+    if (!confirm(`გაუშვებთ ${source} სინქს?${maxPages ? ` (max ${maxPages} გვ.)` : ' (სრული კატალოგი)'}`)) return;
+    const btn = $('pharm-sync');
+    btn.disabled = true;
+    btn.textContent = 'იწყება…';
+    try {
+      await api('/pharmacy/sync', { method: 'POST', body: { source, ...(maxPages ? { maxPages } : {}) } });
+      toast('სინქრონიზაცია დაიწყო — განახლება ავტომატურად', 'ok');
+      await renderPharmacy();
+    } catch (err) {
+      toast(err.message || 'სინქი ვერ დაიწყო', 'bad');
+      btn.disabled = false;
+      btn.innerHTML = `${icon('activity')} სინქის გაშვება`;
+    }
+  });
+
+  if (running) {
+    pharmacyPollTimer = setInterval(() => {
+      if (state.tab === 'pharmacy') renderPharmacy().catch(() => undefined);
+    }, 8000);
+  }
 }
 
 boot();

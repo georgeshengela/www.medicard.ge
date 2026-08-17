@@ -15,6 +15,13 @@ import { requireAdmin } from '../middleware/adminAuth.js';
 import { getProviderBalances } from '../lib/providerBalances.js';
 import { getAiQualityStats } from '../lib/aiTelemetry.js';
 import { getEvalRun, listEvalRuns, runQualityScan } from '../lib/aiQuality.js';
+import {
+  getPharmacyAdminStats,
+  isSyncRunning,
+  listSyncRuns,
+  syncAllPharmacySources,
+  syncPharmacySource,
+} from '../lib/pharmacy/sync.js';
 
 export const adminRouter = Router();
 
@@ -562,5 +569,64 @@ adminRouter.get(
     const run = await getEvalRun(req.params.id);
     if (!run) return res.status(404).json({ error: 'სკანი ვერ მოიძებნა.' });
     res.json({ run });
+  }),
+);
+
+adminRouter.get(
+  '/pharmacy/stats',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const stats = await getPharmacyAdminStats();
+    res.json(stats);
+  }),
+);
+
+adminRouter.get(
+  '/pharmacy/sync-runs',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const query = z
+      .object({
+        limit: z.coerce.number().int().min(1).max(200).default(50),
+        offset: z.coerce.number().int().min(0).default(0),
+      })
+      .parse(req.query);
+
+    const data = await listSyncRuns(query);
+    res.json(data);
+  }),
+);
+
+adminRouter.post(
+  '/pharmacy/sync',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        source: z.enum(['ALL', 'PHARMADEPOT', 'AVERSI', 'PSP']).default('ALL'),
+        maxPages: z.number().int().min(1).max(500).optional(),
+      })
+      .parse(req.body ?? {});
+
+    if (await isSyncRunning()) {
+      return res.status(409).json({ error: 'სინქრონიზაცია უკვე მიმდინარეობს.' });
+    }
+
+    const opts = {};
+    if (body.maxPages) opts.maxPages = body.maxPages;
+
+    res.status(202).json({ ok: true, message: 'სინქრონიზაცია დაიწყო', source: body.source });
+
+    setImmediate(async () => {
+      try {
+        if (body.source === 'ALL') {
+          await syncAllPharmacySources(opts);
+        } else {
+          await syncPharmacySource(body.source, opts);
+        }
+      } catch (err) {
+        console.error('[admin pharmacy sync]', err);
+      }
+    });
   }),
 );

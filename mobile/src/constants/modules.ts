@@ -1,12 +1,14 @@
 import {
   Bot,
   CalendarClock,
+  CalendarCheck,
   CalendarHeart,
   FlaskConical,
   ScanLine,
   Sparkles,
   Stethoscope,
   Users,
+  BadgePercent,
   type LucideIcon,
 } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
@@ -90,6 +92,15 @@ export const MODULE_TILES: ModuleTile[] = [
     iconColor: '#26A69A',
   },
   {
+    key: 'pharmacy',
+    title: ka.modules.pharmacy.title,
+    subtitle: ka.modules.pharmacy.subtitle,
+    icon: BadgePercent,
+    href: '/pharmacy',
+    tint: 'bg-[#E8F5F3]',
+    iconColor: '#1A8A7D',
+  },
+  {
     key: 'calendar',
     title: ka.modules.calendar.title,
     subtitle: ka.modules.calendar.subtitle,
@@ -97,6 +108,15 @@ export const MODULE_TILES: ModuleTile[] = [
     href: '/(tabs)/medications',
     tint: 'bg-accent-100/60',
     iconColor: '#26A69A',
+  },
+  {
+    key: 'visits',
+    title: ka.modules.visits.title,
+    subtitle: ka.modules.visits.subtitle,
+    icon: CalendarCheck,
+    href: '/visits',
+    tint: 'bg-[#D4E8E6]',
+    iconColor: '#1A8A7D',
   },
 ];
 

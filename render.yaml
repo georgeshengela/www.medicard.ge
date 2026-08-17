@@ -54,3 +54,22 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+
+  - type: cron
+    name: medicard-pharmacy-sync
+    runtime: node
+    plan: starter
+    region: frankfurt
+    branch: main
+    schedule: "0 */6 * * *"
+    buildCommand: npm --prefix server ci --include=dev && npm --prefix server run prisma:generate && npx --prefix server playwright install chromium
+    startCommand: node server/scripts/sync-pharmacy-prices.js --source=all
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: PHARMACY_SYNC_CRON_HOURS
+        value: "6"

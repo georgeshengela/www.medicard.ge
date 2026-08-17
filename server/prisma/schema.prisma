@@ -35,6 +35,7 @@ model User {
   pregnancyLogs    PregnancyLog[]
   aiInteractions   AiInteraction[]
   aiFeedback       AiFeedback[]
+  doctorVisits     DoctorVisit[]
 
   @@index([status])
   @@index([packageId])
@@ -327,4 +328,140 @@ model MedicationSchedule {
   createdAt DateTime @default(now())
 
   @@index([userId, active])
+}
+
+/// Scheduled doctor visit with optional location and local notification rules.
+model DoctorVisit {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// GP | DENTIST | CARDIO | GYN | NEURO | ORTHO | THERAPIST | OPHTHALMO | DERM | PED | OTHER
+  doctorType      String
+  doctorFirstName String?
+  doctorLastName  String?
+  /// YYYY-MM-DD local calendar day
+  visitDate       String
+  /// HH:mm 24h
+  visitTime       String
+  address         String?
+  addressLabel    String?
+  lat             Float?
+  lng             Float?
+  notes           String?
+  /// { enabled, offsetsMinutes: number[], repeatCount: number }
+  reminderConfig  Json     @default("{}")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, visitDate])
+  @@index([userId, active])
+}
+
+/// Pharmacy chain (Pharmadepot, Aversi, PSP)
+model PharmacySource {
+  id        String          @id // PHARMADEPOT | AVERSI | PSP
+  nameKa    String
+  logoUrl   String?
+  baseUrl   String
+  offers    PharmacyOffer[]
+  bestFor   CatalogProduct[] @relation("BestSource")
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+/// Unified medication category tree
+model DrugCategory {
+  id          String              @id @default(uuid())
+  slug        String              @unique
+  nameKa      String
+  iconUrl     String?
+  parentId    String?
+  parent      DrugCategory?       @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    DrugCategory[]      @relation("CategoryTree")
+  sortOrder   Int                 @default(0)
+  products    CatalogProduct[]
+  sourceMaps  SourceCategoryMap[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([parentId, sortOrder])
+}
+
+/// Maps external category ids to unified DrugCategory
+model SourceCategoryMap {
+  id             String       @id @default(uuid())
+  source         String // PHARMADEPOT | AVERSI | PSP
+  sourceCategory String
+  categoryId     String
+  category       DrugCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([source, sourceCategory])
+  @@index([categoryId])
+}
+
+/// Canonical product matched across pharmacies
+model CatalogProduct {
+  id             String          @id @default(uuid())
+  slug           String          @unique
+  name           String
+  normalizedKey  String
+  imageUrl       String?
+  manufacturer   String?
+  country        String?
+  form           String?
+  strength       String?
+  packSize       String?
+  description    String?
+  categoryId     String?
+  category       DrugCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  bestPriceGel   Float?
+  bestSourceId   String?
+  bestSource     PharmacySource? @relation("BestSource", fields: [bestSourceId], references: [id], onDelete: SetNull)
+  offerCount     Int             @default(0)
+  lastSyncedAt   DateTime?
+  offers         PharmacyOffer[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([normalizedKey])
+  @@index([categoryId])
+  @@index([bestPriceGel])
+  @@index([name])
+}
+
+/// Per-pharmacy listing for a catalog product
+model PharmacyOffer {
+  id               String         @id @default(uuid())
+  catalogProductId String
+  catalogProduct   CatalogProduct @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
+  sourceId         String
+  source           PharmacySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceProductId  String
+  sourceUrl        String
+  rawName          String
+  priceGel         Float
+  oldPriceGel      Float?
+  discountPercent  Float?
+  inStock          Boolean        @default(true)
+  imageUrl         String?
+  syncedAt         DateTime       @default(now())
+
+  @@unique([sourceId, sourceProductId])
+  @@unique([catalogProductId, sourceId])
+  @@index([catalogProductId, priceGel])
+  @@index([syncedAt])
+}
+
+/// Sync job audit log
+model SyncRun {
+  id           String    @id @default(uuid())
+  source       String // PHARMADEPOT | AVERSI | PSP | ALL
+  status       String    @default("RUNNING") // RUNNING | DONE | FAILED
+  itemsFetched Int       @default(0)
+  error        String?
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+
+  @@index([source, startedAt])
 }

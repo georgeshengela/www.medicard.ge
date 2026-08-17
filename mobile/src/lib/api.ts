@@ -119,12 +119,107 @@ export type Medication = {
   createdAt: string;
 };
 
+export type DoctorTypeCode =
+  | 'GP'
+  | 'DENTIST'
+  | 'CARDIO'
+  | 'GYN'
+  | 'NEURO'
+  | 'ORTHO'
+  | 'THERAPIST'
+  | 'OPHTHALMO'
+  | 'DERM'
+  | 'PED'
+  | 'OTHER';
+
+export type VisitReminderConfig = {
+  enabled: boolean;
+  offsetsMinutes: number[];
+  repeatCount: number;
+};
+
+export type DoctorVisit = {
+  id: string;
+  doctorType: DoctorTypeCode;
+  doctorFirstName: string | null;
+  doctorLastName: string | null;
+  visitDate: string;
+  visitTime: string;
+  address: string | null;
+  addressLabel: string | null;
+  lat: number | null;
+  lng: number | null;
+  notes: string | null;
+  reminderConfig: VisitReminderConfig;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GeocodeResult = {
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+};
+
 export type ScheduledDose = {
   medicationId: string;
   medName: string;
   dosage: string;
   notes: string | null;
   time: string;
+};
+
+export type PharmacySourceInfo = {
+  id: string;
+  nameKa: string;
+  logoUrl: string | null;
+  baseUrl: string;
+};
+
+export type DrugCategoryInfo = {
+  id: string;
+  slug: string;
+  nameKa: string;
+  iconUrl?: string | null;
+  children?: DrugCategoryInfo[];
+};
+
+export type PharmacyOfferInfo = {
+  id: string;
+  source: PharmacySourceInfo | null;
+  priceGel: number;
+  oldPriceGel: number | null;
+  discountPercent: number | null;
+  inStock: boolean;
+  sourceUrl: string;
+  rawName: string;
+  imageUrl: string | null;
+  syncedAt: string;
+};
+
+export type CatalogProductSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  imageUrl: string | null;
+  manufacturer: string | null;
+  country: string | null;
+  form: string | null;
+  strength: string | null;
+  packSize: string | null;
+  description: string | null;
+  category: { id: string; slug: string; nameKa: string } | null;
+  bestPriceGel: number | null;
+  bestSource: PharmacySourceInfo | null;
+  offerCount: number;
+  savingsPercent: number | null;
+  lastSyncedAt: string | null;
+};
+
+export type CatalogProductDetail = CatalogProductSummary & {
+  offers: PharmacyOfferInfo[];
 };
 
 export type Upsell = { title: string; body: string; cta: string };
@@ -490,6 +585,66 @@ export const api = {
     update: (id: string, body: Partial<{ medName: string; dosage: string; frequency: string; notes: string; active: boolean }>) =>
       request<{ medication: Medication }>(`/api/medications/${id}`, { method: 'PATCH', body }),
     remove: (id: string) => request<{ deleted: boolean }>(`/api/medications/${id}`, { method: 'DELETE' }),
+  },
+
+  visits: {
+    list: () => request<{ visits: DoctorVisit[] }>('/api/visits'),
+    create: (body: {
+      doctorType: DoctorTypeCode;
+      doctorFirstName?: string;
+      doctorLastName?: string;
+      visitDate: string;
+      visitTime: string;
+      address?: string;
+      addressLabel?: string;
+      lat?: number;
+      lng?: number;
+      notes?: string;
+      reminderConfig?: VisitReminderConfig;
+      active?: boolean;
+    }) => request<{ visit: DoctorVisit }>('/api/visits', { method: 'POST', body }),
+    update: (
+      id: string,
+      body: Partial<{
+        doctorType: DoctorTypeCode;
+        doctorFirstName: string;
+        doctorLastName: string;
+        visitDate: string;
+        visitTime: string;
+        address: string;
+        addressLabel: string;
+        lat: number;
+        lng: number;
+        notes: string;
+        reminderConfig: VisitReminderConfig;
+        active: boolean;
+      }>,
+    ) => request<{ visit: DoctorVisit }>(`/api/visits/${id}`, { method: 'PATCH', body }),
+    remove: (id: string) => request<{ deleted: boolean }>(`/api/visits/${id}`, { method: 'DELETE' }),
+    geocode: (q: string) =>
+      request<{ results: GeocodeResult[] }>(`/api/visits/geocode?q=${encodeURIComponent(q)}`),
+  },
+
+  pharmacy: {
+    categories: () => request<{ categories: DrugCategoryInfo[] }>('/api/pharmacy/categories'),
+    products: (params?: { category?: string; q?: string; sort?: string; page?: number; limit?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.category) qs.set('category', params.category);
+      if (params?.q) qs.set('q', params.q);
+      if (params?.sort) qs.set('sort', params.sort);
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.limit) qs.set('limit', String(params.limit));
+      const query = qs.toString();
+      return request<{ products: CatalogProductSummary[]; pagination: { page: number; limit: number; total: number; pages: number } }>(
+        `/api/pharmacy/products${query ? `?${query}` : ''}`,
+      );
+    },
+    product: (id: string) => request<{ product: CatalogProductDetail }>(`/api/pharmacy/products/${id}`),
+    syncMeta: () =>
+      request<{
+        sources: Record<string, { finishedAt: string; itemsFetched: number } | null>;
+        catalog?: { products: number; offers: number; comparedProducts: number; offersBySource: Record<string, number> };
+      }>('/api/pharmacy/meta/sync'),
   },
 
   cycle: {

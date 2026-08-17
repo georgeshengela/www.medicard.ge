@@ -25,6 +25,13 @@ server/generated/
 # Generated verification artefacts
 mobile/screenshots/
 mobile/.expo-export-check/
+mobile/.expo-tmp-check/
+
+# Scraping / debug probes (local only)
+tmp-*.js
+pd-*.js
+gpc.html
+server/*-test.html
 
 # Editors / OS
 .DS_Store

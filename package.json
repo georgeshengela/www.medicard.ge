@@ -16,6 +16,7 @@
     "mobile:clean": "npm --prefix mobile run start:clean",
     "mobile:web:clean": "npm --prefix mobile run web:clean",
     "test:api": "node server/scripts/smoke.js",
+    "sync:pharmacy": "node server/scripts/sync-pharmacy-prices.js",
     "test:ai": "node --experimental-default-type=module server/scripts/check-evidencemd.js",
     "typecheck": "npm --prefix mobile run typecheck",
     "build": "npm --prefix server ci --include=dev && npm --prefix server run prisma:generate && npm --prefix mobile ci --include=dev && npm --prefix mobile run export:web && node -e \"const fs=require('fs');const p='server/admin/index.html'; if(!fs.existsSync(p)){console.error('Missing '+p); process.exit(1)} console.log('admin ui ok')\"",
