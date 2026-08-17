@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { prisma } from './prisma.js';
-import { todayKey } from './usage.js';
+import { calendarMonthKey, todayKey } from './billing.js';
 
 const TIMEOUT_MS = 10_000;
 const CACHE_MS = 30_000;
@@ -133,10 +133,10 @@ export async function getEvidenceMdBalance() {
     ok: false,
     remaining: null,
     remainingSource: null,
-    usedToday: 0,
+    usedThisMonth: 0,
     usedAll: 0,
     creditsPerCall,
-    estimatedCreditsToday: 0,
+    estimatedCreditsThisMonth: 0,
     currency: 'credits',
     model,
     dashboardUrl,
@@ -146,16 +146,25 @@ export async function getEvidenceMdBalance() {
   if (!configured) return empty;
 
   const headers = { 'x-api-key': env.EVIDENCEMD_API_KEY, Accept: 'application/json' };
-  const date = todayKey();
+  const today = todayKey();
+  const calKey = `cal:${calendarMonthKey()}`;
 
-  const [models, credits, todayAgg, allAgg] = await Promise.all([
+  const [models, credits, calAgg, subRows, allAgg] = await Promise.all([
     fetchJson(`${base}/models`, headers),
     fetchJson(`${base}/credits`, headers),
-    prisma.dailyUsage.aggregate({ _sum: { count: true }, where: { date } }),
-    prisma.dailyUsage.aggregate({ _sum: { count: true } }),
+    prisma.periodUsage.aggregate({ _sum: { count: true }, where: { periodKey: calKey } }),
+    prisma.periodUsage.findMany({
+      where: { periodKey: { startsWith: 'sub:' } },
+      select: { count: true, periodKey: true },
+    }),
+    prisma.periodUsage.aggregate({ _sum: { count: true } }),
   ]);
 
-  const usedToday = todayAgg._sum.count ?? 0;
+  const activeSubUsage = subRows.reduce((sum, row) => {
+    const end = row.periodKey.split(':')[2];
+    return end && end >= today ? sum + row.count : sum;
+  }, 0);
+  const usedThisMonth = (calAgg._sum.count ?? 0) + activeSubUsage;
   const usedAll = allAgg._sum.count ?? 0;
   const creditData = credits.ok ? (credits.json?.data ?? credits.json) : null;
   const remaining = money(pickNum(creditData, [
@@ -168,9 +177,9 @@ export async function getEvidenceMdBalance() {
     tone: !models.ok ? 'bad' : remaining != null && remaining <= 0 ? 'bad' : 'ok',
     remaining,
     remainingSource: remaining != null ? 'api' : null,
-    usedToday,
+    usedThisMonth,
     usedAll,
-    estimatedCreditsToday: usedToday * creditsPerCall,
+    estimatedCreditsThisMonth: usedThisMonth * creditsPerCall,
     error: models.ok
       ? (remaining == null ? 'EvidenceMD-ს საჯარო ბალანსის API არ აქვს — ნაჩვენებია Medicard-ის გამოყენება' : null)
       : (credits.json?.error || `HTTP ${models.status}`),

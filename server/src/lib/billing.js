@@ -4,15 +4,17 @@ export const TIMEZONE = 'Asia/Tbilisi';
 const TBILISI_OFFSET = '+04:00';
 export const SUBSCRIPTION_DAYS = 30;
 
-export function calendarMonthKey(now = new Date()) {
+export function todayKey(now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  })
-    .format(now)
-    .slice(0, 7);
+  }).format(now);
+}
+
+export function calendarMonthKey(now = new Date()) {
+  return todayKey(now).slice(0, 7);
 }
 
 export function msUntilCalendarMonthReset(now = new Date()) {

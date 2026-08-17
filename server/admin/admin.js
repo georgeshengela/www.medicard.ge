@@ -293,7 +293,7 @@ function providerCardsHtml(balances) {
         <div class="value">${emd?.remaining != null ? emd.remaining : '—'}</div>
         <div class="hint">${emd?.remaining != null ? 'დარჩენილი კრედიტი' : `საფულე API არ არის · ${emd?.creditsPerCall || 4} cr / call`}</div>
         <div class="detail-list">
-          <div class="detail"><span>${icon('calendar')} დღეს</span><strong>${emd?.usedToday ?? 0} call · ~${emd?.estimatedCreditsToday ?? 0} cr</strong></div>
+          <div class="detail"><span>${icon('calendar')} ამ თვეში</span><strong>${emd?.usedThisMonth ?? 0} call · ~${emd?.estimatedCreditsThisMonth ?? 0} cr</strong></div>
           <div class="detail"><span>${icon('activity')} სულ</span><strong>${emd?.usedAll ?? 0} call</strong></div>
           <div class="detail"><span>${icon('shield')} API</span><strong>${emd?.ok ? 'ონლაინ' : 'გამორთული'}</strong></div>
         </div>
