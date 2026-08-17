@@ -1,6 +1,6 @@
 import '../global.css';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -14,6 +14,7 @@ import { useThemeColors } from '@/theme/colors';
 import { AuthProvider, useAuth } from '@/store/AuthContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
 import { api } from '@/lib/api';
+import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
 
 enableScreens(false);
 
@@ -30,6 +31,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   const segments = useSegments();
   const router = useRouter();
+  const splashHidden = useRef(false);
   const [gate, setGate] = useState<{ kind: 'ok' } | { kind: 'maintenance' | 'update'; message: string }>({
     kind: 'ok',
   });
@@ -57,13 +59,18 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!ready || gate.kind !== 'ok') return;
 
-    SplashScreen.hideAsync().catch(() => undefined);
+    if (!splashHidden.current) {
+      splashHidden.current = true;
+      SplashScreen.hideAsync().catch(() => undefined);
+    }
 
     const inAuthGroup = segments[0] === '(auth)';
     if (!user && !inAuthGroup) {
       router.replace('/(auth)/sign-in');
     } else if (user && inAuthGroup) {
-      router.replace('/(tabs)/home');
+      void getHomeLanding().then((landing) => {
+        router.replace(resolveInitialRoute(landing, user.gender) as never);
+      });
     }
   }, [ready, user, segments, router, gate.kind]);
 

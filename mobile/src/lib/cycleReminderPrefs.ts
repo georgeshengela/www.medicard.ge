@@ -1,11 +1,15 @@
 import { getPreference, setPreference } from '@/lib/storage';
 
+import type { CycleNotificationMaskStyle } from '@/lib/cycleNotificationMask';
+
 export type CycleReminderPrefs = {
   enabled: boolean;
   periodDaysBefore: number;
   ovulation: boolean;
   dailyLog: boolean;
   pms: boolean;
+  maskNotifications: boolean;
+  maskStyle: CycleNotificationMaskStyle;
 };
 
 export const CYCLE_REMINDER_KEYS = {
@@ -14,6 +18,8 @@ export const CYCLE_REMINDER_KEYS = {
   ovulation: 'medicard.cycle.reminders.ovulation',
   dailyLog: 'medicard.cycle.reminders.dailyLog',
   pms: 'medicard.cycle.reminders.pms',
+  maskNotifications: 'medicard.cycle.notifications.masked',
+  maskStyle: 'medicard.cycle.notifications.maskStyle',
   privacyLock: 'medicard.cycle.privacy.lock',
 } as const;
 
@@ -23,16 +29,27 @@ const DEFAULTS: CycleReminderPrefs = {
   ovulation: true,
   dailyLog: false,
   pms: true,
+  maskNotifications: true,
+  maskStyle: 'neutral',
 };
 
 export async function getCycleReminderPrefs(): Promise<CycleReminderPrefs> {
-  const [enabled, periodDaysBefore, ovulation, dailyLog, pms] = await Promise.all([
+  const [enabled, periodDaysBefore, ovulation, dailyLog, pms, maskNotifications, maskStyle] =
+    await Promise.all([
     getPreference(CYCLE_REMINDER_KEYS.enabled),
     getPreference(CYCLE_REMINDER_KEYS.periodDaysBefore),
     getPreference(CYCLE_REMINDER_KEYS.ovulation),
     getPreference(CYCLE_REMINDER_KEYS.dailyLog),
     getPreference(CYCLE_REMINDER_KEYS.pms),
+    getPreference(CYCLE_REMINDER_KEYS.maskNotifications),
+    getPreference(CYCLE_REMINDER_KEYS.maskStyle),
   ]);
+
+  const style = (['neutral', 'wellness', 'calendar', 'notes'] as const).includes(
+    maskStyle as CycleNotificationMaskStyle,
+  )
+    ? (maskStyle as CycleNotificationMaskStyle)
+    : DEFAULTS.maskStyle;
 
   return {
     enabled: enabled === '1',
@@ -40,6 +57,8 @@ export async function getCycleReminderPrefs(): Promise<CycleReminderPrefs> {
     ovulation: ovulation !== '0',
     dailyLog: dailyLog === '1',
     pms: pms !== '0',
+    maskNotifications: maskNotifications !== '0',
+    maskStyle: style,
   };
 }
 
@@ -64,6 +83,14 @@ export async function setCycleReminderPrefs(prefs: Partial<CycleReminderPrefs>):
   }
   if (prefs.pms !== undefined) {
     tasks.push(setPreference(CYCLE_REMINDER_KEYS.pms, prefs.pms ? '1' : '0'));
+  }
+  if (prefs.maskNotifications !== undefined) {
+    tasks.push(
+      setPreference(CYCLE_REMINDER_KEYS.maskNotifications, prefs.maskNotifications ? '1' : '0'),
+    );
+  }
+  if (prefs.maskStyle !== undefined) {
+    tasks.push(setPreference(CYCLE_REMINDER_KEYS.maskStyle, prefs.maskStyle));
   }
   await Promise.all(tasks);
 }

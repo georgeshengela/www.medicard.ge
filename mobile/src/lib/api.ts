@@ -83,7 +83,13 @@ export type User = {
   createdAt: string;
 };
 
-export type ChatMessage = { role: 'user' | 'assistant'; content: string; timestamp: string };
+export type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  interactionId?: string;
+  feedbackRating?: 1 | -1;
+};
 
 export type ChatSummary = {
   id: string;
@@ -179,6 +185,8 @@ export type CycleReminderPrefsServer = {
   ovulation?: boolean;
   dailyLog?: boolean;
   pms?: boolean;
+  maskNotifications?: boolean;
+  maskStyle?: 'neutral' | 'wellness' | 'calendar' | 'notes';
 };
 
 export type CycleProfile = {
@@ -415,8 +423,12 @@ export const api = {
         mode: 'DOCTOR' | 'CONSILIUM';
         answer: string;
         model: string;
+        interactionId: string;
         usage: Usage;
       }>('/api/ai/query', { method: 'POST', body }),
+
+    feedback: (body: { interactionId: string; rating: 1 | -1 }) =>
+      request<{ feedback: { id: string; rating: number } }>('/api/ai/feedback', { method: 'POST', body }),
 
     analyzeImage: (params: {
       uri: string;

@@ -1,20 +1,24 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { BellRing, Crown, FileText, LogOut, MessageSquareText, Pill, Save, ShieldCheck } from 'lucide-react-native';
+import Constants from 'expo-constants';
+import { BellRing, FileText, LogOut, MessageSquareText, Pill, Save } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { DateField } from '@/components/ui/DateField';
 import { GenderSelect } from '@/components/ui/GenderSelect';
 import { ThemeSelect } from '@/components/ui/ThemeSelect';
-import { UsageBanner } from '@/components/UsageBanner';
+import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
+import { HomeLandingSelect } from '@/components/home/HomeLandingSelect';
+import { PlanDetailCard } from '@/components/PlanUsageCard';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { ka } from '@/i18n/ka';
 import { ApiError, type Gender } from '@/lib/api';
 import { isoToDisplay, parseBirthDate } from '@/lib/birthdate';
 import { formatDate } from '@/lib/format';
 import { requestNotificationPermission, registerPushTokenWithServer } from '@/lib/notifications';
+import { getCyclePromptSeen } from '@/lib/homeScreenPrefs';
 import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 
@@ -24,7 +28,7 @@ const GENDER_LABELS: Record<Gender, string> = {
   OTHER: ka.auth.genderOther,
 };
 
-const APP_VERSION = '3.2.10';
+const APP_VERSION = Constants.expoConfig?.version ?? '3.4.0';
 
 export default function Profile() {
   const { user, stats, refresh, signOut } = useAuth();
@@ -33,6 +37,7 @@ export default function Profile() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
+  const [showCyclePrompt, setShowCyclePrompt] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -94,19 +99,17 @@ export default function Profile() {
         </View>
       </Card>
 
-      <View className="mt-3">
-        <UsageBanner />
-      </View>
-
       <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.appearance}</Text>
-      <Card>
+      <Card className="gap-4">
         <ThemeSelect />
+        <View className="h-px bg-bg-300" />
+        <HomeLandingSelect />
       </Card>
 
       <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">
         {ka.profile.medicalProfile}
       </Text>
-      <MedicalProfileCard />
+      <MedicalProfileCard onFemaleSaved={() => setShowCyclePrompt(true)} />
 
       <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.stats}</Text>
       <View className="flex-row">
@@ -118,7 +121,7 @@ export default function Profile() {
       </View>
 
       <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.subscription}</Text>
-      <PackageCard />
+      <PlanDetailCard />
 
       <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.settings}</Text>
       <Card padded={false}>
@@ -150,76 +153,13 @@ export default function Profile() {
       </View>
 
       <Text className="mt-6 text-center text-xs leading-5 text-text-300">{ka.app.disclaimer}</Text>
+
+      <DefaultHomePrompt visible={showCyclePrompt} onClose={() => setShowCyclePrompt(false)} />
     </ScrollView>
   );
 }
 
-/**
- * Sex and age drive every AI interpretation, so accounts created over SMS — which
- * cannot collect them — get an inline editor here instead of a dead-end label.
- */
-function PackageCard() {
-  const { user, usage } = useAuth();
-  const colors = useThemeColors();
-  const code = (user?.package?.code ?? 'FREE') as 'FREE' | 'STANDARD' | 'ULTIMATE';
-  const meta =
-    code === 'ULTIMATE'
-      ? { title: ka.profile.ultimatePlan, detail: ka.profile.ultimatePlanDetail, tone: 'success' as const }
-      : code === 'STANDARD'
-        ? { title: ka.profile.standardPlan, detail: ka.profile.standardPlanDetail, tone: 'brand' as const }
-        : { title: ka.profile.freePlan, detail: ka.profile.freePlanDetail, tone: 'neutral' as const };
-
-  const monthlyLimit =
-    user?.package?.monthlyAiLimit ??
-    user?.package?.dailyAiLimit ??
-    usage?.limit ??
-    90;
-  const limitLabel =
-    usage?.unlimited || user?.package?.unlimited || monthlyLimit < 0
-      ? `∞ / ${ka.usage.perMonth}`
-      : `${usage?.remaining ?? monthlyLimit} / ${monthlyLimit} ${ka.usage.perMonth}`;
-
-  const started = user?.packageStartedAt ? formatDate(user.packageStartedAt) : null;
-  const expires = user?.packageExpiresAt ? formatDate(user.packageExpiresAt) : null;
-  const expired =
-    user?.packageExpiresAt && new Date(user.packageExpiresAt).getTime() < Date.now();
-
-  return (
-    <Card>
-      <View className="flex-row items-center">
-        <View className="h-10 w-10 items-center justify-center rounded-xl bg-bg-200">
-          <ShieldCheck size={18} color={colors.primary200} strokeWidth={2.1} />
-        </View>
-        <View className="ml-3 flex-1">
-          <Text className="text-base font-bold text-text-100">{meta.title}</Text>
-          <Text className="mt-0.5 text-sm text-text-300">{meta.detail}</Text>
-          <Text className="mt-1 text-xs font-semibold text-primary-100">
-            {ka.profile.billingMonthly}
-          </Text>
-          <Text className="mt-0.5 text-xs text-text-300">
-            AI: {limitLabel}
-            {started && code !== 'FREE' ? ` · ${ka.profile.planStarted}: ${started}` : ''}
-            {expires ? ` · ${ka.profile.planExpires}: ${expires}` : ''}
-            {expired ? ` · ${ka.profile.planExpired}` : ''}
-          </Text>
-        </View>
-        <Badge label={code} tone={meta.tone} />
-      </View>
-
-      {code === 'FREE' ? (
-        <View className="mt-3.5">
-          <Button
-            label={ka.usage.upsellCta}
-            icon={Crown}
-            onPress={() => Alert.alert(ka.usage.upsellTitle, ka.usage.premiumSoon)}
-          />
-        </View>
-      ) : null}
-    </Card>
-  );
-}
-
-function MedicalProfileCard() {
+function MedicalProfileCard({ onFemaleSaved }: { onFemaleSaved?: () => void }) {
   const { user, updateProfile } = useAuth();
 
   const [gender, setGender] = useState<Gender | null>(null);
@@ -267,6 +207,10 @@ function MedicalProfileCard() {
     setBusy(true);
     try {
       await updateProfile({ gender, birthDate: parsed.iso });
+      if (gender === 'FEMALE') {
+        const seen = await getCyclePromptSeen();
+        if (!seen) onFemaleSaved?.();
+      }
     } catch (error) {
       setErrors({ form: error instanceof ApiError ? error.message : ka.common.error });
     } finally {

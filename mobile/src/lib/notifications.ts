@@ -5,9 +5,12 @@ import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { api } from './api';
 import type { ScheduledDose } from './api';
+import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
+import { maskCycleNotificationContent } from '@/lib/cycleNotificationMask';
 
 export const MED_CHANNEL_ID = 'medication-reminders';
 export const CYCLE_CHANNEL_ID = 'cycle-reminders';
+export const CYCLE_DISCREET_CHANNEL_ID = 'medicard-discreet';
 export const PUSH_CHANNEL_ID = 'medicard-push';
 
 export const NOTIF_PREFIX = {
@@ -46,6 +49,13 @@ export async function requestNotificationPermission(): Promise<boolean> {
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 180, 120, 180],
       lightColor: '#E91E63',
+      sound: 'default',
+    });
+    await Notifications.setNotificationChannelAsync(CYCLE_DISCREET_CHANNEL_ID, {
+      name: 'Medicard',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      vibrationPattern: [0, 160, 100, 160],
+      lightColor: '#26A69A',
       sound: 'default',
     });
     await Notifications.setNotificationChannelAsync(PUSH_CHANNEL_ID, {
@@ -146,6 +156,22 @@ type ScheduleCycleOpts = {
   data?: Record<string, unknown>;
 };
 
+async function resolveCycleNotificationContent(title: string, body: string) {
+  const prefs = await getCycleReminderPrefs();
+  const masked = maskCycleNotificationContent(
+    { title, body },
+    prefs.maskNotifications,
+    prefs.maskStyle,
+  );
+  const channelId =
+    Platform.OS === 'android'
+      ? masked.masked
+        ? CYCLE_DISCREET_CHANNEL_ID
+        : CYCLE_CHANNEL_ID
+      : undefined;
+  return { title: masked.title, body: masked.body, channelId, masked: masked.masked };
+}
+
 /** Schedule a one-time cycle notification at a specific local date/time. */
 export async function scheduleCycleDateNotification(opts: ScheduleCycleOpts): Promise<boolean> {
   const granted = await requestNotificationPermission();
@@ -154,18 +180,24 @@ export async function scheduleCycleDateNotification(opts: ScheduleCycleOpts): Pr
   const now = Date.now();
   if (opts.date.getTime() <= now) return false;
 
+  const content = await resolveCycleNotificationContent(opts.title, opts.body);
+
   await Notifications.scheduleNotificationAsync({
     identifier: `${NOTIF_PREFIX.cycle}${opts.identifier}`,
     content: {
-      title: opts.title,
-      body: opts.body,
+      title: content.title,
+      body: content.body,
       sound: 'default',
-      data: { type: 'cycle_reminder', ...(opts.data ?? {}) },
+      data: {
+        type: 'cycle_reminder',
+        masked: content.masked,
+        ...(opts.data ?? {}),
+      },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: opts.date,
-      ...(Platform.OS === 'android' ? { channelId: CYCLE_CHANNEL_ID } : {}),
+      ...(Platform.OS === 'android' && content.channelId ? { channelId: content.channelId } : {}),
     },
   });
 
@@ -183,19 +215,20 @@ export async function scheduleCycleReminder(opts: {
 
   const seconds = Math.max(60, Math.round(opts.minutesFromNow * 60));
   const identifier = `${NOTIF_PREFIX.cycle}tip:${Date.now()}`;
+  const content = await resolveCycleNotificationContent(opts.title, opts.body);
 
   await Notifications.scheduleNotificationAsync({
     identifier,
     content: {
-      title: opts.title,
-      body: opts.body,
+      title: content.title,
+      body: content.body,
       sound: 'default',
-      data: { type: 'cycle_tip' },
+      data: { type: 'cycle_tip', masked: content.masked },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds,
-      ...(Platform.OS === 'android' ? { channelId: CYCLE_CHANNEL_ID } : {}),
+      ...(Platform.OS === 'android' && content.channelId ? { channelId: content.channelId } : {}),
     },
   });
 

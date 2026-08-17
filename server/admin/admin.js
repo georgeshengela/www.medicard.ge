@@ -51,6 +51,7 @@ const ICONS = {
   link: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
   bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
   send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
+  spark: '<path d="M12 2l1.5 5.5L19 9l-5.5 1.5L12 16l-1.5-5.5L5 9l5.5-1.5L12 2z"/><path d="M5 17l.8 2.8L8.6 21l-2.8.8L5 24l-.8-2.2L1.4 21l2.8-.8L5 17z"/>',
 };
 
 function icon(name, size = '') {
@@ -248,66 +249,124 @@ function formatUsd(value) {
   return `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
 }
 
-function providerCardsHtml(balances) {
+function dashHealthRing(active, total, caption) {
+  const pct = total ? Math.round((active / total) * 100) : null;
+  const tone = pct == null ? 'neutral' : pct >= 85 ? 'ok' : pct >= 60 ? 'std' : 'bad';
+  const display = pct == null ? '—' : pct;
+  const ringPct = pct == null ? 0 : Math.min(100, Math.max(0, pct));
+  return `
+    <div class="ai-hero-score">
+      <div class="ai-score-ring ${tone}" style="--pct:${ringPct}">
+        <div class="ai-score-inner">
+          <span class="ai-score-val">${display}</span>
+          <span class="ai-score-lbl">${pct == null ? '' : '%'}</span>
+        </div>
+      </div>
+      ${caption ? `<p class="ai-score-caption">${caption}</p>` : ''}
+    </div>
+  `;
+}
+
+function dashPkgBars(packages, maxPkg, assigned) {
+  if (!packages.length) return '<p class="muted">პაკეტები ჯერ არ არის.</p>';
+  return packages
+    .map((p) => {
+      const cls = pkgClass(p.code);
+      const share = assigned ? Math.round((p.users / assigned) * 100) : 0;
+      const barW = maxPkg ? Math.round((p.users / maxPkg) * 100) : 0;
+      return `
+        <div class="dash-pkg-row">
+          <div class="dash-pkg-head">
+            <span class="dash-pkg-label">${escapeHtml(p.nameKa)}</span>
+            <span class="badge ${cls}">${escapeHtml(p.code)}</span>
+          </div>
+          <div class="bar ${cls === 'standard' ? 'std' : cls === 'ultimate' ? 'ult' : ''}"><span style="width:${barW}%"></span></div>
+          <div class="dash-pkg-foot">
+            <span class="mono">${p.users} მომხმარებელი</span>
+            <span class="mono muted">${share}%</span>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function dashProvidersHtml(balances) {
   const or = balances?.openrouter;
   const emd = balances?.evidencemd;
   const fetched = balances?.fetchedAt ? fmtDate(balances.fetchedAt) : '';
-
   const orTone = or?.tone || (or?.ok ? 'ok' : 'bad');
   const emdTone = emd?.tone || (emd?.ok ? 'ok' : 'bad');
 
-  return `
-    <div class="provider-grid">
-      <article class="card provider">
-        <div class="card-head">
-          ${iconTile('wallet', orTone)}
-          <div>
-            <h3>OpenRouter</h3>
-            <p class="muted" style="margin:2px 0 0;font-size:12px">X-ray / CT / კანი · ${escapeHtml(or?.model || '—')}</p>
+  function providerCard(name, iconName, tone, badge, balance, hint, stats, dashboardUrl, dashboardLabel, error) {
+    return `
+      <article class="dash-provider ${tone}">
+        <div class="dash-provider-top">
+          ${iconTile(iconName, tone === 'ok' ? 'ok' : tone === 'warn' ? 'std' : tone === 'bad' ? 'bad' : '')}
+          <div class="dash-provider-copy">
+            <strong>${name}</strong>
+            <span class="muted">${hint}</span>
           </div>
-          <span class="badge ${orTone === 'ok' ? 'ok' : orTone === 'warn' ? 'neutral' : 'bad'}">${or?.configured ? (orTone === 'bad' ? 'LOW' : or.ok ? 'LIVE' : 'შეცდომა') : 'OFF'}</span>
+          <span class="badge ${tone === 'ok' ? 'ok' : tone === 'warn' ? 'neutral' : 'bad'}">${badge}</span>
         </div>
-        <div class="value">${formatUsd(or?.remaining)}</div>
-        <div class="hint">დარჩენილი ბალანსი</div>
-        <div class="detail-list">
-          <div class="detail"><span>${icon('zap')} სულ შეძენილი</span><strong>${formatUsd(or?.total)}</strong></div>
-          <div class="detail"><span>${icon('activity')} დახარჯული</span><strong>${formatUsd(or?.used)}</strong></div>
-          <div class="detail"><span>${icon('calendar')} დღეს</span><strong>${formatUsd(or?.usedDaily)}</strong></div>
-          <div class="detail"><span>${icon('layers')} თვე</span><strong>${formatUsd(or?.usedMonthly)}</strong></div>
+        <div class="dash-provider-balance">${balance}</div>
+        <div class="dash-provider-stats">
+          ${stats.map(([label, val]) => `<div class="dash-provider-stat"><span>${label}</span><strong>${val}</strong></div>`).join('')}
         </div>
-        ${or?.error ? `<p class="error" style="margin:10px 0 0">${escapeHtml(or.error)}</p>` : ''}
-        <div class="quick" style="margin-top:14px">
-          <a class="btn ghost" href="${or?.dashboardUrl || 'https://openrouter.ai/settings/credits'}" target="_blank" rel="noreferrer">${icon('link')} შევსება</a>
-        </div>
+        ${error ? `<p class="dash-provider-error">${escapeHtml(error)}</p>` : ''}
+        <a class="btn tiny ghost dash-provider-link" href="${escapeAttr(dashboardUrl)}" target="_blank" rel="noreferrer">${icon('link')} ${dashboardLabel}</a>
       </article>
+    `;
+  }
 
-      <article class="card provider">
-        <div class="card-head">
-          ${iconTile('message', emdTone)}
-          <div>
-            <h3>EvidenceMD</h3>
-            <p class="muted" style="margin:2px 0 0;font-size:12px">ჩატი / კლინიკური ანალიზი · ${escapeHtml(emd?.model || '—')}</p>
-          </div>
-          <span class="badge ${emdTone === 'ok' ? 'ok' : emdTone === 'warn' ? 'neutral' : 'bad'}">${emd?.configured ? (emd.ok ? 'LIVE' : 'შეცდომა') : 'OFF'}</span>
-        </div>
-        <div class="value">${emd?.remaining != null ? emd.remaining : '—'}</div>
-        <div class="hint">${emd?.remaining != null ? 'დარჩენილი კრედიტი' : `საფულე API არ არის · ${emd?.creditsPerCall || 4} cr / call`}</div>
-        <div class="detail-list">
-          <div class="detail"><span>${icon('calendar')} ამ თვეში</span><strong>${emd?.usedThisMonth ?? 0} call · ~${emd?.estimatedCreditsThisMonth ?? 0} cr</strong></div>
-          <div class="detail"><span>${icon('activity')} სულ</span><strong>${emd?.usedAll ?? 0} call</strong></div>
-          <div class="detail"><span>${icon('shield')} API</span><strong>${emd?.ok ? 'ონლაინ' : 'გამორთული'}</strong></div>
-        </div>
-        ${emd?.error ? `<p class="muted" style="margin:10px 0 0;font-size:12px">${escapeHtml(emd.error)}</p>` : ''}
-        <div class="quick" style="margin-top:14px">
-          <a class="btn ghost" href="${emd?.dashboardUrl || 'https://evidencemd.ai/developers'}" target="_blank" rel="noreferrer">${icon('link')} EvidenceMD dashboard</a>
-        </div>
-      </article>
-    </div>
-    <div class="provider-meta">
-      <span class="muted mono">${fetched ? `განახლდა ${fetched}` : ''}</span>
-      <button class="btn tiny ghost" id="balances-refresh">${icon('refresh')} ბალანსის განახლება</button>
+  return `
+    <div class="dash-providers-wrap">
+      <div class="dash-providers">
+        ${providerCard(
+          'OpenRouter',
+          'wallet',
+          orTone,
+          or?.configured ? (orTone === 'bad' ? 'LOW' : or?.ok ? 'LIVE' : 'ERR') : 'OFF',
+          formatUsd(or?.remaining),
+          escapeHtml(or?.model || 'X-ray / CT / კანი'),
+          [
+            ['შეძენილი', formatUsd(or?.total)],
+            ['დახარჯული', formatUsd(or?.used)],
+            ['დღეს', formatUsd(or?.usedDaily)],
+            ['თვე', formatUsd(or?.usedMonthly)],
+          ],
+          or?.dashboardUrl || 'https://openrouter.ai/settings/credits',
+          'შევსება',
+          or?.error,
+        )}
+        ${providerCard(
+          'EvidenceMD',
+          'message',
+          emdTone,
+          emd?.configured ? (emd?.ok ? 'LIVE' : 'ERR') : 'OFF',
+          emd?.remaining != null ? String(emd.remaining) : '—',
+          emd?.remaining != null ? 'დარჩენილი კრედიტი' : `${emd?.creditsPerCall || 4} cr / call · ${escapeHtml(emd?.model || 'ჩატი')}`,
+          [
+            ['ამ თვეში', `${emd?.usedThisMonth ?? 0} call`],
+            ['~ cr', String(emd?.estimatedCreditsThisMonth ?? 0)],
+            ['სულ', `${emd?.usedAll ?? 0} call`],
+            ['API', emd?.ok ? 'ონლაინ' : 'გამორთული'],
+          ],
+          emd?.dashboardUrl || 'https://evidencemd.ai/developers',
+          'Dashboard',
+          emd?.error,
+        )}
+      </div>
+      <div class="dash-providers-meta">
+        <span class="muted mono">${fetched ? `განახლდა ${fetched}` : 'ბალანსი ჯერ არ არის განახლებული'}</span>
+        <button class="btn tiny ghost" id="balances-refresh">${icon('refresh')} განახლება</button>
+      </div>
     </div>
   `;
+}
+
+function providerCardsHtml(balances) {
+  return dashProvidersHtml(balances);
 }
 
 function setLivePill(settings) {
@@ -358,12 +417,12 @@ async function boot() {
   try {
     const me = await apiRetry('/me');
     rememberAdmin(me.admin);
-    const tab = ['overview', 'users', 'packages', 'push', 'settings'].includes(state.tab) ? state.tab : 'overview';
+    const tab = ['overview', 'users', 'packages', 'push', 'ai', 'settings'].includes(state.tab) ? state.tab : 'overview';
     await switchTab(tab);
   } catch (err) {
     if (err.status === 401 || err.status === 403) return;
     toast(err.message || 'სერვერთან კავშირი ვერ დამყარდა.', 'bad');
-    const tab = ['overview', 'users', 'packages', 'push', 'settings'].includes(state.tab) ? state.tab : 'overview';
+    const tab = ['overview', 'users', 'packages', 'push', 'ai', 'settings'].includes(state.tab) ? state.tab : 'overview';
     try { await switchTab(tab); } catch { /* keep chrome visible */ }
   }
 }
@@ -402,6 +461,7 @@ async function switchTab(tab) {
     users: ['რეესტრი', 'მომხმარებლები', 'ძებნა, სორტი, პაკეტის მინიჭება, ბლოკი და წაშლა. Ctrl/⌘+K — ძებნა.'],
     packages: ['კომერცია', 'პაკეტები', 'ყველა გეგმა თვიურია — AI ლიმიტი 30-დღიან პერიოდში.'],
     push: ['კომუნიკაცია', 'Push შეტყობინებები', 'გაუგზავნეთ broadcast მომხმარებლებს სეგმენტის მიხედვით.'],
+    ai: ['AI Engine', 'ხარისხის ანალიზი', 'ყველა AI პასუხი იწერება, შეფასდება და გაუმჯობესდება კონტროლირებულად.'],
     settings: ['კონტროლი', 'აპის რეჟიმი', 'Offline, იძულებითი განახლება და რეგისტრაციის კარიბჭე.'],
   };
   $('page-kicker').textContent = copy[tab][0];
@@ -412,6 +472,7 @@ async function switchTab(tab) {
   if (tab === 'users') await renderUsers();
   if (tab === 'packages') await renderPackages();
   if (tab === 'push') await renderPush();
+  if (tab === 'ai') await renderAi();
   if (tab === 'settings') await renderSettings();
 }
 
@@ -426,147 +487,182 @@ async function renderOverview(freshBalances = false) {
   const assigned = stats.packages.reduce((sum, p) => sum + p.users, 0);
   const s = stats.settings;
   const modeOk = !s.maintenanceMode && !s.forceUpdate;
+  const modeTone = s.maintenanceMode ? 'bad' : s.forceUpdate ? 'warn' : 'ok';
+  const modeLabel = s.maintenanceMode ? 'OFFLINE' : s.forceUpdate ? 'FORCE UPDATE' : 'აქტიური';
+  const activePct = stats.users.total ? Math.round((stats.users.active / stats.users.total) * 100) : null;
 
   $('tab-overview').innerHTML = `
-    ${providerCardsHtml(balances)}
-    <div class="metrics">
-      <article class="metric">
-        <div class="metric-top">
-          <div>
-            <div class="label">მომხმარებლები</div>
-            <div class="value">${stats.users.total}</div>
+    <div class="ai-page dash-page">
+      <section class="ai-hero dash-hero">
+        <div class="ai-hero-copy">
+          <p class="kicker" style="margin:0 0 8px">ოპერაციები</p>
+          <h3>მიმოხილვა</h3>
+          <p>რეალურ დროში — მომხმარებლები, პაკეტები, AI პროვაიდერები და აპის რეჟიმი ერთ ეკრანზე.</p>
+          <div class="ai-hero-meta">
+            <span class="ai-pill teal">${icon('users')} მომხმარებლები <strong>${stats.users.total}</strong></span>
+            <span class="ai-pill ok">${icon('unlock')} აქტიური <strong>${stats.users.active}</strong></span>
+            ${stats.users.blocked ? `<span class="ai-pill bad">${icon('lock')} დაბლოკილი <strong>${stats.users.blocked}</strong></span>` : ''}
+            <span class="ai-pill">${icon('file')} ჩანაწერები <strong>${stats.records}</strong></span>
+            <span class="ai-pill ${modeTone}">${icon(modeOk ? 'shield' : 'alert')} ${modeLabel}</span>
           </div>
-          ${iconTile('users')}
-        </div>
-        <div class="hint">${stats.users.active} აქტიური · ${stats.users.blocked} დაბლოკილი</div>
-      </article>
-      <article class="metric">
-        <div class="metric-top">
-          <div>
-            <div class="label">აქტიური</div>
-            <div class="value">${stats.users.active}</div>
+          <div class="dash-quick">
+            <button class="btn tiny ghost" data-go="users">${icon('users')} მომხმარებლები</button>
+            <button class="btn tiny ghost" data-go="packages">${icon('layers')} პაკეტები</button>
+            <button class="btn tiny ghost" data-go="ai">${icon('spark')} AI Engine</button>
+            <button class="btn tiny ghost" data-go="settings">${icon('settings')} რეჟიმი</button>
           </div>
-          ${iconTile('unlock', 'ok')}
         </div>
-        <div class="hint">შეუძლიათ შესვლა და აპის გამოყენება</div>
-      </article>
-      <article class="metric">
-        <div class="metric-top">
-          <div>
-            <div class="label">დაბლოკილი</div>
-            <div class="value">${stats.users.blocked}</div>
-          </div>
-          ${iconTile('lock', 'bad')}
-        </div>
-        <div class="hint">წვდომა შეჩერებულია ადმინის მიერ</div>
-      </article>
-      <article class="metric">
-        <div class="metric-top">
-          <div>
-            <div class="label">ჩანაწერები</div>
-            <div class="value">${stats.records}</div>
-          </div>
-          ${iconTile('file')}
-        </div>
-        <div class="hint">სამედიცინო ფაილები სისტემაში</div>
-      </article>
-      <article class="metric">
-        <div class="metric-top">
-          <div>
-            <div class="label">ჩატები</div>
-            <div class="value">${stats.chats}</div>
-          </div>
-          ${iconTile('message', 'std')}
-        </div>
-        <div class="hint">AI / ექიმის სესიები</div>
-      </article>
-      <article class="metric">
-        <div class="metric-top">
-          <div>
-            <div class="label">პაკეტები</div>
-            <div class="value">${assigned}</div>
-          </div>
-          ${iconTile('layers', 'ult')}
-        </div>
-        <div class="hint">${stats.packages.length} ტარიფი · აქტიურ ანგარიშებზე</div>
-      </article>
-    </div>
+        ${dashHealthRing(stats.users.active, stats.users.total, activePct != null ? `${stats.users.active} აქტიური · ${stats.users.blocked} დაბლოკილი` : '—')}
+      </section>
 
-    <div class="dash-grid">
-      <div class="card">
-        <div class="card-head">
-          ${iconTile('layers')}
-          <div>
-            <h3>პაკეტების განაწილება</h3>
-            <p class="muted" style="margin:2px 0 0;font-size:12px">აქტიური მომხმარებლები ტარიფის მიხედვით</p>
-          </div>
-          <button class="btn tiny ghost grow" data-go="packages">${icon('arrow')} ყველა</button>
-        </div>
-        <div class="pkg-minis">
-          ${stats.packages.map((p) => `
-            <div class="pkg-mini">
-              ${iconTile('zap', pkgClass(p.code) === 'standard' ? 'std' : pkgClass(p.code) === 'ultimate' ? 'ult' : '')}
-              <div>
-                <strong>${escapeHtml(p.nameKa)}</strong>
-                <div class="sub">${escapeHtml(p.code)} · ${p.users} მომხმარებელი</div>
-                <div class="bar ${pkgClass(p.code)}" style="margin-top:8px"><span style="width:${Math.round((p.users / maxPkg) * 100)}%"></span></div>
-              </div>
-              <span class="mono">${Math.round((p.users / Math.max(1, assigned)) * 100)}%</span>
+      <div class="ai-kpi-grid">
+        <article class="ai-kpi">
+          <div class="label">მომხმარებლები</div>
+          <div class="value">${stats.users.total}</div>
+          <div class="hint">${stats.users.active} აქტიური · ${stats.users.blocked} დაბლოკილი</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">ჩანაწერები</div>
+          <div class="value">${stats.records}</div>
+          <div class="hint">სამედიცინო ფაილები</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">AI ჩატები</div>
+          <div class="value">${stats.chats}</div>
+          <div class="hint">ექიმი / კონსილიუმი / მოდულები</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">პაკეტები</div>
+          <div class="value">${assigned}</div>
+          <div class="hint">${stats.packages.length} ტარიფი · აქტიურ ანგარიშებზე</div>
+        </article>
+      </div>
+
+      ${dashProvidersHtml(balances)}
+
+      <div class="ai-split">
+        <div class="card dash-pkg-card">
+          <div class="card-head">
+            ${iconTile('layers', 'ult')}
+            <div>
+              <h3>პაკეტების განაწილება</h3>
+              <p class="muted" style="margin:2px 0 0;font-size:12px">${assigned} აქტიური მომხმარებელი ტარიფის მიხედვით</p>
             </div>
-          `).join('')}
+            <button class="btn tiny ghost grow" data-go="packages">${icon('arrow')} ყველა</button>
+          </div>
+          ${dashPkgBars(stats.packages, maxPkg, assigned)}
+        </div>
+
+        <div class="card dash-mode-card">
+          <div class="card-head">
+            ${iconTile(modeOk ? 'shield' : 'alert', modeOk ? 'ok' : 'warn')}
+            <div>
+              <h3>აპის რეჟიმი</h3>
+              <p class="muted" style="margin:2px 0 0;font-size:12px">${modeOk ? 'ყველა სერვისი ღიაა' : 'საჭიროა ყურადღება'}</p>
+            </div>
+          </div>
+          <div class="dash-mode-grid">
+            <div class="dash-mode-item ${s.maintenanceMode ? 'on bad' : 'off'}">
+              ${icon('globe')}
+              <div>
+                <strong>Maintenance</strong>
+                <span>${s.maintenanceMode ? 'ON — აპი გათიშულია' : 'OFF'}</span>
+              </div>
+            </div>
+            <div class="dash-mode-item ${s.forceUpdate ? 'on warn' : 'off'}">
+              ${icon('zap')}
+              <div>
+                <strong>Force update</strong>
+                <span>${s.forceUpdate ? 'ON — სავალდებულო განახლება' : 'OFF'}</span>
+              </div>
+            </div>
+            <div class="dash-mode-item ${s.allowRegistrations ? 'on ok' : 'off'}">
+              ${icon('users')}
+              <div>
+                <strong>რეგისტრაცია</strong>
+                <span>${s.allowRegistrations ? 'ღიაა' : 'დახურულია'}</span>
+              </div>
+            </div>
+            <div class="dash-mode-item">
+              ${icon('activity')}
+              <div>
+                <strong>მინ. ვერსია</strong>
+                <span class="mono">${escapeHtml(s.minAppVersion)}</span>
+              </div>
+            </div>
+          </div>
+          <div class="dash-mode-foot">
+            <span class="muted mono">${escapeHtml(s.supportEmail || 'support@medicard.ge')}</span>
+            <button class="btn tiny primary" data-go="settings">${icon('settings')} რეჟიმის შეცვლა</button>
+          </div>
         </div>
       </div>
 
-      <div class="card">
+      <div class="table-card ai-log-card dash-users-card">
         <div class="card-head">
-          ${iconTile(modeOk ? 'shield' : 'alert', modeOk ? 'ok' : 'warn')}
+          ${iconTile('users')}
           <div>
-            <h3>აპის რეჟიმი</h3>
-            <p class="muted" style="margin:2px 0 0;font-size:12px">${modeOk ? 'ყველა სერვისი ღიაა' : 'საჭიროა ყურადღება'}</p>
+            <h3>ბოლო მომხმარებლები</h3>
+            <p class="muted" style="margin:2px 0 0;font-size:12px">${recent.total} ანგარიში სულ · ბოლო რეგისტრაციები</p>
           </div>
+          <button class="btn tiny ghost grow" data-go="users">${icon('arrow')} რეესტრი</button>
         </div>
-        <div class="detail-list">
-          <div class="detail"><span>${icon('globe')} Maintenance</span><strong>${s.maintenanceMode ? 'ON' : 'OFF'}</strong></div>
-          <div class="detail"><span>${icon('zap')} Force update</span><strong>${s.forceUpdate ? 'ON' : 'OFF'}</strong></div>
-          <div class="detail"><span>${icon('users')} რეგისტრაცია</span><strong>${s.allowRegistrations ? 'ღიაა' : 'დახურულია'}</strong></div>
-          <div class="detail"><span>${icon('activity')} მინ. ვერსია</span><strong class="mono">${escapeHtml(s.minAppVersion)}</strong></div>
-          <div class="detail"><span>${icon('mail')} Support</span><strong>${escapeHtml(s.supportEmail || '—')}</strong></div>
-        </div>
-        <div class="quick" style="margin-top:14px">
-          <button class="btn ghost" data-go="settings">${icon('settings')} რეჟიმის შეცვლა</button>
-          <button class="btn ghost" data-go="users">${icon('users')} მომხმარებლები</button>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>მომხმარებელი</th>
+                <th>კონტაქტი</th>
+                <th>პაკეტი</th>
+                <th>სტატუსი</th>
+                <th>რეგისტრაცია</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(recent.users || []).length ? recent.users.map((u) => `
+                <tr data-open="${u.id}">
+                  <td>
+                    <div class="ai-person">
+                      <div class="avatar">${escapeHtml(initials(u.fullName))}</div>
+                      <div class="stack">
+                        <strong>${escapeHtml(u.fullName)}</strong>
+                        <span class="sub muted mono">${escapeHtml(u.id.slice(0, 8))}…</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="stack">
+                      <strong>${escapeHtml(u.email || '—')}</strong>
+                      <span class="sub muted">${escapeHtml(u.phone || '')}</span>
+                    </div>
+                  </td>
+                  <td>${pkgBadge(u.package)}</td>
+                  <td>${statusBadge(u.status)}</td>
+                  <td class="mono">${fmtDateShort(u.createdAt)}</td>
+                  <td class="actions"><button class="btn tiny ghost" data-open-btn="${u.id}">${icon('file')} ნახვა</button></td>
+                </tr>
+              `).join('') : '<tr><td colspan="6"><div class="empty"><strong>ჯერ არავინ დარეგისტრირებულა</strong>პირველი მომხმარებელი აქ გამოჩნდება.</div></td></tr>'}
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <div class="card-head">
-        ${iconTile('user')}
-        <div>
-          <h3>ბოლო მომხმარებლები</h3>
-          <p class="muted" style="margin:2px 0 0;font-size:12px">${recent.total} ანგარიში სულ · ბოლო 6 რეგისტრაცია</p>
-        </div>
-        <button class="btn tiny ghost grow" data-go="users">${icon('arrow')} რეესტრი</button>
-      </div>
-      ${(recent.users || []).length ? recent.users.map((u) => `
-        <div class="recent-row" data-open="${u.id}">
-          <div class="avatar">${escapeHtml(initials(u.fullName))}</div>
-          <div class="grow">
-            <strong>${escapeHtml(u.fullName)}</strong>
-            <div class="sub muted">${escapeHtml(u.email)}</div>
-          </div>
-          ${pkgBadge(u.package)}
-          ${statusBadge(u.status)}
-          <div class="recent-meta muted mono">${fmtDateShort(u.createdAt)}</div>
-        </div>
-      `).join('') : '<p class="muted">ჯერ არავინ დარეგისტრირებულა.</p>'}
     </div>
   `;
   document.querySelectorAll('[data-go]').forEach((btn) => {
     btn.addEventListener('click', () => switchTab(btn.dataset.go));
   });
-  document.querySelectorAll('[data-open]').forEach((row) => {
-    row.addEventListener('click', () => editUser(row.dataset.open));
+  document.querySelectorAll('[data-open], [data-open-btn]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation?.();
+      editUser(el.dataset.open || el.dataset.openBtn);
+    });
+  });
+  document.querySelectorAll('tr[data-open]').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      editUser(row.dataset.open);
+    });
   });
   $('balances-refresh')?.addEventListener('click', async () => {
     $('balances-refresh').disabled = true;
@@ -989,6 +1085,15 @@ async function renderPush() {
     ULTIMATE: 'ULTIMATE',
   };
 
+  const totalSent = campaigns.reduce((sum, c) => sum + (c.sentCount || 0), 0);
+  const totalFailed = campaigns.reduce((sum, c) => sum + (c.failedCount || 0), 0);
+  const totalTarget = campaigns.reduce((sum, c) => sum + (c.targetCount || 0), 0);
+  const deliveryPct = totalTarget ? Math.round((totalSent / totalTarget) * 100) : null;
+  const lastCampaign = campaigns[0];
+  const reachPct = subscribedUsers
+    ? Math.min(100, Math.round((activeDevices / Math.max(subscribedUsers, 1)) * 100))
+    : null;
+
   function campaignStatus(c) {
     if (c.status === 'SENT') return '<span class="badge ok">გაგზავნილი</span>';
     if (c.status === 'FAILED') return '<span class="badge bad">შეცდომა</span>';
@@ -996,96 +1101,182 @@ async function renderPush() {
     return `<span class="badge neutral">${escapeHtml(c.status)}</span>`;
   }
 
+  function deliveryBar(sent, target, failed = 0) {
+    const pct = target ? Math.round((sent / target) * 100) : 0;
+    return `
+      <div class="push-delivery">
+        <div class="bar"><span style="width:${pct}%"></span></div>
+        <span class="mono push-delivery-val">${sent} ✓ · ${failed} ✗ / ${target}</span>
+      </div>
+    `;
+  }
+
   $('tab-push').innerHTML = `
-    <div class="metrics">
-      <article class="metric">
-        <div class="metric-top">
-          <div>
-            <div class="label">Push მოწყობილობები</div>
-            <div class="value">${activeDevices}</div>
+    <div class="ai-page push-page">
+      <section class="ai-hero">
+        <div class="ai-hero-copy">
+          <p class="kicker" style="margin:0 0 8px">კომუნიკაცია</p>
+          <h3>Push შეტყობინებები</h3>
+          <p>Expo Push broadcast მომხმარებლების სეგმენტებში — ერთი გაგზავნით, ცოცხალი მიწოდების სტატისტიკით.</p>
+          <div class="ai-hero-meta">
+            <span class="ai-pill teal">${icon('bell')} მოწყობილობები <strong>${activeDevices}</strong></span>
+            <span class="ai-pill">მომხმარებლები <strong>${subscribedUsers}</strong></span>
+            <span class="ai-pill ${deliveryPct != null && deliveryPct >= 90 ? 'ok' : deliveryPct != null && deliveryPct >= 70 ? 'warn' : deliveryPct != null ? 'bad' : ''}">მიწოდება <strong>${deliveryPct != null ? `${deliveryPct}%` : '—'}</strong></span>
+            <span class="ai-pill">კამპანიები <strong>${campaigns.length}</strong></span>
           </div>
-          ${iconTile('bell', 'ok')}
         </div>
-        <div class="hint">აქტიური Expo push token-ები</div>
-      </article>
-      <article class="metric">
-        <div class="metric-top">
-          <div>
-            <div class="label">მომხმარებლები push-ით</div>
-            <div class="value">${subscribedUsers}</div>
-          </div>
-          ${iconTile('users', 'std')}
-        </div>
-        <div class="hint">უნიკალური ანგარიშები შეტყობინებებით</div>
-      </article>
-      <article class="metric">
-        <div class="metric-top">
-          <div>
-            <div class="label">კამპანიები</div>
-            <div class="value">${campaigns.length}</div>
-          </div>
-          ${iconTile('send', 'ult')}
-        </div>
-        <div class="hint">ბოლო 50 broadcast</div>
-      </article>
-    </div>
+        ${pushDeliveryRing(
+          totalSent,
+          totalTarget,
+          lastCampaign
+            ? `ბოლო · ${escapeHtml(lastCampaign.title.slice(0, 28))}${lastCampaign.title.length > 28 ? '…' : ''}`
+            : 'ჯერ არ გაგზავნილა',
+        )}
+      </section>
 
-    <div class="dash-grid">
-      <div class="card">
-        <div class="card-head">${iconTile('send')}<div><h3>ახალი შეტყობინება</h3><p class="muted" style="margin:2px 0 0;font-size:12px">Broadcast Expo Push — მომენტალურად</p></div></div>
-        <div class="field"><span>სათაური</span><input id="push-title" maxlength="120" placeholder="Medicard.GE" /></div>
-        <div class="field"><span>ტექსტი</span><textarea id="push-body" rows="4" maxlength="500" placeholder="შეტყობინების ტექსტი..."></textarea></div>
-        <div class="field"><span>სეგმენტი</span>
-          <select id="push-segment">
-            ${Object.entries(SEGMENTS).map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}
-          </select>
-        </div>
-        <div class="row" style="justify-content:flex-start;margin-top:4px">
-          <button class="btn primary" id="push-send">${icon('send')} გაგზავნა</button>
-        </div>
-        <p class="muted" style="margin:10px 0 0;font-size:12px">გადახდილი პაკეტის სეგმენტი ითვალისწინებს ვადის გასვლას — ვადაგასული STANDARD/ULTIMATE → FREE.</p>
+      <div class="ai-kpi-grid">
+        <article class="ai-kpi">
+          <div class="label">Push მოწყობილობები</div>
+          <div class="value">${activeDevices}</div>
+          <div class="hint">აქტიური Expo token-ები</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">მომხმარებლები</div>
+          <div class="value">${subscribedUsers}</div>
+          <div class="hint">${reachPct != null ? `~${reachPct}% რამდენიმე მოწყობილობა` : 'უნიკალური ანგარიში'}</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">გაგზავნილი</div>
+          <div class="value">${totalSent}</div>
+          <div class="hint">${totalFailed} ვერ მივიდა</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">ბოლო კამპანია</div>
+          <div class="value">${lastCampaign?.sentCount ?? '—'}</div>
+          <div class="hint">${lastCampaign ? fmtDateShort(lastCampaign.sentAt || lastCampaign.createdAt) : '—'}</div>
+        </article>
       </div>
-      <div class="card">
-        <div class="card-head">${iconTile('activity')}<h3>ბოლო კამპანიები</h3></div>
-        <div class="detail-list">
-          ${recentCampaigns.length ? recentCampaigns.map((c) => `
-            <div class="detail">
-              <span>${icon('bell')} ${escapeHtml(c.title)}</span>
-              <strong>${c.sentCount}/${c.targetCount}</strong>
+
+      <div class="ai-split">
+        <div class="card push-compose-card">
+          <div class="card-head">${iconTile('send', 'ult')}<div><h3>ახალი შეტყობინება</h3><p class="muted" style="margin:2px 0 0;font-size:12px">Broadcast — მყისიერი გაგზავნა არჩეულ სეგმენტში</p></div></div>
+          <div class="push-compose-body">
+            <div class="push-compose-form">
+              <div class="field"><span>სათაური</span><input id="push-title" maxlength="120" placeholder="Medicard.GE" value="Medicard.GE" /></div>
+              <div class="field"><span>ტექსტი</span><textarea id="push-body" rows="4" maxlength="500" placeholder="შეტყობინების ტექსტი..."></textarea></div>
+              <div class="field"><span>სეგმენტი</span>
+                <select id="push-segment">
+                  ${Object.entries(SEGMENTS).map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}
+                </select>
+              </div>
+              <button class="btn primary" id="push-send">${icon('send')} გაგზავნა</button>
+              <p class="push-compose-note">გადახდილი პაკეტის სეგმენტი ითვალისწინებს ვადის გასვლას — ვადაგასული STANDARD/ULTIMATE → FREE.</p>
             </div>
-          `).join('') : '<p class="muted">ჯერ არ გაგზავნილა.</p>'}
+            <div class="push-preview">
+              <div class="push-preview-label">გადახედვა</div>
+              <div class="push-preview-device">
+                <div class="push-preview-toast">
+                  <div class="push-preview-row">
+                    <div class="push-preview-icon">${icon('bell')}</div>
+                    <div class="push-preview-meta">
+                      <span class="push-preview-app">Medicard.GE</span>
+                      <span class="push-preview-time">ახლა</span>
+                    </div>
+                  </div>
+                  <strong id="push-preview-title">Medicard.GE</strong>
+                  <p id="push-preview-body">შეტყობინების ტექსტი...</p>
+                </div>
+              </div>
+              <p class="push-preview-seg muted" id="push-preview-seg">${SEGMENTS.ALL}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">${iconTile('activity')}<div><h3>ბოლო კამპანიები</h3><p class="muted" style="margin:2px 0 0;font-size:12px">${recentCampaigns.length} ბოლო გაშვება</p></div></div>
+          ${recentCampaigns.length ? `
+            <div class="push-recent-list">
+              ${recentCampaigns.map((c) => `
+                <button type="button" class="push-recent-item" data-campaign="${c.id}">
+                  <div class="push-recent-top">
+                    <strong>${escapeHtml(c.title)}</strong>
+                    ${campaignStatus(c)}
+                  </div>
+                  <div class="push-recent-meta">${SEGMENTS[c.segment] || c.segment} · ${fmtDateShort(c.sentAt || c.createdAt)}</div>
+                  ${deliveryBar(c.sentCount || 0, c.targetCount || 0, c.failedCount || 0)}
+                </button>
+              `).join('')}
+            </div>
+          ` : '<div class="empty"><strong>ჯერ არ გაგზავნილა</strong>პირველი broadcast ზემოთ შექმენით.</div>'}
         </div>
       </div>
-    </div>
 
-    <div class="card" style="margin-top:12px;overflow:auto">
-      <div class="card-head">${iconTile('bell')}<h3>ისტორია</h3></div>
-      <table>
-        <thead>
-          <tr>
-            <th>დრო</th>
-            <th>სათაური</th>
-            <th>სეგმენტი</th>
-            <th>სტატუსი</th>
-            <th>მიწოდება</th>
-            <th>ადმინი</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${campaigns.length ? campaigns.map((c) => `
-            <tr>
-              <td class="mono">${fmtDate(c.sentAt || c.createdAt)}</td>
-              <td><strong>${escapeHtml(c.title)}</strong><div class="sub muted">${escapeHtml(c.body.slice(0, 80))}${c.body.length > 80 ? '…' : ''}</div></td>
-              <td><span class="badge neutral">${SEGMENTS[c.segment] || c.segment}</span></td>
-              <td>${campaignStatus(c)}</td>
-              <td class="mono">${c.sentCount} ✓ · ${c.failedCount} ✗ / ${c.targetCount}</td>
-              <td class="muted">${escapeHtml(c.createdBy?.fullName || c.createdBy?.email || '—')}</td>
-            </tr>
-          `).join('') : '<tr><td colspan="6" class="muted">კამპანიები ჯერ არ არის.</td></tr>'}
-        </tbody>
-      </table>
+      <div class="table-card ai-log-card push-log-card">
+        <div class="card-head">
+          ${iconTile('bell')}
+          <div>
+            <h3>კამპანიების ისტორია</h3>
+            <p class="muted" style="margin:2px 0 0;font-size:12px">${campaigns.length} ჩანაწერი · ${totalSent} მიწოდებული</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>დრო</th>
+                <th>შეტყობინება</th>
+                <th>სეგმენტი</th>
+                <th>სტატუსი</th>
+                <th>მიწოდება</th>
+                <th>ადმინი</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${campaigns.length ? campaigns.map((c) => `
+                <tr data-campaign="${c.id}">
+                  <td class="mono">${fmtDateShort(c.sentAt || c.createdAt)}</td>
+                  <td>
+                    <div class="stack">
+                      <strong>${escapeHtml(c.title)}</strong>
+                      <span class="sub muted">${escapeHtml(c.body.slice(0, 90))}${c.body.length > 90 ? '…' : ''}</span>
+                    </div>
+                  </td>
+                  <td><span class="badge neutral">${SEGMENTS[c.segment] || c.segment}</span></td>
+                  <td>${campaignStatus(c)}</td>
+                  <td>${deliveryBar(c.sentCount || 0, c.targetCount || 0, c.failedCount || 0)}</td>
+                  <td>
+                    <div class="ai-person">
+                      <div class="avatar">${escapeHtml(aiInitials(c.createdBy?.fullName))}</div>
+                      <div class="stack">
+                        <strong>${escapeHtml(c.createdBy?.fullName || '—')}</strong>
+                        <span class="sub muted">${escapeHtml(c.createdBy?.email || '')}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="actions"><button class="btn tiny ghost" data-push-view="${c.id}">${icon('file')} ნახვა</button></td>
+                </tr>
+              `).join('') : '<tr><td colspan="7"><div class="empty"><strong>კამპანიები ჯერ არ არის</strong>პირველი push broadcast ზემოთ შექმენით.</div></td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   `;
+
+  const syncPreview = () => {
+    const title = $('push-title').value.trim() || 'Medicard.GE';
+    const body = $('push-body').value.trim() || 'შეტყობინების ტექსტი...';
+    const segment = $('push-segment').value;
+    $('push-preview-title').textContent = title;
+    $('push-preview-body').textContent = body;
+    $('push-preview-seg').textContent = SEGMENTS[segment] || segment;
+  };
+
+  $('push-title').oninput = syncPreview;
+  $('push-body').oninput = syncPreview;
+  $('push-segment').onchange = syncPreview;
+  syncPreview();
 
   $('push-send').onclick = async () => {
     const title = $('push-title').value.trim();
@@ -1109,6 +1300,360 @@ async function renderPush() {
       $('push-send').disabled = false;
     }
   };
+
+  document.querySelectorAll('[data-push-view], [data-campaign]').forEach((el) => {
+    el.onclick = (e) => {
+      e.stopPropagation?.();
+      viewPushCampaign(el.dataset.pushView || el.dataset.campaign);
+    };
+  });
+
+  document.querySelectorAll('tr[data-campaign]').forEach((row) => {
+    row.onclick = (e) => {
+      if (e.target.closest('button')) return;
+      viewPushCampaign(row.dataset.campaign);
+    };
+  });
+}
+
+function pushDeliveryTone(pct) {
+  if (pct == null) return 'neutral';
+  if (pct >= 90) return 'ok';
+  if (pct >= 70) return 'std';
+  return 'bad';
+}
+
+function pushDeliveryRing(sent, target, caption, { compact = false } = {}) {
+  const pct = target ? Math.round((sent / target) * 100) : null;
+  const tone = pushDeliveryTone(pct);
+  const display = pct == null ? '—' : pct;
+  const ringPct = pct == null ? 0 : Math.min(100, Math.max(0, pct));
+  const wrapClass = compact ? 'ai-hero-score compact' : 'ai-hero-score';
+  return `
+    <div class="${wrapClass}">
+      <div class="ai-score-ring ${tone}" style="--pct:${ringPct}">
+        <div class="ai-score-inner">
+          <span class="ai-score-val">${display}</span>
+          <span class="ai-score-lbl">${pct == null ? '' : '%'}</span>
+        </div>
+      </div>
+      ${caption ? `<p class="ai-score-caption">${caption}</p>` : ''}
+    </div>
+  `;
+}
+
+async function viewPushCampaign(id) {
+  const { campaigns } = await api('/push/campaigns');
+  const campaign = campaigns.find((c) => c.id === id);
+  if (!campaign) {
+    toast('კამპანია ვერ მოიძებნა', 'bad');
+    return;
+  }
+
+  const SEGMENTS = {
+    ALL: 'ყველა მოწყობილობა',
+    ACTIVE: 'აქტიური მომხმარებლები',
+    FREE: 'უფასო პაკეტი',
+    STANDARD: 'STANDARD',
+    ULTIMATE: 'ULTIMATE',
+  };
+
+  openDrawer(`
+    <p class="kicker">Push კამპანია</p>
+    <h3>${escapeHtml(campaign.title)}</h3>
+    <p class="muted mono" style="font-size:11px">${escapeHtml(campaign.id)}</p>
+    <div class="drawer-stats">
+      <div class="drawer-stat"><div class="label">სეგმენტი</div><strong>${SEGMENTS[campaign.segment] || campaign.segment}</strong></div>
+      <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${campaign.status === 'SENT' ? 'გაგზავნილი' : campaign.status === 'FAILED' ? 'შეცდომა' : campaign.status === 'SENDING' ? 'იგზავნება' : escapeHtml(campaign.status)}</strong></div>
+      <div class="drawer-stat"><div class="label">მიწოდება</div><strong>${campaign.sentCount}/${campaign.targetCount}</strong></div>
+      <div class="drawer-stat"><div class="label">შეცდომა</div><strong>${campaign.failedCount}</strong></div>
+    </div>
+    ${pushDeliveryRing(campaign.sentCount || 0, campaign.targetCount || 0, fmtDate(campaign.sentAt || campaign.createdAt), { compact: true })}
+    <div class="field"><span>ტექსტი</span><div class="ai-drawer-block"><pre>${escapeHtml(campaign.body)}</pre></div></div>
+    <div class="field"><span>ადმინი</span><div class="ai-drawer-block"><pre>${escapeHtml(campaign.createdBy?.fullName || '—')}${campaign.createdBy?.email ? `\n${campaign.createdBy.email}` : ''}</pre></div></div>
+    <div class="row"><button class="btn ghost" id="drawer-cancel">დახურვა</button></div>
+  `);
+  $('drawer-cancel').onclick = closeDrawer;
+}
+
+const AI_MODE_LABELS = {
+  DOCTOR: 'AI ექიმი',
+  CONSILIUM: 'კონსილიუმი',
+  LAB: 'ლაბორატორია',
+  IMAGING: 'იმიჯინგი',
+  SKIN: 'კანი',
+  SKINCARE: 'სკინქეარი',
+  MEDICATION: 'მედიკამენტები',
+  CYCLE_WELLNESS: 'ციკლი',
+};
+
+function aiScoreTone(score) {
+  if (score == null || score === '—') return 'neutral';
+  const n = Number(score);
+  if (n >= 80) return 'ok';
+  if (n >= 72) return 'std';
+  return 'bad';
+}
+
+function aiScoreRing(score, caption, { compact = false } = {}) {
+  const tone = aiScoreTone(score);
+  const pct = score == null ? 0 : Math.min(100, Math.max(0, Number(score)));
+  const display = score == null ? '—' : score;
+  const wrapClass = compact ? 'ai-hero-score compact' : 'ai-hero-score';
+  return `
+    <div class="${wrapClass}">
+      <div class="ai-score-ring ${tone}" style="--pct:${pct}">
+        <div class="ai-score-inner">
+          <span class="ai-score-val">${display}</span>
+          <span class="ai-score-lbl">/ 100</span>
+        </div>
+      </div>
+      ${caption ? `<p class="ai-score-caption">${caption}</p>` : ''}
+    </div>
+  `;
+}
+
+function aiModeBars(byMode) {
+  if (!byMode.length) return '<p class="muted">ჯერ მონაცემი არ არის.</p>';
+  const max = Math.max(1, ...byMode.map((m) => m.count));
+  return byMode
+    .map(
+      (m) => `
+    <div class="ai-mode-row">
+      <span class="ai-mode-label">${AI_MODE_LABELS[m.mode] || m.mode}</span>
+      <div class="bar"><span style="width:${Math.round((m.count / max) * 100)}%"></span></div>
+      <span class="mono ai-mode-count">${m.count}</span>
+    </div>
+  `,
+    )
+    .join('');
+}
+
+function aiInitials(name) {
+  return (name || '?')
+    .split(' ')
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase();
+}
+
+async function renderAi() {
+  const [stats, { interactions, total }, { runs }] = await Promise.all([
+    api('/ai/stats'),
+    api('/ai/interactions?limit=25'),
+    api('/ai/eval-runs'),
+  ]);
+
+  function scoreBadge(score) {
+    if (score == null) return '<span class="badge neutral">—</span>';
+    if (score >= 80) return `<span class="badge ok">${score}</span>`;
+    if (score >= 72) return `<span class="badge std">${score}</span>`;
+    return `<span class="badge bad">${score}</span>`;
+  }
+
+  function feedbackCell(row) {
+    const fb = row.feedback?.[0];
+    if (!fb) return '<span class="muted">—</span>';
+    return fb.rating > 0
+      ? `<span class="badge ok">${icon('check')} კარგი</span>`
+      : `<span class="badge bad">${icon('x')} ცუდი</span>`;
+  }
+
+  const lastEval = stats.lastEval;
+  const errorTone = stats.errorRate24h > 5 ? 'bad' : stats.errorRate24h > 0 ? 'warn' : 'ok';
+  const fbTotal = stats.feedback.up + stats.feedback.down;
+  const fbPct = fbTotal ? Math.round((stats.feedback.up / fbTotal) * 100) : null;
+
+  $('tab-ai').innerHTML = `
+    <div class="ai-page">
+      <section class="ai-hero">
+        <div class="ai-hero-copy">
+          <p class="kicker" style="margin:0 0 8px">AI Improvement Engine</p>
+          <h3>ხარისხის ანალიზი</h3>
+          <p>ყველა AI გამოძახება იწერება, შეფასდება LLM-as-judge სკანით და მომხმარებლის feedback-ით — კონტროლირებადი გაუმჯობესება.</p>
+          <div class="ai-hero-meta">
+            <span class="ai-pill teal">${icon('spark')} Prompt <strong>v${escapeHtml(stats.promptVersion)}</strong></span>
+            <span class="ai-pill">ჯამი <strong>${stats.total}</strong></span>
+            <span class="ai-pill ${errorTone}">24სთ შეცდომა <strong>${stats.errorRate24h}%</strong></span>
+            ${fbPct != null ? `<span class="ai-pill ok">👍 ${fbPct}%</span>` : ''}
+          </div>
+        </div>
+        ${aiScoreRing(
+          lastEval?.avgScore ?? null,
+          lastEval
+            ? `${lastEval.lowScoreCount} დაბალი · ${lastEval.sampleSize} სინჯი`
+            : 'სკანი ჯერ არ გაშვებულა',
+        )}
+      </section>
+
+      <div class="ai-kpi-grid">
+        <article class="ai-kpi">
+          <div class="label">24 საათი</div>
+          <div class="value">${stats.last24h}</div>
+          <div class="hint">${stats.errors24h} შეცდომა</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">7 დღე</div>
+          <div class="value">${stats.last7d}</div>
+          <div class="hint">საშ. ${stats.avgLatencyMs} ms</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">Feedback</div>
+          <div class="value">${stats.feedback.up}<span style="font-size:16px;color:var(--muted)"> ↑</span> ${stats.feedback.down}<span style="font-size:16px;color:var(--muted)"> ↓</span></div>
+          <div class="hint">${fbTotal} შეფასება</div>
+        </article>
+        <article class="ai-kpi">
+          <div class="label">ბოლო სკანი</div>
+          <div class="value">${lastEval?.avgScore ?? '—'}</div>
+          <div class="hint">${lastEval ? fmtDateShort(lastEval.finishedAt) : '—'}</div>
+        </article>
+      </div>
+
+      <div class="ai-split">
+        <div class="card ai-scan-card">
+          <div class="card-head">${iconTile('spark', 'ult')}<div><h3>ხარისხის სკანი</h3><p class="muted" style="margin:2px 0 0;font-size:12px">LLM-as-judge — ქართული, disclaimer, უსაფრთხოება, კლინიკური სიზუსტე</p></div></div>
+          <div class="ai-scan-body">
+            ${aiScoreRing(lastEval?.avgScore ?? null, 'ბოლო შედეგი')}
+            <div class="ai-scan-form">
+              <div class="field">
+                <span>სინჯის ზომა (5–40)</span>
+                <input id="ai-scan-size" type="number" min="5" max="40" value="20" />
+              </div>
+              <button class="btn primary" id="ai-scan-run">${icon('spark')} სკანის გაშვება</button>
+              ${lastEval?.summary ? `<div class="ai-scan-summary">${escapeHtml(lastEval.summary)}</div>` : '<p class="muted" style="margin:0;font-size:13px">პირველი სკანი შეაფასებს ბოლო პასუხებს რუბრიკით 0–100.</p>'}
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">${iconTile('layers')}<div><h3>მოდულები</h3><p class="muted" style="margin:2px 0 0;font-size:12px">7 დღის AI გამოძახებები</p></div></div>
+          ${aiModeBars(stats.byMode)}
+        </div>
+      </div>
+
+      <div class="table-card ai-log-card">
+        <div class="card-head">
+          ${iconTile('activity')}
+          <div>
+            <h3>ბოლო ურთიერთობები</h3>
+            <p class="muted" style="margin:2px 0 0;font-size:12px">${total} ჩანაწერი სისტემაში</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>დრო</th><th>მომხმარებელი</th><th>მოდული</th><th>სტატუსი</th><th>Latency</th><th>Feedback</th><th></th></tr></thead>
+            <tbody>
+              ${interactions.length ? interactions.map((row) => `
+                <tr>
+                  <td class="mono">${fmtDateShort(row.createdAt)}</td>
+                  <td>
+                    <div class="ai-person">
+                      <div class="avatar">${escapeHtml(aiInitials(row.user?.fullName))}</div>
+                      <div class="stack">
+                        <strong>${escapeHtml(row.user?.fullName || '—')}</strong>
+                        <span class="sub muted">${escapeHtml(row.user?.email || row.user?.phone || '')}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="badge neutral">${AI_MODE_LABELS[row.mode] || row.mode}</span></td>
+                  <td>${row.status === 'OK' ? '<span class="badge ok">OK</span>' : '<span class="badge bad">ERR</span>'}</td>
+                  <td class="mono">${row.latencyMs != null ? `${row.latencyMs} ms` : '—'}</td>
+                  <td>${feedbackCell(row)}</td>
+                  <td class="actions"><button class="btn tiny ghost" data-ai-view="${row.id}">${icon('file')} ნახვა</button></td>
+                </tr>
+              `).join('') : '<tr><td colspan="7"><div class="empty"><strong>ჩანაწერები ცარიელია</strong>AI გამოძახების შემდეგ აქ გამოჩნდება.</div></td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">${iconTile('calendar')}<div><h3>სკანის ისტორია</h3><p class="muted" style="margin:2px 0 0;font-size:12px">${runs.length} გაშვება</p></div></div>
+        ${runs.length ? `
+          <div class="ai-run-grid">
+            ${runs.map((run) => `
+              <article class="ai-run-card" data-run="${run.id}">
+                <div class="ai-run-top">
+                  <div>
+                    <strong>${run.avgScore ?? '—'}</strong>
+                    <span style="color:var(--muted);font-size:14px;font-weight:600"> / 100</span>
+                  </div>
+                  ${run.status === 'DONE' ? '<span class="badge ok">DONE</span>' : run.status === 'FAILED' ? '<span class="badge bad">FAIL</span>' : '<span class="badge std">…</span>'}
+                </div>
+                <div class="ai-run-meta">${fmtDate(run.finishedAt || run.createdAt)} · ${run.lowScoreCount}/${run.sampleSize} დაბალი</div>
+                <p class="ai-run-summary">${escapeHtml(run.summary || '—')}</p>
+              </article>
+            `).join('')}
+          </div>
+        ` : '<div class="empty"><strong>სკანი ჯერ არ გაშვებულა</strong>გაუშვით ხარისხის სკანი ზემოთ.</div>'}
+      </div>
+    </div>
+  `;
+
+  $('ai-scan-run').onclick = async () => {
+    const sampleSize = Number($('ai-scan-size').value) || 20;
+    if (!confirm(`გავუშვათ ხარისხის სკანი (${sampleSize} პასუხი)? შეიძლება OpenRouter კრედიტი დაიხარჯოს.`)) return;
+    $('ai-scan-run').disabled = true;
+    try {
+      const result = await api('/ai/scan', { method: 'POST', body: { sampleSize } });
+      toast(`სკანი დასრულდა — საშუალო ${result.run.avgScore ?? '—'}/100`);
+      await renderAi();
+    } catch (err) {
+      toast(err.message || 'სკანი ვერ დასრულდა', 'bad');
+      $('ai-scan-run').disabled = false;
+    }
+  };
+
+  document.querySelectorAll('[data-ai-view]').forEach((btn) => {
+    btn.onclick = () => viewAiInteraction(btn.dataset.aiView);
+  });
+
+  document.querySelectorAll('[data-run]').forEach((tr) => {
+    tr.onclick = () => viewEvalRun(tr.dataset.run);
+  });
+}
+
+async function viewAiInteraction(id) {
+  const { interaction } = await api(`/ai/interactions/${id}`);
+  const fb = interaction.feedback?.[0];
+  openDrawer(`
+    <p class="kicker">${AI_MODE_LABELS[interaction.mode] || interaction.mode}</p>
+    <h3>AI ურთიერთობა</h3>
+    <p class="muted mono" style="font-size:11px">${escapeHtml(interaction.id)}</p>
+    <div class="drawer-stats">
+      <div class="drawer-stat"><div class="label">მომხმარებელი</div><strong>${escapeHtml(interaction.user?.fullName || '—')}</strong></div>
+      <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${interaction.status === 'OK' ? '✓ OK' : '✗ ERR'}</strong></div>
+      <div class="drawer-stat"><div class="label">Prompt</div><strong class="mono">v${escapeHtml(interaction.promptVersion)}</strong></div>
+      <div class="drawer-stat"><div class="label">Latency</div><strong>${interaction.latencyMs ?? '—'} ms</strong></div>
+    </div>
+    ${fb ? `<span class="ai-pill ${fb.rating > 0 ? 'ok' : 'bad'}">${fb.rating > 0 ? '👍 კარგი' : '👎 ცუდი'}${fb.comment ? ` · ${escapeHtml(fb.comment)}` : ''}</span>` : ''}
+    <div class="field"><span>შეკითხვა / კონტექსტი</span><div class="ai-drawer-block"><pre>${escapeHtml(interaction.userPrompt || '—')}</pre></div></div>
+    <div class="field"><span>AI პასუხი</span><div class="ai-drawer-block"><pre>${escapeHtml(interaction.assistantReply || interaction.errorMessage || '—')}</pre></div></div>
+    <div class="row"><button class="btn ghost" id="drawer-cancel">დახურვა</button></div>
+  `);
+  $('drawer-cancel').onclick = closeDrawer;
+}
+
+async function viewEvalRun(id) {
+  const { run } = await api(`/ai/eval-runs/${id}`);
+  openDrawer(`
+    <p class="kicker">ხარისხის სკანი</p>
+    <h3>სკანის დეტალები</h3>
+    ${aiScoreRing(run.avgScore, `${run.lowScoreCount}/${run.sampleSize} დაბალი`, { compact: true })}
+    <p class="muted">${escapeHtml(run.summary || '')}</p>
+    <div class="detail-list" style="margin-top:14px">
+      ${run.results.map((r) => `
+        <div class="detail">
+          <span>${AI_MODE_LABELS[r.mode] || r.mode}</span>
+          <strong>${r.passed ? '✓' : '✗'} ${r.score}</strong>
+        </div>
+        ${r.notes ? `<p class="muted" style="margin:0 0 10px;font-size:12px;line-height:1.5">${escapeHtml(r.notes)}</p>` : ''}
+      `).join('')}
+    </div>
+    <div class="row"><button class="btn ghost" id="drawer-cancel">დახურვა</button></div>
+  `);
+  $('drawer-cancel').onclick = closeDrawer;
 }
 
 async function renderSettings() {

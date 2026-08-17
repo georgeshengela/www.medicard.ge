@@ -33,6 +33,8 @@ model User {
   cycleProfile     CycleProfile?
   cycleLogs        CycleLog[]
   pregnancyLogs    PregnancyLog[]
+  aiInteractions   AiInteraction[]
+  aiFeedback       AiFeedback[]
 
   @@index([status])
   @@index([packageId])
@@ -133,6 +135,7 @@ model Admin {
   passwordHash  String
   fullName      String
   pushCampaigns PushCampaign[]
+  aiEvalRuns    AiEvalRun[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -177,6 +180,84 @@ model PushToken {
   updatedAt  DateTime @updatedAt
 
   @@index([userId, active])
+}
+
+/// Audit log for every AI call — foundation for quality engine and admin review.
+model AiInteraction {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// DOCTOR | CONSILIUM | LAB | IMAGING | SKIN | SKINCARE | MEDICATION | CYCLE_WELLNESS
+  mode            String
+  status          String         @default("OK") // OK | ERROR
+  errorMessage    String?
+  promptVersion   String         @default("1.0.0")
+  chatSessionId   String?
+  medicalRecordId String?
+  userPrompt      String?
+  assistantReply  String?
+  visionProvider  String?
+  visionModel     String?
+  reasoningModel  String?
+  latencyMs       Int?
+  tokenUsage      Json?
+  createdAt       DateTime       @default(now())
+  feedback        AiFeedback[]
+  evalResults     AiEvalResult[]
+
+  @@index([userId, createdAt])
+  @@index([mode, createdAt])
+  @@index([status, createdAt])
+}
+
+model AiFeedback {
+  id            String        @id @default(uuid())
+  interactionId String
+  interaction   AiInteraction @relation(fields: [interactionId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 1 = helpful, -1 = not helpful
+  rating        Int
+  comment       String?
+  createdAt     DateTime      @default(now())
+
+  @@unique([interactionId, userId])
+  @@index([rating, createdAt])
+}
+
+model AiEvalRun {
+  id            String         @id @default(uuid())
+  status        String         @default("RUNNING") // RUNNING | DONE | FAILED
+  sampleSize    Int            @default(0)
+  avgScore      Float?
+  lowScoreCount Int            @default(0)
+  summary       String?
+  triggeredById String?
+  triggeredBy   Admin?         @relation(fields: [triggeredById], references: [id], onDelete: SetNull)
+  createdAt     DateTime       @default(now())
+  finishedAt    DateTime?
+  results       AiEvalResult[]
+
+  @@index([createdAt])
+}
+
+model AiEvalResult {
+  id            String         @id @default(uuid())
+  runId         String
+  run           AiEvalRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  interactionId String?
+  interaction   AiInteraction? @relation(fields: [interactionId], references: [id], onDelete: SetNull)
+  mode          String
+  score         Int
+  passed        Boolean
+  rubric        Json
+  notes         String?
+  sourceType    String         @default("interaction")
+  sourceId      String?
+  createdAt     DateTime       @default(now())
+
+  @@index([runId])
+  @@index([score])
 }
 
 model PushCampaign {

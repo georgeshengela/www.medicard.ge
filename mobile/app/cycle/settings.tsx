@@ -6,7 +6,8 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { Baby, Bell, CalendarPlus, Heart, Link2, Lock, Sparkles } from 'lucide-react-native';
+import { Baby, Bell, CalendarPlus, EyeOff, Heart, Link2, Lock, Sparkles } from 'lucide-react-native';
+import { CycleNotificationMaskPreview } from '@/components/cycle/CycleNotificationMaskPreview';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
 import { CycleHealthConnectCard } from '@/components/cycle/CycleHealthConnectCard';
 import { CyclePregnancyTransitionSheet } from '@/components/cycle/CyclePregnancyTransitionSheet';
@@ -30,6 +31,10 @@ import {
   type CycleReminderPrefs,
 } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
+import {
+  CYCLE_MASK_STYLES,
+  maskStyleLabel,
+} from '@/lib/cycleNotificationMask';
 import { importLatestPeriodStart, syncPeriodStartToHealth } from '@/lib/healthSync';
 import { cycleShadow, useCycleColors } from '@/theme/cycle';
 
@@ -98,6 +103,8 @@ export default function CycleSettings() {
     ovulation: true,
     dailyLog: false,
     pms: true,
+    maskNotifications: true,
+    maskStyle: 'neutral',
   });
   const [pregnancySheet, setPregnancySheet] = useState(false);
 
@@ -373,30 +380,84 @@ export default function CycleSettings() {
           </CycleCard>
         </CycleSection>
 
+        <CycleSection title={ka.cycle.maskTitle} subtitle={ka.cycle.maskHint} delay={145}>
+          <CycleCard>
+            <RowSwitch
+              icon={EyeOff}
+              label={ka.cycle.maskEnabled}
+              value={reminders.maskNotifications}
+              onChange={(v) => updateReminders({ maskNotifications: v })}
+              c={c}
+            />
+
+            <CycleNotificationMaskPreview
+              maskEnabled={reminders.maskNotifications}
+              maskStyle={reminders.maskStyle}
+            />
+
+            {reminders.maskNotifications ? (
+              <>
+                <View style={{ height: 1, backgroundColor: c.border, marginVertical: 14 }} />
+                <Text style={{ color: c.ink, fontSize: 13, fontWeight: '700', marginBottom: 10 }}>
+                  {ka.cycle.maskStyleLabel}
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {CYCLE_MASK_STYLES.map((style) => {
+                    const on = reminders.maskStyle === style;
+                    return (
+                      <Pressable
+                        key={style}
+                        onPress={() => updateReminders({ maskStyle: style })}
+                        style={{
+                          paddingHorizontal: 14,
+                          paddingVertical: 10,
+                          borderRadius: 999,
+                          backgroundColor: on ? c.rose : c.creamDeep,
+                          borderWidth: 1,
+                          borderColor: on ? c.rose : c.border,
+                        }}
+                      >
+                        <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 13 }}>
+                          {maskStyleLabel(style)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            ) : null}
+          </CycleCard>
+        </CycleSection>
+
         <CycleSection title={ka.cycle.conditionsTitle} subtitle={ka.cycle.conditionsHint} delay={150}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {CONDITIONS.map((item) => {
-              const on = conditions.includes(item.id);
-              return (
-                <Pressable
-                  key={item.id}
-                  onPress={() => toggleCondition(item.id)}
-                  style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    borderRadius: 999,
-                    backgroundColor: on ? c.rose : c.card,
-                    borderWidth: 1,
-                    borderColor: on ? c.rose : c.border,
-                  }}
-                >
-                  <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 13 }}>
-                    {item.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <CycleCard>
+            <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginBottom: 14 }}>
+              {ka.cycle.conditionsExplain}
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {CONDITIONS.map((item) => {
+                const on = conditions.includes(item.id);
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => toggleCondition(item.id)}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 999,
+                      backgroundColor: on ? c.rose : c.creamDeep,
+                      borderWidth: 1,
+                      borderColor: on ? c.rose : c.border,
+                    }}
+                  >
+                    <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 13 }}>
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </CycleCard>
         </CycleSection>
 
         <CycleSection title="ციკლის პარამეტრები" delay={120}>

@@ -3,9 +3,10 @@ import multer from 'multer';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { askEvidenceMd, AiEngineError } from '../lib/evidencemd.js';
+import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { describeImage, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
-import { buildVisionHandoff } from '../lib/prompts.js';
+import { buildVisionHandoff, buildDoctorTurnContext } from '../lib/prompts.js';
 import { calculateAge, withPatientProfile } from '../lib/patient.js';
 import { saveUpload } from '../lib/storage.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -57,18 +58,41 @@ aiRouter.post(
     const history = Array.isArray(session?.messages) ? session.messages : [];
     // Keep the last 12 turns: enough for continuity, small enough to stay inside the context window.
     const priorTurns = history.slice(-12).map((m) => ({ role: m.role, content: m.content }));
+    const userTurnCount = priorTurns.filter((m) => m.role === 'user').length + 1;
+    const assistantTurnCount = priorTurns.filter((m) => m.role === 'assistant').length;
 
-    const answer = await askEvidenceMd({
+    const profileContext = withPatientProfile(req.user, context);
+    const turnContext =
+      mode === 'DOCTOR'
+        ? buildDoctorTurnContext({ userTurnCount, assistantTurnCount })
+        : null;
+    const mergedContext = [profileContext, turnContext].filter(Boolean).join('\n\n');
+
+    const answer = await runTrackedAi({
+      userId: req.user.id,
       mode,
-      context: withPatientProfile(req.user, context),
-      messages: [...priorTurns, { role: 'user', content: message }],
+      chatSessionId: session?.id,
+      userPrompt: message,
+      fn: () =>
+        askEvidenceMd({
+          mode,
+          context: mergedContext || undefined,
+          messages: [...priorTurns, { role: 'user', content: message }],
+          temperature: mode === 'DOCTOR' ? 0.4 : 0.2,
+          maxTokens: mode === 'DOCTOR' ? 900 : 2400,
+        }),
     });
 
     const now = new Date().toISOString();
     const nextMessages = [
       ...history,
       { role: 'user', content: message, timestamp: now },
-      { role: 'assistant', content: answer.content, timestamp: new Date().toISOString() },
+      {
+        role: 'assistant',
+        content: answer.content,
+        timestamp: new Date().toISOString(),
+        interactionId: answer.interactionId,
+      },
     ];
 
     const saved = session
@@ -94,6 +118,7 @@ aiRouter.post(
       answer: answer.content,
       model: answer.model,
       engine: 'evidencemd',
+      interactionId: answer.interactionId,
       usage,
     });
   }),
@@ -153,10 +178,20 @@ aiRouter.post(
       extractor = { provider: described.provider, model: described.model };
     }
 
-    const analysis = await askEvidenceMd({
+    const analysis = await runTrackedAi({
+      userId: req.user.id,
       mode: kind,
-      context: withPatientProfile(req.user),
-      messages: [{ role: 'user', content: buildVisionHandoff({ kind, visionNotes, patientContext: context }) }],
+      userPrompt: buildVisionHandoff({ kind, visionNotes, patientContext: context }),
+      visionProvider: extractor.provider,
+      visionModel: extractor.model,
+      fn: () =>
+        askEvidenceMd({
+          mode: kind,
+          context: withPatientProfile(req.user),
+          messages: [
+            { role: 'user', content: buildVisionHandoff({ kind, visionNotes, patientContext: context }) },
+          ],
+        }),
     });
 
     const imageUrl = await saveUpload(buffer, mimetype);
@@ -170,6 +205,11 @@ aiRouter.post(
       },
     });
 
+    await prisma.aiInteraction.update({
+      where: { id: analysis.interactionId },
+      data: { medicalRecordId: record.id },
+    });
+
     const usage = await req.consumeAiCredit();
 
     return res.status(201).json({
@@ -181,6 +221,7 @@ aiRouter.post(
         createdAt: record.createdAt,
       },
       analysis: analysis.content,
+      interactionId: analysis.interactionId,
       pipeline: { extractor, reasoning: { provider: 'evidencemd', model: analysis.model } },
       usage,
     });
@@ -216,19 +257,35 @@ aiRouter.post(
       .filter(Boolean)
       .join('\n');
 
-    const answer = await askEvidenceMd({
+    const answer = await runTrackedAi({
+      userId: req.user.id,
       mode: 'SKINCARE',
-      context: withPatientProfile(req.user),
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
+      userPrompt: prompt,
+      fn: () =>
+        askEvidenceMd({
+          mode: 'SKINCARE',
+          context: withPatientProfile(req.user),
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.3,
+        }),
     });
 
     const record = await prisma.medicalRecord.create({
       data: { userId: req.user.id, type: 'SKINCARE', aiAnalysis: answer.content },
     });
 
+    await prisma.aiInteraction.update({
+      where: { id: answer.interactionId },
+      data: { medicalRecordId: record.id },
+    });
+
     const usage = await req.consumeAiCredit();
-    return res.status(201).json({ recordId: record.id, analysis: answer.content, usage });
+    return res.status(201).json({
+      recordId: record.id,
+      analysis: answer.content,
+      interactionId: answer.interactionId,
+      usage,
+    });
   }),
 );
 
@@ -253,14 +310,62 @@ aiRouter.post(
       .map((m, i) => `${i + 1}. ${m.medName} — დოზა: ${m.dosage}; მიღება: ${m.frequency}${m.notes ? `; შენიშვნა: ${m.notes}` : ''}`)
       .join('\n');
 
-    const answer = await askEvidenceMd({
+    const answer = await runTrackedAi({
+      userId: req.user.id,
       mode: 'MEDICATION',
-      context: withPatientProfile(req.user),
-      messages: [{ role: 'user', content: `პაციენტის მიმდინარე მედიკამენტები:\n${list}` }],
+      userPrompt: list,
+      fn: () =>
+        askEvidenceMd({
+          mode: 'MEDICATION',
+          context: withPatientProfile(req.user),
+          messages: [{ role: 'user', content: `პაციენტის მიმდინარე მედიკამენტები:\n${list}` }],
+        }),
     });
 
     const usage = await req.consumeAiCredit();
-    return res.json({ analysis: answer.content, medicationCount: medications.length, usage });
+    return res.json({
+      analysis: answer.content,
+      medicationCount: medications.length,
+      interactionId: answer.interactionId,
+      usage,
+    });
+  }),
+);
+
+const feedbackSchema = z.object({
+  interactionId: z.string().uuid(),
+  rating: z.union([z.literal(1), z.literal(-1)]),
+  comment: z.string().trim().max(500).optional(),
+});
+
+aiRouter.post(
+  '/feedback',
+  asyncHandler(async (req, res) => {
+    const body = feedbackSchema.parse(req.body);
+    const interaction = await prisma.aiInteraction.findFirst({
+      where: { id: body.interactionId, userId: req.user.id },
+    });
+    if (!interaction) {
+      return res.status(404).json({ error: 'AI ურთიერთობა ვერ მოიძებნა.' });
+    }
+
+    const feedback = await prisma.aiFeedback.upsert({
+      where: {
+        interactionId_userId: { interactionId: body.interactionId, userId: req.user.id },
+      },
+      create: {
+        interactionId: body.interactionId,
+        userId: req.user.id,
+        rating: body.rating,
+        comment: body.comment ?? null,
+      },
+      update: {
+        rating: body.rating,
+        comment: body.comment ?? null,
+      },
+    });
+
+    return res.json({ feedback });
   }),
 );
 

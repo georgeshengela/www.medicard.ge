@@ -12,13 +12,13 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bot, SendHorizontal, Users } from 'lucide-react-native';
+import { Bot, SendHorizontal, ThumbsDown, ThumbsUp, Users } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Markdown } from '@/components/ui/Markdown';
 import { Disclaimer } from '@/components/Disclaimer';
 import { EmptyState } from '@/components/EmptyState';
 import { QuotaSheet } from '@/components/QuotaSheet';
-import { UsageBanner } from '@/components/UsageBanner';
+import { UsageBanner } from '@/components/PlanUsageCard';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type ChatMessage } from '@/lib/api';
 import { useThemeColors } from '@/theme/colors';
@@ -70,7 +70,12 @@ export default function ChatScreen() {
         setSessionId(response.sessionId);
         setMessages((prev) => [
           ...prev,
-          { role: 'assistant', content: response.answer, timestamp: new Date().toISOString() },
+          {
+            role: 'assistant',
+            content: response.answer,
+            timestamp: new Date().toISOString(),
+            interactionId: response.interactionId,
+          },
         ]);
         applyUsage(response.usage);
       } catch (err) {
@@ -91,6 +96,23 @@ export default function ChatScreen() {
     },
     [sending, mode, sessionId, applyUsage, scrollToEnd],
   );
+
+  const submitFeedback = useCallback(async (index: number, rating: 1 | -1) => {
+    const message = messages[index];
+    if (!message?.interactionId || message.feedbackRating) return;
+
+    setMessages((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, feedbackRating: rating } : item)),
+    );
+
+    try {
+      await api.ai.feedback({ interactionId: message.interactionId, rating });
+    } catch {
+      setMessages((prev) =>
+        prev.map((item, i) => (i === index ? { ...item, feedbackRating: undefined } : item)),
+      );
+    }
+  }, [messages]);
 
   const suggestions = useMemo(
     () =>
@@ -136,7 +158,7 @@ export default function ChatScreen() {
               ))}
             </View>
           }
-          renderItem={({ item }) =>
+          renderItem={({ item, index }) =>
             item.role === 'user' ? (
               <View className="mb-3 max-w-[85%] self-end rounded-2xl rounded-br-md bg-primary-200 px-4 py-3">
                 <Text className="text-base leading-6 text-white">{item.content}</Text>
@@ -154,6 +176,35 @@ export default function ChatScreen() {
                   <Text className="ml-2 text-xs font-bold uppercase text-primary-200">{copy.title}</Text>
                 </View>
                 <Markdown content={item.content} />
+                {item.interactionId ? (
+                  <View className="mt-3 border-t border-bg-300 pt-3">
+                    <Text className="mb-2 text-xs text-text-300">
+                      {item.feedbackRating ? ka.chat.feedbackThanks : ka.chat.feedbackPrompt}
+                    </Text>
+                    {!item.feedbackRating ? (
+                      <View className="flex-row gap-2">
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={ka.chat.feedbackHelpful}
+                          onPress={() => submitFeedback(index, 1)}
+                          className="flex-row items-center rounded-xl border border-bg-300 bg-bg-100 px-3 py-2 active:opacity-70"
+                        >
+                          <ThumbsUp size={14} color={colors.primary200} strokeWidth={2.2} />
+                          <Text className="ml-1.5 text-xs font-semibold text-text-200">{ka.chat.feedbackHelpful}</Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={ka.chat.feedbackNotHelpful}
+                          onPress={() => submitFeedback(index, -1)}
+                          className="flex-row items-center rounded-xl border border-bg-300 bg-bg-100 px-3 py-2 active:opacity-70"
+                        >
+                          <ThumbsDown size={14} color={colors.text300} strokeWidth={2.2} />
+                          <Text className="ml-1.5 text-xs font-semibold text-text-200">{ka.chat.feedbackNotHelpful}</Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
               </Card>
             )
           }
@@ -163,7 +214,9 @@ export default function ChatScreen() {
                 <Card className="mb-3 max-w-[70%] self-start rounded-bl-md">
                   <View className="flex-row items-center">
                     <ActivityIndicator size="small" color={colors.primary200} />
-                    <Text className="ml-2.5 text-sm text-text-300">{ka.common.analyzing}</Text>
+                    <Text className="ml-2.5 text-sm text-text-300">
+                      {isConsilium ? ka.common.analyzing : ka.modules.doctor.thinking}
+                    </Text>
                   </View>
                 </Card>
               ) : null}

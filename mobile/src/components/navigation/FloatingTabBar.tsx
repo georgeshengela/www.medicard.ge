@@ -6,7 +6,9 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import * as Haptics from 'expo-haptics';
 import { CalendarClock, FolderHeart, House, User, type LucideIcon } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
+import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
 import { useThemeColors } from '@/theme/colors';
+import { useAuth } from '@/store/AuthContext';
 
 export const TAB_BAR_HEIGHT = 64;
 export const TAB_BAR_SIDE = 20;
@@ -40,6 +42,7 @@ const SPRING = { damping: 22, stiffness: 260, mass: 0.7 };
  */
 export function FloatingTabBar() {
   const colors = useThemeColors();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const segments = useSegments();
@@ -121,7 +124,14 @@ export function FloatingTabBar() {
               onPress={() => {
                 void Haptics.selectionAsync().catch(() => undefined);
                 setSelected(tab.name);
-                if (!focused) router.replace(tab.href);
+                if (focused) return;
+                if (tab.name === 'home') {
+                  void getHomeLanding().then((landing) => {
+                    router.replace(resolveInitialRoute(landing, user?.gender) as never);
+                  });
+                  return;
+                }
+                router.replace(tab.href);
               }}
               style={{
                 flex: 1,

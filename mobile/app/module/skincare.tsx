@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Markdown } from '@/components/ui/Markdown';
 import { Disclaimer } from '@/components/Disclaimer';
 import { QuotaSheet } from '@/components/QuotaSheet';
-import { UsageBanner } from '@/components/UsageBanner';
+import { UsageBanner } from '@/components/PlanUsageCard';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { useThemeColors } from '@/theme/colors';

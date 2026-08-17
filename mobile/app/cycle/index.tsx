@@ -5,7 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { BarChart3, Baby, CalendarDays, CalendarHeart, ChevronLeft, FileText, Settings2, Sparkles } from 'lucide-react-native';
+import { BarChart3, Baby, CalendarHeart, FileText, Sparkles } from 'lucide-react-native';
+import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleRing } from '@/components/cycle/CycleRing';
 import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
@@ -107,6 +108,13 @@ export default function CycleHome() {
 
   const selectedMonth = useMemo(() => parseDateKey(selected), [selected]);
 
+  const headerSubtitle = useMemo(() => {
+    if (selectedPhase.day != null) {
+      return `${ka.cycle.cycleDay} ${selectedPhase.day} · ${selectedPhase.phaseKa}`;
+    }
+    return ka.cycle.swipeDaysHint;
+  }, [selectedPhase]);
+
   useEffect(() => {
     setCursor({ y: selectedMonth.y, m: selectedMonth.m });
   }, [selectedMonth.y, selectedMonth.m]);
@@ -206,91 +214,17 @@ export default function CycleHome() {
       />
 
       <View style={{ flex: 1 }}>
-        {/* Sticky month bar — day strip scrolls below */}
-        <View
-          style={{
-            paddingTop: insets.top + 8,
-            paddingHorizontal: 12,
-            paddingBottom: 10,
-            backgroundColor: c.cream,
-            borderBottomWidth: 1,
-            borderBottomColor: c.border,
+        <CycleHomeHeader
+          monthLabel={`${MONTHS_KA[selectedMonth.m]} ${selectedMonth.y}`}
+          subtitle={headerSubtitle}
+          topInset={insets.top}
+          onBack={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/(tabs)/home');
           }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 88 }}>
-              <Pressable
-                onPress={() => router.back()}
-                hitSlop={10}
-                accessibilityLabel={ka.common.back}
-                style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <ChevronLeft size={26} color={c.rose} strokeWidth={2.4} />
-              </Pressable>
-              <Pressable
-                onPress={() => router.push('/cycle/settings' as never)}
-                hitSlop={10}
-                accessibilityLabel={ka.cycle.settings}
-                style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  backgroundColor: c.roseSoft,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.85 : 1,
-                })}
-              >
-                <Settings2 size={18} color={c.rose} strokeWidth={2.2} />
-              </Pressable>
-            </View>
-
-            <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 4 }}>
-              <Text
-                style={{
-                  color: c.ink,
-                  fontSize: 17,
-                  fontWeight: '800',
-                  letterSpacing: -0.3,
-                }}
-              >
-                {MONTHS_KA[selectedMonth.m]} {selectedMonth.y}
-              </Text>
-              <Text style={{ color: c.muted, fontSize: 11, marginTop: 2, fontWeight: '600' }}>
-                {ka.cycle.swipeDaysHint}
-              </Text>
-            </View>
-
-            <View style={{ width: 44, alignItems: 'flex-end' }}>
-              <Pressable
-                onPress={() => setCalendarOpen(true)}
-                hitSlop={10}
-                accessibilityLabel={ka.cycle.openFullCalendar}
-                style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  backgroundColor: c.card,
-                  borderWidth: 1,
-                  borderColor: c.border,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.85 : 1,
-                  ...cycleShadow.card,
-                })}
-              >
-                <CalendarDays size={18} color={c.rose} strokeWidth={2.2} />
-              </Pressable>
-            </View>
-          </View>
-        </View>
+          onCalendar={() => setCalendarOpen(true)}
+          onSettings={() => router.push('/cycle/settings' as never)}
+        />
 
         <ScrollView
           style={{ flex: 1 }}

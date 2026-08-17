@@ -18,6 +18,7 @@ import {
   toDateKey,
 } from '../lib/cycle.js';
 import { askEvidenceMd } from '../lib/evidencemd.js';
+import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
 import { calculateAge } from '../lib/patient.js';
 
@@ -394,12 +395,18 @@ cycleRouter.post(
       user: { age },
     });
 
-    const answer = await askEvidenceMd({
+    const answer = await runTrackedAi({
+      userId: req.user.id,
       mode: 'CYCLE_WELLNESS',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.55,
-      maxTokens: 1200,
-      skipDisclaimer: true,
+      userPrompt: prompt,
+      fn: () =>
+        askEvidenceMd({
+          mode: 'CYCLE_WELLNESS',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.55,
+          maxTokens: 1200,
+          skipDisclaimer: true,
+        }),
     });
 
     const parsed = parseCycleInsightsJson(answer.content);
@@ -424,6 +431,7 @@ cycleRouter.post(
       cached: false,
       model: answer.model,
       engine: 'evidencemd',
+      interactionId: answer.interactionId,
       localInsights: bundle.localInsights,
       usage,
     });

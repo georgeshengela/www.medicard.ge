@@ -13,6 +13,8 @@ import { toDateOnly, calculateAge } from '../lib/patient.js';
 import { asyncHandler } from '../middleware/error.js';
 import { requireAdmin } from '../middleware/adminAuth.js';
 import { getProviderBalances } from '../lib/providerBalances.js';
+import { getAiQualityStats } from '../lib/aiTelemetry.js';
+import { getEvalRun, listEvalRuns, runQualityScan } from '../lib/aiQuality.js';
 
 export const adminRouter = Router();
 
@@ -464,5 +466,101 @@ adminRouter.post(
     });
 
     res.status(201).json({ campaign: saved, delivery: result });
+  }),
+);
+
+adminRouter.get(
+  '/ai/stats',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json(await getAiQualityStats());
+  }),
+);
+
+adminRouter.get(
+  '/ai/interactions',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const query = z
+      .object({
+        limit: z.coerce.number().int().min(1).max(100).default(30),
+        offset: z.coerce.number().int().min(0).default(0),
+        mode: z.string().optional(),
+        status: z.enum(['OK', 'ERROR']).optional(),
+      })
+      .parse(req.query);
+
+    const where = {
+      ...(query.mode ? { mode: query.mode } : {}),
+      ...(query.status ? { status: query.status } : {}),
+    };
+
+    const [total, interactions] = await Promise.all([
+      prisma.aiInteraction.count({ where }),
+      prisma.aiInteraction.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: query.offset,
+        take: query.limit,
+        include: {
+          user: { select: { id: true, fullName: true, email: true } },
+          feedback: { select: { rating: true, comment: true } },
+        },
+      }),
+    ]);
+
+    res.json({ total, interactions, limit: query.limit, offset: query.offset });
+  }),
+);
+
+adminRouter.get(
+  '/ai/interactions/:id',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const interaction = await prisma.aiInteraction.findUnique({
+      where: { id: req.params.id },
+      include: {
+        user: { select: { id: true, fullName: true, email: true, gender: true, birthDate: true } },
+        feedback: true,
+        evalResults: { orderBy: { createdAt: 'desc' }, take: 5 },
+      },
+    });
+    if (!interaction) return res.status(404).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
+    res.json({ interaction });
+  }),
+);
+
+adminRouter.post(
+  '/ai/scan',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({ sampleSize: z.number().int().min(5).max(40).default(20) })
+      .parse(req.body ?? {});
+
+    const { run, results } = await runQualityScan({
+      sampleSize: body.sampleSize,
+      adminId: req.admin.id,
+    });
+    res.status(201).json({ run, results });
+  }),
+);
+
+adminRouter.get(
+  '/ai/eval-runs',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const runs = await listEvalRuns(20);
+    res.json({ runs });
+  }),
+);
+
+adminRouter.get(
+  '/ai/eval-runs/:id',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const run = await getEvalRun(req.params.id);
+    if (!run) return res.status(404).json({ error: 'სკანი ვერ მოიძებნა.' });
+    res.json({ run });
   }),
 );
