@@ -10,10 +10,14 @@ usageRouter.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const usage = await getUsage(req.user.id);
+    const limitLabel = usage.unlimited ? 'შეუზღუდავი' : `${usage.remaining}/${usage.limit}`;
 
     return res.json({
       ...usage,
-      label: `დღეს დარჩენილია: ${usage.remaining}/${usage.limit} უფასო შეკითხვა`,
+      label:
+        usage.periodType === 'subscription'
+          ? `გამოწერის პერიოდში დარჩენილია: ${limitLabel} AI შეკითხვა`
+          : `ამ თვეში დარჩენილია: ${limitLabel} AI შეკითხვა`,
     });
   }),
 );

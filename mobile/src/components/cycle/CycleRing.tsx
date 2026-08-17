@@ -21,8 +21,8 @@ type Props = {
 
 export function CycleRing({ day, cycleLength, label, phaseHint }: Props) {
   const c = useCycleColors();
-  const size = 200;
-  const stroke = 14;
+  const size = 196;
+  const stroke = 13;
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const progress = day && cycleLength ? Math.min(1, Math.max(0, day / cycleLength)) : 0;
@@ -37,12 +37,12 @@ export function CycleRing({ day, cycleLength, label, phaseHint }: Props) {
   }));
 
   return (
-    <Animated.View entering={FadeIn.duration(500)} style={{ alignItems: 'center' }}>
+    <Animated.View entering={FadeIn.duration(500)} style={{ alignItems: 'center', width: '100%' }}>
       <View
         style={{
-          width: size + 28,
-          height: size + 28,
-          borderRadius: (size + 28) / 2,
+          width: size + 24,
+          height: size + 24,
+          borderRadius: (size + 24) / 2,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: c.card,
@@ -54,9 +54,9 @@ export function CycleRing({ day, cycleLength, label, phaseHint }: Props) {
         <View
           style={{
             position: 'absolute',
-            width: size - 28,
-            height: size - 28,
-            borderRadius: (size - 28) / 2,
+            width: size - 32,
+            height: size - 32,
+            borderRadius: (size - 32) / 2,
             backgroundColor: c.roseSoft,
             opacity: 0.55,
           }}
@@ -91,47 +91,72 @@ export function CycleRing({ day, cycleLength, label, phaseHint }: Props) {
             origin={`${size / 2}, ${size / 2}`}
           />
         </Svg>
-        <View style={{ position: 'absolute', alignItems: 'center', paddingHorizontal: 16 }}>
+        <View
+          style={{
+            position: 'absolute',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: size - 56,
+          }}
+        >
           <Text
             style={{
               color: c.muted,
               fontSize: 11,
               fontWeight: '700',
-              letterSpacing: 0.6,
+              letterSpacing: 0.5,
               textTransform: 'uppercase',
             }}
+            numberOfLines={1}
           >
             {label}
           </Text>
           <Text
             style={{
               color: c.ink,
-              fontSize: 52,
+              fontSize: 48,
               fontWeight: '800',
               letterSpacing: -2,
               marginTop: 2,
+              lineHeight: 54,
             }}
           >
             {day ?? '—'}
           </Text>
-          <Text style={{ color: c.mutedSoft, fontSize: 13, fontWeight: '600' }}>
+          <Text style={{ color: c.mutedSoft, fontSize: 13, fontWeight: '600', marginTop: 2 }}>
             / {cycleLength} დღე
           </Text>
-          {phaseHint ? (
-            <View
-              style={{
-                marginTop: 10,
-                backgroundColor: c.lavenderSoft,
-                paddingHorizontal: 12,
-                paddingVertical: 5,
-                borderRadius: 999,
-              }}
-            >
-              <Text style={{ color: c.lavender, fontSize: 11, fontWeight: '700' }}>{phaseHint}</Text>
-            </View>
-          ) : null}
         </View>
       </View>
+
+      {phaseHint ? (
+        <View
+          style={{
+            marginTop: 14,
+            maxWidth: '92%',
+            backgroundColor: c.card,
+            borderWidth: 1,
+            borderColor: c.border,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderRadius: 24,
+            ...cycleShadow.card,
+          }}
+        >
+          <Text
+            style={{
+              color: c.rose,
+              fontSize: 13,
+              fontWeight: '800',
+              textAlign: 'center',
+              lineHeight: 18,
+            }}
+            numberOfLines={2}
+          >
+            {phaseHint}
+          </Text>
+        </View>
+      ) : null}
     </Animated.View>
   );
 }

@@ -7,13 +7,13 @@ import { formatCountdown } from '@/lib/format';
 import { useThemeColors } from '@/theme/colors';
 
 const PERKS = [
-  'შეუზღუდავი AI კონსულტაცია',
-  'ანალიზების და სნიმოკების გაშიფვრა ლიმიტის გარეშე',
-  'კონსილიუმი — 5 სპეციალისტამდე',
-  'სამედიცინო ისტორიის სრული არქივი',
+  '1 500 AI კონსულტაცია თვეში (სტანდარტი)',
+  '30-დღიანი გამოწერა — ლიმიტი მხოლოდ ამ პერიოდში',
+  'ანალიზები, რენტგენი, კანი და კონსილიუმი',
+  'ულტიმატი — შეუზღუდავი AI',
 ];
 
-/** Shown when the backend answers an AI request with 429 DAILY_LIMIT_REACHED. */
+/** Shown when the backend answers an AI request with 429 MONTHLY_LIMIT_REACHED. */
 export function QuotaSheet({
   visible,
   resetsInMs,

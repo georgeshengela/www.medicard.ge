@@ -6,6 +6,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
 import { enableScreens } from 'react-native-screens';
 import Constants from 'expo-constants';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
@@ -86,7 +87,34 @@ function AppShell() {
   const { scheme } = useTheme();
   const { user } = useAuth();
   const segments = useSegments();
+  const router = useRouter();
   const showTabBar = Boolean(user) && segments[0] === '(tabs)';
+
+  useEffect(() => {
+    const openRoute = (route: unknown) => {
+      if (typeof route === 'string' && route.startsWith('/')) {
+        router.push(route as never);
+      }
+    };
+
+    Notifications.getLastNotificationResponseAsync()
+      .then((last) => {
+        const data = last?.notification.request.content.data;
+        if (data?.type === 'cycle_reminder' && data?.route) {
+          openRoute(data.route);
+        }
+      })
+      .catch(() => undefined);
+
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      if (data?.type === 'cycle_reminder' && data?.route) {
+        openRoute(data.route);
+      }
+    });
+
+    return () => sub.remove();
+  }, [router]);
 
   return (
     <>
@@ -110,11 +138,7 @@ function AppShell() {
               <Stack.Screen name="module/imaging" options={{ headerBackTitle: 'უკან' }} />
               <Stack.Screen name="module/skin" options={{ headerBackTitle: 'უკან' }} />
               <Stack.Screen name="module/skincare" options={{ headerBackTitle: 'უკან' }} />
-              <Stack.Screen name="cycle/index" options={{ headerBackTitle: 'უკან' }} />
-              <Stack.Screen name="cycle/log" options={{ headerBackTitle: 'უკან' }} />
-              <Stack.Screen name="cycle/settings" options={{ headerBackTitle: 'უკან' }} />
-              <Stack.Screen name="cycle/pregnancy" options={{ headerBackTitle: 'უკან' }} />
-              <Stack.Screen name="cycle/summary" options={{ headerBackTitle: 'უკან' }} />
+              <Stack.Screen name="cycle" options={{ headerShown: false }} />
               <Stack.Screen name="record/[id]" options={{ headerBackTitle: 'უკან' }} />
             </Stack>
           </View>

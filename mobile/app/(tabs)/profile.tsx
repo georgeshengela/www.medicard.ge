@@ -14,7 +14,7 @@ import { ka } from '@/i18n/ka';
 import { ApiError, type Gender } from '@/lib/api';
 import { isoToDisplay, parseBirthDate } from '@/lib/birthdate';
 import { formatDate } from '@/lib/format';
-import { requestNotificationPermission } from '@/lib/notifications';
+import { requestNotificationPermission, registerPushTokenWithServer } from '@/lib/notifications';
 import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 
@@ -24,7 +24,7 @@ const GENDER_LABELS: Record<Gender, string> = {
   OTHER: ka.auth.genderOther,
 };
 
-const APP_VERSION = '3.0.5';
+const APP_VERSION = '3.2.10';
 
 export default function Profile() {
   const { user, stats, refresh, signOut } = useAuth();
@@ -48,6 +48,7 @@ export default function Profile() {
 
   const enableNotifications = async () => {
     const granted = await requestNotificationPermission();
+    if (granted) await registerPushTokenWithServer();
     setNotificationsOn(granted);
     if (!granted) Alert.alert(ka.profile.notifications, ka.meds.notificationsDenied);
   };
@@ -168,12 +169,20 @@ function PackageCard() {
         ? { title: ka.profile.standardPlan, detail: ka.profile.standardPlanDetail, tone: 'brand' as const }
         : { title: ka.profile.freePlan, detail: ka.profile.freePlanDetail, tone: 'neutral' as const };
 
+  const monthlyLimit =
+    user?.package?.monthlyAiLimit ??
+    user?.package?.dailyAiLimit ??
+    usage?.limit ??
+    90;
   const limitLabel =
-    usage?.unlimited || (user?.package?.unlimited ?? user?.package?.dailyAiLimit === -1)
-      ? '∞ / დღე'
-      : `${usage?.limit ?? user?.package?.dailyAiLimit ?? 3} / დღე`;
+    usage?.unlimited || user?.package?.unlimited || monthlyLimit < 0
+      ? `∞ / ${ka.usage.perMonth}`
+      : `${usage?.remaining ?? monthlyLimit} / ${monthlyLimit} ${ka.usage.perMonth}`;
 
+  const started = user?.packageStartedAt ? formatDate(user.packageStartedAt) : null;
   const expires = user?.packageExpiresAt ? formatDate(user.packageExpiresAt) : null;
+  const expired =
+    user?.packageExpiresAt && new Date(user.packageExpiresAt).getTime() < Date.now();
 
   return (
     <Card>
@@ -185,8 +194,13 @@ function PackageCard() {
           <Text className="text-base font-bold text-text-100">{meta.title}</Text>
           <Text className="mt-0.5 text-sm text-text-300">{meta.detail}</Text>
           <Text className="mt-1 text-xs font-semibold text-primary-100">
-            AI ლიმიტი: {limitLabel}
+            {ka.profile.billingMonthly}
+          </Text>
+          <Text className="mt-0.5 text-xs text-text-300">
+            AI: {limitLabel}
+            {started && code !== 'FREE' ? ` · ${ka.profile.planStarted}: ${started}` : ''}
             {expires ? ` · ${ka.profile.planExpires}: ${expires}` : ''}
+            {expired ? ` · ${ka.profile.planExpired}` : ''}
           </Text>
         </View>
         <Badge label={code} tone={meta.tone} />

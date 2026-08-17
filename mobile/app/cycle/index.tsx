@@ -1,47 +1,40 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import {
-  Baby,
-  CalendarHeart,
-  FileText,
-  Settings2,
-  Sparkles,
-} from 'lucide-react-native';
-import { CycleCalendar, cycleDayNumber, todayKey } from '@/components/cycle/CycleCalendar';
+import { BarChart3, Baby, CalendarDays, CalendarHeart, ChevronLeft, FileText, Settings2, Sparkles } from 'lucide-react-native';
 import { CycleRing } from '@/components/cycle/CycleRing';
-import { CycleInsightsPanel } from '@/components/cycle/CycleInsights';
+import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
+import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
+import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
+import { CycleOnboarding } from '@/components/cycle/CycleOnboarding';
+import { CycleDayStrip } from '@/components/cycle/CycleDayStrip';
+import { CycleDayInsights } from '@/components/cycle/CycleDayInsights';
+import { CycleCalendarSheet } from '@/components/cycle/CycleCalendarSheet';
+import { todayKey } from '@/components/cycle/CycleCalendar';
 import {
-  CycleActionPanel,
-  CycleActionRow,
   CycleAtmosphere,
   CycleFab,
   CycleFeatureTile,
   CycleLoading,
-  formatCycleDateKa,
-  cycleNavHeader,
 } from '@/components/cycle/CycleUI';
+import { MONTHS_KA } from '@/constants/cycle';
+import { cycleShadow } from '@/theme/cycle';
 import { ka } from '@/i18n/ka';
+import {
+  cycleDayForDate,
+  detectCyclePhaseForDate,
+  parseDateKey,
+} from '@/lib/cyclePhase';
+import { hasPmsPattern } from '@/lib/cycleAnalytics';
+import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
+import { syncCycleReminders } from '@/lib/cycleReminders';
 import { api, ApiError, type CycleBundle } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
-
-function phaseForDay(
-  day: number | null,
-  periodLen: number,
-  cycleLen: number,
-): string | undefined {
-  if (day == null) return undefined;
-  if (day <= periodLen) return 'მენსტრუაცია';
-  const ov = cycleLen - 14;
-  if (day >= ov - 5 && day <= ov + 1) return day === ov ? 'ოვულაცია' : 'ნაყოფიერი ფანჯარა';
-  if (day > ov + 1) return 'ლუთეალური ფაზა';
-  return 'ფოლიკულური ფაზა';
-}
 
 export default function CycleHome() {
   const { user } = useAuth();
@@ -53,40 +46,26 @@ export default function CycleHome() {
   const [bundle, setBundle] = useState<CycleBundle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [onboardSaving, setOnboardSaving] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
+  const [selected, setSelected] = useState(todayKey());
   const [cursor, setCursor] = useState(() => {
     const n = new Date();
     return { y: n.getFullYear(), m: n.getMonth() };
   });
-  const [selected, setSelected] = useState(todayKey());
 
   useLayoutEffect(() => {
-    navigation.setOptions({
-      ...cycleNavHeader(c, ka.cycle.title),
-      headerRight: () => (
-        <Pressable
-          onPress={() => router.push('/cycle/settings' as never)}
-          hitSlop={10}
-          style={{
-            marginRight: 4,
-            width: 36,
-            height: 36,
-            borderRadius: 12,
-            backgroundColor: c.roseSoft,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Settings2 size={18} color={c.rose} strokeWidth={2.2} />
-        </Pressable>
-      ),
-    });
-  }, [navigation, router, c]);
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const load = useCallback(async () => {
     try {
       setError(null);
       const data = await api.cycle.get();
       setBundle(data);
+      const prefs = await getCycleReminderPrefs();
+      await syncCycleReminders(data, prefs);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : ka.common.error);
     } finally {
@@ -104,13 +83,51 @@ export default function CycleHome() {
     }, [user?.gender, load]),
   );
 
-  const day = cycleDayNumber(bundle?.profile.lastPeriodStart ?? null);
   const cycleLen = bundle?.profile.avgCycleLength ?? 28;
   const periodLen = bundle?.profile.avgPeriodLength ?? 5;
-  const phase = useMemo(
-    () => phaseForDay(day, periodLen, cycleLen),
-    [day, periodLen, cycleLen],
+  const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
+  const needsOnboarding =
+    Boolean(bundle) && user?.gender === 'FEMALE' && !lastPeriod;
+
+  const selectedPhase = useMemo(
+    () =>
+      detectCyclePhaseForDate({
+        lastPeriodStart: lastPeriod,
+        targetDate: selected,
+        avgCycleLength: cycleLen,
+        avgPeriodLength: periodLen,
+      }),
+    [lastPeriod, selected, cycleLen, periodLen],
   );
+
+  const selectedCycleDay = useMemo(
+    () => cycleDayForDate(lastPeriod, selected, cycleLen),
+    [lastPeriod, selected, cycleLen],
+  );
+
+  const selectedMonth = useMemo(() => parseDateKey(selected), [selected]);
+
+  useEffect(() => {
+    setCursor({ y: selectedMonth.y, m: selectedMonth.m });
+  }, [selectedMonth.y, selectedMonth.m]);
+
+  const saveLastPeriod = async (iso: string) => {
+    setOnboardSaving(true);
+    setError(null);
+    try {
+      const data = await api.cycle.updateProfile({ lastPeriodStart: iso });
+      setBundle(data);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : ka.common.error);
+    } finally {
+      setOnboardSaving(false);
+    }
+  };
+
+  const pickDate = (date: string) => {
+    setSelected(date);
+  };
 
   if (user?.gender !== 'FEMALE') {
     return (
@@ -171,52 +188,206 @@ export default function CycleHome() {
   if (loading && !bundle) return <CycleLoading />;
 
   const marks = bundle?.predictions.calendar ?? {};
+  const selectedMark = marks[selected];
+  const today = todayKey();
+  const todayLog = bundle?.logs.find((l) => l.date === today);
+  const showPms =
+    Boolean(bundle) &&
+    selectedPhase.phase === 'luteal' &&
+    hasPmsPattern(bundle!);
 
   return (
     <CycleAtmosphere>
-      <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 110 }}
-        refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={load} tintColor={c.rose} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {error ? (
-          <Text style={{ color: c.danger, marginBottom: 12, fontWeight: '600' }}>{error}</Text>
-        ) : null}
+      <CycleOnboarding
+        visible={needsOnboarding}
+        saving={onboardSaving}
+        userName={user?.fullName}
+        onSave={saveLastPeriod}
+      />
 
-        <Animated.View entering={FadeInUp.duration(450)} style={{ alignItems: 'center', marginBottom: 22 }}>
+      <View style={{ flex: 1 }}>
+        {/* Sticky month bar — day strip scrolls below */}
+        <View
+          style={{
+            paddingTop: insets.top + 8,
+            paddingHorizontal: 12,
+            paddingBottom: 10,
+            backgroundColor: c.cream,
+            borderBottomWidth: 1,
+            borderBottomColor: c.border,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 88 }}>
+              <Pressable
+                onPress={() => router.back()}
+                hitSlop={10}
+                accessibilityLabel={ka.common.back}
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <ChevronLeft size={26} color={c.rose} strokeWidth={2.4} />
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/cycle/settings' as never)}
+                hitSlop={10}
+                accessibilityLabel={ka.cycle.settings}
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: c.roseSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.85 : 1,
+                })}
+              >
+                <Settings2 size={18} color={c.rose} strokeWidth={2.2} />
+              </Pressable>
+            </View>
+
+            <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 4 }}>
+              <Text
+                style={{
+                  color: c.ink,
+                  fontSize: 17,
+                  fontWeight: '800',
+                  letterSpacing: -0.3,
+                }}
+              >
+                {MONTHS_KA[selectedMonth.m]} {selectedMonth.y}
+              </Text>
+              <Text style={{ color: c.muted, fontSize: 11, marginTop: 2, fontWeight: '600' }}>
+                {ka.cycle.swipeDaysHint}
+              </Text>
+            </View>
+
+            <View style={{ width: 44, alignItems: 'flex-end' }}>
+              <Pressable
+                onPress={() => setCalendarOpen(true)}
+                hitSlop={10}
+                accessibilityLabel={ka.cycle.openFullCalendar}
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: c.card,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.85 : 1,
+                  ...cycleShadow.card,
+                })}
+              >
+                <CalendarDays size={18} color={c.rose} strokeWidth={2.2} />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={load} tintColor={c.rose} />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+        <CycleDayStrip
+          selected={selected}
+          onSelect={pickDate}
+          marks={marks}
+          onLongPress={(date) => {
+            if (date === today) {
+              setSelected(date);
+              setQuickLogOpen(true);
+            }
+          }}
+        />
+
+        {error ? (
           <Text
             style={{
-              color: c.muted,
-              fontSize: 13,
+              color: c.danger,
+              marginBottom: 8,
               fontWeight: '600',
-              marginBottom: 14,
-              textAlign: 'center',
+              paddingHorizontal: 20,
             }}
           >
-            {ka.cycle.subtitle}
+            {error}
           </Text>
-          <CycleRing
-            day={day}
-            cycleLength={cycleLen}
-            label={ka.cycle.cycleDay}
-            phaseHint={phase}
-          />
-        </Animated.View>
+        ) : null}
 
-        <CycleInsightsPanel
-          seed={
-            (bundle?.profile.aiInsights as never) ||
-            bundle?.localInsights ||
-            null
-          }
-        />
+        {bundle ? <CycleAlertsBanner bundle={bundle} /> : null}
+
+        <Pressable onPress={() => setQuickLogOpen(true)}>
+        <Animated.View
+          entering={FadeInUp.duration(420)}
+          style={{ marginHorizontal: 20, marginBottom: 16, marginTop: 4 }}
+        >
+          <LinearGradient
+            colors={[c.heroFrom, c.heroTo]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              borderRadius: 28,
+              paddingVertical: 18,
+              paddingHorizontal: 14,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: c.border,
+              ...cycleShadow.soft,
+            }}
+          >
+            <CycleRing
+              day={selectedCycleDay}
+              cycleLength={cycleLen}
+              label={ka.cycle.cycleDay}
+              phaseHint={selectedPhase.phaseKa}
+            />
+          </LinearGradient>
+          {selected === today ? (
+            <View
+              style={{
+                marginTop: 10,
+                alignSelf: 'center',
+                backgroundColor: todayLog ? `${c.success}22` : c.roseSoft,
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderRadius: 999,
+              }}
+            >
+              <Text style={{ color: todayLog ? c.success : c.rose, fontWeight: '700', fontSize: 12 }}>
+                {todayLog ? ka.cycle.quickLogDone : ka.cycle.quickLogTap}
+              </Text>
+            </View>
+          ) : null}
+        </Animated.View>
+        </Pressable>
+
+        {bundle ? (
+          <View style={{ paddingHorizontal: 20 }}>
+            <CycleDayInsights date={selected} bundle={bundle} mark={selectedMark} />
+          </View>
+        ) : null}
+
+        {showPms && bundle ? (
+          <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+            <CyclePmsHeatmap bundle={bundle} compact />
+          </View>
+        ) : null}
 
         {bundle?.profile.mode === 'PREGNANCY' && bundle.pregnancy?.age ? (
           <Pressable
             onPress={() => router.push('/cycle/pregnancy' as never)}
-            style={{ marginBottom: 16, borderRadius: 24, overflow: 'hidden' }}
+            style={{ marginHorizontal: 20, marginBottom: 16, borderRadius: 24, overflow: 'hidden' }}
           >
             <LinearGradient
               colors={[c.lavenderSoft, c.roseSoft]}
@@ -254,78 +425,19 @@ export default function CycleHome() {
           </Pressable>
         ) : null}
 
-        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-          <InsightChip
-            title={ka.cycle.nextPeriodShort}
-            value={
-              bundle?.predictions.nextPeriodStart
-                ? formatCycleDateKa(bundle.predictions.nextPeriodStart).replace(/ \d{4}$/, '')
-                : '—'
-            }
-            color={c.period}
-            delay={40}
-          />
-          <InsightChip
-            title={ka.cycle.ovulation}
-            value={
-              bundle?.predictions.ovulationDate
-                ? formatCycleDateKa(bundle.predictions.ovulationDate).replace(/ \d{4}$/, '')
-                : '—'
-            }
-            color={c.ovulation}
-            delay={80}
-          />
-          <InsightChip
-            title={ka.cycle.fertileShort}
-            value={
-              bundle?.predictions.fertileWindow
-                ? `${bundle.predictions.fertileWindow.start.slice(8)}–${bundle.predictions.fertileWindow.end.slice(8)}`
-                : '—'
-            }
-            color={c.fertile}
-            delay={120}
-          />
-        </View>
+        <View style={{ paddingHorizontal: 20 }}>
+          <Text
+            style={{
+              color: c.ink,
+              fontWeight: '800',
+              fontSize: 16,
+              marginBottom: 12,
+            }}
+          >
+            {ka.cycle.quickActions}
+          </Text>
 
-        <CycleCalendar
-          year={cursor.y}
-          month={cursor.m}
-          marks={marks}
-          selected={selected}
-          onSelect={(d) => {
-            setSelected(d);
-            Haptics.selectionAsync().catch(() => undefined);
-          }}
-          onPrev={() =>
-            setCursor((cur) => {
-              const m = cur.m - 1;
-              return m < 0 ? { y: cur.y - 1, m: 11 } : { y: cur.y, m };
-            })
-          }
-          onNext={() =>
-            setCursor((cur) => {
-              const m = cur.m + 1;
-              return m > 11 ? { y: cur.y + 1, m: 0 } : { y: cur.y, m };
-            })
-          }
-        />
-
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'center',
-            gap: 16,
-            marginTop: 14,
-            marginBottom: 6,
-          }}
-        >
-          <Legend dot={c.period} label={ka.cycle.legendPeriod} ink={c.muted} />
-          <Legend dot={c.fertile} label={ka.cycle.legendFertile} ink={c.muted} />
-          <Legend dot={c.ovulation} label={ka.cycle.legendOvulation} ink={c.muted} />
-        </View>
-
-        <View style={{ marginTop: 18 }}>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ gap: 10 }}>
             <CycleFeatureTile
               icon={CalendarHeart}
               title={ka.cycle.logToday}
@@ -344,119 +456,69 @@ export default function CycleHome() {
               delay={80}
               onPress={() => router.push('/cycle/summary' as never)}
             />
+            <CycleFeatureTile
+              icon={BarChart3}
+              title={ka.cycle.trendsTitle}
+              subtitle={ka.cycle.trendsOpen}
+              color={c.blushDeep}
+              delay={100}
+              onPress={() => router.push('/cycle/trends' as never)}
+            />
+            {bundle?.profile.mode === 'TRY_TO_CONCEIVE' ||
+            bundle?.profile.mode === 'PREGNANCY' ? (
+              <CycleFeatureTile
+                icon={Sparkles}
+                title={
+                  bundle.profile.mode === 'PREGNANCY' ? ka.cycle.pregnancy : ka.cycle.modeTtc
+                }
+                subtitle={ka.modules.cycle.subtitle}
+                color={c.blushDeep}
+                delay={120}
+                onPress={() => router.push('/cycle/pregnancy' as never)}
+              />
+            ) : null}
           </View>
-
-          {bundle?.profile.mode === 'TRY_TO_CONCEIVE' ||
-          bundle?.profile.mode === 'PREGNANCY' ? (
-            <View style={{ marginTop: 10 }}>
-              <CycleActionPanel>
-                <CycleActionRow
-                  icon={Sparkles}
-                  title={
-                    bundle.profile.mode === 'PREGNANCY' ? ka.cycle.pregnancy : ka.cycle.modeTtc
-                  }
-                  subtitle={ka.modules.cycle.subtitle}
-                  color={c.blushDeep}
-                  delay={120}
-                  last
-                  onPress={() => router.push('/cycle/pregnancy' as never)}
-                />
-              </CycleActionPanel>
-            </View>
-          ) : null}
         </View>
-
-        {!bundle?.profile.lastPeriodStart ? (
-          <View
-            style={{
-              marginTop: 22,
-              backgroundColor: c.roseSoft,
-              borderRadius: 20,
-              padding: 16,
-            }}
-          >
-            <Text style={{ color: c.rose, textAlign: 'center', lineHeight: 20, fontWeight: '600' }}>
-              {ka.cycle.emptyHint}
-            </Text>
-          </View>
-        ) : null}
-      </ScrollView>
-
-      <View style={{ position: 'absolute', right: 22, bottom: insets.bottom + 22 }}>
-        <CycleFab
-          onPress={() =>
-            router.push({ pathname: '/cycle/log', params: { date: todayKey() } } as never)
-          }
-        />
+        </ScrollView>
       </View>
-    </CycleAtmosphere>
-  );
-}
 
-function InsightChip({
-  title,
-  value,
-  color,
-  delay,
-}: {
-  title: string;
-  value: string;
-  color: string;
-  delay: number;
-}) {
-  const c = useCycleColors();
-  return (
-    <Animated.View
-      entering={FadeInUp.delay(delay).duration(400)}
-      style={{
-        flex: 1,
-        minWidth: 0,
-        backgroundColor: c.card,
-        borderRadius: 18,
-        paddingVertical: 12,
-        paddingHorizontal: 10,
-        borderWidth: 1,
-        borderColor: c.border,
-      }}
-    >
-      <View
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: color,
-          marginBottom: 8,
-        }}
+      <CycleCalendarSheet
+        visible={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        year={cursor.y}
+        month={cursor.m}
+        marks={marks}
+        selected={selected}
+        onSelect={pickDate}
+        onPrev={() =>
+          setCursor((cur) => {
+            const m = cur.m - 1;
+            return m < 0 ? { y: cur.y - 1, m: 11 } : { y: cur.y, m };
+          })
+        }
+        onNext={() =>
+          setCursor((cur) => {
+            const m = cur.m + 1;
+            return m > 11 ? { y: cur.y + 1, m: 0 } : { y: cur.y, m };
+          })
+        }
       />
-      <Text
-        style={{ color: c.muted, fontSize: 10, fontWeight: '700', lineHeight: 13 }}
-        numberOfLines={1}
-        ellipsizeMode="tail"
-      >
-        {title}
-      </Text>
-      <Text
-        style={{
-          color: c.ink,
-          fontWeight: '800',
-          marginTop: 4,
-          fontSize: 13,
-          lineHeight: 17,
-        }}
-        numberOfLines={1}
-        ellipsizeMode="tail"
-      >
-        {value}
-      </Text>
-    </Animated.View>
-  );
-}
 
-function Legend({ dot, label, ink }: { dot: string; label: string; ink: string }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dot }} />
-      <Text style={{ color: ink, fontSize: 11, fontWeight: '600' }}>{label}</Text>
-    </View>
+      {!needsOnboarding ? (
+        <View style={{ position: 'absolute', right: 18, bottom: insets.bottom + 20 }}>
+          <CycleFab
+            label={ka.cycle.logFab}
+            onPress={() => setQuickLogOpen(true)}
+          />
+        </View>
+      ) : null}
+
+      <CycleQuickLogSheet
+        visible={quickLogOpen}
+        date={selected}
+        onClose={() => setQuickLogOpen(false)}
+        onSaved={load}
+      />
+    </CycleAtmosphere>
   );
 }

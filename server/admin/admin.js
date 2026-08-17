@@ -49,6 +49,8 @@ const ICONS = {
   arrow: '<polyline points="9 18 15 12 9 6"/>',
   wallet: '<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>',
   link: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
+  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+  send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
 };
 
 function icon(name, size = '') {
@@ -227,7 +229,7 @@ function quotaCell(usage) {
   }
   const pct = usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
   const tone = pct >= 100 ? 'full' : pct >= 70 ? 'warn' : '';
-  return `<div class="quota"><span class="mono">${usage.used} / ${usage.limit}</span><div class="quota-track ${tone}"><span style="width:${pct}%"></span></div></div>`;
+  return `<div class="quota"><span class="mono">${usage.used} / ${usage.unlimited ? '∞' : usage.limit} <span class="muted">/ თვე</span></span><div class="quota-track ${tone}"><span style="width:${pct}%"></span></div></div>`;
 }
 
 function escapeHtml(value) {
@@ -356,12 +358,12 @@ async function boot() {
   try {
     const me = await apiRetry('/me');
     rememberAdmin(me.admin);
-    const tab = ['overview', 'users', 'packages', 'settings'].includes(state.tab) ? state.tab : 'overview';
+    const tab = ['overview', 'users', 'packages', 'push', 'settings'].includes(state.tab) ? state.tab : 'overview';
     await switchTab(tab);
   } catch (err) {
     if (err.status === 401 || err.status === 403) return;
     toast(err.message || 'სერვერთან კავშირი ვერ დამყარდა.', 'bad');
-    const tab = ['overview', 'users', 'packages', 'settings'].includes(state.tab) ? state.tab : 'overview';
+    const tab = ['overview', 'users', 'packages', 'push', 'settings'].includes(state.tab) ? state.tab : 'overview';
     try { await switchTab(tab); } catch { /* keep chrome visible */ }
   }
 }
@@ -398,7 +400,8 @@ async function switchTab(tab) {
   const copy = {
     overview: ['ოპერაციები', 'მიმოხილვა', 'რეალურ დროში — მომხმარებლები, პაკეტები და აპის რეჟიმი.'],
     users: ['რეესტრი', 'მომხმარებლები', 'ძებნა, სორტი, პაკეტის მინიჭება, ბლოკი და წაშლა. Ctrl/⌘+K — ძებნა.'],
-    packages: ['კომერცია', 'პაკეტები', 'FREE / STANDARD / ULTIMATE — ლიმიტები, ფასი და წვდომები.'],
+    packages: ['კომერცია', 'პაკეტები', 'ყველა გეგმა თვიურია — AI ლიმიტი 30-დღიან პერიოდში.'],
+    push: ['კომუნიკაცია', 'Push შეტყობინებები', 'გაუგზავნეთ broadcast მომხმარებლებს სეგმენტის მიხედვით.'],
     settings: ['კონტროლი', 'აპის რეჟიმი', 'Offline, იძულებითი განახლება და რეგისტრაციის კარიბჭე.'],
   };
   $('page-kicker').textContent = copy[tab][0];
@@ -408,6 +411,7 @@ async function switchTab(tab) {
   if (tab === 'overview') await renderOverview();
   if (tab === 'users') await renderUsers();
   if (tab === 'packages') await renderPackages();
+  if (tab === 'push') await renderPush();
   if (tab === 'settings') await renderSettings();
 }
 
@@ -617,7 +621,7 @@ async function renderUsers() {
             <th data-sort="fullName">მომხმარებელი</th>
             <th data-sort="email">კონტაქტი</th>
             <th data-sort="package">პაკეტი</th>
-            <th data-sort="used">დღიური ლიმიტი</th>
+            <th data-sort="used">თვიური ლიმიტი</th>
             <th data-sort="status">სტატუსი</th>
             <th data-sort="createdAt">რეგისტრაცია</th>
             <th>აქტივობა</th>
@@ -684,7 +688,7 @@ async function renderUsers() {
             <div class="line muted">${icon('phone')}<span>${escapeHtml(u.phone || 'ტელეფონი არ არის')}</span></div>
           </div>
         </td>
-        <td>${pkgBadge(u.package)}${u.packageExpiresAt ? `<div class="sub muted">ვადა ${fmtDateShort(u.packageExpiresAt)}</div>` : ''}</td>
+        <td>${pkgBadge(u.package)}${u.packageExpiresAt ? `<div class="sub muted">${u.packageStartedAt ? `${fmtDateShort(u.packageStartedAt)} → ` : ''}${fmtDateShort(u.packageExpiresAt)}</div>` : `<div class="sub muted">კალენდ. თვე</div>`}</td>
         <td>${quotaCell(u.usage)}</td>
         <td>${statusBadge(u.status)}</td>
         <td class="mono">${fmtDateShort(u.createdAt)}</td>
@@ -769,7 +773,15 @@ async function renderUsers() {
 }
 
 async function editUser(id) {
-  const { user } = await api(`/users/${id}`);
+  const [{ user }, { packages }] = await Promise.all([
+    api(`/users/${id}`),
+    api('/packages'),
+  ]);
+  const pkgOptions = packages.map((p) => {
+    const limitLabel = p.unlimited ? 'შეუზღუდავი' : `${p.monthlyAiLimit} / თვე`;
+    return `<option value="${p.code}" ${user.package?.code === p.code ? 'selected' : ''}>${p.code} — ${limitLabel}</option>`;
+  }).join('');
+  const isPaid = user.package?.code && user.package.code !== 'FREE';
   openDrawer(`
     <div class="card-head">${iconTile('user')}<p class="kicker" style="margin:0">პროფილი</p></div>
     <h3>${escapeHtml(user.fullName)}</h3>
@@ -781,7 +793,9 @@ async function editUser(id) {
       <div class="drawer-stat"><div class="label">რეგისტრაცია</div><strong>${fmtDateShort(user.createdAt)}</strong></div>
       <div class="drawer-stat"><div class="label">განახლდა</div><strong>${fmtDateShort(user.updatedAt)}</strong></div>
       <div class="drawer-stat"><div class="label">აქტივობა</div><strong>${user.counts.records} ჩან. · ${user.counts.chats} ჩატი · ${user.counts.medications} მედ.</strong></div>
-      <div class="drawer-stat"><div class="label">დღეს</div><strong>${user.usage?.unlimited ? '∞' : `${user.usage?.used ?? 0} / ${user.usage?.limit ?? '—'}`}</strong></div>
+      <div class="drawer-stat"><div class="label">თვიური AI</div><strong>${user.usage?.unlimited ? '∞' : `${user.usage?.used ?? 0} / ${user.usage?.limit ?? '—'}`}</strong></div>
+      <div class="drawer-stat"><div class="label">პერიოდი</div><strong>${user.usage?.periodStart ? `${fmtDateShort(user.usage.periodStart)} → ${fmtDateShort(user.usage.periodEnd)}` : '—'}</strong></div>
+      <div class="drawer-stat"><div class="label">გამოწერა</div><strong>${isPaid ? (user.packageStartedAt ? fmtDateShort(user.packageStartedAt) : '—') : 'უფასო'}</strong></div>
     </div>
 
     <div class="field"><span>სახელი</span><input id="edit-name" value="${escapeAttr(user.fullName)}" /></div>
@@ -793,28 +807,51 @@ async function editUser(id) {
         <option value="BLOCKED" ${user.status === 'BLOCKED' ? 'selected' : ''}>BLOCKED — დაბლოკილი</option>
       </select>
     </div>
-    <div class="field"><span>პაკეტი</span>
-      <select id="edit-package">
-        <option value="FREE" ${user.package?.code === 'FREE' ? 'selected' : ''}>FREE — 3 / დღე</option>
-        <option value="STANDARD" ${user.package?.code === 'STANDARD' ? 'selected' : ''}>STANDARD — 50 / დღე</option>
-        <option value="ULTIMATE" ${user.package?.code === 'ULTIMATE' ? 'selected' : ''}>ULTIMATE — შეუზღუდავი</option>
-      </select>
+    <div class="field"><span>თვიური პაკეტი</span>
+      <select id="edit-package">${pkgOptions}</select>
+      <p class="muted" style="margin:6px 0 0;font-size:12px">გადახდილი პაკეტის მინიჭება იწყებს ახალ 30-დღიან პერიოდს.</p>
+    </div>
+    <div class="field"><span>პაკეტის დაწყება</span>
+      <input id="edit-started" type="date" value="${toDateInput(user.packageStartedAt)}" ${isPaid ? '' : 'disabled'} />
     </div>
     <div class="field"><span>პაკეტის ვადა</span>
-      <input id="edit-expires" type="date" value="${toDateInput(user.packageExpiresAt)}" />
+      <input id="edit-expires" type="date" value="${toDateInput(user.packageExpiresAt)}" ${isPaid ? '' : 'disabled'} />
     </div>
     <div class="field"><span>ადმინ შენიშვნა</span>
       <textarea id="edit-note" rows="4">${escapeHtml(user.adminNote || '')}</textarea>
     </div>
     <div class="row">
+      ${isPaid ? `<button class="btn ghost" id="drawer-renew">${icon('calendar')} +30 დღე</button>` : ''}
       <button class="btn danger" id="drawer-del">${icon('x')} წაშლა</button>
       <button class="btn ghost" id="drawer-cancel">დახურვა</button>
       <button class="btn primary" id="drawer-save">${icon('check')} შენახვა</button>
     </div>
   `);
   $('drawer-cancel').onclick = closeDrawer;
+  $('edit-package').onchange = () => {
+    const code = $('edit-package').value;
+    const paid = code !== 'FREE';
+    $('edit-started').disabled = !paid;
+    $('edit-expires').disabled = !paid;
+    if (!paid) {
+      $('edit-started').value = '';
+      $('edit-expires').value = '';
+    }
+  };
+  const renewBtn = $('drawer-renew');
+  if (renewBtn) {
+    renewBtn.onclick = async () => {
+      if (!confirm('განახლდეს გამოწერა? AI ლიმიტის 30-დღიანი პერიოდი დაიწყება თავიდან.')) return;
+      await api(`/users/${id}/renew`, { method: 'POST' });
+      toast('გამოწერა განახლდა — ახალი 30-დღიანი პერიოდი');
+      closeDrawer();
+      await renderUsers();
+    };
+  }
   $('drawer-save').onclick = async () => {
     const expiresRaw = $('edit-expires').value.trim();
+    const startedRaw = $('edit-started').value.trim();
+    const packageCode = $('edit-package').value;
     await api(`/users/${id}`, {
       method: 'PATCH',
       body: {
@@ -822,7 +859,8 @@ async function editUser(id) {
         email: $('edit-email').value.trim(),
         phone: $('edit-phone').value.trim() || null,
         status: $('edit-status').value,
-        packageCode: $('edit-package').value,
+        packageCode,
+        packageStartedAt: startedRaw ? new Date(`${startedRaw}T00:00:00.000Z`).toISOString() : undefined,
         packageExpiresAt: expiresRaw ? new Date(`${expiresRaw}T23:59:59.000Z`).toISOString() : null,
         adminNote: $('edit-note').value.trim() || null,
       },
@@ -854,6 +892,9 @@ const FEATURE_LABELS = {
 async function renderPackages() {
   const { packages } = await api('/packages');
   $('tab-packages').innerHTML = `
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-head">${iconTile('calendar', 'std')}<div><h3>თვიური გამოწერა</h3><p class="muted" style="margin:2px 0 0;font-size:12px">ყველა გადახდილი პაკეტი — 30-დღიანი პერიოდი · AI ლიმიტი იხარჯება ამ პერიოდის განმავლობაში · უფასო — კალენდარული თვე</p></div></div>
+    </div>
     <div class="pkg-grid">
       ${packages.map((p) => `
         <article class="pkg">
@@ -864,7 +905,7 @@ async function renderPackages() {
           <h3>${escapeHtml(p.nameKa)}</h3>
           <p class="muted">${escapeHtml(p.descriptionKa)}</p>
           <div class="price">${p.priceGel.toFixed(2)} <span>GEL / თვე</span></div>
-          <p class="mono">AI დღეში: ${p.unlimited ? 'შეუზღუდავი' : p.dailyAiLimit} · ${p.userCount} მომხმარებელი</p>
+          <p class="mono">AI თვეში: ${p.unlimited ? 'შეუზღუდავი' : p.monthlyAiLimit} · ${p.userCount} მომხმარებელი</p>
           <div class="feat">
             ${Object.entries(FEATURE_LABELS).map(([key, label]) => {
               const on = Boolean(p.features?.[key]);
@@ -883,7 +924,8 @@ async function renderPackages() {
         <thead><tr><th>ფუნქცია</th>${packages.map((p) => `<th>${p.code}</th>`).join('')}</tr></thead>
         <tbody>
           <tr><td>ფასი</td>${packages.map((p) => `<td class="mono">${p.priceGel.toFixed(2)} ₾</td>`).join('')}</tr>
-          <tr><td>დღიური AI</td>${packages.map((p) => `<td class="mono">${p.unlimited ? '∞' : p.dailyAiLimit}</td>`).join('')}</tr>
+          <tr><td>თვიური AI</td>${packages.map((p) => `<td class="mono">${p.unlimited ? '∞' : p.monthlyAiLimit}</td>`).join('')}</tr>
+          <tr><td>გამოწერა</td>${packages.map(() => `<td class="mono">30 დღე</td>`).join('')}</tr>
           ${Object.entries(FEATURE_LABELS).map(([key, label]) => `
             <tr><td>${label}</td>${packages.map((p) => `<td>${p.features?.[key] ? '✓' : '—'}</td>`).join('')}</tr>
           `).join('')}
@@ -903,7 +945,7 @@ function editPackage(pkg) {
     <div class="field"><span>სახელი (KA)</span><input id="pkg-name-ka" value="${escapeAttr(pkg.nameKa)}" /></div>
     <div class="field"><span>სახელი (EN)</span><input id="pkg-name-en" value="${escapeAttr(pkg.nameEn)}" /></div>
     <div class="field"><span>აღწერა</span><textarea id="pkg-desc" rows="3">${escapeHtml(pkg.descriptionKa)}</textarea></div>
-    <div class="field"><span>დღიური AI ლიმიტი (-1 = შეუზღუდავი)</span><input id="pkg-limit" type="number" value="${pkg.dailyAiLimit}" /></div>
+    <div class="field"><span>თვიური AI ლიმიტი (-1 = შეუზღუდავი)</span><input id="pkg-limit" type="number" value="${pkg.monthlyAiLimit}" /></div>
     <div class="field"><span>ფასი (₾)</span><input id="pkg-price" type="number" step="0.01" value="${pkg.priceGel}" /></div>
     <label class="toggle" style="border:0;padding:8px 0">
       <div><strong>აქტიური პაკეტი</strong><p>გამორთვისას ახალ მომხმარებელს აღარ მიენიჭება</p></div>
@@ -922,7 +964,7 @@ function editPackage(pkg) {
         nameKa: $('pkg-name-ka').value.trim(),
         nameEn: $('pkg-name-en').value.trim(),
         descriptionKa: $('pkg-desc').value.trim(),
-        dailyAiLimit: Number($('pkg-limit').value),
+        monthlyAiLimit: Number($('pkg-limit').value),
         priceGel: Number($('pkg-price').value),
         active: $('pkg-active').checked,
       },
@@ -930,6 +972,142 @@ function editPackage(pkg) {
     toast('პაკეტი განახლდა');
     closeDrawer();
     await renderPackages();
+  };
+}
+
+async function renderPush() {
+  const [{ activeDevices, subscribedUsers, recentCampaigns }, { campaigns }] = await Promise.all([
+    api('/push/stats'),
+    api('/push/campaigns'),
+  ]);
+
+  const SEGMENTS = {
+    ALL: 'ყველა მოწყობილობა',
+    ACTIVE: 'აქტიური მომხმარებლები',
+    FREE: 'უფასო პაკეტი',
+    STANDARD: 'STANDARD',
+    ULTIMATE: 'ULTIMATE',
+  };
+
+  function campaignStatus(c) {
+    if (c.status === 'SENT') return '<span class="badge ok">გაგზავნილი</span>';
+    if (c.status === 'FAILED') return '<span class="badge bad">შეცდომა</span>';
+    if (c.status === 'SENDING') return '<span class="badge std">იგზავნება</span>';
+    return `<span class="badge neutral">${escapeHtml(c.status)}</span>`;
+  }
+
+  $('tab-push').innerHTML = `
+    <div class="metrics">
+      <article class="metric">
+        <div class="metric-top">
+          <div>
+            <div class="label">Push მოწყობილობები</div>
+            <div class="value">${activeDevices}</div>
+          </div>
+          ${iconTile('bell', 'ok')}
+        </div>
+        <div class="hint">აქტიური Expo push token-ები</div>
+      </article>
+      <article class="metric">
+        <div class="metric-top">
+          <div>
+            <div class="label">მომხმარებლები push-ით</div>
+            <div class="value">${subscribedUsers}</div>
+          </div>
+          ${iconTile('users', 'std')}
+        </div>
+        <div class="hint">უნიკალური ანგარიშები შეტყობინებებით</div>
+      </article>
+      <article class="metric">
+        <div class="metric-top">
+          <div>
+            <div class="label">კამპანიები</div>
+            <div class="value">${campaigns.length}</div>
+          </div>
+          ${iconTile('send', 'ult')}
+        </div>
+        <div class="hint">ბოლო 50 broadcast</div>
+      </article>
+    </div>
+
+    <div class="dash-grid">
+      <div class="card">
+        <div class="card-head">${iconTile('send')}<div><h3>ახალი შეტყობინება</h3><p class="muted" style="margin:2px 0 0;font-size:12px">Broadcast Expo Push — მომენტალურად</p></div></div>
+        <div class="field"><span>სათაური</span><input id="push-title" maxlength="120" placeholder="Medicard.GE" /></div>
+        <div class="field"><span>ტექსტი</span><textarea id="push-body" rows="4" maxlength="500" placeholder="შეტყობინების ტექსტი..."></textarea></div>
+        <div class="field"><span>სეგმენტი</span>
+          <select id="push-segment">
+            ${Object.entries(SEGMENTS).map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="row" style="justify-content:flex-start;margin-top:4px">
+          <button class="btn primary" id="push-send">${icon('send')} გაგზავნა</button>
+        </div>
+        <p class="muted" style="margin:10px 0 0;font-size:12px">გადახდილი პაკეტის სეგმენტი ითვალისწინებს ვადის გასვლას — ვადაგასული STANDARD/ULTIMATE → FREE.</p>
+      </div>
+      <div class="card">
+        <div class="card-head">${iconTile('activity')}<h3>ბოლო კამპანიები</h3></div>
+        <div class="detail-list">
+          ${recentCampaigns.length ? recentCampaigns.map((c) => `
+            <div class="detail">
+              <span>${icon('bell')} ${escapeHtml(c.title)}</span>
+              <strong>${c.sentCount}/${c.targetCount}</strong>
+            </div>
+          `).join('') : '<p class="muted">ჯერ არ გაგზავნილა.</p>'}
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px;overflow:auto">
+      <div class="card-head">${iconTile('bell')}<h3>ისტორია</h3></div>
+      <table>
+        <thead>
+          <tr>
+            <th>დრო</th>
+            <th>სათაური</th>
+            <th>სეგმენტი</th>
+            <th>სტატუსი</th>
+            <th>მიწოდება</th>
+            <th>ადმინი</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${campaigns.length ? campaigns.map((c) => `
+            <tr>
+              <td class="mono">${fmtDate(c.sentAt || c.createdAt)}</td>
+              <td><strong>${escapeHtml(c.title)}</strong><div class="sub muted">${escapeHtml(c.body.slice(0, 80))}${c.body.length > 80 ? '…' : ''}</div></td>
+              <td><span class="badge neutral">${SEGMENTS[c.segment] || c.segment}</span></td>
+              <td>${campaignStatus(c)}</td>
+              <td class="mono">${c.sentCount} ✓ · ${c.failedCount} ✗ / ${c.targetCount}</td>
+              <td class="muted">${escapeHtml(c.createdBy?.fullName || c.createdBy?.email || '—')}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="6" class="muted">კამპანიები ჯერ არ არის.</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  $('push-send').onclick = async () => {
+    const title = $('push-title').value.trim();
+    const body = $('push-body').value.trim();
+    const segment = $('push-segment').value;
+    if (!title || !body) {
+      toast('სათაური და ტექსტი სავალდებულოა', 'bad');
+      return;
+    }
+    if (!confirm(`გავუგზავნოთ „${title}" სეგმენტს: ${SEGMENTS[segment]}?`)) return;
+    $('push-send').disabled = true;
+    try {
+      const result = await api('/push/campaigns', {
+        method: 'POST',
+        body: { title, body, segment },
+      });
+      toast(`გაგზავნილია ${result.delivery?.sent ?? result.campaign?.sentCount ?? 0} მოწყობილობაზე`);
+      await renderPush();
+    } catch (err) {
+      toast(err.message || 'გაგზავნა ვერ მოხერხდა', 'bad');
+      $('push-send').disabled = false;
+    }
   };
 }
 

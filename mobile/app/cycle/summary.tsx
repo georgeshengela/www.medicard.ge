@@ -1,20 +1,26 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MessageSquareText, Sparkles } from 'lucide-react-native';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { BarChart3, FileDown, MessageSquareText, Sparkles } from 'lucide-react-native';
+import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
 import { FLOW_OPTIONS, MOOD_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
 import {
   CycleAtmosphere,
   CycleCard,
   CycleLoading,
+  CyclePrimaryButton,
   CycleSection,
+  formatCycleDateKa,
   cycleNavHeader,
 } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import { api, ApiError, type CycleBundle } from '@/lib/api';
+import { buildCycleReportHtml } from '@/lib/cycleReport';
 import { cycleShadow, useCycleColors } from '@/theme/cycle';
 
 function labelOf(id: string, lists: { id: string; label: string }[][]) {
@@ -33,6 +39,7 @@ export default function CycleSummary() {
   const [bundle, setBundle] = useState<CycleBundle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions(cycleNavHeader(c, ka.cycle.summary));
@@ -50,14 +57,17 @@ export default function CycleSummary() {
 
   const s = bundle?.summary;
 
+  const fmt = (iso: string | null | undefined) =>
+    iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? formatCycleDateKa(iso) : '—';
+
   const context = s
     ? [
         'ციკლის შეჯამება (Medicard):',
         `რეჟიმი: ${s.mode}`,
         `საშუალო ციკლი: ${s.avgCycleLength} დღე, მენსტრუაცია: ${s.avgPeriodLength} დღე`,
         s.isIrregular ? 'არარეგულარული ციკლი' : 'რეგულარული ციკლი',
-        `შემდეგი მენსტრუაცია: ${s.nextPeriodStart ?? '—'}`,
-        `ოვულაცია: ${s.ovulationDate ?? '—'}`,
+        `შემდეგი მენსტრუაცია: ${fmt(s.nextPeriodStart)}`,
+        `ოვულაცია: ${fmt(s.ovulationDate)}`,
         `ტოპ სიმპტომები: ${
           s.topSymptoms
             .map((t) => `${labelOf(t.key, [PHYSICAL_SYMPTOMS, FLOW_OPTIONS])} (${t.count})`)
@@ -68,6 +78,24 @@ export default function CycleSummary() {
         }`,
       ].join('\n')
     : '';
+
+  const sharePdf = async () => {
+    if (!bundle) return;
+    setPdfBusy(true);
+    try {
+      const html = buildCycleReportHtml(bundle);
+      if (Platform.OS === 'web') {
+        await Share.share({ message: html.replace(/<[^>]+>/g, ' ').slice(0, 4000) });
+        return;
+      }
+      const { uri } = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
+      }
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   return (
     <CycleAtmosphere>
@@ -120,8 +148,8 @@ export default function CycleSummary() {
               <CycleCard>
                 <Line c={c} k={ka.cycle.avgCycle} v={`${s.avgCycleLength} დღე`} />
                 <Line c={c} k={ka.cycle.avgPeriod} v={`${s.avgPeriodLength} დღე`} />
-                <Line c={c} k={ka.cycle.nextPeriod} v={s.nextPeriodStart ?? '—'} />
-                <Line c={c} k={ka.cycle.ovulation} v={s.ovulationDate ?? '—'} last />
+                <Line c={c} k={ka.cycle.nextPeriod} v={fmt(s.nextPeriodStart)} />
+                <Line c={c} k={ka.cycle.ovulation} v={fmt(s.ovulationDate)} last />
               </CycleCard>
             </CycleSection>
 
@@ -163,53 +191,46 @@ export default function CycleSummary() {
               </CycleCard>
             </CycleSection>
 
-            <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: '/chat/doctor',
-                  params: { prefill: context },
-                } as never)
-              }
-              accessibilityRole="button"
-              accessibilityLabel={ka.cycle.openChat}
-              style={({ pressed }) => ({
-                marginTop: 8,
-                borderRadius: 18,
-                overflow: 'hidden',
-                minHeight: 56,
-                opacity: pressed ? 0.92 : 1,
-                ...cycleShadow.soft,
-              })}
-            >
-              <LinearGradient
-                colors={[c.blushDeep, c.rose]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+            {bundle ? (
+              <CycleSection title={ka.cycle.pmsPattern} delay={120}>
+                <CyclePmsHeatmap bundle={bundle} />
+              </CycleSection>
+            ) : null}
+
+            <View style={{ marginTop: 8, gap: 10 }}>
+              <CyclePrimaryButton
+                label={pdfBusy ? ka.cycle.pdfGenerating : ka.cycle.pdfShare}
+                onPress={sharePdf}
+                icon={FileDown}
+                disabled={pdfBusy}
+              />
+              <Pressable
+                onPress={() => router.push('/cycle/trends' as never)}
                 style={{
-                  minHeight: 56,
-                  paddingVertical: 15,
-                  paddingHorizontal: 16,
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  paddingVertical: 14,
+                  borderRadius: 18,
+                  backgroundColor: c.lavenderSoft,
                 }}
               >
-                <MessageSquareText size={20} color="#fff" />
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    color: '#fff',
-                    fontWeight: '700',
-                    fontSize: 15,
-                    marginLeft: 10,
-                    flexShrink: 1,
-                    includeFontPadding: false,
-                  }}
-                >
-                  {ka.cycle.openChat}
+                <BarChart3 size={18} color={c.lavender} />
+                <Text style={{ color: c.ink, fontWeight: '700', marginLeft: 8 }}>
+                  {ka.cycle.trendsOpen}
                 </Text>
-              </LinearGradient>
-            </Pressable>
+              </Pressable>
+              <CyclePrimaryButton
+                label={ka.cycle.openChat}
+                onPress={() =>
+                  router.push({
+                    pathname: '/chat/doctor',
+                    params: { prefill: context },
+                  } as never)
+                }
+                icon={MessageSquareText}
+              />
+            </View>
           </>
         ) : null}
       </ScrollView>

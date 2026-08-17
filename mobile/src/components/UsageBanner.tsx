@@ -7,7 +7,7 @@ import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 
 /**
- * Daily AI quota strip. Handles FREE / STANDARD caps and ULTIMATE (unlimited).
+ * Monthly AI quota strip. Handles FREE calendar month and paid 30-day subscriptions.
  */
 export function UsageBanner({ compact = false }: { compact?: boolean }) {
   const { usage, user } = useAuth();
@@ -18,12 +18,14 @@ export function UsageBanner({ compact = false }: { compact?: boolean }) {
   const exhausted = !unlimited && usage.remaining === 0;
   const packageCode = user?.package?.code ?? 'FREE';
   const pipCount = unlimited ? 0 : Math.min(Math.max(usage.limit, 0), 8);
+  const prefix =
+    usage.periodType === 'subscription' ? ka.usage.subscriptionPrefix : ka.usage.bannerPrefix;
 
   const label = exhausted
     ? ka.usage.exhaustedTitle
     : unlimited
       ? ka.usage.unlimitedBanner
-      : `${ka.usage.bannerPrefix}: ${usage.remaining}/${usage.limit} ${ka.usage.queries}`;
+      : `${prefix}: ${usage.remaining}/${usage.limit} ${ka.usage.queries}`;
 
   return (
     <View

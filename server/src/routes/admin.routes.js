@@ -4,9 +4,11 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
-import { publicPackage } from '../lib/packages.js';
+import { publicPackage, buildPackageAssignment } from '../lib/packages.js';
+import { renewSubscriptionDates } from '../lib/billing.js';
 import { getAppSettings, publicAppSettings } from '../lib/settings.js';
 import { getUsage } from '../lib/usage.js';
+import { getPushStats, resolveSegmentTokens, sendExpoPush } from '../lib/push.js';
 import { toDateOnly, calculateAge } from '../lib/patient.js';
 import { asyncHandler } from '../middleware/error.js';
 import { requireAdmin } from '../middleware/adminAuth.js';
@@ -32,6 +34,7 @@ function adminUserRow(user, usage) {
     status: user.status,
     adminNote: user.adminNote,
     package: publicPackage(user.package),
+    packageStartedAt: user.packageStartedAt,
     packageExpiresAt: user.packageExpiresAt,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
@@ -192,9 +195,16 @@ adminRouter.patch(
         status: z.enum(['ACTIVE', 'BLOCKED']).optional(),
         adminNote: z.string().max(2000).nullable().optional(),
         packageCode: z.enum(['FREE', 'STANDARD', 'ULTIMATE']).optional(),
+        packageStartedAt: z.string().datetime().nullable().optional(),
         packageExpiresAt: z.string().datetime().nullable().optional(),
       })
       .parse(req.body);
+
+    const existing = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      include: { package: true },
+    });
+    if (!existing) return res.status(404).json({ error: 'მომხმარებელი ვერ მოიძებნა.' });
 
     const data = {};
     if (body.fullName !== undefined) data.fullName = body.fullName;
@@ -202,27 +212,26 @@ adminRouter.patch(
     if (body.phone !== undefined) data.phone = body.phone;
     if (body.status !== undefined) data.status = body.status;
     if (body.adminNote !== undefined) data.adminNote = body.adminNote;
-    if (body.packageExpiresAt !== undefined) {
-      data.packageExpiresAt = body.packageExpiresAt ? new Date(body.packageExpiresAt) : null;
-    }
+
     if (body.packageCode) {
       const pkg = await prisma.package.findUnique({ where: { code: body.packageCode } });
       if (!pkg) return res.status(400).json({ error: 'პაკეტი ვერ მოიძებნა.' });
       data.packageId = pkg.id;
-    }
-
-    // Past expiry would silently keep FREE metering after a paid upgrade.
-    const nextExpires =
-      data.packageExpiresAt !== undefined
-        ? data.packageExpiresAt
-        : undefined;
-    if (
-      body.packageCode &&
-      body.packageCode !== 'FREE' &&
-      nextExpires instanceof Date &&
-      nextExpires.getTime() < Date.now()
-    ) {
-      data.packageExpiresAt = null;
+      Object.assign(
+        data,
+        buildPackageAssignment({
+          packageCode: body.packageCode,
+          packageStartedAt: body.packageStartedAt,
+          packageExpiresAt: body.packageExpiresAt,
+        }),
+      );
+    } else {
+      if (body.packageStartedAt !== undefined) {
+        data.packageStartedAt = body.packageStartedAt ? new Date(body.packageStartedAt) : null;
+      }
+      if (body.packageExpiresAt !== undefined) {
+        data.packageExpiresAt = body.packageExpiresAt ? new Date(body.packageExpiresAt) : null;
+      }
     }
 
     try {
@@ -294,6 +303,33 @@ adminRouter.get(
   }),
 );
 
+adminRouter.post(
+  '/users/:id/renew',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      include: { package: true },
+    });
+    if (!user) return res.status(404).json({ error: 'მომხმარებელი ვერ მოიძებნა.' });
+    if (!user.package || user.package.code === 'FREE') {
+      return res.status(400).json({ error: 'განახლება მხოლოდ გადახდილი პაკეტისთვისაა.' });
+    }
+
+    const dates = renewSubscriptionDates(user);
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: dates,
+      include: {
+        package: true,
+        _count: { select: { records: true, chats: true, medications: true } },
+      },
+    });
+
+    res.json({ user: adminUserRow(updated, await getUsage(updated.id)) });
+  }),
+);
+
 adminRouter.patch(
   '/packages/:code',
   requireAdmin,
@@ -304,6 +340,7 @@ adminRouter.patch(
         nameKa: z.string().min(1).max(80).optional(),
         nameEn: z.string().min(1).max(80).optional(),
         descriptionKa: z.string().min(1).max(500).optional(),
+        monthlyAiLimit: z.number().int().min(-1).max(1_000_000).optional(),
         dailyAiLimit: z.number().int().min(-1).max(100_000).optional(),
         priceGel: z.number().min(0).max(10_000).optional(),
         features: z.record(z.string(), z.boolean()).optional(),
@@ -349,5 +386,83 @@ adminRouter.patch(
       update: body,
     });
     res.json({ settings: publicAppSettings(settings) });
+  }),
+);
+
+adminRouter.get(
+  '/push/stats',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json(await getPushStats());
+  }),
+);
+
+adminRouter.get(
+  '/push/campaigns',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const campaigns = await prisma.pushCampaign.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: { createdBy: { select: { email: true, fullName: true } } },
+    });
+    res.json({ campaigns });
+  }),
+);
+
+adminRouter.post(
+  '/push/campaigns',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        title: z.string().trim().min(1).max(120),
+        body: z.string().trim().min(1).max(500),
+        segment: z.enum(['ALL', 'ACTIVE', 'FREE', 'STANDARD', 'ULTIMATE']).default('ALL'),
+        data: z.record(z.string(), z.string()).optional(),
+      })
+      .parse(req.body);
+
+    const tokens = await resolveSegmentTokens(body.segment);
+    const campaign = await prisma.pushCampaign.create({
+      data: {
+        title: body.title,
+        body: body.body,
+        data: body.data ?? {},
+        segment: body.segment,
+        status: 'SENDING',
+        targetCount: tokens.length,
+        createdById: req.admin.id,
+      },
+    });
+
+    if (!tokens.length) {
+      const failed = await prisma.pushCampaign.update({
+        where: { id: campaign.id },
+        data: { status: 'FAILED', failedCount: 0, sentAt: new Date() },
+      });
+      return res.status(422).json({
+        error: 'ამ სეგმენტში აქტიური push მოწყობილობა არ მოიძებნა.',
+        campaign: failed,
+      });
+    }
+
+    const result = await sendExpoPush(tokens, {
+      title: body.title,
+      body: body.body,
+      data: { ...(body.data ?? {}), campaignId: campaign.id },
+    });
+
+    const saved = await prisma.pushCampaign.update({
+      where: { id: campaign.id },
+      data: {
+        status: result.failed && !result.sent ? 'FAILED' : 'SENT',
+        sentCount: result.sent,
+        failedCount: result.failed,
+        sentAt: new Date(),
+      },
+    });
+
+    res.status(201).json({ campaign: saved, delivery: result });
   }),
 );

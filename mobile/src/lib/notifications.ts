@@ -1,10 +1,19 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
+import { api } from './api';
 import type { ScheduledDose } from './api';
 
-const CHANNEL_ID = 'medication-reminders';
+export const MED_CHANNEL_ID = 'medication-reminders';
+export const CYCLE_CHANNEL_ID = 'cycle-reminders';
+export const PUSH_CHANNEL_ID = 'medicard-push';
+
+export const NOTIF_PREFIX = {
+  med: 'med:',
+  cycle: 'cycle:',
+} as const;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -25,10 +34,24 @@ export async function requestNotificationPermission(): Promise<boolean> {
   if (status !== 'granted') return false;
 
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+    await Notifications.setNotificationChannelAsync(MED_CHANNEL_ID, {
       name: 'მედიკამენტების შეხსენებები',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#26A69A',
+      sound: 'default',
+    });
+    await Notifications.setNotificationChannelAsync(CYCLE_CHANNEL_ID, {
+      name: 'ციკლის შეხსენებები',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      vibrationPattern: [0, 180, 120, 180],
+      lightColor: '#E91E63',
+      sound: 'default',
+    });
+    await Notifications.setNotificationChannelAsync(PUSH_CHANNEL_ID, {
+      name: 'Medicard შეტყობინებები',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 220, 120, 220],
       lightColor: '#26A69A',
       sound: 'default',
     });
@@ -37,36 +60,68 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return true;
 }
 
+/** Registers the device for admin broadcast push via Expo Push Service. */
+export async function registerPushTokenWithServer(): Promise<boolean> {
+  const granted = await requestNotificationPermission();
+  if (!granted || !Device.isDevice) return false;
+
+  try {
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId ??
+      undefined;
+    const tokenResult = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined,
+    );
+    const token = tokenResult.data;
+    if (!token?.startsWith('ExponentPushToken')) return false;
+
+    const platform =
+      Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+    await api.push.register({ token, platform });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function cancelNotificationsByPrefix(prefix: string): Promise<void> {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    scheduled
+      .filter((n) => n.identifier?.startsWith(prefix))
+      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+  );
+}
+
 /**
- * Rewrites the full set of daily repeating reminders.
- *
- * We cancel and re-create rather than diffing: the schedule is small (at most a few
- * dozen doses) and a full rewrite is the only way to stay consistent with the server
- * after an edit, a pause or a delete.
+ * Rewrites medication daily reminders without touching cycle:* notifications.
  */
 export async function syncMedicationReminders(schedule: ScheduledDose[]): Promise<number> {
   const granted = await requestNotificationPermission();
   if (!granted) return 0;
 
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  await cancelNotificationsByPrefix(NOTIF_PREFIX.med);
 
   let scheduled = 0;
   for (const dose of schedule) {
     const [hour, minute] = dose.time.split(':').map(Number);
     if (Number.isNaN(hour) || Number.isNaN(minute)) continue;
 
+    const identifier = `${NOTIF_PREFIX.med}${dose.medicationId}:${dose.time}`;
     await Notifications.scheduleNotificationAsync({
+      identifier,
       content: {
         title: `${ka.meds.reminderTitle}: ${dose.medName}`,
         body: dose.notes ? `${dose.dosage} · ${dose.notes}` : dose.dosage,
         sound: 'default',
-        data: { medicationId: dose.medicationId, time: dose.time },
+        data: { type: 'medication', medicationId: dose.medicationId, time: dose.time },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
         minute,
-        ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
+        ...(Platform.OS === 'android' ? { channelId: MED_CHANNEL_ID } : {}),
       },
     });
     scheduled += 1;
@@ -77,4 +132,72 @@ export async function syncMedicationReminders(schedule: ScheduledDose[]): Promis
 
 export async function cancelAllReminders(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
+}
+
+export async function cancelCycleReminders(): Promise<void> {
+  await cancelNotificationsByPrefix(NOTIF_PREFIX.cycle);
+}
+
+type ScheduleCycleOpts = {
+  identifier: string;
+  title: string;
+  body: string;
+  date: Date;
+  data?: Record<string, unknown>;
+};
+
+/** Schedule a one-time cycle notification at a specific local date/time. */
+export async function scheduleCycleDateNotification(opts: ScheduleCycleOpts): Promise<boolean> {
+  const granted = await requestNotificationPermission();
+  if (!granted) return false;
+
+  const now = Date.now();
+  if (opts.date.getTime() <= now) return false;
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: `${NOTIF_PREFIX.cycle}${opts.identifier}`,
+    content: {
+      title: opts.title,
+      body: opts.body,
+      sound: 'default',
+      data: { type: 'cycle_reminder', ...(opts.data ?? {}) },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: opts.date,
+      ...(Platform.OS === 'android' ? { channelId: CYCLE_CHANNEL_ID } : {}),
+    },
+  });
+
+  return true;
+}
+
+/** One-off cycle wellness reminder (water, breathing, walk, etc.). */
+export async function scheduleCycleReminder(opts: {
+  title: string;
+  body: string;
+  minutesFromNow: number;
+}): Promise<boolean> {
+  const granted = await requestNotificationPermission();
+  if (!granted) return false;
+
+  const seconds = Math.max(60, Math.round(opts.minutesFromNow * 60));
+  const identifier = `${NOTIF_PREFIX.cycle}tip:${Date.now()}`;
+
+  await Notifications.scheduleNotificationAsync({
+    identifier,
+    content: {
+      title: opts.title,
+      body: opts.body,
+      sound: 'default',
+      data: { type: 'cycle_tip' },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds,
+      ...(Platform.OS === 'android' ? { channelId: CYCLE_CHANNEL_ID } : {}),
+    },
+  });
+
+  return true;
 }

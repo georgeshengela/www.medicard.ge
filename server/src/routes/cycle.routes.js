@@ -8,6 +8,8 @@ import {
   buildDoctorSummary,
   buildPredictions,
   buildCycleAiUserPrompt,
+  buildCycleTrends,
+  buildCycleAlerts,
   buildLocalInsights,
   fetalInsightForWeek,
   gestationalAge,
@@ -116,6 +118,8 @@ async function loadBundle(userId) {
       ...profile,
       lastPeriodStart,
       dueDate: due,
+      conditions: Array.isArray(profile.conditions) ? profile.conditions.map(String) : [],
+      reminderPrefs: profile.reminderPrefs ?? null,
       aiInsights: profile.aiInsights ?? null,
       aiInsightsAt: profile.aiInsightsAt ?? null,
     },
@@ -137,6 +141,17 @@ async function loadBundle(userId) {
       logs: shapedLogs,
       predictions,
       pregnancy,
+    }),
+    trends: buildCycleTrends({
+      profile: { ...profile, lastPeriodStart },
+      logs: shapedLogs,
+      inferred,
+    }),
+    alerts: buildCycleAlerts({
+      profile: { ...profile, lastPeriodStart },
+      logs: shapedLogs,
+      predictions,
+      inferred,
     }),
   };
 }
@@ -164,6 +179,16 @@ cycleRouter.patch(
         dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
         privacyEnabled: z.boolean().optional(),
         enablePartnerShare: z.boolean().optional(),
+        conditions: z.array(z.enum(['pcos', 'endometriosis', 'perimenopause'])).optional(),
+        reminderPrefs: z
+          .object({
+            enabled: z.boolean().optional(),
+            periodDaysBefore: z.number().int().min(0).max(5).optional(),
+            ovulation: z.boolean().optional(),
+            dailyLog: z.boolean().optional(),
+            pms: z.boolean().optional(),
+          })
+          .optional(),
       })
       .parse(req.body);
 
@@ -187,6 +212,8 @@ cycleRouter.patch(
     if (body.enablePartnerShare === false) {
       data.partnerShareCode = null;
     }
+    if (body.conditions !== undefined) data.conditions = body.conditions;
+    if (body.reminderPrefs !== undefined) data.reminderPrefs = body.reminderPrefs;
 
     await getOrCreateProfile(req.user.id);
     await prisma.cycleProfile.update({

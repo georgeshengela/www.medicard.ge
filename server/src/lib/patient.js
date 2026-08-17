@@ -68,6 +68,7 @@ export function toDateOnly(birthDate) {
 
 /** The user shape safe to return over the wire — never includes the password hash. */
 export function publicUser(user) {
+  const monthlyAiLimit = user.package.monthlyAiLimit ?? user.package.dailyAiLimit * 30;
   const pkg = user.package
     ? {
         id: user.package.id,
@@ -75,9 +76,11 @@ export function publicUser(user) {
         nameKa: user.package.nameKa,
         nameEn: user.package.nameEn,
         descriptionKa: user.package.descriptionKa,
+        monthlyAiLimit,
         dailyAiLimit: user.package.dailyAiLimit,
-        unlimited: user.package.dailyAiLimit < 0,
+        unlimited: monthlyAiLimit < 0,
         priceGel: user.package.priceGel,
+        billingPeriod: 'monthly',
         features: user.package.features ?? {},
       }
     : null;
@@ -92,6 +95,7 @@ export function publicUser(user) {
     age: calculateAge(user.birthDate),
     status: user.status ?? 'ACTIVE',
     package: pkg,
+    packageStartedAt: user.packageStartedAt ?? null,
     packageExpiresAt: user.packageExpiresAt ?? null,
     createdAt: user.createdAt,
   };

@@ -37,6 +37,12 @@ export const API_BASE_URL = resolveBaseUrl();
 
 export type Usage = {
   date: string;
+  periodKey?: string;
+  periodType?: 'subscription' | 'calendar';
+  periodLabel?: string;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  billingPeriod?: 'monthly';
   used: number;
   limit: number;
   remaining: number;
@@ -53,9 +59,11 @@ export type UserPackage = {
   nameKa: string;
   nameEn: string;
   descriptionKa: string;
+  monthlyAiLimit: number;
   dailyAiLimit: number;
   unlimited: boolean;
   priceGel: number;
+  billingPeriod: 'monthly';
   features: Record<string, boolean>;
 };
 
@@ -70,6 +78,7 @@ export type User = {
   age: number | null;
   status?: 'ACTIVE' | 'BLOCKED';
   package?: UserPackage | null;
+  packageStartedAt?: string | null;
   packageExpiresAt?: string | null;
   createdAt: string;
 };
@@ -133,7 +142,10 @@ export class ApiError extends Error {
   }
 
   get isQuotaExceeded() {
-    return this.status === 429 && this.code === 'DAILY_LIMIT_REACHED';
+    return (
+      this.status === 429 &&
+      (this.code === 'MONTHLY_LIMIT_REACHED' || this.code === 'DAILY_LIMIT_REACHED')
+    );
   }
 
   get isUnauthorized() {
@@ -159,6 +171,16 @@ export type CycleInsights = {
   generatedAt: string;
 };
 
+export type CycleCondition = 'pcos' | 'endometriosis' | 'perimenopause';
+
+export type CycleReminderPrefsServer = {
+  enabled?: boolean;
+  periodDaysBefore?: number;
+  ovulation?: boolean;
+  dailyLog?: boolean;
+  pms?: boolean;
+};
+
 export type CycleProfile = {
   id: string;
   userId: string;
@@ -170,6 +192,8 @@ export type CycleProfile = {
   dueDate: string | null;
   privacyEnabled: boolean;
   partnerShareCode: string | null;
+  conditions: CycleCondition[];
+  reminderPrefs: CycleReminderPrefsServer | null;
   aiInsights?: CycleInsights | null;
   aiInsightsAt?: string | null;
 };
@@ -228,7 +252,20 @@ export type CycleBundle = {
     avgCycleLength: number;
     avgPeriodLength: number;
     lastPeriodStart: string | null;
+    periodStarts?: string[];
   };
+  trends?: {
+    cycleLengths: { start: string; length: number }[];
+    pmsByDay: { cycleDay: number; count: number; topSymptoms: { key: string; count: number }[] }[];
+    topSymptoms90d: { key: string; count: number }[];
+    bbtPoints: { date: string; bbt: number }[];
+    periodStarts: string[];
+  };
+  alerts?: {
+    level: 'info' | 'warn' | 'urgent';
+    messageKa: string;
+    action?: 'chat' | null;
+  }[];
   summary: {
     mode: CycleMode;
     avgCycleLength: number;
@@ -363,6 +400,13 @@ export const api = {
     get: () => request<Usage & { label: string }>('/api/usage'),
   },
 
+  push: {
+    register: (body: { token: string; platform: 'ios' | 'android' | 'web' }) =>
+      request<{ ok: boolean }>('/api/push/register', { method: 'POST', body }),
+    unregister: (token: string) =>
+      request<{ ok: boolean }>('/api/push/register', { method: 'DELETE', body: { token } }),
+  },
+
   ai: {
     query: (body: { message: string; mode?: 'DOCTOR' | 'CONSILIUM'; sessionId?: string; context?: string }) =>
       request<{
@@ -447,6 +491,8 @@ export const api = {
       dueDate: string | null;
       privacyEnabled: boolean;
       enablePartnerShare: boolean;
+      conditions: CycleCondition[];
+      reminderPrefs: CycleReminderPrefsServer;
     }>) => request<CycleBundle>('/api/cycle/profile', { method: 'PATCH', body }),
     upsertLog: (
       date: string,

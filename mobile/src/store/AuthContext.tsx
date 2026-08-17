@@ -50,6 +50,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(me.user);
       setUsage(me.usage);
       setStats(me.stats);
+      void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
+        registerPushTokenWithServer(),
+      );
     } catch (error) {
       // A rejected token is unrecoverable; anything else (offline) keeps the session.
       if (error instanceof ApiError && error.isUnauthorized) {
@@ -70,6 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(result.user);
     setUsage(result.usage);
     setStats(null);
+    void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
+      registerPushTokenWithServer(),
+    );
   }, []);
 
   const value = useMemo<AuthState>(

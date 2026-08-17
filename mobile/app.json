@@ -3,7 +3,7 @@
     "name": "Medicard.GE",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "3.0.5",
+    "version": "3.3.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -55,6 +55,23 @@
         {
           "color": "#26A69A",
           "defaultChannel": "medication-reminders"
+        }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Medicard-ს Apple Health-ის წაკითხვა სჭირდება ციკლის მონაცემების სინქრონიზაციისთვის.",
+          "NSHealthUpdateUsageDescription": "Medicard-ს Apple Health-ში ციკლის ჩანაწერების შენახვა სჭირდება.",
+          "background": false
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
         }
       ]
     ],

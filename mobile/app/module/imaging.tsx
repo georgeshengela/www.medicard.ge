@@ -15,7 +15,7 @@ export default function ImagingModule() {
         uploadHint={ka.modules.imaging.uploadHint}
         contextLabel={ka.modules.imaging.contextLabel}
         contextPlaceholder={ka.modules.imaging.contextPlaceholder}
-        bodyRegions={ka.modules.imaging.regions}
+        bodyRegions={[...ka.modules.imaging.regions]}
         regionLabel={ka.modules.imaging.regionLabel}
         regionRequired={ka.modules.imaging.regionRequired}
       />

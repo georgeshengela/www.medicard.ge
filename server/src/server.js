@@ -23,6 +23,7 @@ import { usageRouter } from './routes/usage.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { appRouter } from './routes/app.routes.js';
 import { cycleRouter, partnerShareHandler } from './routes/cycle.routes.js';
+import { pushRouter } from './routes/push.routes.js';
 import { asyncHandler } from './middleware/error.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -107,6 +108,7 @@ app.use('/api/medications', medicationsRouter);
 app.use('/api/cycle', cycleRouter);
 app.get('/api/cycle/share/:code', asyncHandler(partnerShareHandler));
 app.use('/api/usage', usageRouter);
+app.use('/api/push', pushRouter);
 app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 
@@ -158,7 +160,7 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
   else console.warn('  admin panel     →  MISSING (server/admin/index.html not found)');
   if (serveWeb) console.log(`  web app          →  ${WEB_DIST}`);
   console.log(`  environment      →  ${env.NODE_ENV}`);
-  console.log(`  free daily limit →  ${env.FREE_DAILY_AI_LIMIT} (FREE package default)`);
+  console.log(`  free monthly limit →  ${env.FREE_MONTHLY_AI_LIMIT} AI queries (FREE package)`);
   if (!hasVisionProvider) {
     console.warn('  ⚠️  no OPENROUTER_API_KEY — image modules fall back to local OCR\n');
   } else {

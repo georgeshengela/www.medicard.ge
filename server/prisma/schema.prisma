@@ -19,6 +19,8 @@ model User {
   status           String               @default("ACTIVE")
   packageId        String?
   package          Package?             @relation(fields: [packageId], references: [id])
+  /// Start of the current paid billing period (30-day window from purchase/renewal).
+  packageStartedAt DateTime?
   packageExpiresAt DateTime?
   adminNote        String?
   createdAt        DateTime             @default(now())
@@ -26,7 +28,8 @@ model User {
   records          MedicalRecord[]
   chats            ChatSession[]
   medications      MedicationSchedule[]
-  dailyUsages      DailyUsage[]
+  periodUsages     PeriodUsage[]
+  pushTokens       PushToken[]
   cycleProfile     CycleProfile?
   cycleLogs        CycleLog[]
   pregnancyLogs    PregnancyLog[]
@@ -53,6 +56,10 @@ model CycleProfile {
   /// Cached Flo-style AI recommendations (JSON)
   aiInsights       Json?
   aiInsightsAt     DateTime?
+  /// e.g. ["pcos","endometriosis","perimenopause"]
+  conditions       Json      @default("[]")
+  /// Optional mirror of mobile reminder prefs for cross-device sync
+  reminderPrefs    Json?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }
@@ -106,9 +113,11 @@ model Package {
   nameKa        String
   nameEn        String
   descriptionKa String
-  /// -1 = unlimited AI queries per day
-  dailyAiLimit  Int
-  priceGel      Float    @default(0)
+  /// Monthly AI query cap for this plan (-1 = unlimited). Resets each billing period.
+  monthlyAiLimit Int      @default(90)
+  /// Legacy daily cap — kept for migration; prefer monthlyAiLimit.
+  dailyAiLimit  Int       @default(3)
+  priceGel      Float     @default(0)
   /// JSON feature flags / module access
   features      Json
   sortOrder     Int      @default(0)
@@ -119,12 +128,13 @@ model Package {
 }
 
 model Admin {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  fullName     String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  fullName      String
+  pushCampaigns PushCampaign[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 /// Singleton row id = "default"
@@ -142,11 +152,57 @@ model AppSettings {
   updatedAt          DateTime @updatedAt
 }
 
-model DailyUsage {
+model PeriodUsage {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date      String // Format: YYYY-MM-DD
+  /// Billing period key — calendar month (cal:YYYY-MM) or subscription window (sub:start:end).
+  periodKey String
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, periodKey])
+  @@index([userId])
+}
+
+model PushToken {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String // ios | android | web
+  active     Boolean  @default(true)
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, active])
+}
+
+model PushCampaign {
+  id          String    @id @default(uuid())
+  title       String
+  body        String
+  data        Json?
+  /// ALL | FREE | STANDARD | ULTIMATE | ACTIVE
+  segment     String    @default("ALL")
+  status      String    @default("DRAFT") // DRAFT | SENDING | SENT | FAILED
+  targetCount Int       @default(0)
+  sentCount   Int       @default(0)
+  failedCount Int       @default(0)
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  createdById String?
+  createdBy   Admin?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@index([createdAt])
+}
+
+model DailyUsage {
+  id        String   @id @default(uuid())
+  userId    String
+  date      String // Format: YYYY-MM-DD — legacy, superseded by PeriodUsage
   count     Int      @default(0)
   createdAt DateTime @default(now())
 

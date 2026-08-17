@@ -8,20 +8,22 @@ import {
 } from 'react-native';
 import Animated, { FadeInRight, FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RefreshCw, Sparkles } from 'lucide-react-native';
+import { ChevronRight, RefreshCw, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
 import { ka } from '@/i18n/ka';
-import { api, ApiError, type CycleInsights } from '@/lib/api';
+import { api, ApiError, type CycleInsightCard, type CycleInsights } from '@/lib/api';
+import {
+  CycleInsightDetailSheet,
+} from '@/components/cycle/CycleInsightDetailSheet';
 import { cycleShadow, useCycleColors } from '@/theme/cycle';
 
 const TONE_COLORS: Record<string, { bg: string; accent: string }> = {
-  calm: { bg: '#EDE6F8', accent: '#9B7EDE' },
-  energy: { bg: '#F3D5C0', accent: '#D4738A' },
-  care: { bg: '#F7C6D0', accent: '#E891A3' },
-  fertile: { bg: '#E8E0F8', accent: '#7C5CBF' },
-  pregnancy: { bg: '#E0F0EC', accent: '#26A69A' },
-  mood: { bg: '#F9E4EA', accent: '#D4738A' },
+  calm: { bg: '#F3E5F5', accent: '#AB47BC' },
+  energy: { bg: '#FCE4EC', accent: '#E91E63' },
+  care: { bg: '#F8BBD0', accent: '#C2185B' },
+  fertile: { bg: '#F3E5F5', accent: '#8E24AA' },
+  pregnancy: { bg: '#FCE4EC', accent: '#EC407A' },
+  mood: { bg: '#FFF0F5', accent: '#D81B60' },
 };
 
 type Props = {
@@ -31,12 +33,12 @@ type Props = {
 
 export function CycleInsightsPanel({ seed, onLoaded }: Props) {
   const c = useCycleColors();
-  const router = useRouter();
   const [insights, setInsights] = useState<CycleInsights | null>(seed ?? null);
   const [loading, setLoading] = useState(!seed);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
+  const [detailCard, setDetailCard] = useState<CycleInsightCard | null>(null);
 
   const load = async (refresh = false) => {
     try {
@@ -65,215 +67,177 @@ export function CycleInsightsPanel({ seed, onLoaded }: Props) {
     if (seed && !insights) setInsights(seed);
   }, [seed, insights]);
 
+  const openDetail = (card: CycleInsightCard) => {
+    Haptics.selectionAsync().catch(() => undefined);
+    setDetailCard(card);
+  };
+
   const cards = insights?.cards ?? [];
+  const statusLabel =
+    insights?.source === 'ai' || insights?.source === 'local_fallback'
+      ? fromCache
+        ? ka.cycle.aiCached
+        : ka.cycle.aiPersonalized
+      : ka.cycle.aiLoading;
 
   return (
-    <Animated.View entering={FadeInUp.duration(420)} style={{ marginBottom: 16 }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 12,
-          paddingHorizontal: 2,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
-          <View
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 11,
-              backgroundColor: c.lavenderSoft,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 10,
-            }}
-          >
-            <Sparkles size={16} color={c.lavender} strokeWidth={2.2} />
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ color: c.ink, fontWeight: '800', fontSize: 16 }} numberOfLines={1}>
-              {ka.cycle.aiTips}
-            </Text>
-            <Text style={{ color: c.muted, fontSize: 11, marginTop: 2 }} numberOfLines={1}>
-              {insights?.source === 'ai' || insights?.source === 'local_fallback'
-                ? fromCache
-                  ? ka.cycle.aiCached
-                  : ka.cycle.aiPersonalized
-                : ka.cycle.aiLoading}
-            </Text>
-          </View>
-        </View>
-        <Pressable
-          onPress={() => {
-            Haptics.selectionAsync().catch(() => undefined);
-            load(true);
-          }}
-          disabled={refreshing || loading}
-          hitSlop={8}
+    <>
+      <Animated.View entering={FadeInUp.duration(420)} style={{ marginBottom: 8, marginTop: 8 }}>
+        <LinearGradient
+          colors={[c.lavenderSoft, c.roseSoft]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 12,
-            backgroundColor: c.roseSoft,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: refreshing ? 0.6 : 1,
-          }}
-        >
-          {refreshing ? (
-            <ActivityIndicator size="small" color={c.rose} />
-          ) : (
-            <RefreshCw size={16} color={c.rose} strokeWidth={2.3} />
-          )}
-        </Pressable>
-      </View>
-
-      {loading && !cards.length ? (
-        <View
-          style={{
-            backgroundColor: c.card,
-            borderRadius: 22,
-            padding: 20,
-            alignItems: 'center',
+            borderRadius: 24,
+            padding: 14,
             borderWidth: 1,
             borderColor: c.border,
+            ...cycleShadow.card,
           }}
         >
-          <ActivityIndicator color={c.rose} />
-          <Text style={{ color: c.muted, marginTop: 10, fontSize: 13 }}>{ka.cycle.aiLoading}</Text>
-        </View>
-      ) : null}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: cards.length || loading ? 12 : 0,
+            }}
+          >
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 14,
+                backgroundColor: c.card,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Sparkles size={16} color={c.rose} strokeWidth={2.2} />
+            </View>
+            <View style={{ flex: 1, marginLeft: 10, minWidth: 0 }}>
+              <Text style={{ color: c.ink, fontWeight: '800', fontSize: 15 }} numberOfLines={1}>
+                {ka.cycle.aiTips}
+              </Text>
+              <Text style={{ color: c.muted, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
+                {insights?.headline || statusLabel}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => undefined);
+                load(true);
+              }}
+              disabled={refreshing || loading}
+              hitSlop={8}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: c.card,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: refreshing ? 0.6 : 1,
+              }}
+            >
+              {refreshing ? (
+                <ActivityIndicator size="small" color={c.rose} />
+              ) : (
+                <RefreshCw size={14} color={c.rose} strokeWidth={2.3} />
+              )}
+            </Pressable>
+          </View>
 
-      {error && !cards.length ? (
-        <View
-          style={{
-            backgroundColor: c.roseSoft,
-            borderRadius: 18,
-            padding: 14,
-          }}
-        >
-          <Text style={{ color: c.rose, fontWeight: '600', fontSize: 13 }}>{error}</Text>
-          <Pressable onPress={() => load(true)} style={{ marginTop: 8 }}>
-            <Text style={{ color: c.ink, fontWeight: '700' }}>{ka.common.retry}</Text>
-          </Pressable>
-        </View>
-      ) : null}
+          {loading && !cards.length ? (
+            <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+              <ActivityIndicator color={c.rose} />
+            </View>
+          ) : null}
 
-      {insights?.headline ? (
-        <Text
-          style={{
-            color: c.ink,
-            fontWeight: '700',
-            fontSize: 15,
-            marginBottom: 10,
-            lineHeight: 21,
-          }}
-        >
-          {insights.headline}
-        </Text>
-      ) : null}
+          {error && !cards.length ? (
+            <Pressable onPress={() => load(true)} style={{ paddingVertical: 8 }}>
+              <Text style={{ color: c.rose, fontWeight: '700', fontSize: 13 }}>{error}</Text>
+            </Pressable>
+          ) : null}
 
-      {cards.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingRight: 4 }}
-          decelerationRate="fast"
-        >
-          {cards.map((card, idx) => {
-            const tone = TONE_COLORS[card.tone] || TONE_COLORS.calm;
-            return (
-              <Animated.View
-                key={card.id}
-                entering={FadeInRight.delay(idx * 60).duration(380)}
-                style={{ width: 256, marginRight: 12, ...cycleShadow.card }}
-              >
-                <LinearGradient
-                  colors={[tone.bg, c.card]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0.2, y: 1 }}
-                  style={{
-                    borderRadius: 22,
-                    padding: 16,
-                    minHeight: 168,
-                    borderWidth: 1,
-                    borderColor: c.border,
-                  }}
-                >
-                  <View
-                    style={{
-                      alignSelf: 'flex-start',
-                      backgroundColor: tone.accent,
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      borderRadius: 999,
-                      marginBottom: 10,
-                    }}
+          {cards.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingRight: 2 }}
+              decelerationRate="fast"
+            >
+              {cards.map((card, idx) => {
+                const tone = TONE_COLORS[card.tone] || TONE_COLORS.calm;
+                return (
+                  <Animated.View
+                    key={card.id}
+                    entering={FadeInRight.delay(idx * 50).duration(340)}
+                    style={{ width: 200, marginRight: 10 }}
                   >
-                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>
-                      AI
-                    </Text>
-                  </View>
-                  <Text
-                    style={{
-                      color: c.ink,
-                      fontWeight: '800',
-                      fontSize: 16,
-                      lineHeight: 22,
-                      marginBottom: 8,
-                    }}
-                    numberOfLines={2}
-                  >
-                    {card.title}
-                  </Text>
-                  <Text
-                    style={{ color: c.muted, fontSize: 13, lineHeight: 19, flex: 1 }}
-                    numberOfLines={5}
-                  >
-                    {card.body}
-                  </Text>
-                  {card.action ? (
                     <Pressable
-                      onPress={() => {
-                        if (card.action?.includes('აღრიცხვ') || card.id.includes('phase')) {
-                          router.push('/cycle/log' as never);
-                        } else if (
-                          card.tone === 'pregnancy' ||
-                          card.action.includes('ორსულ')
-                        ) {
-                          router.push('/cycle/pregnancy' as never);
-                        } else if (card.action.includes('BBT') || card.action.includes('ლორწო')) {
-                          router.push('/cycle/log' as never);
-                        }
-                      }}
-                      style={{
-                        marginTop: 12,
-                        alignSelf: 'flex-start',
+                      onPress={() => openDetail(card)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${card.title}. ${ka.cycle.aiViewDetails}`}
+                      style={({ pressed }) => ({
                         backgroundColor: c.card,
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        borderRadius: 12,
+                        borderRadius: 18,
+                        padding: 12,
+                        minHeight: 118,
+                        borderLeftWidth: 3,
+                        borderLeftColor: tone.accent,
                         borderWidth: 1,
                         borderColor: c.border,
-                      }}
+                        opacity: pressed ? 0.92 : 1,
+                      })}
                     >
-                      <Text style={{ color: tone.accent, fontWeight: '700', fontSize: 12 }}>
-                        {card.action}
+                      <Text
+                        style={{
+                          color: c.ink,
+                          fontWeight: '800',
+                          fontSize: 13,
+                          lineHeight: 17,
+                          marginBottom: 6,
+                        }}
+                        numberOfLines={2}
+                      >
+                        {card.title}
                       </Text>
+                      <Text
+                        style={{ color: c.muted, fontSize: 11, lineHeight: 15, flex: 1 }}
+                        numberOfLines={3}
+                      >
+                        {card.body}
+                      </Text>
+                      <View
+                        style={{
+                          marginTop: 8,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text
+                          style={{ color: tone.accent, fontWeight: '700', fontSize: 11, flex: 1 }}
+                          numberOfLines={1}
+                        >
+                          {card.action || ka.cycle.aiViewDetails}
+                        </Text>
+                        <ChevronRight size={14} color={tone.accent} strokeWidth={2.4} />
+                      </View>
                     </Pressable>
-                  ) : null}
-                </LinearGradient>
-              </Animated.View>
-            );
-          })}
-        </ScrollView>
-      ) : null}
+                  </Animated.View>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+        </LinearGradient>
+      </Animated.View>
 
-      <Text style={{ color: c.mutedSoft, fontSize: 10, marginTop: 10, lineHeight: 14 }}>
-        {ka.cycle.aiDisclaimer}
-      </Text>
-    </Animated.View>
+      <CycleInsightDetailSheet
+        visible={detailCard != null}
+        card={detailCard}
+        headline={insights?.headline}
+        onClose={() => setDetailCard(null)}
+      />
+    </>
   );
 }

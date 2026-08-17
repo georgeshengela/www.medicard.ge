@@ -348,6 +348,165 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy }) {
   };
 }
 
+const PMS_SYMPTOM_KEYS = new Set([
+  'cramps',
+  'headache',
+  'bloating',
+  'fatigue',
+  'back_pain',
+  'breast_tenderness',
+  'breast_swelling',
+  'nausea',
+  'insomnia',
+  'hot_flashes',
+  'pelvic_pain',
+  'anxious',
+  'irritable',
+  'sensitive',
+  'sad',
+  'mood_swings',
+  'cravings',
+]);
+
+export function parseConditions(profile) {
+  const raw = profile?.conditions;
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+  return [];
+}
+
+export function buildCycleTrends({ profile, logs, inferred }) {
+  const periodStarts = inferred?.periodStarts ?? [];
+  const cycleLengths = [];
+  for (let i = 1; i < periodStarts.length; i += 1) {
+    const gap = daysBetween(periodStarts[i - 1], periodStarts[i]);
+    if (gap >= 18 && gap <= 45) {
+      cycleLengths.push({ start: periodStarts[i], length: gap });
+    }
+  }
+
+  const avgCycle = profile.avgCycleLength || inferred?.avgCycleLength || 28;
+  const lastPeriod = toDateKey(profile.lastPeriodStart) || inferred?.lastPeriodStart;
+  const pmsByDay = {};
+  for (let d = 18; d <= 35; d += 1) pmsByDay[d] = { count: 0, symptoms: {} };
+
+  for (const log of logs) {
+    if (!lastPeriod) break;
+    const offset = daysBetween(lastPeriod, log.date);
+    if (offset < 0) continue;
+    const cycleDay = ((offset % avgCycle) + 1);
+    if (cycleDay < 18 || cycleDay > 35) continue;
+    const symptoms = Array.isArray(log.symptoms) ? log.symptoms : [];
+    const moods = Array.isArray(log.moods) ? log.moods : [];
+    const hits = [...symptoms, ...moods].filter((k) => PMS_SYMPTOM_KEYS.has(k));
+    if (!hits.length) continue;
+    pmsByDay[cycleDay].count += 1;
+    for (const k of hits) {
+      pmsByDay[cycleDay].symptoms[k] = (pmsByDay[cycleDay].symptoms[k] || 0) + 1;
+    }
+  }
+
+  const pmsSeries = Object.entries(pmsByDay)
+    .map(([cycleDay, v]) => ({
+      cycleDay: Number(cycleDay),
+      count: v.count,
+      topSymptoms: Object.entries(v.symptoms)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([key, count]) => ({ key, count })),
+    }))
+    .filter((row) => row.count > 0);
+
+  const symptomFreq = {};
+  const cutoff = addDays(toDateKey(new Date()), -90);
+  for (const log of logs) {
+    if (log.date < cutoff) continue;
+    for (const s of Array.isArray(log.symptoms) ? log.symptoms : []) {
+      symptomFreq[s] = (symptomFreq[s] || 0) + 1;
+    }
+  }
+  const topSymptoms90d = Object.entries(symptomFreq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([key, count]) => ({ key, count }));
+
+  const bbtPoints = logs
+    .filter((l) => l.bbt != null && Number.isFinite(l.bbt))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-60)
+    .map((l) => ({ date: l.date, bbt: l.bbt }));
+
+  return {
+    cycleLengths,
+    pmsByDay: pmsSeries,
+    topSymptoms90d,
+    bbtPoints,
+    periodStarts,
+  };
+}
+
+export function buildCycleAlerts({ profile, logs, predictions, inferred }) {
+  const alerts = [];
+  const today = toDateKey(new Date());
+  const conditions = parseConditions(profile);
+
+  const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date));
+  let heavyRun = 0;
+  for (const log of sorted) {
+    if (log.flow === 'heavy') heavyRun += 1;
+    else break;
+  }
+  if (heavyRun >= 8) {
+    alerts.push({
+      level: 'urgent',
+      messageKa: '8+ დღეა ძლიერი გამონადენი აღრიცხულია — მიმართეთ გინეკოლოგს.',
+      action: 'chat',
+    });
+  }
+
+  const starts = inferred?.periodStarts ?? [];
+  if (starts.length >= 2) {
+    const lastGap = daysBetween(starts[starts.length - 2], starts[starts.length - 1]);
+    if (lastGap > 35 || lastGap < 21) {
+      alerts.push({
+        level: profile.isIrregular ? 'warn' : 'info',
+        messageKa: `ბოლო ციკლის სიგრძე ${lastGap} დღეა — ნორმალურია 21–35 დღე. გირჩევთ ექიმთან კონსულტაციას.`,
+        action: 'chat',
+      });
+    }
+  }
+
+  if (profile.mode !== 'PREGNANCY' && sorted.length > 0) {
+    const lastFlow = sorted.find((l) => l.flow && l.flow !== 'none');
+    if (lastFlow && daysBetween(lastFlow.date, today) > 40) {
+      alerts.push({
+        level: 'warn',
+        messageKa: '40+ დღეა მენსტრუაცია არ არის აღრიცხული — გამორიცხეთ ორსულობა ან მიმართეთ ექიმს.',
+        action: 'chat',
+      });
+    }
+  }
+
+  if (conditions.includes('pcos') && profile.isIrregular) {
+    alerts.push({
+      level: 'info',
+      messageKa:
+        'PCOS და არარეგულარული ციკლი — ნაყოფიერი ფანჯარა შეიძლება უფრო ხანგრძლივი იყოს. პროგნოზები დაახლოებითია.',
+      action: null,
+    });
+  }
+
+  if (conditions.includes('endometriosis')) {
+    alerts.push({
+      level: 'info',
+      messageKa:
+        'ენდომეტრიოზისას ტკივილი და სიმპტომები შეიძლება ციკლის გარეთაც გამოჩნდეს — აღრიცხეთ ყველა დღე.',
+      action: null,
+    });
+  }
+
+  return alerts.slice(0, 4);
+}
+
 export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, user }) {
   const phase = detectCyclePhase({
     lastPeriodStart: toDateKey(profile.lastPeriodStart),
@@ -361,11 +520,14 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
     return `${l.date}: flow=${l.flow || 'none'}; სიმპტომები=${sym}; განწყობა=${mood}`;
   });
 
+  const conditions = parseConditions(profile);
+
   return [
     `რეჟიმი: ${profile.mode}`,
     `ასაკი: ${user?.age ?? 'უცნობი'}`,
     `საშუალო ციკლი: ${profile.avgCycleLength} დღე, მენსტრუაცია: ${profile.avgPeriodLength} დღე`,
     `არარეგულარული: ${profile.isIrregular ? 'კი' : 'არა'}`,
+    conditions.length ? `ჯანმრთელობის კონტექსტი: ${conditions.join(', ')}` : null,
     `ციკლის დღე: ${phase.day ?? '—'} · ფაზა: ${phase.phaseKa}`,
     `შემდეგი მენსტრუაცია: ${predictions?.nextPeriodStart ?? '—'}`,
     `ოვულაცია: ${predictions?.ovulationDate ?? '—'}`,

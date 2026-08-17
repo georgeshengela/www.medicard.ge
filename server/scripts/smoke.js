@@ -56,7 +56,7 @@ const register = await call('/api/auth/register', {
 check('POST /api/auth/register creates a user', register.status === 201 && !!register.json.token, JSON.stringify(register.json));
 const token = register.json.token;
 
-check('register returns a full 3/3 free quota', register.json.usage?.remaining === 3);
+check('register returns full monthly free quota', register.json.usage?.billingPeriod === 'monthly' && register.json.usage?.remaining === 90);
 
 const dupe = await call('/api/auth/register', {
   method: 'POST',
@@ -83,7 +83,7 @@ const me = await call('/api/auth/me', { token });
 check('GET /api/auth/me returns the profile', me.status === 200 && me.json.user?.email === email);
 
 const usage = await call('/api/usage', { token });
-check('GET /api/usage reports the Georgian counter label', usage.status === 200 && usage.json.label?.includes('უფასო შეკითხვა'), usage.json.label);
+check('GET /api/usage reports the monthly counter label', usage.status === 200 && usage.json.label?.includes('ამ თვეში'), usage.json.label);
 
 const med = await call('/api/medications', {
   method: 'POST',
@@ -116,11 +116,19 @@ check('GET /api/records returns an empty list for a new user', records.status ==
 const chats = await call('/api/chats', { token });
 check('GET /api/chats returns an empty list for a new user', chats.status === 200 && chats.json.sessions?.length === 0);
 
-// Burn the free tier. The upstream engine may be unavailable; what matters is that
-// successful generations are metered and the 4th request is refused with 429.
-console.log('\n  — free tier metering —');
+// Burn free-tier credits. The upstream engine may be unavailable; what matters is that
+// successful generations are metered against the monthly quota.
+console.log('\n  — monthly free-tier metering —');
 let engineReachable = true;
-for (let i = 1; i <= 4; i += 1) {
+const usageBefore = await call('/api/usage', { token });
+check(
+  'GET /api/usage exposes monthly billing',
+  usageBefore.status === 200 &&
+    usageBefore.json.usage?.billingPeriod === 'monthly' &&
+    typeof usageBefore.json.usage?.limit === 'number',
+);
+
+for (let i = 1; i <= 2; i += 1) {
   const res = await call('/api/ai/query', {
     method: 'POST',
     token,
@@ -128,11 +136,18 @@ for (let i = 1; i <= 4; i += 1) {
   });
 
   if (res.status === 429) {
-    check(`request #${i} blocked with the Georgian quota message`, res.json.error === 'დღიური 3 უფასო შეკითხვა ამოიწურა. გთხოვთ, სცადეთ ხვალ.' && !!res.json.upsell, res.json.error);
+    check(
+      `request #${i} blocked with monthly quota message`,
+      res.json.code === 'MONTHLY_LIMIT_REACHED' && !!res.json.upsell,
+      res.json.error,
+    );
     break;
   }
   if (res.status === 200) {
-    check(`request #${i} answered and metered (${res.json.usage.used}/${res.json.usage.limit})`, res.json.usage.used === i);
+    check(
+      `request #${i} answered and metered (${res.json.usage.used}/${res.json.usage.limit})`,
+      res.json.usage.billingPeriod === 'monthly' && res.json.usage.used >= i,
+    );
   } else {
     engineReachable = false;
     check(`request #${i} failed upstream without spending a credit`, res.status === 502 || res.status === 503, `${res.status} ${res.json.error ?? ''}`);
