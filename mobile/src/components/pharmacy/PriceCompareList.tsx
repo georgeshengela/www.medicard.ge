@@ -49,7 +49,7 @@ export function PriceCompareList({ offers, sourcePrices, bestPrice }: Props) {
 
   return (
     <View className="gap-3">
-      <PharmacySourcePriceRow prices={rows} />
+      <PharmacySourcePriceRow prices={rows} bestPrice={bestPrice} />
 
       {rows.map((slot) => {
         if (slot.priceGel == null || !slot.sourceUrl) return null;

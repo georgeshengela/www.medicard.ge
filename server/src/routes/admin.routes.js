@@ -7,6 +7,7 @@ import { prisma } from '../lib/prisma.js';
 import { publicPackage, buildPackageAssignment } from '../lib/packages.js';
 import { renewSubscriptionDates } from '../lib/billing.js';
 import { getAppSettings, publicAppSettings } from '../lib/settings.js';
+import { getMobileAppVersion } from '../lib/mobileAppVersion.js';
 import { getUsage } from '../lib/usage.js';
 import { getPushStats, resolveSegmentTokens, sendExpoPush } from '../lib/push.js';
 import { toDateOnly, calculateAge } from '../lib/patient.js';
@@ -29,6 +30,13 @@ function signAdminToken(admin) {
   return jwt.sign({ sub: admin.id, email: admin.email, role: 'admin' }, env.JWT_SECRET, {
     expiresIn: '7d',
   });
+}
+
+function adminAppSettings(settings) {
+  return {
+    ...publicAppSettings(settings),
+    mobileAppVersion: getMobileAppVersion(),
+  };
 }
 
 function adminUserRow(user, usage) {
@@ -112,7 +120,7 @@ adminRouter.get(
       records,
       chats,
       packages: byPackage,
-      settings: publicAppSettings(await getAppSettings()),
+      settings: adminAppSettings(await getAppSettings()),
     });
   }),
 );
@@ -370,7 +378,7 @@ adminRouter.get(
   '/settings',
   requireAdmin,
   asyncHandler(async (_req, res) => {
-    res.json({ settings: publicAppSettings(await getAppSettings()) });
+    res.json({ settings: adminAppSettings(await getAppSettings()) });
   }),
 );
 
@@ -394,7 +402,7 @@ adminRouter.patch(
       create: { id: 'default', ...body },
       update: body,
     });
-    res.json({ settings: publicAppSettings(settings) });
+    res.json({ settings: adminAppSettings(settings) });
   }),
 );
 

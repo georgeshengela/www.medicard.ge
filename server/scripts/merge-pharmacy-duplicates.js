@@ -1,6 +1,7 @@
 import { prisma } from '../src/lib/prisma.js';
-import { buildGeoLatinMap, buildMatchSignature, buildNormalizedKey } from '../src/lib/pharmacy/normalize.js';
+import { buildGeoLatinMap, buildLooseMatchSignature } from '../src/lib/pharmacy/normalize.js';
 import { recomputeProductPricing } from '../src/lib/pharmacy/match.js';
+import { invalidateCrossSourceIndex } from '../src/lib/pharmacy/crossMatch.js';
 
 const SOURCE_PRIORITY = ['PHARMADEPOT', 'AVERSI', 'PSP'];
 
@@ -23,16 +24,24 @@ async function main() {
       normalizedKey: true,
       offerCount: true,
       bestSourceId: true,
+      offers: { select: { rawName: true } },
       _count: { select: { offers: true } },
     },
   });
 
-  const geoLatinMap = buildGeoLatinMap(rows.map((r) => r.name));
+  const nameCorpus = [];
+  for (const row of rows) {
+    nameCorpus.push(row.name);
+    for (const offer of row.offers) {
+      if (offer.rawName) nameCorpus.push(offer.rawName);
+    }
+  }
+  const geoLatinMap = buildGeoLatinMap(nameCorpus);
   console.log(`Scanning ${rows.length} products, ${geoLatinMap.size} geo→latin aliases…`);
 
   const groups = new Map();
   for (const row of rows) {
-    const signature = buildMatchSignature(row.name, geoLatinMap);
+    const signature = buildLooseMatchSignature(row.name, geoLatinMap);
     if (!signature) continue;
     const list = groups.get(signature) || [];
     list.push(row);
@@ -42,17 +51,25 @@ async function main() {
   let mergedGroups = 0;
   let movedOffers = 0;
   let deletedProducts = 0;
+  const deletedIds = new Set();
 
-  for (const [, group] of groups) {
+  for (const [signature, group] of groups) {
     if (group.length < 2) continue;
 
-    const canonical = pickCanonical(group);
-    const duplicates = group.filter((p) => p.id !== canonical.id);
+    const active = group.filter((p) => !deletedIds.has(p.id));
+    if (active.length < 2) continue;
+
+    const canonical = pickCanonical(active);
+    if (deletedIds.has(canonical.id)) continue;
+
+    const duplicates = active.filter((p) => p.id !== canonical.id);
     if (!duplicates.length) continue;
 
     mergedGroups += 1;
 
     for (const dup of duplicates) {
+      if (deletedIds.has(dup.id)) continue;
+
       const offers = await prisma.pharmacyOffer.findMany({ where: { catalogProductId: dup.id } });
       for (const offer of offers) {
         const conflict = await prisma.pharmacyOffer.findFirst({
@@ -69,16 +86,21 @@ async function main() {
         }
       }
 
-      await prisma.catalogProduct.delete({ where: { id: dup.id } });
-      deletedProducts += 1;
+      const removed = await prisma.catalogProduct.deleteMany({ where: { id: dup.id } });
+      if (removed.count) {
+        deletedProducts += removed.count;
+        deletedIds.add(dup.id);
+      }
     }
 
     await prisma.catalogProduct.update({
       where: { id: canonical.id },
-      data: { normalizedKey: buildNormalizedKey(canonical.name) },
+      data: { normalizedKey: signature },
     });
     await recomputeProductPricing(canonical.id);
   }
+
+  invalidateCrossSourceIndex();
 
   const multi = await prisma.catalogProduct.count({ where: { offerCount: { gte: 2 } } });
   const triple = await prisma.catalogProduct.count({ where: { offerCount: { gte: 3 } } });

@@ -4,6 +4,8 @@ const BASE = SOURCES.PSP.baseUrl;
 const GRAPHQL = 'https://app.psp.ge/graphql';
 /** Magento category id for მედიკამენტები (from urlResolver). */
 export const PSP_MEDICATION_CATEGORY_ID = '823';
+/** Extra PSP categories not under 823 but sold as OTC meds (e.g. Viagra → sexual health). */
+export const PSP_EXTRA_CATEGORY_IDS = ['1554', '2035'];
 
 const PRODUCTS_QUERY = `
 query products($search: String = "", $filter: ProductAttributeFilterInput, $sort: ProductAttributeSortInput, $pageSize: Int, $currentPage: Int) {
@@ -95,36 +97,30 @@ export async function closePspBrowser() {
   // PSP uses GraphQL — no browser session.
 }
 
-/**
- * Fetch PSP medications via Magento GraphQL (app.psp.ge).
- */
-export async function fetchPspProducts(opts = {}) {
-  const { maxPages = 50, categoryId = null, onProgress } = opts;
-  const pageSize = 100;
-  const all = [];
-  const seen = new Set();
-
+async function fetchPspCategory(categoryId, { maxPages, pageSize, onProgress, seen, all }) {
   const first = await graphql(PRODUCTS_QUERY, {
-    filter: { category_id: { eq: PSP_MEDICATION_CATEGORY_ID } },
+    filter: { category_id: { eq: String(categoryId) } },
     pageSize,
     currentPage: 1,
   });
 
   const totalPages = Math.min(first?.products?.page_info?.total_pages ?? 1, maxPages);
-  console.log(`[psp] category ${PSP_MEDICATION_CATEGORY_ID}: ${first?.products?.total_count ?? 0} products, ${totalPages} pages`);
+  console.log(
+    `[psp] category ${categoryId}: ${first?.products?.total_count ?? 0} products, ${totalPages} pages`,
+  );
 
   for (let page = 1; page <= totalPages; page += 1) {
     const data =
       page === 1
         ? first
         : await graphql(PRODUCTS_QUERY, {
-            filter: { category_id: { eq: PSP_MEDICATION_CATEGORY_ID } },
+            filter: { category_id: { eq: String(categoryId) } },
             pageSize,
             currentPage: page,
           });
 
     for (const item of data?.products?.items || []) {
-      const mapped = mapPspProduct(item, categoryId);
+      const mapped = mapPspProduct(item, null);
       if (!mapped || seen.has(mapped.sourceProductId)) continue;
       seen.add(mapped.sourceProductId);
       all.push(mapped);
@@ -133,6 +129,22 @@ export async function fetchPspProducts(opts = {}) {
     onProgress?.(all.length);
     if (page < totalPages) await sleep(200);
   }
+}
 
+/**
+ * Fetch PSP medications via Magento GraphQL (app.psp.ge).
+ */
+export async function fetchPspProducts(opts = {}) {
+  const { maxPages = 50, categoryId = null, onProgress } = opts;
+  const pageSize = 100;
+  const all = [];
+  const seen = new Set();
+  const categoryIds = [...new Set([PSP_MEDICATION_CATEGORY_ID, ...PSP_EXTRA_CATEGORY_IDS])];
+
+  for (const catId of categoryIds) {
+    await fetchPspCategory(catId, { maxPages, pageSize, onProgress, seen, all });
+  }
+
+  void categoryId;
   return all;
 }

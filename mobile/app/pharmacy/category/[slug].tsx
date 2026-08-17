@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary } from '@/lib/api';
 import { useThemeColors } from '@/theme/colors';
+import { pharmPx } from '@/constants/pharmacyVisuals';
 
 export default function PharmacyCategoryScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -42,13 +43,25 @@ export default function PharmacyCategoryScreen() {
   return (
     <ScrollView
       className="flex-1 bg-bg-100"
-      contentContainerClassName="px-4 pb-8 pt-3"
+      contentContainerClassName="px-4 pb-9 pt-3.5"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
       showsVerticalScrollIndicator={false}
     >
-      <Text className="text-[11px] font-bold uppercase tracking-[1.2px] text-primary-200">{ka.pharmacy.categories}</Text>
-      <Text className="mt-1 text-xl font-bold text-text-100">{categoryName || slug}</Text>
-      <Text className="mt-1 mb-4 text-sm text-text-300">{ka.pharmacy.categoryBrowse}</Text>
+      <View
+        style={{
+          marginBottom: pharmPx(14),
+          paddingBottom: pharmPx(12),
+          borderBottomWidth: 1,
+          borderBottomColor: colors.bg300,
+        }}
+      >
+        <Text className="text-[12px] font-bold uppercase tracking-[1px] text-primary-200">{ka.pharmacy.categories}</Text>
+        <Text className="mt-1 text-[22px] font-bold text-text-100">{categoryName || slug}</Text>
+        <Text className="mt-1 text-[13px] text-text-300">{ka.pharmacy.categoryBrowse}</Text>
+        {products.length ? (
+          <Text className="mt-2 text-[12px] font-semibold text-text-300">{ka.pharmacy.resultsCount(products.length)}</Text>
+        ) : null}
+      </View>
 
       {products.length === 0 ? (
         <EmptyState icon={Search} title={ka.pharmacy.emptySearch} body={ka.pharmacy.emptySearchHint} />
@@ -61,10 +74,6 @@ export default function PharmacyCategoryScreen() {
           />
         ))
       )}
-
-      {products.length ? (
-        <Text className="py-6 text-center text-xs text-text-300">{ka.pharmacy.resultsCount(products.length)}</Text>
-      ) : null}
     </ScrollView>
   );
 }

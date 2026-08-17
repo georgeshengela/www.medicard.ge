@@ -59,10 +59,10 @@ app.use(
             directives: {
               defaultSrc: ["'self'"],
               scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-              styleSrc: ["'self'", "'unsafe-inline'"],
+              styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
               imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
               connectSrc: ["'self'", 'https:', 'wss:'],
-              fontSrc: ["'self'", 'data:'],
+              fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
               mediaSrc: ["'self'", 'blob:'],
               objectSrc: ["'none'"],
               frameAncestors: ["'self'"],

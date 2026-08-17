@@ -1,96 +1,70 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Crown } from 'lucide-react-native';
+import { PharmacySourceLogo } from '@/components/pharmacy/PharmacySourceLogo';
+import { pharmPx } from '@/constants/pharmacyVisuals';
 import { ka } from '@/i18n/ka';
 import type { PharmacySourcePrice } from '@/lib/api';
-import { PHARMACY_SOURCES } from '@/constants/pharmacyVisuals';
-import { useIsDark, useThemeColors } from '@/theme/colors';
+import { buildCompareSlots, isBestSlot, sourceColor } from '@/lib/pharmacyCompare';
+import { useThemeColors } from '@/theme/colors';
 
 type Props = {
   prices: PharmacySourcePrice[];
-  compact?: boolean;
+  bestPrice?: number | null;
   onPressSource?: (price: PharmacySourcePrice) => void;
 };
 
-function sourceColor(sourceId: string) {
-  return PHARMACY_SOURCES.find((s) => s.id === sourceId)?.color ?? '#26A69A';
-}
-
-function sourceShort(sourceId: string) {
-  if (sourceId === 'PHARMADEPOT') return 'PD';
-  if (sourceId === 'AVERSI') return 'AV';
-  return 'PSP';
-}
-
-export function PharmacySourcePriceRow({ prices, compact = false, onPressSource }: Props) {
+export function PharmacySourcePriceRow({ prices, bestPrice = null, onPressSource }: Props) {
   const colors = useThemeColors();
-  const dark = useIsDark();
-  const slots =
-    prices.length >= 3
-      ? prices
-      : PHARMACY_SOURCES.map((src) => prices.find((p) => p.sourceId === src.id) ?? {
-          sourceId: src.id,
-          nameKa: src.label,
-          logoUrl: null,
-          priceGel: null,
-          oldPriceGel: null,
-          inStock: false,
-          isBest: false,
-          sourceUrl: null,
-        });
+  const slots = buildCompareSlots(prices);
 
   return (
-    <View className="flex-row gap-2">
-      {slots.map((slot) => {
+    <View
+      style={{
+        flexDirection: 'row',
+        borderRadius: pharmPx(12),
+        borderWidth: 1,
+        borderColor: colors.bg300,
+        overflow: 'hidden',
+      }}
+    >
+      {slots.map((slot, index) => {
         const accent = sourceColor(slot.sourceId);
         const hasPrice = slot.priceGel != null;
+        const isBest = isBestSlot(slot, bestPrice);
+
         const cell = (
           <View
             style={{
-              borderRadius: 14,
-              borderWidth: slot.isBest ? 2 : 1,
-              borderColor: slot.isBest ? accent : colors.bg300,
-              backgroundColor: slot.isBest
-                ? `${accent}${dark ? '22' : '12'}`
-                : dark
-                  ? colors.bg200
-                  : '#FAFBFB',
-              paddingVertical: compact ? 8 : 10,
-              paddingHorizontal: 6,
+              flex: 1,
               alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: pharmPx(8),
+              paddingHorizontal: pharmPx(4),
+              backgroundColor: isBest ? `${accent}10` : colors.surface,
+              borderLeftWidth: index > 0 ? 1 : 0,
+              borderLeftColor: colors.bg300,
+              borderTopWidth: isBest ? 2 : 0,
+              borderTopColor: isBest ? accent : 'transparent',
             }}
           >
+            <PharmacySourceLogo sourceId={slot.sourceId} logoUrl={slot.logoUrl} size={pharmPx(18)} showFallbackText={false} />
             <Text
               style={{
-                fontSize: compact ? 9 : 10,
+                marginTop: pharmPx(4),
+                fontSize: pharmPx(13),
                 fontWeight: '800',
-                letterSpacing: 0.6,
-                color: accent,
-                textTransform: 'uppercase',
+                color: hasPrice ? (isBest ? accent : colors.text100) : colors.text300,
               }}
             >
-              {sourceShort(slot.sourceId)}
+              {hasPrice ? `${slot.priceGel!.toFixed(2)}` : '—'}
             </Text>
-            <Text
-              style={{
-                marginTop: 4,
-                fontSize: compact ? 13 : 15,
-                fontWeight: '800',
-                color: hasPrice ? colors.text100 : colors.text300,
-              }}
-            >
-              {hasPrice ? `${slot.priceGel!.toFixed(2)} ₾` : '—'}
-            </Text>
-            {slot.isBest ? (
-              <View className="mt-1 flex-row items-center gap-0.5">
-                <Crown size={10} color={accent} />
-                <Text style={{ fontSize: 9, fontWeight: '700', color: accent }}>{ka.pharmacy.bestShort}</Text>
-              </View>
-            ) : hasPrice ? (
-              <Text style={{ marginTop: 4, fontSize: 9, color: colors.text300 }}>{slot.nameKa}</Text>
-            ) : (
-              <Text style={{ marginTop: 4, fontSize: 9, color: colors.text300 }}>{ka.pharmacy.noPrice}</Text>
-            )}
+            {isBest && hasPrice ? (
+              <Text style={{ marginTop: pharmPx(2), fontSize: pharmPx(9), fontWeight: '700', color: accent }}>
+                {ka.pharmacy.bestShort}
+              </Text>
+            ) : !hasPrice ? (
+              <Text style={{ marginTop: pharmPx(2), fontSize: pharmPx(9), color: colors.text300 }}>{ka.pharmacy.noPrice}</Text>
+            ) : null}
           </View>
         );
 
@@ -101,6 +75,7 @@ export function PharmacySourcePriceRow({ prices, compact = false, onPressSource 
             </Pressable>
           );
         }
+
         return (
           <View key={slot.sourceId} style={{ flex: 1 }}>
             {cell}

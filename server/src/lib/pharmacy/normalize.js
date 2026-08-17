@@ -13,9 +13,17 @@ const FORM_ALIASES = [
 
 const STRENGTH_RE = /(\d+(?:[.,]\d+)?)\s*(?:მ?გ|mg|mcg|g|ml|მლ|სе|iu|%-)/gi;
 const PACK_RE = /#\s*(\d+)/i;
-const QTY_RE = /(?:#|№)?\s*(\d+)\s*(?:ტ(?:აბ)?|tablet|კაფ|capsule|ცალი|unit)\b/i;
+const QTY_RE = /(?:#|№)?\s*(\d+)\s*(?:ტ(?:აბ(?:l)?)?|tablet|კაფ|capsule|ცალი|unit)\b/i;
 
 const MODIFIERS = ['forte', 'plus', 'express', 'extra', 'duo', 'es', 'max', 'rapid'];
+
+/** Well-known Georgian trade names → Latin INN/brand for cross-pharmacy matching. */
+const STATIC_GEO_TO_LATIN = {
+  ვიაგრა: 'viagra',
+  სიალის: 'cialis',
+  ნუროფენ: 'nurofen',
+  პარაცეტამოლი: 'paracetamol',
+};
 
 const NOISE_PATTERNS = [
   /\d+[.,]\d+\s*₾/g,
@@ -58,7 +66,12 @@ export function extractQuantityCount(raw) {
   const pack = extractPackSize(raw);
   if (pack) return pack;
   const m = String(raw || '').match(QTY_RE);
-  return m ? m[1] : null;
+  if (m) return m[1];
+  const tabCount = String(raw || '').match(/(?:^|[\s-])(\d+)\s*ტაბლ/i);
+  if (tabCount) return tabCount[1];
+  const hashTab = String(raw || '').match(/#\s*(\d+)\s*ტ/i);
+  if (hashTab) return hashTab[1];
+  return null;
 }
 
 export function extractStrengthTokens(raw) {
@@ -78,6 +91,7 @@ export function extractForm(raw) {
   if (/\bdrops\b/.test(s)) return 'drops';
   if (/\bpowder\b/.test(s)) return 'powder';
   if (/\bflakon\b/.test(s)) return 'flakon';
+  if (/#\d+\s*ტ/i.test(String(raw || '')) || /\d+\s*ტაბლ/i.test(String(raw || ''))) return 'tablet';
   return null;
 }
 
@@ -112,6 +126,7 @@ function canonicalBrand(raw, geoLatinMap = geoLatinCache) {
   const geo = geoWords[0]?.toLowerCase() ?? '';
   if (!geo) return '';
 
+  if (STATIC_GEO_TO_LATIN[geo]) return STATIC_GEO_TO_LATIN[geo];
   if (geoLatinMap?.has(geo)) return geoLatinMap.get(geo);
   if (geoLatinMap) {
     for (const [g, l] of geoLatinMap) {
@@ -128,35 +143,26 @@ function extractModifiers(raw) {
   return MODIFIERS.filter((m) => lower.includes(m)).sort();
 }
 
-/** Cross-pharmacy identity key (includes pack size). */
+/** Cross-pharmacy identity key (brand + strength + pack). Form wording differs by source. */
 export function buildMatchSignature(raw, geoLatinMap = geoLatinCache) {
-  const cleaned = cleanRawName(raw);
-  const brand = canonicalBrand(cleaned, geoLatinMap);
-  const strength = extractStrengthTokens(cleaned);
-  const qty = extractQuantityCount(cleaned);
-  const form = extractForm(cleaned);
-  const mods = extractModifiers(cleaned);
-
-  if (!brand && !strength) return '';
-
-  return [brand, mods.join('+'), strength, form || '', qty ? `q${qty}` : ''].filter(Boolean).join('|');
+  return buildLooseMatchSignature(raw, geoLatinMap);
 }
 
-/** Looser key for cross-pharmacy compare (brand + strength + form, ignore pack count). */
+/** Looser key for cross-pharmacy compare (brand + strength + pack when known). */
 export function buildLooseMatchSignature(raw, geoLatinMap = geoLatinCache) {
   const cleaned = cleanRawName(raw);
   const brand = canonicalBrand(cleaned, geoLatinMap);
   const strength = extractStrengthTokens(cleaned);
-  const form = extractForm(cleaned);
+  const qty = extractQuantityCount(cleaned);
   const mods = extractModifiers(cleaned);
 
   if (!brand || !strength) return '';
 
-  return [brand, mods.join('+'), strength, form || ''].filter(Boolean).join('|');
+  return [brand, mods.join('+'), strength, qty ? `q${qty}` : ''].filter(Boolean).join('|');
 }
 
-export function buildNormalizedKey(raw) {
-  return buildMatchSignature(raw) || normalizeDrugName(raw);
+export function buildNormalizedKey(raw, geoLatinMap = geoLatinCache) {
+  return buildLooseMatchSignature(raw, geoLatinMap) || normalizeDrugName(raw);
 }
 
 export function slugify(text) {

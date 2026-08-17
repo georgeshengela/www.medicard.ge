@@ -31,7 +31,14 @@ export async function getCrossSourceIndex() {
     },
   });
 
-  const geoMap = buildGeoLatinMap(rows.map((r) => r.name));
+  const nameCorpus = [];
+  for (const row of rows) {
+    nameCorpus.push(row.name);
+    for (const offer of row.offers) {
+      if (offer.rawName) nameCorpus.push(offer.rawName);
+    }
+  }
+  const geoMap = buildGeoLatinMap(nameCorpus);
   const index = new Map();
 
   for (const row of rows) {

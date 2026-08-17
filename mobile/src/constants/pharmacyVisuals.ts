@@ -37,7 +37,12 @@ export function categoryVisual(slug: string): CategoryVisual {
 }
 
 export const PHARMACY_SOURCES = [
-  { id: 'PHARMADEPOT', label: 'ფარმადეპო', color: '#26A69A' },
-  { id: 'AVERSI', label: 'ავერსი', color: '#5C6BC0' },
-  { id: 'PSP', label: 'PSP', color: '#EF5350' },
+  { id: 'PHARMADEPOT', label: 'ფარმადეპო', color: '#26A69A', logoUrl: 'https://pharmadepot.ge/icons/favicon.ico' },
+  { id: 'AVERSI', label: 'ავერსი', color: '#5C6BC0', logoUrl: 'https://www.aversi.ge/favicon.ico' },
+  { id: 'PSP', label: 'PSP', color: '#EF5350', logoUrl: 'https://psp.ge/favicon.ico' },
 ] as const;
+
+/** ~6% UI scale for pharmacy browse/compare screens. */
+export function pharmPx(value: number) {
+  return Math.round(value * 1.06);
+}

@@ -15,8 +15,9 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./admin.css?v=dash12" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./admin.css?v=dash27" />
 </head>
 <body>
   <div id="login-view" class="login-shell">
@@ -24,11 +25,11 @@
       <div class="mark">M</div>
       <p class="rail-kicker">Medicard.GE</p>
       <h1>Control</h1>
-      <p class="rail-copy">ოპერაციული კონსოლი — მომხმარებლები, პაკეტები, ლიმიტები და აპის რეჟიმი.</p>
+      <p class="rail-copy">ოპერაციული კონსოლი — მომხმარებლები, პაკეტები, ფარმაცია და აპის რეჟიმი.</p>
       <ul class="rail-list">
         <li data-icon="users">ცოცხალი ცხრილები და ფილტრები</li>
         <li data-icon="layers">პაკეტის მინიჭება ერთი კლიკით</li>
-        <li data-icon="shield">Offline / force-update რეჟიმი</li>
+        <li data-icon="pill">აფთიაქების სინქრონიზაცია</li>
       </ul>
     </aside>
     <form id="login-form" class="login-card" autocomplete="on">
@@ -40,7 +41,7 @@
       </label>
       <label class="field">
         <span>პაროლი</span>
-        <input id="login-password" type="password" required />
+        <input id="login-password" type="password" required placeholder="••••••••" />
       </label>
       <p id="login-error" class="error hidden"></p>
       <button type="submit" class="btn primary wide" data-icon="arrow">შესვლა კონსოლში</button>
@@ -48,7 +49,8 @@
   </div>
 
   <div id="app-view" class="app">
-    <aside class="sidebar">
+    <div id="sidebar-scrim" class="sidebar-scrim" aria-hidden="true"></div>
+    <aside class="sidebar" id="sidebar">
       <div class="brand">
         <div class="mark sm">M</div>
         <div>
@@ -56,25 +58,27 @@
           <span>Control</span>
         </div>
       </div>
-      <nav>
+      <nav class="sidebar-nav" aria-label="მთავარი მენიუ">
         <button data-tab="overview" class="nav active" data-icon="layout">მიმოხილვა</button>
         <button data-tab="users" class="nav" data-icon="users">მომხმარებლები</button>
         <button data-tab="packages" class="nav" data-icon="layers">პაკეტები</button>
         <button data-tab="push" class="nav" data-icon="bell">Push</button>
-        <button data-tab="pharmacy" class="nav" data-icon="pill">ფასების შედარება</button>
-        <button data-tab="ai" class="nav" data-icon="spark">AI Engine</button>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <button data-tab="pharmacy" class="nav" data-icon="pill">ფარმაცია</button>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <button data-tab="ai" class="nav" data-icon="spark">AI ხარისხი</button>
         <button data-tab="settings" class="nav" data-icon="settings">აპის რეჟიმი</button>
       </nav>
       <div class="sidebar-foot">
-        <button id="theme-toggle" class="ghost" type="button" data-icon="sun">თემა</button>
-        <button id="logout" class="ghost" type="button" data-icon="logout">გასვლა</button>
+        <button id="theme-toggle" class="foot-btn" type="button" data-icon="sun">თემა</button>
+        <button id="logout" class="foot-btn" type="button" data-icon="logout">გასვლა</button>
       </div>
     </aside>
 
     <div class="workspace">
       <header class="topbar">
-        <div>
-          <p class="kicker" id="page-kicker">ოპერაციები</p>
+        <div class="topbar-left">
+          <button id="sidebar-toggle" class="btn icon-only ghost mobile-only" type="button" data-icon="layout" aria-label="მენიუ"></button>
           <h2 id="page-title">მიმოხილვა</h2>
         </div>
         <div class="topbar-right">
@@ -82,7 +86,6 @@
           <div id="admin-chip" class="who"></div>
         </div>
       </header>
-      <p id="page-sub" class="lede"></p>
 
       <section id="tab-overview" class="panel"><div class="empty">იტვირთება…</div></section>
       <section id="tab-users" class="panel hidden"></section>
@@ -100,6 +103,6 @@
   </div>
 
   <div id="toasts" class="toasts"></div>
-  <script src="./admin.js?v=dash12"></script>
+  <script src="./admin.js?v=dash27"></script>
 </body>
 </html>

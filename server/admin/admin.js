@@ -3,6 +3,7 @@ const TOKEN_KEY = 'medicard.admin.token';
 const THEME_KEY = 'medicard.admin.theme';
 const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
+const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
 
 const state = {
@@ -60,6 +61,10 @@ function icon(name, size = '') {
 
 function iconTile(name, tone = '') {
   return `<div class="icon-tile ${tone}">${icon(name, 'md')}</div>`;
+}
+
+function tableActionCell(innerHtml) {
+  return `<td class="col-actions"><div class="row-actions">${innerHtml}</div></td>`;
 }
 
 function injectIcons(root = document) {
@@ -244,6 +249,20 @@ function escapeAttr(value) {
   return escapeHtml(value).replaceAll("'", '&#39;');
 }
 
+function onOffLabel(on) {
+  return on ? 'ჩართ.' : 'გამორთ.';
+}
+
+function providerBadge(label) {
+  const map = {
+    LIVE: 'ონლაინ',
+    OFF: 'გამორთ.',
+    LOW: 'დაბალი',
+    ERR: 'შეცდომა',
+  };
+  return map[label] || label;
+}
+
 function formatUsd(value) {
   if (value == null || Number.isNaN(Number(value))) return '—';
   return `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
@@ -326,7 +345,7 @@ function dashProvidersHtml(balances) {
           'OpenRouter',
           'wallet',
           orTone,
-          or?.configured ? (orTone === 'bad' ? 'LOW' : or?.ok ? 'LIVE' : 'ERR') : 'OFF',
+          or?.configured ? providerBadge(orTone === 'bad' ? 'LOW' : or?.ok ? 'LIVE' : 'ERR') : providerBadge('OFF'),
           formatUsd(or?.remaining),
           escapeHtml(or?.model || 'X-ray / CT / კანი'),
           [
@@ -343,17 +362,17 @@ function dashProvidersHtml(balances) {
           'EvidenceMD',
           'message',
           emdTone,
-          emd?.configured ? (emd?.ok ? 'LIVE' : 'ERR') : 'OFF',
+          emd?.configured ? providerBadge(emd?.ok ? 'LIVE' : 'ERR') : providerBadge('OFF'),
           emd?.remaining != null ? String(emd.remaining) : '—',
-          emd?.remaining != null ? 'დარჩენილი კრედიტი' : `${emd?.creditsPerCall || 4} cr / call · ${escapeHtml(emd?.model || 'ჩატი')}`,
+          emd?.remaining != null ? 'დარჩენილი კრედიტი' : `${emd?.creditsPerCall || 4} კრ. / გამოძახება · ${escapeHtml(emd?.model || 'ჩატი')}`,
           [
-            ['ამ თვეში', `${emd?.usedThisMonth ?? 0} call`],
-            ['~ cr', String(emd?.estimatedCreditsThisMonth ?? 0)],
-            ['სულ', `${emd?.usedAll ?? 0} call`],
+            ['ამ თვეში', `${emd?.usedThisMonth ?? 0} გამ.`],
+            ['~ კრ.', String(emd?.estimatedCreditsThisMonth ?? 0)],
+            ['სულ', `${emd?.usedAll ?? 0} გამ.`],
             ['API', emd?.ok ? 'ონლაინ' : 'გამორთული'],
           ],
           emd?.dashboardUrl || 'https://evidencemd.ai/developers',
-          'Dashboard',
+          'დეშბორდი',
           emd?.error,
         )}
       </div>
@@ -374,10 +393,10 @@ function setLivePill(settings) {
   if (!pill || !settings) return;
   if (settings.maintenanceMode) {
     pill.className = 'status-pill bad';
-    pill.innerHTML = `${icon('alert')} OFFLINE / განახლება`;
+    pill.innerHTML = `${icon('alert')} ოფლაინი · განახლება`;
   } else if (settings.forceUpdate) {
     pill.className = 'status-pill warn';
-    pill.innerHTML = `${icon('zap')} FORCE UPDATE`;
+    pill.innerHTML = `${icon('zap')} იძულებითი განახლება`;
   } else {
     pill.className = 'status-pill ok';
     pill.innerHTML = `${icon('check')} სისტემა აქტიურია`;
@@ -396,9 +415,18 @@ async function boot() {
     applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   });
   document.querySelectorAll('.nav').forEach((btn) => {
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    btn.addEventListener('click', () => {
+      document.body.classList.remove('sidebar-open');
+      switchTab(btn.dataset.tab);
+    });
   });
   $('drawer-backdrop').addEventListener('click', closeDrawer);
+  $('sidebar-toggle')?.addEventListener('click', () => {
+    document.body.classList.toggle('sidebar-open');
+  });
+  $('sidebar-scrim')?.addEventListener('click', () => {
+    document.body.classList.remove('sidebar-open');
+  });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeDrawer();
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -460,14 +488,12 @@ async function switchTab(tab) {
     overview: ['ოპერაციები', 'მიმოხილვა', 'რეალურ დროში — მომხმარებლები, პაკეტები და აპის რეჟიმი.'],
     users: ['რეესტრი', 'მომხმარებლები', 'ძებნა, სორტი, პაკეტის მინიჭება, ბლოკი და წაშლა. Ctrl/⌘+K — ძებნა.'],
     packages: ['კომერცია', 'პაკეტები', 'ყველა გეგმა თვიურია — AI ლიმიტი 30-დღიან პერიოდში.'],
-    push: ['კომუნიკაცია', 'Push შეტყობინებები', 'გაუგზავნეთ broadcast მომხმარებლებს სეგმენტის მიხედვით.'],
+    push: ['კომუნიკაცია', 'Push შეტყობინებები', 'გაუგზავნეთ push შეტყობინება მომხმარებლებს სეგმენტის მიხედვით.'],
     pharmacy: ['კატალოგი', 'ფასების შედარება', 'აფთიაქების სინქრონიზაცია, პროდუქტები და სინქის ისტორია.'],
-    ai: ['AI Engine', 'ხარისხის ანალიზი', 'ყველა AI პასუხი იწერება, შეფასდება და გაუმჯობესდება კონტროლირებულად.'],
-    settings: ['კონტროლი', 'აპის რეჟიმი', 'Offline, იძულებითი განახლება და რეგისტრაციის კარიბჭე.'],
+    ai: ['AI', 'ხარისხის ანალიზი', 'ყველა AI პასუხი იწერება, შეფასდება და გაუმჯობესდება კონტროლირებულად.'],
+    settings: ['კონტროლი', 'აპის რეჟიმი', 'ოფლაინი, იძულებითი განახლება და რეგისტრაციის კარიბჭე.'],
   };
-  $('page-kicker').textContent = copy[tab][0];
   $('page-title').textContent = copy[tab][1];
-  $('page-sub').textContent = copy[tab][2];
 
   if (tab === 'overview') await renderOverview();
   if (tab === 'users') await renderUsers();
@@ -490,50 +516,59 @@ async function renderOverview(freshBalances = false) {
   const s = stats.settings;
   const modeOk = !s.maintenanceMode && !s.forceUpdate;
   const modeTone = s.maintenanceMode ? 'bad' : s.forceUpdate ? 'warn' : 'ok';
-  const modeLabel = s.maintenanceMode ? 'OFFLINE' : s.forceUpdate ? 'FORCE UPDATE' : 'აქტიური';
+  const modeLabel = s.maintenanceMode ? 'ოფლაინი' : s.forceUpdate ? 'იძ. განახლება' : 'აქტიური';
   const activePct = stats.users.total ? Math.round((stats.users.active / stats.users.total) * 100) : null;
 
   $('tab-overview').innerHTML = `
-    <div class="ai-page dash-page">
-      <section class="ai-hero dash-hero">
-        <div class="ai-hero-copy">
-          <p class="kicker" style="margin:0 0 8px">ოპერაციები</p>
-          <h3>მიმოხილვა</h3>
-          <p>რეალურ დროში — მომხმარებლები, პაკეტები, AI პროვაიდერები და აპის რეჟიმი ერთ ეკრანზე.</p>
-          <div class="ai-hero-meta">
-            <span class="ai-pill teal">${icon('users')} მომხმარებლები <strong>${stats.users.total}</strong></span>
-            <span class="ai-pill ok">${icon('unlock')} აქტიური <strong>${stats.users.active}</strong></span>
-            ${stats.users.blocked ? `<span class="ai-pill bad">${icon('lock')} დაბლოკილი <strong>${stats.users.blocked}</strong></span>` : ''}
-            <span class="ai-pill">${icon('file')} ჩანაწერები <strong>${stats.records}</strong></span>
-            <span class="ai-pill ${modeTone}">${icon(modeOk ? 'shield' : 'alert')} ${modeLabel}</span>
-          </div>
-          <div class="dash-quick">
-            <button class="btn tiny ghost" data-go="users">${icon('users')} მომხმარებლები</button>
-            <button class="btn tiny ghost" data-go="packages">${icon('layers')} პაკეტები</button>
-            <button class="btn tiny ghost" data-go="ai">${icon('spark')} AI Engine</button>
-            <button class="btn tiny ghost" data-go="settings">${icon('settings')} რეჟიმი</button>
-          </div>
+    <div class="ai-page dash-page dash-enter">
+      <section class="dash-hero card" style="--i:0">
+        <div class="dash-hero-deco" aria-hidden="true">
+          <span class="deco deco-teal"></span>
+          <span class="deco deco-std"></span>
+          <span class="deco deco-ult"></span>
         </div>
-        ${dashHealthRing(stats.users.active, stats.users.total, activePct != null ? `${stats.users.active} აქტიური · ${stats.users.blocked} დაბლოკილი` : '—')}
+        <div class="dash-hero-grid">
+          <div class="dash-hero-copy">
+            <p class="kicker">Medicard Control</p>
+            <h2 class="dash-hero-title">ოპერაციული მიმოხილვა</h2>
+            <p class="dash-hero-sub">რეალურ დროში — მომხმარებლები, პაკეტები, AI ბალანსი და აპის რეჟიმი.</p>
+            <div class="dash-hero-meta">
+              <span class="ai-pill ${modeTone}">${icon('globe')} <strong>${modeLabel}</strong></span>
+              <span class="ai-pill teal">${icon('users')} <strong>${stats.users.total}</strong> ანგარიში</span>
+              ${activePct != null ? `<span class="ai-pill ok">${icon('activity')} <strong>${activePct}%</strong> აქტიური</span>` : ''}
+            </div>
+            <div class="dash-quick">
+              <button class="btn tiny ghost" data-go="users">${icon('users')} მომხმარებლები</button>
+              <button class="btn tiny ghost" data-go="push">${icon('bell')} Push</button>
+              <button class="btn tiny ghost" data-go="pharmacy">${icon('layers')} ფარმაცია</button>
+              <button class="btn tiny primary" data-go="settings">${icon('settings')} რეჟიმი</button>
+            </div>
+          </div>
+          ${dashHealthRing(stats.users.active, stats.users.total, `${stats.users.active} აქტიური · ${stats.users.blocked} დაბლოკილი`)}
+        </div>
       </section>
 
-      <div class="ai-kpi-grid">
-        <article class="ai-kpi">
+      <div class="ai-kpi-grid dash-kpi-grid">
+        <article class="ai-kpi dash-kpi tone-teal" style="--i:1">
+          <div class="kpi-icon">${icon('users')}</div>
           <div class="label">მომხმარებლები</div>
           <div class="value">${stats.users.total}</div>
           <div class="hint">${stats.users.active} აქტიური · ${stats.users.blocked} დაბლოკილი</div>
         </article>
-        <article class="ai-kpi">
+        <article class="ai-kpi dash-kpi tone-std" style="--i:2">
+          <div class="kpi-icon">${icon('file')}</div>
           <div class="label">ჩანაწერები</div>
           <div class="value">${stats.records}</div>
           <div class="hint">სამედიცინო ფაილები</div>
         </article>
-        <article class="ai-kpi">
+        <article class="ai-kpi dash-kpi tone-ult" style="--i:3">
+          <div class="kpi-icon">${icon('activity')}</div>
           <div class="label">AI ჩატები</div>
           <div class="value">${stats.chats}</div>
           <div class="hint">ექიმი / კონსილიუმი / მოდულები</div>
         </article>
-        <article class="ai-kpi">
+        <article class="ai-kpi dash-kpi tone-warn" style="--i:4">
+          <div class="kpi-icon">${icon('layers')}</div>
           <div class="label">პაკეტები</div>
           <div class="value">${assigned}</div>
           <div class="hint">${stats.packages.length} ტარიფი · აქტიურ ანგარიშებზე</div>
@@ -542,7 +577,7 @@ async function renderOverview(freshBalances = false) {
 
       ${dashProvidersHtml(balances)}
 
-      <div class="ai-split">
+      <div class="ai-split" style="--i:5">
         <div class="card dash-pkg-card">
           <div class="card-head">
             ${iconTile('layers', 'ult')}
@@ -567,15 +602,15 @@ async function renderOverview(freshBalances = false) {
             <div class="dash-mode-item ${s.maintenanceMode ? 'on bad' : 'off'}">
               ${icon('globe')}
               <div>
-                <strong>Maintenance</strong>
-                <span>${s.maintenanceMode ? 'ON — აპი გათიშულია' : 'OFF'}</span>
+                <strong>ოფლაინი / განახლება</strong>
+                <span>${s.maintenanceMode ? 'ჩართ. — აპი გათიშულია' : 'გამორთ.'}</span>
               </div>
             </div>
             <div class="dash-mode-item ${s.forceUpdate ? 'on warn' : 'off'}">
               ${icon('zap')}
               <div>
-                <strong>Force update</strong>
-                <span>${s.forceUpdate ? 'ON — სავალდებულო განახლება' : 'OFF'}</span>
+                <strong>იძულებითი განახლება</strong>
+                <span>${s.forceUpdate ? 'ჩართ. — სავალდებულო განახლება' : 'გამორთ.'}</span>
               </div>
             </div>
             <div class="dash-mode-item ${s.allowRegistrations ? 'on ok' : 'off'}">
@@ -588,8 +623,8 @@ async function renderOverview(freshBalances = false) {
             <div class="dash-mode-item">
               ${icon('activity')}
               <div>
-                <strong>მინ. ვერსია</strong>
-                <span class="mono">${escapeHtml(s.minAppVersion)}</span>
+                <strong>აპის ვერსია</strong>
+                <span class="mono">${escapeHtml(s.mobileAppVersion || s.minAppVersion)}</span>
               </div>
             </div>
           </div>
@@ -600,7 +635,7 @@ async function renderOverview(freshBalances = false) {
         </div>
       </div>
 
-      <div class="table-card ai-log-card dash-users-card">
+      <div class="table-card ai-log-card dash-users-card" style="--i:6">
         <div class="card-head">
           ${iconTile('users')}
           <div>
@@ -610,7 +645,7 @@ async function renderOverview(freshBalances = false) {
           <button class="btn tiny ghost grow" data-go="users">${icon('arrow')} რეესტრი</button>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="admin-table">
             <thead>
               <tr>
                 <th>მომხმარებელი</th>
@@ -618,7 +653,7 @@ async function renderOverview(freshBalances = false) {
                 <th>პაკეტი</th>
                 <th>სტატუსი</th>
                 <th>რეგისტრაცია</th>
-                <th></th>
+                <th class="col-actions">მოქმედება</th>
               </tr>
             </thead>
             <tbody>
@@ -641,8 +676,8 @@ async function renderOverview(freshBalances = false) {
                   </td>
                   <td>${pkgBadge(u.package)}</td>
                   <td>${statusBadge(u.status)}</td>
-                  <td class="mono">${fmtDateShort(u.createdAt)}</td>
-                  <td class="actions"><button class="btn tiny ghost" data-open-btn="${u.id}">${icon('file')} ნახვა</button></td>
+                  <td class="mono col-date">${fmtDateShort(u.createdAt)}</td>
+                  ${tableActionCell(`<button class="btn tiny ghost" data-open-btn="${u.id}">${icon('file')} ნახვა</button>`)}
                 </tr>
               `).join('') : '<tr><td colspan="6"><div class="empty"><strong>ჯერ არავინ დარეგისტრირებულა</strong>პირველი მომხმარებელი აქ გამოჩნდება.</div></td></tr>'}
             </tbody>
@@ -687,51 +722,145 @@ function sortUsers(list) {
   });
 }
 
+function usersCurrentPage() {
+  return Math.floor(state.offset / USERS_PAGE_SIZE) + 1;
+}
+
+function usersTotalPages() {
+  return Math.max(1, Math.ceil(state.total / USERS_PAGE_SIZE));
+}
+
+function avatarTone(user) {
+  if (user.status === 'BLOCKED') return 'muted';
+  return pkgClass(user.package?.code);
+}
+
+function paintUserPagination(onPage) {
+  const wrap = $('user-pager-pages');
+  if (!wrap) return;
+  const totalPages = usersTotalPages();
+  const current = usersCurrentPage();
+  if (state.total === 0) {
+    wrap.innerHTML = '';
+    return;
+  }
+
+  const pages = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (current > 3) pages.push('…');
+    const start = Math.max(2, current - 1);
+    const end = Math.min(totalPages - 1, current + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (current < totalPages - 2) pages.push('…');
+    pages.push(totalPages);
+  }
+
+  wrap.innerHTML = pages
+    .map((p) => (p === '…'
+      ? '<span class="pager-ellipsis">…</span>'
+      : `<button type="button" class="pager-page${p === current ? ' active' : ''}" data-page="${p}">${p}</button>`))
+    .join('');
+
+  wrap.querySelectorAll('[data-page]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.offset = (Number(btn.dataset.page) - 1) * USERS_PAGE_SIZE;
+      onPage();
+    });
+  });
+}
+
 async function renderUsers() {
   const root = $('tab-users');
   root.innerHTML = `
-    <div class="toolbar">
-      <label class="search-field">
-        ${icon('search')}
-        <input id="user-q" placeholder="ძებნა სახელით, email-ით ან ტელეფონით" />
-      </label>
-      <select id="user-status">
-        <option value="">ყველა სტატუსი</option>
-        <option value="ACTIVE">აქტიური</option>
-        <option value="BLOCKED">დაბლოკილი</option>
-      </select>
-      <select id="user-package">
-        <option value="">ყველა პაკეტი</option>
-        <option value="FREE">FREE</option>
-        <option value="STANDARD">STANDARD</option>
-        <option value="ULTIMATE">ULTIMATE</option>
-      </select>
-      <div class="toolbar-actions">
-        <button class="btn ghost" id="user-reload">${icon('refresh')} განახლება</button>
-        <button class="btn ghost" id="user-csv">${icon('download')} CSV</button>
-        <span class="table-meta" id="user-meta"></span>
+    <div class="users-page">
+      <div class="users-head card">
+        <div class="users-head-copy">
+          ${iconTile('users', 'teal')}
+          <div>
+            <p class="kicker">რეესტრი</p>
+            <h2 class="users-title">მომხმარებლები</h2>
+            <p class="users-sub muted">ძებნა, სორტი, პაკეტი და სტატუსის მართვა · 15 ჩანაწერი გვერდზე</p>
+          </div>
+        </div>
+        <div class="users-head-stats" id="users-head-stats">
+          <div class="users-stat tone-teal"><span>სულ</span><strong id="users-stat-total">—</strong></div>
+          <div class="users-stat tone-ok"><span>აქტიური</span><strong id="users-stat-active">—</strong></div>
+          <div class="users-stat tone-bad"><span>დაბლოკ.</span><strong id="users-stat-blocked">—</strong></div>
+        </div>
       </div>
-    </div>
-    <div class="table-card">
-      <div class="table-wrap"><table class="users-table">
-        <thead>
-          <tr>
-            <th data-sort="fullName">მომხმარებელი</th>
-            <th data-sort="email">კონტაქტი</th>
-            <th data-sort="package">პაკეტი</th>
-            <th data-sort="used">თვიური ლიმიტი</th>
-            <th data-sort="status">სტატუსი</th>
-            <th data-sort="createdAt">რეგისტრაცია</th>
-            <th>აქტივობა</th>
-            <th class="col-actions">მოქმედება</th>
-          </tr>
-        </thead>
-        <tbody id="users-tbody"><tr><td colspan="8"><div class="empty">იტვირთება…</div></td></tr></tbody>
-      </table></div>
-      <div class="pager">
-        <button class="btn tiny ghost" id="prev-page">წინა</button>
-        <span id="page-ind"></span>
-        <button class="btn tiny ghost" id="next-page">შემდეგი</button>
+
+      <div class="users-toolbar card">
+        <label class="search-field users-search">
+          ${icon('search')}
+          <input id="user-q" placeholder="ძებნა სახელით, email-ით ან ტელეფონით…" />
+        </label>
+        <select id="user-status" class="users-filter" aria-label="სტატუსი">
+          <option value="">ყველა სტატუსი</option>
+          <option value="ACTIVE">აქტიური</option>
+          <option value="BLOCKED">დაბლოკილი</option>
+        </select>
+        <select id="user-package" class="users-filter" aria-label="პაკეტი">
+          <option value="">ყველა პაკეტი</option>
+          <option value="FREE">FREE</option>
+          <option value="STANDARD">STANDARD</option>
+          <option value="ULTIMATE">ULTIMATE</option>
+        </select>
+        <div class="users-toolbar-actions">
+          <button class="btn ghost" id="user-reload" type="button">${icon('refresh')} განახლება</button>
+          <button class="btn ghost" id="user-csv" type="button">${icon('download')} CSV</button>
+        </div>
+      </div>
+
+      <div class="table-card users-table-card">
+        <div class="users-table-meta">
+          <span id="user-meta" class="users-meta-label">იტვირთება…</span>
+          <span class="users-meta-hint muted">Ctrl/⌘+K — ძებნა</span>
+        </div>
+        <div class="table-wrap users-table-wrap">
+          <table class="users-table admin-table">
+            <colgroup>
+              <col class="col-num" />
+              <col class="col-user" />
+              <col class="col-contact" />
+              <col class="col-pkg" />
+              <col class="col-quota" />
+              <col class="col-status" />
+              <col class="col-date" />
+              <col class="col-stats" />
+              <col class="col-actions" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th data-sort="fullName">მომხმარებელი</th>
+                <th data-sort="email">კონტაქტი</th>
+                <th data-sort="package">პაკეტი</th>
+                <th data-sort="used">AI ლიმიტი</th>
+                <th data-sort="status">სტატუსი</th>
+                <th data-sort="createdAt">რეგისტრაცია</th>
+                <th>აქტივობა</th>
+                <th class="col-actions">მოქმედება</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody">
+              <tr><td colspan="9"><div class="empty">იტვირთება…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-pager users-pager">
+          <div class="pager-info">
+            <strong id="page-ind">0 / 0</strong>
+            <span class="muted" id="page-size-label">· ${USERS_PAGE_SIZE} / გვერდი</span>
+          </div>
+          <div class="pager-controls">
+            <button class="btn tiny ghost pager-nav" id="prev-page" type="button">${icon('arrow')} წინა</button>
+            <div class="pager-pages" id="user-pager-pages"></div>
+            <button class="btn tiny ghost pager-nav" id="next-page" type="button">შემდეგი ${icon('arrow')}</button>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -740,70 +869,87 @@ async function renderUsers() {
     const q = $('user-q').value.trim();
     const status = $('user-status').value;
     const pkg = $('user-package').value;
-    const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(state.offset) });
+    const params = new URLSearchParams({ limit: String(USERS_PAGE_SIZE), offset: String(state.offset) });
     if (q) params.set('q', q);
     if (status) params.set('status', status);
     if (pkg) params.set('package', pkg);
-    const data = await api(`/users?${params.toString()}`);
+    const [data, stats] = await Promise.all([
+      api(`/users?${params.toString()}`),
+      api('/stats').catch(() => null),
+    ]);
     state.users = data.users;
     state.total = data.total;
+    if (stats?.users) {
+      $('users-stat-total').textContent = stats.users.total;
+      $('users-stat-active').textContent = stats.users.active;
+      $('users-stat-blocked').textContent = stats.users.blocked;
+    }
     paintUsers();
   };
 
   const paintUsers = () => {
     const rows = sortUsers(state.users);
-    $('user-meta').textContent = `${state.total} ჩანაწერი`;
-    $('page-ind').textContent = state.total
-      ? `${state.offset + 1}–${Math.min(state.offset + PAGE_SIZE, state.total)} / ${state.total}`
-      : '0 / 0';
+    const from = state.total ? state.offset + 1 : 0;
+    const to = state.total ? Math.min(state.offset + USERS_PAGE_SIZE, state.total) : 0;
+    $('user-meta').textContent = state.total ? `${state.total.toLocaleString('ka-GE')} ანგარიში რეესტრში` : 'ჩანაწერი არ არის';
+    $('page-ind').textContent = state.total ? `${from}–${to} / ${state.total.toLocaleString('ka-GE')}` : '0 / 0';
     const prev = $('prev-page');
     const next = $('next-page');
     if (prev) prev.disabled = state.offset === 0;
-    if (next) next.disabled = state.offset + PAGE_SIZE >= state.total;
+    if (next) next.disabled = state.offset + USERS_PAGE_SIZE >= state.total;
+    paintUserPagination(load);
     document.querySelectorAll('th[data-sort]').forEach((th) => {
       th.classList.toggle('sort-asc', th.dataset.sort === state.sortKey && state.sortDir === 'asc');
       th.classList.toggle('sort-desc', th.dataset.sort === state.sortKey && state.sortDir === 'desc');
     });
     const body = $('users-tbody');
     if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="8"><div class="empty">${icon('users', 'lg')}<strong>მომხმარებელი ვერ მოიძებნა</strong><p>შეცვალე ძებნა ან ფილტრი</p></div></td></tr>`;
+      body.innerHTML = `<tr><td colspan="9"><div class="empty">${icon('users', 'lg')}<strong>მომხმარებელი ვერ მოიძებნა</strong><p>შეცვალე ძებნა ან ფილტრი</p></div></td></tr>`;
       return;
     }
-    body.innerHTML = rows.map((u) => `
-      <tr data-id="${u.id}" class="${state.selectedId === u.id ? 'selected' : ''}">
+    body.innerHTML = rows.map((u, index) => `
+      <tr data-id="${u.id}" class="users-row ${state.selectedId === u.id ? 'selected' : ''} ${u.status === 'BLOCKED' ? 'row-blocked' : ''}">
+        <td class="mono users-num">${state.offset + index + 1}</td>
         <td>
-          <div class="person">
-            <div class="avatar">${escapeHtml(initials(u.fullName))}</div>
-            <div>
+          <div class="person users-person">
+            <div class="avatar avatar-${avatarTone(u)}">${escapeHtml(initials(u.fullName))}</div>
+            <div class="users-person-copy">
               <strong>${escapeHtml(u.fullName)}</strong>
-              <div class="sub mono">${escapeHtml(u.id.slice(0, 8))}</div>
+              <span class="sub mono">${escapeHtml(u.id.slice(0, 8))}…</span>
             </div>
           </div>
         </td>
         <td>
-          <div class="stack">
+          <div class="stack users-contact">
             <div class="line">${icon('mail')}<span>${escapeHtml(u.email)}</span></div>
-            <div class="line muted">${icon('phone')}<span>${escapeHtml(u.phone || 'ტელეფონი არ არის')}</span></div>
+            <div class="line muted">${icon('phone')}<span>${escapeHtml(u.phone || '—')}</span></div>
           </div>
         </td>
-        <td>${pkgBadge(u.package)}${u.packageExpiresAt ? `<div class="sub muted">${u.packageStartedAt ? `${fmtDateShort(u.packageStartedAt)} → ` : ''}${fmtDateShort(u.packageExpiresAt)}</div>` : `<div class="sub muted">კალენდ. თვე</div>`}</td>
+        <td>
+          <div class="stack users-pkg-stack">
+            <div class="users-pkg-badge">${pkgBadge(u.package)}</div>
+            <span class="users-pkg-sub muted">${u.packageExpiresAt
+              ? `${u.packageStartedAt ? `${fmtDateShort(u.packageStartedAt)} → ` : ''}${fmtDateShort(u.packageExpiresAt)}`
+              : 'კალენდ. თვე'}</span>
+          </div>
+        </td>
         <td>${quotaCell(u.usage)}</td>
         <td>${statusBadge(u.status)}</td>
-        <td class="mono">${fmtDateShort(u.createdAt)}</td>
+        <td class="mono col-date">${fmtDateShort(u.createdAt)}</td>
         <td>
-          <div class="stat-pills">
-            <span>${u.counts.records} ჩან.</span>
-            <span>${u.counts.chats} ჩატი</span>
-            <span>${u.counts.medications} მედ.</span>
+          <div class="stat-pills users-stat-pills">
+            <span class="pill-records">${u.counts.records} ჩან.</span>
+            <span class="pill-chats">${u.counts.chats} ჩატი</span>
+            <span class="pill-meds">${u.counts.medications} მედ.</span>
           </div>
         </td>
         <td class="col-actions">
-          <div class="actions">
-            <button class="btn tiny ghost" data-edit="${u.id}">${icon('file')} დეტალი</button>
-            <button class="btn tiny ghost" data-copy="${u.email}">${icon('mail')} კოპირება</button>
+          <div class="row-actions user-row-actions">
+            <button class="btn icon-only ghost" type="button" title="დეტალი" data-edit="${u.id}">${icon('file')}</button>
+            <button class="btn icon-only ghost" type="button" title="ელ-ფოსტის კოპირება" data-copy="${u.email}">${icon('mail')}</button>
             ${u.status === 'BLOCKED'
-              ? `<button class="btn tiny ghost" data-unblock="${u.id}">${icon('unlock')} განბლოკვა</button>`
-              : `<button class="btn tiny danger" data-block="${u.id}">${icon('lock')} ბლოკი</button>`}
+              ? `<button class="btn icon-only ghost" type="button" title="განბლოკვა" data-unblock="${u.id}">${icon('unlock')}</button>`
+              : `<button class="btn icon-only danger" type="button" title="ბლოკი" data-block="${u.id}">${icon('lock')}</button>`}
           </div>
         </td>
       </tr>
@@ -814,6 +960,10 @@ async function renderUsers() {
         if (e.target.closest('button')) return;
         state.selectedId = tr.dataset.id;
         paintUsers();
+      });
+      tr.addEventListener('dblclick', (e) => {
+        if (e.target.closest('button')) return;
+        editUser(tr.dataset.id);
       });
     });
     body.querySelectorAll('[data-edit]').forEach((btn) => btn.addEventListener('click', () => editUser(btn.dataset.edit)));
@@ -850,9 +1000,9 @@ async function renderUsers() {
   $('user-q').onkeydown = (e) => { if (e.key === 'Enter') { clearTimeout(searchTimer); state.offset = 0; load(); } };
   $('user-status').onchange = () => { state.offset = 0; load(); };
   $('user-package').onchange = () => { state.offset = 0; load(); };
-  $('prev-page').onclick = () => { state.offset = Math.max(0, state.offset - PAGE_SIZE); load(); };
+  $('prev-page').onclick = () => { state.offset = Math.max(0, state.offset - USERS_PAGE_SIZE); load(); };
   $('next-page').onclick = () => {
-    if (state.offset + PAGE_SIZE < state.total) { state.offset += PAGE_SIZE; load(); }
+    if (state.offset + USERS_PAGE_SIZE < state.total) { state.offset += USERS_PAGE_SIZE; load(); }
   };
   $('user-csv').onclick = () => {
     const header = ['id', 'fullName', 'email', 'phone', 'status', 'package', 'used', 'limit', 'createdAt'];
@@ -1115,27 +1265,6 @@ async function renderPush() {
 
   $('tab-push').innerHTML = `
     <div class="ai-page push-page">
-      <section class="ai-hero">
-        <div class="ai-hero-copy">
-          <p class="kicker" style="margin:0 0 8px">კომუნიკაცია</p>
-          <h3>Push შეტყობინებები</h3>
-          <p>Expo Push broadcast მომხმარებლების სეგმენტებში — ერთი გაგზავნით, ცოცხალი მიწოდების სტატისტიკით.</p>
-          <div class="ai-hero-meta">
-            <span class="ai-pill teal">${icon('bell')} მოწყობილობები <strong>${activeDevices}</strong></span>
-            <span class="ai-pill">მომხმარებლები <strong>${subscribedUsers}</strong></span>
-            <span class="ai-pill ${deliveryPct != null && deliveryPct >= 90 ? 'ok' : deliveryPct != null && deliveryPct >= 70 ? 'warn' : deliveryPct != null ? 'bad' : ''}">მიწოდება <strong>${deliveryPct != null ? `${deliveryPct}%` : '—'}</strong></span>
-            <span class="ai-pill">კამპანიები <strong>${campaigns.length}</strong></span>
-          </div>
-        </div>
-        ${pushDeliveryRing(
-          totalSent,
-          totalTarget,
-          lastCampaign
-            ? `ბოლო · ${escapeHtml(lastCampaign.title.slice(0, 28))}${lastCampaign.title.length > 28 ? '…' : ''}`
-            : 'ჯერ არ გაგზავნილა',
-        )}
-      </section>
-
       <div class="ai-kpi-grid">
         <article class="ai-kpi">
           <div class="label">Push მოწყობილობები</div>
@@ -1222,7 +1351,7 @@ async function renderPush() {
           </div>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="admin-table">
             <thead>
               <tr>
                 <th>დრო</th>
@@ -1231,7 +1360,7 @@ async function renderPush() {
                 <th>სტატუსი</th>
                 <th>მიწოდება</th>
                 <th>ადმინი</th>
-                <th></th>
+                <th class="col-actions">მოქმედება</th>
               </tr>
             </thead>
             <tbody>
@@ -1256,7 +1385,7 @@ async function renderPush() {
                       </div>
                     </div>
                   </td>
-                  <td class="actions"><button class="btn tiny ghost" data-push-view="${c.id}">${icon('file')} ნახვა</button></td>
+                  ${tableActionCell(`<button class="btn tiny ghost" data-push-view="${c.id}">${icon('file')} ნახვა</button>`)}
                 </tr>
               `).join('') : '<tr><td colspan="7"><div class="empty"><strong>კამპანიები ჯერ არ არის</strong>პირველი push broadcast ზემოთ შექმენით.</div></td></tr>'}
             </tbody>
@@ -1469,26 +1598,6 @@ async function renderAi() {
 
   $('tab-ai').innerHTML = `
     <div class="ai-page">
-      <section class="ai-hero">
-        <div class="ai-hero-copy">
-          <p class="kicker" style="margin:0 0 8px">AI Improvement Engine</p>
-          <h3>ხარისხის ანალიზი</h3>
-          <p>ყველა AI გამოძახება იწერება, შეფასდება LLM-as-judge სკანით და მომხმარებლის feedback-ით — კონტროლირებადი გაუმჯობესება.</p>
-          <div class="ai-hero-meta">
-            <span class="ai-pill teal">${icon('spark')} Prompt <strong>v${escapeHtml(stats.promptVersion)}</strong></span>
-            <span class="ai-pill">ჯამი <strong>${stats.total}</strong></span>
-            <span class="ai-pill ${errorTone}">24სთ შეცდომა <strong>${stats.errorRate24h}%</strong></span>
-            ${fbPct != null ? `<span class="ai-pill ok">👍 ${fbPct}%</span>` : ''}
-          </div>
-        </div>
-        ${aiScoreRing(
-          lastEval?.avgScore ?? null,
-          lastEval
-            ? `${lastEval.lowScoreCount} დაბალი · ${lastEval.sampleSize} სინჯი`
-            : 'სკანი ჯერ არ გაშვებულა',
-        )}
-      </section>
-
       <div class="ai-kpi-grid">
         <article class="ai-kpi">
           <div class="label">24 საათი</div>
@@ -1501,7 +1610,7 @@ async function renderAi() {
           <div class="hint">საშ. ${stats.avgLatencyMs} ms</div>
         </article>
         <article class="ai-kpi">
-          <div class="label">Feedback</div>
+          <div class="label">უკუკავშირი</div>
           <div class="value">${stats.feedback.up}<span style="font-size:16px;color:var(--muted)"> ↑</span> ${stats.feedback.down}<span style="font-size:16px;color:var(--muted)"> ↓</span></div>
           <div class="hint">${fbTotal} შეფასება</div>
         </article>
@@ -1516,7 +1625,6 @@ async function renderAi() {
         <div class="card ai-scan-card">
           <div class="card-head">${iconTile('spark', 'ult')}<div><h3>ხარისხის სკანი</h3><p class="muted" style="margin:2px 0 0;font-size:12px">LLM-as-judge — ქართული, disclaimer, უსაფრთხოება, კლინიკური სიზუსტე</p></div></div>
           <div class="ai-scan-body">
-            ${aiScoreRing(lastEval?.avgScore ?? null, 'ბოლო შედეგი')}
             <div class="ai-scan-form">
               <div class="field">
                 <span>სინჯის ზომა (5–40)</span>
@@ -1543,8 +1651,8 @@ async function renderAi() {
           </div>
         </div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>დრო</th><th>მომხმარებელი</th><th>მოდული</th><th>სტატუსი</th><th>Latency</th><th>Feedback</th><th></th></tr></thead>
+          <table class="admin-table">
+            <thead><tr><th>დრო</th><th>მომხმარებელი</th><th>მოდული</th><th>სტატუსი</th><th>დრო (ms)</th><th>უკუკავშირი</th><th class="col-actions">მოქმედება</th></tr></thead>
             <tbody>
               ${interactions.length ? interactions.map((row) => `
                 <tr>
@@ -1559,10 +1667,10 @@ async function renderAi() {
                     </div>
                   </td>
                   <td><span class="badge neutral">${AI_MODE_LABELS[row.mode] || row.mode}</span></td>
-                  <td>${row.status === 'OK' ? '<span class="badge ok">OK</span>' : '<span class="badge bad">ERR</span>'}</td>
+                  <td>${row.status === 'OK' ? '<span class="badge ok">OK</span>' : '<span class="badge bad">შეცდომა</span>'}</td>
                   <td class="mono">${row.latencyMs != null ? `${row.latencyMs} ms` : '—'}</td>
                   <td>${feedbackCell(row)}</td>
-                  <td class="actions"><button class="btn tiny ghost" data-ai-view="${row.id}">${icon('file')} ნახვა</button></td>
+                  ${tableActionCell(`<button class="btn tiny ghost" data-ai-view="${row.id}">${icon('file')} ნახვა</button>`)}
                 </tr>
               `).join('') : '<tr><td colspan="7"><div class="empty"><strong>ჩანაწერები ცარიელია</strong>AI გამოძახების შემდეგ აქ გამოჩნდება.</div></td></tr>'}
             </tbody>
@@ -1581,7 +1689,7 @@ async function renderAi() {
                     <strong>${run.avgScore ?? '—'}</strong>
                     <span style="color:var(--muted);font-size:14px;font-weight:600"> / 100</span>
                   </div>
-                  ${run.status === 'DONE' ? '<span class="badge ok">DONE</span>' : run.status === 'FAILED' ? '<span class="badge bad">FAIL</span>' : '<span class="badge std">…</span>'}
+                  ${run.status === 'DONE' ? '<span class="badge ok">მზადა</span>' : run.status === 'FAILED' ? '<span class="badge bad">ჩავარდა</span>' : '<span class="badge std">მიმდ.</span>'}
                 </div>
                 <div class="ai-run-meta">${fmtDate(run.finishedAt || run.createdAt)} · ${run.lowScoreCount}/${run.sampleSize} დაბალი</div>
                 <p class="ai-run-summary">${escapeHtml(run.summary || '—')}</p>
@@ -1625,9 +1733,9 @@ async function viewAiInteraction(id) {
     <p class="muted mono" style="font-size:11px">${escapeHtml(interaction.id)}</p>
     <div class="drawer-stats">
       <div class="drawer-stat"><div class="label">მომხმარებელი</div><strong>${escapeHtml(interaction.user?.fullName || '—')}</strong></div>
-      <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${interaction.status === 'OK' ? '✓ OK' : '✗ ERR'}</strong></div>
+      <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${interaction.status === 'OK' ? '✓ წარმატებული' : '✗ შეცდომა'}</strong></div>
       <div class="drawer-stat"><div class="label">Prompt</div><strong class="mono">v${escapeHtml(interaction.promptVersion)}</strong></div>
-      <div class="drawer-stat"><div class="label">Latency</div><strong>${interaction.latencyMs ?? '—'} ms</strong></div>
+      <div class="drawer-stat"><div class="label">დრო (ms)</div><strong>${interaction.latencyMs ?? '—'} ms</strong></div>
     </div>
     ${fb ? `<span class="ai-pill ${fb.rating > 0 ? 'ok' : 'bad'}">${fb.rating > 0 ? '👍 კარგი' : '👎 ცუდი'}${fb.comment ? ` · ${escapeHtml(fb.comment)}` : ''}</span>` : ''}
     <div class="field"><span>შეკითხვა / კონტექსტი</span><div class="ai-drawer-block"><pre>${escapeHtml(interaction.userPrompt || '—')}</pre></div></div>
@@ -1667,7 +1775,7 @@ async function renderSettings() {
         <div class="card-head">${iconTile('settings')}<h3>რეჟიმები</h3></div>
         <label class="toggle">
           <div>
-            <strong>Offline / განახლება</strong>
+            <strong>ოფლაინი / განახლება</strong>
             <p>აპი და API გაჩერდება მომხმარებლებისთვის. ადმინი რჩება ხელმისაწვდომი.</p>
           </div>
           <span class="switch"><input id="set-maint" type="checkbox" ${settings.maintenanceMode ? 'checked' : ''}/><i></i></span>
@@ -1687,15 +1795,19 @@ async function renderSettings() {
           <span class="switch"><input id="set-reg" type="checkbox" ${settings.allowRegistrations ? 'checked' : ''}/><i></i></span>
         </label>
         <div class="field" style="margin-top:12px">
-          <span>Maintenance შეტყობინება</span>
+          <span>ოფლაინის შეტყობინება</span>
           <textarea id="set-msg" rows="3">${escapeHtml(settings.maintenanceMessage)}</textarea>
         </div>
         <div class="field">
-          <span>მინიმალური აპის ვერსია</span>
-          <input id="set-minver" value="${escapeAttr(settings.minAppVersion)}" />
+          <span>აპის ვერსია (mobile/app.json)</span>
+          <input value="${escapeAttr(settings.mobileAppVersion || '—')}" readonly />
         </div>
         <div class="field">
-          <span>Support email</span>
+          <span>მინიმალური აპის ვერსია (API)</span>
+          <input id="set-minver" value="${escapeAttr(settings.minAppVersion)}" placeholder="${escapeAttr(settings.mobileAppVersion || '1.0.0')}" />
+        </div>
+        <div class="field">
+          <span>მხარდაჭერის ელ-ფოსტა</span>
           <input id="set-email" value="${escapeAttr(settings.supportEmail)}" />
         </div>
         <div class="row" style="justify-content:flex-start;margin-top:8px">
@@ -1705,11 +1817,12 @@ async function renderSettings() {
       <div class="card">
         <div class="card-head">${iconTile(settings.maintenanceMode ? 'alert' : 'shield', settings.maintenanceMode ? 'warn' : 'ok')}<h3>სტატუსი</h3></div>
         <div class="detail-list">
-          <div class="detail"><span>${icon('globe')} Maintenance</span><strong>${settings.maintenanceMode ? 'ON' : 'OFF'}</strong></div>
-          <div class="detail"><span>${icon('zap')} Force update</span><strong>${settings.forceUpdate ? 'ON' : 'OFF'}</strong></div>
+          <div class="detail"><span>${icon('globe')} ოფლაინი</span><strong>${onOffLabel(settings.maintenanceMode)}</strong></div>
+          <div class="detail"><span>${icon('zap')} იძ. განახლება</span><strong>${onOffLabel(settings.forceUpdate)}</strong></div>
           <div class="detail"><span>${icon('users')} რეგისტრაცია</span><strong>${settings.allowRegistrations ? 'ღიაა' : 'დახურულია'}</strong></div>
-          <div class="detail"><span>${icon('activity')} მინ. ვერსია</span><strong class="mono">${escapeHtml(settings.minAppVersion)}</strong></div>
-          <div class="detail"><span>${icon('mail')} Support</span><strong>${escapeHtml(settings.supportEmail || '—')}</strong></div>
+          <div class="detail"><span>${icon('activity')} აპის ვერსია</span><strong class="mono">${escapeHtml(settings.mobileAppVersion || '—')}</strong></div>
+          <div class="detail"><span>${icon('zap')} მინ. ვერსია</span><strong class="mono">${escapeHtml(settings.minAppVersion)}</strong></div>
+          <div class="detail"><span>${icon('mail')} მხარდაჭერა</span><strong>${escapeHtml(settings.supportEmail || '—')}</strong></div>
           <div class="detail"><span>${icon('calendar')} განახლდა</span><strong class="mono">${fmtDate(settings.updatedAt)}</strong></div>
         </div>
       </div>
@@ -1736,9 +1849,9 @@ async function renderSettings() {
 let pharmacyPollTimer = null;
 
 function syncRunBadge(status) {
-  if (status === 'DONE') return '<span class="badge ok">DONE</span>';
-  if (status === 'FAILED') return '<span class="badge bad">FAILED</span>';
-  if (status === 'RUNNING') return '<span class="badge std">RUNNING</span>';
+  if (status === 'DONE') return '<span class="badge ok">მზადა</span>';
+  if (status === 'FAILED') return '<span class="badge bad">ჩავარდა</span>';
+  if (status === 'RUNNING') return '<span class="badge std">მიმდ.</span>';
   return `<span class="badge neutral">${escapeHtml(status || '—')}</span>`;
 }
 
@@ -1772,12 +1885,12 @@ function pharmSourceCard(src, catalog, sourceStatus, syncMeta) {
   const tone = pharmSourceTone(last?.status);
   const badge =
     last?.status === 'DONE'
-      ? '<span class="badge ok">LIVE</span>'
+      ? '<span class="badge ok">ონლაინ</span>'
       : last?.status === 'FAILED'
-        ? '<span class="badge bad">FAILED</span>'
+        ? '<span class="badge bad">ჩავარდა</span>'
         : last?.status === 'RUNNING'
-          ? '<span class="badge std">SYNC</span>'
-          : '<span class="badge neutral">OFF</span>';
+          ? '<span class="badge std">სინქი</span>'
+          : '<span class="badge neutral">გამორთ.</span>';
 
   return `
     <article class="pharm-source ${tone}">
@@ -1800,6 +1913,11 @@ function pharmSourceCard(src, catalog, sourceStatus, syncMeta) {
         <div><span>ხანგრძლ.</span><strong class="mono">${last ? syncDuration(last.startedAt, last.finishedAt) : '—'}</strong></div>
       </div>
       ${last?.error ? `<p class="pharm-source-error">${escapeHtml(last.error.slice(0, 140))}${last.error.length > 140 ? '…' : ''}</p>` : ''}
+      ${
+        last?.status === 'FAILED'
+          ? `<button type="button" class="btn tiny ghost pharm-retry" data-source="${src.id}">${icon('refresh')} ხელახლა</button>`
+          : ''
+      }
     </article>
   `;
 }
@@ -1902,56 +2020,6 @@ async function renderPharmacy() {
           <span class="pharm-live-dot" aria-hidden="true"></span>
         </div>
       ` : ''}
-
-      <section class="pharm-hero ai-hero">
-        <div class="ai-hero-copy">
-          <p class="kicker">კატალოგი · Pharmadepot · Aversi · PSP</p>
-          <h3>ფასების შედარება</h3>
-          <p>სამი აფთიაქის ერთიანი კატალოგი — ავტომატური მატჩინგი, საუკეთესო ფასის გამოთვლა და მობილურ აპში ცოცხალი შედარება.</p>
-          <div class="ai-hero-meta">
-            <span class="ai-pill teal">${icon('pill')} პროდუქტი <strong>${catalog.products.toLocaleString('ka-GE')}</strong></span>
-            <span class="ai-pill">${icon('layers')} offer <strong>${catalog.offers.toLocaleString('ka-GE')}</strong></span>
-            <span class="ai-pill ok">${icon('check')} 2+ წყარო <strong>${catalog.comparedProducts.toLocaleString('ka-GE')}</strong></span>
-            <span class="ai-pill ${insights.tripleCompare ? 'teal' : ''}">${icon('spark')} 3-გზიანი <strong>${insights.tripleCompare.toLocaleString('ka-GE')}</strong></span>
-            <span class="ai-pill ${running ? 'std' : recentFailures.length ? 'warn' : 'ok'}">${running ? icon('activity') : icon('shield')} ${running ? 'სინქი…' : recentFailures.length ? `${recentFailures.length} შეცდომა` : 'სტაბილური'}</span>
-          </div>
-        </div>
-        <div class="ai-hero-score">
-          <div class="ai-score-ring ${ringTone}" style="--pct:${Math.min(100, comparedPct)}">
-            <div class="ai-score-inner">
-              <span class="ai-score-val">${catalog.products ? comparedPct : '—'}</span>
-              <span class="ai-score-lbl">${catalog.products ? '%' : ''}</span>
-            </div>
-          </div>
-          <p class="ai-score-caption">${catalog.products ? `${comparedPct}% შედარებადი · ${triplePct}% სამივეში` : 'კატალოგი ცარიელია'}</p>
-        </div>
-      </section>
-
-      <div class="pharm-funnel">
-        <div class="pharm-funnel-step">
-          <span class="pharm-funnel-num">1</span>
-          <div>
-            <strong>კატალოგი</strong>
-            <span>${catalog.products.toLocaleString('ka-GE')} SKU</span>
-          </div>
-        </div>
-        <div class="pharm-funnel-line"></div>
-        <div class="pharm-funnel-step">
-          <span class="pharm-funnel-num">2</span>
-          <div>
-            <strong>შეთავაზებები</strong>
-            <span>${catalog.offers.toLocaleString('ka-GE')} offer · ${stockPct}% stock</span>
-          </div>
-        </div>
-        <div class="pharm-funnel-line"></div>
-        <div class="pharm-funnel-step on">
-          <span class="pharm-funnel-num">3</span>
-          <div>
-            <strong>შედარება</strong>
-            <span>${catalog.comparedProducts.toLocaleString('ka-GE')} მრავალწყარო</span>
-          </div>
-        </div>
-      </div>
 
       <div class="ai-kpi-grid">
         <article class="ai-kpi tone-teal">
@@ -2124,6 +2192,22 @@ async function renderPharmacy() {
       btn.disabled = false;
       btn.innerHTML = `${icon('activity')} სინქის გაშვება`;
     }
+  });
+
+  $('tab-pharmacy')?.querySelectorAll('.pharm-retry').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const source = btn.dataset.source;
+      if (!source || !confirm(`${source} — ხელახლა გაუშვებთ სინქს?`)) return;
+      btn.disabled = true;
+      try {
+        await api('/pharmacy/sync', { method: 'POST', body: { source } });
+        toast(`${source} სინქი დაიწყო`, 'ok');
+        await renderPharmacy();
+      } catch (err) {
+        toast(err.message || 'სინქი ვერ დაიწყო', 'bad');
+        btn.disabled = false;
+      }
+    });
   });
 
   if (running) {

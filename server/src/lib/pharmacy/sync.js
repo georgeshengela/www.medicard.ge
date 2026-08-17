@@ -1,6 +1,6 @@
 import { prisma } from '../prisma.js';
 import { ensureDrugCategories, ensurePharmacySources } from './categories.js';
-import { upsertOfferFromListing, recomputeAllPricing, recomputeProductPricing } from './match.js';
+import { upsertOfferFromListing, recomputeAllPricing, recomputeProductPricing, invalidateMatchGeoCache } from './match.js';
 import { invalidateCrossSourceIndex } from './crossMatch.js';
 import { fetchPharmadepotProducts } from './sources/pharmadepot.js';
 import { fetchAversiProducts, closeAversiBrowser } from './sources/aversi.js';
@@ -32,14 +32,24 @@ async function finishSyncRun(id, { status, itemsFetched, error }) {
 
 async function ingestListings(listings) {
   const touched = new Set();
+  let skipped = 0;
+  const skipSamples = [];
+
   for (const listing of listings) {
-    const productId = await upsertOfferFromListing(listing);
-    touched.add(productId);
+    try {
+      const productId = await upsertOfferFromListing(listing);
+      touched.add(productId);
+    } catch (err) {
+      skipped += 1;
+      const msg = `${listing.sourceId}/${listing.sourceProductId}: ${err?.message || err}`;
+      if (skipSamples.length < 5) skipSamples.push(msg);
+      console.warn(`[pharmacy-sync] skip ${msg}`);
+    }
   }
   for (const id of touched) {
     await recomputeProductPricing(id);
   }
-  return { count: listings.length, products: touched.size };
+  return { count: listings.length - skipped, products: touched.size, skipped, skipSamples };
 }
 
 async function cleanupStaleRuns() {
@@ -71,8 +81,18 @@ export async function syncPharmacySource(source, opts = {}) {
     });
     const result = await ingestListings(listings);
     invalidateCrossSourceIndex();
-    await finishSyncRun(run.id, { status: 'DONE', itemsFetched: result.count });
-    console.log(`[pharmacy-sync] ${source} done — ${result.count} offers, ${result.products} products`);
+    invalidateMatchGeoCache();
+    const status = result.skipped > 0 && result.count === 0 ? 'FAILED' : 'DONE';
+    const error =
+      result.skipped > 0
+        ? result.count === 0
+          ? result.skipSamples.join(' · ') || `${result.skipped} offer(s) skipped`
+          : `${result.skipped} გამოტოვებული · ${result.skipSamples.slice(0, 2).join(' · ')}`
+        : null;
+    await finishSyncRun(run.id, { status, itemsFetched: result.count, error });
+    console.log(
+      `[pharmacy-sync] ${source} done — ${result.count} offers, ${result.products} products${result.skipped ? `, ${result.skipped} skipped` : ''}`,
+    );
     return result;
   } catch (err) {
     await finishSyncRun(run.id, {

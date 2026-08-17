@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { getMobileAppVersion } from './mobileAppVersion.js';
 
 const DEFAULTS = {
   id: 'default',
@@ -11,11 +12,20 @@ const DEFAULTS = {
 };
 
 export async function getAppSettings() {
-  const row = await prisma.appSettings.upsert({
+  let row = await prisma.appSettings.upsert({
     where: { id: 'default' },
     create: DEFAULTS,
     update: {},
   });
+
+  const mobileVersion = getMobileAppVersion();
+  if (mobileVersion && row.minAppVersion === '1.0.0' && compareSemver(mobileVersion, row.minAppVersion) > 0) {
+    row = await prisma.appSettings.update({
+      where: { id: 'default' },
+      data: { minAppVersion: mobileVersion },
+    });
+  }
+
   return row;
 }
 

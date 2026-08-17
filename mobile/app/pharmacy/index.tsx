@@ -1,16 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Layers3 } from 'lucide-react-native';
 import { CategoryGrid } from '@/components/pharmacy/CategoryGrid';
 import { PharmacyBrowseHeader } from '@/components/pharmacy/PharmacyBrowseHeader';
-import { PharmacyFeaturedCarousel } from '@/components/pharmacy/PharmacyFeaturedCarousel';
 import { PharmacyProductCard } from '@/components/pharmacy/PharmacyProductCard';
 import { EmptyState } from '@/components/EmptyState';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary, type DrugCategoryInfo } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
 import { useThemeColors } from '@/theme/colors';
+import { pharmPx } from '@/constants/pharmacyVisuals';
 
 export default function PharmacyIndexScreen() {
   const router = useRouter();
@@ -59,21 +59,12 @@ export default function PharmacyIndexScreen() {
     setRefreshing(false);
   }, [load]);
 
-  const featured = useMemo(
-    () =>
-      [...products]
-        .filter((p) => (p.sourcePrices ?? []).filter((s) => s.priceGel != null).length >= 1)
-        .sort((a, b) => (b.savingsPercent ?? 0) - (a.savingsPercent ?? 0))
-        .slice(0, 8),
-    [products],
-  );
-
   const openProduct = (id: string) => router.push(`/pharmacy/product/${id}` as never);
 
   return (
     <ScrollView
       className="flex-1 bg-bg-100"
-      contentContainerClassName="px-4 pb-8 pt-3"
+      contentContainerClassName="px-4 pb-9 pt-3.5"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
@@ -86,27 +77,50 @@ export default function PharmacyIndexScreen() {
       />
 
       {!debouncedQuery ? (
-        <>
-          <Text className="mb-3 text-[11px] font-bold uppercase tracking-[1.2px] text-text-300">
-            {ka.pharmacy.categories}
-          </Text>
+        <View className="mb-5">
+          <View className="mb-2.5 flex-row items-center justify-between">
+            <Text className="text-[15px] font-bold text-text-100">{ka.pharmacy.categories}</Text>
+          </View>
           <CategoryGrid
             categories={categories}
             onSelect={(slug) => router.push(`/pharmacy/category/${slug}` as never)}
           />
-          <PharmacyFeaturedCarousel products={featured} onSelect={openProduct} />
-        </>
+        </View>
       ) : null}
 
-      <View className="mb-3 mt-2 flex-row items-end justify-between">
+      <View
+        style={{
+          marginBottom: pharmPx(10),
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingBottom: pharmPx(8),
+          borderBottomWidth: 1,
+          borderBottomColor: colors.bg300,
+        }}
+      >
         <View>
-          <Text className="text-base font-bold text-text-100">
+          <Text className="text-[17px] font-bold text-text-100">
             {debouncedQuery ? `"${debouncedQuery}"` : ka.pharmacy.allProducts}
           </Text>
-          <Text className="mt-0.5 text-xs text-text-300">
+          <Text className="mt-0.5 text-[12px] text-text-300">
             {totalProducts ? ka.pharmacy.resultsCount(totalProducts) : ka.pharmacy.browseHint}
           </Text>
         </View>
+        {totalProducts > 0 ? (
+          <View
+            style={{
+              borderRadius: pharmPx(8),
+              paddingHorizontal: pharmPx(8),
+              paddingVertical: pharmPx(4),
+              backgroundColor: colors.bg200,
+            }}
+          >
+            <Text style={{ fontSize: pharmPx(11), fontWeight: '700', color: colors.text200 }}>
+              {totalProducts.toLocaleString('ka-GE')}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {products.length === 0 ? (
@@ -115,8 +129,8 @@ export default function PharmacyIndexScreen() {
         products.map((p) => <PharmacyProductCard key={p.id} product={p} onPress={() => openProduct(p.id)} />)
       )}
 
-      <View className="mt-4 rounded-2xl border border-bg-300 bg-surface px-4 py-3">
-        <Text className="text-center text-xs leading-5 text-text-300">{ka.pharmacy.disclaimer}</Text>
+      <View className="mt-4 rounded-xl border border-bg-300 bg-surface px-3 py-3">
+        <Text className="text-center text-[12px] leading-[17px] text-text-300">{ka.pharmacy.disclaimer}</Text>
       </View>
     </ScrollView>
   );
