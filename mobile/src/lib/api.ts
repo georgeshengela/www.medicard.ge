@@ -199,6 +199,17 @@ export type PharmacyOfferInfo = {
   syncedAt: string;
 };
 
+export type PharmacySourcePrice = {
+  sourceId: string;
+  nameKa: string;
+  logoUrl: string | null;
+  priceGel: number | null;
+  oldPriceGel: number | null;
+  inStock: boolean;
+  isBest: boolean;
+  sourceUrl: string | null;
+};
+
 export type CatalogProductSummary = {
   id: string;
   slug: string;
@@ -215,6 +226,7 @@ export type CatalogProductSummary = {
   bestSource: PharmacySourceInfo | null;
   offerCount: number;
   savingsPercent: number | null;
+  sourcePrices: PharmacySourcePrice[];
   lastSyncedAt: string | null;
 };
 

@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { Image, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Crown, Loader2, Sparkles } from 'lucide-react-native';
+import { Loader2 } from 'lucide-react-native';
 import { PriceCompareList } from '@/components/pharmacy/PriceCompareList';
+import { PharmacyProductImage } from '@/components/pharmacy/PharmacyProductImage';
+import { PharmacySourcePriceRow } from '@/components/pharmacy/PharmacySourcePriceRow';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/EmptyState';
 import { ka } from '@/i18n/ka';
@@ -12,7 +13,7 @@ import { useThemeColors } from '@/theme/colors';
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
-    <View className="flex-row items-center justify-between border-b border-accent-100/20 py-2.5">
+    <View className="flex-row items-center justify-between border-b border-bg-300 py-2.5">
       <Text className="text-sm text-text-300">{label}</Text>
       <Text className="max-w-[62%] text-right text-sm font-semibold text-text-100">{value}</Text>
     </View>
@@ -58,63 +59,58 @@ export default function PharmacyProductScreen() {
   return (
     <ScrollView
       className="flex-1 bg-bg-100"
-      contentContainerClassName="px-4 pb-8 pt-2"
+      contentContainerClassName="px-4 pb-8 pt-3"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
       showsVerticalScrollIndicator={false}
     >
-      <View className="overflow-hidden rounded-3xl">
-        <LinearGradient colors={['#00897B', '#26A69A', '#80CBC4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <View className="items-center px-5 pb-5 pt-6">
-            <View className="mb-4 h-44 w-44 items-center justify-center rounded-3xl bg-white shadow-lg">
-              {product.imageUrl ? (
-                <Image source={{ uri: product.imageUrl }} className="h-36 w-36" resizeMode="contain" />
-              ) : (
-                <Text className="text-6xl">💊</Text>
-              )}
-            </View>
-            <Text className="text-center text-xl font-extrabold leading-7 text-white">{product.name}</Text>
+      <View className="rounded-2xl border border-bg-300 bg-surface p-4">
+        <View className="flex-row">
+          <PharmacyProductImage uri={product.imageUrl} size={112} rounded={20} />
+          <View className="ml-4 flex-1">
+            <Text className="text-lg font-bold leading-6 text-text-100">{product.name}</Text>
             {product.category ? (
-              <Text className="mt-2 text-sm text-white/80">{product.category.nameKa}</Text>
+              <Text className="mt-1 text-xs font-semibold text-primary-200">{product.category.nameKa}</Text>
+            ) : null}
+            <View className="mt-2 flex-row flex-wrap items-center gap-2">
+              {product.bestPriceGel != null ? (
+                <Text className="text-2xl font-extrabold text-primary-200">{product.bestPriceGel.toFixed(2)} ₾</Text>
+              ) : null}
+              {product.savingsPercent ? (
+                <Badge label={ka.pharmacy.savings(product.savingsPercent)} tone="success" />
+              ) : null}
+            </View>
+            {product.bestSource ? (
+              <Text className="mt-1 text-xs font-semibold text-text-300">
+                {ka.pharmacy.cheapestAt(product.bestSource.nameKa)}
+              </Text>
             ) : null}
           </View>
-        </LinearGradient>
-      </View>
-
-      <View className="-mt-6 mx-2 rounded-3xl border border-accent-100/30 bg-bg-100 p-4 shadow-sm">
-        <View className="flex-row flex-wrap items-center gap-2">
-          {product.bestPriceGel != null ? (
-            <Text className="text-3xl font-extrabold text-primary-200">{product.bestPriceGel.toFixed(2)} ₾</Text>
-          ) : null}
-          {product.savingsPercent ? (
-            <Badge label={ka.pharmacy.savings(product.savingsPercent)} tone="success" />
-          ) : null}
         </View>
 
-        {product.bestSource ? (
-          <View className="mt-2 flex-row items-center gap-1.5">
-            <Crown size={14} color={colors.primary200} />
-            <Text className="text-sm font-semibold text-primary-200">
-              {ka.pharmacy.cheapestAt(product.bestSource.nameKa)}
+        {maxPrice != null && product.bestPriceGel != null && maxPrice > product.bestPriceGel ? (
+          <View className="mt-4 rounded-xl bg-state-successBg px-3 py-2">
+            <Text className="text-xs font-semibold text-state-success">
+              {ka.pharmacy.saveUpTo((maxPrice - product.bestPriceGel).toFixed(2))}
             </Text>
           </View>
         ) : null}
+      </View>
 
-        <Text className="mt-1 text-xs text-text-300">{ka.pharmacy.offersCount(product.offerCount)}</Text>
+      <Text className="mb-2 mt-5 text-[11px] font-bold uppercase tracking-[1.2px] text-text-300">
+        {ka.pharmacy.compareTitle}
+      </Text>
+      <PharmacySourcePriceRow prices={product.sourcePrices ?? []} />
 
-        {maxPrice != null && product.bestPriceGel != null && maxPrice > product.bestPriceGel ? (
-          <View className="mt-3 rounded-2xl bg-emerald-500/10 px-3 py-2">
-            <View className="flex-row items-center gap-1.5">
-              <Sparkles size={14} color={colors.primary200} />
-              <Text className="text-xs font-semibold text-primary-200">
-                {ka.pharmacy.saveUpTo((maxPrice - product.bestPriceGel).toFixed(2))}
-              </Text>
-            </View>
-          </View>
-        ) : null}
+      <View className="mt-4">
+        <PriceCompareList
+          offers={product.offers ?? []}
+          sourcePrices={product.sourcePrices}
+          bestPrice={product.bestPriceGel}
+        />
       </View>
 
       {(product.manufacturer || product.country || product.form || product.strength || product.packSize) && (
-        <View className="mt-5 rounded-3xl border border-accent-100/30 bg-bg-200/40 px-4">
+        <View className="mt-5 rounded-2xl border border-bg-300 bg-surface px-4">
           <Text className="py-3 text-base font-bold text-text-100">{ka.pharmacy.detailsTitle}</Text>
           {product.manufacturer ? <MetaRow label={ka.pharmacy.manufacturer} value={product.manufacturer} /> : null}
           {product.country ? <MetaRow label={ka.pharmacy.country} value={product.country} /> : null}
@@ -124,10 +120,7 @@ export default function PharmacyProductScreen() {
         </View>
       )}
 
-      <Text className="mb-3 mt-6 text-lg font-bold text-text-100">{ka.pharmacy.compareTitle}</Text>
-      <PriceCompareList offers={product.offers ?? []} bestPrice={product.bestPriceGel} />
-
-      <View className="mt-4 rounded-2xl border border-accent-100/30 bg-bg-200/40 px-4 py-3">
+      <View className="mt-4 rounded-2xl border border-bg-300 bg-surface px-4 py-3">
         <Text className="text-center text-xs leading-5 text-text-300">{ka.pharmacy.disclaimer}</Text>
       </View>
     </ScrollView>

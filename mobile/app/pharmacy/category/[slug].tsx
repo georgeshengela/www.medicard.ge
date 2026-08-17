@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Search } from 'lucide-react-native';
 import { PharmacyProductCard } from '@/components/pharmacy/PharmacyProductCard';
 import { EmptyState } from '@/components/EmptyState';
@@ -43,18 +42,13 @@ export default function PharmacyCategoryScreen() {
   return (
     <ScrollView
       className="flex-1 bg-bg-100"
-      contentContainerClassName="px-4 pb-8 pt-2"
+      contentContainerClassName="px-4 pb-8 pt-3"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
       showsVerticalScrollIndicator={false}
     >
-      <View className="mb-4 overflow-hidden rounded-2xl">
-        <LinearGradient colors={['#00897B', '#26A69A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-          <View className="px-4 py-4">
-            <Text className="text-lg font-bold text-white">{categoryName || slug}</Text>
-            <Text className="mt-1 text-sm text-white/80">{ka.pharmacy.categoryBrowse}</Text>
-          </View>
-        </LinearGradient>
-      </View>
+      <Text className="text-[11px] font-bold uppercase tracking-[1.2px] text-primary-200">{ka.pharmacy.categories}</Text>
+      <Text className="mt-1 text-xl font-bold text-text-100">{categoryName || slug}</Text>
+      <Text className="mt-1 mb-4 text-sm text-text-300">{ka.pharmacy.categoryBrowse}</Text>
 
       {products.length === 0 ? (
         <EmptyState icon={Search} title={ka.pharmacy.emptySearch} body={ka.pharmacy.emptySearchHint} />

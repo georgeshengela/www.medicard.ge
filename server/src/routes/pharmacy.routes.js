@@ -2,9 +2,12 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/error.js';
+import { SOURCES } from '../lib/pharmacy/constants.js';
 import { getCatalogStats, getSyncMeta } from '../lib/pharmacy/sync.js';
 
 export const pharmacyRouter = Router();
+
+const SOURCE_ORDER = ['PHARMADEPOT', 'AVERSI', 'PSP'];
 
 function publicSource(src) {
   if (!src) return null;
@@ -14,6 +17,32 @@ function publicSource(src) {
     logoUrl: src.logoUrl,
     baseUrl: src.baseUrl,
   };
+}
+
+function resolveImageUrl(row) {
+  if (row.imageUrl) return row.imageUrl;
+  for (const offer of row.offers || []) {
+    if (offer.imageUrl) return offer.imageUrl;
+  }
+  return null;
+}
+
+function buildSourcePrices(row) {
+  const byId = Object.fromEntries((row.offers || []).map((o) => [o.sourceId, o]));
+  return SOURCE_ORDER.map((sourceId) => {
+    const offer = byId[sourceId];
+    const meta = SOURCES[sourceId];
+    return {
+      sourceId,
+      nameKa: meta?.nameKa ?? sourceId,
+      logoUrl: meta?.logoUrl ?? null,
+      priceGel: offer?.priceGel ?? null,
+      oldPriceGel: offer?.oldPriceGel ?? null,
+      inStock: offer?.inStock ?? false,
+      isBest: row.bestSourceId === sourceId && offer != null,
+      sourceUrl: offer?.sourceUrl ?? null,
+    };
+  });
 }
 
 function savingsPercent(product) {
@@ -45,7 +74,7 @@ function mapProduct(row, { includeOffers = false } = {}) {
     id: row.id,
     slug: row.slug,
     name: row.name,
-    imageUrl: row.imageUrl,
+    imageUrl: resolveImageUrl(row),
     manufacturer: row.manufacturer,
     country: row.country,
     form: row.form,
@@ -59,6 +88,7 @@ function mapProduct(row, { includeOffers = false } = {}) {
     bestSource: publicSource(row.bestSource),
     offerCount: row.offerCount,
     savingsPercent: savingsPercent(row),
+    sourcePrices: buildSourcePrices(row),
     lastSyncedAt: row.lastSyncedAt,
   };
 
