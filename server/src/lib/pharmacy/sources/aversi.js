@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio';
 import { FETCH_HEADERS, SOURCES } from '../constants.js';
 
 const BASE = SOURCES.AVERSI.baseUrl;
+const MEDICATIONS_URL = `${BASE}/ka/medikamentebi`;
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -33,10 +34,11 @@ async function fetchHtmlWithBrowser(url) {
   });
   const page = await context.newPage();
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForTimeout(4000);
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
+    await page.waitForSelector('.product, .product-title', { timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(1500);
     const html = await page.content();
-    if (/cloudflare|cf-error|blocked/i.test(html) && html.length < 20000) {
+    if (/cf-chl|cf-error|just a moment/i.test(html) && html.length < 15000) {
       throw new Error('Cloudflare blocked automated access');
     }
     return html;
@@ -45,137 +47,146 @@ async function fetchHtmlWithBrowser(url) {
   }
 }
 
+function absoluteUrl(href) {
+  if (!href) return null;
+  if (href.startsWith('http')) return href;
+  return `${BASE}${href.startsWith('/') ? '' : '/'}${href}`;
+}
+
+function parsePriceGel(text) {
+  const match = String(text || '').match(/([\d.,]+)\s*(?:₾|ლარი|GEL)?/i);
+  if (!match) return null;
+  const value = parseFloat(match[1].replace(',', '.'));
+  return Number.isNaN(value) || value <= 0 ? null : value;
+}
+
 export function parseAversiListingHtml(html, categoryId = null) {
   const $ = cheerio.load(html);
   const products = [];
   const seen = new Set();
 
-  $('.product-miniature, .product, [class*="product"]').each((_, el) => {
-    const link = $(el).find('a[href]').first();
+  $('.product').each((_, el) => {
+    const card = $(el);
+    const link = card.find('a[href*="MatID="]').first();
     const href = link.attr('href') || '';
-    if (!href || href === '#') return;
+    const matId = href.match(/MatID=(\d+)/i)?.[1];
+    if (!matId) return;
 
-    const name =
-      $(el).find('.product-title, .product-name, h2, h3').first().text().trim() ||
-      link.attr('title') ||
-      link.text().trim();
-    if (!name || name.length < 3) return;
-
-    const priceRaw =
-      $(el).find('.price, .current-price, [class*="price"]').first().text() ||
-      $(el).text();
-    const priceMatch = priceRaw.match(/([\d.,]+)/);
-    if (!priceMatch) return;
-
-    const priceGel = parseFloat(priceMatch[1].replace(',', '.'));
-    if (Number.isNaN(priceGel)) return;
-
-    const sourceProductId = href.match(/(\d+)/)?.[0] || href;
-    const key = `AVERSI:${sourceProductId}`;
+    const key = `AVERSI:${matId}`;
     if (seen.has(key)) return;
     seen.add(key);
 
-    const img = $(el).find('img').first().attr('src') || null;
-    const imageUrl = img?.startsWith('http') ? img : img ? `${BASE}${img}` : null;
-    const sourceUrl = href.startsWith('http') ? href : `${BASE}${href.startsWith('/') ? '' : '/'}${href}`;
+    const name =
+      card.find('.product-title').first().text().trim() ||
+      card.find('img[alt]').first().attr('alt')?.trim() ||
+      link.attr('title')?.trim() ||
+      '';
+    if (!name || name.length < 3 || name === 'ანოტაცია') return;
+
+    const priceText =
+      card.find('.price .amount, .price ins, .price').first().text() ||
+      card.find('.product-details').text();
+    const priceGel = parsePriceGel(priceText);
+    if (priceGel == null) return;
+
+    const img = card.find('.product-thumb img, img[src]').first().attr('src') || null;
+    const imageUrl = absoluteUrl(img);
 
     products.push({
       sourceId: 'AVERSI',
-      sourceProductId: String(sourceProductId),
-      rawName: name,
+      sourceProductId: matId,
+      rawName: name.replace(/\s+/g, ' ').trim(),
       priceGel,
       oldPriceGel: null,
       discountPercent: null,
       inStock: true,
       imageUrl,
-      sourceUrl,
+      sourceUrl: absoluteUrl(href),
       categoryId,
     });
   });
 
-  // Fallback: generic links with prices
-  if (!products.length) {
-    $('a[href*="/ka/"]').each((_, el) => {
-      const href = $(el).attr('href') || '';
-      if (!/product|medikament|p\//i.test(href)) return;
-      const block = $(el).closest('article, li, div').first();
-      const text = block.text();
-      const priceMatch = text.match(/([\d.,]+)\s*₾/);
-      const name = $(el).attr('title') || $(el).text().trim();
-      if (!priceMatch || !name || name.length < 4) return;
-      const sourceProductId = href.match(/(\d{3,})/)?.[1] || href;
-      const key = `AVERSI:${sourceProductId}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      products.push({
-        sourceId: 'AVERSI',
-        sourceProductId: String(sourceProductId),
-        rawName: name.slice(0, 200),
-        priceGel: parseFloat(priceMatch[1].replace(',', '.')),
-        oldPriceGel: null,
-        discountPercent: null,
-        inStock: true,
-        imageUrl: null,
-        sourceUrl: href.startsWith('http') ? href : `${BASE}${href}`,
-        categoryId,
-      });
-    });
-  }
-
   return products;
 }
 
-const AVERSI_MEDICATION_URLS = [
-  `${BASE}/ka/`,
-  `${BASE}/ka/3-medikamentebi`,
-  `${BASE}/ka/`,
-];
+export function parseAversiCategoryLinks(html) {
+  const $ = cheerio.load(html);
+  const links = new Map();
+
+  $('a[href*="/ka/medikamentebi/"]').each((_, el) => {
+    const href = $(el).attr('href') || '';
+    const match = href.match(/\/ka\/medikamentebi\/(\d+)/);
+    if (!match) return;
+    const id = match[1];
+    if (!links.has(id)) links.set(id, absoluteUrl(href.split('?')[0]));
+  });
+
+  return [...links.entries()].map(([id, url]) => ({ id, url }));
+}
+
+function totalPagesFromHtml(html, categoryPath) {
+  const $ = cheerio.load(html);
+  let maxPage = 1;
+
+  $(`a[href*="${categoryPath}"]`).each((_, el) => {
+    const href = $(el).attr('href') || '';
+    const pageMatch = href.match(/[?&]page=(\d+)/);
+    if (pageMatch) maxPage = Math.max(maxPage, parseInt(pageMatch[1], 10));
+  });
+
+  return maxPage;
+}
+
+async function fetchCategoryPages(categoryUrl, { maxPages, categoryId, onProgress, seen }) {
+  const categoryPath = categoryUrl.replace(BASE, '');
+  const firstHtml = await fetchHtmlWithBrowser(categoryUrl);
+  const pages = Math.min(totalPagesFromHtml(firstHtml, categoryPath), maxPages);
+  const batch = [];
+
+  for (let page = 1; page <= pages; page += 1) {
+    const url = page === 1 ? categoryUrl : `${categoryUrl}?&page=${page}`;
+    const html = page === 1 ? firstHtml : await fetchHtmlWithBrowser(url);
+    const items = parseAversiListingHtml(html, categoryId);
+
+    for (const item of items) {
+      if (seen.has(item.sourceProductId)) continue;
+      seen.add(item.sourceProductId);
+      batch.push(item);
+    }
+
+    onProgress?.(seen.size);
+    if (page < pages) await sleep(350);
+  }
+
+  return batch;
+}
 
 /**
- * Crawl Aversi shop medication listings via Playwright (Cloudflare).
+ * Crawl www.aversi.ge medication categories (Playwright — Cloudflare protected).
  */
 export async function fetchAversiProducts(opts = {}) {
-  const { maxPages = 5, categoryId = null, onProgress } = opts;
+  const { maxPages = 50, categoryId = null, onProgress } = opts;
   const all = [];
   const seen = new Set();
 
-  for (const startUrl of AVERSI_MEDICATION_URLS) {
-    try {
-      const html = await fetchHtmlWithBrowser(startUrl);
-      const batch = parseAversiListingHtml(html, categoryId);
-      for (const p of batch) {
-        const key = p.sourceProductId;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        all.push(p);
-      }
-      onProgress?.(all.length);
-      if (all.length > 0) break;
-    } catch (err) {
-      console.warn('[aversi] fetch failed for', startUrl, err.message);
-    }
-    await sleep(500);
+  const indexHtml = await fetchHtmlWithBrowser(MEDICATIONS_URL);
+  const categories = parseAversiCategoryLinks(indexHtml);
+  if (!categories.length) {
+    console.warn('[aversi] no categories found on', MEDICATIONS_URL);
+    return all;
   }
 
-  // Paginate if pagination links found (limited for v1)
-  if (all.length && maxPages > 1) {
-    for (let page = 2; page <= maxPages; page += 1) {
-      try {
-        const url = `${BASE}/ka/?page=${page}`;
-        const html = await fetchHtmlWithBrowser(url);
-        const batch = parseAversiListingHtml(html, categoryId);
-        if (!batch.length) break;
-        for (const p of batch) {
-          if (seen.has(p.sourceProductId)) continue;
-          seen.add(p.sourceProductId);
-          all.push(p);
-        }
-        onProgress?.(all.length);
-        await sleep(600);
-      } catch {
-        break;
-      }
+  console.log(`[aversi] crawling ${categories.length} categories…`);
+
+  for (const cat of categories) {
+    try {
+      const batch = await fetchCategoryPages(cat.url, { maxPages, categoryId, onProgress, seen });
+      all.push(...batch);
+      if (batch.length) console.log(`[aversi] category ${cat.id}: +${batch.length} (total ${all.length})`);
+    } catch (err) {
+      console.warn('[aversi] category failed', cat.url, err.message);
     }
+    await sleep(400);
   }
 
   return all;

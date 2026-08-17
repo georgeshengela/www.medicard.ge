@@ -3,7 +3,14 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/error.js';
 import { SOURCES } from '../lib/pharmacy/constants.js';
+import { CATEGORY_KEYWORDS } from '../lib/pharmacy/categoryKeywords.js';
 import { getCatalogStats, getSyncMeta } from '../lib/pharmacy/sync.js';
+import {
+  buildSourcePricesFromOffers,
+  getCrossSourceIndex,
+  pricingFromOffers,
+  resolveOffersForCompare,
+} from '../lib/pharmacy/crossMatch.js';
 
 export const pharmacyRouter = Router();
 
@@ -27,36 +34,13 @@ function resolveImageUrl(row) {
   return null;
 }
 
-function buildSourcePrices(row) {
-  const byId = Object.fromEntries((row.offers || []).map((o) => [o.sourceId, o]));
-  return SOURCE_ORDER.map((sourceId) => {
-    const offer = byId[sourceId];
-    const meta = SOURCES[sourceId];
-    return {
-      sourceId,
-      nameKa: meta?.nameKa ?? sourceId,
-      logoUrl: meta?.logoUrl ?? null,
-      priceGel: offer?.priceGel ?? null,
-      oldPriceGel: offer?.oldPriceGel ?? null,
-      inStock: offer?.inStock ?? false,
-      isBest: row.bestSourceId === sourceId && offer != null,
-      sourceUrl: offer?.sourceUrl ?? null,
-    };
-  });
-}
+function mapProduct(row, crossCtx, { includeOffers = false } = {}) {
+  const mergedOffers = crossCtx
+    ? resolveOffersForCompare(row, crossCtx.index, crossCtx.geoMap)
+    : row.offers || [];
+  const pricing = pricingFromOffers(mergedOffers);
+  const sourcePrices = buildSourcePricesFromOffers(mergedOffers, pricing.bestSourceId);
 
-function savingsPercent(product) {
-  const offers = product.offers || [];
-  if (offers.length < 2) return null;
-  const prices = offers.map((o) => o.priceGel).filter((p) => p > 0);
-  if (!prices.length) return null;
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
-  if (max <= min) return null;
-  return Math.round(((max - min) / max) * 100);
-}
-
-function mapProduct(row, { includeOffers = false } = {}) {
   const offers = (row.offers || []).map((o) => ({
     id: o.id,
     source: publicSource(o.source),
@@ -84,11 +68,17 @@ function mapProduct(row, { includeOffers = false } = {}) {
     category: row.category
       ? { id: row.category.id, slug: row.category.slug, nameKa: row.category.nameKa }
       : null,
-    bestPriceGel: row.bestPriceGel,
-    bestSource: publicSource(row.bestSource),
-    offerCount: row.offerCount,
-    savingsPercent: savingsPercent(row),
-    sourcePrices: buildSourcePrices(row),
+    bestPriceGel: pricing.bestPriceGel ?? row.bestPriceGel,
+    bestSource: publicSource(
+      row.bestSource && pricing.bestSourceId === row.bestSourceId
+        ? row.bestSource
+        : pricing.bestSourceId
+          ? { id: pricing.bestSourceId, ...SOURCES[pricing.bestSourceId] }
+          : row.bestSource,
+    ),
+    offerCount: pricing.offerCount || row.offerCount,
+    savingsPercent: pricing.savingsPercent,
+    sourcePrices,
     lastSyncedAt: row.lastSyncedAt,
   };
 
@@ -105,16 +95,25 @@ pharmacyRouter.get(
       where: { parentId: null },
     });
 
+    const counts = await prisma.catalogProduct.groupBy({
+      by: ['categoryId'],
+      where: { offerCount: { gt: 0 }, categoryId: { not: null } },
+      _count: { _all: true },
+    });
+    const countById = Object.fromEntries(counts.map((c) => [c.categoryId, c._count._all]));
+
     const categories = rows.map((c) => ({
       id: c.id,
       slug: c.slug,
       nameKa: c.nameKa,
       iconUrl: c.iconUrl,
+      productCount: countById[c.id] ?? 0,
       children: c.children.map((ch) => ({
         id: ch.id,
         slug: ch.slug,
         nameKa: ch.nameKa,
         iconUrl: ch.iconUrl,
+        productCount: countById[ch.id] ?? 0,
       })),
     }));
 
@@ -140,7 +139,18 @@ pharmacyRouter.get(
       const cat = await prisma.drugCategory.findFirst({
         where: { OR: [{ slug: category }, { id: category }] },
       });
-      if (cat) where.categoryId = cat.id;
+      if (cat) {
+        const words = cat.nameKa
+          .split(/[\s,]+/)
+          .map((w) => w.trim())
+          .filter((w) => w.length > 4);
+        const keywords = CATEGORY_KEYWORDS[cat.slug] || [];
+        where.OR = [
+          { categoryId: cat.id },
+          ...words.slice(0, 3).map((word) => ({ name: { contains: word, mode: 'insensitive' } })),
+          ...keywords.slice(0, 10).map((kw) => ({ name: { contains: kw, mode: 'insensitive' } })),
+        ];
+      }
     }
     if (q) {
       where.name = { contains: q, mode: 'insensitive' };
@@ -169,8 +179,10 @@ pharmacyRouter.get(
       }),
     ]);
 
+    const crossCtx = await getCrossSourceIndex();
+
     return res.json({
-      products: rows.map((r) => mapProduct(r)),
+      products: rows.map((r) => mapProduct(r, crossCtx)),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   }),
@@ -190,7 +202,8 @@ pharmacyRouter.get(
     });
     if (!row) return res.status(404).json({ error: 'პროდუქტი ვერ მოიძებნა.' });
 
-    return res.json({ product: mapProduct(row, { includeOffers: true }) });
+    const crossCtx = await getCrossSourceIndex();
+    return res.json({ product: mapProduct(row, crossCtx, { includeOffers: true }) });
   }),
 );
 

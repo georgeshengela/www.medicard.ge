@@ -1,5 +1,10 @@
 import * as cheerio from 'cheerio';
 import { FETCH_HEADERS, PHARMADEPOT_MEDICATION_CATEGORY, SOURCES } from '../constants.js';
+import {
+  fetchPharmadepotSubcategoryList,
+  mapPharmadepotSubcategoryName,
+} from './pharmadepotCategories.js';
+import { getCategoryIdBySlug } from '../categories.js';
 
 const BASE = SOURCES.PHARMADEPOT.baseUrl;
 
@@ -99,15 +104,55 @@ function totalPagesFromHtml(html) {
 }
 
 /**
- * Fetch medications from Pharmadepot category 111843 (paginated).
- * @param {{ maxPages?: number, categorySlug?: string, categoryId?: string, onProgress?: (n:number)=>void }} opts
+ * Fetch medications from Pharmadepot (all subcategories when categoryId not passed).
+ * @param {{ maxPages?: number, categoryId?: string, subCategoryId?: number, onProgress?: (n:number)=>void }} opts
  */
 export async function fetchPharmadepotProducts(opts = {}) {
-  const { maxPages = 999, categoryId = null, onProgress } = opts;
+  const { maxPages = 999, categoryId = null, subCategoryId = null, onProgress } = opts;
+
+  if (subCategoryId || categoryId) {
+    return fetchPharmadepotCategoryPages({ maxPages, categoryId, subCategoryId, onProgress });
+  }
+
+  const subs = await fetchPharmadepotSubcategoryList();
+  const slugCache = new Map();
   const all = [];
   const seen = new Set();
 
-  const firstUrl = `${BASE}/ka/category/medication?category=${PHARMADEPOT_MEDICATION_CATEGORY}`;
+  for (const sub of subs) {
+    let resolvedCategoryId = null;
+    const slug = mapPharmadepotSubcategoryName(sub.name);
+    if (slug) {
+      if (slugCache.has(slug)) resolvedCategoryId = slugCache.get(slug);
+      else {
+        resolvedCategoryId = await getCategoryIdBySlug(slug);
+        slugCache.set(slug, resolvedCategoryId);
+      }
+    }
+
+    const batch = await fetchPharmadepotCategoryPages({
+      maxPages,
+      categoryId: resolvedCategoryId,
+      subCategoryId: sub.id,
+    });
+
+    for (const p of batch) {
+      if (seen.has(p.sourceProductId)) continue;
+      seen.add(p.sourceProductId);
+      all.push(p);
+      onProgress?.(all.length);
+    }
+  }
+
+  return all;
+}
+
+async function fetchPharmadepotCategoryPages({ maxPages, categoryId, subCategoryId, onProgress }) {
+  const all = [];
+  const seen = new Set();
+
+  const subParam = subCategoryId ? `&subCategory=${subCategoryId}` : '';
+  const firstUrl = `${BASE}/ka/category/medication?category=${PHARMADEPOT_MEDICATION_CATEGORY}${subParam}`;
   const firstHtml = await fetchHtml(firstUrl);
   const pages = Math.min(totalPagesFromHtml(firstHtml), maxPages);
 
@@ -115,7 +160,7 @@ export async function fetchPharmadepotProducts(opts = {}) {
     const url =
       page === 1
         ? firstUrl
-        : `${BASE}/ka/category/medication?category=${PHARMADEPOT_MEDICATION_CATEGORY}&page=${page}`;
+        : `${BASE}/ka/category/medication?category=${PHARMADEPOT_MEDICATION_CATEGORY}${subParam}&page=${page}`;
     const html = page === 1 ? firstHtml : await fetchHtml(url);
     const batch = parsePharmadepotListingHtml(html, categoryId);
     for (const p of batch) {

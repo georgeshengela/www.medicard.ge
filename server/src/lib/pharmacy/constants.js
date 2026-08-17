@@ -8,8 +8,8 @@ export const SOURCES = {
   AVERSI: {
     id: 'AVERSI',
     nameKa: 'ავერსი',
-    baseUrl: 'https://shop.aversi.ge',
-    logoUrl: 'https://shop.aversi.ge/favicon.ico',
+    baseUrl: 'https://www.aversi.ge',
+    logoUrl: 'https://www.aversi.ge/favicon.ico',
   },
   PSP: {
     id: 'PSP',
@@ -28,4 +28,4 @@ export const FETCH_HEADERS = {
   'Accept-Language': 'ka-GE,ka;q=0.9,en;q=0.8',
 };
 
-export const MATCH_THRESHOLD = 0.92;
+export const MATCH_THRESHOLD = 0.55;

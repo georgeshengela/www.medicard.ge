@@ -1,178 +1,137 @@
-import * as cheerio from 'cheerio';
 import { FETCH_HEADERS, SOURCES } from '../constants.js';
 
 const BASE = SOURCES.PSP.baseUrl;
-const MED_URL =
-  'https://psp.ge/%E1%83%9B%E1%83%94%E1%83%93%E1%83%98%E1%83%99%E1%83%90%E1%83%9B%E1%83%94%E1%83%9C%E1%83%A2%E1%83%94%E1%83%91%E1%83%98.html';
+const GRAPHQL = 'https://app.psp.ge/graphql';
+/** Magento category id for მედიკამენტები (from urlResolver). */
+export const PSP_MEDICATION_CATEGORY_ID = '823';
+
+const PRODUCTS_QUERY = `
+query products($search: String = "", $filter: ProductAttributeFilterInput, $sort: ProductAttributeSortInput, $pageSize: Int, $currentPage: Int) {
+  products(search: $search, filter: $filter, sort: $sort, pageSize: $pageSize, currentPage: $currentPage) {
+    total_count
+    page_info { total_pages current_page page_size }
+    items {
+      id
+      sku
+      name
+      url_key
+      url_suffix
+      stock_status
+      price_range {
+        minimum_price {
+          final_price { value currency }
+          regular_price { value currency }
+          discount { amount_off percent_off }
+        }
+      }
+      small_image { url }
+      image { url }
+    }
+  }
+}`;
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-let browserPromise = null;
+async function graphql(query, variables = {}) {
+  const res = await fetch(GRAPHQL, {
+    method: 'POST',
+    headers: {
+      ...FETCH_HEADERS,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Origin: BASE,
+      Referer: `${BASE}/`,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
 
-async function getBrowser() {
-  if (!browserPromise) {
-    const { chromium } = await import('playwright');
-    browserPromise = chromium.launch({ headless: true });
+  if (!res.ok) throw new Error(`PSP GraphQL HTTP ${res.status}`);
+  const json = await res.json();
+  if (json.errors?.length) {
+    throw new Error(json.errors.map((e) => e.message).join('; '));
   }
-  return browserPromise;
+  return json.data;
+}
+
+function buildProductUrl(item) {
+  const suffix = item.url_suffix || '.html';
+  const key = item.url_key || item.sku || String(item.id);
+  return `${BASE}/${encodeURIComponent(key)}${suffix.startsWith('.') ? suffix : `.${suffix}`}`;
+}
+
+export function mapPspProduct(item, categoryId = null) {
+  const min = item.price_range?.minimum_price;
+  const priceGel = min?.final_price?.value ?? null;
+  if (priceGel == null || priceGel <= 0) return null;
+
+  const regular = min?.regular_price?.value ?? null;
+  const oldPriceGel = regular != null && regular > priceGel ? regular : null;
+  const discountPercent = min?.discount?.percent_off ?? null;
+
+  return {
+    sourceId: 'PSP',
+    sourceProductId: String(item.id),
+    rawName: String(item.name || '').replace(/\s+/g, ' ').trim(),
+    priceGel,
+    oldPriceGel,
+    discountPercent: discountPercent != null ? Math.round(discountPercent) : null,
+    inStock: item.stock_status !== 'OUT_OF_STOCK',
+    imageUrl: item.small_image?.url || item.image?.url || null,
+    sourceUrl: buildProductUrl(item),
+    categoryId,
+  };
+}
+
+/** Parse legacy HTML listings (kept for tests / fallback). */
+export function parsePspListingHtml(html, categoryId = null) {
+  void html;
+  void categoryId;
+  return [];
 }
 
 export async function closePspBrowser() {
-  if (browserPromise) {
-    const b = await browserPromise;
-    await b.close();
-    browserPromise = null;
-  }
-}
-
-async function fetchHtml(url, useBrowser = false) {
-  if (!useBrowser) {
-    const res = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow' });
-    const html = await res.text();
-    if (res.ok && parsePspListingHtml(html).length > 0) return html;
-    throw new Error(`PSP fetch blocked or empty (${res.status})`);
-  }
-
-  const browser = await getBrowser();
-  const context = await browser.newContext({ userAgent: FETCH_HEADERS['User-Agent'], locale: 'ka-GE' });
-  const page = await context.newPage();
-  try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-    await page.waitForTimeout(2500);
-    return await page.content();
-  } finally {
-    await context.close();
-  }
-}
-
-export function parsePspListingHtml(html, categoryId = null) {
-  const $ = cheerio.load(html);
-  const products = [];
-  const seen = new Set();
-
-  $('.product-item, .products li, .item.product, [class*="product-item"]').each((_, el) => {
-    const link = $(el).find('a[href*=".html"]').first();
-    const href = link.attr('href') || '';
-    if (!href || !href.includes('.html')) return;
-
-    const name =
-      $(el).find('.product-name, .name, h2, h3, .title').first().text().trim() ||
-      link.attr('title')?.trim() ||
-      link.find('img').attr('alt')?.trim() ||
-      '';
-    const cleanedName = name.replace(/\s+/g, ' ').trim();
-    if (!cleanedName || cleanedName.length < 4) return;
-
-    const priceText = $(el).find('.price, .special-price, .regular-price').first().text() || $(el).text();
-    const priceMatch = priceText.match(/([\d.,]+)\s*(?:₾|GEL)?/i);
-    if (!priceMatch) return;
-
-    const priceGel = parseFloat(priceMatch[1].replace(',', '.'));
-    if (Number.isNaN(priceGel) || priceGel <= 0) return;
-
-    const sourceProductId = href.match(/([\w-]+\.html)/i)?.[1] || href;
-    if (seen.has(sourceProductId)) return;
-    seen.add(sourceProductId);
-
-    const img = $(el).find('img').first().attr('src') || link.find('img').attr('src') || null;
-    const imageUrl = img?.startsWith('http') ? img : img ? `https://assets.psp.ge${img.startsWith('/') ? '' : '/'}${img}` : null;
-    const sourceUrl = href.startsWith('http') ? href : `${BASE}${href.startsWith('/') ? '' : '/'}${href}`;
-
-    products.push({
-      sourceId: 'PSP',
-      sourceProductId: String(sourceProductId),
-      rawName: cleanedName.slice(0, 240),
-      priceGel,
-      oldPriceGel: null,
-      discountPercent: null,
-      inStock: true,
-      imageUrl,
-      sourceUrl,
-      categoryId,
-    });
-  });
-
-  if (!products.length) {
-    $('a[href*=".html"]').each((_, el) => {
-      const href = $(el).attr('href') || '';
-      if (!/medicament|medikament|\/[\w-]+\.html/i.test(href)) return;
-      const block = $(el).closest('li, .product, div').first();
-      const imgAlt = $(el).find('img').attr('alt')?.trim();
-      const text = block.text().replace(/\s+/g, ' ');
-      const priceMatch = text.match(/([\d.,]+)\s*₾/);
-      const name = imgAlt || $(el).attr('title')?.trim() || $(el).text().trim();
-      if (!priceMatch || !name || name.length < 4) return;
-      const sourceProductId = href.split('/').pop() || href;
-      if (seen.has(sourceProductId)) return;
-      seen.add(sourceProductId);
-      products.push({
-        sourceId: 'PSP',
-        sourceProductId: String(sourceProductId),
-        rawName: name.replace(/\s+/g, ' ').slice(0, 240),
-        priceGel: parseFloat(priceMatch[1].replace(',', '.')),
-        oldPriceGel: null,
-        discountPercent: null,
-        inStock: true,
-        imageUrl: null,
-        sourceUrl: href.startsWith('http') ? href : `${BASE}${href.startsWith('/') ? '' : '/'}${href}`,
-        categoryId,
-      });
-    });
-  }
-
-  return products;
+  // PSP uses GraphQL — no browser session.
 }
 
 /**
- * Fetch PSP medication catalog pages.
+ * Fetch PSP medications via Magento GraphQL (app.psp.ge).
  */
 export async function fetchPspProducts(opts = {}) {
-  const { maxPages = 10, categoryId = null, onProgress } = opts;
+  const { maxPages = 50, categoryId = null, onProgress } = opts;
+  const pageSize = 100;
   const all = [];
   const seen = new Set();
 
-  const urls = [BASE, MED_URL];
+  const first = await graphql(PRODUCTS_QUERY, {
+    filter: { category_id: { eq: PSP_MEDICATION_CATEGORY_ID } },
+    pageSize,
+    currentPage: 1,
+  });
 
-  for (const url of urls) {
-    try {
-      let html;
-      try {
-        html = await fetchHtml(url, false);
-      } catch {
-        html = await fetchHtml(url, true);
-      }
+  const totalPages = Math.min(first?.products?.page_info?.total_pages ?? 1, maxPages);
+  console.log(`[psp] category ${PSP_MEDICATION_CATEGORY_ID}: ${first?.products?.total_count ?? 0} products, ${totalPages} pages`);
 
-      const batch = parsePspListingHtml(html, categoryId);
-      for (const p of batch) {
-        if (seen.has(p.sourceProductId)) continue;
-        seen.add(p.sourceProductId);
-        all.push(p);
-      }
-      onProgress?.(all.length);
-    } catch (err) {
-      console.warn('[psp] fetch failed for', url, err.message);
+  for (let page = 1; page <= totalPages; page += 1) {
+    const data =
+      page === 1
+        ? first
+        : await graphql(PRODUCTS_QUERY, {
+            filter: { category_id: { eq: PSP_MEDICATION_CATEGORY_ID } },
+            pageSize,
+            currentPage: page,
+          });
+
+    for (const item of data?.products?.items || []) {
+      const mapped = mapPspProduct(item, categoryId);
+      if (!mapped || seen.has(mapped.sourceProductId)) continue;
+      seen.add(mapped.sourceProductId);
+      all.push(mapped);
     }
-    await sleep(400);
-  }
 
-  for (let page = 2; page <= maxPages && all.length; page += 1) {
-    try {
-      const url = `${MED_URL}?page=${page}`;
-      const html = await fetchHtml(url, true);
-      const batch = parsePspListingHtml(html, categoryId);
-      if (!batch.length) break;
-      for (const p of batch) {
-        if (seen.has(p.sourceProductId)) continue;
-        seen.add(p.sourceProductId);
-        all.push(p);
-      }
-      onProgress?.(all.length);
-      await sleep(500);
-    } catch {
-      break;
-    }
+    onProgress?.(all.length);
+    if (page < totalPages) await sleep(200);
   }
 
   return all;

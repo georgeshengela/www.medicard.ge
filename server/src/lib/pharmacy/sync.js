@@ -1,6 +1,7 @@
 import { prisma } from '../prisma.js';
 import { ensureDrugCategories, ensurePharmacySources } from './categories.js';
 import { upsertOfferFromListing, recomputeAllPricing, recomputeProductPricing } from './match.js';
+import { invalidateCrossSourceIndex } from './crossMatch.js';
 import { fetchPharmadepotProducts } from './sources/pharmadepot.js';
 import { fetchAversiProducts, closeAversiBrowser } from './sources/aversi.js';
 import { fetchPspProducts, closePspBrowser } from './sources/psp.js';
@@ -69,6 +70,7 @@ export async function syncPharmacySource(source, opts = {}) {
       },
     });
     const result = await ingestListings(listings);
+    invalidateCrossSourceIndex();
     await finishSyncRun(run.id, { status: 'DONE', itemsFetched: result.count });
     console.log(`[pharmacy-sync] ${source} done — ${result.count} offers, ${result.products} products`);
     return result;
@@ -105,6 +107,7 @@ export async function syncAllPharmacySources(opts = {}) {
   }
 
   await recomputeAllPricing();
+  invalidateCrossSourceIndex();
 
   await finishSyncRun(run.id, {
     status: errors.length ? 'FAILED' : 'DONE',

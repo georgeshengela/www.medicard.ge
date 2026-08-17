@@ -31,6 +31,9 @@ export function CategoryGrid({ categories, onSelect }: Props) {
               <Text className="text-sm font-semibold text-text-100" numberOfLines={1}>
                 {cat.nameKa}
               </Text>
+              {cat.productCount != null ? (
+                <Text className="ml-1 text-[11px] font-medium text-text-300">({cat.productCount})</Text>
+              ) : null}
             </View>
           </Pressable>
         );

@@ -183,6 +183,7 @@ export type DrugCategoryInfo = {
   slug: string;
   nameKa: string;
   iconUrl?: string | null;
+  productCount?: number;
   children?: DrugCategoryInfo[];
 };
 
@@ -208,6 +209,7 @@ export type PharmacySourcePrice = {
   inStock: boolean;
   isBest: boolean;
   sourceUrl: string | null;
+  priceDiffGel?: number | null;
 };
 
 export type CatalogProductSummary = {
