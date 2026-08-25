@@ -6,21 +6,12 @@ import { getToken } from './storage';
 /**
  * Resolves the API base URL.
  *
- * Priority: EXPO_PUBLIC_API_URL → app.json `extra.apiUrl` → LAN / emulator defaults.
+ * Priority: EXPO_PUBLIC_API_URL → Expo Go / simulator LAN host → app.json `extra.apiUrl`.
+ * Dev builds must not silently fall back to production when `extra.apiUrl` is set.
  */
 function resolveBaseUrl(): string {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
-  const fromExtra = Constants.expoConfig?.extra?.apiUrl as string | undefined;
-  const explicit = (fromEnv || fromExtra || '').replace(/\/$/, '');
-  if (explicit) return explicit;
-
-  // Production web is served from the same Express origin as /api and /health.
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    const { hostname, origin } = window.location;
-    if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return origin;
-    }
-  }
+  if (fromEnv) return fromEnv.replace(/\/$/, '');
 
   const port = 4000;
   const hostUri = Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost;
@@ -30,6 +21,24 @@ function resolveBaseUrl(): string {
     return `http://${lanHost}:${port}`;
   }
   if (Platform.OS === 'android') return `http://10.0.2.2:${port}`;
+
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const { hostname, origin } = window.location;
+    if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return origin;
+    }
+    return `http://localhost:${port}`;
+  }
+
+  // Same machine (iOS simulator, etc.)
+  if (Platform.OS === 'ios') return `http://localhost:${port}`;
+
+  // Release builds — production URL from app config / EAS env only.
+  if (typeof __DEV__ !== 'undefined' && !__DEV__) {
+    const fromExtra = Constants.expoConfig?.extra?.apiUrl as string | undefined;
+    if (fromExtra?.trim()) return fromExtra.trim().replace(/\/$/, '');
+  }
+
   return `http://localhost:${port}`;
 }
 
@@ -81,6 +90,33 @@ export type User = {
   packageStartedAt?: string | null;
   packageExpiresAt?: string | null;
   createdAt: string;
+};
+
+export type HealthProfile = {
+  heightCm: number | null;
+  weightKg: number | null;
+  bloodType: string | null;
+  activityLevel: string | null;
+  exerciseFrequency: string | null;
+  sleepQuality: string | null;
+  sleepHours: number | null;
+  stressLevel: string | null;
+  smokingStatus: string | null;
+  alcoholUse: string | null;
+  dietType: string | null;
+  waterIntakeL: number | null;
+  restingHeartRate: number | null;
+  bloodPressureSystolic: number | null;
+  bloodPressureDiastolic: number | null;
+  chronicConditions: string[];
+  allergies: string[];
+  medications: string[];
+  familyHistory: string[];
+  healthGoals: string[];
+  extraAnswers: Record<string, unknown>;
+  currentStepIndex: number;
+  completedAt: string | null;
+  bmi: number | null;
 };
 
 export type ChatMessage = {
@@ -483,30 +519,74 @@ export const api = {
       fullName: string;
       email: string;
       password: string;
-      gender: Gender;
+      gender?: Gender;
       /** `YYYY-MM-DD` */
-      birthDate: string;
+      birthDate?: string;
       phone?: string;
-    }) => request<AuthResponse>('/api/auth/register', { method: 'POST', body, token: null }),
-
-    login: (body: { email: string; password: string }) =>
-      request<AuthResponse>('/api/auth/login', { method: 'POST', body, token: null }),
-
-    phoneStart: (phone: string) =>
-      request<{ sent: boolean; phone: string; message: string; devCode?: string }>('/api/auth/phone/start', {
+    }) =>
+      request<AuthResponse>('/api/auth/register', {
         method: 'POST',
-        body: { phone },
+        body,
         token: null,
+        timeoutMs: 15_000,
       }),
 
+    login: (body: { email: string; password: string }) =>
+      request<AuthResponse>('/api/auth/login', { method: 'POST', body, token: null, timeoutMs: 15_000 }),
+
+    phoneStart: (phone: string) =>
+      request<{ sent: boolean; phone: string; message: string; devCode?: string; cooldownSec?: number }>(
+        '/api/auth/phone/start',
+        {
+          method: 'POST',
+          body: { phone },
+          token: null,
+          timeoutMs: 20_000,
+        },
+      ),
+
     phoneVerify: (body: { phone: string; code: string; fullName?: string }) =>
-      request<AuthResponse>('/api/auth/phone/verify', { method: 'POST', body, token: null }),
+      request<AuthResponse>('/api/auth/phone/verify', { method: 'POST', body, token: null, timeoutMs: 20_000 }),
+
+    phoneLinkStart: (phone: string) =>
+      request<{ sent: boolean; phone: string; message: string; devCode?: string; cooldownSec?: number }>(
+        '/api/auth/phone/link/start',
+        {
+          method: 'POST',
+          body: { phone },
+          timeoutMs: 20_000,
+        },
+      ),
+
+    phoneLinkVerify: (phone: string, code: string) =>
+      request<{ ok: boolean; user: User }>('/api/auth/phone/link/verify', {
+        method: 'POST',
+        body: { phone, code },
+        timeoutMs: 20_000,
+      }),
+
+    passwordForgot: (email: string) =>
+      request<{ sent: boolean; message: string; devCode?: string }>('/api/auth/password/forgot', {
+        method: 'POST',
+        body: { email },
+        token: null,
+        timeoutMs: 20_000,
+      }),
+
+    passwordReset: (body: { email: string; code: string; password: string; confirmPassword: string }) =>
+      request<{ ok: boolean; message: string }>('/api/auth/password/reset', {
+        method: 'POST',
+        body,
+        token: null,
+        timeoutMs: 20_000,
+      }),
 
     me: () =>
       request<{
         user: User;
         usage: Usage;
         stats: { records: number; chats: number; activeMedications: number };
+        healthProfile: HealthProfile | null;
       }>('/api/auth/me'),
 
     updateProfile: (body: { fullName?: string; gender?: Gender; birthDate?: string }) =>
@@ -515,6 +595,25 @@ export const api = {
 
   usage: {
     get: () => request<Usage & { label: string }>('/api/usage'),
+  },
+
+  healthProfile: {
+    get: () => request<{ profile: HealthProfile | null }>('/api/health-profile', { timeoutMs: 15_000 }),
+    update: (body: Record<string, unknown>) =>
+      request<{ profile: HealthProfile; user?: User }>('/api/health-profile', {
+        method: 'PUT',
+        body,
+      }),
+    complete: (body: {
+      gender: Gender;
+      birthDate: string;
+      heightCm: number;
+      weightKg: number;
+    }) =>
+      request<{ profile: HealthProfile; user: User }>('/api/health-profile/complete', {
+        method: 'POST',
+        body,
+      }),
   },
 
   push: {

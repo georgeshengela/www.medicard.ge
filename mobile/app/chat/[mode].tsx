@@ -175,7 +175,7 @@ export default function ChatScreen() {
                   </View>
                   <Text className="ml-2 text-xs font-bold uppercase text-primary-200">{copy.title}</Text>
                 </View>
-                <Markdown content={item.content} />
+                <Markdown content={item.content} allowLinks={isConsilium} />
                 {item.interactionId ? (
                   <View className="mt-3 border-t border-bg-300 pt-3">
                     <Text className="mb-2 text-xs text-text-300">

@@ -48,8 +48,8 @@ export default function PhoneAuth() {
   };
 
   const verify = async () => {
-    if (code.trim().length !== 6) {
-      setError(ka.auth.invalidCode);
+    if (code.trim().length !== 4) {
+      setError(ka.auth.invalidCodeLength(4));
       return;
     }
 
@@ -67,8 +67,8 @@ export default function PhoneAuth() {
 
   return (
     <AuthShell
-      title={ka.auth.continueWithPhone}
-      subtitle={step === 'phone' ? ka.auth.signInSubtitle : `${ka.auth.codeSentTo} ${normalised}`}
+      hero
+      heroSubtitle={step === 'phone' ? ka.auth.phoneHero : `${ka.auth.codeSentTo} ${normalised}`}
       footer={
         <Pressable
           accessibilityRole="button"
@@ -77,7 +77,7 @@ export default function PhoneAuth() {
           onPress={() => (step === 'code' ? setStep('phone') : router.back())}
         >
           <ArrowLeft size={16} color={colors.primary200} strokeWidth={2.2} />
-          <Text className="ml-1.5 text-base font-bold text-primary-200">
+          <Text className="ml-1.5 font-sans-bold text-base text-primary-200">
             {step === 'code' ? ka.auth.changeNumber : ka.auth.continueWithEmail}
           </Text>
         </Pressable>
@@ -113,7 +113,7 @@ export default function PhoneAuth() {
             hint={devCode ? `სატესტო კოდი: ${devCode}` : undefined}
             keyboardType="number-pad"
             autoComplete="sms-otp"
-            maxLength={6}
+            maxLength={4}
           />
           <View className="mt-6">
             <Button label={ka.auth.verifyCode} size="lg" loading={busy} onPress={verify} />

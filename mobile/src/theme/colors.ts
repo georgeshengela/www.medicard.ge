@@ -15,11 +15,11 @@ export const lightColors = {
   surface: '#ffffff',
   surfaceRaised: '#ffffff',
 
-  primary100: '#16776d',
-  primary200: '#26a69a',
-  primary300: '#4db6ac',
-  accent100: '#d2edea',
-  accent200: '#8fd2ca',
+  primary100: '#0f766e',
+  primary200: '#14b8a6',
+  primary300: '#2dd4bf',
+  accent100: '#ccfbf1',
+  accent200: '#5eead4',
 
   text100: '#0f1a1c',
   text200: '#46565a',
@@ -46,11 +46,11 @@ export const darkColors: Palette = {
   surface: '#141b1d',
   surfaceRaised: '#1a2225',
 
-  primary100: '#7ae2d6',
-  primary200: '#2dbeaf',
-  primary300: '#5fd3c6',
-  accent100: '#123a37',
-  accent200: '#37796f',
+  primary100: '#5eead4',
+  primary200: '#14b8a6',
+  primary300: '#2dd4bf',
+  accent100: '#134e4a',
+  accent200: '#0f766e',
 
   text100: '#eaf0f0',
   text200: '#a6b4b7',

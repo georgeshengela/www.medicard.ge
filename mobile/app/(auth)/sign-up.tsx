@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { Link, useRouter } from 'expo-router';
-import { Lock, Mail, User, UserPlus } from 'lucide-react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Lock, Mail, User } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
-import { Button } from '@/components/ui/Button';
-import { DateField } from '@/components/ui/DateField';
-import { GenderSelect } from '@/components/ui/GenderSelect';
+import { AuthScreenTitle } from '@/components/auth/AuthScreenTitle';
+import { SignUpSwitchLink } from '@/components/auth/AuthSwitchLink';
+import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
+import { PasswordStrengthHint } from '@/components/auth/PasswordStrengthHint';
 import { Input } from '@/components/ui/Input';
 import { ka } from '@/i18n/ka';
-import { ApiError, type Gender } from '@/lib/api';
-import { parseBirthDate } from '@/lib/birthdate';
+import { ApiError } from '@/lib/api';
+import { isPasswordStrongEnough, scorePassword } from '@/lib/passwordStrength';
 import { useAuth } from '@/store/AuthContext';
 
 type Errors = {
   fullName?: string;
   email?: string;
   password?: string;
-  gender?: string;
-  birthDate?: string;
+  confirmPassword?: string;
   form?: string;
 };
 
@@ -28,23 +28,30 @@ export default function SignUp() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [gender, setGender] = useState<Gender | null>(null);
-  const [birthDate, setBirthDate] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+
+  const strength = useMemo(() => scorePassword(password), [password]);
+  const canSubmit =
+    fullName.trim().length >= 2 &&
+    /^\S+@\S+\.\S+$/.test(email.trim()) &&
+    isPasswordStrongEnough(password) &&
+    password === confirmPassword;
 
   const submit = async () => {
+    Keyboard.dismiss();
     const next: Errors = {};
     if (fullName.trim().length < 2) next.fullName = ka.auth.shortName;
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) next.email = ka.auth.invalidEmail;
-    if (password.length < 8) next.password = ka.auth.shortPassword;
-    if (!gender) next.gender = ka.auth.selectGender;
-
-    const parsedBirthDate = parseBirthDate(birthDate);
-    if (!parsedBirthDate.ok) next.birthDate = parsedBirthDate.error;
+    if (!isPasswordStrongEnough(password)) next.password = ka.auth.shortPassword;
+    if (password !== confirmPassword) next.confirmPassword = ka.auth.passwordMismatch;
 
     setErrors(next);
-    if (Object.keys(next).length > 0 || !gender || !parsedBirthDate.ok) return;
+    if (Object.keys(next).length > 0) return;
 
     setBusy(true);
     try {
@@ -52,37 +59,39 @@ export default function SignUp() {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         password,
-        gender,
-        birthDate: parsedBirthDate.iso,
       });
-      router.replace('/(tabs)/home');
+      router.replace('/(auth)/assessment');
     } catch (error) {
       if (error instanceof ApiError && error.fields?.length) {
-        setErrors(Object.fromEntries(error.fields.map((f) => [f.field, f.message])));
+        const knownFields = new Set(['fullName', 'email', 'password']);
+        const mapped: Errors = {};
+        for (const field of error.fields) {
+          if (knownFields.has(field.field)) {
+            (mapped as Record<string, string>)[field.field] = field.message;
+          }
+        }
+        const extra = error.fields.filter((f) => !knownFields.has(f.field));
+        const legacyProfileFields = extra.some((f) => f.field === 'gender' || f.field === 'birthDate');
+        if (legacyProfileFields) {
+          mapped.form = ka.auth.legacyServerRegister;
+        } else if (extra.length > 0 || Object.keys(mapped).length === 0) {
+          mapped.form =
+            extra.map((f) => f.message).join(' ') || error.message || ka.common.error;
+        }
+        setErrors(mapped);
       } else {
         setErrors({ form: error instanceof ApiError ? error.message : ka.common.error });
       }
-    } finally {
       setBusy(false);
     }
   };
 
   return (
-    <AuthShell
-      title={ka.auth.signUpTitle}
-      subtitle={ka.auth.signUpSubtitle}
-      footer={
-        <View className="flex-row justify-center">
-          <Text className="text-base text-text-200">{ka.auth.hasAccount} </Text>
-          <Link href="/(auth)/sign-in" asChild>
-            <Pressable accessibilityRole="link" hitSlop={8}>
-              <Text className="text-base font-bold text-primary-200">{ka.auth.signIn}</Text>
-            </Pressable>
-          </Link>
-        </View>
-      }
-    >
-      <View className="gap-4">
+    <AuthShell>
+      <AuthScreenTitle>{ka.auth.signUp}</AuthScreenTitle>
+      <SignUpSwitchLink />
+
+      <View style={{ gap: 16 }}>
         <Input
           label={ka.auth.fullName}
           placeholder={ka.auth.fullNamePlaceholder}
@@ -92,9 +101,13 @@ export default function SignUp() {
           error={errors.fullName}
           autoComplete="name"
           returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => emailRef.current?.focus()}
+          figma
         />
 
         <Input
+          ref={emailRef}
           label={ka.auth.email}
           placeholder={ka.auth.emailPlaceholder}
           icon={Mail}
@@ -105,51 +118,59 @@ export default function SignUp() {
           autoComplete="email"
           keyboardType="email-address"
           returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          figma
         />
 
+        <View>
+          <Input
+            ref={passwordRef}
+            label={ka.auth.password}
+            placeholder={ka.auth.passwordPlaceholder}
+            icon={Lock}
+            value={password}
+            onChangeText={setPassword}
+            error={errors.password}
+            secure
+            autoCapitalize="none"
+            autoComplete="new-password"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => confirmRef.current?.focus()}
+            figma
+          />
+          <PasswordStrengthHint level={strength.level} />
+        </View>
+
         <Input
-          label={ka.auth.password}
-          placeholder={ka.auth.passwordPlaceholder}
+          ref={confirmRef}
+          label={ka.auth.confirmPassword}
+          placeholder={ka.auth.confirmPasswordPlaceholder}
           icon={Lock}
-          value={password}
-          onChangeText={setPassword}
-          error={errors.password}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          error={errors.confirmPassword}
           secure
           autoCapitalize="none"
           autoComplete="new-password"
-          returnKeyType="next"
-        />
-
-        <GenderSelect
-          label={ka.auth.gender}
-          value={gender}
-          onChange={(value) => {
-            setGender(value);
-            setErrors((current) => ({ ...current, gender: undefined }));
-          }}
-          error={errors.gender}
-        />
-
-        <DateField
-          label={ka.auth.birthDate}
-          value={birthDate}
-          onChangeText={setBirthDate}
-          error={errors.birthDate}
-          hint={ka.auth.medicalDataHint}
+          returnKeyType="done"
+          onSubmitEditing={() => void submit()}
+          figma
         />
       </View>
 
       {errors.form ? (
         <View className="mt-4 rounded-2xl border border-state-danger/20 bg-state-dangerBg p-3.5">
-          <Text className="text-sm text-state-danger">{errors.form}</Text>
+          <Text className="font-sans text-sm text-state-danger">{errors.form}</Text>
         </View>
       ) : null}
 
       <View className="mt-6">
-        <Button label={ka.auth.signUp} icon={UserPlus} size="lg" loading={busy} onPress={submit} />
+        <AuthPrimaryButton label={ka.auth.signUp} loading={busy} disabled={!canSubmit} onPress={submit} />
       </View>
 
-      <Text className="mt-4 text-center text-xs leading-5 text-text-300">{ka.auth.terms}</Text>
+      <Text className="mt-4 text-center font-sans text-xs leading-5 text-text-300">{ka.auth.terms}</Text>
     </AuthShell>
   );
 }

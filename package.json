@@ -24,6 +24,16 @@
     "typecheck": "npm --prefix mobile run typecheck",
     "build": "npm --prefix server ci --include=dev && npm --prefix server run prisma:generate && npm --prefix mobile ci --include=dev && npm --prefix mobile run export:web && node -e \"const fs=require('fs');const p='server/admin/index.html'; if(!fs.existsSync(p)){console.error('Missing '+p); process.exit(1)} console.log('admin ui ok')\"",
     "release": "npm --prefix server run prisma:push && npm --prefix server run seed",
-    "start": "npm --prefix server start"
+    "start": "npm --prefix server start",
+    "clean": "node scripts/clean.mjs",
+    "figma:sync": "node scripts/figma/sync.mjs",
+    "figma:auth": "node scripts/figma/sync.mjs --export-auth",
+    "figma:onboarding": "node scripts/figma/export-onboarding.mjs",
+    "figma:welcome": "node scripts/figma/export-welcome-all.mjs",
+    "figma:welcome:verify": "node scripts/figma/verify-welcome-assets.mjs",
+    "figma:assessment": "node scripts/figma/export-assessment-all.mjs",
+    "figma:assessment:svg": "node scripts/figma/import-assessment-svg.mjs",
+    "figma:illustration:svg": "node scripts/figma/import-illustration-svg.mjs",
+    "figma:body:svg": "node scripts/figma/import-body-svg.mjs"
   }
 }

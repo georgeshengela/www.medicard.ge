@@ -8,6 +8,9 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+screenshots/
+.expo-export-check/
+.expo-tmp-check/
 
 # Native
 .kotlin/

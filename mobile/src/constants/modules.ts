@@ -53,7 +53,7 @@ export const MODULE_TILES: ModuleTile[] = [
     icon: FlaskConical,
     href: '/module/lab',
     tint: 'bg-accent-100/60',
-    iconColor: '#26A69A',
+    iconColor: '#14B8A6',
   },
   {
     key: 'imaging',
@@ -62,7 +62,7 @@ export const MODULE_TILES: ModuleTile[] = [
     icon: ScanLine,
     href: '/module/imaging',
     tint: 'bg-accent-100/60',
-    iconColor: '#26A69A',
+    iconColor: '#14B8A6',
   },
   {
     key: 'skin',
@@ -71,7 +71,7 @@ export const MODULE_TILES: ModuleTile[] = [
     icon: Stethoscope,
     href: '/module/skin',
     tint: 'bg-accent-100/60',
-    iconColor: '#26A69A',
+    iconColor: '#14B8A6',
   },
   {
     key: 'skincare',
@@ -80,7 +80,7 @@ export const MODULE_TILES: ModuleTile[] = [
     icon: Sparkles,
     href: '/module/skincare',
     tint: 'bg-accent-100/60',
-    iconColor: '#26A69A',
+    iconColor: '#14B8A6',
   },
   {
     key: 'consilium',
@@ -89,7 +89,7 @@ export const MODULE_TILES: ModuleTile[] = [
     icon: Users,
     href: '/chat/consilium',
     tint: 'bg-accent-100/60',
-    iconColor: '#26A69A',
+    iconColor: '#14B8A6',
   },
   {
     key: 'pharmacy',
@@ -107,7 +107,7 @@ export const MODULE_TILES: ModuleTile[] = [
     icon: CalendarClock,
     href: '/(tabs)/medications',
     tint: 'bg-accent-100/60',
-    iconColor: '#26A69A',
+    iconColor: '#14B8A6',
   },
   {
     key: 'visits',
@@ -119,6 +119,9 @@ export const MODULE_TILES: ModuleTile[] = [
     iconColor: '#1A8A7D',
   },
 ];
+
+export const SPOTLIGHT_MODULE_KEYS = new Set(['doctor', 'cycle']);
+export const POWER_TOOL_MODULE_KEYS = new Set(['pharmacy', 'calendar', 'visits']);
 
 export function modulesForGender(gender: string | null | undefined): ModuleTile[] {
   return MODULE_TILES.filter((tile) => !tile.gender || tile.gender === gender);

@@ -31,6 +31,12 @@ const schema = z.object({
   ADMIN_EMAIL: z.string().email().default('admin@medicard.ge'),
   ADMIN_PASSWORD: z.string().min(8).default('MedicardAdmin1!'),
   ADMIN_FULL_NAME: z.string().default('Medicard Admin'),
+
+  RESEND_API_KEY: z.string().default(''),
+  RESEND_FROM: z.string().default('Medicard <noreply@medicard.ge>'),
+
+  SMS_OFFICE_API_KEY: z.string().default(''),
+  SMS_OFFICE_SENDER: z.string().default('MEDICARD'),
 });
 
 const parsed = schema.safeParse(process.env);

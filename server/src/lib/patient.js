@@ -115,6 +115,20 @@ export function buildPatientProfile(user) {
   const age = calculateAge(user?.birthDate);
   if (age !== null) lines.push(`- ასაკი: ${age} წელი`);
 
+  const hp = user?.healthProfile;
+  if (hp?.heightCm) lines.push(`- სიმაღლე: ${hp.heightCm} სმ`);
+  if (hp?.weightKg) lines.push(`- წონა: ${hp.weightKg} კგ`);
+  if (hp?.bloodType && hp.bloodType !== 'UNKNOWN') lines.push(`- სისხლის ჯგუფი: ${hp.bloodType}`);
+  if (Array.isArray(hp?.allergies) && hp.allergies.length) {
+    lines.push(`- ალერგიები: ${hp.allergies.join(', ')}`);
+  }
+  if (Array.isArray(hp?.chronicConditions) && hp.chronicConditions.length) {
+    lines.push(`- ქრონიკული დაავადებები: ${hp.chronicConditions.join(', ')}`);
+  }
+  if (Array.isArray(hp?.medications) && hp.medications.length) {
+    lines.push(`- მედიკამენტები: ${hp.medications.join(', ')}`);
+  }
+
   if (lines.length === 0) return null;
 
   return [
@@ -122,6 +136,40 @@ export function buildPatientProfile(user) {
     ...lines,
     'გაითვალისწინე პაციენტის სქესი და ასაკი ნორმის საზღვრების, დიფერენციული დიაგნოზის, დოზირებისა და რისკების შეფასებისას.',
   ].join('\n');
+}
+
+/** Health profile safe for client. */
+export function publicHealthProfile(profile) {
+  if (!profile) return null;
+  return {
+    heightCm: profile.heightCm ?? null,
+    weightKg: profile.weightKg ?? null,
+    bloodType: profile.bloodType ?? null,
+    activityLevel: profile.activityLevel ?? null,
+    exerciseFrequency: profile.exerciseFrequency ?? null,
+    sleepQuality: profile.sleepQuality ?? null,
+    sleepHours: profile.sleepHours ?? null,
+    stressLevel: profile.stressLevel ?? null,
+    smokingStatus: profile.smokingStatus ?? null,
+    alcoholUse: profile.alcoholUse ?? null,
+    dietType: profile.dietType ?? null,
+    waterIntakeL: profile.waterIntakeL ?? null,
+    restingHeartRate: profile.restingHeartRate ?? null,
+    bloodPressureSystolic: profile.bloodPressureSystolic ?? null,
+    bloodPressureDiastolic: profile.bloodPressureDiastolic ?? null,
+    chronicConditions: profile.chronicConditions ?? [],
+    allergies: profile.allergies ?? [],
+    medications: profile.medications ?? [],
+    familyHistory: profile.familyHistory ?? [],
+    healthGoals: profile.healthGoals ?? [],
+    extraAnswers: profile.extraAnswers ?? {},
+    currentStepIndex: profile.currentStepIndex ?? 0,
+    completedAt: profile.completedAt ?? null,
+    bmi:
+      profile.heightCm && profile.weightKg
+        ? Math.round((profile.weightKg / (profile.heightCm / 100) ** 2) * 10) / 10
+        : null,
+  };
 }
 
 /** Merges the demographics block with any context the user typed in themselves. */

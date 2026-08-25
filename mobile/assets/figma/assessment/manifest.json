@@ -1,0 +1,126 @@
+{
+  "01-intro": {
+    "figmaId": "9217:164373",
+    "file": "01-intro.png"
+  },
+  "02-overview": {
+    "figmaId": "9217:164410",
+    "file": "02-overview.png"
+  },
+  "03-age": {
+    "figmaId": "9217:164425",
+    "file": "03-age.png"
+  },
+  "04-gender": {
+    "figmaId": "9217:164441",
+    "file": "04-gender.png"
+  },
+  "05-height": {
+    "figmaId": "9217:164456",
+    "file": "05-height.png"
+  },
+  "06-weight": {
+    "figmaId": "9217:164472",
+    "file": "06-weight.png"
+  },
+  "07-bmi": {
+    "figmaId": "9217:164488",
+    "file": "07-bmi.png"
+  },
+  "08-activity": {
+    "figmaId": "9217:164506",
+    "file": "08-activity.png"
+  },
+  "09-exercise": {
+    "figmaId": "9217:164526",
+    "file": "09-exercise.png"
+  },
+  "10-sleep-quality": {
+    "figmaId": "9217:164587",
+    "file": "10-sleep-quality.png"
+  },
+  "11-sleep-hours": {
+    "figmaId": "9217:164607",
+    "file": "11-sleep-hours.png"
+  },
+  "12-stress": {
+    "figmaId": "9217:164626",
+    "file": "12-stress.png"
+  },
+  "13-smoking": {
+    "figmaId": "9217:164657",
+    "file": "13-smoking.png"
+  },
+  "14-alcohol": {
+    "figmaId": "11332:64167",
+    "file": "14-alcohol.png"
+  },
+  "15-diet": {
+    "figmaId": "9217:164703",
+    "file": "15-diet.png"
+  },
+  "16-water": {
+    "figmaId": "9217:164726",
+    "file": "16-water.png"
+  },
+  "17-conditions": {
+    "figmaId": "9217:164789",
+    "file": "17-conditions.png"
+  },
+  "18-medications": {
+    "figmaId": "9217:164803",
+    "file": "18-medications.png"
+  },
+  "19-allergies": {
+    "figmaId": "9217:164822",
+    "file": "19-allergies.png"
+  },
+  "20-family": {
+    "figmaId": "9217:164840",
+    "file": "20-family.png"
+  },
+  "21-blood-type": {
+    "figmaId": "9217:164855",
+    "file": "21-blood-type.png"
+  },
+  "22-voice-a": {
+    "figmaId": "9217:164868",
+    "file": "22-voice-a.png"
+  },
+  "23-voice-b": {
+    "figmaId": "9217:164897",
+    "file": "23-voice-b.png"
+  },
+  "24-voice-recording": {
+    "figmaId": "9217:164921",
+    "file": "24-voice-recording.png"
+  },
+  "25-voice-processing": {
+    "figmaId": "9217:164946",
+    "file": "25-voice-processing.png"
+  },
+  "26-bp": {
+    "figmaId": "9217:164958",
+    "file": "26-bp.png"
+  },
+  "27-hr": {
+    "figmaId": "9217:164974",
+    "file": "27-hr.png"
+  },
+  "28-goals": {
+    "figmaId": "9217:164995",
+    "file": "28-goals.png"
+  },
+  "29-privacy": {
+    "figmaId": "9217:165014",
+    "file": "29-privacy.png"
+  },
+  "30-summary": {
+    "figmaId": "9217:165041",
+    "file": "30-summary.png"
+  },
+  "31-complete": {
+    "figmaId": "9217:165096",
+    "file": "31-complete.png"
+  }
+}

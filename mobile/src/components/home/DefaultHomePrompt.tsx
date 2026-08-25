@@ -1,6 +1,5 @@
 import React from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { CalendarHeart, House } from 'lucide-react-native';
@@ -91,14 +90,7 @@ function PillButton({
       })}
     >
       {isPrimary ? (
-        <LinearGradient
-          colors={['#E8899E', '#D4738A']}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={SHELL}
-        >
-          {inner}
-        </LinearGradient>
+        <View style={{ ...SHELL, backgroundColor: '#D4738A' }}>{inner}</View>
       ) : (
         <View style={{ ...SHELL, backgroundColor: '#EBE4E7' }}>{inner}</View>
       )}

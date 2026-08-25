@@ -10,18 +10,19 @@
 @layer base {
   :root {
     /* Surfaces */
+    font-family: NotoSansGeorgian_400Regular;
     --color-bg-100: 245 247 247; /* page canvas */
     --color-bg-200: 234 238 239; /* subtle fills, chips, icon tiles */
     --color-bg-300: 221 227 228; /* hairlines, dividers, borders */
     --color-surface: 255 255 255; /* cards */
     --color-surface-raised: 255 255 255; /* floating bar, sheets */
 
-    /* Brand — teal */
-    --color-primary-100: 22 119 109; /* strongest: text on tints, pressed fills */
-    --color-primary-200: 38 166 154; /* brand */
-    --color-primary-300: 77 182 172; /* secondary emphasis */
-    --color-accent-100: 210 237 234; /* soft tint backgrounds */
-    --color-accent-200: 143 210 202; /* tint borders */
+    /* Brand — teal #14B8A6 */
+    --color-primary-100: 15 118 110; /* #0F766E — ink on tints */
+    --color-primary-200: 20 184 166; /* #14B8A6 — brand */
+    --color-primary-300: 45 212 191; /* #2DD4BF — hover / secondary */
+    --color-accent-100: 204 251 241; /* #CCFBF1 — soft tint */
+    --color-accent-200: 94 234 212; /* #5EEAD4 — tint borders */
 
     /* Type */
     --color-text-100: 15 26 28;
@@ -45,12 +46,12 @@
     --color-surface: 20 27 29;
     --color-surface-raised: 26 34 37;
 
-    /* Teal is lifted so it keeps its contrast ratio against a dark canvas. */
-    --color-primary-100: 122 226 214;
-    --color-primary-200: 45 190 175;
-    --color-primary-300: 95 211 198;
-    --color-accent-100: 18 58 55;
-    --color-accent-200: 55 121 111;
+    /* Teal lifted on dark canvas while keeping #14B8A6 as the core brand. */
+    --color-primary-100: 94 234 212; /* #5EEAD4 */
+    --color-primary-200: 20 184 166; /* #14B8A6 */
+    --color-primary-300: 45 212 191; /* #2DD4BF */
+    --color-accent-100: 19 78 74; /* #134E4A */
+    --color-accent-200: 15 118 110; /* #0F766E */
 
     --color-text-100: 234 240 240;
     --color-text-200: 166 180 183;

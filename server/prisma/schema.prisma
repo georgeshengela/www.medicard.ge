@@ -36,9 +36,106 @@ model User {
   aiInteractions   AiInteraction[]
   aiFeedback       AiFeedback[]
   doctorVisits     DoctorVisit[]
+  healthProfile    HealthProfile?
 
   @@index([status])
   @@index([packageId])
+  passwordResets    PasswordReset[]
+}
+
+/// Email OTP for password recovery — 6-digit code, short TTL.
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email     String
+  codeHash  String
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// SMS OTP for phone verification — 4-digit code, short TTL.
+model PhoneVerification {
+  id        String    @id @default(uuid())
+  phone     String
+  codeHash  String
+  purpose   String    @default("AUTH") // AUTH | LINK | ADMIN
+  userId    String?
+  reference String?
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([phone])
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([reference])
+}
+
+/// Outbound SMS audit log (SMSOffice.ge and admin sends).
+model SmsLog {
+  id           String   @id @default(uuid())
+  destination  String
+  content      String
+  sender       String   @default("MEDICARD")
+  purpose      String   @default("OTP") // OTP | ADMIN | MARKETING | TEST
+  reference    String?
+  status       String   @default("QUEUED") // QUEUED | SENT | FAILED
+  providerCode Int?
+  providerMsg  String?
+  userId       String?
+  adminId      String?
+  createdAt    DateTime @default(now())
+
+  @@index([destination])
+  @@index([purpose])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Comprehensive health assessment data collected after registration.
+model HealthProfile {
+  id                     String    @id @default(uuid())
+  userId                 String    @unique
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  heightCm               Float?
+  weightKg               Float?
+  bloodType              String?
+  activityLevel          String?
+  exerciseFrequency      String?
+  sleepQuality           String?
+  sleepHours             Float?
+  stressLevel            String?
+  smokingStatus          String?
+  alcoholUse             String?
+  dietType               String?
+  waterIntakeL           Float?
+  restingHeartRate       Int?
+  bloodPressureSystolic  Int?
+  bloodPressureDiastolic Int?
+  /// string[] — e.g. diabetes, hypertension
+  chronicConditions      Json      @default("[]")
+  /// string[]
+  allergies              Json      @default("[]")
+  /// string[]
+  medications            Json      @default("[]")
+  /// string[]
+  familyHistory          Json      @default("[]")
+  /// string[]
+  healthGoals            Json      @default("[]")
+  /// Extra step answers keyed by assessment step id
+  extraAnswers           Json      @default("{}")
+  currentStepIndex       Int       @default(0)
+  completedAt            DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 }
 
 /// Women's health — one profile per user (FEMALE-gated in API)

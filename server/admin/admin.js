@@ -445,12 +445,12 @@ async function boot() {
   try {
     const me = await apiRetry('/me');
     rememberAdmin(me.admin);
-    const tab = ['overview', 'users', 'packages', 'push', 'pharmacy', 'ai', 'settings'].includes(state.tab) ? state.tab : 'overview';
+    const tab = ['overview', 'users', 'packages', 'push', 'sms', 'pharmacy', 'ai', 'settings'].includes(state.tab) ? state.tab : 'overview';
     await switchTab(tab);
   } catch (err) {
     if (err.status === 401 || err.status === 403) return;
     toast(err.message || 'სერვერთან კავშირი ვერ დამყარდა.', 'bad');
-    const tab = ['overview', 'users', 'packages', 'push', 'pharmacy', 'ai', 'settings'].includes(state.tab) ? state.tab : 'overview';
+    const tab = ['overview', 'users', 'packages', 'push', 'sms', 'pharmacy', 'ai', 'settings'].includes(state.tab) ? state.tab : 'overview';
     try { await switchTab(tab); } catch { /* keep chrome visible */ }
   }
 }
@@ -489,6 +489,7 @@ async function switchTab(tab) {
     users: ['რეესტრი', 'მომხმარებლები', 'ძებნა, სორტი, პაკეტის მინიჭება, ბლოკი და წაშლა. Ctrl/⌘+K — ძებნა.'],
     packages: ['კომერცია', 'პაკეტები', 'ყველა გეგმა თვიურია — AI ლიმიტი 30-დღიან პერიოდში.'],
     push: ['კომუნიკაცია', 'Push შეტყობინებები', 'გაუგზავნეთ push შეტყობინება მომხმარებლებს სეგმენტის მიხედვით.'],
+    sms: ['კომუნიკაცია', 'SMS მენეჯმენტი', 'OTP, ბალანსი, გაგზავნა და გაგზავნილი მესიჯების ჟურნალი.'],
     pharmacy: ['კატალოგი', 'ფასების შედარება', 'აფთიაქების სინქრონიზაცია, პროდუქტები და სინქის ისტორია.'],
     ai: ['AI', 'ხარისხის ანალიზი', 'ყველა AI პასუხი იწერება, შეფასდება და გაუმჯობესდება კონტროლირებულად.'],
     settings: ['კონტროლი', 'აპის რეჟიმი', 'ოფლაინი, იძულებითი განახლება და რეგისტრაციის კარიბჭე.'],
@@ -499,6 +500,7 @@ async function switchTab(tab) {
   if (tab === 'users') await renderUsers();
   if (tab === 'packages') await renderPackages();
   if (tab === 'push') await renderPush();
+  if (tab === 'sms') await renderSms();
   if (tab === 'pharmacy') await renderPharmacy();
   if (tab === 'ai') await renderAi();
   if (tab === 'settings') await renderSettings();
@@ -2215,6 +2217,195 @@ async function renderPharmacy() {
       if (state.tab === 'pharmacy') renderPharmacy().catch(() => undefined);
     }, 8000);
   }
+}
+
+function fmtSmsDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('ka-GE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function smsStatusTone(status) {
+  if (status === 'SENT') return 'ok';
+  if (status === 'FAILED') return 'bad';
+  return 'warn';
+}
+
+async function renderSms() {
+  const [balance, stats, logs, users] = await Promise.all([
+    api('/sms/balance'),
+    api('/sms/stats'),
+    api('/sms/logs?limit=40&offset=0'),
+    api('/users?limit=200&offset=0').catch(() => ({ users: [] })),
+  ]);
+
+  const balNum = balance.balance;
+  const balLabel = !balance.configured
+    ? 'API გასაღები არ არის'
+    : balNum != null
+      ? `${balNum.toLocaleString('ka-GE')} SMS`
+      : balance.raw || '—';
+  const balTone = !balance.configured ? 'bad' : balNum != null && balNum < 50 ? 'warn' : 'ok';
+  const successRate = stats.total ? Math.round((stats.sent / stats.total) * 100) : 100;
+
+  $('tab-sms').innerHTML = `
+    <div class="ai-page dash-page dash-enter">
+      <section class="dash-hero card sms-hero" style="--i:0">
+        <div class="dash-hero-deco" aria-hidden="true">
+          <span class="deco deco-teal"></span>
+          <span class="deco deco-std"></span>
+        </div>
+        <div class="dash-hero-main">
+          <p class="kicker">SMSOffice.ge · MEDICARD</p>
+          <h3>SMS კონტროლი</h3>
+          <p class="muted">OTP, ადმინისტრაციული გაგზავნა და სრული აუდიტი.</p>
+        </div>
+        <div class="dash-hero-stats">
+          <div class="hero-stat">
+            <span>ბალანსი</span>
+            <strong class="tone-${balTone}">${escapeHtml(balLabel)}</strong>
+          </div>
+          <div class="hero-stat">
+            <span>24სთ</span>
+            <strong>${stats.last24h}</strong>
+          </div>
+          <div class="hero-stat">
+            <span>წარმატება</span>
+            <strong class="tone-ok">${successRate}%</strong>
+          </div>
+        </div>
+        <button type="button" class="btn ghost" id="sms-refresh-bal">${icon('activity')} განახლება</button>
+      </section>
+
+      <div class="dash-grid" style="--i:1">
+        <article class="card stat-card">
+          <p class="stat-kicker">სულ</p>
+          <p class="stat-num">${stats.total}</p>
+          <p class="stat-sub muted">ყველა ჩანაწერი</p>
+        </article>
+        <article class="card stat-card">
+          <p class="stat-kicker">OTP</p>
+          <p class="stat-num tone-ok">${stats.otp}</p>
+          <p class="stat-sub muted">ავტორიზაცია</p>
+        </article>
+        <article class="card stat-card">
+          <p class="stat-kicker">ადმინი</p>
+          <p class="stat-num">${stats.admin}</p>
+          <p class="stat-sub muted">ხელით გაგზავნა</p>
+        </article>
+        <article class="card stat-card">
+          <p class="stat-kicker">შეცდომა</p>
+          <p class="stat-num tone-bad">${stats.failed}</p>
+          <p class="stat-sub muted">ვერ გაიგზავნა</p>
+        </article>
+      </div>
+
+      <section class="card sms-send-card" style="--i:2">
+        <div class="card-head">
+          <div>
+            <p class="kicker">გაგზავნა</p>
+            <h4>ახალი SMS</h4>
+          </div>
+        </div>
+        <form id="sms-send-form" class="sms-send-form">
+          <label class="field">
+            <span>მიმღები (9955XXXXXXXX)</span>
+            <input id="sms-destination" type="text" placeholder="995577123456" />
+          </label>
+          <label class="field">
+            <span>ან მომხმარებელი</span>
+            <select id="sms-user-id">
+              <option value="">— ხელით ნომერი —</option>
+              ${(users.users || [])
+                .filter((u) => u.phone)
+                .slice(0, 100)
+                .map((u) => `<option value="${u.id}">${escapeHtml(u.fullName)} · ${escapeHtml(u.phone)}</option>`)
+                .join('')}
+            </select>
+          </label>
+          <label class="field">
+            <span>ტექსტი (მაქს. 1000)</span>
+            <textarea id="sms-content" rows="3" maxlength="1000" placeholder="Medicard: ..."></textarea>
+            <small class="muted"><span id="sms-char-count">0</span> / 1000</small>
+          </label>
+          <div class="sms-send-actions">
+            <label class="check-inline">
+              <input id="sms-urgent" type="checkbox" />
+              <span>urgent (დაბლოკილი ნომრებზეც)</span>
+            </label>
+            <button type="submit" class="btn primary" data-icon="arrow">გაგზავნა</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card" style="--i:3">
+        <div class="card-head">
+          <div>
+            <p class="kicker">ჟურნალი</p>
+            <h4>გაგზავნილი SMS</h4>
+          </div>
+          <button type="button" class="btn ghost sm" id="sms-reload-logs">${icon('activity')}</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>დრო</th>
+                <th>ნომერი</th>
+                <th>ტექსტი</th>
+                <th>მიზანი</th>
+                <th>სტატუსი</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(logs.logs || [])
+                .map(
+                  (row) => `
+                <tr>
+                  <td>${fmtSmsDate(row.createdAt)}</td>
+                  <td><code>${escapeHtml(row.destination)}</code></td>
+                  <td class="clip">${escapeHtml(row.content)}</td>
+                  <td><span class="pill sm">${escapeHtml(row.purpose)}</span></td>
+                  <td><span class="status-pill ${smsStatusTone(row.status)}">${escapeHtml(row.status)}</span></td>
+                </tr>`,
+                )
+                .join('') || '<tr><td colspan="5" class="empty">ჩანაწერი არ არის</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>`;
+
+  const contentEl = $('sms-content');
+  const countEl = $('sms-char-count');
+  contentEl?.addEventListener('input', () => {
+    if (countEl) countEl.textContent = String(contentEl.value.length);
+  });
+
+  $('sms-refresh-bal')?.addEventListener('click', () => renderSms().catch((e) => toast(e.message, 'bad')));
+  $('sms-reload-logs')?.addEventListener('click', () => renderSms().catch((e) => toast(e.message, 'bad')));
+
+  $('sms-send-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const destination = $('sms-destination').value.trim();
+    const userId = $('sms-user-id').value || undefined;
+    const content = $('sms-content').value.trim();
+    const urgent = $('sms-urgent').checked;
+    if (!content) return toast('შეიყვანეთ ტექსტი', 'bad');
+    if (!userId && !destination) return toast('მიუთითეთ ნომერი ან მომხმარებელი', 'bad');
+    try {
+      await api('/sms/send', {
+        method: 'POST',
+        body: { destination: destination || '995500000000', content, userId, urgent },
+      });
+      toast('SMS გაგზავნილია', 'ok');
+      $('sms-content').value = '';
+      if (countEl) countEl.textContent = '0';
+      await renderSms();
+    } catch (err) {
+      toast(err.message || 'გაგზავნა ვერ მოხერხდა', 'bad');
+    }
+  });
 }
 
 boot();

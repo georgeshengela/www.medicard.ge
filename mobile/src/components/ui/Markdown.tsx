@@ -18,19 +18,27 @@ type Block =
   | { kind: 'rule' }
   | { kind: 'table'; rows: string[][] };
 
-export function Markdown({ content }: { content: string }) {
+export function Markdown({ content, allowLinks = true }: { content: string; allowLinks?: boolean }) {
   const blocks = useMemo(() => parse(content), [content]);
 
   return (
     <View>
       {blocks.map((block, index) => (
-        <BlockView key={index} block={block} first={index === 0} />
+        <BlockView key={index} block={block} first={index === 0} allowLinks={allowLinks} />
       ))}
     </View>
   );
 }
 
-function BlockView({ block, first }: { block: Block; first: boolean }) {
+function BlockView({
+  block,
+  first,
+  allowLinks,
+}: {
+  block: Block;
+  first: boolean;
+  allowLinks: boolean;
+}) {
   switch (block.kind) {
     case 'heading': {
       const size =
@@ -39,7 +47,7 @@ function BlockView({ block, first }: { block: Block; first: boolean }) {
         <View className={first ? '' : 'mt-5'}>
           {block.level === 2 ? <View className="mb-2 h-0.5 w-9 rounded-full bg-accent-200" /> : null}
           <Text className={`${size} text-text-100`}>
-            <Inline text={block.text} />
+            <Inline text={block.text} allowLinks={allowLinks} />
           </Text>
         </View>
       );
@@ -50,7 +58,7 @@ function BlockView({ block, first }: { block: Block; first: boolean }) {
         <View className="mt-2 flex-row pl-1">
           <View className="mr-2.5 mt-2.5 h-1.5 w-1.5 rounded-full bg-primary-300" />
           <Text className="flex-1 text-base text-text-200">
-            <Inline text={block.text} />
+            <Inline text={block.text} allowLinks={allowLinks} />
           </Text>
         </View>
       );
@@ -60,7 +68,7 @@ function BlockView({ block, first }: { block: Block; first: boolean }) {
         <View className="mt-2 flex-row pl-1">
           <Text className="mr-2 text-base font-bold text-primary-200">{block.index}.</Text>
           <Text className="flex-1 text-base text-text-200">
-            <Inline text={block.text} />
+            <Inline text={block.text} allowLinks={allowLinks} />
           </Text>
         </View>
       );
@@ -81,7 +89,7 @@ function BlockView({ block, first }: { block: Block; first: boolean }) {
               {cells.map((cell, cellIndex) => (
                 <View key={cellIndex} className="flex-1 px-2.5 py-2">
                   <Text className={`text-sm ${rowIndex === 0 ? 'font-semibold text-text-100' : 'text-text-200'}`}>
-                    <Inline text={cell} />
+                    <Inline text={cell} allowLinks={allowLinks} />
                   </Text>
                 </View>
               ))}
@@ -94,14 +102,14 @@ function BlockView({ block, first }: { block: Block; first: boolean }) {
     default:
       return (
         <Text className={`${first ? '' : 'mt-3'} text-base text-text-200`}>
-          <Inline text={block.text} />
+          <Inline text={block.text} allowLinks={allowLinks} />
         </Text>
       );
   }
 }
 
 /** Renders bold, italic, inline code and links inside a single line of text. */
-function Inline({ text }: { text: string }) {
+function Inline({ text, allowLinks = true }: { text: string; allowLinks?: boolean }) {
   const tokens = useMemo(() => tokenise(text), [text]);
 
   return (
@@ -129,6 +137,10 @@ function Inline({ text }: { text: string }) {
           );
         }
         if (token.type === 'link') {
+          if (!allowLinks) {
+            if (isCitation(token.value)) return null;
+            return <Text key={index}>{token.value}</Text>;
+          }
           return (
             <Text
               key={index}

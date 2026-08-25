@@ -215,6 +215,7 @@ git push -u origin main
 | `DATABASE_URL` | Neon **pooled** (`-pooler`) connection string |
 | `EVIDENCEMD_API_KEY` | EvidenceMD key (chat / clinical reasoning) |
 | `OPENROUTER_API_KEY` | OpenRouter key (X-ray / labs / derm vision) |
+| `SMS_OFFICE_API_KEY` | SMSOffice.ge key (OTP + admin SMS; sender **MEDICARD**) |
 | `ANTHROPIC_API_KEY` | optional fallback vision |
 | `OPENAI_API_KEY` | optional fallback vision |
 
@@ -260,8 +261,8 @@ in the dashboard if you want to try the deploy before paying.
   into your host's secret manager.
 - **File storage** — uploads currently land on local disk via `server/src/lib/storage.js`. Swap
   that one module for S3 / R2; nothing else depends on the storage backend.
-- **SMS** — `POST /api/auth/phone/start` returns a fixed development code. Wire a Georgian
-  gateway (SMSOffice.ge, Magti, Geocell); the client contract does not change.
+- **SMS** — `POST /api/auth/phone/start` sends a real 4-digit OTP via SMSOffice.ge when
+  `SMS_OFFICE_API_KEY` is set. Admin panel → **SMS** tab for balance, send, and logs.
 - **Payments** — the Premium upsell is a placeholder. There is no billing integration yet.
 - **PHI** — confirm HIPAA/GDPR scope, data-retention terms and a BAA with EvidenceMD before
   sending identifiable patient data.

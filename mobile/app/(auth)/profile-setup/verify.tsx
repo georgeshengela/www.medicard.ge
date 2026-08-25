@@ -1,0 +1,190 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
+import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
+import { ka } from '@/i18n/ka';
+import { ApiError, api } from '@/lib/api';
+import { completePayload, extraAnswersPayload, formFromProfile, fullProfilePayload } from '@/lib/assessmentForm';
+import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
+
+const RESEND_SEC = 60;
+
+function maskPhone(phone: string) {
+  const d = phone.replace(/\D/g, '');
+  if (d.length < 4) return phone;
+  return `+${d.slice(0, 3)} ••• •• ${d.slice(-2)}`;
+}
+
+/** Profile setup — 4-digit OTP verify (Figma 8845:310664 / 310822 / 310873). */
+export default function ProfileSetupVerifyScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ phone?: string }>();
+  const phone = typeof params.phone === 'string' ? params.phone : '';
+  const { user, ready, healthProfile, setHealthProfile, setUser, refreshHealthProfile } = useAuth();
+
+  const [code, setCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [cooldown, setCooldown] = useState(RESEND_SEC);
+  const [devCode, setDevCode] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const finishProfileSetup = useCallback(async () => {
+    if (!healthProfile || !user) return;
+    const form = formFromProfile(healthProfile, user);
+    const extra = (healthProfile.extraAnswers ?? {}) as Record<string, unknown>;
+    await api.healthProfile.update({
+      ...fullProfilePayload(form, healthProfile.currentStepIndex ?? 0),
+      extraAnswers: {
+        ...extraAnswersPayload(form),
+        assessmentPhaseComplete: true,
+        avatarId: extra.avatarId,
+        phoneVerified: true,
+      },
+    });
+    const result = await api.healthProfile.complete(completePayload(form));
+    setHealthProfile(result.profile);
+    setUser(result.user);
+    await refreshHealthProfile();
+    router.replace('/(tabs)/home');
+  }, [healthProfile, user, setHealthProfile, setUser, refreshHealthProfile, router]);
+
+  if (!ready) {
+    return (
+      <View className="flex-1 items-center justify-center bg-bg-100">
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!user) return <Redirect href="/(auth)/sign-in" />;
+  if (!phone || !/^\+9955\d{8}$/.test(phone)) return <Redirect href="/(auth)/profile-setup/phone" />;
+  if (needsHealthAssessment(healthProfile)) return <Redirect href="/(auth)/assessment" />;
+  if (!needsProfileSetup(healthProfile)) return <Redirect href="/(tabs)/home" />;
+
+  const verify = async () => {
+    if (code.length !== 4) {
+      setError(ka.auth.invalidCodeLength(4));
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      const linked = await api.auth.phoneLinkVerify(phone, code.trim());
+      setUser(linked.user);
+      await finishProfileSetup();
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : ka.common.error;
+      setError(msg);
+      setToast(msg);
+      setCode('');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resend = async () => {
+    if (cooldown > 0) return;
+    setError(null);
+    try {
+      const res = await api.auth.phoneLinkStart(phone);
+      setDevCode(res.devCode ?? null);
+      setCooldown(res.cooldownSec ?? RESEND_SEC);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : ka.common.error);
+    }
+  };
+
+  return (
+    <ProfileSetupShell
+      title={ka.profileSetup.verifyTitle}
+      body={ka.profileSetup.verifyBody(maskPhone(phone))}
+      primaryLabel={ka.profileSetup.verifyContinue}
+      canBack
+      onBack={() => router.back()}
+      loading={busy}
+      primaryDisabled={code.length !== 4}
+      onPrimary={() => void verify()}
+      showStepper={false}
+    >
+      <View style={{ paddingHorizontal: 16, paddingTop: 40 }}>
+        <OtpCodeInput value={code} onChange={setCode} error={error} variant="hero" length={4} />
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void resend()}
+          disabled={cooldown > 0}
+          style={{ marginTop: 28, alignItems: 'center' }}
+        >
+          <Text
+            style={{
+              fontFamily: 'NotoSansGeorgian_600SemiBold',
+              fontSize: 16,
+              color: cooldown > 0 ? '#9CA3AF' : '#14B8A6',
+            }}
+          >
+            {cooldown > 0
+              ? ka.profileSetup.resendIn(cooldown)
+              : ka.profileSetup.resendCode}
+          </Text>
+        </Pressable>
+
+        {devCode ? (
+          <Text
+            style={{
+              marginTop: 16,
+              textAlign: 'center',
+              fontFamily: 'NotoSansGeorgian_400Regular',
+              fontSize: 13,
+              color: '#64748B',
+            }}
+          >
+            Dev: {devCode}
+          </Text>
+        ) : null}
+      </View>
+
+      {toast ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 16,
+            right: 16,
+            bottom: 120,
+            backgroundColor: '#FEE2E2',
+            borderRadius: 14,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: '#FECACA',
+          }}
+        >
+          <Text
+            style={{
+              textAlign: 'center',
+              fontFamily: 'NotoSansGeorgian_600SemiBold',
+              fontSize: 14,
+              color: '#B91C1C',
+            }}
+          >
+            {toast}
+          </Text>
+        </View>
+      ) : null}
+    </ProfileSetupShell>
+  );
+}

@@ -5,7 +5,10 @@ import { prisma } from '../lib/prisma.js';
 import { getUsage } from '../lib/usage.js';
 import { ensureFreePackageId } from '../lib/packages.js';
 import { getAppSettings } from '../lib/settings.js';
-import { birthDateSchema, genderSchema, publicUser } from '../lib/patient.js';
+import { birthDateSchema, genderSchema, publicHealthProfile, publicUser } from '../lib/patient.js';
+import { requestPasswordReset, resetPasswordWithCode } from '../lib/passwordReset.js';
+import { requestPhoneOtp, verifyPhoneOtp } from '../lib/phoneOtp.js';
+import { normalizeSmsDestination } from '../lib/sms.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 
@@ -23,14 +26,30 @@ const registerSchema = z.object({
   email: z.string().trim().toLowerCase().email('ელ-ფოსტის ფორმატი არასწორია'),
   password: z.string().min(8, 'პაროლი უნდა შეიცავდეს მინიმუმ 8 სიმბოლოს').max(128),
   phone: georgianPhone.optional(),
-  gender: genderSchema,
-  birthDate: birthDateSchema,
+  gender: genderSchema.optional(),
+  birthDate: birthDateSchema.optional(),
 });
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('ელ-ფოსტის ფორმატი არასწორია'),
   password: z.string().min(1, 'შეიყვანეთ პაროლი'),
 });
+
+const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email('ელ-ფოსტის ფორმატი არასწორია'),
+});
+
+const resetPasswordSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email('ელ-ფოსტის ფორმატი არასწორია'),
+    code: z.string().trim().regex(/^\d{6}$/, 'კოდი უნდა შედგებოდეს 6 ციფრისგან'),
+    password: z.string().min(8, 'პაროლი უნდა შეიცავდეს მინიმუმ 8 სიმბოლოს').max(128),
+    confirmPassword: z.string().min(8).max(128),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'პაროლები არ ემთხვევა.',
+    path: ['confirmPassword'],
+  });
 
 async function loadUserBundle(userId) {
   return prisma.user.findUnique({
@@ -63,8 +82,8 @@ authRouter.post(
         email: data.email,
         fullName: data.fullName,
         phone: data.phone ?? null,
-        gender: data.gender,
-        birthDate: data.birthDate,
+        gender: data.gender ?? null,
+        birthDate: data.birthDate ?? null,
         passwordHash: await bcrypt.hash(data.password, 12),
         packageId,
         status: 'ACTIVE',
@@ -110,33 +129,65 @@ authRouter.post(
   }),
 );
 
+authRouter.post(
+  '/password/forgot',
+  asyncHandler(async (req, res) => {
+    const { email } = forgotPasswordSchema.parse(req.body);
+    const result = await requestPasswordReset(email);
+    return res.json(result);
+  }),
+);
+
+authRouter.post(
+  '/password/reset',
+  asyncHandler(async (req, res) => {
+    const data = resetPasswordSchema.parse(req.body);
+    const result = await resetPasswordWithCode({
+      email: data.email,
+      code: data.code,
+      password: data.password,
+    });
+
+    if (!result.ok) {
+      return res.status(result.status).json({ error: result.error });
+    }
+
+    return res.json({ ok: true, message: 'პაროლი წარმატებით შეიცვალა. შეგიძლიათ შეხვიდეთ ანგარიშში.' });
+  }),
+);
+
 /**
- * Georgian phone authentication — stub.
- * Wire a local SMS gateway (Magti / Geocell / SMSOffice.ge) into `sendCode` before launch;
- * the verification contract below is what the mobile client already speaks.
+ * Georgian phone authentication via SMSOffice.ge — 4-digit OTP.
  */
 const phoneStartSchema = z.object({ phone: georgianPhone });
 const phoneVerifySchema = z.object({
   phone: georgianPhone,
-  code: z.string().trim().length(6, 'კოდი უნდა შედგებოდეს 6 ციფრისგან'),
+  code: z.string().trim().regex(/^\d{4}$/, 'კოდი უნდა შედგებოდეს 4 ციფრისგან'),
   fullName: z.string().trim().min(2).max(120).optional(),
-  // Optional here: the SMS flow can complete the profile later via PATCH /me.
   gender: genderSchema.optional(),
   birthDate: birthDateSchema.optional(),
 });
 
-const DEV_SMS_CODE = '123456';
+const phoneLinkStartSchema = z.object({ phone: georgianPhone });
+const phoneLinkVerifySchema = z.object({
+  phone: georgianPhone,
+  code: z.string().trim().regex(/^\d{4}$/, 'კოდი უნდა შედგებოდეს 4 ციფრისგან'),
+});
 
 authRouter.post(
   '/phone/start',
   asyncHandler(async (req, res) => {
     const { phone } = phoneStartSchema.parse(req.body);
-    // TODO: integrate an SMS provider. Until then we return a fixed development code.
+    const result = await requestPhoneOtp({ phone, purpose: 'AUTH' });
+    if (!result.ok) {
+      return res.status(result.status ?? 400).json({ error: result.error });
+    }
     return res.json({
-      sent: true,
-      phone,
-      message: `დამადასტურებელი კოდი გამოგზავნილია ნომერზე ${phone}.`,
-      devCode: process.env.NODE_ENV === 'production' ? undefined : DEV_SMS_CODE,
+      sent: result.sent,
+      phone: result.phone,
+      message: result.message,
+      devCode: result.devCode,
+      cooldownSec: result.cooldownSec,
     });
   }),
 );
@@ -146,8 +197,9 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const { phone, code, fullName, gender, birthDate } = phoneVerifySchema.parse(req.body);
 
-    if (code !== DEV_SMS_CODE) {
-      return res.status(401).json({ error: 'დამადასტურებელი კოდი არასწორია.' });
+    const verified = await verifyPhoneOtp({ phone, code, purpose: 'AUTH' });
+    if (!verified.ok) {
+      return res.status(verified.status ?? 400).json({ error: verified.error });
     }
 
     let user = await prisma.user.findUnique({ where: { phone }, include: { package: true } });
@@ -156,7 +208,7 @@ authRouter.post(
       const created = await prisma.user.create({
         data: {
           phone,
-          email: `${phone.replace('+', '')}@phone.medicard.ge`,
+          email: `${normalizeSmsDestination(phone)}@phone.medicard.ge`,
           fullName: fullName ?? 'Medicard მომხმარებელი',
           gender: gender ?? null,
           birthDate: birthDate ?? null,
@@ -183,23 +235,81 @@ authRouter.post(
   }),
 );
 
+/** Link a verified phone to the logged-in account (profile setup). */
+authRouter.post(
+  '/phone/link/start',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { phone } = phoneLinkStartSchema.parse(req.body);
+
+    const taken = await prisma.user.findFirst({
+      where: { phone, NOT: { id: req.user.id } },
+    });
+    if (taken) {
+      return res.status(409).json({ error: 'ეს ნომერი უკვე მიბმულია სხვა ანგარიშზე.' });
+    }
+
+    const result = await requestPhoneOtp({ phone, purpose: 'LINK', userId: req.user.id });
+    if (!result.ok) {
+      return res.status(result.status ?? 400).json({ error: result.error });
+    }
+    return res.json({
+      sent: result.sent,
+      phone: result.phone,
+      message: result.message,
+      devCode: result.devCode,
+      cooldownSec: result.cooldownSec,
+    });
+  }),
+);
+
+authRouter.post(
+  '/phone/link/verify',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { phone, code } = phoneLinkVerifySchema.parse(req.body);
+
+    const verified = await verifyPhoneOtp({ phone, code, purpose: 'LINK' });
+    if (!verified.ok) {
+      return res.status(verified.status ?? 400).json({ error: verified.error });
+    }
+
+    const taken = await prisma.user.findFirst({
+      where: { phone, NOT: { id: req.user.id } },
+    });
+    if (taken) {
+      return res.status(409).json({ error: 'ეს ნომერი უკვე მიბმულია სხვა ანგარიშზე.' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { phone },
+      include: { package: true },
+    });
+
+    return res.json({ ok: true, user: publicUser(user) });
+  }),
+);
+
 authRouter.get(
   '/me',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const [usage, counts] = await Promise.all([
+    const [usage, counts, healthProfile] = await Promise.all([
       getUsage(req.user.id),
       prisma.$transaction([
         prisma.medicalRecord.count({ where: { userId: req.user.id } }),
         prisma.chatSession.count({ where: { userId: req.user.id } }),
         prisma.medicationSchedule.count({ where: { userId: req.user.id, active: true } }),
       ]),
+      prisma.healthProfile.findUnique({ where: { userId: req.user.id } }),
     ]);
 
     return res.json({
       user: publicUser(req.user),
       usage,
       stats: { records: counts[0], chats: counts[1], activeMedications: counts[2] },
+      healthProfile: publicHealthProfile(healthProfile),
     });
   }),
 );

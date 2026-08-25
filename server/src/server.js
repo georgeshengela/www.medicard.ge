@@ -15,6 +15,7 @@ import { shutdownOcr } from './lib/ocr.js';
 import { errorHandler, notFound } from './middleware/error.js';
 import { enforceAppAvailability } from './middleware/auth.js';
 import { authRouter } from './routes/auth.routes.js';
+import { healthProfileRouter } from './routes/health-profile.routes.js';
 import { aiRouter } from './routes/ai.routes.js';
 import { chatsRouter } from './routes/chats.routes.js';
 import { recordsRouter } from './routes/records.routes.js';
@@ -103,6 +104,7 @@ app.get('/health', (req, res) => {
 app.use(enforceAppAvailability);
 
 app.use('/api/auth', authRouter);
+app.use('/api/health-profile', healthProfileRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/chats', chatsRouter);
 app.use('/api/records', recordsRouter);

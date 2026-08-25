@@ -1,0 +1,13 @@
+{
+  "body-type-ectomorph": "body-type-ectomorph.png",
+  "body-type-mesomorph": "body-type-mesomorph.png",
+  "body-type-endomorph": "body-type-endomorph.png",
+  "smoking-current": "smoking-current.png",
+  "smoking-former": "smoking-former.png",
+  "smoking-never": "smoking-never.png",
+  "mood-sad": "mood-sad.png",
+  "mood-neutral": "mood-neutral.png",
+  "mood-happy": "mood-happy.png",
+  "mood-great": "mood-great.png",
+  "body-scan": "body-scan.png"
+}

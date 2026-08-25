@@ -15,7 +15,7 @@ type Props = {
 };
 
 function sourceColor(sourceId: string) {
-  return PHARMACY_SOURCES.find((s) => s.id === sourceId)?.color ?? '#26A69A';
+  return PHARMACY_SOURCES.find((s) => s.id === sourceId)?.color ?? '#14B8A6';
 }
 
 export function PriceCompareList({ offers, sourcePrices, bestPrice }: Props) {

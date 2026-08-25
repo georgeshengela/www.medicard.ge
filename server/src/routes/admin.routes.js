@@ -23,6 +23,7 @@ import {
   syncAllPharmacySources,
   syncPharmacySource,
 } from '../lib/pharmacy/sync.js';
+import { getSmsBalance, normalizeSmsDestination, sendSms } from '../lib/sms.js';
 
 export const adminRouter = Router();
 
@@ -636,5 +637,118 @@ adminRouter.post(
         console.error('[admin pharmacy sync]', err);
       }
     });
+  }),
+);
+
+adminRouter.get(
+  '/sms/balance',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const balance = await getSmsBalance();
+    res.json(balance);
+  }),
+);
+
+adminRouter.get(
+  '/sms/stats',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const [total, sent, failed, otp, admin, last24h] = await Promise.all([
+      prisma.smsLog.count(),
+      prisma.smsLog.count({ where: { status: 'SENT' } }),
+      prisma.smsLog.count({ where: { status: 'FAILED' } }),
+      prisma.smsLog.count({ where: { purpose: 'OTP' } }),
+      prisma.smsLog.count({ where: { purpose: 'ADMIN' } }),
+      prisma.smsLog.count({
+        where: { createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+      }),
+    ]);
+    res.json({ total, sent, failed, otp, admin, last24h });
+  }),
+);
+
+adminRouter.get(
+  '/sms/logs',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const query = z
+      .object({
+        limit: z.coerce.number().int().min(1).max(200).default(50),
+        offset: z.coerce.number().int().min(0).default(0),
+        status: z.enum(['ALL', 'SENT', 'FAILED', 'QUEUED']).default('ALL'),
+        purpose: z.enum(['ALL', 'OTP', 'ADMIN', 'MARKETING', 'TEST']).default('ALL'),
+        q: z.string().trim().optional(),
+      })
+      .parse(req.query);
+
+    const where = {};
+    if (query.status !== 'ALL') where.status = query.status;
+    if (query.purpose !== 'ALL') where.purpose = query.purpose;
+    if (query.q) {
+      where.OR = [
+        { destination: { contains: query.q.replace(/\D/g, '') } },
+        { content: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
+
+    const [logs, total] = await Promise.all([
+      prisma.smsLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: query.limit,
+        skip: query.offset,
+      }),
+      prisma.smsLog.count({ where }),
+    ]);
+
+    res.json({ logs, total, limit: query.limit, offset: query.offset });
+  }),
+);
+
+adminRouter.post(
+  '/sms/send',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        destination: z.string().trim().min(9, 'მიუთითეთ მობილური ნომერი'),
+        content: z.string().trim().min(1, 'შეიყვანეთ ტექსტი').max(1000),
+        userId: z.string().uuid().optional(),
+        purpose: z.enum(['ADMIN', 'MARKETING', 'TEST']).default('ADMIN'),
+        urgent: z.boolean().default(false),
+      })
+      .parse(req.body);
+
+    let destination = body.destination;
+    if (body.userId) {
+      const user = await prisma.user.findUnique({ where: { id: body.userId } });
+      if (!user?.phone) {
+        return res.status(400).json({ error: 'ამ მომხმარებელს ტელეფონი არ აქვს მითითებული.' });
+      }
+      destination = user.phone;
+    }
+
+    const normalized = normalizeSmsDestination(destination);
+    if (!/^9955\d{8}$/.test(normalized)) {
+      return res.status(400).json({ error: 'ნომერი უნდა იყოს ფორმატში 9955XXXXXXXX.' });
+    }
+
+    const result = await sendSms({
+      destination: normalized,
+      content: body.content,
+      purpose: body.purpose,
+      userId: body.userId ?? null,
+      adminId: req.admin.id,
+      urgent: body.urgent,
+    });
+
+    if (!result.ok) {
+      return res.status(502).json({
+        error: result.message || 'SMS გაგზავნა ვერ მოხერხდა.',
+        errorCode: result.errorCode,
+      });
+    }
+
+    res.status(201).json({ ok: true, reference: result.reference, message: result.message });
   }),
 );

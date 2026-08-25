@@ -11,7 +11,8 @@ import { enableScreens } from 'react-native-screens';
 import Constants from 'expo-constants';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
 import { useThemeColors } from '@/theme/colors';
-import { AuthProvider, useAuth } from '@/store/AuthContext';
+import { AuthProvider, useAuth, needsHealthAssessment } from '@/store/AuthContext';
+import { FontsProvider } from '@/store/FontsContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
 import { api } from '@/lib/api';
 import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
@@ -24,7 +25,7 @@ const APP_VERSION = Constants.expoConfig?.version ?? '3.0.0';
 
 /** Redirects between the auth stack and the app shell as the session changes. */
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { ready: authReady, user } = useAuth();
+  const { ready: authReady, user, healthProfile, refreshHealthProfile } = useAuth();
   const { ready: themeReady } = useTheme();
   const ready = authReady && themeReady;
   const colors = useThemeColors();
@@ -65,22 +66,35 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     const inAuthGroup = segments[0] === '(auth)';
+    const onAssessment = segments.includes('assessment');
+
     if (!user && !inAuthGroup) {
-      router.replace('/(auth)/sign-in');
-    } else if (user && inAuthGroup) {
-      void getHomeLanding().then((landing) => {
-        router.replace(resolveInitialRoute(landing, user.gender) as never);
-      });
+      router.replace('/(auth)');
+      return;
     }
-  }, [ready, user, segments, router, gate.kind]);
+
+    if (user && inAuthGroup) {
+      if (onAssessment) return;
+
+      void (async () => {
+        const profile = healthProfile ?? (await refreshHealthProfile());
+        if (needsHealthAssessment(profile)) {
+          router.replace('/(auth)/assessment');
+          return;
+        }
+        const landing = await getHomeLanding();
+        router.replace(resolveInitialRoute(landing, user.gender) as never);
+      })();
+    }
+  }, [ready, user, segments, router, gate.kind, healthProfile, refreshHealthProfile]);
 
   if (gate.kind !== 'ok') {
     return (
       <View className="flex-1 items-center justify-center bg-bg-100 px-8">
-        <Text className="text-center text-2xl font-bold text-text-100">
+        <Text className="text-center font-sans-bold text-2xl text-text-100">
           {gate.kind === 'maintenance' ? 'განახლება მიმდინარეობს' : 'საჭიროა განახლება'}
         </Text>
-        <Text className="mt-3 text-center text-base leading-6 text-text-200">{gate.message}</Text>
+        <Text className="mt-3 text-center font-sans text-base leading-6 text-text-200">{gate.message}</Text>
       </View>
     );
   }
@@ -166,13 +180,15 @@ function AppShell() {
 
 export default function RootLayout() {
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1 }} className="font-sans">
       <SafeAreaProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <AppShell />
-          </AuthProvider>
-        </ThemeProvider>
+        <FontsProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <AppShell />
+            </AuthProvider>
+          </ThemeProvider>
+        </FontsProvider>
       </SafeAreaProvider>
     </View>
   );

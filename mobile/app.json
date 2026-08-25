@@ -1,18 +1,19 @@
 {
   "expo": {
-    "name": "Medicard.GE",
+    "name": "MEDICARD",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "4.1.2",
+    "version": "5.2.31",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#f5f7f7",
+    "backgroundColor": "#14B8A6",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
       "infoPlist": {
+        "CFBundleDisplayName": "MEDICARD",
         "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენისა და კანის ფოტოს გადასაღებად.",
         "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა სამედიცინო დოკუმენტებისა და ფოტოების ასატვირთად."
       }
@@ -20,13 +21,18 @@
     "android": {
       "package": "ge.medicard.app",
       "adaptiveIcon": {
-        "backgroundColor": "#26A69A",
+        "backgroundColor": "#14B8A6",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["CAMERA", "READ_MEDIA_IMAGES", "POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM"]
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -38,9 +44,10 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#f5f7f7",
+          "backgroundColor": "#14B8A6",
           "image": "./assets/splash-icon.png",
-          "imageWidth": 180
+          "imageWidth": 260,
+          "resizeMode": "contain"
         }
       ],
       [
@@ -53,7 +60,7 @@
       [
         "expo-notifications",
         {
-          "color": "#26A69A",
+          "color": "#14B8A6",
           "defaultChannel": "medication-reminders"
         }
       ],
@@ -74,10 +81,11 @@
             "softwareKeyboardLayoutMode": "resize"
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
-      "apiUrl": "https://medicard.ge"
+      "router": {}
     }
   }
 }

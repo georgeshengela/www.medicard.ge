@@ -6,7 +6,7 @@ import { askEvidenceMd, AiEngineError } from '../lib/evidencemd.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { describeImage, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
-import { buildVisionHandoff, buildDoctorTurnContext } from '../lib/prompts.js';
+import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
 import { calculateAge, withPatientProfile } from '../lib/patient.js';
 import { saveUpload } from '../lib/storage.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -73,14 +73,19 @@ aiRouter.post(
       mode,
       chatSessionId: session?.id,
       userPrompt: message,
-      fn: () =>
-        askEvidenceMd({
+      fn: async () => {
+        const result = await askEvidenceMd({
           mode,
           context: mergedContext || undefined,
           messages: [...priorTurns, { role: 'user', content: message }],
           temperature: mode === 'DOCTOR' ? 0.4 : 0.2,
           maxTokens: mode === 'DOCTOR' ? 900 : 2400,
-        }),
+        });
+        if (mode === 'DOCTOR') {
+          result.content = sanitizeDoctorReply(result.content);
+        }
+        return result;
+      },
     });
 
     const now = new Date().toISOString();

@@ -31,7 +31,12 @@ mobile/.expo-tmp-check/
 tmp-*.js
 pd-*.js
 gpc.html
+tmp-figma*.json
+tmp-auth.json
+tmp-light.json
+mobile/assets/Untitled-1.txt
 server/*-test.html
+mobile/design-references/
 
 # Editors / OS
 .DS_Store

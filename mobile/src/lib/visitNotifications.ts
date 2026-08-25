@@ -14,7 +14,7 @@ async function ensureVisitChannel() {
     name: 'ექიმთან ვიზიტის შეხსენებები',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 220, 120, 220],
-    lightColor: '#26A69A',
+    lightColor: '#14B8A6',
     sound: 'default',
   });
 }

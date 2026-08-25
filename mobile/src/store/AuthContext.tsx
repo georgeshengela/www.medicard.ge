@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { ApiError, api, type Gender, type Usage, type User } from '@/lib/api';
+import { ApiError, api, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
+import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
 import { clearToken, getToken, setToken } from '@/lib/storage';
 
 type Stats = { records: number; chats: number; activeMedications: number };
@@ -8,9 +9,9 @@ export type SignUpInput = {
   fullName: string;
   email: string;
   password: string;
-  gender: Gender;
+  gender?: Gender;
   /** `YYYY-MM-DD` */
-  birthDate: string;
+  birthDate?: string;
 };
 
 type AuthState = {
@@ -18,13 +19,16 @@ type AuthState = {
   user: User | null;
   usage: Usage | null;
   stats: Stats | null;
+  healthProfile: HealthProfile | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signInWithPhone: (phone: string, code: string, fullName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
+  refreshHealthProfile: () => Promise<HealthProfile | null>;
+  setUser: (user: User) => void;
+  setHealthProfile: (profile: HealthProfile | null) => void;
   updateProfile: (input: { fullName?: string; gender?: Gender; birthDate?: string }) => Promise<void>;
-  /** Called by feature screens with the fresh quota returned alongside every AI response. */
   applyUsage: (usage: Usage) => void;
 };
 
@@ -35,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [healthProfile, setHealthProfile] = useState<HealthProfile | null>(null);
 
   const hydrate = useCallback(async () => {
     const token = await getToken();
@@ -42,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setUsage(null);
       setStats(null);
+      setHealthProfile(null);
       return;
     }
 
@@ -50,16 +56,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(me.user);
       setUsage(me.usage);
       setStats(me.stats);
+      setHealthProfile(me.healthProfile ?? null);
       void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
         registerPushTokenWithServer(),
       );
     } catch (error) {
-      // A rejected token is unrecoverable; anything else (offline) keeps the session.
       if (error instanceof ApiError && error.isUnauthorized) {
         await clearToken();
         setUser(null);
         setUsage(null);
         setStats(null);
+        setHealthProfile(null);
       }
     }
   }, []);
@@ -73,9 +80,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(result.user);
     setUsage(result.usage);
     setStats(null);
+    setHealthProfile(null);
     void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
       registerPushTokenWithServer(),
     );
+  }, []);
+
+  const refreshHealthProfile = useCallback(async () => {
+    try {
+      const { profile } = await api.healthProfile.get();
+      setHealthProfile(profile);
+      return profile;
+    } catch {
+      return null;
+    }
   }, []);
 
   const value = useMemo<AuthState>(
@@ -84,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       usage,
       stats,
+      healthProfile,
       signIn: async (email, password) => adopt(await api.auth.login({ email, password })),
       signUp: async (input) => adopt(await api.auth.register(input)),
       signInWithPhone: async (phone, code, fullName) => adopt(await api.auth.phoneVerify({ phone, code, fullName })),
@@ -92,15 +111,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setUsage(null);
         setStats(null);
+        setHealthProfile(null);
       },
       refresh: hydrate,
+      refreshHealthProfile,
+      setUser,
+      setHealthProfile,
       updateProfile: async (input) => {
         const result = await api.auth.updateProfile(input);
         setUser(result.user);
       },
       applyUsage: setUsage,
     }),
-    [ready, user, usage, stats, adopt, hydrate],
+    [ready, user, usage, stats, healthProfile, adopt, hydrate, refreshHealthProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -111,3 +134,9 @@ export function useAuth(): AuthState {
   if (!context) throw new Error('useAuth must be used inside <AuthProvider>');
   return context;
 }
+
+export function needsHealthAssessment(profile: HealthProfile | null): boolean {
+  return needsHealthAssessmentFromLib(profile);
+}
+
+export { needsProfileSetup, assessmentPhaseComplete } from '@/lib/onboarding';

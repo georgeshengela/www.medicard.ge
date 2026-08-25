@@ -9,7 +9,7 @@
 export const DISCLAIMER_KA = 'ეს არ არის საბოლოო დიაგნოზი — მიმართეთ ექიმს.';
 
 /** Bump when system prompts change — tracked on every AiInteraction for A/B analysis. */
-export const PROMPT_VERSION = '1.2.0';
+export const PROMPT_VERSION = '1.2.1';
 
 const LANGUAGE_RULES_KA = `
 ენობრივი წესები:
@@ -44,9 +44,26 @@ const CITATION_RULES_KA = `
 
 const DOCTOR_CITATION_RULES_KA = `
 წყაროების წესები (AI ექიმის საუბარში):
-- ნუ აგებ ცალკე „## წყაროები" ბლოკს ყოველ პასუხზე.
-- მხოლოდ საბოლოო შეჯამებისას, საჭიროების შემთხვევაში, ერთი მოკლე წინადადებით მოიხსენიე გაიდლაინი (WHO, NICE და ა.შ.).
+- არასდროს ჩაწერე URL, ჰიპერლინკი, markdown ბმული [ტექსტი](...), PubMed/ვებ-მისამართი ან „## წყაროები" ბლოკი.
+- ნუ მოიხსენიო „სხვა პოსტი", სტატია, ბლოგი ან გარე ვеб-გვერდი — მხოლოდ პირდაპირი პასუხი პაციენტისთვის.
+- თუ გაიდლაინი საჭიროა, ერთი მოკლე წინადადებით დაასახელე (მაგ. WHO, NICE) — ბმული არა.
 `.trim();
+
+/** Remove external links and source blocks from doctor chat replies. */
+export function sanitizeDoctorReply(text) {
+  if (!text) return text;
+  let s = String(text);
+  s = s.replace(/\n##\s*წყაროებ[^\n]*\n[\s\S]*$/iu, '');
+  s = s.replace(/\[([^\]]*)\]\([^)]+\)/g, (_, label) => {
+    const t = label.trim();
+    if (/^\d{1,3}$/.test(t)) return '';
+    return t;
+  });
+  s = s.replace(/https?:\/\/[^\s)\]>]+/gi, '');
+  s = s.replace(/[ \t]+\n/g, '\n');
+  s = s.replace(/\n{3,}/g, '\n\n');
+  return s.trim();
+}
 
 /**
  * Per-turn instructions so the doctor chats like a real consultation, not a report generator.

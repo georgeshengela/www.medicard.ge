@@ -2,7 +2,7 @@ import type { PharmacySourcePrice } from '@/lib/api';
 import { PHARMACY_SOURCES } from '@/constants/pharmacyVisuals';
 
 export function sourceColor(sourceId: string) {
-  return PHARMACY_SOURCES.find((s) => s.id === sourceId)?.color ?? '#26A69A';
+  return PHARMACY_SOURCES.find((s) => s.id === sourceId)?.color ?? '#14B8A6';
 }
 
 export function sourceLabel(sourceId: string) {

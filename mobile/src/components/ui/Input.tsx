@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { forwardRef, useState } from 'react';
 import { Pressable, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { Eye, EyeOff, type LucideIcon } from 'lucide-react-native';
+import { FIGMA_AUTH, FIGMA_AUTH_SHADOW } from '@/constants/figmaAuthLayout';
 import { useThemeColors } from '@/theme/colors';
 
 type Props = TextInputProps & {
@@ -9,30 +10,78 @@ type Props = TextInputProps & {
   hint?: string;
   icon?: LucideIcon;
   secure?: boolean;
+  /** Nightingale auth field — Figma InputFieldBase. */
+  figma?: boolean;
 };
 
-export function Input({ label, error, hint, icon: Icon, secure = false, style, ...rest }: Props) {
+export const Input = forwardRef<TextInput, Props>(function Input(
+  { label, error, hint, icon: Icon, secure = false, figma = false, style, ...rest },
+  ref,
+) {
   const colors = useThemeColors();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
 
-  const borderClass = error ? 'border-state-danger' : focused ? 'border-primary-200' : 'border-bg-300';
+  const borderColor = error ? colors.danger : focused ? FIGMA_AUTH.primaryBg : figma ? FIGMA_AUTH.inputBorder : colors.bg300;
+
+  const fieldStyle = figma
+    ? {
+        minHeight: FIGMA_AUTH.inputMinHeight,
+        borderRadius: FIGMA_AUTH.inputRadius,
+        backgroundColor: FIGMA_AUTH.inputBg,
+        borderWidth: 1,
+        borderColor,
+        paddingHorizontal: FIGMA_AUTH.inputPaddingX,
+        paddingVertical: FIGMA_AUTH.inputPaddingY,
+        ...FIGMA_AUTH_SHADOW,
+      }
+    : {
+        borderRadius: 16,
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor,
+        paddingHorizontal: 16,
+      };
 
   return (
-    <View className="w-full">
-      {label ? <Text className="mb-1.5 text-sm font-semibold text-text-200">{label}</Text> : null}
+    <View style={{ width: '100%' }}>
+      {label ? (
+        <Text
+          style={{
+            marginBottom: 8,
+            fontFamily: 'NotoSansGeorgian_600SemiBold',
+            fontSize: figma ? FIGMA_AUTH.labelSize : 14,
+            lineHeight: 20,
+            color: figma ? FIGMA_AUTH.labelColor : colors.text100,
+          }}
+        >
+          {label}
+        </Text>
+      ) : null}
 
-      <View className={`flex-row items-center rounded-2xl border bg-surface px-4 ${borderClass}`}>
-        {Icon ? <Icon size={18} color={focused ? colors.primary200 : colors.text300} strokeWidth={2} /> : null}
+      <View style={[{ flexDirection: 'row', alignItems: 'center' }, fieldStyle]}>
+        {Icon ? (
+          <Icon size={20} color={focused ? FIGMA_AUTH.primaryBg : '#6B7280'} strokeWidth={2} />
+        ) : null}
 
         <TextInput
-          className={`flex-1 py-3.5 text-base text-text-100 ${Icon ? 'ml-3' : ''}`}
-          placeholderTextColor={colors.text300}
+          ref={ref}
+          placeholderTextColor={figma ? '#4B5563' : colors.text300}
           secureTextEntry={secure && !revealed}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          // NativeWind cannot express these on TextInput reliably across platforms.
-          style={[{ fontSize: 15, lineHeight: 20 }, style]}
+          style={[
+            {
+              flex: 1,
+              fontSize: 16,
+              lineHeight: 22,
+              fontFamily: 'NotoSansGeorgian_400Regular',
+              color: '#1F2937',
+              paddingVertical: 0,
+              marginLeft: Icon ? 8 : 0,
+            },
+            style,
+          ]}
           {...rest}
         />
 
@@ -44,19 +93,23 @@ export function Input({ label, error, hint, icon: Icon, secure = false, style, .
             onPress={() => setRevealed((value) => !value)}
           >
             {revealed ? (
-              <EyeOff size={18} color={colors.text300} strokeWidth={2} />
+              <EyeOff size={20} color="#6B7280" strokeWidth={2} />
             ) : (
-              <Eye size={18} color={colors.text300} strokeWidth={2} />
+              <Eye size={20} color="#6B7280" strokeWidth={2} />
             )}
           </Pressable>
         ) : null}
       </View>
 
       {error ? (
-        <Text className="mt-1.5 text-sm text-state-danger">{error}</Text>
+        <Text style={{ marginTop: 6, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: colors.danger }}>
+          {error}
+        </Text>
       ) : hint ? (
-        <Text className="mt-1.5 text-sm text-text-300">{hint}</Text>
+        <Text style={{ marginTop: 6, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: colors.text300 }}>
+          {hint}
+        </Text>
       ) : null}
     </View>
   );
-}
+});

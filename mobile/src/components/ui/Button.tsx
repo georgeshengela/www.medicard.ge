@@ -80,7 +80,7 @@ export function Button({
       ) : (
         <View className="flex-row items-center">
           {Icon ? <Icon size={sizing.icon} color={tint} strokeWidth={2.2} /> : null}
-          <Text className={`font-semibold ${sizing.label} ${LABEL[variant]} ${Icon ? 'ml-2' : ''}`}>{label}</Text>
+          <Text className={`font-sans-semibold ${sizing.label} ${LABEL[variant]} ${Icon ? 'ml-2' : ''}`}>{label}</Text>
         </View>
       )}
     </Pressable>

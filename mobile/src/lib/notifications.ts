@@ -42,7 +42,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
       name: 'მედიკამენტების შეხსენებები',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#26A69A',
+      lightColor: '#14B8A6',
       sound: 'default',
     });
     await Notifications.setNotificationChannelAsync(CYCLE_CHANNEL_ID, {
@@ -56,14 +56,14 @@ export async function requestNotificationPermission(): Promise<boolean> {
       name: 'Medicard',
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 160, 100, 160],
-      lightColor: '#26A69A',
+      lightColor: '#14B8A6',
       sound: 'default',
     });
     await Notifications.setNotificationChannelAsync(PUSH_CHANNEL_ID, {
       name: 'Medicard შეტყობინებები',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 220, 120, 220],
-      lightColor: '#26A69A',
+      lightColor: '#14B8A6',
       sound: 'default',
     });
   }
