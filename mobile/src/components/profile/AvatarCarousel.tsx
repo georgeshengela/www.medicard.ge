@@ -39,6 +39,7 @@ const ARROW = 32 * SCALE;
 type Props = {
   value: AvatarId;
   onChange: (id: AvatarId) => void;
+  avatarIds?: readonly AvatarId[];
 };
 
 function ArrowDownIcon({ size }: { size: number }) {
@@ -120,24 +121,25 @@ function AvatarFace({
 }
 
 /** Figma 8845:308753 — horizontal avatar picker with scaled center focus. */
-export function AvatarCarousel({ value, onChange }: Props) {
+export function AvatarCarousel({ value, onChange, avatarIds = AVATAR_IDS }: Props) {
   const scrollRef = useRef<ScrollView>(null);
   const scrollX = useSharedValue(0);
-  const lastIndex = useRef(AVATAR_IDS.indexOf(value));
+  const ids = avatarIds.length ? avatarIds : AVATAR_IDS;
+  const lastIndex = useRef(Math.max(0, ids.indexOf(value)));
 
-  const selectedIndex = Math.max(0, AVATAR_IDS.indexOf(value));
+  const selectedIndex = Math.max(0, ids.indexOf(value));
 
   useEffect(() => {
-    const index = AVATAR_IDS.indexOf(value);
+    const index = ids.indexOf(value);
     if (index < 0) return;
     lastIndex.current = index;
     scrollX.value = index * ITEM_W;
     scrollRef.current?.scrollTo({ x: index * ITEM_W, animated: false });
-  }, [scrollX, value]);
+  }, [scrollX, value, ids]);
 
   const commitIndex = useCallback(
     (index: number) => {
-      const id = AVATAR_IDS[index];
+      const id = ids[index];
       if (!id || id === value) return;
       if (index !== lastIndex.current) {
         lastIndex.current = index;
@@ -145,16 +147,16 @@ export function AvatarCarousel({ value, onChange }: Props) {
       }
       onChange(id);
     },
-    [onChange, value],
+    [ids, onChange, value],
   );
 
   const settle = useCallback(
     (offsetX: number) => {
-      const index = Math.max(0, Math.min(AVATAR_IDS.length - 1, Math.round(offsetX / ITEM_W)));
+      const index = Math.max(0, Math.min(ids.length - 1, Math.round(offsetX / ITEM_W)));
       scrollRef.current?.scrollTo({ x: index * ITEM_W, animated: true });
       runOnJS(commitIndex)(index);
     },
-    [commitIndex],
+    [commitIndex, ids.length],
   );
 
   const onScroll = useAnimatedScrollHandler({
@@ -182,7 +184,7 @@ export function AvatarCarousel({ value, onChange }: Props) {
           }
         }}
       >
-        {AVATAR_IDS.map((id, index) => (
+        {ids.map((id, index) => (
           <AvatarFace
             key={id}
             index={index}
@@ -206,7 +208,7 @@ export function AvatarCarousel({ value, onChange }: Props) {
           textAlign: 'center',
         }}
       >
-        {ka.profileSetup.avatarCounter(selectedIndex + 1, AVATAR_IDS.length)}
+        {ka.profileSetup.avatarCounter(selectedIndex + 1, ids.length)}
       </Text>
     </View>
   );

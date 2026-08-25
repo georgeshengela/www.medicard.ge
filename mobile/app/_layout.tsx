@@ -11,7 +11,7 @@ import { enableScreens } from 'react-native-screens';
 import Constants from 'expo-constants';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
 import { useThemeColors } from '@/theme/colors';
-import { AuthProvider, useAuth, needsHealthAssessment } from '@/store/AuthContext';
+import { AuthProvider, useAuth, needsHealthAssessment, needsProfileSetup } from '@/store/AuthContext';
 import { FontsProvider } from '@/store/FontsContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
 import { api } from '@/lib/api';
@@ -67,6 +67,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
     const inAuthGroup = segments[0] === '(auth)';
     const onAssessment = segments.includes('assessment');
+    const onProfileSetup = segments.includes('profile-setup');
 
     if (!user && !inAuthGroup) {
       router.replace('/(auth)');
@@ -74,14 +75,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     if (user && inAuthGroup) {
-      if (onAssessment) return;
-
       void (async () => {
         const profile = healthProfile ?? (await refreshHealthProfile());
+
         if (needsHealthAssessment(profile)) {
-          router.replace('/(auth)/assessment');
+          if (!onAssessment) router.replace('/(auth)/assessment');
           return;
         }
+
+        if (needsProfileSetup(profile)) {
+          if (!onProfileSetup) router.replace('/(auth)/profile-setup/avatar');
+          return;
+        }
+
         const landing = await getHomeLanding();
         router.replace(resolveInitialRoute(landing, user.gender) as never);
       })();

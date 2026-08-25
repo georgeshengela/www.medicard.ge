@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
-import { lightColors } from '@/theme/colors';
+import { Keyboard, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { KEYBOARD_DONE_ACCESSORY_ID } from '@/components/ui/KeyboardDoneAccessory';
+import { FIGMA_PROFILE_SETUP, FIGMA_PROFILE_SETUP_SHADOW } from '@/constants/figmaProfileSetupLayout';
 
 type Props = {
   value: string;
@@ -23,10 +24,10 @@ export function OtpCodeInput({
   variant = 'compact',
 }: Props) {
   const inputRef = useRef<TextInput>(null);
-  const box = variant === 'hero' ? 80 : 48;
-  const gap = variant === 'hero' ? 12 : 8;
+  const box = variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxSize : 48;
+  const gap = variant === 'hero' ? FIGMA_PROFILE_SETUP.otpGap : 8;
   const fontSize = variant === 'hero' ? 32 : 22;
-  const borderRadius = variant === 'hero' ? 16 : 14;
+  const borderRadius = variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxRadius : 14;
   const digits = value.padEnd(length, ' ').slice(0, length).split('');
 
   return (
@@ -35,7 +36,6 @@ export function OtpCodeInput({
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap }}>
           {digits.map((digit, index) => {
             const filled = digit.trim().length > 0;
-            const focused = value.length === index;
             return (
               <View
                 key={index}
@@ -43,15 +43,17 @@ export function OtpCodeInput({
                   width: box,
                   height: box + (variant === 'hero' ? 0 : 4),
                   borderRadius,
-                  borderWidth: variant === 'hero' ? 2 : 1.5,
-                  borderColor: error ? '#EF4444' : focused ? lightColors.primary200 : '#D1D5DB',
+                  borderWidth: variant === 'hero' ? 1 : 1.5,
+                  borderColor: error ? '#EF4444' : '#D1D5DB',
                   backgroundColor: error ? '#FEF2F2' : '#FFFFFF',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  shadowColor: '#000',
-                  shadowOpacity: variant === 'hero' ? 0.06 : 0.04,
-                  shadowRadius: variant === 'hero' ? 8 : 4,
-                  shadowOffset: { width: 0, height: variant === 'hero' ? 2 : 1 },
+                  ...(variant === 'hero' ? FIGMA_PROFILE_SETUP_SHADOW : {
+                    shadowColor: '#000',
+                    shadowOpacity: 0.04,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 1 },
+                  }),
                 }}
               >
                 <Text
@@ -72,12 +74,17 @@ export function OtpCodeInput({
       <TextInput
         ref={inputRef}
         value={value}
-        onChangeText={(text) => onChange(text.replace(/\D/g, '').slice(0, length))}
+        onChangeText={(text) => {
+          const next = text.replace(/\D/g, '').slice(0, length);
+          onChange(next);
+          if (next.length >= length) Keyboard.dismiss();
+        }}
         keyboardType="number-pad"
         textContentType="oneTimeCode"
         autoComplete="sms-otp"
         maxLength={length}
         autoFocus={autoFocus}
+        inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ACCESSORY_ID : undefined}
         style={{ position: 'absolute', opacity: 0, height: 1, width: 1 }}
       />
 

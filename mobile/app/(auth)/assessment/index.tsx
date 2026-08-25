@@ -162,7 +162,7 @@ export default function AssessmentScreen() {
       });
       setHealthProfile(result.profile);
       if (result.user) setUser(result.user);
-      router.replace('/(auth)/profile-setup');
+      router.replace('/(auth)/profile-setup/avatar');
     },
     [router, setHealthProfile, setUser, stepIndex],
   );
@@ -263,7 +263,7 @@ export default function AssessmentScreen() {
   }
 
   if (needsProfileSetup(healthProfile)) {
-    return <Redirect href="/(auth)/profile-setup" />;
+    return <Redirect href="/(auth)/profile-setup/avatar" />;
   }
 
   if (loading || !form || !step) {

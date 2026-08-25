@@ -1,18 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
+import { ProfilePhoneField } from '@/components/profile/ProfilePhoneField';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
+import { FIGMA_PROFILE_SETUP } from '@/constants/figmaProfileSetupLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
-
-function formatDisplayPhone(digits: string) {
-  const d = digits.replace(/\D/g, '').replace(/^995/, '').slice(0, 9);
-  if (d.length <= 3) return d;
-  if (d.length <= 5) return `${d.slice(0, 3)} ${d.slice(3)}`;
-  if (d.length <= 7) return `${d.slice(0, 3)} ${d.slice(3, 5)} ${d.slice(5)}`;
-  return `${d.slice(0, 3)} ${d.slice(3, 5)} ${d.slice(5, 7)} ${d.slice(7, 9)}`;
-}
 
 /** Profile setup — phone entry (Figma 8845:310502). */
 export default function ProfileSetupPhoneScreen() {
@@ -68,63 +62,19 @@ export default function ProfileSetupPhoneScreen() {
       primaryDisabled={!normalised}
       onPrimary={() => void continuePhone()}
       showStepper={false}
+      footerSlot={
+        <ProfilePhoneField value={local} onChange={setLocal} error={error} />
+      }
     >
-      <View style={{ paddingHorizontal: 16, paddingTop: 32 }}>
-        <View
+      <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+        <Image
+          source={require('../../../assets/figma/profile-setup/phone-otp-illustration.png')}
           style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderWidth: 1.5,
-            borderColor: error ? '#FCA5A5' : '#E5E7EB',
-            borderRadius: 16,
-            paddingHorizontal: 16,
-            paddingVertical: 4,
-            backgroundColor: '#FFFFFF',
+            width: FIGMA_PROFILE_SETUP.phoneIllustrationSize * 0.72,
+            height: FIGMA_PROFILE_SETUP.phoneIllustrationSize * 0.72,
           }}
-        >
-          <Image
-            source={{ uri: 'https://flagcdn.com/w40/ge.png' }}
-            style={{ width: 28, height: 20, borderRadius: 3, marginRight: 12 }}
-          />
-          <Text
-            style={{
-              fontFamily: 'NotoSansGeorgian_600SemiBold',
-              fontSize: 18,
-              color: '#374151',
-              marginRight: 8,
-            }}
-          >
-            +995
-          </Text>
-          <TextInput
-            value={formatDisplayPhone(local)}
-            onChangeText={(text) => setLocal(text.replace(/\D/g, '').replace(/^995/, '').slice(0, 9))}
-            placeholder={ka.auth.phonePlaceholder}
-            placeholderTextColor="#9CA3AF"
-            keyboardType="phone-pad"
-            autoComplete="tel"
-            style={{
-              flex: 1,
-              fontFamily: 'NotoSansGeorgian_600SemiBold',
-              fontSize: 20,
-              color: '#111827',
-              paddingVertical: 16,
-            }}
-          />
-        </View>
-        {error ? (
-          <Text
-            style={{
-              marginTop: 10,
-              textAlign: 'center',
-              fontFamily: 'NotoSansGeorgian_400Regular',
-              fontSize: 14,
-              color: '#EF4444',
-            }}
-          >
-            {error}
-          </Text>
-        ) : null}
+          resizeMode="contain"
+        />
       </View>
     </ProfileSetupShell>
   );

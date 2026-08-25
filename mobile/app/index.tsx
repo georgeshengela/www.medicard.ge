@@ -28,7 +28,7 @@ export default function Index() {
       }
 
       if (needsProfileSetup(profile)) {
-        setHref('/(auth)/profile-setup');
+        setHref('/(auth)/profile-setup/avatar');
         return;
       }
 

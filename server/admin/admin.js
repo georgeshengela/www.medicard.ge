@@ -54,6 +54,8 @@ const ICONS = {
   bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
   send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
   spark: '<path d="M12 2l1.5 5.5L19 9l-5.5 1.5L12 16l-1.5-5.5L5 9l5.5-1.5L12 2z"/><path d="M5 17l.8 2.8L8.6 21l-2.8.8L5 24l-.8-2.2L1.4 21l2.8-.8L5 17z"/>',
+  copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
 };
 
 function icon(name, size = '') {
@@ -280,11 +282,76 @@ function statusBadge(status) {
 function quotaCell(usage) {
   if (!usage) return '—';
   if (usage.unlimited) {
-    return `<div class="quota"><span class="mono">∞ შეუზღუდავი</span><div class="quota-track"><span style="width:18%"></span></div></div>`;
+    return `<div class="users-quota is-unlimited">
+      <div class="users-quota-head"><strong>∞</strong><span>შეუზღუდავი</span></div>
+      <div class="quota-track"><span style="width:100%"></span></div>
+    </div>`;
   }
-  const pct = usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
+  const used = usage.used ?? 0;
+  const limit = usage.limit ?? 0;
+  const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const tone = pct >= 100 ? 'full' : pct >= 70 ? 'warn' : '';
-  return `<div class="quota"><span class="mono">${usage.used} / ${usage.unlimited ? '∞' : usage.limit} <span class="muted">/ თვე</span></span><div class="quota-track ${tone}"><span style="width:${pct}%"></span></div></div>`;
+  return `<div class="users-quota">
+    <div class="users-quota-head">
+      <strong>${used}<span class="muted"> / ${limit}</span></strong>
+      <span class="users-quota-pct ${tone}">${pct}%</span>
+    </div>
+    <div class="quota-track ${tone}"><span style="width:${pct}%"></span></div>
+  </div>`;
+}
+
+function fmtRelative(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const diff = Date.now() - date.getTime();
+  if (diff < 0) return fmtDateShort(value);
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'ახლახან';
+  if (min < 60) return `${min} წთ წინ`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} სთ წინ`;
+  const day = Math.floor(hr / 24);
+  if (day === 1) return 'გუშინ';
+  if (day < 7) return `${day} დღის წინ`;
+  if (day < 30) return `${Math.floor(day / 7)} კვ. წინ`;
+  return fmtDateShort(value);
+}
+
+function searchHotkeyLabel() {
+  return /Mac|iPhone|iPad/i.test(`${navigator.platform} ${navigator.userAgent}`) ? '⌘K' : 'Ctrl+K';
+}
+
+function usersStatusCell(status) {
+  const blocked = status === 'BLOCKED';
+  return `<span class="users-live ${blocked ? 'is-blocked' : 'is-active'}"><i></i>${blocked ? 'დაბლოკილი' : 'აქტიური'}</span>`;
+}
+
+function usersActivityCell(counts) {
+  return `<div class="users-activity">
+    <span title="ჩანაწერები">${icon('file')}<b>${counts.records}</b></span>
+    <span title="AI ჩატები">${icon('message')}<b>${counts.chats}</b></span>
+    <span title="მედიკამენტები">${icon('pill')}<b>${counts.medications}</b></span>
+  </div>`;
+}
+
+function usersSkeletonHtml() {
+  return Array.from({ length: 8 }, (_, i) => `
+    <tr class="users-skel-row" style="--i:${i}" aria-hidden="true">
+      <td>
+        <div class="users-person">
+          <span class="sk av"></span>
+          <div class="users-person-copy"><span class="sk ln w160"></span><span class="sk ln w90"></span></div>
+        </div>
+      </td>
+      <td><div class="stack gap-6"><span class="sk ln w180"></span><span class="sk ln w110"></span></div></td>
+      <td><span class="sk chip"></span></td>
+      <td><span class="sk bar"></span></td>
+      <td><span class="sk chip sm"></span></td>
+      <td><span class="sk ln w100"></span></td>
+      <td></td>
+    </tr>
+  `).join('');
 }
 
 function escapeHtml(value) {
@@ -535,7 +602,7 @@ async function switchTab(tab) {
 
   const copy = {
     overview: ['ოპერაციები', 'მიმოხილვა', 'რეალურ დროში — მომხმარებლები, პაკეტები და აპის რეჟიმი.'],
-    users: ['რეესტრი', 'მომხმარებლები', 'ძებნა, სორტი, პაკეტის მინიჭება, ბლოკი და წაშლა. Ctrl/⌘+K — ძებნა.'],
+    users: ['რეესტრი', 'მომხმარებლები', 'ძებნა, ფილტრი, პაკეტის მინიჭება, ბლოკი და წაშლა. ორმაგი კლიკი ან Enter — პროფილი.'],
     packages: ['კომერცია', 'პაკეტები', 'ყველა გეგმა თვიურია — AI ლიმიტი 30-დღიან პერიოდში.'],
     push: ['კომუნიკაცია', 'Push შეტყობინებები', 'გაუგზავნეთ push შეტყობინება მომხმარებლებს სეგმენტის მიხედვით.'],
     sms: ['კომუნიკაცია', 'SMS მენეჯმენტი', 'OTP, ბალანსი, გაგზავნა და გაგზავნილი მესიჯების ჟურნალი.'],
@@ -830,80 +897,103 @@ function paintUserPagination(onPage) {
 
 async function renderUsers() {
   const root = $('tab-users');
+  const hotkey = searchHotkeyLabel();
   root.innerHTML = `
-    <div class="users-page">
-      <div class="users-head card">
-        <div class="users-head-copy">
+    <div class="users-page dash-enter">
+      <div class="users-kpis" style="--i:0">
+        <button type="button" class="users-kpi tone-teal active" data-status-filter="" aria-pressed="true">
           ${iconTile('users', 'teal')}
           <div>
-            <p class="kicker">რეესტრი</p>
-            <h2 class="users-title">მომხმარებლები</h2>
-            <p class="users-sub muted">ძებნა, სორტი, პაკეტი და სტატუსის მართვა · 15 ჩანაწერი გვერდზე</p>
+            <span>სულ რეესტრში</span>
+            <strong id="users-stat-total">—</strong>
+          </div>
+        </button>
+        <button type="button" class="users-kpi tone-ok" data-status-filter="ACTIVE" aria-pressed="false">
+          ${iconTile('check', 'ok')}
+          <div>
+            <span>აქტიური</span>
+            <strong id="users-stat-active">—</strong>
+          </div>
+        </button>
+        <button type="button" class="users-kpi tone-bad" data-status-filter="BLOCKED" aria-pressed="false">
+          ${iconTile('lock', 'bad')}
+          <div>
+            <span>დაბლოკილი</span>
+            <strong id="users-stat-blocked">—</strong>
+          </div>
+        </button>
+        <div class="users-kpi tone-ult" aria-hidden="true">
+          ${iconTile('layers', 'ult')}
+          <div>
+            <span>პრემიუმი</span>
+            <strong id="users-stat-premium">—</strong>
           </div>
         </div>
-        <div class="users-head-stats" id="users-head-stats">
-          <div class="users-stat tone-teal"><span>სულ</span><strong id="users-stat-total">—</strong></div>
-          <div class="users-stat tone-ok"><span>აქტიური</span><strong id="users-stat-active">—</strong></div>
-          <div class="users-stat tone-bad"><span>დაბლოკ.</span><strong id="users-stat-blocked">—</strong></div>
-        </div>
       </div>
 
-      <div class="users-toolbar card">
-        <label class="search-field users-search">
-          ${icon('search')}
-          <input id="user-q" placeholder="ძებნა სახელით, email-ით ან ტელეფონით…" />
-        </label>
-        <select id="user-status" class="users-filter" aria-label="სტატუსი">
-          <option value="">ყველა სტატუსი</option>
-          <option value="ACTIVE">აქტიური</option>
-          <option value="BLOCKED">დაბლოკილი</option>
-        </select>
-        <select id="user-package" class="users-filter" aria-label="პაკეტი">
-          <option value="">ყველა პაკეტი</option>
-          <option value="FREE">FREE</option>
-          <option value="STANDARD">STANDARD</option>
-          <option value="ULTIMATE">ULTIMATE</option>
-        </select>
-        <div class="users-toolbar-actions">
-          <button class="btn ghost" id="user-reload" type="button">${icon('refresh')} განახლება</button>
-          <button class="btn ghost" id="user-csv" type="button">${icon('download')} CSV</button>
+      <div class="users-console table-card" style="--i:1">
+        <div class="users-console-bar">
+          <label class="search-field users-search">
+            ${icon('search')}
+            <input id="user-q" placeholder="სახელი, ელ-ფოსტა ან ტელეფონი…" autocomplete="off" />
+            <button type="button" id="user-q-clear" class="users-search-clear hidden" aria-label="ძებნის გასუფთავება">${icon('x')}</button>
+            <kbd class="users-kbd">${hotkey}</kbd>
+          </label>
+          <div class="users-chips" role="group" aria-label="სტატუსი">
+            <button type="button" class="users-chip active" data-status-chip="" aria-pressed="true">ყველა</button>
+            <button type="button" class="users-chip" data-status-chip="ACTIVE" aria-pressed="false">აქტიური <b id="chip-active-n"></b></button>
+            <button type="button" class="users-chip" data-status-chip="BLOCKED" aria-pressed="false">დაბლოკილი <b id="chip-blocked-n"></b></button>
+          </div>
+          <div class="users-chips users-pkg-chips" role="group" aria-label="პაკეტი">
+            <button type="button" class="users-chip active" data-package-chip="" aria-pressed="true">ყველა ტარიფი</button>
+            <button type="button" class="users-chip chip-free" data-package-chip="FREE" aria-pressed="false">FREE</button>
+            <button type="button" class="users-chip chip-std" data-package-chip="STANDARD" aria-pressed="false">STANDARD</button>
+            <button type="button" class="users-chip chip-ult" data-package-chip="ULTIMATE" aria-pressed="false">ULTIMATE</button>
+          </div>
+          <div class="users-toolbar-actions">
+            <button class="btn ghost" id="user-reload" type="button">${icon('refresh')} განახლება</button>
+            <button class="btn ghost" id="user-csv" type="button">${icon('download')} CSV</button>
+          </div>
+          <select id="user-status" class="sr-only" aria-hidden="true" tabindex="-1">
+            <option value="">ყველა სტატუსი</option>
+            <option value="ACTIVE">აქტიური</option>
+            <option value="BLOCKED">დაბლოკილი</option>
+          </select>
+          <select id="user-package" class="sr-only" aria-hidden="true" tabindex="-1">
+            <option value="">ყველა პაკეტი</option>
+            <option value="FREE">FREE</option>
+            <option value="STANDARD">STANDARD</option>
+            <option value="ULTIMATE">ULTIMATE</option>
+          </select>
         </div>
-      </div>
 
-      <div class="table-card users-table-card">
         <div class="users-table-meta">
           <span id="user-meta" class="users-meta-label">იტვირთება…</span>
-          <span class="users-meta-hint muted">Ctrl/⌘+K — ძებნა</span>
+          <button type="button" id="user-clear-filters" class="btn tiny ghost hidden">${icon('x')} ფილტრის გასუფთავება</button>
         </div>
-        <div class="table-wrap users-table-wrap">
-          <table class="users-table admin-table">
+        <div class="table-wrap users-table-wrap" id="users-table-wrap">
+          <table class="users-table admin-table" aria-label="მომხმარებლების რეესტრი">
             <colgroup>
-              <col class="col-num" />
               <col class="col-user" />
               <col class="col-contact" />
               <col class="col-pkg" />
               <col class="col-quota" />
               <col class="col-status" />
-              <col class="col-date" />
               <col class="col-stats" />
               <col class="col-actions" />
             </colgroup>
             <thead>
               <tr>
-                <th>#</th>
                 <th data-sort="fullName">მომხმარებელი</th>
                 <th data-sort="email">კონტაქტი</th>
                 <th data-sort="package">პაკეტი</th>
                 <th data-sort="used">AI ლიმიტი</th>
                 <th data-sort="status">სტატუსი</th>
-                <th data-sort="createdAt">რეგისტრაცია</th>
                 <th>აქტივობა</th>
                 <th class="col-actions">მოქმედება</th>
               </tr>
             </thead>
-            <tbody id="users-tbody">
-              <tr><td colspan="9"><div class="empty">იტვირთება…</div></td></tr>
-            </tbody>
+            <tbody id="users-tbody">${usersSkeletonHtml()}</tbody>
           </table>
         </div>
         <div class="table-pager users-pager">
@@ -921,88 +1011,140 @@ async function renderUsers() {
     </div>
   `;
 
+  const syncFilters = () => {
+    const status = $('user-status').value;
+    const pkg = $('user-package').value;
+    const q = $('user-q').value.trim();
+    document.querySelectorAll('[data-status-filter]').forEach((btn) => {
+      const on = btn.dataset.statusFilter === status;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
+    document.querySelectorAll('[data-status-chip]').forEach((btn) => {
+      const on = btn.dataset.statusChip === status;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
+    document.querySelectorAll('[data-package-chip]').forEach((btn) => {
+      const on = btn.dataset.packageChip === pkg;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
+    $('user-q-clear')?.classList.toggle('hidden', !q);
+    $('user-clear-filters')?.classList.toggle('hidden', !(q || status || pkg));
+  };
+
   const load = async () => {
     const q = $('user-q').value.trim();
     const status = $('user-status').value;
     const pkg = $('user-package').value;
+    const wrap = $('users-table-wrap');
+    const body = $('users-tbody');
+    wrap?.classList.add('is-loading');
+    if (!state.users.length && body) body.innerHTML = usersSkeletonHtml();
+    syncFilters();
     const params = new URLSearchParams({ limit: String(USERS_PAGE_SIZE), offset: String(state.offset) });
     if (q) params.set('q', q);
     if (status) params.set('status', status);
     if (pkg) params.set('package', pkg);
-    const [data, stats] = await Promise.all([
-      api(`/users?${params.toString()}`),
-      api('/stats').catch(() => null),
-    ]);
-    state.users = data.users;
-    state.total = data.total;
-    if (stats?.users) {
-      $('users-stat-total').textContent = stats.users.total;
-      $('users-stat-active').textContent = stats.users.active;
-      $('users-stat-blocked').textContent = stats.users.blocked;
+    try {
+      const [data, stats] = await Promise.all([
+        api(`/users?${params.toString()}`),
+        api('/stats').catch(() => null),
+      ]);
+      state.users = data.users;
+      state.total = data.total;
+      if (stats?.users) {
+        $('users-stat-total').textContent = Number(stats.users.total).toLocaleString('ka-GE');
+        $('users-stat-active').textContent = Number(stats.users.active).toLocaleString('ka-GE');
+        $('users-stat-blocked').textContent = Number(stats.users.blocked).toLocaleString('ka-GE');
+        const chipA = $('chip-active-n');
+        const chipB = $('chip-blocked-n');
+        if (chipA) chipA.textContent = stats.users.active;
+        if (chipB) chipB.textContent = stats.users.blocked;
+      }
+      if (stats?.packages) {
+        const premium = stats.packages
+          .filter((p) => String(p.code).toUpperCase() !== 'FREE')
+          .reduce((sum, p) => sum + (p.users || 0), 0);
+        const prem = $('users-stat-premium');
+        if (prem) prem.textContent = premium.toLocaleString('ka-GE');
+      }
+      paintUsers();
+    } catch (err) {
+      toast(err.message, 'bad');
+      if (body) {
+        body.innerHTML = `<tr><td colspan="7"><div class="empty users-empty">${icon('alert', 'lg')}<strong>ჩატვირთვა ვერ მოხერხდა</strong><p>${escapeHtml(err.message)}</p></div></td></tr>`;
+      }
+    } finally {
+      wrap?.classList.remove('is-loading');
     }
-    paintUsers();
   };
 
   const paintUsers = () => {
     const rows = sortUsers(state.users);
     const from = state.total ? state.offset + 1 : 0;
     const to = state.total ? Math.min(state.offset + USERS_PAGE_SIZE, state.total) : 0;
-    $('user-meta').textContent = state.total ? `${state.total.toLocaleString('ka-GE')} ანგარიში რეესტრში` : 'ჩანაწერი არ არის';
+    const filtered = Boolean($('user-q').value.trim() || $('user-status').value || $('user-package').value);
+    $('user-meta').textContent = state.total
+      ? `${from}–${to}  ·  ${state.total.toLocaleString('ka-GE')} ანგარიში`
+      : (filtered ? 'ფილტრს არ ემთხვევა' : 'ჩანაწერი არ არის');
     $('page-ind').textContent = state.total ? `${from}–${to} / ${state.total.toLocaleString('ka-GE')}` : '0 / 0';
     const prev = $('prev-page');
     const next = $('next-page');
     if (prev) prev.disabled = state.offset === 0;
     if (next) next.disabled = state.offset + USERS_PAGE_SIZE >= state.total;
     paintUserPagination(load);
-    document.querySelectorAll('th[data-sort]').forEach((th) => {
+    document.querySelectorAll('.users-table th[data-sort]').forEach((th) => {
       th.classList.toggle('sort-asc', th.dataset.sort === state.sortKey && state.sortDir === 'asc');
       th.classList.toggle('sort-desc', th.dataset.sort === state.sortKey && state.sortDir === 'desc');
     });
     const body = $('users-tbody');
     if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="9"><div class="empty">${icon('users', 'lg')}<strong>მომხმარებელი ვერ მოიძებნა</strong><p>შეცვალე ძებნა ან ფილტრი</p></div></td></tr>`;
+      body.innerHTML = `<tr><td colspan="7"><div class="empty users-empty">${icon('users', 'lg')}<strong>მომხმარებელი ვერ მოიძებნა</strong><p>${filtered ? 'შეცვალე ძებნა ან გაასუფთავე ფილტრი' : 'პირველი ანგარიში აქ გამოჩნდება'}</p>${filtered ? `<button type="button" class="btn tiny ghost" id="users-empty-clear">${icon('x')} გასუფთავება</button>` : ''}</div></td></tr>`;
+      $('users-empty-clear')?.addEventListener('click', () => {
+        $('user-q').value = '';
+        $('user-status').value = '';
+        $('user-package').value = '';
+        state.offset = 0;
+        load();
+      });
       return;
     }
-    body.innerHTML = rows.map((u, index) => `
-      <tr data-id="${u.id}" class="users-row ${state.selectedId === u.id ? 'selected' : ''} ${u.status === 'BLOCKED' ? 'row-blocked' : ''}">
-        <td class="mono users-num">${state.offset + index + 1}</td>
+    body.innerHTML = rows.map((u) => `
+      <tr data-id="${u.id}" class="users-row ${state.selectedId === u.id ? 'selected' : ''} ${u.status === 'BLOCKED' ? 'row-blocked' : ''}" tabindex="0">
         <td>
           <div class="person users-person">
-            <div class="avatar avatar-${avatarTone(u)}">${escapeHtml(initials(u.fullName))}</div>
+            <div class="users-avatar-wrap ${u.status === 'BLOCKED' ? 'is-blocked' : 'is-active'}">
+              <div class="avatar avatar-${avatarTone(u)}">${escapeHtml(initials(u.fullName))}</div>
+            </div>
             <div class="users-person-copy">
               <strong>${escapeHtml(u.fullName)}</strong>
-              <span class="sub mono">${escapeHtml(u.id.slice(0, 8))}…</span>
+              <span class="sub" title="${escapeAttr(fmtDate(u.createdAt))}">${icon('calendar')} ${escapeHtml(fmtRelative(u.createdAt))}</span>
             </div>
           </div>
         </td>
         <td>
           <div class="stack users-contact">
-            <div class="line">${icon('mail')}<span>${escapeHtml(u.email)}</span></div>
-            <div class="line muted">${icon('phone')}<span>${escapeHtml(u.phone || '—')}</span></div>
+            <button type="button" class="users-copy-link" data-copy="${escapeAttr(u.email)}" title="ელ-ფოსტის კოპირება">${icon('mail')}<span>${escapeHtml(u.email)}</span></button>
+            <div class="line muted">${icon('phone')}<span>${escapeHtml(u.phone || 'ტელეფონი არ არის')}</span></div>
           </div>
         </td>
         <td>
           <div class="stack users-pkg-stack">
             <div class="users-pkg-badge">${pkgBadge(u.package)}</div>
             <span class="users-pkg-sub muted">${u.packageExpiresAt
-              ? `${u.packageStartedAt ? `${fmtDateShort(u.packageStartedAt)} → ` : ''}${fmtDateShort(u.packageExpiresAt)}`
-              : 'კალენდ. თვე'}</span>
+              ? `ვადა ${fmtDateShort(u.packageExpiresAt)}`
+              : 'კალენდარული თვე'}</span>
           </div>
         </td>
         <td>${quotaCell(u.usage)}</td>
-        <td>${statusBadge(u.status)}</td>
-        <td class="mono col-date">${fmtDateShort(u.createdAt)}</td>
-        <td>
-          <div class="stat-pills users-stat-pills">
-            <span class="pill-records">${u.counts.records} ჩან.</span>
-            <span class="pill-chats">${u.counts.chats} ჩატი</span>
-            <span class="pill-meds">${u.counts.medications} მედ.</span>
-          </div>
-        </td>
+        <td>${usersStatusCell(u.status)}</td>
+        <td>${usersActivityCell(u.counts)}</td>
         <td class="col-actions">
-          <div class="row-actions user-row-actions">
-            <button class="btn icon-only ghost" type="button" title="დეტალი" data-edit="${u.id}">${icon('file')}</button>
-            <button class="btn icon-only ghost" type="button" title="ელ-ფოსტის კოპირება" data-copy="${u.email}">${icon('mail')}</button>
+          <div class="users-actions-cluster">
+            <button class="btn icon-only ghost" type="button" title="პროფილი" data-edit="${u.id}">${icon('eye')}</button>
+            <button class="btn icon-only ghost" type="button" title="ელ-ფოსტის კოპირება" data-copy="${escapeAttr(u.email)}">${icon('copy')}</button>
             ${u.status === 'BLOCKED'
               ? `<button class="btn icon-only ghost" type="button" title="განბლოკვა" data-unblock="${u.id}">${icon('unlock')}</button>`
               : `<button class="btn icon-only danger" type="button" title="ბლოკი" data-block="${u.id}">${icon('lock')}</button>`}
@@ -1016,15 +1158,24 @@ async function renderUsers() {
       tr.addEventListener('click', (e) => {
         if (e.target.closest('button')) return;
         state.selectedId = tr.dataset.id;
-        paintUsers();
+        body.querySelectorAll('tr[data-id]').forEach((row) => {
+          row.classList.toggle('selected', row.dataset.id === state.selectedId);
+        });
       });
       tr.addEventListener('dblclick', (e) => {
         if (e.target.closest('button')) return;
         editUser(tr.dataset.id);
       });
+      tr.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          editUser(tr.dataset.id);
+        }
+      });
     });
     body.querySelectorAll('[data-edit]').forEach((btn) => btn.addEventListener('click', () => editUser(btn.dataset.edit)));
-    body.querySelectorAll('[data-copy]').forEach((btn) => btn.addEventListener('click', async () => {
+    body.querySelectorAll('[data-copy]').forEach((btn) => btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
       await navigator.clipboard.writeText(btn.dataset.copy);
       toast('ელ-ფოსტა დაკოპირდა');
     }));
@@ -1048,22 +1199,53 @@ async function renderUsers() {
     }));
   };
 
-  document.querySelectorAll('th[data-sort]').forEach((th) => {
+  document.querySelectorAll('.users-table th[data-sort]').forEach((th) => {
     th.addEventListener('click', () => {
       if (state.sortKey === th.dataset.sort) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
       else { state.sortKey = th.dataset.sort; state.sortDir = 'asc'; }
       paintUsers();
     });
   });
+  const applyStatus = (value) => {
+    $('user-status').value = value;
+    state.offset = 0;
+    load();
+  };
+  const applyPackage = (value) => {
+    $('user-package').value = value;
+    state.offset = 0;
+    load();
+  };
+  document.querySelectorAll('[data-status-filter]').forEach((btn) => {
+    btn.addEventListener('click', () => applyStatus(btn.dataset.statusFilter));
+  });
+  document.querySelectorAll('[data-status-chip]').forEach((btn) => {
+    btn.addEventListener('click', () => applyStatus(btn.dataset.statusChip));
+  });
+  document.querySelectorAll('[data-package-chip]').forEach((btn) => {
+    btn.addEventListener('click', () => applyPackage(btn.dataset.packageChip));
+  });
   $('user-reload').onclick = load;
   let searchTimer;
   $('user-q').oninput = () => {
+    $('user-q-clear').classList.toggle('hidden', !$('user-q').value);
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => { state.offset = 0; load(); }, 280);
   };
   $('user-q').onkeydown = (e) => { if (e.key === 'Enter') { clearTimeout(searchTimer); state.offset = 0; load(); } };
-  $('user-status').onchange = () => { state.offset = 0; load(); };
-  $('user-package').onchange = () => { state.offset = 0; load(); };
+  $('user-q-clear').onclick = () => {
+    $('user-q').value = '';
+    state.offset = 0;
+    load();
+    $('user-q').focus();
+  };
+  $('user-clear-filters').onclick = () => {
+    $('user-q').value = '';
+    $('user-status').value = '';
+    $('user-package').value = '';
+    state.offset = 0;
+    load();
+  };
   $('prev-page').onclick = () => { state.offset = Math.max(0, state.offset - USERS_PAGE_SIZE); load(); };
   $('next-page').onclick = () => {
     if (state.offset + USERS_PAGE_SIZE < state.total) { state.offset += USERS_PAGE_SIZE; load(); }

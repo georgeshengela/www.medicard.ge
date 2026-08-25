@@ -3,7 +3,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { AvatarCarousel } from '@/components/profile/AvatarCarousel';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
-import { defaultAvatarForGender, isAvatarId, type AvatarId } from '@/constants/avatarAssets';
+import { defaultAvatarForGender, avatarsForGender, normalizeAvatarForGender, type AvatarId } from '@/constants/avatarAssets';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { extraAnswersPayload, formFromProfile, fullProfilePayload } from '@/lib/assessmentForm';
@@ -12,7 +12,9 @@ import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthC
 export default function ProfileSetupAvatarScreen() {
   const router = useRouter();
   const { user, ready, healthProfile, refreshHealthProfile } = useAuth();
-  const [avatarId, setAvatarId] = useState<AvatarId>(defaultAvatarForGender(user?.gender ?? null));
+  const gender = user?.gender ?? null;
+  const avatarPool = avatarsForGender(gender);
+  const [avatarId, setAvatarId] = useState<AvatarId>(defaultAvatarForGender(gender));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,10 +22,8 @@ export default function ProfileSetupAvatarScreen() {
     if (!healthProfile) return;
     const extra = (healthProfile.extraAnswers ?? {}) as Record<string, unknown>;
     const stored = extra.avatarId;
-    if (typeof stored === 'string' && isAvatarId(stored)) {
-      setAvatarId(stored);
-    }
-  }, [healthProfile]);
+    setAvatarId(normalizeAvatarForGender(typeof stored === 'string' ? stored : null, gender));
+  }, [healthProfile, gender]);
 
   if (!ready) {
     return (
@@ -69,7 +69,7 @@ export default function ProfileSetupAvatarScreen() {
       onPrimary={() => void saveAvatarAndContinue()}
       showStepper={false}
     >
-      <AvatarCarousel value={avatarId} onChange={setAvatarId} />
+      <AvatarCarousel value={avatarId} onChange={setAvatarId} avatarIds={avatarPool} />
       {error ? (
         <View className="mx-4 mt-2 rounded-2xl border border-state-danger/20 bg-state-dangerBg p-3">
           <Text className="font-sans text-sm text-state-danger">{error}</Text>

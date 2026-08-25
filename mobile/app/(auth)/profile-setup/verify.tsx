@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Pressable, Text, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
+import { FIGMA_PROFILE_SETUP } from '@/constants/figmaProfileSetupLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { completePayload, extraAnswersPayload, formFromProfile, fullProfilePayload } from '@/lib/assessmentForm';
@@ -10,13 +11,13 @@ import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthC
 
 const RESEND_SEC = 60;
 
-function maskPhone(phone: string) {
+function maskPhoneLast4(phone: string) {
   const d = phone.replace(/\D/g, '');
-  if (d.length < 4) return phone;
-  return `+${d.slice(0, 3)} ••• •• ${d.slice(-2)}`;
+  if (d.length < 4) return '••••';
+  return `••${d.slice(-4)}`;
 }
 
-/** Profile setup — 4-digit OTP verify (Figma 8845:310664 / 310822 / 310873). */
+/** Profile setup — 4-digit OTP verify (Figma 8845:310664). */
 export default function ProfileSetupVerifyScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ phone?: string }>();
@@ -99,6 +100,7 @@ export default function ProfileSetupVerifyScreen() {
 
   const resend = async () => {
     if (cooldown > 0) return;
+    Keyboard.dismiss();
     setError(null);
     try {
       const res = await api.auth.phoneLinkStart(phone);
@@ -112,7 +114,6 @@ export default function ProfileSetupVerifyScreen() {
   return (
     <ProfileSetupShell
       title={ka.profileSetup.verifyTitle}
-      body={ka.profileSetup.verifyBody(maskPhone(phone))}
       primaryLabel={ka.profileSetup.verifyContinue}
       canBack
       onBack={() => router.back()}
@@ -121,33 +122,41 @@ export default function ProfileSetupVerifyScreen() {
       onPrimary={() => void verify()}
       showStepper={false}
     >
-      <View style={{ paddingHorizontal: 16, paddingTop: 40 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 16, gap: 24, alignItems: 'center' }}>
         <OtpCodeInput value={code} onChange={setCode} error={error} variant="hero" length={4} />
+
+        <Text
+          style={{
+            fontFamily: 'NotoSansGeorgian_400Regular',
+            fontSize: FIGMA_PROFILE_SETUP.bodySize,
+            lineHeight: FIGMA_PROFILE_SETUP.bodyLineHeight,
+            color: FIGMA_PROFILE_SETUP.bodyColor,
+            textAlign: 'center',
+          }}
+        >
+          {ka.profileSetup.verifyBody(maskPhoneLast4(phone))}
+        </Text>
 
         <Pressable
           accessibilityRole="button"
           onPress={() => void resend()}
           disabled={cooldown > 0}
-          style={{ marginTop: 28, alignItems: 'center' }}
         >
           <Text
             style={{
               fontFamily: 'NotoSansGeorgian_600SemiBold',
               fontSize: 16,
-              color: cooldown > 0 ? '#9CA3AF' : '#14B8A6',
+              lineHeight: 22,
+              color: cooldown > 0 ? '#9CA3AF' : FIGMA_PROFILE_SETUP.brand,
             }}
           >
-            {cooldown > 0
-              ? ka.profileSetup.resendIn(cooldown)
-              : ka.profileSetup.resendCode}
+            {cooldown > 0 ? ka.profileSetup.resendIn(cooldown) : ka.profileSetup.resendCode}
           </Text>
         </Pressable>
 
         {devCode ? (
           <Text
             style={{
-              marginTop: 16,
-              textAlign: 'center',
               fontFamily: 'NotoSansGeorgian_400Regular',
               fontSize: 13,
               color: '#64748B',
