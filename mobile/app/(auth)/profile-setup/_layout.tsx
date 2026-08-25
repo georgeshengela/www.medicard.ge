@@ -7,6 +7,14 @@ export default function ProfileSetupLayout() {
       <Stack.Screen name="avatar" />
       <Stack.Screen name="phone" />
       <Stack.Screen name="verify" />
+      <Stack.Screen name="success" />
+      <Stack.Screen name="face-id" />
+      <Stack.Screen name="privacy" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="analyzing" />
+      <Stack.Screen name="results" />
+      <Stack.Screen name="recommendations" />
+      <Stack.Screen name="dev-launcher" />
     </Stack>
   );
 }

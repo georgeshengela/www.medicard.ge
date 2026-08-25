@@ -5,6 +5,7 @@ import { FigmaWelcomeSlide } from '@/components/welcome/FigmaWelcomeSlide';
 import { welcomeProgressState } from '@/constants/figmaWelcomeLayout';
 import { WELCOME_SLIDES } from '@/constants/welcomeSlides';
 import { ka } from '@/i18n/ka';
+import { OnboardingDevLauncher } from '@/components/dev/OnboardingDevLauncher';
 import { setWelcomeCompleted } from '@/lib/onboardingPrefs';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -34,6 +35,7 @@ export default function WelcomeScreen() {
         onSignIn={() => void finish()}
         canPrev={false}
       />
+      <OnboardingDevLauncher variant="inline" />
     </View>
   );
 }

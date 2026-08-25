@@ -6,7 +6,7 @@ import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { FIGMA_PROFILE_SETUP } from '@/constants/figmaProfileSetupLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
-import { completePayload, extraAnswersPayload, formFromProfile, fullProfilePayload } from '@/lib/assessmentForm';
+import { markPhoneVerified } from '@/lib/profileSetupFlow';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
 
 const RESEND_SEC = 60;
@@ -22,7 +22,7 @@ export default function ProfileSetupVerifyScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ phone?: string }>();
   const phone = typeof params.phone === 'string' ? params.phone : '';
-  const { user, ready, healthProfile, setHealthProfile, setUser, refreshHealthProfile } = useAuth();
+  const { user, ready, healthProfile, setHealthProfile, setUser } = useAuth();
 
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -43,25 +43,12 @@ export default function ProfileSetupVerifyScreen() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const finishProfileSetup = useCallback(async () => {
+  const finishPhoneVerify = useCallback(async () => {
     if (!healthProfile || !user) return;
-    const form = formFromProfile(healthProfile, user);
-    const extra = (healthProfile.extraAnswers ?? {}) as Record<string, unknown>;
-    await api.healthProfile.update({
-      ...fullProfilePayload(form, healthProfile.currentStepIndex ?? 0),
-      extraAnswers: {
-        ...extraAnswersPayload(form),
-        assessmentPhaseComplete: true,
-        avatarId: extra.avatarId,
-        phoneVerified: true,
-      },
-    });
-    const result = await api.healthProfile.complete(completePayload(form));
-    setHealthProfile(result.profile);
-    setUser(result.user);
-    await refreshHealthProfile();
-    router.replace('/(tabs)/home');
-  }, [healthProfile, user, setHealthProfile, setUser, refreshHealthProfile, router]);
+    const updated = await markPhoneVerified(healthProfile, user);
+    setHealthProfile(updated);
+    router.replace('/(auth)/profile-setup/success');
+  }, [healthProfile, user, setHealthProfile, router]);
 
   if (!ready) {
     return (
@@ -87,7 +74,7 @@ export default function ProfileSetupVerifyScreen() {
     try {
       const linked = await api.auth.phoneLinkVerify(phone, code.trim());
       setUser(linked.user);
-      await finishProfileSetup();
+      await finishPhoneVerify();
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : ka.common.error;
       setError(msg);

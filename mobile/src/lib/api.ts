@@ -614,6 +614,12 @@ export const api = {
         method: 'POST',
         body,
       }),
+    onboardingAnalysis: () =>
+      request<{
+        analysis: import('@/types/onboardingAnalysis').OnboardingAnalysis;
+        profile: HealthProfile;
+        cached: boolean;
+      }>('/api/health-profile/onboarding-analysis', { method: 'POST', timeoutMs: 120_000 }),
   },
 
   push: {

@@ -35,6 +35,8 @@ type Props = {
   /** Rendered above the primary CTA (Figma phone field block). */
   footerSlot?: React.ReactNode;
   primaryTone?: 'step' | 'intro';
+  /** When false, hides the default primary CTA (use footerSlot instead). */
+  hidePrimary?: boolean;
 };
 
 /** Profile setup shell — keyboard-safe scroll + pinned footer CTA. */
@@ -55,6 +57,7 @@ export function ProfileSetupShell({
   centerContent = false,
   footerSlot,
   primaryTone = 'step',
+  hidePrimary = false,
 }: Props) {
   const insets = useSafeAreaInsets();
   const topInset = welcomeTopInset(insets.top);
@@ -149,13 +152,15 @@ export function ProfileSetupShell({
 
       <View style={{ paddingHorizontal: 16, paddingBottom: Math.max(insets.bottom, 16), gap: 12 }}>
         {footerSlot}
-        <AssessmentContinueButton
-          label={primaryLabel}
-          onPress={handlePrimary}
-          loading={loading}
-          disabled={primaryDisabled}
-          tone={primaryTone}
-        />
+        {!hidePrimary ? (
+          <AssessmentContinueButton
+            label={primaryLabel}
+            onPress={handlePrimary}
+            loading={loading}
+            disabled={primaryDisabled}
+            tone={primaryTone}
+          />
+        ) : null}
       </View>
     </KeyboardAvoidingView>
   );

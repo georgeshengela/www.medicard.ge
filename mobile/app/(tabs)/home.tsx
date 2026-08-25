@@ -20,6 +20,7 @@ import { formatRelative, nextDoseTime } from '@/lib/format';
 import { getCyclePromptSeen, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { useThemeColors, useIsDark } from '@/theme/colors';
+import { OnboardingDevLauncher } from '@/components/dev/OnboardingDevLauncher';
 import { useAuth } from '@/store/AuthContext';
 
 export default function Home() {
@@ -206,6 +207,7 @@ export default function Home() {
       </ScrollView>
 
       <DefaultHomePrompt visible={showCyclePrompt} onClose={onPromptClose} />
+      <OnboardingDevLauncher variant="fab" />
     </>
   );
 }

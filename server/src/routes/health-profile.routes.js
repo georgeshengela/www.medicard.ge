@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { generateOnboardingAnalysis } from '../lib/onboardingAnalysis.js';
 import { birthDateSchema, genderSchema, publicHealthProfile, publicUser } from '../lib/patient.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
@@ -90,6 +91,44 @@ healthProfileRouter.put(
     return res.json({
       profile: publicHealthProfile(profile),
       user: publicUser(user),
+    });
+  }),
+);
+
+healthProfileRouter.post(
+  '/onboarding-analysis',
+  asyncHandler(async (req, res) => {
+    const profile = await loadProfile(req.user.id);
+    if (!profile) {
+      return res.status(404).json({ error: 'პროფილი ვერ მოიძებნა' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { package: true },
+    });
+
+    const extra = (profile.extraAnswers ?? {});
+    if (extra.onboardingAnalysis?.score != null) {
+      return res.json({
+        analysis: extra.onboardingAnalysis,
+        profile: publicHealthProfile(profile),
+        cached: true,
+      });
+    }
+
+    const analysis = await generateOnboardingAnalysis({ profile, user });
+    const mergedExtra = { ...extra, onboardingAnalysis: analysis };
+
+    const updated = await prisma.healthProfile.update({
+      where: { userId: req.user.id },
+      data: { extraAnswers: mergedExtra },
+    });
+
+    return res.json({
+      analysis,
+      profile: publicHealthProfile(updated),
+      cached: false,
     });
   }),
 );
