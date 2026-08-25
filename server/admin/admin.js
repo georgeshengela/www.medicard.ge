@@ -181,15 +181,22 @@ function logout(reason) {
 }
 
 function closeDrawer() {
-  $('drawer').classList.add('hidden');
-  $('drawer').setAttribute('aria-hidden', 'true');
+  const drawer = $('drawer');
+  drawer.classList.add('hidden');
+  drawer.classList.remove('is-modal');
+  drawer.setAttribute('aria-hidden', 'true');
   $('drawer-body').innerHTML = '';
+  document.body.classList.remove('modal-open');
 }
 
-function openDrawer(html) {
-  $('drawer-body').innerHTML = html;
-  $('drawer').classList.remove('hidden');
-  $('drawer').setAttribute('aria-hidden', 'false');
+function openDrawer(html, opts = {}) {
+  const drawer = $('drawer');
+  const panel = $('drawer-body');
+  panel.innerHTML = html;
+  drawer.classList.toggle('is-modal', Boolean(opts.modal));
+  drawer.classList.remove('hidden');
+  drawer.setAttribute('aria-hidden', 'false');
+  document.body.classList.toggle('modal-open', Boolean(opts.modal));
 }
 
 function fmtDate(value) {
@@ -344,12 +351,10 @@ function usersSkeletonHtml() {
           <div class="users-person-copy"><span class="sk ln w160"></span><span class="sk ln w90"></span></div>
         </div>
       </td>
-      <td><div class="stack gap-6"><span class="sk ln w180"></span><span class="sk ln w110"></span></div></td>
       <td><span class="sk chip"></span></td>
       <td><span class="sk bar"></span></td>
       <td><span class="sk chip sm"></span></td>
       <td><span class="sk ln w100"></span></td>
-      <td></td>
     </tr>
   `).join('');
 }
@@ -602,7 +607,7 @@ async function switchTab(tab) {
 
   const copy = {
     overview: ['ოპერაციები', 'მიმოხილვა', 'რეალურ დროში — მომხმარებლები, პაკეტები და აპის რეჟიმი.'],
-    users: ['რეესტრი', 'მომხმარებლები', 'ძებნა, ფილტრი, პაკეტის მინიჭება, ბლოკი და წაშლა. ორმაგი კლიკი ან Enter — პროფილი.'],
+    users: ['რეესტრი', 'მომხმარებლები', 'დააკლიკე რიგს — პროფილი იხსნება. ძებნა, ფილტრი, პაკეტი და სტატუსი.'],
     packages: ['კომერცია', 'პაკეტები', 'ყველა გეგმა თვიურია — AI ლიმიტი 30-დღიან პერიოდში.'],
     push: ['კომუნიკაცია', 'Push შეტყობინებები', 'გაუგზავნეთ push შეტყობინება მომხმარებლებს სეგმენტის მიხედვით.'],
     sms: ['კომუნიკაცია', 'SMS მენეჯმენტი', 'OTP, ბალანსი, გაგზავნა და გაგზავნილი მესიჯების ჟურნალი.'],
@@ -975,22 +980,18 @@ async function renderUsers() {
           <table class="users-table admin-table" aria-label="მომხმარებლების რეესტრი">
             <colgroup>
               <col class="col-user" />
-              <col class="col-contact" />
               <col class="col-pkg" />
               <col class="col-quota" />
               <col class="col-status" />
               <col class="col-stats" />
-              <col class="col-actions" />
             </colgroup>
             <thead>
               <tr>
                 <th data-sort="fullName">მომხმარებელი</th>
-                <th data-sort="email">კონტაქტი</th>
                 <th data-sort="package">პაკეტი</th>
                 <th data-sort="used">AI ლიმიტი</th>
                 <th data-sort="status">სტატუსი</th>
                 <th>აქტივობა</th>
-                <th class="col-actions">მოქმედება</th>
               </tr>
             </thead>
             <tbody id="users-tbody">${usersSkeletonHtml()}</tbody>
@@ -1074,7 +1075,7 @@ async function renderUsers() {
     } catch (err) {
       toast(err.message, 'bad');
       if (body) {
-        body.innerHTML = `<tr><td colspan="7"><div class="empty users-empty">${icon('alert', 'lg')}<strong>ჩატვირთვა ვერ მოხერხდა</strong><p>${escapeHtml(err.message)}</p></div></td></tr>`;
+        body.innerHTML = `<tr><td colspan="5"><div class="empty users-empty">${icon('alert', 'lg')}<strong>ჩატვირთვა ვერ მოხერხდა</strong><p>${escapeHtml(err.message)}</p></div></td></tr>`;
       }
     } finally {
       wrap?.classList.remove('is-loading');
@@ -1101,7 +1102,7 @@ async function renderUsers() {
     });
     const body = $('users-tbody');
     if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="7"><div class="empty users-empty">${icon('users', 'lg')}<strong>მომხმარებელი ვერ მოიძებნა</strong><p>${filtered ? 'შეცვალე ძებნა ან გაასუფთავე ფილტრი' : 'პირველი ანგარიში აქ გამოჩნდება'}</p>${filtered ? `<button type="button" class="btn tiny ghost" id="users-empty-clear">${icon('x')} გასუფთავება</button>` : ''}</div></td></tr>`;
+      body.innerHTML = `<tr><td colspan="5"><div class="empty users-empty">${icon('users', 'lg')}<strong>მომხმარებელი ვერ მოიძებნა</strong><p>${filtered ? 'შეცვალე ძებნა ან გაასუფთავე ფილტრი' : 'პირველი ანგარიში აქ გამოჩნდება'}</p>${filtered ? `<button type="button" class="btn tiny ghost" id="users-empty-clear">${icon('x')} გასუფთავება</button>` : ''}</div></td></tr>`;
       $('users-empty-clear')?.addEventListener('click', () => {
         $('user-q').value = '';
         $('user-status').value = '';
@@ -1120,35 +1121,21 @@ async function renderUsers() {
             </div>
             <div class="users-person-copy">
               <strong>${escapeHtml(u.fullName)}</strong>
-              <span class="sub" title="${escapeAttr(fmtDate(u.createdAt))}">${icon('calendar')} ${escapeHtml(fmtRelative(u.createdAt))}</span>
+              <span class="sub users-email-sub" title="${escapeAttr(u.email)}">${escapeHtml(u.email)}</span>
             </div>
-          </div>
-        </td>
-        <td>
-          <div class="stack users-contact">
-            <button type="button" class="users-copy-link" data-copy="${escapeAttr(u.email)}" title="ელ-ფოსტის კოპირება">${icon('mail')}<span>${escapeHtml(u.email)}</span></button>
-            <div class="line muted">${icon('phone')}<span>${escapeHtml(u.phone || 'ტელეფონი არ არის')}</span></div>
           </div>
         </td>
         <td>
           <div class="stack users-pkg-stack">
             <div class="users-pkg-badge">${pkgBadge(u.package)}</div>
-            <span class="users-pkg-sub muted">${u.packageExpiresAt
-              ? `ვადა ${fmtDateShort(u.packageExpiresAt)}`
-              : 'კალენდარული თვე'}</span>
           </div>
         </td>
         <td>${quotaCell(u.usage)}</td>
         <td>${usersStatusCell(u.status)}</td>
-        <td>${usersActivityCell(u.counts)}</td>
-        <td class="col-actions">
-          <div class="users-actions-cluster">
-            <button class="btn icon-only ghost" type="button" title="პროფილი" data-edit="${u.id}">${icon('eye')}</button>
-            <button class="btn icon-only ghost" type="button" title="ელ-ფოსტის კოპირება" data-copy="${escapeAttr(u.email)}">${icon('copy')}</button>
-            ${u.status === 'BLOCKED'
-              ? `<button class="btn icon-only ghost" type="button" title="განბლოკვა" data-unblock="${u.id}">${icon('unlock')}</button>`
-              : `<button class="btn icon-only danger" type="button" title="ბლოკი" data-block="${u.id}">${icon('lock')}</button>`}
-            <button class="btn icon-only danger" type="button" title="სამუდამო წაშლა" data-delete="${u.id}" data-name="${escapeAttr(u.fullName)}" data-email="${escapeAttr(u.email)}">${icon('trash')}</button>
+        <td>
+          <div class="users-row-end">
+            ${usersActivityCell(u.counts)}
+            <span class="users-open-hint" aria-hidden="true">${icon('arrow')}</span>
           </div>
         </td>
       </tr>
@@ -1156,13 +1143,6 @@ async function renderUsers() {
 
     body.querySelectorAll('tr[data-id]').forEach((tr) => {
       tr.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return;
-        state.selectedId = tr.dataset.id;
-        body.querySelectorAll('tr[data-id]').forEach((row) => {
-          row.classList.toggle('selected', row.dataset.id === state.selectedId);
-        });
-      });
-      tr.addEventListener('dblclick', (e) => {
         if (e.target.closest('button')) return;
         editUser(tr.dataset.id);
       });
@@ -1173,30 +1153,6 @@ async function renderUsers() {
         }
       });
     });
-    body.querySelectorAll('[data-edit]').forEach((btn) => btn.addEventListener('click', () => editUser(btn.dataset.edit)));
-    body.querySelectorAll('[data-copy]').forEach((btn) => btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await navigator.clipboard.writeText(btn.dataset.copy);
-      toast('ელ-ფოსტა დაკოპირდა');
-    }));
-    body.querySelectorAll('[data-block]').forEach((btn) => btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      if (!confirm('დავბლოკოთ ეს მომხმარებელი?')) return;
-      await api(`/users/${btn.dataset.block}/block`, { method: 'POST' });
-      toast('ანგარიში დაიბლოკა');
-      await load();
-    }));
-    body.querySelectorAll('[data-unblock]').forEach((btn) => btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await api(`/users/${btn.dataset.unblock}/unblock`, { method: 'POST' });
-      toast('ანგარიში განიბლოკა');
-      await load();
-    }));
-    body.querySelectorAll('[data-delete]').forEach((btn) => btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const deleted = await confirmDeleteUser(btn.dataset.delete, btn.dataset.name, btn.dataset.email);
-      if (deleted) await load();
-    }));
   };
 
   document.querySelectorAll('.users-table th[data-sort]').forEach((th) => {
@@ -1281,64 +1237,110 @@ async function confirmDeleteUser(id, name, email) {
 }
 
 async function editUser(id) {
-  const [{ user }, { packages }] = await Promise.all([
-    api(`/users/${id}`),
-    api('/packages'),
-  ]);
+  state.selectedId = id;
+  openDrawer(`
+    <div class="umodal">
+      <button type="button" class="btn icon-only ghost umodal-close" id="drawer-cancel" aria-label="დახურვა">${icon('x')}</button>
+      <div class="umodal-loading">${icon('refresh')}<span>პროფილი იტვირთება…</span></div>
+    </div>
+  `, { modal: true });
+  $('drawer-cancel').onclick = closeDrawer;
+
+  let user;
+  let packages;
+  try {
+    const data = await Promise.all([
+      api(`/users/${id}`),
+      api('/packages'),
+    ]);
+    user = data[0].user;
+    packages = data[1].packages;
+  } catch (err) {
+    closeDrawer();
+    toast(err.message, 'bad');
+    return;
+  }
+
   const pkgOptions = packages.map((p) => {
     const limitLabel = p.unlimited ? 'შეუზღუდავი' : `${p.monthlyAiLimit} / თვე`;
     return `<option value="${p.code}" ${user.package?.code === p.code ? 'selected' : ''}>${p.code} — ${limitLabel}</option>`;
   }).join('');
   const isPaid = user.package?.code && user.package.code !== 'FREE';
-  openDrawer(`
-    <div class="card-head">${iconTile('user')}<p class="kicker" style="margin:0">პროფილი</p></div>
-    <h3>${escapeHtml(user.fullName)}</h3>
-    <p class="muted mono">${escapeHtml(user.id)}</p>
-    <div class="actions" style="justify-content:flex-start">
-      ${pkgBadge(user.package)} ${statusBadge(user.status)}
-    </div>
-    <div class="drawer-stats">
-      <div class="drawer-stat"><div class="label">რეგისტრაცია</div><strong>${fmtDateShort(user.createdAt)}</strong></div>
-      <div class="drawer-stat"><div class="label">განახლდა</div><strong>${fmtDateShort(user.updatedAt)}</strong></div>
-      <div class="drawer-stat"><div class="label">აქტივობა</div><strong>${user.counts.records} ჩან. · ${user.counts.chats} ჩატი · ${user.counts.medications} მედ.</strong></div>
-      <div class="drawer-stat"><div class="label">თვიური AI</div><strong>${user.usage?.unlimited ? '∞' : `${user.usage?.used ?? 0} / ${user.usage?.limit ?? '—'}`}</strong></div>
-      <div class="drawer-stat"><div class="label">პერიოდი</div><strong>${user.usage?.periodStart ? `${fmtDateShort(user.usage.periodStart)} → ${fmtDateShort(user.usage.periodEnd)}` : '—'}</strong></div>
-      <div class="drawer-stat"><div class="label">გამოწერა</div><strong>${isPaid ? (user.packageStartedAt ? fmtDateShort(user.packageStartedAt) : '—') : 'უფასო'}</strong></div>
-    </div>
+  const aiLabel = user.usage?.unlimited ? '∞ შეუზღუდავი' : `${user.usage?.used ?? 0} / ${user.usage?.limit ?? '—'}`;
 
-    <div class="field"><span>სახელი</span><input id="edit-name" value="${escapeAttr(user.fullName)}" /></div>
-    <div class="field"><span>ელ-ფოსტა</span><input id="edit-email" type="email" value="${escapeAttr(user.email)}" /></div>
-    <div class="field"><span>ტელეფონი</span><input id="edit-phone" type="tel" value="${escapeAttr(user.phone || '')}" /></div>
-    <div class="field"><span>სტატუსი</span>
-      <select id="edit-status">
-        <option value="ACTIVE" ${user.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE — შეუძლია შესვლა</option>
-        <option value="BLOCKED" ${user.status === 'BLOCKED' ? 'selected' : ''}>BLOCKED — დაბლოკილი</option>
-      </select>
+  $('drawer-body').innerHTML = `
+    <div class="umodal">
+      <header class="umodal-hero">
+        <div class="users-avatar-wrap ${user.status === 'BLOCKED' ? 'is-blocked' : 'is-active'} umodal-avatar-wrap">
+          <div class="avatar avatar-${avatarTone(user)} umodal-avatar">${escapeHtml(initials(user.fullName))}</div>
+        </div>
+        <div class="umodal-hero-copy">
+          <p class="kicker">პროფილი</p>
+          <h3>${escapeHtml(user.fullName)}</h3>
+          <p class="umodal-hero-mail">
+            <button type="button" class="users-copy-link" id="umodal-copy-email" title="კოპირება">${icon('copy')}<span>${escapeHtml(user.email)}</span></button>
+          </p>
+          <div class="umodal-pills">
+            ${pkgBadge(user.package)}
+            ${usersStatusCell(user.status)}
+          </div>
+        </div>
+        <button type="button" class="btn icon-only ghost umodal-close" id="drawer-cancel" aria-label="დახურვა">${icon('x')}</button>
+      </header>
+
+      <div class="umodal-stats">
+        <div class="umodal-stat"><span>რეგისტრაცია</span><strong>${fmtDateShort(user.createdAt)}</strong></div>
+        <div class="umodal-stat"><span>განახლდა</span><strong>${fmtDateShort(user.updatedAt)}</strong></div>
+        <div class="umodal-stat"><span>AI თვე</span><strong>${aiLabel}</strong></div>
+        <div class="umodal-stat"><span>აქტივობა</span><strong>${user.counts.records} · ${user.counts.chats} · ${user.counts.medications}</strong></div>
+      </div>
+
+      <div class="umodal-body">
+        <div class="umodal-form">
+          <label class="field"><span>სახელი</span><input id="edit-name" value="${escapeAttr(user.fullName)}" /></label>
+          <label class="field"><span>ელ-ფოსტა</span><input id="edit-email" type="email" value="${escapeAttr(user.email)}" /></label>
+          <label class="field"><span>ტელეფონი</span><input id="edit-phone" type="tel" value="${escapeAttr(user.phone || '')}" placeholder="—" /></label>
+          <label class="field"><span>სტატუსი</span>
+            <select id="edit-status">
+              <option value="ACTIVE" ${user.status === 'ACTIVE' ? 'selected' : ''}>აქტიური — შეუძლია შესვლა</option>
+              <option value="BLOCKED" ${user.status === 'BLOCKED' ? 'selected' : ''}>დაბლოკილი — შესვლა აკრძალულია</option>
+            </select>
+          </label>
+          <label class="field"><span>თვიური პაკეტი</span>
+            <select id="edit-package">${pkgOptions}</select>
+          </label>
+          <p class="muted umodal-hint">გადახდილი პაკეტის მინიჭება იწყებს ახალ 30-დღიან პერიოდს.</p>
+          <label class="field"><span>პაკეტის დაწყება</span>
+            <input id="edit-started" type="date" value="${toDateInput(user.packageStartedAt)}" ${isPaid ? '' : 'disabled'} />
+          </label>
+          <label class="field"><span>პაკეტის ვადა</span>
+            <input id="edit-expires" type="date" value="${toDateInput(user.packageExpiresAt)}" ${isPaid ? '' : 'disabled'} />
+          </label>
+          <label class="field span-2"><span>ადმინ შენიშვნა</span>
+            <textarea id="edit-note" rows="3">${escapeHtml(user.adminNote || '')}</textarea>
+          </label>
+        </div>
+      </div>
+
+      <footer class="umodal-foot">
+        <button class="btn danger" id="drawer-del" type="button">${icon('trash')} წაშლა</button>
+        <div class="umodal-foot-right">
+          ${isPaid ? `<button class="btn ghost" id="drawer-renew" type="button">${icon('calendar')} +30 დღე</button>` : ''}
+          <button class="btn ghost" id="drawer-cancel-2" type="button">დახურვა</button>
+          <button class="btn primary" id="drawer-save" type="button">${icon('check')} შენახვა</button>
+        </div>
+      </footer>
     </div>
-    <div class="field"><span>თვიური პაკეტი</span>
-      <select id="edit-package">${pkgOptions}</select>
-      <p class="muted" style="margin:6px 0 0;font-size:12px">გადახდილი პაკეტის მინიჭება იწყებს ახალ 30-დღიან პერიოდს.</p>
-    </div>
-    <div class="field"><span>პაკეტის დაწყება</span>
-      <input id="edit-started" type="date" value="${toDateInput(user.packageStartedAt)}" ${isPaid ? '' : 'disabled'} />
-    </div>
-    <div class="field"><span>პაკეტის ვადა</span>
-      <input id="edit-expires" type="date" value="${toDateInput(user.packageExpiresAt)}" ${isPaid ? '' : 'disabled'} />
-    </div>
-    <div class="field"><span>ადმინ შენიშვნა</span>
-      <textarea id="edit-note" rows="4">${escapeHtml(user.adminNote || '')}</textarea>
-    </div>
-    <div class="row">
-      ${isPaid ? `<button class="btn ghost" id="drawer-renew">${icon('calendar')} +30 დღე</button>` : ''}
-      <button class="btn danger" id="drawer-del">${icon('trash')} სამუდამო წაშლა</button>
-      <button class="btn ghost" id="drawer-cancel">დახურვა</button>
-      <button class="btn primary" id="drawer-save">${icon('check')} შენახვა</button>
-    </div>
-  `);
-  $('drawer-cancel').onclick = closeDrawer;
+  `;
+
+  const closeBtns = [$('drawer-cancel'), $('drawer-cancel-2')];
+  closeBtns.forEach((btn) => { if (btn) btn.onclick = closeDrawer; });
+  $('umodal-copy-email')?.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(user.email);
+    toast('ელ-ფოსტა დაკოპირდა');
+  });
   $('edit-package').onchange = () => {
-    const code = $('edit-package').value;
-    const paid = code !== 'FREE';
+    const paid = $('edit-package').value !== 'FREE';
     $('edit-started').disabled = !paid;
     $('edit-expires').disabled = !paid;
     if (!paid) {
@@ -1360,22 +1362,26 @@ async function editUser(id) {
     const expiresRaw = $('edit-expires').value.trim();
     const startedRaw = $('edit-started').value.trim();
     const packageCode = $('edit-package').value;
-    await api(`/users/${id}`, {
-      method: 'PATCH',
-      body: {
-        fullName: $('edit-name').value.trim(),
-        email: $('edit-email').value.trim(),
-        phone: $('edit-phone').value.trim() || null,
-        status: $('edit-status').value,
-        packageCode,
-        packageStartedAt: startedRaw ? new Date(`${startedRaw}T00:00:00.000Z`).toISOString() : undefined,
-        packageExpiresAt: expiresRaw ? new Date(`${expiresRaw}T23:59:59.000Z`).toISOString() : null,
-        adminNote: $('edit-note').value.trim() || null,
-      },
-    });
-    toast('პროფილი განახლდა');
-    closeDrawer();
-    await renderUsers();
+    try {
+      await api(`/users/${id}`, {
+        method: 'PATCH',
+        body: {
+          fullName: $('edit-name').value.trim(),
+          email: $('edit-email').value.trim(),
+          phone: $('edit-phone').value.trim() || null,
+          status: $('edit-status').value,
+          packageCode,
+          packageStartedAt: startedRaw ? new Date(`${startedRaw}T00:00:00.000Z`).toISOString() : undefined,
+          packageExpiresAt: expiresRaw ? new Date(`${expiresRaw}T23:59:59.000Z`).toISOString() : null,
+          adminNote: $('edit-note').value.trim() || null,
+        },
+      });
+      toast('პროფილი განახლდა');
+      closeDrawer();
+      await renderUsers();
+    } catch (err) {
+      toast(err.message, 'bad');
+    }
   };
   $('drawer-del').onclick = async () => {
     const deleted = await confirmDeleteUser(id, user.fullName, user.email);
@@ -1384,6 +1390,7 @@ async function editUser(id) {
       await renderUsers();
     }
   };
+  $('edit-name')?.focus();
 }
 
 const FEATURE_LABELS = {
