@@ -12,7 +12,7 @@ type Props = {
 const SURFACE: ViewStyle = {
   width: '100%',
   minHeight: FIGMA_AUTH.socialButtonMinHeight,
-  borderRadius: FIGMA_AUTH.socialButtonRadius,
+  borderRadius: FIGMA_AUTH.primaryRadius,
   backgroundColor: FIGMA_AUTH.socialButtonBg,
   flexDirection: 'row',
   alignItems: 'center',

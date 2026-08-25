@@ -12,7 +12,7 @@ type Props = {
 
 /** Nightingale auth hero — plain teal mark, wordmark, subtitle (no tile). */
 export function AuthBrandHeader({ subtitle, compact }: Props) {
-  const logoSize = compact ? 80 : FIGMA_AUTH.heroLogoSize;
+  const logoSize = compact ? 88 : FIGMA_AUTH.heroLogoSize;
 
   return (
     <View

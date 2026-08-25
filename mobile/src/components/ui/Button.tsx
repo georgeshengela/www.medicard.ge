@@ -39,7 +39,7 @@ const iconColor = (colors: Palette): Record<Variant, string> => ({
 });
 
 const SIZING: Record<Size, { container: string; label: string; icon: number }> = {
-  sm: { container: 'h-10 px-4 rounded-xl', label: 'text-sm', icon: 16 },
+  sm: { container: 'h-10 px-4 rounded-2xl', label: 'text-sm', icon: 16 },
   md: { container: 'h-12 px-5 rounded-2xl', label: 'text-base', icon: 18 },
   lg: { container: 'h-14 px-6 rounded-2xl', label: 'text-lg', icon: 20 },
 };

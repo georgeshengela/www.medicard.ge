@@ -490,7 +490,7 @@ export function CyclePrimaryButton({
         width: '100%',
         opacity: blocked ? 0.5 : pressed ? 0.92 : 1,
         transform: [{ scale: pressed && !blocked ? 0.985 : 1 }],
-        borderRadius: 24,
+        borderRadius: 16,
         overflow: 'hidden',
         ...cycleShadow.soft,
       })}
@@ -501,7 +501,7 @@ export function CyclePrimaryButton({
         end={{ x: 1, y: 1 }}
         style={{
           minHeight: 56,
-          borderRadius: 24,
+          borderRadius: 16,
           paddingVertical: 16,
           paddingHorizontal: 20,
           flexDirection: 'row',

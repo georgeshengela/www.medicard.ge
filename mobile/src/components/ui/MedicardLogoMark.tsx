@@ -21,7 +21,7 @@ export function MedicardLogoMark({ size = 64, tone = 'brand' }: Props) {
   const gradId = tone === 'inverse' ? 'logoStrokeInv' : 'logoStrokeBrand';
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 206 206" fill="none">
+    <Svg width={size} height={size} viewBox="66.375 30.375 72.75 72.75" fill="none">
       <Defs>
         <LinearGradient id={gradId} x1="102.75" y1="30.75" x2="102.75" y2="102.75" gradientUnits="userSpaceOnUse">
           <Stop stopColor={strokeFrom} />

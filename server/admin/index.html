@@ -17,12 +17,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./admin.css?v=ng1" />
+  <link rel="stylesheet" href="./admin.css?v=ng3" />
 </head>
 <body>
   <div id="login-view" class="login-shell">
     <aside class="login-rail">
-      <div class="mark">M</div>
+      <a class="logo-mark" href="#" aria-hidden="true" onclick="return false">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </a>
       <p class="rail-kicker">Medicard.GE</p>
       <h1>Control</h1>
       <p class="rail-copy">ოპერაციული კონსოლი — მომხმარებლები, პაკეტები, ფარმაცია და აპის რეჟიმი.</p>
@@ -50,29 +52,28 @@
 
   <div id="app-view" class="app">
     <div id="sidebar-scrim" class="sidebar-scrim" aria-hidden="true"></div>
-    <aside class="sidebar" id="sidebar">
-      <div class="brand">
-        <div class="mark sm">M</div>
-        <div>
-          <strong>Medicard</strong>
-          <span>Control</span>
-        </div>
+    <aside class="sidebar ng-sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <a class="logo-mark" href="#" aria-label="Medicard Control" onclick="return false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        </a>
       </div>
       <nav class="sidebar-nav" aria-label="მთავარი მენიუ">
-        <button data-tab="overview" class="nav active" data-icon="layout">მიმოხილვა</button>
-        <button data-tab="users" class="nav" data-icon="users">მომხმარებლები</button>
-        <button data-tab="packages" class="nav" data-icon="layers">პაკეტები</button>
-        <button data-tab="push" class="nav" data-icon="bell">Push</button>
-        <button data-tab="sms" class="nav" data-icon="bell">SMS</button>
-        <span class="nav-divider" aria-hidden="true"></span>
-        <button data-tab="pharmacy" class="nav" data-icon="pill">ფარმაცია</button>
-        <span class="nav-divider" aria-hidden="true"></span>
-        <button data-tab="ai" class="nav" data-icon="spark">AI ხარისხი</button>
-        <button data-tab="settings" class="nav" data-icon="settings">აპის რეჟიმი</button>
+        <button data-tab="overview" class="nav active" data-icon="layout" title="მიმოხილვა"><span class="nav-label">მიმოხილვა</span></button>
+        <button data-tab="users" class="nav" data-icon="users" title="მომხმარებლები"><span class="nav-label">მომხმარებლები</span></button>
+        <button data-tab="packages" class="nav" data-icon="layers" title="პაკეტები"><span class="nav-label">პაკეტები</span></button>
+        <button data-tab="push" class="nav" data-icon="bell" title="Push"><span class="nav-label">Push</span></button>
+        <button data-tab="sms" class="nav" data-icon="send" title="SMS"><span class="nav-label">SMS</span></button>
+        <span class="nav-spacer" aria-hidden="true"></span>
+        <button data-tab="pharmacy" class="nav" data-icon="pill" title="ფარმაცია"><span class="nav-label">ფარმაცია</span></button>
+        <span class="nav-spacer" aria-hidden="true"></span>
+        <button data-tab="ai" class="nav" data-icon="spark" title="AI ხარისხი"><span class="nav-label">AI</span></button>
+        <button data-tab="settings" class="nav" data-icon="settings" title="აპის რეჟიმი"><span class="nav-label">რეჟიმი</span></button>
       </nav>
       <div class="sidebar-foot">
-        <button id="theme-toggle" class="foot-btn" type="button" data-icon="sun">თემა</button>
-        <button id="logout" class="foot-btn" type="button" data-icon="logout">გასვლა</button>
+        <div class="sidebar-avatar" id="sidebar-avatar" title="ადმინისტრატორი">M</div>
+        <button id="theme-toggle" class="foot-icon" type="button" data-icon="sun" title="თემა"></button>
+        <button id="logout" class="foot-icon" type="button" data-icon="logout" title="გასვლა"></button>
       </div>
     </aside>
 
@@ -108,6 +109,6 @@
   </div>
 
   <div id="toasts" class="toasts"></div>
-  <script src="./admin.js?v=ng1"></script>
+  <script src="./admin.js?v=ng3"></script>
 </body>
 </html>

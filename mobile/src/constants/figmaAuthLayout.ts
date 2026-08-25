@@ -1,7 +1,7 @@
 /** Nightingale Authentication — exact tokens from Figma node 11396:82867. */
 export const FIGMA_AUTH = {
   screenPaddingX: 24,
-  heroLogoSize: 48,
+  heroLogoSize: 96,
   heroTitleSize: 26,
   heroSubtitleSize: 16,
   heroGap: 16,
@@ -20,7 +20,7 @@ export const FIGMA_AUTH = {
   labelSize: 14,
   labelColor: '#1F2937',
 
-  /** Primary Button (Sign In) — rounded-16, NOT pill */
+  /** Primary Button (Sign In) — rounded-16, not pill. Same radius for every CTA. */
   primaryBg: '#14B8A6',
   primaryMinHeight: 48,
   primaryRadius: 16,
@@ -28,10 +28,10 @@ export const FIGMA_AUTH = {
   primaryPaddingY: 12,
   primaryGap: 10,
 
-  /** ButtonSocialMedia (Google) — full pill */
+  /** ButtonSocialMedia (Google) — same 16 radius as primary */
   socialButtonBg: '#1F2937',
   socialButtonMinHeight: 48,
-  socialButtonRadius: 9999,
+  socialButtonRadius: 16,
   socialButtonPaddingX: 16,
   socialButtonPaddingY: 10,
   socialButtonGap: 12,

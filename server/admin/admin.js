@@ -82,8 +82,8 @@ function applyTheme(theme) {
   const btn = $('theme-toggle');
   if (btn) {
     btn.dataset.icon = next === 'dark' ? 'sun' : 'moon';
-    const label = next === 'dark' ? 'ღია თემა' : 'მუქი თემა';
-    btn.innerHTML = `${icon(btn.dataset.icon)}${label}`;
+    btn.title = next === 'dark' ? 'ღია თემა' : 'მუქი თემა';
+    btn.innerHTML = icon(btn.dataset.icon);
   }
 }
 
@@ -158,8 +158,13 @@ function rememberAdmin(admin, token) {
   if (admin) {
     state.admin = admin;
     localStorage.setItem(EMAIL_KEY, admin.email || '');
-    if ($('admin-chip')) {
-      $('admin-chip').innerHTML = `${icon('user')}${escapeHtml(admin.email || '')}`;
+    const chip = $('admin-chip');
+    if (chip) chip.innerHTML = `${icon('user')}${escapeHtml(admin.email || '')}`;
+    const avatar = $('sidebar-avatar');
+    if (avatar) {
+      const seed = admin.fullName || admin.email || 'M';
+      avatar.textContent = initials(seed).slice(0, 1) || 'M';
+      avatar.title = admin.email || 'ადმინისტრატორი';
     }
   }
 }
@@ -1213,6 +1218,7 @@ const FEATURE_LABELS = {
 async function renderPackages() {
   const { packages } = await api('/packages');
   $('tab-packages').innerHTML = `
+    <div class="ai-page ng-dash dash-enter">
     <div class="card" style="margin-bottom:12px">
       <div class="card-head">${iconTile('calendar', 'std')}<div><h3>თვიური გამოწერა</h3><p class="muted" style="margin:2px 0 0;font-size:12px">ყველა გადახდილი პაკეტი — 30-დღიანი პერიოდი · AI ლიმიტი იხარჯება ამ პერიოდის განმავლობაში · უფასო — კალენდარული თვე</p></div></div>
     </div>
@@ -1252,6 +1258,7 @@ async function renderPackages() {
           `).join('')}
         </tbody>
       </table>
+    </div>
     </div>
   `;
   document.querySelectorAll('[data-pkg]').forEach((btn) => {
@@ -2320,55 +2327,32 @@ async function renderSms() {
   const successRate = stats.total ? Math.round((stats.sent / stats.total) * 100) : 100;
 
   $('tab-sms').innerHTML = `
-    <div class="ai-page dash-page dash-enter">
-      <section class="dash-hero card sms-hero" style="--i:0">
-        <div class="dash-hero-deco" aria-hidden="true">
-          <span class="deco deco-teal"></span>
-          <span class="deco deco-std"></span>
-        </div>
-        <div class="dash-hero-main">
-          <p class="kicker">SMSOffice.ge · MEDICARD</p>
-          <h3>SMS კონტროლი</h3>
-          <p class="muted">OTP, ადმინისტრაციული გაგზავნა და სრული აუდიტი.</p>
-        </div>
-        <div class="dash-hero-stats">
-          <div class="hero-stat">
-            <span>ბალანსი</span>
-            <strong class="tone-${balTone}">${escapeHtml(balLabel)}</strong>
+    <div class="ai-page dash-page ng-dash dash-enter">
+      <section class="ng-pulse card sms-hero">
+        <div class="ng-pulse-main">
+          <div class="ng-pulse-icon">${icon('send')}</div>
+          <div class="ng-pulse-copy">
+            <span class="ng-metric-label">SMSOffice.ge · MEDICARD</span>
+            <strong class="ng-pulse-value">${escapeHtml(balLabel)}</strong>
+            <span class="ng-metric-hint">OTP, ადმინისტრაციული გაგზავნა და სრული აუდიტი</span>
           </div>
-          <div class="hero-stat">
-            <span>24სთ</span>
-            <strong>${stats.last24h}</strong>
-          </div>
-          <div class="hero-stat">
-            <span>წარმატება</span>
-            <strong class="tone-ok">${successRate}%</strong>
-          </div>
+          ${ngSparkBars('teal')}
         </div>
-        <button type="button" class="btn ghost" id="sms-refresh-bal">${icon('activity')} განახლება</button>
+        <div class="ng-pulse-side">
+          <div class="ng-pulse-pills">
+            <span class="ai-pill ${balTone === 'ok' ? 'ok' : balTone === 'warn' ? 'warn' : 'bad'}">${icon('wallet')} <strong>ბალანსი</strong></span>
+            <span class="ai-pill teal">${icon('activity')} <strong>${stats.last24h}</strong> 24სთ</span>
+            <span class="ai-pill ok">${icon('check')} <strong>${successRate}%</strong> წარმატება</span>
+          </div>
+          <button type="button" class="btn primary ng-cta" id="sms-refresh-bal">${icon('refresh')} განახლება</button>
+        </div>
       </section>
 
-      <div class="dash-grid" style="--i:1">
-        <article class="card stat-card">
-          <p class="stat-kicker">სულ</p>
-          <p class="stat-num">${stats.total}</p>
-          <p class="stat-sub muted">ყველა ჩანაწერი</p>
-        </article>
-        <article class="card stat-card">
-          <p class="stat-kicker">OTP</p>
-          <p class="stat-num tone-ok">${stats.otp}</p>
-          <p class="stat-sub muted">ავტორიზაცია</p>
-        </article>
-        <article class="card stat-card">
-          <p class="stat-kicker">ადმინი</p>
-          <p class="stat-num">${stats.admin}</p>
-          <p class="stat-sub muted">ხელით გაგზავნა</p>
-        </article>
-        <article class="card stat-card">
-          <p class="stat-kicker">შეცდომა</p>
-          <p class="stat-num tone-bad">${stats.failed}</p>
-          <p class="stat-sub muted">ვერ გაიგზავნა</p>
-        </article>
+      <div class="ng-metrics-row">
+        ${ngMetricCard({ label: 'სულ ჩანაწერი', value: stats.total, hint: 'ყველა SMS', iconName: 'file', tone: 'teal' })}
+        ${ngMetricCard({ label: 'OTP', value: stats.otp, hint: 'ავტორიზაცია', iconName: 'shield', tone: 'cyan' })}
+        ${ngMetricCard({ label: 'ადმინი', value: stats.admin, hint: 'ხელით გაგზავნა', iconName: 'users', tone: 'amber' })}
+        ${ngMetricCard({ label: 'შეცდომა', value: stats.failed, hint: 'ვერ გაიგზავნა', iconName: 'alert', tone: 'rose' })}
       </div>
 
       <section class="card sms-send-card" style="--i:2">
