@@ -101,12 +101,28 @@ adminRouter.get(
   '/stats',
   requireAdmin,
   asyncHandler(async (_req, res) => {
-    const [users, blocked, records, chats, packages] = await Promise.all([
+    const now = new Date();
+    const startToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const startWeek = new Date(startToday.getTime() - 6 * 86400000);
+    const startMonth = new Date(startToday.getTime() - 29 * 86400000);
+    const trendStart = new Date(startToday.getTime() - 13 * 86400000);
+
+    const [users, blocked, records, chats, medications, packages, newToday, newWeek, newMonth, withPhone, genderGroups, trendRows] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { status: 'BLOCKED' } }),
       prisma.medicalRecord.count(),
       prisma.chatSession.count(),
+      prisma.medicationSchedule.count(),
       prisma.package.findMany({ orderBy: { sortOrder: 'asc' } }),
+      prisma.user.count({ where: { createdAt: { gte: startToday } } }),
+      prisma.user.count({ where: { createdAt: { gte: startWeek } } }),
+      prisma.user.count({ where: { createdAt: { gte: startMonth } } }),
+      prisma.user.count({ where: { phone: { not: null } } }),
+      prisma.user.groupBy({ by: ['gender'], _count: { _all: true } }),
+      prisma.user.findMany({
+        where: { createdAt: { gte: trendStart } },
+        select: { createdAt: true },
+      }),
     ]);
 
     const byPackage = await Promise.all(
@@ -117,10 +133,43 @@ adminRouter.get(
       })),
     );
 
+    const gender = { male: 0, female: 0, other: 0, unknown: 0 };
+    for (const row of genderGroups) {
+      const n = row._count?._all ?? 0;
+      const key = String(row.gender || '').toUpperCase();
+      if (key === 'MALE') gender.male += n;
+      else if (key === 'FEMALE') gender.female += n;
+      else if (key === 'OTHER') gender.other += n;
+      else gender.unknown += n;
+    }
+
+    const trendMap = new Map();
+    for (let i = 13; i >= 0; i -= 1) {
+      const day = new Date(startToday.getTime() - i * 86400000);
+      const key = day.toISOString().slice(0, 10);
+      trendMap.set(key, 0);
+    }
+    for (const row of trendRows) {
+      const key = new Date(row.createdAt).toISOString().slice(0, 10);
+      if (trendMap.has(key)) trendMap.set(key, (trendMap.get(key) || 0) + 1);
+    }
+    const trend = [...trendMap.entries()].map(([day, count]) => ({ day, count }));
+
     res.json({
-      users: { total: users, blocked, active: users - blocked },
+      users: {
+        total: users,
+        blocked,
+        active: users - blocked,
+        newToday,
+        newWeek,
+        newMonth,
+        withPhone,
+        gender,
+        trend,
+      },
       records,
       chats,
+      medications,
       packages: byPackage,
       settings: adminAppSettings(await getAppSettings()),
     });

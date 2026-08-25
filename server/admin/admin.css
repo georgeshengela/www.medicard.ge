@@ -2516,9 +2516,9 @@ input, select, textarea {
 #tab-users:not(.hidden) {
   flex: 1;
   min-height: 0;
+  overflow: auto;
+  display: block;
   height: auto;
-  display: flex;
-  flex-direction: column;
 }
 
 .users-kpi .icon-tile {
@@ -2990,11 +2990,107 @@ tbody tr:hover td {
 
 .users-page {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
-  height: 100%;
+  gap: 16px;
+  height: auto;
   min-height: 0;
-  flex: 1;
+}
+
+.users-charts {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1fr;
+  gap: 14px;
+}
+
+.users-chart-card {
+  min-width: 0;
+  padding: 16px 18px 18px;
+}
+
+.users-trend {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 4px;
+  align-items: end;
+  min-height: 168px;
+  padding: 8px 0 0;
+}
+
+.users-trend-col {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 168px;
+}
+
+.users-trend-val {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  min-height: 12px;
+}
+
+.users-trend-track {
+  width: 100%;
+  max-width: 18px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 8px 8px 4px 4px;
+  overflow: hidden;
+}
+
+.users-trend-bar {
+  display: block;
+  width: 100%;
+  min-height: 6px;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, var(--teal-2), var(--teal));
+}
+
+.users-trend-lbl {
+  font-size: 9px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: clip;
+  transform: rotate(-35deg);
+  transform-origin: top center;
+  margin-top: 4px;
+}
+
+.users-mix-sep {
+  height: 1px;
+  background: var(--line);
+  margin: 14px 0;
+}
+
+button.ng-metric.users-metric-btn {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+button.ng-metric.users-metric-btn:hover {
+  border-color: color-mix(in srgb, var(--teal) 40%, var(--line));
+  transform: translateY(-1px);
+}
+button.ng-metric.users-metric-btn:active { transform: translateY(0); }
+button.ng-metric.users-metric-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 22%, transparent);
+}
+button.ng-metric.users-metric-btn.active {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 14%, transparent);
+  background: color-mix(in srgb, var(--teal-soft) 55%, var(--surface));
 }
 
 .users-kpis {
@@ -3065,8 +3161,6 @@ button.users-kpi:focus-visible {
   overflow: hidden;
   border-radius: 20px;
   min-height: 0;
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
 
 .users-console-bar {
@@ -3203,7 +3297,7 @@ button.users-kpi:focus-visible {
 }
 
 .users-table-wrap {
-  max-height: none;
+  max-height: min(56vh, 560px);
   min-height: 0;
   position: relative;
   overflow-x: hidden;
@@ -3646,13 +3740,17 @@ button.users-kpi:focus-visible {
 
 @media (max-width: 1200px) {
   .users-kpis { grid-template-columns: 1fr 1fr; }
+  .users-charts { grid-template-columns: 1fr; }
   .users-console-bar { flex-wrap: wrap; }
 }
 
 @media (max-width: 960px) {
   .users-kpis { grid-template-columns: 1fr 1fr; }
+  .users-charts { grid-template-columns: 1fr; }
+  .users-trend { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .users-trend-col:nth-child(-n+7) { display: none; }
   #tab-users:not(.hidden) { height: auto; }
-  .users-page { height: auto; grid-template-rows: auto auto; }
+  .users-page { height: auto; }
   .users-toolbar-actions { margin-left: 0; width: 100%; }
   .users-toolbar-actions .btn { flex: 1; }
   .table-pager.users-pager { flex-direction: column; align-items: stretch; }

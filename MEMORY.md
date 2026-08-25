@@ -15,7 +15,7 @@ Do this automatically without waiting to be asked. Cycle module ship → current
 
 - UI: `http://localhost:4000/admin` (prod: `https://medicard.ge/admin`)
 - Dashboard is card-based with SVG icons (overview metrics, package mix, app mode, recent users)
-- Users registry (`/admin` → მომხმარებლები): KPI filter cards, chip filters, unified console table with live status, quota bars, and sticky action cluster
+- Users registry (`/admin` → მომხმარებლები): Nightingale dashboard aesthetic — pulse hero, metric cards, 14-day signup chart, package/gender mix, click-row profile modal
 - Overview also shows live OpenRouter USD balance (`GET /api/v1/credits`) and EvidenceMD status + Medicard usage (they have no public wallet API)
 - Women's cycle module (**FEMALE only**): mobile `/cycle`, API `/api/cycle` — period predictions, daily symptom log, TTC (BBT/mucus), pregnancy week tracker, partner share link, doctor summary → AI chat prefill
 - Cycle AI tips: `POST /api/cycle/insights` via EvidenceMD (`CYCLE_WELLNESS`), cached ~18h on `CycleProfile.aiInsights`; local Flo-like tips as instant fallback

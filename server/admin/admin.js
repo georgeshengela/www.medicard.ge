@@ -342,6 +342,76 @@ function usersActivityCell(counts) {
   </div>`;
 }
 
+function usersFilterMetric({ label, value, hint, iconName, tone, statusFilter, packageFilter, valueId }) {
+  const status = statusFilter === undefined ? '' : ` data-status-filter="${statusFilter}"`;
+  const pkg = packageFilter === undefined ? '' : ` data-package-filter="${packageFilter}"`;
+  const pressable = statusFilter !== undefined || packageFilter !== undefined;
+  const tag = pressable ? 'button type="button"' : 'article';
+  const close = pressable ? 'button' : 'article';
+  const valueAttr = valueId ? ` id="${valueId}"` : '';
+  return `
+    <${tag} class="ng-metric tone-${tone}${pressable ? ' users-metric-btn' : ''}"${status}${pkg}${pressable ? ' aria-pressed="false"' : ''}>
+      <div class="ng-metric-icon">${icon(iconName)}</div>
+      <div class="ng-metric-body">
+        <span class="ng-metric-label">${label}</span>
+        <strong class="ng-metric-value"${valueAttr}>${value}</strong>
+        ${hint ? `<span class="ng-metric-hint" ${valueId ? `id="${valueId}-hint"` : ''}>${hint}</span>` : ''}
+      </div>
+      ${ngSparkBars(tone)}
+    </${close}>
+  `;
+}
+
+function usersTrendHtml(trend) {
+  const rows = Array.isArray(trend) ? trend : [];
+  if (!rows.length) return '<p class="muted">რეგისტრაციები ჯერ არ არის.</p>';
+  const max = Math.max(1, ...rows.map((d) => d.count));
+  return `<div class="users-trend">${rows.map((d) => {
+    const date = new Date(`${d.day}T00:00:00.000Z`);
+    const short = date.toLocaleDateString('ka-GE', { day: 'numeric', month: 'short' });
+    const h = Math.max(8, Math.round((d.count / max) * 100));
+    return `<div class="users-trend-col" title="${escapeAttr(short)}: ${d.count}">
+      <span class="users-trend-val">${d.count || ''}</span>
+      <span class="users-trend-track"><span class="users-trend-bar" style="height:${h}%"></span></span>
+      <span class="users-trend-lbl">${escapeHtml(short)}</span>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function usersMixHtml(items) {
+  const list = (items || []).filter(Boolean);
+  if (!list.length) return '<p class="muted">მონაცემი არ არის.</p>';
+  const total = list.reduce((sum, i) => sum + (i.count || 0), 0) || 1;
+  const max = Math.max(1, ...list.map((i) => i.count || 0));
+  return list.map((i) => {
+    const share = Math.round(((i.count || 0) / total) * 100);
+    const barW = Math.round(((i.count || 0) / max) * 100);
+    return `
+      <div class="dash-pkg-row">
+        <div class="dash-pkg-head">
+          <span class="dash-pkg-label">${i.label}</span>
+          <span class="badge ${i.tone || 'neutral'}">${i.count}</span>
+        </div>
+        <div class="bar ${i.bar || ''}"><span style="width:${barW}%"></span></div>
+        <div class="dash-pkg-foot">
+          <span class="mono">${i.count} მომხმარებელი</span>
+          <span class="mono muted">${share}%</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function usersTrendSpark(trend) {
+  const rows = (trend || []).slice(-8);
+  if (!rows.length) return ngSparkBars('teal');
+  const max = Math.max(1, ...rows.map((d) => d.count));
+  return `<div class="ng-spark tone-teal" aria-hidden="true">${rows.map((d) => {
+    const h = Math.max(12, Math.round((d.count / max) * 100));
+    return `<span style="--h:${h}%"></span>`;
+  }).join('')}</div>`;
+}
+
 function usersSkeletonHtml() {
   return Array.from({ length: 8 }, (_, i) => `
     <tr class="users-skel-row" style="--i:${i}" aria-hidden="true">
@@ -607,7 +677,7 @@ async function switchTab(tab) {
 
   const copy = {
     overview: ['ოპერაციები', 'მიმოხილვა', 'რეალურ დროში — მომხმარებლები, პაკეტები და აპის რეჟიმი.'],
-    users: ['რეესტრი', 'მომხმარებლები', 'დააკლიკე რიგს — პროფილი იხსნება. ძებნა, ფილტრი, პაკეტი და სტატუსი.'],
+    users: ['რეესტრი', 'მომხმარებლები', 'რეალურ დროში — რეგისტრაციები, პაკეტები, სქესი და სრული რეესტრი.'],
     packages: ['კომერცია', 'პაკეტები', 'ყველა გეგმა თვიურია — AI ლიმიტი 30-დღიან პერიოდში.'],
     push: ['კომუნიკაცია', 'Push შეტყობინებები', 'გაუგზავნეთ push შეტყობინება მომხმარებლებს სეგმენტის მიხედვით.'],
     sms: ['კომუნიკაცია', 'SMS მენეჯმენტი', 'OTP, ბალანსი, გაგზავნა და გაგზავნილი მესიჯების ჟურნალი.'],
@@ -904,39 +974,67 @@ async function renderUsers() {
   const root = $('tab-users');
   const hotkey = searchHotkeyLabel();
   root.innerHTML = `
-    <div class="users-page dash-enter">
-      <div class="users-kpis" style="--i:0">
-        <button type="button" class="users-kpi tone-teal active" data-status-filter="" aria-pressed="true">
-          ${iconTile('users', 'teal')}
-          <div>
-            <span>სულ რეესტრში</span>
-            <strong id="users-stat-total">—</strong>
+    <div class="users-page ai-page dash-page ng-dash dash-enter">
+      <section class="ng-pulse card" style="--i:0">
+        <div class="ng-pulse-main">
+          <div class="ng-pulse-icon">${icon('users')}</div>
+          <div class="ng-pulse-copy">
+            <span class="ng-metric-label">რეესტრის პულსი</span>
+            <strong class="ng-pulse-value" id="users-pulse-value">—</strong>
+            <span class="ng-metric-hint" id="users-pulse-hint">აქტიური ანგარიშები · დაბლოკილი · სულ</span>
           </div>
-        </button>
-        <button type="button" class="users-kpi tone-ok" data-status-filter="ACTIVE" aria-pressed="false">
-          ${iconTile('check', 'ok')}
-          <div>
-            <span>აქტიური</span>
-            <strong id="users-stat-active">—</strong>
+          <div id="users-pulse-spark">${ngSparkBars('teal')}</div>
+        </div>
+        <div class="ng-pulse-side">
+          <div id="users-pulse-ring">${dashHealthRing(null, null, 'აქტიური ანგარიშები')}</div>
+          <div class="ng-pulse-pills" id="users-pulse-pills">
+            <span class="ai-pill teal">${icon('calendar')} <strong id="users-pill-week">—</strong> ამ კვირაში</span>
+            <span class="ai-pill ok">${icon('layers')} <strong id="users-pill-premium">—</strong> პრემიუმი</span>
           </div>
-        </button>
-        <button type="button" class="users-kpi tone-bad" data-status-filter="BLOCKED" aria-pressed="false">
-          ${iconTile('lock', 'bad')}
-          <div>
-            <span>დაბლოკილი</span>
-            <strong id="users-stat-blocked">—</strong>
+        </div>
+      </section>
+
+      <div class="ng-metrics-row" id="users-metrics" style="--i:1">
+        ${usersFilterMetric({ label: 'სულ', value: '—', hint: 'რეესტრში', iconName: 'users', tone: 'teal', statusFilter: '', valueId: 'users-stat-total' })}
+        ${usersFilterMetric({ label: 'აქტიური', value: '—', hint: 'შეუძლია შესვლა', iconName: 'check', tone: 'cyan', statusFilter: 'ACTIVE', valueId: 'users-stat-active' })}
+        ${usersFilterMetric({ label: 'დაბლოკილი', value: '—', hint: 'წვდომა შეზღუდულია', iconName: 'lock', tone: 'rose', statusFilter: 'BLOCKED', valueId: 'users-stat-blocked' })}
+        ${usersFilterMetric({ label: 'პრემიუმი', value: '—', hint: 'STANDARD · ULTIMATE', iconName: 'layers', tone: 'amber', valueId: 'users-stat-premium' })}
+      </div>
+
+      <div class="users-charts" style="--i:2">
+        <div class="card dash-pkg-card users-chart-card">
+          <div class="card-head">
+            ${iconTile('activity', 'teal')}
+            <div>
+              <h3>რეგისტრაციები</h3>
+              <p class="muted" style="margin:2px 0 0;font-size:12px">ბოლო 14 დღე · ახალი ანგარიშები</p>
+            </div>
           </div>
-        </button>
-        <div class="users-kpi tone-ult" aria-hidden="true">
-          ${iconTile('layers', 'ult')}
-          <div>
-            <span>პრემიუმი</span>
-            <strong id="users-stat-premium">—</strong>
+          <div id="users-trend-chart"><p class="muted">იტვირთება…</p></div>
+        </div>
+        <div class="card dash-pkg-card users-chart-card">
+          <div class="card-head">
+            ${iconTile('layers', 'ult')}
+            <div>
+              <h3>პაკეტები</h3>
+              <p class="muted" style="margin:2px 0 0;font-size:12px">აქტიური მომხმარებლები ტარიფის მიხედვით</p>
+            </div>
           </div>
+          <div id="users-pkg-chart"><p class="muted">იტვირთება…</p></div>
+        </div>
+        <div class="card dash-pkg-card users-chart-card">
+          <div class="card-head">
+            ${iconTile('user', 'std')}
+            <div>
+              <h3>პროფილი</h3>
+              <p class="muted" style="margin:2px 0 0;font-size:12px">სქესი და ტელეფონის დაფარვა</p>
+            </div>
+          </div>
+          <div id="users-mix-chart"><p class="muted">იტვირთება…</p></div>
         </div>
       </div>
 
-      <div class="users-console table-card" style="--i:1">
+      <div class="table-card users-console" style="--i:3">
         <div class="users-console-bar">
           <label class="search-field users-search">
             ${icon('search')}
@@ -1056,20 +1154,55 @@ async function renderUsers() {
       state.users = data.users;
       state.total = data.total;
       if (stats?.users) {
-        $('users-stat-total').textContent = Number(stats.users.total).toLocaleString('ka-GE');
-        $('users-stat-active').textContent = Number(stats.users.active).toLocaleString('ka-GE');
-        $('users-stat-blocked').textContent = Number(stats.users.blocked).toLocaleString('ka-GE');
-        const chipA = $('chip-active-n');
-        const chipB = $('chip-blocked-n');
-        if (chipA) chipA.textContent = stats.users.active;
-        if (chipB) chipB.textContent = stats.users.blocked;
-      }
-      if (stats?.packages) {
-        const premium = stats.packages
+        const u = stats.users;
+        const fmt = (n) => Number(n || 0).toLocaleString('ka-GE');
+        const premium = (stats.packages || [])
           .filter((p) => String(p.code).toUpperCase() !== 'FREE')
           .reduce((sum, p) => sum + (p.users || 0), 0);
-        const prem = $('users-stat-premium');
-        if (prem) prem.textContent = premium.toLocaleString('ka-GE');
+        const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+        setText('users-stat-total', fmt(u.total));
+        setText('users-stat-active', fmt(u.active));
+        setText('users-stat-blocked', fmt(u.blocked));
+        setText('users-stat-premium', fmt(premium));
+        setText('users-pulse-value', fmt(u.active));
+        setText('users-pulse-hint', `${fmt(u.active)} აქტიური · ${fmt(u.blocked)} დაბლოკილი · ${fmt(u.total)} სულ`);
+        setText('users-pill-week', fmt(u.newWeek));
+        setText('users-pill-premium', fmt(premium));
+        const chipA = $('chip-active-n');
+        const chipB = $('chip-blocked-n');
+        if (chipA) chipA.textContent = u.active;
+        if (chipB) chipB.textContent = u.blocked;
+        const ring = $('users-pulse-ring');
+        if (ring) ring.innerHTML = dashHealthRing(u.active, u.total, 'აქტიური ანგარიშები');
+        const spark = $('users-pulse-spark');
+        if (spark) spark.innerHTML = usersTrendSpark(u.trend);
+        const trendEl = $('users-trend-chart');
+        if (trendEl) trendEl.innerHTML = usersTrendHtml(u.trend);
+        const pkgEl = $('users-pkg-chart');
+        if (pkgEl) {
+          const assigned = (stats.packages || []).reduce((sum, p) => sum + (p.users || 0), 0);
+          const maxPkg = Math.max(1, ...(stats.packages || []).map((p) => p.users || 0));
+          pkgEl.innerHTML = dashPkgBars(stats.packages || [], maxPkg, assigned);
+        }
+        const mixEl = $('users-mix-chart');
+        if (mixEl) {
+          const g = u.gender || {};
+          const phone = u.withPhone || 0;
+          mixEl.innerHTML = `
+            ${usersMixHtml([
+              { label: 'ქალი', count: g.female || 0, tone: 'ultimate', bar: 'ult' },
+              { label: 'კაცი', count: g.male || 0, tone: 'standard', bar: 'std' },
+              { label: 'სხვა / უცნობი', count: (g.other || 0) + (g.unknown || 0), tone: 'free' },
+            ])}
+            <div class="users-mix-sep"></div>
+            ${usersMixHtml([
+              { label: 'ტელეფონი აქვს', count: phone, tone: 'ok', bar: '' },
+              { label: 'ტელეფონი არ აქვს', count: Math.max(0, (u.total || 0) - phone), tone: 'neutral' },
+            ])}
+          `;
+        }
+        const hintWeek = $('users-stat-total-hint');
+        if (hintWeek && u.newWeek != null) hintWeek.textContent = `${fmt(u.newWeek)} ახალი ამ კვირაში`;
       }
       paintUsers();
     } catch (err) {
