@@ -24,6 +24,7 @@ import {
   syncPharmacySource,
 } from '../lib/pharmacy/sync.js';
 import { getSmsBalance, normalizeSmsDestination, sendSms } from '../lib/sms.js';
+import { deleteUserAccount } from '../lib/deleteUser.js';
 
 export const adminRouter = Router();
 
@@ -301,8 +302,11 @@ adminRouter.delete(
   '/users/:id',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    await prisma.user.delete({ where: { id: req.params.id } });
-    res.json({ ok: true });
+    const result = await deleteUserAccount(req.params.id);
+    if (!result.ok) {
+      return res.status(result.status).json({ error: result.error });
+    }
+    res.json({ ok: true, deleted: result.deleted });
   }),
 );
 

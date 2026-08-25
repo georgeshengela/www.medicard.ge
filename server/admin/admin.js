@@ -41,6 +41,7 @@ const ICONS = {
   activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
   lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
   unlock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
   mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
   pill: '<path d="m10.5 20.5-8-8a5 5 0 0 1 7-7l8 8a5 5 0 0 1-7 7z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/>',
   alert: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
@@ -208,6 +209,49 @@ function initials(name) {
     .map((p) => p[0])
     .join('')
     .toUpperCase();
+}
+
+function timeGreetingKa() {
+  const h = new Date().getHours();
+  if (h < 12) return 'დილა მშვიდობისა';
+  if (h < 18) return 'გამარჯობა';
+  return 'საღამო მშვიდობისა';
+}
+
+function adminGreetingName() {
+  const email = state.admin?.email || localStorage.getItem(EMAIL_KEY) || '';
+  const raw = state.admin?.fullName || email.split('@')[0] || 'ადმინ';
+  return raw.split(' ')[0] || raw;
+}
+
+function ngSparkBars(tone) {
+  const heights = [38, 62, 48, 78, 52, 70, 44, 66];
+  return `<div class="ng-spark tone-${tone}" aria-hidden="true">${heights.map((h) => `<span style="--h:${h}%"></span>`).join('')}</div>`;
+}
+
+function ngMetricCard({ label, value, hint, iconName, tone }) {
+  return `
+    <article class="ng-metric tone-${tone}">
+      <div class="ng-metric-icon">${icon(iconName)}</div>
+      <div class="ng-metric-body">
+        <span class="ng-metric-label">${label}</span>
+        <strong class="ng-metric-value">${value}</strong>
+        ${hint ? `<span class="ng-metric-hint">${hint}</span>` : ''}
+      </div>
+      ${ngSparkBars(tone)}
+    </article>
+  `;
+}
+
+function setPageHeader(tab, copy) {
+  const greetEl = $('page-greeting');
+  const subEl = $('page-subtitle');
+  if (greetEl) {
+    greetEl.textContent = tab === 'overview'
+      ? `${timeGreetingKa()}, ${adminGreetingName()}!`
+      : copy[tab][1];
+  }
+  if (subEl) subEl.textContent = copy[tab][2];
 }
 
 function pkgClass(code) {
@@ -494,7 +538,7 @@ async function switchTab(tab) {
     ai: ['AI', 'ხარისხის ანალიზი', 'ყველა AI პასუხი იწერება, შეფასდება და გაუმჯობესდება კონტროლირებულად.'],
     settings: ['კონტროლი', 'აპის რეჟიმი', 'ოფლაინი, იძულებითი განახლება და რეგისტრაციის კარიბჭე.'],
   };
-  $('page-title').textContent = copy[tab][1];
+  setPageHeader(tab, copy);
 
   if (tab === 'overview') await renderOverview();
   if (tab === 'users') await renderUsers();
@@ -522,59 +566,64 @@ async function renderOverview(freshBalances = false) {
   const activePct = stats.users.total ? Math.round((stats.users.active / stats.users.total) * 100) : null;
 
   $('tab-overview').innerHTML = `
-    <div class="ai-page dash-page dash-enter">
-      <section class="dash-hero card" style="--i:0">
-        <div class="dash-hero-deco" aria-hidden="true">
-          <span class="deco deco-teal"></span>
-          <span class="deco deco-std"></span>
-          <span class="deco deco-ult"></span>
-        </div>
-        <div class="dash-hero-grid">
-          <div class="dash-hero-copy">
-            <p class="kicker">Medicard Control</p>
-            <h2 class="dash-hero-title">ოპერაციული მიმოხილვა</h2>
-            <p class="dash-hero-sub">რეალურ დროში — მომხმარებლები, პაკეტები, AI ბალანსი და აპის რეჟიმი.</p>
-            <div class="dash-hero-meta">
-              <span class="ai-pill ${modeTone}">${icon('globe')} <strong>${modeLabel}</strong></span>
-              <span class="ai-pill teal">${icon('users')} <strong>${stats.users.total}</strong> ანგარიში</span>
-              ${activePct != null ? `<span class="ai-pill ok">${icon('activity')} <strong>${activePct}%</strong> აქტიური</span>` : ''}
-            </div>
-            <div class="dash-quick">
-              <button class="btn tiny ghost" data-go="users">${icon('users')} მომხმარებლები</button>
-              <button class="btn tiny ghost" data-go="push">${icon('bell')} Push</button>
-              <button class="btn tiny ghost" data-go="pharmacy">${icon('layers')} ფარმაცია</button>
-              <button class="btn tiny primary" data-go="settings">${icon('settings')} რეჟიმი</button>
-            </div>
+    <div class="ai-page dash-page ng-dash dash-enter">
+      <section class="ng-pulse card">
+        <div class="ng-pulse-main">
+          <div class="ng-pulse-icon">${icon('activity')}</div>
+          <div class="ng-pulse-copy">
+            <span class="ng-metric-label">პლატფორმის პულსი</span>
+            <strong class="ng-pulse-value">${stats.users.active}</strong>
+            <span class="ng-metric-hint">${stats.users.active} აქტიური · ${stats.users.blocked} დაბლოკილი · ${stats.users.total} სულ</span>
           </div>
-          ${dashHealthRing(stats.users.active, stats.users.total, `${stats.users.active} აქტიური · ${stats.users.blocked} დაბლოკილი`)}
+          ${ngSparkBars('teal')}
+        </div>
+        <div class="ng-pulse-side">
+          ${dashHealthRing(stats.users.active, stats.users.total, 'აქტიური ანგარიშები')}
+          <div class="ng-pulse-pills">
+            <span class="ai-pill ${modeTone}">${icon('globe')} <strong>${modeLabel}</strong></span>
+            ${activePct != null ? `<span class="ai-pill ok">${icon('check')} <strong>${activePct}%</strong> ჯანმრთელი</span>` : ''}
+          </div>
+          <button class="btn primary ng-cta" data-go="settings">${icon('spark')} AI &amp; რეჟიმი</button>
         </div>
       </section>
 
-      <div class="ai-kpi-grid dash-kpi-grid">
-        <article class="ai-kpi dash-kpi tone-teal" style="--i:1">
-          <div class="kpi-icon">${icon('users')}</div>
-          <div class="label">მომხმარებლები</div>
-          <div class="value">${stats.users.total}</div>
-          <div class="hint">${stats.users.active} აქტიური · ${stats.users.blocked} დაბლოკილი</div>
-        </article>
-        <article class="ai-kpi dash-kpi tone-std" style="--i:2">
-          <div class="kpi-icon">${icon('file')}</div>
-          <div class="label">ჩანაწერები</div>
-          <div class="value">${stats.records}</div>
-          <div class="hint">სამედიცინო ფაილები</div>
-        </article>
-        <article class="ai-kpi dash-kpi tone-ult" style="--i:3">
-          <div class="kpi-icon">${icon('activity')}</div>
-          <div class="label">AI ჩატები</div>
-          <div class="value">${stats.chats}</div>
-          <div class="hint">ექიმი / კონსილიუმი / მოდულები</div>
-        </article>
-        <article class="ai-kpi dash-kpi tone-warn" style="--i:4">
-          <div class="kpi-icon">${icon('layers')}</div>
-          <div class="label">პაკეტები</div>
-          <div class="value">${assigned}</div>
-          <div class="hint">${stats.packages.length} ტარიფი · აქტიურ ანგარიშებზე</div>
-        </article>
+      <div class="ng-metrics-row">
+        ${ngMetricCard({
+          label: 'მომხმარებლები',
+          value: stats.users.total,
+          hint: `${stats.users.active} აქტიური`,
+          iconName: 'users',
+          tone: 'teal',
+        })}
+        ${ngMetricCard({
+          label: 'ჩანაწერები',
+          value: stats.records,
+          hint: 'სამედიცინო ფაილები',
+          iconName: 'file',
+          tone: 'rose',
+        })}
+        ${ngMetricCard({
+          label: 'AI ჩატები',
+          value: stats.chats,
+          hint: 'ექიმი · კონსილიუმი',
+          iconName: 'message',
+          tone: 'cyan',
+        })}
+        ${ngMetricCard({
+          label: 'პაკეტები',
+          value: assigned,
+          hint: `${stats.packages.length} ტარიფი`,
+          iconName: 'layers',
+          tone: 'amber',
+        })}
+      </div>
+
+      <div class="ng-quick-row">
+        <button class="btn ghost" data-go="users">${icon('users')} მომხმარებლები</button>
+        <button class="btn ghost" data-go="sms">${icon('send')} SMS</button>
+        <button class="btn ghost" data-go="push">${icon('bell')} Push</button>
+        <button class="btn ghost" data-go="pharmacy">${icon('pill')} ფარმაცია</button>
+        <button class="btn ghost" data-go="ai">${icon('spark')} AI ხარისხი</button>
       </div>
 
       ${dashProvidersHtml(balances)}
@@ -952,6 +1001,7 @@ async function renderUsers() {
             ${u.status === 'BLOCKED'
               ? `<button class="btn icon-only ghost" type="button" title="განბლოკვა" data-unblock="${u.id}">${icon('unlock')}</button>`
               : `<button class="btn icon-only danger" type="button" title="ბლოკი" data-block="${u.id}">${icon('lock')}</button>`}
+            <button class="btn icon-only danger" type="button" title="სამუდამო წაშლა" data-delete="${u.id}" data-name="${escapeAttr(u.fullName)}" data-email="${escapeAttr(u.email)}">${icon('trash')}</button>
           </div>
         </td>
       </tr>
@@ -973,16 +1023,23 @@ async function renderUsers() {
       await navigator.clipboard.writeText(btn.dataset.copy);
       toast('ელ-ფოსტა დაკოპირდა');
     }));
-    body.querySelectorAll('[data-block]').forEach((btn) => btn.addEventListener('click', async () => {
+    body.querySelectorAll('[data-block]').forEach((btn) => btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
       if (!confirm('დავბლოკოთ ეს მომხმარებელი?')) return;
       await api(`/users/${btn.dataset.block}/block`, { method: 'POST' });
       toast('ანგარიში დაიბლოკა');
       await load();
     }));
-    body.querySelectorAll('[data-unblock]').forEach((btn) => btn.addEventListener('click', async () => {
+    body.querySelectorAll('[data-unblock]').forEach((btn) => btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
       await api(`/users/${btn.dataset.unblock}/unblock`, { method: 'POST' });
       toast('ანგარიში განიბლოკა');
       await load();
+    }));
+    body.querySelectorAll('[data-delete]').forEach((btn) => btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const deleted = await confirmDeleteUser(btn.dataset.delete, btn.dataset.name, btn.dataset.email);
+      if (deleted) await load();
     }));
   };
 
@@ -1020,6 +1077,20 @@ async function renderUsers() {
     toast('CSV გადმოწერილია');
   };
   await load();
+}
+
+async function confirmDeleteUser(id, name, email) {
+  const label = name || email || id;
+  const ok = confirm(
+    `სამუდამოდ წავშალოთ „${label}"?\n\n` +
+      'წაიშლება პროფილი, ჯანმრთელობის მონაცემები, ჩანაწერები, ჩატები და მედიკამენტები.\n' +
+      'ეს ქმედება შეუქცევადია.',
+  );
+  if (!ok) return false;
+  await api(`/users/${id}`, { method: 'DELETE' });
+  toast('მომხმარებელი სამუდამოდ წაიშალა', 'bad');
+  if (state.selectedId === id) state.selectedId = null;
+  return true;
 }
 
 async function editUser(id) {
@@ -1072,7 +1143,7 @@ async function editUser(id) {
     </div>
     <div class="row">
       ${isPaid ? `<button class="btn ghost" id="drawer-renew">${icon('calendar')} +30 დღე</button>` : ''}
-      <button class="btn danger" id="drawer-del">${icon('x')} წაშლა</button>
+      <button class="btn danger" id="drawer-del">${icon('trash')} სამუდამო წაშლა</button>
       <button class="btn ghost" id="drawer-cancel">დახურვა</button>
       <button class="btn primary" id="drawer-save">${icon('check')} შენახვა</button>
     </div>
@@ -1120,11 +1191,11 @@ async function editUser(id) {
     await renderUsers();
   };
   $('drawer-del').onclick = async () => {
-    if (!confirm('სამუდამოდ წავშალოთ მომხმარებელი და მისი მონაცემები?')) return;
-    await api(`/users/${id}`, { method: 'DELETE' });
-    toast('მომხმარებელი წაიშალა', 'bad');
-    closeDrawer();
-    await renderUsers();
+    const deleted = await confirmDeleteUser(id, user.fullName, user.email);
+    if (deleted) {
+      closeDrawer();
+      await renderUsers();
+    }
   };
 }
 

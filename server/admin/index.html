@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./admin.css?v=dash29" />
+  <link rel="stylesheet" href="./admin.css?v=ng1" />
 </head>
 <body>
   <div id="login-view" class="login-shell">
@@ -77,10 +77,13 @@
     </aside>
 
     <div class="workspace">
-      <header class="topbar">
+      <header class="topbar ng-topbar">
         <div class="topbar-left">
           <button id="sidebar-toggle" class="btn icon-only ghost mobile-only" type="button" data-icon="layout" aria-label="მენიუ"></button>
-          <h2 id="page-title">მიმოხილვა</h2>
+          <div class="topbar-copy">
+            <h2 id="page-greeting">მიმოხილვა</h2>
+            <p id="page-subtitle" class="topbar-sub muted">ოპერაციული მიმოხილვა</p>
+          </div>
         </div>
         <div class="topbar-right">
           <div id="live-pill" class="status-pill ok">სისტემა აქტიურია</div>
@@ -105,6 +108,6 @@
   </div>
 
   <div id="toasts" class="toasts"></div>
-  <script src="./admin.js?v=dash29"></script>
+  <script src="./admin.js?v=ng1"></script>
 </body>
 </html>
