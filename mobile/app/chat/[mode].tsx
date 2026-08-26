@@ -1,46 +1,60 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bot, SendHorizontal, ThumbsDown, ThumbsUp, Users } from 'lucide-react-native';
-import { Card } from '@/components/ui/Card';
-import { Markdown } from '@/components/ui/Markdown';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Alert, FlatList, Text, View } from 'react-native';
+import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { ChatBubbleAssistant, ChatBubbleUser, ChatTypingBubble } from '@/components/chat/ChatBubble';
+import { ChatEmptyHero, ChatSuggestionChip } from '@/components/chat/ChatExtras';
+import { ChatFeedbackRow } from '@/components/chat/ChatFeedbackRow';
+import { ChatInputBar } from '@/components/chat/ChatInputBar';
+import { ChatScreenShell } from '@/components/chat/ChatScreenShell';
+import { ChatTopNav } from '@/components/chat/ChatTopNav';
 import { Disclaimer } from '@/components/Disclaimer';
-import { EmptyState } from '@/components/EmptyState';
+import { Markdown } from '@/components/ui/Markdown';
 import { QuotaSheet } from '@/components/QuotaSheet';
-import { UsageBanner } from '@/components/PlanUsageCard';
+import { FIGMA_CHAT } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type ChatMessage } from '@/lib/api';
-import { useThemeColors } from '@/theme/colors';
+import { getConversationalChatProfile } from '@/lib/chatUiConfig';
+import { usePlanUsage } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
 
 export default function ChatScreen() {
+  const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ mode?: string; sessionId?: string; prefill?: string }>();
-  const isConsilium = params.mode === 'consilium';
-  const mode = isConsilium ? 'CONSILIUM' : 'DOCTOR';
-  const copy = isConsilium ? ka.modules.consilium : ka.modules.doctor;
+  const profile = useMemo(() => getConversationalChatProfile(params.mode), [params.mode]);
+  const mode = profile.apiMode ?? 'DOCTOR';
 
-  const { applyUsage } = useAuth();
-  const insets = useSafeAreaInsets();
-  const colors = useThemeColors();
+  const { user, applyUsage } = useAuth();
+  const plan = usePlanUsage();
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [sessionId, setSessionId] = useState<string | undefined>(params.sessionId);
+  const [sessionId, setSessionId] = useState<string | undefined>(
+    typeof params.sessionId === 'string' ? params.sessionId : undefined,
+  );
   const [draft, setDraft] = useState(typeof params.prefill === 'string' ? params.prefill : '');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false, title: profile.title });
+  }, [navigation, profile.title]);
+
+  const initials =
+    user?.fullName
+      ?.split(' ')
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase() ?? 'M';
+
+  const remainingLabel = useMemo(() => {
+    if (plan.unlimited) return ka.usage.unlimitedBanner;
+    if (plan.exhausted) return ka.usage.exhaustedTitle;
+    if (plan.remaining != null) return ka.chat.chatsRemaining(plan.remaining);
+    return undefined;
+  }, [plan]);
 
   useEffect(() => {
     if (!params.sessionId) return;
@@ -79,7 +93,6 @@ export default function ChatScreen() {
         ]);
         applyUsage(response.usage);
       } catch (err) {
-        // Roll the optimistic user turn back so the transcript matches the server.
         setMessages((prev) => prev.slice(0, -1));
         setDraft(message);
 
@@ -101,166 +114,87 @@ export default function ChatScreen() {
     const message = messages[index];
     if (!message?.interactionId || message.feedbackRating) return;
 
-    setMessages((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, feedbackRating: rating } : item)),
-    );
+    setMessages((prev) => prev.map((item, i) => (i === index ? { ...item, feedbackRating: rating } : item)));
 
     try {
       await api.ai.feedback({ interactionId: message.interactionId, rating });
     } catch {
-      setMessages((prev) =>
-        prev.map((item, i) => (i === index ? { ...item, feedbackRating: undefined } : item)),
-      );
+      setMessages((prev) => prev.map((item, i) => (i === index ? { ...item, feedbackRating: undefined } : item)));
     }
   }, [messages]);
 
-  const suggestions = useMemo(
-    () =>
-      isConsilium
-        ? []
-        : [ka.modules.doctor.suggestion1, ka.modules.doctor.suggestion2, ka.modules.doctor.suggestion3],
-    [isConsilium],
-  );
-
   return (
     <>
-      <Stack.Screen options={{ title: copy.title }} />
+      <Stack.Screen options={{ headerShown: false, title: profile.title }} />
 
-      <KeyboardAvoidingView
-        className="flex-1 bg-bg-100"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 44 : 0}
+      <ChatScreenShell
+        header={
+          <ChatTopNav
+            title={profile.title}
+            icon={profile.icon}
+            remainingLabel={remainingLabel}
+            onBack={() => router.back()}
+            onSettings={() => router.push('/package' as never)}
+          />
+        }
+        footer={<ChatInputBar value={draft} onChangeText={setDraft} onSend={() => send(draft)} sending={sending} />}
       >
-        <View className="px-4 pb-2 pt-1">
-          <UsageBanner compact />
-        </View>
-
         <FlatList
           ref={listRef}
+          style={{ flex: 1, backgroundColor: FIGMA_CHAT.cardBg }}
           data={messages}
           keyExtractor={(_, index) => String(index)}
-          contentContainerClassName="px-4 pb-4"
+          contentContainerStyle={{ padding: 16, paddingBottom: 8, flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={scrollToEnd}
           showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={{ height: FIGMA_CHAT.messageGap }} />}
           ListEmptyComponent={
-            <View>
-              <EmptyState icon={isConsilium ? Users : Bot} title={copy.emptyTitle} body={copy.emptyBody} />
-              {suggestions.map((suggestion) => (
-                <Pressable
-                  key={suggestion}
-                  accessibilityRole="button"
-                  onPress={() => send(suggestion)}
-                  className="mb-2.5 rounded-2xl border border-bg-300 bg-surface px-4 py-3 active:opacity-70"
-                >
-                  <Text className="text-base text-text-200">{suggestion}</Text>
-                </Pressable>
+            <View style={{ gap: 12 }}>
+              <ChatBubbleAssistant icon={profile.icon} timestamp={new Date().toISOString()}>
+                <ChatEmptyHero title={profile.emptyTitle} body={profile.emptyBody} />
+              </ChatBubbleAssistant>
+              {profile.suggestions.map((suggestion) => (
+                <ChatSuggestionChip key={suggestion} label={suggestion} onPress={() => send(suggestion)} />
               ))}
             </View>
           }
           renderItem={({ item, index }) =>
             item.role === 'user' ? (
-              <View className="mb-3 max-w-[85%] self-end rounded-2xl rounded-br-md bg-primary-200 px-4 py-3">
-                <Text className="text-base leading-6 text-white">{item.content}</Text>
-              </View>
+              <ChatBubbleUser content={item.content} timestamp={item.timestamp} userInitials={initials} />
             ) : (
-              <Card className="mb-3 max-w-[95%] self-start rounded-bl-md">
-                <View className="mb-2.5 flex-row items-center">
-                  <View className="h-6 w-6 items-center justify-center rounded-lg bg-accent-100/60">
-                    {isConsilium ? (
-                      <Users size={12} color={colors.primary200} strokeWidth={2.4} />
-                    ) : (
-                      <Bot size={12} color={colors.primary200} strokeWidth={2.4} />
-                    )}
-                  </View>
-                  <Text className="ml-2 text-xs font-bold uppercase text-primary-200">{copy.title}</Text>
-                </View>
-                <Markdown content={item.content} allowLinks={isConsilium} />
+              <ChatBubbleAssistant icon={profile.icon} timestamp={item.timestamp}>
+                <Markdown content={item.content} allowLinks={profile.allowMarkdownLinks} />
                 {item.interactionId ? (
-                  <View className="mt-3 border-t border-bg-300 pt-3">
-                    <Text className="mb-2 text-xs text-text-300">
-                      {item.feedbackRating ? ka.chat.feedbackThanks : ka.chat.feedbackPrompt}
-                    </Text>
-                    {!item.feedbackRating ? (
-                      <View className="flex-row gap-2">
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={ka.chat.feedbackHelpful}
-                          onPress={() => submitFeedback(index, 1)}
-                          className="flex-row items-center rounded-xl border border-bg-300 bg-bg-100 px-3 py-2 active:opacity-70"
-                        >
-                          <ThumbsUp size={14} color={colors.primary200} strokeWidth={2.2} />
-                          <Text className="ml-1.5 text-xs font-semibold text-text-200">{ka.chat.feedbackHelpful}</Text>
-                        </Pressable>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={ka.chat.feedbackNotHelpful}
-                          onPress={() => submitFeedback(index, -1)}
-                          className="flex-row items-center rounded-xl border border-bg-300 bg-bg-100 px-3 py-2 active:opacity-70"
-                        >
-                          <ThumbsDown size={14} color={colors.text300} strokeWidth={2.2} />
-                          <Text className="ml-1.5 text-xs font-semibold text-text-200">{ka.chat.feedbackNotHelpful}</Text>
-                        </Pressable>
-                      </View>
-                    ) : null}
-                  </View>
+                  <ChatFeedbackRow
+                    feedbackRating={item.feedbackRating}
+                    onRate={(rating) => submitFeedback(index, rating)}
+                  />
                 ) : null}
-              </Card>
+              </ChatBubbleAssistant>
             )
           }
           ListFooterComponent={
-            <>
-              {sending ? (
-                <Card className="mb-3 max-w-[70%] self-start rounded-bl-md">
-                  <View className="flex-row items-center">
-                    <ActivityIndicator size="small" color={colors.primary200} />
-                    <Text className="ml-2.5 text-sm text-text-300">
-                      {isConsilium ? ka.common.analyzing : ka.modules.doctor.thinking}
-                    </Text>
-                  </View>
-                </Card>
-              ) : null}
-
+            <View style={{ gap: FIGMA_CHAT.messageGap, paddingTop: messages.length ? FIGMA_CHAT.messageGap : 0 }}>
+              {sending ? <ChatTypingBubble icon={profile.icon} /> : null}
               {error ? (
-                <View className="mb-3 rounded-2xl border border-state-danger/20 bg-state-dangerBg p-3.5">
-                  <Text className="text-sm text-state-danger">{error}</Text>
+                <View
+                  style={{
+                    padding: 12,
+                    borderRadius: FIGMA_CHAT.bubbleRadius,
+                    backgroundColor: '#FEF2F2',
+                    borderWidth: 1,
+                    borderColor: '#FECACA',
+                  }}
+                >
+                  <Text style={{ fontSize: 14, color: '#DC2626' }}>{error}</Text>
                 </View>
               ) : null}
-
-              {messages.length > 0 ? <Disclaimer className="mt-1" /> : null}
-            </>
+              {messages.length > 0 ? <Disclaimer /> : null}
+            </View>
           }
         />
-
-        <View
-          className="border-t border-bg-300 bg-bg-100 px-4 pt-2.5"
-          style={{ paddingBottom: Math.max(insets.bottom, 10) }}
-        >
-          <View className="flex-row items-end">
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              placeholder={copy.inputPlaceholder}
-              placeholderTextColor={colors.text300}
-              multiline
-              className="max-h-32 flex-1 rounded-2xl border border-bg-300 bg-surface px-4 py-3 text-base text-text-100"
-              style={{ fontSize: 15, lineHeight: 21 }}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={ka.common.send}
-              accessibilityState={{ disabled: draft.trim().length < 2 || sending }}
-              onPress={() => send(draft)}
-              disabled={draft.trim().length < 2 || sending}
-              className={`ml-2.5 h-12 w-12 items-center justify-center rounded-2xl ${
-                draft.trim().length < 2 || sending ? 'bg-primary-200/35' : 'bg-primary-200 active:opacity-80'
-              }`}
-            >
-              <SendHorizontal size={19} color={colors.onPrimary} strokeWidth={2.2} />
-            </Pressable>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
+      </ChatScreenShell>
 
       <QuotaSheet
         visible={quotaBlock !== undefined}

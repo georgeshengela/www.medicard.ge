@@ -8,6 +8,7 @@ import { describeImage, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
 import { calculateAge, withPatientProfile } from '../lib/patient.js';
+import { buildSymptomPrompt, formatSymptomRecordKa, runSymptomCheck } from '../lib/symptomCheck.js';
 import { saveUpload } from '../lib/storage.js';
 import { requireAuth } from '../middleware/auth.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
@@ -334,6 +335,113 @@ aiRouter.post(
       interactionId: answer.interactionId,
       usage,
     });
+  }),
+);
+
+const symptomCheckSchema = z.object({
+  symptoms: z.array(z.string().trim().min(1).max(80)).min(1, 'აირჩიეთ მინიმუმ ერთი სიმპტომი').max(16),
+  method: z.enum(['manual', 'anatomy']).optional(),
+  mode: z.enum(['muscle', 'organ', 'search']).optional(),
+  bodyPartId: z.string().trim().max(40).optional(),
+  bodyPartKa: z.string().trim().max(80).optional(),
+  organId: z.string().trim().max(40).optional(),
+  organKa: z.string().trim().max(80).optional(),
+  durationKa: z.string().trim().max(80).optional(),
+  painLevel: z.coerce.number().int().min(1).max(5).optional(),
+  notes: z.string().trim().max(1200).optional(),
+});
+
+aiRouter.post(
+  '/symptom-check',
+  enforceAiQuota,
+  asyncHandler(async (req, res) => {
+    const data = symptomCheckSchema.parse(req.body);
+    const age = calculateAge(req.user.birthDate);
+    const firstName = String(req.user.fullName || '').split(' ')[0];
+
+    const prompt = buildSymptomPrompt({
+      firstName,
+      gender: req.user.gender,
+      age,
+      symptoms: data.symptoms,
+      bodyPartKa: data.bodyPartKa,
+      organKa: data.organKa,
+      durationKa: data.durationKa,
+      painLevel: data.painLevel,
+      notes: data.notes,
+      mode: data.mode ?? (data.method === 'anatomy' ? 'muscle' : 'search'),
+    });
+
+    const answer = await runTrackedAi({
+      userId: req.user.id,
+      mode: 'SYMPTOM_CHECKER',
+      userPrompt: prompt,
+      fn: async () => {
+        const result = await runSymptomCheck({
+          prompt,
+          patientContext: withPatientProfile(req.user),
+          symptoms: data.symptoms,
+          bodyPartKa: data.bodyPartKa,
+          notes: data.notes,
+        });
+        return {
+          content: JSON.stringify({ result, input: data }),
+          model: result.model,
+          usage: result.usage,
+        };
+      },
+    });
+
+    const payload = JSON.parse(answer.content);
+    const result = payload.result ?? payload;
+    const record = await prisma.medicalRecord.create({
+      data: {
+        userId: req.user.id,
+        type: 'SYMPTOM',
+        aiAnalysis: formatSymptomRecordKa(result, data),
+      },
+    });
+
+    await prisma.aiInteraction.update({
+      where: { id: answer.interactionId },
+      data: { medicalRecordId: record.id },
+    });
+
+    const usage = await req.consumeAiCredit();
+    return res.status(201).json({
+      recordId: record.id,
+      result,
+      interactionId: answer.interactionId,
+      usage,
+    });
+  }),
+);
+
+aiRouter.get(
+  '/symptom-result/:recordId',
+  asyncHandler(async (req, res) => {
+    const { recordId } = z.object({ recordId: z.string().uuid() }).parse(req.params);
+    const record = await prisma.medicalRecord.findFirst({
+      where: { id: recordId, userId: req.user.id, type: 'SYMPTOM' },
+    });
+    if (!record) return res.status(404).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
+
+    const interaction = await prisma.aiInteraction.findFirst({
+      where: { medicalRecordId: recordId, userId: req.user.id, mode: 'SYMPTOM_CHECKER' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!interaction?.assistantReply) return res.status(404).json({ error: 'შედეგი ვერ მოიძებნა.' });
+
+    let parsed;
+    try {
+      parsed = JSON.parse(interaction.assistantReply);
+    } catch {
+      return res.status(404).json({ error: 'შედეგის ფორმატი არასწორია.' });
+    }
+
+    const result = parsed.result ?? parsed;
+    const input = parsed.input ?? null;
+    return res.json({ recordId, result, input });
   }),
 );
 

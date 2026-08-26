@@ -7,7 +7,7 @@ import {
   fullProfilePayload,
 } from '@/lib/assessmentForm';
 import type { User } from '@/lib/api';
-import { setPreference } from '@/lib/storage';
+import { getPreference, setPreference } from '@/lib/storage';
 
 export const BIOMETRIC_PREF_KEY = 'medicard.biometric.enabled';
 
@@ -36,6 +36,11 @@ export async function markPhoneVerified(healthProfile: HealthProfile, user: User
 
 export async function setBiometricEnabled(enabled: boolean) {
   await setPreference(BIOMETRIC_PREF_KEY, enabled ? '1' : '0');
+}
+
+export async function isBiometricEnabled(): Promise<boolean> {
+  const v = await getPreference(BIOMETRIC_PREF_KEY);
+  return v === '1';
 }
 
 export async function finishOnboarding(healthProfile: HealthProfile, user: User) {

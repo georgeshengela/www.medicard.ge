@@ -29,10 +29,10 @@ export type ModuleTile = {
 export const MODULE_TILES: ModuleTile[] = [
   {
     key: 'doctor',
-    title: ka.modules.doctor.title,
-    subtitle: ka.modules.doctor.subtitle,
+    title: ka.symptoms.moduleTitle,
+    subtitle: ka.symptoms.moduleSubtitle,
     icon: Bot,
-    href: '/chat/doctor',
+    href: '/symptoms',
     tint: 'bg-primary-200',
     iconColor: '#ffffff',
   },

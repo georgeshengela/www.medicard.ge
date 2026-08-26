@@ -171,13 +171,15 @@ function AppShell() {
             >
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="chat/[mode]" options={{ headerBackTitle: 'უკან' }} />
-              <Stack.Screen name="module/lab" options={{ headerBackTitle: 'უკან' }} />
-              <Stack.Screen name="module/imaging" options={{ headerBackTitle: 'უკან' }} />
-              <Stack.Screen name="module/skin" options={{ headerBackTitle: 'უკან' }} />
-              <Stack.Screen name="module/skincare" options={{ headerBackTitle: 'უკან' }} />
+              <Stack.Screen name="package" options={{ headerShown: false }} />
+              <Stack.Screen name="health-metrics" options={{ headerShown: false }} />
+              <Stack.Screen name="profile" options={{ headerShown: false }} />
+              <Stack.Screen name="chat" options={{ headerShown: false, contentStyle: { backgroundColor: '#F9FAFB' } }} />
+              <Stack.Screen name="module" options={{ headerShown: false, contentStyle: { backgroundColor: '#F9FAFB' } }} />
               <Stack.Screen name="cycle" options={{ headerShown: false }} />
               <Stack.Screen name="visits" options={{ headerShown: false }} />
+              <Stack.Screen name="medications" options={{ headerShown: false }} />
+              <Stack.Screen name="symptoms" options={{ headerShown: false }} />
               <Stack.Screen name="pharmacy" options={{ headerShown: false }} />
               <Stack.Screen name="record/[id]" options={{ headerBackTitle: 'უკან' }} />
             </Stack>

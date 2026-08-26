@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import Constants from 'expo-constants';
-import { BellRing, FileText, LogOut, MessageSquareText, Pill, Save } from 'lucide-react-native';
+import { BellRing, ChevronRight, FileText, LogOut, MessageSquareText, Pill, Save, ShieldCheck } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -34,6 +34,7 @@ export default function Profile() {
   const { user, stats, refresh, signOut } = useAuth();
   const colors = useThemeColors();
   const tabInset = useTabBarInset();
+  const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
@@ -125,6 +126,18 @@ export default function Profile() {
 
       <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.settings}</Text>
       <Card padded={false}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/profile/permissions')}
+          className="flex-row items-center p-4 active:opacity-70"
+        >
+          <ShieldCheck size={18} color={colors.primary200} strokeWidth={2.1} />
+          <Text className="ml-3 flex-1 text-base text-text-100">{ka.profile.permissions}</Text>
+          <ChevronRight size={18} color={colors.text300} strokeWidth={2.1} />
+        </Pressable>
+
+        <View className="h-px bg-bg-300" />
+
         <Pressable
           accessibilityRole="button"
           onPress={enableNotifications}

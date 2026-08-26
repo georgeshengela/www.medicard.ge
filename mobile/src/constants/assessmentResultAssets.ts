@@ -189,25 +189,44 @@ export function scoreKnobBox(score: number) {
 export function gaugeProgressClipD(score: number): string {
   const tip = scoreKnobPoint(score);
   const targetLen = scoreToPathT(score) * ARC_TOTAL;
-  const arcPts: Pt[] = [];
+  const arcStart = ARC_SAMPLES[0];
+  const arcNext = ARC_SAMPLES[1] ?? arcStart;
 
-  for (let i = 0; i < ARC_SAMPLES.length; i++) {
+  // Extend past path start so round stroke cap is fully inside the clip.
+  const sx = arcStart.x - arcNext.x;
+  const sy = arcStart.y - arcNext.y;
+  const slen = Math.hypot(sx, sy) || 1;
+  const capLead = {
+    x: arcStart.x + (sx / slen) * (GAUGE_STROKE_WIDTH / 2 + 4),
+    y: arcStart.y + (sy / slen) * (GAUGE_STROKE_WIDTH / 2 + 4),
+  };
+
+  const arcPts: Pt[] = [capLead, arcStart];
+
+  for (let i = 1; i < ARC_SAMPLES.length; i++) {
     if (ARC_LENGTHS[i] > targetLen) break;
     arcPts.push(ARC_SAMPLES[i]);
   }
   arcPts.push(tip);
 
   const cx = FIGMA_RESULT.frameWidth / 2;
-  const cy = FIGMA_RESULT.frameHeight - 4;
-  const pad = 22;
-  const expanded = arcPts.map((p) => {
+  const cy = FIGMA_RESULT.frameHeight + 12;
+
+  const expand = (p: Pt, amount: number) => {
     const dx = p.x - cx;
     const dy = p.y - cy;
     const len = Math.hypot(dx, dy) || 1;
-    return { x: p.x + (dx / len) * pad, y: p.y + (dy / len) * pad };
-  });
+    return { x: p.x + (dx / len) * amount, y: p.y + (dy / len) * amount };
+  };
 
-  let d = `M ${cx} ${cy}`;
+  const expanded = arcPts.map((p, idx) => expand(p, idx <= 1 ? 34 : 24));
+
+  const startCorner = {
+    x: arcStart.x - 28,
+    y: arcStart.y + 24,
+  };
+
+  let d = `M ${cx} ${cy} L ${startCorner.x} ${startCorner.y}`;
   for (const p of expanded) d += ` L ${p.x} ${p.y}`;
   return `${d} Z`;
 }

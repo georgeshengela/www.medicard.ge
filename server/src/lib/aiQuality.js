@@ -14,6 +14,7 @@ const MODE_LABELS = {
   SKINCARE: 'სკინქეარი',
   MEDICATION: 'მედიკამენტები',
   CYCLE_WELLNESS: 'ციკლი',
+  SYMPTOM_CHECKER: 'სიმპტომების შემოწმება',
 };
 
 function buildJudgePrompt({ mode, userPrompt, assistantReply }) {

@@ -15,7 +15,6 @@ export const ONBOARDING_DEV_STEPS = [
   { key: 'notifications', label: 'Notifications', href: '/(auth)/profile-setup/notifications' },
   { key: 'analyzing', label: 'Analyzing', href: '/(auth)/profile-setup/analyzing' },
   { key: 'results', label: 'Results', href: '/(auth)/profile-setup/results' },
-  { key: 'recommendations', label: 'Recommendations', href: '/(auth)/profile-setup/recommendations' },
 ] as const;
 
 export function onboardingDevHref(path: string) {

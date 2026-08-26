@@ -11,7 +11,7 @@ import { formatRelative } from '@/lib/format';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { useThemeColors } from '@/theme/colors';
 
-const FILTERS = ['ALL', 'LAB', 'CT_MRI', 'SKIN', 'SKINCARE'] as const;
+const FILTERS = ['ALL', 'LAB', 'CT_MRI', 'SKIN', 'SKINCARE', 'SYMPTOM'] as const;
 
 export default function Records() {
   const router = useRouter();

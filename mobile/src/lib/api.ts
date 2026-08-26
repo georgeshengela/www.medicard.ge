@@ -1,45 +1,23 @@
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { getToken } from './storage';
 
 /**
  * Resolves the API base URL.
  *
- * Priority: EXPO_PUBLIC_API_URL → Expo Go / simulator LAN host → app.json `extra.apiUrl`.
- * Dev builds must not silently fall back to production when `extra.apiUrl` is set.
+ * Default (Expo Go, dev, preview, production): https://medicard.ge (Render)
+ * Override only when explicitly set via EXPO_PUBLIC_API_URL (e.g. local backend).
  */
+const PRODUCTION_API_DEFAULT = 'https://medicard.ge';
+
 function resolveBaseUrl(): string {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, '');
 
-  const port = 4000;
-  const hostUri = Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost;
-  const lanHost = hostUri?.split(':')[0];
+  const fromExtra = Constants.expoConfig?.extra?.apiUrl as string | undefined;
+  if (fromExtra?.trim()) return fromExtra.trim().replace(/\/$/, '');
 
-  if (lanHost && lanHost !== 'localhost' && lanHost !== '127.0.0.1') {
-    return `http://${lanHost}:${port}`;
-  }
-  if (Platform.OS === 'android') return `http://10.0.2.2:${port}`;
-
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    const { hostname, origin } = window.location;
-    if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return origin;
-    }
-    return `http://localhost:${port}`;
-  }
-
-  // Same machine (iOS simulator, etc.)
-  if (Platform.OS === 'ios') return `http://localhost:${port}`;
-
-  // Release builds — production URL from app config / EAS env only.
-  if (typeof __DEV__ !== 'undefined' && !__DEV__) {
-    const fromExtra = Constants.expoConfig?.extra?.apiUrl as string | undefined;
-    if (fromExtra?.trim()) return fromExtra.trim().replace(/\/$/, '');
-  }
-
-  return `http://localhost:${port}`;
+  return PRODUCTION_API_DEFAULT;
 }
 
 export const API_BASE_URL = resolveBaseUrl();
@@ -139,7 +117,7 @@ export type ChatSummary = {
 
 export type MedicalRecord = {
   id: string;
-  type: 'LAB' | 'XRAY' | 'CT_MRI' | 'SKIN' | 'SKINCARE' | 'PRESCRIPTION';
+  type: 'LAB' | 'XRAY' | 'CT_MRI' | 'SKIN' | 'SKINCARE' | 'PRESCRIPTION' | 'SYMPTOM';
   imageUrl: string | null;
   aiAnalysis: string;
   createdAt: string;
@@ -152,6 +130,7 @@ export type Medication = {
   frequency: string;
   notes: string | null;
   active: boolean;
+  config?: Record<string, unknown>;
   createdAt: string;
 };
 
@@ -511,6 +490,7 @@ export const api = {
           supportEmail: string;
         };
         client: { version: string; needsUpdate: boolean; blockedByForceUpdate: boolean };
+        packages?: UserPackage[];
       }>(`/api/app/status?version=${encodeURIComponent(version)}`, { token: null, timeoutMs: 15_000 }),
   },
 
@@ -622,6 +602,24 @@ export const api = {
       }>('/api/health-profile/onboarding-analysis', { method: 'POST', timeoutMs: 120_000 }),
   },
 
+  healthMetrics: {
+    sync: (body: import('@/lib/healthMetricsStorage').HealthMetricsSyncPayload) =>
+      request<{ ok: boolean; dailyUpserted: number; stepLogsInserted: number; syncedAt: string }>(
+        '/api/health-metrics/sync',
+        { method: 'POST', body, timeoutMs: 30_000 },
+      ),
+    get: (params?: { from?: string; to?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.from) qs.set('from', params.from);
+      if (params?.to) qs.set('to', params.to);
+      const q = qs.toString();
+      return request<{
+        daily: import('@/lib/healthMetricsStorage').StoredHealthDaily[];
+        stepLogs: import('@/lib/healthMetricsStorage').StoredStepLog[];
+      }>(`/api/health-metrics${q ? `?${q}` : ''}`, { timeoutMs: 20_000 });
+    },
+  },
+
   push: {
     register: (body: { token: string; platform: 'ios' | 'android' | 'web' }) =>
       request<{ ok: boolean }>('/api/push/register', { method: 'POST', body }),
@@ -643,6 +641,21 @@ export const api = {
 
     feedback: (body: { interactionId: string; rating: 1 | -1 }) =>
       request<{ feedback: { id: string; rating: number } }>('/api/ai/feedback', { method: 'POST', body }),
+
+    symptomCheck: (body: import('@/types/symptoms').SymptomCheckPayload) =>
+      request<{
+        recordId: string;
+        result: import('@/types/symptoms').SymptomCheckResult;
+        interactionId: string;
+        usage: Usage;
+      }>('/api/ai/symptom-check', { method: 'POST', body }),
+
+    symptomResult: (recordId: string) =>
+      request<{
+        recordId: string;
+        result: import('@/types/symptoms').SymptomCheckResult;
+        input?: import('@/types/symptoms').SymptomCheckPayload;
+      }>(`/api/ai/symptom-result/${recordId}`),
 
     analyzeImage: (params: {
       uri: string;
@@ -699,9 +712,25 @@ export const api = {
 
   medications: {
     list: () => request<{ medications: Medication[]; schedule: ScheduledDose[] }>('/api/medications'),
-    create: (body: { medName: string; dosage: string; frequency: string; notes?: string }) =>
-      request<{ medication: Medication }>('/api/medications', { method: 'POST', body }),
-    update: (id: string, body: Partial<{ medName: string; dosage: string; frequency: string; notes: string; active: boolean }>) =>
+    create: (body: {
+      medName: string;
+      dosage: string;
+      frequency: string;
+      notes?: string;
+      active?: boolean;
+      config?: Record<string, unknown>;
+    }) => request<{ medication: Medication }>('/api/medications', { method: 'POST', body }),
+    update: (
+      id: string,
+      body: Partial<{
+        medName: string;
+        dosage: string;
+        frequency: string;
+        notes: string;
+        active: boolean;
+        config: Record<string, unknown>;
+      }>,
+    ) =>
       request<{ medication: Medication }>(`/api/medications/${id}`, { method: 'PATCH', body }),
     remove: (id: string) => request<{ deleted: boolean }>(`/api/medications/${id}`, { method: 'DELETE' }),
   },

@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import {
   getHealthPlatform,
   isHealthPlatformSupported,
@@ -53,9 +53,20 @@ export async function disconnectHealthApp(): Promise<void> {
 }
 
 export async function openHealthAppSettings(): Promise<void> {
-  if (Platform.OS !== 'android') return;
-  const { openHealthSettingsNative } = await import('@/lib/healthSyncPlatform.android');
-  await openHealthSettingsNative();
+  if (Platform.OS === 'android') {
+    const { openHealthSettingsNative } = await import('@/lib/healthSyncPlatform.android');
+    await openHealthSettingsNative();
+    return;
+  }
+  if (Platform.OS === 'ios') {
+    const healthUrl = 'x-apple-health://';
+    const canOpen = await Linking.canOpenURL(healthUrl);
+    if (canOpen) {
+      await Linking.openURL(healthUrl);
+      return;
+    }
+  }
+  await Linking.openSettings();
 }
 
 export async function importLatestPeriodStart(): Promise<string | null> {

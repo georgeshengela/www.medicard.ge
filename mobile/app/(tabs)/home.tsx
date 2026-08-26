@@ -1,14 +1,15 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight, Clock, MessageSquareText, Pill, Sparkles } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { UsageBanner } from '@/components/PlanUsageCard';
 import { Disclaimer } from '@/components/Disclaimer';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
-import { HomeHero } from '@/components/home/HomeHero';
+import { HomeDashboardTop } from '@/components/home/HomeDashboardTop';
+import { HomeAccountSetupCard } from '@/components/home/HomeAccountSetupCard';
+import { HomeHealthMetricsSection } from '@/components/home/HomeHealthMetricsSection';
 import { HomeStartSection } from '@/components/home/HomeStartSection';
 import { HomePowerToolsSection } from '@/components/home/HomePowerToolsSection';
 import { modulesForGender, POWER_TOOL_MODULE_KEYS, SPOTLIGHT_MODULE_KEYS, type ModuleTile } from '@/constants/modules';
@@ -22,10 +23,11 @@ import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { useThemeColors, useIsDark } from '@/theme/colors';
 import { OnboardingDevLauncher } from '@/components/dev/OnboardingDevLauncher';
 import { useAuth } from '@/store/AuthContext';
+import { getAccountSetupProgress, type AccountSetupStep } from '@/lib/homeAccountSetup';
+import { analysisFromProfile } from '@/types/onboardingAnalysis';
 
 export default function Home() {
-  const { user, refresh } = useAuth();
-  const insets = useSafeAreaInsets();
+  const { user, healthProfile, stats, refresh } = useAuth();
   const router = useRouter();
   const colors = useThemeColors();
   const tabInset = useTabBarInset();
@@ -88,23 +90,55 @@ export default function Home() {
     (tile) => !SPOTLIGHT_MODULE_KEYS.has(tile.key) && !POWER_TOOL_MODULE_KEYS.has(tile.key),
   );
 
+  const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
+  const analysis = analysisFromProfile(extra);
+  const setupProgress = getAccountSetupProgress(healthProfile, user, stats);
+  const avatarId = typeof extra.avatarId === 'string' ? extra.avatarId : null;
+
+  const onSetupStepPress = (step: AccountSetupStep) => {
+    if (step.done) return;
+    router.push(step.href as never);
+  };
+
   return (
     <>
       <ScrollView
         className="flex-1 bg-bg-100"
-        contentContainerStyle={{ paddingTop: insets.top + S.topInset, paddingBottom: tabInset }}
-        contentContainerClassName="px-4"
+        contentContainerStyle={{ paddingBottom: tabInset }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />
         }
         showsVerticalScrollIndicator={false}
       >
-        <HomeHero
+        <HomeDashboardTop
           firstName={firstName}
           initials={initials || 'M'}
-          onAskDoctor={() => router.push('/chat/doctor' as never)}
+          gender={user?.gender}
+          avatarId={avatarId}
+          streak={1}
+          score={analysis?.score ?? null}
+          scoreLabel={analysis?.labelKa ?? ka.home.scorePending}
+          statusLabel={analysis?.bodyComposition?.physiqueLabelKa ?? ka.home.healthyStatus}
+          waterLiters={healthProfile?.waterIntakeL ?? null}
+          onAvatarPress={() => router.push('/(tabs)/profile' as never)}
+          onPackagePress={() => router.push('/package' as never)}
+          onScorePress={() => {
+            if (analysis) router.push('/(auth)/profile-setup/results?preview=1' as never);
+          }}
         />
 
+        {setupProgress.visible ? (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+            <HomeAccountSetupCard progress={setupProgress} onStepPress={onSetupStepPress} />
+          </View>
+        ) : null}
+
+        <HomeHealthMetricsSection
+          profile={healthProfile}
+          onOpenAll={() => router.push('/health-metrics' as never)}
+        />
+
+        <View className="px-4">
         <View>
         <UsageBanner compact />
         </View>
@@ -204,6 +238,7 @@ export default function Home() {
         )}
 
         <Disclaimer className="mt-4" />
+        </View>
       </ScrollView>
 
       <DefaultHomePrompt visible={showCyclePrompt} onClose={onPromptClose} />

@@ -3,53 +3,9 @@ import { Alert, Pressable, Text, View } from 'react-native';
 import { Crown, Sparkles, TriangleAlert, Zap } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { ka } from '@/i18n/ka';
-import { formatCountdown, formatDate } from '@/lib/format';
+import { formatCountdown } from '@/lib/format';
+import { usePlanUsage, type PlanCode } from '@/lib/planUsage';
 import { useThemeColors, type Palette } from '@/theme/colors';
-import { useAuth } from '@/store/AuthContext';
-
-type PlanCode = 'FREE' | 'STANDARD' | 'ULTIMATE';
-
-function planMeta(code: PlanCode) {
-  if (code === 'ULTIMATE') {
-    return { title: ka.profile.ultimatePlan, detail: ka.profile.ultimatePlanDetail, accent: 'success' as const };
-  }
-  if (code === 'STANDARD') {
-    return { title: ka.profile.standardPlan, detail: ka.profile.standardPlanDetail, accent: 'brand' as const };
-  }
-  return { title: ka.profile.freePlan, detail: ka.profile.freePlanDetail, accent: 'neutral' as const };
-}
-
-function usePlanUsage() {
-  const { user, usage } = useAuth();
-  const code = (user?.package?.code ?? 'FREE') as PlanCode;
-  const meta = planMeta(code);
-
-  const limit =
-    user?.package?.monthlyAiLimit ?? user?.package?.dailyAiLimit ?? usage?.limit ?? 90;
-  const unlimited = Boolean(usage?.unlimited || user?.package?.unlimited || limit < 0);
-  const remaining = unlimited ? null : (usage?.remaining ?? limit);
-  const exhausted = !unlimited && remaining === 0;
-  const progress = unlimited ? 1 : limit > 0 ? Math.min(1, Math.max(0, (remaining ?? 0) / limit)) : 0;
-
-  const started = user?.packageStartedAt ? formatDate(user.packageStartedAt) : null;
-  const expires = user?.packageExpiresAt ? formatDate(user.packageExpiresAt) : null;
-  const expired =
-    Boolean(user?.packageExpiresAt && new Date(user.packageExpiresAt).getTime() < Date.now());
-
-  return {
-    code,
-    meta,
-    usage,
-    limit,
-    unlimited,
-    remaining,
-    exhausted,
-    progress,
-    started,
-    expires,
-    expired,
-  };
-}
 
 function ProgressBar({
   progress,
@@ -115,7 +71,7 @@ export function UsageBanner({ compact = false }: { compact?: boolean }) {
   const { code, unlimited, remaining, limit, exhausted, progress, usage } = data;
   const tone = exhausted ? 'warning' : unlimited ? 'success' : 'default';
 
-  const quotaLabel = exhausted
+  const quotaLabelCompact = exhausted
     ? ka.usage.exhaustedTitle
     : unlimited
       ? ka.usage.unlimitedBanner
@@ -135,7 +91,7 @@ export function UsageBanner({ compact = false }: { compact?: boolean }) {
           ) : (
             <Sparkles size={15} color={colors.primary200} strokeWidth={2.2} />
           )}
-          <Text className="ml-2 text-[13px] font-bold text-text-100">{quotaLabel}</Text>
+          <Text className="ml-2 text-[13px] font-bold text-text-100">{quotaLabelCompact}</Text>
         </View>
         <PlanPill code={code} colors={colors} />
       </View>

@@ -16,7 +16,7 @@ import {
   HealthScoreConfidenceBadge,
   HealthScoreGauge,
 } from '@/components/profile/HealthScoreGauge';
-import { ProfileSetupLinkButton, ProfileSetupPrimaryButton } from '@/components/profile/ProfileSetupButtons';
+import { ProfileSetupPrimaryButton } from '@/components/profile/ProfileSetupButtons';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { FIGMA_SHADOW_COLLAPSED } from '@/constants/assessmentResultAssets';
 import {
@@ -25,7 +25,8 @@ import {
   SCORE_RANGE_DOT_COLORS,
 } from '@/constants/figmaAssessmentResultLayout';
 import { ka } from '@/i18n/ka';
-import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
+import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
+import { finishOnboarding } from '@/lib/profileSetupFlow';
 import { useAuth } from '@/store/AuthContext';
 import { analysisFromProfile, type OnboardingScoreRange } from '@/types/onboardingAnalysis';
 import { welcomeTopInset } from '@/constants/figmaWelcomeLayout';
@@ -127,11 +128,12 @@ export default function ProfileSetupResultsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const preview = useOnboardingDevPreview();
-  const { ready, user, healthProfile } = useAuth();
+  const { ready, user, healthProfile, setHealthProfile, setUser } = useAuth();
 
   const analysis = analysisFromProfile(healthProfile?.extraAnswers as Record<string, unknown> | undefined);
 
   const [expandedRange, setExpandedRange] = useState<number | null>(0);
+  const [busy, setBusy] = useState(false);
 
   if (!ready) {
     return (
@@ -158,6 +160,22 @@ export default function ProfileSetupResultsScreen() {
   const avatarSource = isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : AVATAR_SOURCES['avatar-1'];
   const bc = analysis.bodyComposition;
   const dateLabel = new Date().toLocaleDateString('ka-GE', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const finish = async () => {
+    if (preview) {
+      router.replace('/(tabs)/home');
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await finishOnboarding(healthProfile, user);
+      setHealthProfile(result.profile);
+      setUser(result.user);
+      router.replace('/(tabs)/home');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingTop: welcomeTopInset(insets.top) }}>
@@ -388,18 +406,14 @@ export default function ProfileSetupResultsScreen() {
           paddingHorizontal: 16,
           paddingTop: 24,
           paddingBottom: Math.max(insets.bottom, 16),
-          gap: 24,
-          alignItems: 'center',
         }}
       >
-        <View style={{ width: '100%', gap: 24 }}>
         <ProfileSetupPrimaryButton
-          label={ka.profileSetup.seeRecommendation}
-          onPress={() => router.push(onboardingStepHref('/(auth)/profile-setup/recommendations', preview) as never)}
-          icon="arrow"
+          label={ka.profileSetup.startUsingApp}
+          onPress={() => void finish()}
+          loading={busy}
+          icon="check"
         />
-        <ProfileSetupLinkButton label={ka.profileSetup.howResult} onPress={() => {}} />
-        </View>
       </View>
     </View>
   );

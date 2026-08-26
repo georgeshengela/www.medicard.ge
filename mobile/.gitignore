@@ -11,6 +11,9 @@ expo-env.d.ts
 screenshots/
 .expo-export-check/
 .expo-tmp-check/
+.tmp-export-test/
+.tmp-*/
+assets/figma/illustrations/_previews/
 
 # Native
 .kotlin/
@@ -34,6 +37,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript

@@ -141,6 +141,55 @@ export async function syncMedicationReminders(schedule: ScheduledDose[]): Promis
   return scheduled;
 }
 
+export async function getNotificationPermissionStatus(): Promise<'granted' | 'denied' | 'undetermined'> {
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status === 'granted') return 'granted';
+  if (status === 'denied') return 'denied';
+  return 'undetermined';
+}
+
+export async function getScheduledReminderCounts(): Promise<{
+  med: number;
+  cycle: number;
+  visit: number;
+  total: number;
+}> {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  let med = 0;
+  let cycle = 0;
+  let visit = 0;
+
+  for (const item of scheduled) {
+    const id = item.identifier ?? '';
+    if (id.startsWith(NOTIF_PREFIX.med)) med += 1;
+    else if (id.startsWith(NOTIF_PREFIX.cycle)) cycle += 1;
+    else if (id.startsWith(NOTIF_PREFIX.visit)) visit += 1;
+  }
+
+  return { med, cycle, visit, total: med + cycle + visit };
+}
+
+/** Removes this device from admin push broadcasts. */
+export async function unregisterPushFromServer(): Promise<void> {
+  if (!Device.isDevice) return;
+
+  try {
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId ??
+      undefined;
+    const tokenResult = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined,
+    );
+    const token = tokenResult.data;
+    if (token?.startsWith('ExponentPushToken')) {
+      await api.push.unregister(token);
+    }
+  } catch {
+    // Token may be unavailable if permission was revoked.
+  }
+}
+
 export async function cancelAllReminders(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }

@@ -29,6 +29,7 @@ const createSchema = z.object({
   frequency: timeList,
   notes: z.string().trim().max(300).optional(),
   active: z.boolean().default(true),
+  config: z.record(z.string(), z.unknown()).optional(),
 });
 
 const updateSchema = createSchema.partial();
@@ -55,7 +56,7 @@ medicationsRouter.post(
   asyncHandler(async (req, res) => {
     const data = createSchema.parse(req.body);
     const medication = await prisma.medicationSchedule.create({
-      data: { ...data, notes: data.notes ?? null, userId: req.user.id },
+      data: { ...data, notes: data.notes ?? null, config: data.config ?? {}, userId: req.user.id },
     });
 
     return res.status(201).json({ medication });

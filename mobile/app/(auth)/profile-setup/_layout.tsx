@@ -13,7 +13,6 @@ export default function ProfileSetupLayout() {
       <Stack.Screen name="notifications" />
       <Stack.Screen name="analyzing" />
       <Stack.Screen name="results" />
-      <Stack.Screen name="recommendations" />
       <Stack.Screen name="dev-launcher" />
     </Stack>
   );

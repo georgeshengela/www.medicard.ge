@@ -37,6 +37,8 @@ model User {
   aiFeedback       AiFeedback[]
   doctorVisits     DoctorVisit[]
   healthProfile    HealthProfile?
+  healthMetricDaily HealthMetricDaily[]
+  stepLogs         StepLog[]
 
   @@index([status])
   @@index([packageId])
@@ -136,6 +138,47 @@ model HealthProfile {
   completedAt            DateTime?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
+}
+
+/// Daily health aggregates synced from device (Apple Health / Health Connect).
+model HealthMetricDaily {
+  id                     String   @id @default(uuid())
+  userId                 String
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// YYYY-MM-DD calendar day (user-local when synced from mobile)
+  date                   String
+  steps                  Int?
+  weightKg               Float?
+  bloodPressureSystolic  Int?
+  bloodPressureDiastolic Int?
+  heartRate              Float?
+  sleepHours             Float?
+  nutritionKcal          Float?
+  hydrationMl            Float?
+  activeMinutes          Int?
+  distanceKm             Float?
+  /// device | manual | merged
+  source                 String   @default("device")
+  syncedAt               DateTime @default(now())
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+/// Individual step samples synced from device health apps.
+model StepLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recordedAt DateTime
+  stepCount  Int
+  source     String   @default("device")
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, recordedAt])
+  @@index([userId, recordedAt])
 }
 
 /// Women's health — one profile per user (FEMALE-gated in API)
@@ -285,7 +328,7 @@ model AiInteraction {
   id              String         @id @default(uuid())
   userId          String
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// DOCTOR | CONSILIUM | LAB | IMAGING | SKIN | SKINCARE | MEDICATION | CYCLE_WELLNESS
+  /// DOCTOR | CONSILIUM | LAB | IMAGING | SKIN | SKINCARE | MEDICATION | CYCLE_WELLNESS | SYMPTOM_CHECKER
   mode            String
   status          String         @default("OK") // OK | ERROR
   errorMessage    String?
@@ -392,7 +435,7 @@ model MedicalRecord {
   id         String   @id @default(uuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type       String // 'LAB', 'XRAY', 'CT_MRI', 'SKIN', 'SKINCARE', 'PRESCRIPTION'
+  type       String // 'LAB', 'XRAY', 'CT_MRI', 'SKIN', 'SKINCARE', 'PRESCRIPTION', 'SYMPTOM'
   imageUrl   String?
   aiAnalysis String // JSON or Markdown string in Georgian
   createdAt  DateTime @default(now())
@@ -422,6 +465,8 @@ model MedicationSchedule {
   frequency String // e.g., '09:00, 15:00, 21:00'
   notes     String?
   active    Boolean  @default(true)
+  /// pill shape/color, days of week, refill settings, form type, dates, etc.
+  config    Json     @default("{}")
   createdAt DateTime @default(now())
 
   @@index([userId, active])

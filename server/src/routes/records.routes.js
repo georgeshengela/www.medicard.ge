@@ -8,7 +8,7 @@ export const recordsRouter = Router();
 
 recordsRouter.use(requireAuth);
 
-const RECORD_TYPES = ['LAB', 'XRAY', 'CT_MRI', 'SKIN', 'SKINCARE', 'PRESCRIPTION'];
+const RECORD_TYPES = ['LAB', 'XRAY', 'CT_MRI', 'SKIN', 'SKINCARE', 'PRESCRIPTION', 'SYMPTOM'];
 
 const listQuery = z.object({
   type: z.enum(RECORD_TYPES).optional(),

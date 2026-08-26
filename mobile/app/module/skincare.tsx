@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Stack } from 'expo-router';
 import { RefreshCw, Sparkles } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -62,8 +61,6 @@ export default function SkincareModule() {
 
   return (
     <>
-      <Stack.Screen options={{ title: ka.modules.skincare.title }} />
-
       <ScrollView
         className="flex-1 bg-bg-100"
         contentContainerClassName="px-4 pb-12 pt-3"
