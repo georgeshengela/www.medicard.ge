@@ -26,6 +26,24 @@ import {
 import { getSmsBalance, normalizeSmsDestination, sendSms } from '../lib/sms.js';
 import { deleteUserAccount } from '../lib/deleteUser.js';
 
+function emptyDayMap(startToday, days = 14) {
+  const map = new Map();
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const day = new Date(startToday.getTime() - i * 86400000);
+    map.set(day.toISOString().slice(0, 10), 0);
+  }
+  return map;
+}
+
+function bucketByDay(startToday, rows) {
+  const map = emptyDayMap(startToday);
+  for (const row of rows) {
+    const key = new Date(row.createdAt).toISOString().slice(0, 10);
+    if (map.has(key)) map.set(key, (map.get(key) || 0) + 1);
+  }
+  return [...map.entries()].map(([day, count]) => ({ day, count }));
+}
+
 export const adminRouter = Router();
 
 function signAdminToken(admin) {
@@ -107,7 +125,10 @@ adminRouter.get(
     const startMonth = new Date(startToday.getTime() - 29 * 86400000);
     const trendStart = new Date(startToday.getTime() - 13 * 86400000);
 
-    const [users, blocked, records, chats, medications, packages, newToday, newWeek, newMonth, withPhone, genderGroups, trendRows] = await Promise.all([
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [users, blocked, records, chats, medications, packages, newToday, newWeek, newMonth, withPhone, genderGroups, trendRows, aiTrendRows, chatTrendRows, recordTrendRows, aiTotal, aiLast24h, aiLast7d, aiErrors24h, smsTotal, smsLast24h, smsFailed, visits, cycleProfiles, pushTokens, catalogProducts] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { status: 'BLOCKED' } }),
       prisma.medicalRecord.count(),
@@ -123,6 +144,29 @@ adminRouter.get(
         where: { createdAt: { gte: trendStart } },
         select: { createdAt: true },
       }),
+      prisma.aiInteraction.findMany({
+        where: { createdAt: { gte: trendStart } },
+        select: { createdAt: true },
+      }),
+      prisma.chatSession.findMany({
+        where: { createdAt: { gte: trendStart } },
+        select: { createdAt: true },
+      }),
+      prisma.medicalRecord.findMany({
+        where: { createdAt: { gte: trendStart } },
+        select: { createdAt: true },
+      }),
+      prisma.aiInteraction.count(),
+      prisma.aiInteraction.count({ where: { createdAt: { gte: since24h } } }),
+      prisma.aiInteraction.count({ where: { createdAt: { gte: since7d } } }),
+      prisma.aiInteraction.count({ where: { createdAt: { gte: since24h }, status: 'ERROR' } }),
+      prisma.smsLog.count(),
+      prisma.smsLog.count({ where: { createdAt: { gte: since24h } } }),
+      prisma.smsLog.count({ where: { status: 'FAILED' } }),
+      prisma.doctorVisit.count(),
+      prisma.cycleProfile.count(),
+      prisma.pushToken.count(),
+      prisma.catalogProduct.count(),
     ]);
 
     const byPackage = await Promise.all(
@@ -143,17 +187,10 @@ adminRouter.get(
       else gender.unknown += n;
     }
 
-    const trendMap = new Map();
-    for (let i = 13; i >= 0; i -= 1) {
-      const day = new Date(startToday.getTime() - i * 86400000);
-      const key = day.toISOString().slice(0, 10);
-      trendMap.set(key, 0);
-    }
-    for (const row of trendRows) {
-      const key = new Date(row.createdAt).toISOString().slice(0, 10);
-      if (trendMap.has(key)) trendMap.set(key, (trendMap.get(key) || 0) + 1);
-    }
-    const trend = [...trendMap.entries()].map(([day, count]) => ({ day, count }));
+    const trend = bucketByDay(startToday, trendRows);
+    const aiTrend = bucketByDay(startToday, aiTrendRows);
+    const chatTrend = bucketByDay(startToday, chatTrendRows);
+    const recordTrend = bucketByDay(startToday, recordTrendRows);
 
     res.json({
       users: {
@@ -171,6 +208,25 @@ adminRouter.get(
       chats,
       medications,
       packages: byPackage,
+      activity: {
+        visits,
+        cycleProfiles,
+        pushTokens,
+        catalogProducts,
+        smsTotal,
+        smsLast24h,
+        smsFailed,
+        aiTotal,
+        aiLast24h,
+        aiLast7d,
+        aiErrors24h,
+      },
+      trends: {
+        signups: trend,
+        ai: aiTrend,
+        chats: chatTrend,
+        records: recordTrend,
+      },
       settings: adminAppSettings(await getAppSettings()),
     });
   }),

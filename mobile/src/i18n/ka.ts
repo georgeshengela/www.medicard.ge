@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Every user-facing string in the app, in Georgian.
  *
  * Keeping them in one file means the copy can be proof-read by a native speaker
@@ -661,10 +661,16 @@ export const ka = {
     pickOrgan: 'ორგანო',
     addForArea: 'დაამატეთ სიმპტომები',
     addForAreaHint: 'შეგიძლიათ რამდენიმე აირჩიოთ',
-    pickArea: 'აირჩიეთ არე',
-    conditionsCount: (n: number) => `${n} მდგომარეობა`,
+    pickArea: 'შეეხეთ სხეულს',
+    tapBody: 'შეეხეთ სხეულს',
+    tapBodyHint: 'მონიშნეთ ადგილი, სადაც გაწუხებთ',
+    symptomsInArea: (n: number) => (n === 1 ? '1 სიმპტომი ამ არეში' : `${n} სიმპტომი ამ არეში`),
+    conditionsCount: (n: number) => `${n} შესაძლო მიზეზი`,
     emptySymptoms: 'ჯერ არაფერი არ არის დამატებული',
     rotateBody: 'შემობრუნება',
+    zoomIn: 'გადიდება',
+    zoomOut: 'დაპატარავება',
+    resetZoom: 'საწყისი ზომა',
     emergencyBanner: 'სასწრაფოდ დაუკავშირდით 112-ს',
     detailsTitle: 'დამატებითი დეტალები',
     duration: 'რამდენი ხანია?',
@@ -690,6 +696,7 @@ export const ka = {
       medium: 'საშუალო',
       low: 'დაბალი',
     },
+    filterEmpty: 'ამ ფილტრში მდგომარეობა არ არის.',
     likelihood: (n: number) => `${n}% შესაბამისობა`,
     likelihoodHint: (n: number) => `თქვენი სიმპტომების მიხედვით სავარაუდოა ${n}%. ეს არ არის დიაგნოზი.`,
     talkDoctor: 'AI ექიმთან საუბარი',

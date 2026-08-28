@@ -243,7 +243,17 @@ function ngSparkBars(tone) {
   return `<div class="ng-spark tone-${tone}" aria-hidden="true">${heights.map((h) => `<span style="--h:${h}%"></span>`).join('')}</div>`;
 }
 
-function ngMetricCard({ label, value, hint, iconName, tone }) {
+function ngSparkFromTrend(trend, tone) {
+  const rows = (trend || []).slice(-8);
+  if (!rows.length) return ngSparkBars(tone);
+  const max = Math.max(1, ...rows.map((d) => d.count));
+  return `<div class="ng-spark tone-${tone}" aria-hidden="true">${rows.map((d) => {
+    const h = Math.max(10, Math.round((d.count / max) * 100));
+    return `<span style="--h:${h}%"></span>`;
+  }).join('')}</div>`;
+}
+
+function ngMetricCard({ label, value, hint, iconName, tone, spark }) {
   return `
     <article class="ng-metric tone-${tone}">
       <div class="ng-metric-icon">${icon(iconName)}</div>
@@ -252,8 +262,89 @@ function ngMetricCard({ label, value, hint, iconName, tone }) {
         <strong class="ng-metric-value">${value}</strong>
         ${hint ? `<span class="ng-metric-hint">${hint}</span>` : ''}
       </div>
-      ${ngSparkBars(tone)}
+      ${spark ? ngSparkFromTrend(spark, tone) : ngSparkBars(tone)}
     </article>
+  `;
+}
+
+function dashAreaChart(points, tone = 'teal') {
+  const rows = Array.isArray(points) ? points : [];
+  if (!rows.length) return '<p class="muted">მონაცემი არ არის.</p>';
+  const w = 360;
+  const h = 148;
+  const padX = 10;
+  const padY = 14;
+  const max = Math.max(1, ...rows.map((d) => d.count));
+  const step = rows.length > 1 ? (w - padX * 2) / (rows.length - 1) : 0;
+  const coords = rows.map((d, i) => {
+    const x = padX + i * step;
+    const y = h - padY - (d.count / max) * (h - padY * 2);
+    return { x: +x.toFixed(1), y: +y.toFixed(1), count: d.count, day: d.day };
+  });
+  const line = coords.map((c) => `${c.x},${c.y}`).join(' ');
+  const area = `${padX},${h - padY} ${line} ${coords[coords.length - 1].x},${h - padY}`;
+  const last = coords[coords.length - 1];
+  return `
+    <svg class="dash-area tone-${tone}" viewBox="0 0 ${w} ${h}" role="img" aria-label="14 დღის ტრენდი">
+      <defs>
+        <linearGradient id="dash-area-${tone}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="currentColor" stop-opacity="0.28"/>
+          <stop offset="100%" stop-color="currentColor" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>
+      <polygon points="${area}" fill="url(#dash-area-${tone})"/>
+      <polyline points="${line}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+      ${coords.filter((c) => c.count > 0).map((c) => `<circle cx="${c.x}" cy="${c.y}" r="2.4" fill="currentColor"/>`).join('')}
+      <circle cx="${last.x}" cy="${last.y}" r="4.2" fill="currentColor"/>
+    </svg>
+  `;
+}
+
+function dashLineChart(series) {
+  const lists = (series || []).filter((s) => s.points?.length);
+  if (!lists.length) return '<p class="muted">მონაცემი არ არის.</p>';
+  const w = 360;
+  const h = 148;
+  const padX = 10;
+  const padY = 14;
+  const max = Math.max(1, ...lists.flatMap((s) => s.points.map((d) => d.count)));
+  const n = Math.max(...lists.map((s) => s.points.length));
+  const step = n > 1 ? (w - padX * 2) / (n - 1) : 0;
+  const paths = lists.map((s) => {
+    const line = s.points.map((d, i) => {
+      const x = padX + i * step;
+      const y = h - padY - (d.count / max) * (h - padY * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    return `<polyline class="tone-${s.tone || 'teal'}" points="${line}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }).join('');
+  return `<svg class="dash-lines" viewBox="0 0 ${w} ${h}" role="img">${paths}</svg>`;
+}
+
+function dashDonut(slices) {
+  const list = (slices || []).filter((s) => s.count > 0);
+  const total = list.reduce((sum, s) => sum + s.count, 0);
+  if (!total) return '<p class="muted">მონაცემი არ არის.</p>';
+  let acc = 0;
+  const stops = list.map((s) => {
+    const start = acc;
+    acc += (s.count / total) * 100;
+    return `${s.color} ${start.toFixed(2)}% ${acc.toFixed(2)}%`;
+  }).join(', ');
+  return `
+    <div class="dash-donut-wrap">
+      <div class="dash-donut" style="background: conic-gradient(${stops})"></div>
+      <div class="dash-donut-legend">
+        ${list.map((s) => `
+          <div class="dash-donut-item">
+            <i style="background:${s.color}"></i>
+            <span>${s.label}</span>
+            <strong>${s.count}</strong>
+            <em>${Math.round((s.count / total) * 100)}%</em>
+          </div>
+        `).join('')}
+      </div>
+    </div>
   `;
 }
 
@@ -676,7 +767,7 @@ async function switchTab(tab) {
   $(`tab-${tab}`).classList.remove('hidden');
 
   const copy = {
-    overview: ['ოპერაციები', 'მიმოხილვა', 'რეალურ დროში — მომხმარებლები, პაკეტები და აპის რეჟიმი.'],
+    overview: ['ოპერაციები', 'მიმოხილვა', 'რეალურ დროში — რეგისტრაციები, AI, პაკეტები და პლატფორმის პულსი.'],
     users: ['რეესტრი', 'მომხმარებლები', 'რეალურ დროში — რეგისტრაციები, პაკეტები, სქესი და სრული რეესტრი.'],
     packages: ['კომერცია', 'პაკეტები', 'ყველა გეგმა თვიურია — AI ლიმიტი 30-დღიან პერიოდში.'],
     push: ['კომუნიკაცია', 'Push შეტყობინებები', 'გაუგზავნეთ push შეტყობინება მომხმარებლებს სეგმენტის მიხედვით.'],
@@ -711,36 +802,82 @@ async function renderOverview(freshBalances = false) {
   const modeTone = s.maintenanceMode ? 'bad' : s.forceUpdate ? 'warn' : 'ok';
   const modeLabel = s.maintenanceMode ? 'ოფლაინი' : s.forceUpdate ? 'იძ. განახლება' : 'აქტიური';
   const activePct = stats.users.total ? Math.round((stats.users.active / stats.users.total) * 100) : null;
+  const act = stats.activity || {};
+  const trends = stats.trends || {};
+  const signupTrend = trends.signups || stats.users.trend || [];
+  const aiTrend = trends.ai || [];
+  const chatTrend = trends.chats || [];
+  const recordTrend = trends.records || [];
+  const g = stats.users.gender || {};
+  const weekSignups = signupTrend.slice(-7).reduce((sum, d) => sum + d.count, 0);
+  const prevWeekSignups = signupTrend.slice(0, 7).reduce((sum, d) => sum + d.count, 0);
+  const weekDelta = weekSignups - prevWeekSignups;
+  const pkgColors = { FREE: 'var(--teal)', STANDARD: 'var(--std)', ULTIMATE: 'var(--ult)' };
 
   $('tab-overview').innerHTML = `
     <div class="ai-page dash-page ng-dash dash-enter">
-      <section class="ng-pulse card">
-        <div class="ng-pulse-main">
-          <div class="ng-pulse-icon">${icon('activity')}</div>
-          <div class="ng-pulse-copy">
-            <span class="ng-metric-label">პლატფორმის პულსი</span>
-            <strong class="ng-pulse-value">${stats.users.active}</strong>
-            <span class="ng-metric-hint">${stats.users.active} აქტიური · ${stats.users.blocked} დაბლოკილი · ${stats.users.total} სულ</span>
+      <section class="dash-status card">
+        <div class="dash-status-live">
+          <span class="dash-status-dot ${modeTone}"></span>
+          <div>
+            <strong>${modeLabel === 'აქტიური' ? 'სისტემა აქტიურია' : modeLabel}</strong>
+            <span>${stats.users.active} აქტიური ანგარიში</span>
           </div>
-          ${ngSparkBars('teal')}
         </div>
-        <div class="ng-pulse-side">
-          ${dashHealthRing(stats.users.active, stats.users.total, 'აქტიური ანგარიშები')}
-          <div class="ng-pulse-pills">
-            <span class="ai-pill ${modeTone}">${icon('globe')} <strong>${modeLabel}</strong></span>
-            ${activePct != null ? `<span class="ai-pill ok">${icon('check')} <strong>${activePct}%</strong> ჯანმრთელი</span>` : ''}
-          </div>
-          <button class="btn primary ng-cta" data-go="settings">${icon('spark')} AI &amp; რეჟიმი</button>
+        <div class="dash-status-stats">
+          <div><em>სულ</em><b>${stats.users.total}</b></div>
+          <div><em>დაბლოკილი</em><b>${stats.users.blocked}</b></div>
+          <div><em>დღეს</em><b>+${stats.users.newToday}</b></div>
+          <div><em>ჯანმრთელი</em><b>${activePct == null ? '—' : `${activePct}%`}</b></div>
         </div>
+        <div class="dash-status-spark">${ngSparkFromTrend(signupTrend, 'teal')}</div>
+        <button class="btn tiny primary" data-go="ai">${icon('spark')} AI</button>
       </section>
 
-      <div class="ng-metrics-row">
+      <div class="dash-glance">
+        <div class="dash-glance-item">
+          <span>ახალი · 7 დღე</span>
+          <strong>+${stats.users.newWeek}</strong>
+          <em class="${weekDelta >= 0 ? 'up' : 'down'}">${weekDelta >= 0 ? '+' : ''}${weekDelta} წინა კვირასთან</em>
+        </div>
+        <div class="dash-glance-item">
+          <span>AI · 24სთ</span>
+          <strong>${act.aiLast24h ?? 0}</strong>
+          <em>${act.aiErrors24h ? `${act.aiErrors24h} შეცდომა` : 'შეცდომა არ არის'}</em>
+        </div>
+        <div class="dash-glance-item">
+          <span>SMS · 24სთ</span>
+          <strong>${act.smsLast24h ?? 0}</strong>
+          <em>${act.smsFailed ? `${act.smsFailed} წარუმატებელი სულ` : 'სტაბილური'}</em>
+        </div>
+        <div class="dash-glance-item">
+          <span>Push მოწყობილობა</span>
+          <strong>${act.pushTokens ?? 0}</strong>
+          <em>აქტიური ტოკენი</em>
+        </div>
+        <div class="dash-glance-item">
+          <span>ფარმაცია</span>
+          <strong>${act.catalogProducts ?? 0}</strong>
+          <em>პროდუქტი კატალოგში</em>
+        </div>
+      </div>
+
+      <div class="ng-metrics-row dash-metrics-6">
         ${ngMetricCard({
           label: 'მომხმარებლები',
           value: stats.users.total,
-          hint: `${stats.users.active} აქტიური`,
+          hint: `+${stats.users.newToday} დღეს · ${stats.users.active} აქტიური`,
           iconName: 'users',
           tone: 'teal',
+          spark: signupTrend,
+        })}
+        ${ngMetricCard({
+          label: 'AI მოთხოვნა',
+          value: act.aiTotal ?? 0,
+          hint: `${act.aiLast24h ?? 0} დღეს · ${act.aiLast7d ?? 0} 7 დღეში`,
+          iconName: 'spark',
+          tone: 'cyan',
+          spark: aiTrend,
         })}
         ${ngMetricCard({
           label: 'ჩანაწერები',
@@ -748,6 +885,7 @@ async function renderOverview(freshBalances = false) {
           hint: 'სამედიცინო ფაილები',
           iconName: 'file',
           tone: 'rose',
+          spark: recordTrend,
         })}
         ${ngMetricCard({
           label: 'AI ჩატები',
@@ -755,14 +893,101 @@ async function renderOverview(freshBalances = false) {
           hint: 'ექიმი · კონსილიუმი',
           iconName: 'message',
           tone: 'cyan',
+          spark: chatTrend,
         })}
         ${ngMetricCard({
-          label: 'პაკეტები',
-          value: assigned,
-          hint: `${stats.packages.length} ტარიფი`,
-          iconName: 'layers',
+          label: 'მედიკამენტები',
+          value: stats.medications,
+          hint: `${act.visits ?? 0} ვიზიტი · ${act.cycleProfiles ?? 0} ციკლი`,
+          iconName: 'pill',
           tone: 'amber',
         })}
+        ${ngMetricCard({
+          label: 'SMS',
+          value: act.smsTotal ?? 0,
+          hint: `${act.smsLast24h ?? 0} ბოლო 24სთ`,
+          iconName: 'send',
+          tone: 'teal',
+        })}
+      </div>
+
+      <div class="dash-charts">
+        <div class="card dash-pkg-card dash-chart-wide">
+          <div class="card-head">
+            ${iconTile('activity')}
+            <div>
+              <h3>რეგისტრაციები · 14 დღე</h3>
+              <p class="muted" style="margin:2px 0 0;font-size:12px">${stats.users.newMonth} ახალი ამ თვეში · +${stats.users.newWeek} კვირაში</p>
+            </div>
+            <button class="btn tiny ghost grow" data-go="users">${icon('arrow')} რეესტრი</button>
+          </div>
+          ${dashAreaChart(signupTrend, 'teal')}
+        </div>
+        <div class="card dash-pkg-card">
+          <div class="card-head">
+            ${iconTile('layers', 'ult')}
+            <div>
+              <h3>პაკეტები</h3>
+              <p class="muted" style="margin:2px 0 0;font-size:12px">${assigned} აქტიური ტარიფზე</p>
+            </div>
+          </div>
+          ${dashDonut(stats.packages.map((p) => ({
+            label: p.nameKa,
+            count: p.users,
+            color: pkgColors[p.code] || 'var(--muted)',
+          })))}
+        </div>
+        <div class="card dash-pkg-card">
+          <div class="card-head">
+            ${iconTile('users')}
+            <div>
+              <h3>აუდიტორია</h3>
+              <p class="muted" style="margin:2px 0 0;font-size:12px">${stats.users.withPhone} ტელეფონით</p>
+            </div>
+          </div>
+          ${usersMixHtml([
+            { label: 'ქალი', count: g.female || 0, tone: 'standard', bar: 'std' },
+            { label: 'კაცი', count: g.male || 0, tone: 'ok', bar: '' },
+            { label: 'სხვა / უცნობი', count: (g.other || 0) + (g.unknown || 0), tone: 'neutral', bar: 'ult' },
+          ])}
+        </div>
+      </div>
+
+      <div class="dash-charts dash-charts-2">
+        <div class="card dash-pkg-card">
+          <div class="card-head">
+            ${iconTile('spark', 'ult')}
+            <div>
+              <h3>აქტივობა · 14 დღე</h3>
+              <p class="muted" style="margin:2px 0 0;font-size:12px">AI მოთხოვნები და ჩატები</p>
+            </div>
+            <div class="dash-legend">
+              <span class="dash-legend-item teal">AI</span>
+              <span class="dash-legend-item cyan">ჩატი</span>
+            </div>
+          </div>
+          ${dashLineChart([
+            { tone: 'teal', points: aiTrend },
+            { tone: 'cyan', points: chatTrend },
+          ])}
+        </div>
+        <div class="card dash-pkg-card">
+          <div class="card-head">
+            ${iconTile('file')}
+            <div>
+              <h3>პლატფორმის მოცულობა</h3>
+              <p class="muted" style="margin:2px 0 0;font-size:12px">რა ინახება სისტემაში</p>
+            </div>
+          </div>
+          ${usersMixHtml([
+            { label: 'AI მოთხოვნა', count: act.aiTotal || 0, tone: 'ok', bar: '' },
+            { label: 'ჩატები', count: stats.chats, tone: 'standard', bar: 'std' },
+            { label: 'ჩანაწერები', count: stats.records, tone: 'neutral', bar: 'ult' },
+            { label: 'მედიკამენტები', count: stats.medications, tone: 'ultimate', bar: 'ult' },
+            { label: 'ვიზიტები', count: act.visits || 0, tone: 'neutral', bar: '' },
+            { label: 'ციკლის პროფილი', count: act.cycleProfiles || 0, tone: 'standard', bar: 'std' },
+          ])}
+        </div>
       </div>
 
       <div class="ng-quick-row">

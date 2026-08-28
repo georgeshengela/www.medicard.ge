@@ -12,6 +12,8 @@ export type SymptomCheckerState = {
   primarySymptom: string | null;
   durationId: string | null;
   painLevel: number | null;
+  pastConditions: string;
+  shareToNightingale: boolean;
   notes: string;
   result: SymptomCheckResult | null;
   recordId: string | null;
@@ -30,6 +32,8 @@ const INITIAL: SymptomCheckerState = {
   primarySymptom: null,
   durationId: null,
   painLevel: null,
+  pastConditions: '',
+  shareToNightingale: false,
   notes: '',
   result: null,
   recordId: null,

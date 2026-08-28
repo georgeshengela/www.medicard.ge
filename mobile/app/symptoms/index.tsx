@@ -2,8 +2,9 @@ import React, { useEffect } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { History } from 'lucide-react-native';
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
-import { SymptomCta, SymptomFooter } from '@/components/symptoms/SymptomCta';
+import { SymptomCta } from '@/components/symptoms/SymptomCta';
 import { SYMPTOM_INTRO_ILLUSTRATION } from '@/constants/symptomAssets';
 import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
@@ -21,26 +22,44 @@ export default function SymptomIntroScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: T.white, paddingBottom: insets.bottom }}>
-      <SymptomNavHeader onBack={() => router.back()} />
+      <SymptomNavHeader
+        onBack={() => router.back()}
+        right={
+          <Pressable
+            onPress={() => router.push('/symptoms/history' as never)}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={ka.symptoms.viewHistory}
+          >
+            <History size={22} color={T.textPrimary} strokeWidth={2} />
+          </Pressable>
+        }
+      />
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <View style={{ height: 274, alignItems: 'center', justifyContent: 'center' }}>
           <Image source={SYMPTOM_INTRO_ILLUSTRATION} style={{ width: 256, height: 256 }} resizeMode="contain" />
         </View>
-        <View style={{ paddingHorizontal: 16, paddingVertical: 32, alignItems: 'center' }}>
-          <Text style={{ fontSize: 30, lineHeight: 38, fontWeight: '700', color: T.textPrimary, textAlign: 'center', letterSpacing: -0.25 }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 32, gap: 12 }}>
+          <Text
+            style={{
+              fontSize: 30,
+              lineHeight: 38,
+              fontWeight: '700',
+              color: T.textPrimary,
+              textAlign: 'center',
+              letterSpacing: -0.25,
+            }}
+          >
             {ka.symptoms.introTitle}
           </Text>
-          <Text style={{ marginTop: 12, fontSize: 16, lineHeight: 26, color: T.textSecondary, textAlign: 'center' }}>
+          <Text style={{ fontSize: 16, lineHeight: 26, color: T.textSecondary, textAlign: 'center' }}>
             {ka.symptoms.introSubtitle}
           </Text>
         </View>
+        <View style={{ padding: 16 }}>
+          <SymptomCta label={ka.symptoms.getStarted} onPress={() => router.push('/symptoms/method' as never)} />
+        </View>
       </View>
-      <SymptomFooter>
-        <SymptomCta label={ka.symptoms.getStarted} onPress={() => router.push('/symptoms/method' as never)} />
-        <Pressable onPress={() => router.push('/symptoms/history' as never)} style={{ alignItems: 'center', marginTop: 12 }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: T.brand }}>{ka.symptoms.viewHistory}</Text>
-        </Pressable>
-      </SymptomFooter>
     </View>
   );
 }

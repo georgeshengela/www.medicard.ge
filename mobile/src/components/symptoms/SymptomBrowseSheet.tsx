@@ -76,13 +76,14 @@ export function SymptomOrganBrowseRow({ label, icon, selected, onPress }: OrganR
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
+        minHeight: 72,
         paddingHorizontal: 16,
         paddingVertical: 12,
         marginBottom: 8,
         borderRadius: T.itemRadius,
         borderWidth: 1,
         borderColor: selected ? T.brand : T.border,
-        backgroundColor: selected ? T.brandSoft : T.cardBg,
+        backgroundColor: selected ? T.brandSoft : T.white,
         ...T.shadowXs,
       }}
     >

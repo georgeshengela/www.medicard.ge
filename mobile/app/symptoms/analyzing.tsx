@@ -88,7 +88,9 @@ export default function SymptomAnalyzingScreen() {
 
       painLevel: state.painLevel ?? undefined,
 
-      notes: state.notes.trim() || undefined,
+      notes: [state.pastConditions.trim() && `${ka.symptoms.pastConditions}: ${state.pastConditions.trim()}`, state.notes.trim()]
+        .filter(Boolean)
+        .join('\n') || undefined,
 
     };
 
@@ -132,7 +134,7 @@ export default function SymptomAnalyzingScreen() {
 
         });
 
-        router.replace('/symptoms/results' as never);
+        router.replace('/symptoms/results?ready=1' as never);
 
       } catch (err) {
         const message =
@@ -227,7 +229,7 @@ function AnalyzingLine({ label, active, done }: { label: string; active: boolean
 
         lineHeight: 32,
 
-        fontWeight: active ? '600' : '400',
+        fontWeight: '400',
 
         color: active ? T.textPrimary : T.textMuted,
 

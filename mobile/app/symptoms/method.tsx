@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bot, Check, ClipboardList, type LucideIcon } from 'lucide-react-native';
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
-import { SymptomCta, SymptomFooter } from '@/components/symptoms/SymptomCta';
+import { SymptomCta } from '@/components/symptoms/SymptomCta';
 import { SYMPTOM_INTRO_ILLUSTRATION } from '@/constants/symptomAssets';
 import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
@@ -24,18 +24,29 @@ export default function SymptomMethodScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: T.white, paddingBottom: insets.bottom }}>
       <SymptomNavHeader onBack={() => router.back()} />
-      <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8, justifyContent: 'center' }}>
-        <View style={{ alignItems: 'center', marginBottom: 24 }}>
+      <View style={{ flex: 1, justifyContent: 'center' }}>
+        <View style={{ padding: 16, gap: 24, alignItems: 'center' }}>
           <Image source={SYMPTOM_INTRO_ILLUSTRATION} style={{ width: 128, height: 128 }} resizeMode="contain" />
+          <View style={{ width: '100%', gap: 16 }}>
+            <Text
+              style={{
+                fontSize: 30,
+                lineHeight: 38,
+                fontWeight: '700',
+                color: T.textPrimary,
+                textAlign: 'center',
+                letterSpacing: -0.25,
+              }}
+            >
+              {ka.symptoms.methodTitle}
+            </Text>
+            <Text style={{ fontSize: 16, lineHeight: 26, color: T.textSecondary, textAlign: 'center' }}>
+              {ka.symptoms.methodSubtitle}
+            </Text>
+          </View>
         </View>
-        <Text style={{ fontSize: 30, lineHeight: 38, fontWeight: '700', color: T.textPrimary, textAlign: 'center', letterSpacing: -0.25 }}>
-          {ka.symptoms.methodTitle}
-        </Text>
-        <Text style={{ marginTop: 16, fontSize: 16, lineHeight: 26, color: T.textSecondary, textAlign: 'center' }}>
-          {ka.symptoms.methodSubtitle}
-        </Text>
 
-        <View style={{ marginTop: 32, gap: 8 }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 32, gap: 8 }}>
           <MethodRow
             selected={method === 'manual'}
             icon={ClipboardList}
@@ -51,10 +62,11 @@ export default function SymptomMethodScreen() {
             onPress={() => setMethod('anatomy')}
           />
         </View>
+
+        <View style={{ padding: 16 }}>
+          <SymptomCta label={ka.symptoms.getStarted} onPress={go} />
+        </View>
       </View>
-      <SymptomFooter>
-        <SymptomCta label={ka.symptoms.getStarted} onPress={go} />
-      </SymptomFooter>
     </View>
   );
 }
@@ -80,6 +92,7 @@ function MethodRow({
         alignItems: 'center',
         gap: 12,
         padding: 16,
+        minHeight: 76,
         borderRadius: 14,
         borderWidth: 1,
         borderColor: selected ? T.brand : T.border,
@@ -87,7 +100,7 @@ function MethodRow({
         ...T.shadowXs,
       }}
     >
-      <Icon size={32} color={selected ? T.brand : T.textSecondary} strokeWidth={1.8} />
+      <Icon size={32} color={T.textPrimary} strokeWidth={1.6} />
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 14, lineHeight: 20, fontWeight: '600', color: T.textPrimary }}>{title}</Text>
         <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 20, color: T.textSecondary }}>{subtitle}</Text>

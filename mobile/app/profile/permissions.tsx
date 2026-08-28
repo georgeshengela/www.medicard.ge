@@ -93,9 +93,13 @@ export default function PermissionsScreen() {
   }, []);
 
   const reload = useCallback(async () => {
-    const data = await loadAppPermissions();
-    setSnapshot(data);
-    return data;
+    try {
+      const data = await loadAppPermissions();
+      setSnapshot(data);
+      return data;
+    } catch {
+      return null;
+    }
   }, []);
 
   useFocusEffect(

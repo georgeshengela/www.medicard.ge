@@ -96,13 +96,22 @@ export async function registerPushTokenWithServer(): Promise<boolean> {
   }
 }
 
+function canScheduleNotifications(): boolean {
+  return Platform.OS !== 'web';
+}
+
 export async function cancelNotificationsByPrefix(prefix: string): Promise<void> {
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  await Promise.all(
-    scheduled
-      .filter((n) => n.identifier?.startsWith(prefix))
-      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
-  );
+  if (!canScheduleNotifications()) return;
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      scheduled
+        .filter((n) => n.identifier?.startsWith(prefix))
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+    );
+  } catch {
+    // Native scheduler is unavailable (web / Expo Go without the module).
+  }
 }
 
 /**
@@ -142,10 +151,14 @@ export async function syncMedicationReminders(schedule: ScheduledDose[]): Promis
 }
 
 export async function getNotificationPermissionStatus(): Promise<'granted' | 'denied' | 'undetermined'> {
-  const { status } = await Notifications.getPermissionsAsync();
-  if (status === 'granted') return 'granted';
-  if (status === 'denied') return 'denied';
-  return 'undetermined';
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status === 'granted') return 'granted';
+    if (status === 'denied') return 'denied';
+    return 'undetermined';
+  } catch {
+    return 'undetermined';
+  }
 }
 
 export async function getScheduledReminderCounts(): Promise<{
@@ -154,19 +167,25 @@ export async function getScheduledReminderCounts(): Promise<{
   visit: number;
   total: number;
 }> {
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  let med = 0;
-  let cycle = 0;
-  let visit = 0;
+  const empty = { med: 0, cycle: 0, visit: 0, total: 0 };
+  if (!canScheduleNotifications()) return empty;
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    let med = 0;
+    let cycle = 0;
+    let visit = 0;
 
-  for (const item of scheduled) {
-    const id = item.identifier ?? '';
-    if (id.startsWith(NOTIF_PREFIX.med)) med += 1;
-    else if (id.startsWith(NOTIF_PREFIX.cycle)) cycle += 1;
-    else if (id.startsWith(NOTIF_PREFIX.visit)) visit += 1;
+    for (const item of scheduled) {
+      const id = item.identifier ?? '';
+      if (id.startsWith(NOTIF_PREFIX.med)) med += 1;
+      else if (id.startsWith(NOTIF_PREFIX.cycle)) cycle += 1;
+      else if (id.startsWith(NOTIF_PREFIX.visit)) visit += 1;
+    }
+
+    return { med, cycle, visit, total: med + cycle + visit };
+  } catch {
+    return empty;
   }
-
-  return { med, cycle, visit, total: med + cycle + visit };
 }
 
 /** Removes this device from admin push broadcasts. */
@@ -191,7 +210,12 @@ export async function unregisterPushFromServer(): Promise<void> {
 }
 
 export async function cancelAllReminders(): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  if (!canScheduleNotifications()) return;
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch {
+    // Native scheduler is unavailable on web.
+  }
 }
 
 export async function cancelCycleReminders(): Promise<void> {

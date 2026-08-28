@@ -69,10 +69,15 @@ export async function syncVisitReminders(visits: DoctorVisit[]): Promise<number>
 }
 
 export async function cancelVisitReminders(): Promise<void> {
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  await Promise.all(
-    scheduled
-      .filter((n) => n.identifier?.startsWith(NOTIF_PREFIX.visit))
-      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
-  );
+  if (Platform.OS === 'web') return;
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      scheduled
+        .filter((n) => n.identifier?.startsWith(NOTIF_PREFIX.visit))
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+    );
+  } catch {
+    // Native scheduler is unavailable on web.
+  }
 }

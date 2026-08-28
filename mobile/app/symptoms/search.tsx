@@ -45,53 +45,55 @@ export default function SymptomSearchScreen() {
         <Text
           style={{
             paddingHorizontal: 16,
-            paddingTop: 16,
+            paddingVertical: 16,
             fontSize: 30,
             lineHeight: 38,
             fontWeight: '700',
             color: T.textPrimary,
             letterSpacing: -0.25,
+            textAlign: 'center',
           }}
         >
           {ka.symptoms.askName(firstName)}
         </Text>
 
-        <View style={{ paddingHorizontal: 16, paddingTop: 32 }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 32 }}>
           <View
             style={{
-              height: 48,
+              minHeight: 48,
               borderRadius: 14,
               borderWidth: 1,
               borderColor: T.borderTertiary,
               backgroundColor: T.white,
-              paddingHorizontal: 14,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
               flexDirection: 'row',
               alignItems: 'center',
-              gap: 10,
+              gap: 8,
               ...T.shadowXs,
             }}
           >
-            <Search size={20} color={T.textMuted} />
+            <Search size={20} color={T.textSecondary} strokeWidth={1.8} />
             <TextInput
               ref={inputRef}
               value={query}
               onChangeText={setQuery}
               placeholder={ka.symptoms.searchPlaceholder}
-              placeholderTextColor={T.textMuted}
+              placeholderTextColor={T.textSecondary}
               onSubmitEditing={addQuery}
-              style={{ flex: 1, fontSize: 16, color: T.textPrimary, paddingVertical: 0 }}
+              style={{ flex: 1, fontSize: 16, lineHeight: 22, color: T.textPrimary, paddingVertical: 0 }}
             />
           </View>
         </View>
 
         {state.symptoms.length ? (
-          <View style={{ paddingHorizontal: 16, paddingTop: 24 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: T.textPrimary, marginBottom: 12 }}>
+          <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+            <Text style={{ fontSize: 14, lineHeight: 20, fontWeight: '600', color: T.textPrimary, marginBottom: 12 }}>
               {ka.symptoms.mySymptoms}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {state.symptoms.map((s) => (
-                <SymptomChip key={s} label={s} selected onRemove={() => removeSymptom(s)} />
+                <SymptomChip key={s} label={s} onRemove={() => removeSymptom(s)} />
               ))}
             </View>
           </View>
@@ -113,6 +115,10 @@ export default function SymptomSearchScreen() {
         score={score}
         onFocusInput={() => inputRef.current?.focus()}
         onAnatomy={() => router.push('/symptoms/body' as never)}
+        onSettings={() => {
+          addQuery();
+          router.push('/symptoms/details' as never);
+        }}
         sendDisabled={state.symptoms.length === 0 && !query.trim()}
         onSend={() => {
           addQuery();

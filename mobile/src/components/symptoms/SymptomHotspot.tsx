@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, View, type ViewStyle } from 'react-native';
+import React from 'react';
+import { Pressable, Text, View, type ViewStyle } from 'react-native';
 import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
 
-type HotspotStyle = Pick<ViewStyle, 'left' | 'top' | 'width' | 'height'>;
+type HotspotStyle = Pick<ViewStyle, 'left' | 'top'>;
 
 type Props = {
   selected: boolean;
@@ -12,60 +12,66 @@ type Props = {
 };
 
 export function SymptomHotspot({ selected, onPress, label, style }: Props) {
-  const pulse = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!selected) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [selected, pulse]);
-
-  const ringScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.8] });
-  const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] });
-
   return (
-    <Pressable onPress={onPress} style={{ position: 'absolute', ...style, alignItems: 'center', justifyContent: 'center' }}>
+    <Pressable
+      onPress={onPress}
+      hitSlop={10}
+      style={{
+        position: 'absolute',
+        width: 20,
+        height: 20,
+        marginLeft: -10,
+        marginTop: -10,
+        alignItems: 'center',
+        ...style,
+      }}
+    >
       {selected && label ? (
-        <View style={{ alignItems: 'center', position: 'absolute', top: -38, zIndex: 2 }}>
-          <View style={{ backgroundColor: T.white, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, ...T.shadowCard }}>
-            <Animated.Text style={{ fontSize: 13, fontWeight: '700', color: T.textPrimary }}>{label}</Animated.Text>
+        <View style={{ alignItems: 'center', position: 'absolute', bottom: 24, zIndex: 2, minWidth: 48 }}>
+          <View
+            style={{
+              backgroundColor: T.white,
+              borderRadius: 12,
+              paddingHorizontal: 8,
+              paddingVertical: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.08,
+              shadowRadius: 14,
+              elevation: 3,
+            }}
+          >
+            <Text style={{ fontSize: 14, lineHeight: 20, fontWeight: '700', color: T.textPrimary, textAlign: 'center' }}>
+              {label}
+            </Text>
           </View>
+          <View
+            style={{
+              width: 0,
+              height: 0,
+              borderLeftWidth: 8,
+              borderRightWidth: 8,
+              borderTopWidth: 8,
+              borderLeftColor: 'transparent',
+              borderRightColor: 'transparent',
+              borderTopColor: T.white,
+            }}
+          />
         </View>
-      ) : null}
-      {selected ? (
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            width: 28,
-            height: 28,
-            borderRadius: 14,
-            backgroundColor: T.brand,
-            transform: [{ scale: ringScale }],
-            opacity: ringOpacity,
-          }}
-        />
       ) : null}
       <View
         style={{
-          width: selected ? 22 : 16,
-          height: selected ? 22 : 16,
-          borderRadius: 11,
-          borderWidth: 2,
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          borderWidth: 1,
           borderColor: T.white,
-          backgroundColor: selected ? T.brand : 'rgba(20,184,166,0.55)',
+          backgroundColor: selected ? T.brand : 'rgba(0,0,0,0.3)',
           alignItems: 'center',
           justifyContent: 'center',
-          ...T.shadowXs,
         }}
       >
-        <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: T.white }} />
+        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: T.white }} />
       </View>
     </Pressable>
   );

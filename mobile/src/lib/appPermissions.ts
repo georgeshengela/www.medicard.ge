@@ -82,15 +82,15 @@ export async function loadAppPermissions(): Promise<AppPermissionsSnapshot> {
     biometricEnabled,
     cycleLock,
   ] = await Promise.all([
-    isHealthSyncEnabled(),
-    getNotificationPermissionStatus(),
+    isHealthSyncEnabled().catch(() => false),
+    getNotificationPermissionStatus().catch(() => 'undetermined' as const),
     getScheduledReminderCounts(),
-    ImagePicker.getCameraPermissionsAsync(),
-    ImagePicker.getMediaLibraryPermissionsAsync(),
-    LocalAuthentication.hasHardwareAsync(),
-    LocalAuthentication.isEnrolledAsync(),
-    isBiometricEnabled(),
-    isCyclePrivacyLockEnabled(),
+    ImagePicker.getCameraPermissionsAsync().catch(() => ({ status: ImagePicker.PermissionStatus.UNDETERMINED })),
+    ImagePicker.getMediaLibraryPermissionsAsync().catch(() => ({ status: ImagePicker.PermissionStatus.UNDETERMINED })),
+    LocalAuthentication.hasHardwareAsync().catch(() => false),
+    LocalAuthentication.isEnrolledAsync().catch(() => false),
+    isBiometricEnabled().catch(() => false),
+    isCyclePrivacyLockEnabled().catch(() => false),
   ]);
 
   return {
