@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Image, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { BellRing, ChevronRight, FileText, LogOut, MessageSquareText, Pill, Save, ShieldCheck } from 'lucide-react-native';
@@ -12,7 +12,9 @@ import { ThemeSelect } from '@/components/ui/ThemeSelect';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeLandingSelect } from '@/components/home/HomeLandingSelect';
 import { PlanDetailCard } from '@/components/PlanUsageCard';
+import { ProfilePointsCard } from '@/components/check-in/ProfilePointsCard';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
+import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { ka } from '@/i18n/ka';
 import { ApiError, type Gender } from '@/lib/api';
 import { isoToDisplay, parseBirthDate } from '@/lib/birthdate';
@@ -31,7 +33,7 @@ const GENDER_LABELS: Record<Gender, string> = {
 const APP_VERSION = Constants.expoConfig?.version ?? '3.4.0';
 
 export default function Profile() {
-  const { user, stats, refresh, signOut } = useAuth();
+  const { user, stats, refresh, signOut, healthProfile } = useAuth();
   const colors = useThemeColors();
   const tabInset = useTabBarInset();
   const router = useRouter();
@@ -73,9 +75,17 @@ export default function Profile() {
     .join('')
     .toUpperCase();
 
+  const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
+  const storedAvatar = typeof extra.avatarId === 'string' ? extra.avatarId : null;
+  const avatarId = storedAvatar
+    ? normalizeAvatarForGender(storedAvatar, user?.gender ?? null)
+    : null;
+  const avatarSource = avatarId && isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : null;
+
   return (
     <ScrollView
       className="flex-1 bg-bg-100"
+      style={{ backgroundColor: colors.bg100 }}
       contentContainerStyle={{ paddingBottom: tabInset }}
       contentContainerClassName="px-4 pt-3"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
@@ -83,8 +93,12 @@ export default function Profile() {
     >
       <Card>
         <View className="flex-row items-center">
-          <View className="h-14 w-14 items-center justify-center rounded-2xl bg-primary-200">
-            <Text className="text-lg font-bold text-white">{initials || '—'}</Text>
+          <View className="h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-accent-100">
+            {avatarSource ? (
+              <Image source={avatarSource} style={{ width: 56, height: 56 }} />
+            ) : (
+              <Text className="text-lg font-bold text-primary-100">{initials || '—'}</Text>
+            )}
           </View>
           <View className="ml-3.5 flex-1">
             <Text className="text-lg font-bold text-text-100">{user?.fullName}</Text>
@@ -99,6 +113,12 @@ export default function Profile() {
           </View>
         </View>
       </Card>
+
+      <ProfilePointsCard
+        points={user?.points ?? 0}
+        currentStreak={user?.currentStreak ?? 0}
+        onPress={() => router.push('/profile/streak')}
+      />
 
       <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.appearance}</Text>
       <Card className="gap-4">
@@ -279,7 +299,9 @@ function StatTile({
 
   return (
     <View className="flex-1 items-center rounded-2xl border border-bg-300 bg-surface py-4">
-      <Icon size={18} color={colors.primary300} strokeWidth={2.1} />
+      <View className="h-9 w-9 items-center justify-center rounded-xl bg-accent-100">
+        <Icon size={18} color={colors.primary200} strokeWidth={2.1} />
+      </View>
       <Text className="mt-1.5 text-xl font-bold text-text-100">{value}</Text>
       <Text className="text-xs text-text-300">{label}</Text>
     </View>

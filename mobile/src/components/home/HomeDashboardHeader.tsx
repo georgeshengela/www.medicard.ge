@@ -3,7 +3,7 @@ import { Image, Pressable, Text, View } from 'react-native';
 import { Flame } from 'lucide-react-native';
 import { HomePackageQuotaBadge } from '@/components/home/HomePackageQuotaBadge';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
-import { FIGMA_HOME_DASHBOARD } from '@/constants/figmaHomeDashboardLayout';
+import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
 import { ka } from '@/i18n/ka';
 import type { Gender } from '@/lib/api';
 
@@ -15,6 +15,7 @@ type Props = {
   streak?: number;
   onPackagePress?: () => void;
   onAvatarPress?: () => void;
+  onStreakPress?: () => void;
 };
 
 export function HomeDashboardHeader({
@@ -22,10 +23,12 @@ export function HomeDashboardHeader({
   initials,
   gender,
   avatarId,
-  streak = 1,
+  streak = 0,
   onPackagePress,
   onAvatarPress,
+  onStreakPress,
 }: Props) {
+  const FIGMA_HOME_DASHBOARD = useFigmaHomeDashboard();
   const dateLabel = new Date().toLocaleDateString('ka-GE', {
     weekday: 'short',
     month: 'short',
@@ -51,7 +54,9 @@ export function HomeDashboardHeader({
               {dateLabel}
             </Text>
             {streak > 0 ? (
-              <View
+              <Pressable
+                accessibilityRole="button"
+                onPress={onStreakPress}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -60,11 +65,6 @@ export function HomeDashboardHeader({
                   paddingHorizontal: 6,
                   paddingVertical: 2,
                   borderRadius: 6,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 1,
                 }}
               >
                 <Flame size={16} color="#FFFFFF" strokeWidth={2.2} />
@@ -78,7 +78,7 @@ export function HomeDashboardHeader({
                 >
                   {streak}
                 </Text>
-              </View>
+              </Pressable>
             ) : null}
           </View>
           <Text
@@ -107,7 +107,7 @@ export function HomeDashboardHeader({
                     width: 40,
                     height: 40,
                     borderRadius: 20,
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: FIGMA_HOME_DASHBOARD.avatarBg,
                     borderWidth: 1,
                     borderColor: FIGMA_HOME_DASHBOARD.borderTertiary,
                     alignItems: 'center',
@@ -135,7 +135,7 @@ export function HomeDashboardHeader({
                   borderRadius: 5,
                   backgroundColor: FIGMA_HOME_DASHBOARD.success,
                   borderWidth: 1.5,
-                  borderColor: '#FFFFFF',
+                  borderColor: FIGMA_HOME_DASHBOARD.avatarRing,
                 }}
               />
             </View>

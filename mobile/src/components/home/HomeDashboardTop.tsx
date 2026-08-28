@@ -1,7 +1,7 @@
 import React from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FIGMA_HOME_DASHBOARD } from '@/constants/figmaHomeDashboardLayout';
+import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
 import { HomeDashboardHeader } from '@/components/home/HomeDashboardHeader';
 import { HomeHealthScoreCard } from '@/components/home/HomeHealthScoreCard';
 import type { Gender } from '@/lib/api';
@@ -19,10 +19,12 @@ type Props = {
   onPackagePress?: () => void;
   onAvatarPress?: () => void;
   onScorePress?: () => void;
+  onStreakPress?: () => void;
 };
 
 /** Figma 8911:62356 — gradient header + health score card. */
 export function HomeDashboardTop(props: Props) {
+  const FIGMA_HOME_DASHBOARD = useFigmaHomeDashboard();
   const insets = useSafeAreaInsets();
 
   return (
@@ -38,6 +40,7 @@ export function HomeDashboardTop(props: Props) {
         streak={props.streak}
         onPackagePress={props.onPackagePress}
         onAvatarPress={props.onAvatarPress}
+        onStreakPress={props.onStreakPress}
       />
       <HomeHealthScoreCard
         score={props.score}

@@ -68,6 +68,29 @@ export type User = {
   packageStartedAt?: string | null;
   packageExpiresAt?: string | null;
   createdAt: string;
+  points?: number;
+  currentStreak?: number;
+  longestStreak?: number;
+  lastCheckInDate?: string | null;
+};
+
+export type CheckInDayStatus = 'completed' | 'skipped' | 'empty';
+
+export type CheckInDay = {
+  date: string;
+  status: CheckInDayStatus;
+};
+
+export type CheckInState = {
+  points: number;
+  currentStreak: number;
+  longestStreak: number;
+  lastCheckInDate: string | null;
+  weekStreak: number;
+  claimedToday: boolean;
+  today: string;
+  pointsPerDay: number;
+  week: CheckInDay[];
 };
 
 export type HealthProfile = {
@@ -567,6 +590,9 @@ export const api = {
         usage: Usage;
         stats: { records: number; chats: number; activeMedications: number };
         healthProfile: HealthProfile | null;
+        checkIn?: CheckInState | null;
+        checkInAwarded?: boolean;
+        pointsAwarded?: number;
       }>('/api/auth/me'),
 
     updateProfile: (body: { fullName?: string; gender?: Gender; birthDate?: string }) =>
@@ -575,6 +601,17 @@ export const api = {
 
   usage: {
     get: () => request<Usage & { label: string }>('/api/usage'),
+  },
+
+  checkIn: {
+    get: () => request<{ checkIn: CheckInState }>('/api/check-in'),
+    claim: () =>
+      request<{
+        awarded: boolean;
+        pointsAwarded: number;
+        user: User | null;
+        checkIn: CheckInState | null;
+      }>('/api/check-in/claim', { method: 'POST' }),
   },
 
   healthProfile: {

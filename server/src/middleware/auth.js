@@ -24,6 +24,10 @@ export function enrichPublicUser(user) {
     package: publicPackage(user.package),
     packageExpiresAt: user.packageExpiresAt ?? null,
     createdAt: user.createdAt,
+    points: user.points ?? 0,
+    currentStreak: user.currentStreak ?? 0,
+    longestStreak: user.longestStreak ?? 0,
+    lastCheckInDate: toDateOnly(user.lastCheckInDate),
   };
 }
 

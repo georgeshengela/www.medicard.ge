@@ -28,6 +28,7 @@ import { appRouter } from './routes/app.routes.js';
 import { cycleRouter, partnerShareHandler } from './routes/cycle.routes.js';
 import { pushRouter } from './routes/push.routes.js';
 import { pharmacyRouter } from './routes/pharmacy.routes.js';
+import { checkInRouter } from './routes/check-in.routes.js';
 import { asyncHandler } from './middleware/error.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -117,6 +118,7 @@ app.get('/api/cycle/share/:code', asyncHandler(partnerShareHandler));
 app.use('/api/usage', usageRouter);
 app.use('/api/push', pushRouter);
 app.use('/api/pharmacy', pharmacyRouter);
+app.use('/api/check-in', checkInRouter);
 app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 

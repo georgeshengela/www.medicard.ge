@@ -23,9 +23,15 @@ model User {
   packageStartedAt DateTime?
   packageExpiresAt DateTime?
   adminNote        String?
+  /// Daily login bonus — 5 points per calendar day (Asia/Tbilisi).
+  points           Int                  @default(0)
+  currentStreak    Int                  @default(0)
+  longestStreak    Int                  @default(0)
+  lastCheckInDate  DateTime?            @db.Date
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   records          MedicalRecord[]
+  checkIns         DailyCheckIn[]
   chats            ChatSession[]
   medications      MedicationSchedule[]
   periodUsages     PeriodUsage[]
@@ -43,6 +49,19 @@ model User {
   @@index([status])
   @@index([packageId])
   passwordResets    PasswordReset[]
+}
+
+/// One row per user per Tbilisi calendar day. Unique constraint makes the claim idempotent.
+model DailyCheckIn {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime @db.Date
+  pointsAwarded Int      @default(5)
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId])
 }
 
 /// Email OTP for password recovery — 6-digit code, short TTL.

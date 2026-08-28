@@ -10,6 +10,7 @@ import * as Notifications from 'expo-notifications';
 import { enableScreens } from 'react-native-screens';
 import Constants from 'expo-constants';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
+import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { useThemeColors } from '@/theme/colors';
 import { AuthProvider, useAuth, needsHealthAssessment, needsProfileSetup } from '@/store/AuthContext';
 import { FontsProvider } from '@/store/FontsContext';
@@ -174,8 +175,8 @@ function AppShell() {
               <Stack.Screen name="package" options={{ headerShown: false }} />
               <Stack.Screen name="health-metrics" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
-              <Stack.Screen name="chat" options={{ headerShown: false, contentStyle: { backgroundColor: '#F9FAFB' } }} />
-              <Stack.Screen name="module" options={{ headerShown: false, contentStyle: { backgroundColor: '#F9FAFB' } }} />
+              <Stack.Screen name="chat" options={{ headerShown: false }} />
+              <Stack.Screen name="module" options={{ headerShown: false }} />
               <Stack.Screen name="cycle" options={{ headerShown: false }} />
               <Stack.Screen name="visits" options={{ headerShown: false }} />
               <Stack.Screen name="medications" options={{ headerShown: false }} />
@@ -185,6 +186,7 @@ function AppShell() {
             </Stack>
           </View>
           {showTabBar ? <FloatingTabBar /> : null}
+          <DailyCheckInHost />
         </View>
       </AuthGate>
     </>

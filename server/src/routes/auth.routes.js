@@ -11,6 +11,7 @@ import { requestPhoneOtp, verifyPhoneOtp } from '../lib/phoneOtp.js';
 import { normalizeSmsDestination } from '../lib/sms.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
+import { claimDailyCheckIn } from '../lib/checkIn.js';
 
 export const authRouter = Router();
 
@@ -295,6 +296,20 @@ authRouter.get(
   '/me',
   requireAuth,
   asyncHandler(async (req, res) => {
+    let userPayload = publicUser(req.user);
+    let checkInAwarded = false;
+    let pointsAwarded = 0;
+    let checkIn = null;
+    try {
+      const claimed = await claimDailyCheckIn(req.user.id);
+      checkInAwarded = claimed.awarded;
+      pointsAwarded = claimed.pointsAwarded;
+      checkIn = claimed.checkIn;
+      if (claimed.user) userPayload = claimed.user;
+    } catch (error) {
+      console.warn('[check-in] claim on /me failed', error?.code || error?.message);
+    }
+
     const [usage, counts, healthProfile] = await Promise.all([
       getUsage(req.user.id),
       prisma.$transaction([
@@ -306,10 +321,13 @@ authRouter.get(
     ]);
 
     return res.json({
-      user: publicUser(req.user),
+      user: userPayload,
       usage,
       stats: { records: counts[0], chats: counts[1], activeMedications: counts[2] },
       healthProfile: publicHealthProfile(healthProfile),
+      checkIn,
+      checkInAwarded,
+      pointsAwarded,
     });
   }),
 );

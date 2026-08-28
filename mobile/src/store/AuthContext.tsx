@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { ApiError, api, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
+import { ApiError, api, type CheckInState, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
 import { clearToken, getToken, setToken } from '@/lib/storage';
 
@@ -20,6 +20,9 @@ type AuthState = {
   usage: Usage | null;
   stats: Stats | null;
   healthProfile: HealthProfile | null;
+  /** Set when today's login bonus was just awarded this session. */
+  pendingDailyBonus: CheckInState | null;
+  consumeDailyBonus: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signInWithPhone: (phone: string, code: string, fullName?: string) => Promise<void>;
@@ -40,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [healthProfile, setHealthProfile] = useState<HealthProfile | null>(null);
+  const [pendingDailyBonus, setPendingDailyBonus] = useState<CheckInState | null>(null);
 
   const hydrate = useCallback(async () => {
     const token = await getToken();
@@ -48,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUsage(null);
       setStats(null);
       setHealthProfile(null);
+      setPendingDailyBonus(null);
       return;
     }
 
@@ -57,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUsage(me.usage);
       setStats(me.stats);
       setHealthProfile(me.healthProfile ?? null);
+      if (me.checkInAwarded && me.checkIn) setPendingDailyBonus(me.checkIn);
       void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
         registerPushTokenWithServer(),
       );
@@ -67,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUsage(null);
         setStats(null);
         setHealthProfile(null);
+        setPendingDailyBonus(null);
       }
     }
   }, []);
@@ -75,16 +82,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hydrate().finally(() => setReady(true));
   }, [hydrate]);
 
-  const adopt = useCallback(async (result: { token: string; user: User; usage: Usage }) => {
-    await setToken(result.token);
-    setUser(result.user);
-    setUsage(result.usage);
-    setStats(null);
-    setHealthProfile(null);
-    void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
-      registerPushTokenWithServer(),
-    );
-  }, []);
+  const adopt = useCallback(
+    async (result: { token: string; user: User; usage: Usage }) => {
+      await setToken(result.token);
+      setUser(result.user);
+      setUsage(result.usage);
+      setStats(null);
+      setHealthProfile(null);
+      void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
+        registerPushTokenWithServer(),
+      );
+      await hydrate();
+    },
+    [hydrate],
+  );
 
   const refreshHealthProfile = useCallback(async () => {
     try {
@@ -96,6 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const consumeDailyBonus = useCallback(() => setPendingDailyBonus(null), []);
+
   const value = useMemo<AuthState>(
     () => ({
       ready,
@@ -103,6 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       usage,
       stats,
       healthProfile,
+      pendingDailyBonus,
+      consumeDailyBonus,
       signIn: async (email, password) => adopt(await api.auth.login({ email, password })),
       signUp: async (input) => adopt(await api.auth.register(input)),
       signInWithPhone: async (phone, code, fullName) => adopt(await api.auth.phoneVerify({ phone, code, fullName })),
@@ -112,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUsage(null);
         setStats(null);
         setHealthProfile(null);
+        setPendingDailyBonus(null);
       },
       refresh: hydrate,
       refreshHealthProfile,
@@ -123,7 +139,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       applyUsage: setUsage,
     }),
-    [ready, user, usage, stats, healthProfile, adopt, hydrate, refreshHealthProfile],
+    [
+      ready,
+      user,
+      usage,
+      stats,
+      healthProfile,
+      pendingDailyBonus,
+      consumeDailyBonus,
+      adopt,
+      hydrate,
+      refreshHealthProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
