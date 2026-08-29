@@ -14,20 +14,25 @@ import {
 import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { ka } from '@/i18n/ka';
 import {
+  archiveAndClearStepsGoal,
   buildGoalProgress,
   clearStepsGoal,
+  flushStepsGoalAwards,
   loadStepsGoal,
+  queueStepsGoalAward,
   saveStepsGoal,
   todayYmd,
 } from '@/lib/stepsGoal';
 import { fetchStepsTotalBetween } from '@/lib/stepsMetrics';
 import { formatStepsCount } from '@/lib/stepsMetrics.shared';
+import { useAuth } from '@/store/AuthContext';
 import type { StepsGoalProgress } from '@/types/stepsGoal';
 
 export default function StepsGoalScreen() {
   const FIGMA_STEPS = useFigmaSteps();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { setUser } = useAuth();
   const [progress, setProgress] = useState<StepsGoalProgress | null>(null);
 
   const load = useCallback(async () => {
@@ -38,11 +43,19 @@ export default function StepsGoalScreen() {
     }
     const current = await fetchStepsTotalBetween(goal.startedYmd, todayYmd());
     const next = buildGoalProgress(goal, current);
-    setProgress(next);
-    if (next.completed && !goal.completedSeen) {
-      router.replace('/health-metrics/steps/goal/completed' as never);
+    if (next.completed) {
+      await queueStepsGoalAward(goal.id);
+      await flushStepsGoalAwards(setUser);
+      if (!goal.completedSeen && !goal.pointsClaimed) {
+        router.replace('/health-metrics/steps/goal/completed' as never);
+        return;
+      }
+      await archiveAndClearStepsGoal(goal, current);
+      setProgress(null);
+      return;
     }
-  }, [router]);
+    setProgress(next);
+  }, [router, setUser]);
 
   useFocusEffect(
     useCallback(() => {
@@ -101,7 +114,7 @@ export default function StepsGoalScreen() {
             textAlign: 'center',
           }}
         >
-          {progress ? ka.stepsGoal.myGoal : ka.stepsGoal.myStepsGoal}
+          {ka.stepsGoal.myStepsGoal}
         </Text>
         <Pressable accessibilityRole="button" onPress={openMenu} hitSlop={12}>
           <GoalDotsVertical size={24} />
@@ -109,70 +122,43 @@ export default function StepsGoalScreen() {
       </View>
 
       <View style={{ flex: 1, justifyContent: 'center' }}>
-        {progress ? (
-          <>
-            <StepsGoalGauge
-              current={progress.current}
-              target={progress.goal.targetSteps}
-              percent={progress.percent}
-              daysLeft={progress.daysLeft}
-            />
-            <View style={{ padding: 16, gap: 12 }}>
-              <Text
-                style={{
-                  fontFamily: 'NotoSansGeorgian_700Bold',
-                  fontSize: 24,
-                  lineHeight: 32,
-                  letterSpacing: -0.25,
-                  color: FIGMA_STEPS.textPrimary,
-                  textAlign: 'center',
-                }}
-              >
-                {ka.stepsGoal.onTrackTitle}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: 'NotoSansGeorgian_400Regular',
-                  fontSize: 16,
-                  lineHeight: 26,
-                  color: FIGMA_STEPS.textSecondary,
-                  textAlign: 'center',
-                }}
-              >
-                {ka.stepsGoal.onTrackBody}
-              </Text>
-            </View>
-          </>
-        ) : (
-          <>
-            <StepsGoalGauge current={0} target={0} percent={0} daysLeft={0} />
-            <View style={{ padding: 16, gap: 12 }}>
-              <Text
-                style={{
-                  fontFamily: 'NotoSansGeorgian_700Bold',
-                  fontSize: 24,
-                  lineHeight: 32,
-                  letterSpacing: -0.25,
-                  color: FIGMA_STEPS.textPrimary,
-                  textAlign: 'center',
-                }}
-              >
-                {ka.stepsGoal.emptyTitle}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: 'NotoSansGeorgian_400Regular',
-                  fontSize: 16,
-                  lineHeight: 26,
-                  color: FIGMA_STEPS.textSecondary,
-                  textAlign: 'center',
-                }}
-              >
-                {ka.stepsGoal.emptyBody}
-              </Text>
-            </View>
+        <View style={{ width: '100%' }}>
+          <StepsGoalGauge
+            current={progress?.current ?? 0}
+            target={progress?.goal.targetSteps ?? 0}
+            percent={progress?.percent ?? 0}
+            daysLeft={progress?.daysLeft ?? 0}
+          />
+          <View style={{ padding: 16, gap: 12 }}>
+            <Text
+              style={{
+                fontFamily: 'NotoSansGeorgian_700Bold',
+                fontSize: 24,
+                lineHeight: 32,
+                letterSpacing: -0.25,
+                color: FIGMA_STEPS.textPrimary,
+                textAlign: 'center',
+              }}
+            >
+              {progress ? ka.stepsGoal.onTrackTitle : ka.stepsGoal.emptyTitle}
+            </Text>
+            <Text
+              style={{
+                fontFamily: 'NotoSansGeorgian_400Regular',
+                fontSize: 16,
+                lineHeight: 26,
+                color: FIGMA_STEPS.textSecondary,
+                textAlign: 'center',
+              }}
+            >
+              {progress ? ka.stepsGoal.onTrackBody : ka.stepsGoal.emptyBody}
+            </Text>
+          </View>
+          {progress ? null : (
             <View style={{ padding: 16 }}>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={ka.stepsGoal.setNewGoal}
                 onPress={() =>
                   router.push({
                     pathname: '/health-metrics/steps/goal/set',
@@ -205,8 +191,8 @@ export default function StepsGoalScreen() {
                 <GoalPlus size={20} color="#FFFFFF" />
               </Pressable>
             </View>
-          </>
-        )}
+          )}
+        </View>
       </View>
 
       {progress ? (

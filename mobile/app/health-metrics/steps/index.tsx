@@ -18,7 +18,7 @@ import {
   Sparkles,
 } from 'lucide-react-native';
 import { StepsBarChart } from '@/components/health/StepsBarChart';
-import { StepsGoalCard, StepsSection } from '@/components/health/StepsGoalCard';
+import { StepsGoalCard, StepsReachedGoalsList, StepsSection } from '@/components/health/StepsGoalCard';
 import { StepsHistoryRow } from '@/components/health/StepsHistoryRow';
 import { StepsInsightGrid } from '@/components/health/StepsInsightGrid';
 import { StepsPeriodTabs } from '@/components/health/StepsPeriodTabs';
@@ -27,7 +27,9 @@ import { useStepsMetrics } from '@/hooks/useStepsMetrics';
 import { ka } from '@/i18n/ka';
 import { formatStepsCount } from '@/lib/stepsMetrics.shared';
 import { fetchStepsTotalBetween } from '@/lib/stepsMetrics';
+import { loadReachedStepsGoals } from '@/lib/stepsGoalHistory';
 import { buildGoalProgress, loadStepsGoal, todayYmd } from '@/lib/stepsGoal';
+import type { StepsGoalRecord } from '@/types/stepsGoal';
 import type { StepChartPeriod } from '@/types/stepsMetrics';
 
 /** Figma 8851:166841 — steps counter detail. */
@@ -38,18 +40,25 @@ export default function StepsDetailScreen() {
   const { bundle, loading, period, refresh } = useStepsMetrics('1d');
   const [refreshing, setRefreshing] = useState(false);
   const [campaign, setCampaign] = useState<{ goal: number; current: number; remaining: number } | null>(null);
+  const [reached, setReached] = useState<StepsGoalRecord[]>([]);
 
   useFocusEffect(
     useCallback(() => {
-      void loadStepsGoal().then(async (goal) => {
+      void (async () => {
+        setReached(await loadReachedStepsGoals());
+        const goal = await loadStepsGoal();
         if (!goal) {
           setCampaign(null);
           return;
         }
         const current = await fetchStepsTotalBetween(goal.startedYmd, todayYmd());
         const next = buildGoalProgress(goal, current);
+        if (next.completed) {
+          setCampaign(null);
+          return;
+        }
         setCampaign({ goal: goal.targetSteps, current: next.current, remaining: next.remaining });
-      });
+      })();
     }, []),
   );
 
@@ -209,6 +218,10 @@ export default function StepsDetailScreen() {
                   remaining={campaign?.remaining ?? bundle.remaining}
                 />
               </Pressable>
+            </StepsSection>
+
+            <StepsSection title={ka.stepsGoal.reachedTitle}>
+              <StepsReachedGoalsList records={reached} />
             </StepsSection>
 
             <StepsSection title={ka.steps.insightTitle} actionLabel={ka.common.seeAll}>

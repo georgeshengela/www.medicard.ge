@@ -1,11 +1,14 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { ka } from '@/i18n/ka';
+import { api, type User } from '@/lib/api';
 import { cancelNotificationsByPrefix, NOTIF_PREFIX, requestNotificationPermission } from '@/lib/notifications';
 import { getPreference, setPreference } from '@/lib/storage';
+import { archiveReachedStepsGoal } from '@/lib/stepsGoalHistory';
 import type { StepsGoal, StepsGoalProgress } from '@/types/stepsGoal';
 
 const STORAGE_KEY = 'medicard.steps.goal.v1';
+const PENDING_AWARDS_KEY = 'medicard.steps.goal.pendingAwards';
 
 export const STEPS_GOAL_PRESETS = [2000, 3000, 4000, 5000] as const;
 export const STEPS_GOAL_RECOMMENDED = 5000;
@@ -87,6 +90,57 @@ export async function saveStepsGoal(goal: StepsGoal): Promise<void> {
 export async function clearStepsGoal(): Promise<void> {
   await setPreference(STORAGE_KEY, '');
   await cancelNotificationsByPrefix(NOTIF_PREFIX.steps);
+}
+
+export async function archiveAndClearStepsGoal(goal: StepsGoal, currentSteps: number): Promise<void> {
+  await archiveReachedStepsGoal({
+    id: goal.id,
+    targetSteps: goal.targetSteps,
+    startedYmd: goal.startedYmd,
+    deadlineYmd: goal.deadlineYmd,
+    completedYmd: todayYmd(),
+    currentSteps,
+  });
+  await clearStepsGoal();
+}
+
+function parsePendingAwardIds(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return [...new Set(parsed.map((id) => String(id || '').trim()).filter(Boolean))];
+  } catch {
+    return [];
+  }
+}
+
+export async function queueStepsGoalAward(goalId: string): Promise<void> {
+  const id = goalId.trim();
+  if (!id) return;
+  const list = parsePendingAwardIds(await getPreference(PENDING_AWARDS_KEY));
+  if (list.includes(id)) return;
+  await setPreference(PENDING_AWARDS_KEY, JSON.stringify([...list, id]));
+}
+
+/** Retry queued +3 bonuses. Successful or already-claimed ids are dropped. */
+export async function flushStepsGoalAwards(applyUser?: (user: User) => void): Promise<number> {
+  const list = parsePendingAwardIds(await getPreference(PENDING_AWARDS_KEY));
+  if (list.length === 0) return 0;
+
+  const remaining: string[] = [];
+  let awarded = 0;
+  for (const goalId of list) {
+    try {
+      const result = await api.checkIn.awardStepsGoal(goalId);
+      if (result.user) applyUser?.(result.user);
+      if (result.awarded) awarded += result.pointsAwarded ?? 0;
+    } catch {
+      remaining.push(goalId);
+    }
+  }
+  await setPreference(PENDING_AWARDS_KEY, JSON.stringify(remaining));
+  return awarded;
 }
 
 export function buildGoalProgress(goal: StepsGoal, current: number): StepsGoalProgress {

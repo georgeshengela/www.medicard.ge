@@ -5,6 +5,7 @@ import { Flag } from 'lucide-react-native';
 import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { formatStepsCount } from '@/lib/stepsMetrics.shared';
 import { ka } from '@/i18n/ka';
+import type { StepsGoalRecord } from '@/types/stepsGoal';
 
 type Props = {
   goal: number;
@@ -78,6 +79,59 @@ type SectionProps = {
   onAction?: () => void;
   children: React.ReactNode;
 };
+
+export function StepsReachedGoalsList({ records }: { records: StepsGoalRecord[] }) {
+  const FIGMA_STEPS = useFigmaSteps();
+
+  if (records.length === 0) {
+    return (
+      <Text
+        style={{
+          fontFamily: 'NotoSansGeorgian_400Regular',
+          fontSize: 14,
+          lineHeight: 20,
+          color: FIGMA_STEPS.textSecondary,
+          textAlign: 'center',
+          paddingVertical: 12,
+        }}
+      >
+        {ka.stepsGoal.reachedEmpty}
+      </Text>
+    );
+  }
+
+  return (
+    <View style={{ gap: 8 }}>
+      {records.map((row) => (
+        <View
+          key={row.id}
+          style={{
+            backgroundColor: FIGMA_STEPS.cardBg,
+            borderRadius: FIGMA_STEPS.cardRadius,
+            borderWidth: 1,
+            borderColor: FIGMA_STEPS.border,
+            padding: 16,
+            gap: 4,
+          }}
+        >
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: FIGMA_STEPS.textPrimary }}>
+            {ka.steps.goalReached}
+          </Text>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: FIGMA_STEPS.textSecondary }}>
+            {ka.stepsGoal.reachedLine(
+              formatStepsCount(row.targetSteps),
+              new Date(`${row.completedYmd}T12:00:00`).toLocaleDateString('ka-GE', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              }),
+            )}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export function StepsSection({ title, actionLabel, onAction, children }: SectionProps) {
   const FIGMA_STEPS = useFigmaSteps();
