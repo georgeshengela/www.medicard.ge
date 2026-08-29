@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { CheckCheck } from 'lucide-react-native';
-import { FIGMA_CHAT } from '@/constants/figmaChatLayout';
+import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { formatChatTime } from '@/lib/chatUiConfig';
 import { ChatAiAvatar, ChatUserAvatar } from '@/components/chat/ChatAiAvatar';
 
@@ -13,6 +13,7 @@ type Props = {
 };
 
 export function ChatBubbleUser({ content, timestamp, userInitials, userAvatarUri }: Props) {
+  const FIGMA_CHAT = useFigmaChat();
   const time = formatChatTime(timestamp);
 
   return (
@@ -47,6 +48,7 @@ type AssistantProps = {
 };
 
 export function ChatBubbleAssistant({ icon, timestamp, children, footer }: AssistantProps) {
+  const FIGMA_CHAT = useFigmaChat();
   const time = timestamp ? formatChatTime(timestamp) : '';
 
   return (
@@ -79,6 +81,7 @@ export function ChatBubbleAssistant({ icon, timestamp, children, footer }: Assis
 }
 
 export function ChatTypingBubble({ icon }: { icon: React.ComponentProps<typeof ChatAiAvatar>['icon'] }) {
+  const FIGMA_CHAT = useFigmaChat();
   return (
     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
       <ChatAiAvatar icon={icon} size="md" />

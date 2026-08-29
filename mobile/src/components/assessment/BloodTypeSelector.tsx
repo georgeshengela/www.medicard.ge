@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { UnitSegment } from '@/components/assessment/UnitSegment';
 import { isLatinUnitLabel, unitLabelFontFamily } from '@/components/assessment/unitLabelFont';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { useAssessment } from '@/constants/assessmentLayout';
 import { ka } from '@/i18n/ka';
 import { lightColors } from '@/theme/colors';
 
@@ -60,6 +60,7 @@ function MinusIcon({ size, color }: { size: number; color: string }) {
 
 /** Figma 9217:164607 — ABO tab, hero letter + Rh badge, +/- pills, Georgian explainer. */
 export function BloodTypeSelector({ value, onChange }: Props) {
+  const ASSESSMENT = useAssessment();
   const { group, rh } = parseBloodType(value);
   const setGroup = (g: string) => onChange(`${g}${rh}`);
   const setRh = (r: string) => onChange(`${group}${r}`);
@@ -173,6 +174,7 @@ export function BloodTypeSelector({ value, onChange }: Props) {
 }
 
 function BloodTypeExplainer() {
+  const ASSESSMENT = useAssessment();
   const help = ka.assessment.bloodTypeHelp;
 
   return (
@@ -215,7 +217,7 @@ function BloodTypeExplainer() {
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: ASSESSMENT.surface,
               borderRadius: 12,
               paddingVertical: 10,
               paddingHorizontal: 12,
@@ -286,7 +288,7 @@ function BloodTypeExplainer() {
               flexDirection: 'row',
               alignItems: 'center',
               gap: 8,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: ASSESSMENT.surface,
               borderRadius: 999,
               paddingVertical: 8,
               paddingHorizontal: 12,

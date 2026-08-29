@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Check } from 'lucide-react-native';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 
 type Props = {
   checked: boolean;
@@ -9,6 +9,7 @@ type Props = {
 };
 
 export function SymptomCheckbox({ checked, size = 20 }: Props) {
+  const T = useFigmaSymptoms();
   return (
     <View
       style={{

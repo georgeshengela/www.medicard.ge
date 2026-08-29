@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
-import { Flame } from 'lucide-react-native';
 import { HomePackageQuotaBadge } from '@/components/home/HomePackageQuotaBadge';
+import { HomeStreakChip } from '@/components/home/HomeStreakChip';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
 import { ka } from '@/i18n/ka';
@@ -53,33 +53,7 @@ export function HomeDashboardHeader({
             >
               {dateLabel}
             </Text>
-            {streak > 0 ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={onStreakPress}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 4,
-                  backgroundColor: FIGMA_HOME_DASHBOARD.warning,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                  borderRadius: 6,
-                }}
-              >
-                <Flame size={16} color="#FFFFFF" strokeWidth={2.2} />
-                <Text
-                  style={{
-                    fontFamily: 'NotoSansGeorgian_500Medium',
-                    fontSize: 12,
-                    lineHeight: 16,
-                    color: '#FFFFFF',
-                  }}
-                >
-                  {streak}
-                </Text>
-              </Pressable>
-            ) : null}
+            <HomeStreakChip streak={streak} onPress={onStreakPress} />
           </View>
           <Text
             style={{

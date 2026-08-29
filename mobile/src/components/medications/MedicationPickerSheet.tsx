@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { MedicationBottomSheet } from '@/components/medications/MedicationBottomSheet';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 
 export type MedicationPickerOption = {
   id: string;
@@ -22,6 +22,7 @@ type Props = {
 };
 
 export function MedicationPickerSheet({ visible, title, subtitle, options, value, onClose, onSelect }: Props) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <MedicationBottomSheet visible={visible} title={title} subtitle={subtitle} onClose={onClose}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
@@ -96,6 +97,7 @@ type GridProps = {
 };
 
 export function MedicationTimePickerSheet({ visible, title, subtitle, options, value, onClose, onSelect }: GridProps) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <MedicationBottomSheet visible={visible} title={title} subtitle={subtitle} onClose={onClose}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>

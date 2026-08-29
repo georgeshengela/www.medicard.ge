@@ -80,11 +80,14 @@ export async function loadDoseLogs(): Promise<MedicationDoseLog[]> {
 }
 
 export async function saveDoseLog(entry: MedicationDoseLog): Promise<void> {
-  const { getPreference, setPreference } = await import('@/lib/storage');
+  const { setPreference } = await import('@/lib/storage');
   const existing = await loadDoseLogs();
   const key = `${entry.medicationId}|${entry.date}|${entry.time}`;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90);
+  const cutoffKey = cutoff.toISOString().slice(0, 10);
   const next = [
-    ...existing.filter((e) => `${e.medicationId}|${e.date}|${e.time}` !== key),
+    ...existing.filter((e) => `${e.medicationId}|${e.date}|${e.time}` !== key && e.date >= cutoffKey),
     { ...entry, updatedAt: new Date().toISOString() },
   ];
   await setPreference(DOSE_LOG_KEY, JSON.stringify(next));

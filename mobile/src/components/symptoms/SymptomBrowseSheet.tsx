@@ -2,7 +2,8 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 import { SymptomCta } from './SymptomCta';
 import { SymptomCheckbox } from './SymptomCheckbox';
@@ -18,10 +19,11 @@ type Props = {
 
 /** Figma stacked bottom sheet — Browse Organs / Browse Body Areas. */
 export function SymptomBrowseSheet({ visible, title, onClose, onApply, applyDisabled, children }: Props) {
+  const T = useFigmaSymptoms();
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(229,231,235,0.92)' }} onPress={onClose} />
 
@@ -69,6 +71,7 @@ type OrganRowProps = {
 };
 
 export function SymptomOrganBrowseRow({ label, icon, selected, onPress }: OrganRowProps) {
+  const T = useFigmaSymptoms();
   return (
     <Pressable
       onPress={onPress}
@@ -102,6 +105,7 @@ type BodyTileProps = {
 };
 
 export function SymptomBodyAreaTile({ label, selected, onPress, children }: BodyTileProps) {
+  const T = useFigmaSymptoms();
   return (
     <Pressable onPress={onPress} style={{ width: '31%', alignItems: 'center', marginBottom: 16 }}>
       <View

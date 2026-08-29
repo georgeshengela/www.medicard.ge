@@ -3567,8 +3567,9 @@ button.users-kpi:focus-visible {
 .users-quota-pct.warn { color: var(--warn); }
 .users-quota-pct.full { color: var(--bad); }
 .users-quota .quota-track { margin-top: 0; height: 7px; }
-.users-quota.is-unlimited .quota-track > span {
-  background: linear-gradient(90deg, var(--ult), var(--teal));
+.users-quota-left {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 .users-live {

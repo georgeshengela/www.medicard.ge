@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
-import { FIGMA_CHAT } from '@/constants/figmaChatLayout';
+import { useFigmaChat } from '@/constants/figmaChatLayout';
 
 export default function ChatLayout() {
+  const FIGMA_CHAT = useFigmaChat();
   return (
     <Stack
       screenOptions={{

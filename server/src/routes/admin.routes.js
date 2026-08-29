@@ -8,7 +8,7 @@ import { publicPackage, buildPackageAssignment } from '../lib/packages.js';
 import { renewSubscriptionDates } from '../lib/billing.js';
 import { getAppSettings, publicAppSettings } from '../lib/settings.js';
 import { getMobileAppVersion } from '../lib/mobileAppVersion.js';
-import { getUsage } from '../lib/usage.js';
+import { getUsage, resetUsage } from '../lib/usage.js';
 import { getPushStats, resolveSegmentTokens, sendExpoPush } from '../lib/push.js';
 import { toDateOnly, calculateAge } from '../lib/patient.js';
 import { asyncHandler } from '../middleware/error.js';
@@ -454,6 +454,23 @@ adminRouter.post(
     });
 
     res.json({ user: adminUserRow(updated, await getUsage(updated.id)) });
+  }),
+);
+
+adminRouter.post(
+  '/users/:id/reset-usage',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      include: {
+        package: true,
+        _count: { select: { records: true, chats: true, medications: true } },
+      },
+    });
+    if (!user) return res.status(404).json({ error: 'მომხმარებელი ვერ მოიძებნა.' });
+    const usage = await resetUsage(user.id);
+    res.json({ user: adminUserRow(user, usage) });
   }),
 );
 

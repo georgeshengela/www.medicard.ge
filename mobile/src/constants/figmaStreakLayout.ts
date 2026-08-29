@@ -8,6 +8,7 @@ export const FIGMA_STREAK = {
   destructive: '#F43F5E',
   textPrimary: '#1F2937',
   textSecondary: '#4B5563',
+  weekday: '#6B7280',
   pageBg: '#FFFFFF',
   cardBg: '#F9FAFB',
   border: '#E5E7EB',
@@ -29,6 +30,7 @@ export const FIGMA_STREAK = {
 export const FIGMA_STREAK_DARK = {
   textPrimary: '#FFFFFF',
   textSecondary: '#D1D5DB',
+  weekday: '#9CA3AF',
   pageBg: '#030712',
   cardBg: '#111827',
   border: '#374151',

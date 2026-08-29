@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar, ChevronDown, Pencil, Pill, Search, Stethoscope } from 'lucide-react-native';
@@ -7,8 +7,9 @@ import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
 import { SymptomFooter } from '@/components/symptoms/SymptomCta';
 import { SymptomPainScale } from '@/components/symptoms/SymptomPainScale';
 import { SymptomSheet } from '@/components/symptoms/SymptomSheet';
+import { KEYBOARD_DONE_ACCESSORY_ID, KeyboardDoneAccessory } from '@/components/ui/KeyboardDoneAccessory';
 import { SYMPTOM_INTRO_ILLUSTRATION } from '@/constants/symptomAssets';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { DURATION_OPTIONS } from '@/constants/symptomCatalog';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
@@ -16,6 +17,8 @@ import { updateSymptomChecker, useSymptomChecker } from '@/lib/symptomCheckerSto
 import { useAuth } from '@/store/AuthContext';
 
 export default function SymptomDetailsScreen() {
+  const T = useFigmaSymptoms();
+  const { labelStyle, hintStyle, fieldBox } = useSymptomFieldStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const state = useSymptomChecker();
@@ -36,9 +39,18 @@ export default function SymptomDetailsScreen() {
             .join(', ')}, +${medications.length - 2}`;
 
   return (
-    <View style={{ flex: 1, backgroundColor: T.white, paddingBottom: insets.bottom }}>
+    <View style={{ flex: 1, backgroundColor: T.white }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+      >
       <SymptomNavHeader onBack={() => router.back()} />
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, gap: 8 }}>
           <Text style={{ fontSize: 30, lineHeight: 38, fontWeight: '700', color: T.textPrimary, letterSpacing: -0.25 }}>
             {ka.symptoms.detailsHeading(firstName)}
@@ -95,6 +107,7 @@ export default function SymptomDetailsScreen() {
               placeholder={ka.symptoms.pastConditionsPlaceholder}
               placeholderTextColor={T.textMuted}
               style={{ flex: 1, fontSize: 16, lineHeight: 22, color: T.textPrimary, paddingVertical: 0 }}
+              inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
             />
             <Pencil size={20} color={T.textSecondary} strokeWidth={1.8} />
           </View>
@@ -134,6 +147,7 @@ export default function SymptomDetailsScreen() {
               placeholderTextColor={T.textSecondary}
               multiline
               style={{ flex: 1, minHeight: 100, fontSize: 16, lineHeight: 26, color: T.textPrimary, textAlignVertical: 'top' }}
+              inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
             />
             <Text style={{ fontSize: 12, lineHeight: 16, color: T.textMuted }}>{state.notes.length}/300</Text>
           </View>
@@ -162,7 +176,7 @@ export default function SymptomDetailsScreen() {
             }}
           >
             <Text style={{ flex: 1, fontSize: 14, lineHeight: 20, fontWeight: '600', color: T.textPrimary }}>
-              {ka.symptoms.sendToNightingale}
+              {ka.symptoms.sendToMedi}
             </Text>
             <Switch
               value={state.shareToNightingale}
@@ -182,8 +196,17 @@ export default function SymptomDetailsScreen() {
 
       <SymptomFooter>
         <Pressable
-          onPress={() => router.push('/symptoms/analyzing' as never)}
-          disabled={state.symptoms.length === 0}
+          accessibilityRole="button"
+          onPress={() => {
+            if (state.symptoms.length === 0) {
+              router.push('/symptoms/search' as never);
+              return;
+            }
+            if (!state.primarySymptom) {
+              updateSymptomChecker({ primarySymptom: state.symptoms[0] });
+            }
+            router.push('/symptoms/analyzing' as never);
+          }}
           style={{
             height: T.btnH,
             borderRadius: T.btnRadius,
@@ -192,7 +215,6 @@ export default function SymptomDetailsScreen() {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 10,
-            opacity: state.symptoms.length === 0 ? 0.45 : 1,
             ...T.shadowXs,
           }}
         >
@@ -200,6 +222,9 @@ export default function SymptomDetailsScreen() {
           <Search size={20} color={T.white} strokeWidth={2.2} />
         </Pressable>
       </SymptomFooter>
+      </KeyboardAvoidingView>
+      <KeyboardDoneAccessory />
+      <View style={{ height: insets.bottom, backgroundColor: T.white }} />
 
       <SymptomSheet
         visible={durationOpen}
@@ -235,6 +260,7 @@ export default function SymptomDetailsScreen() {
 }
 
 function FieldBlock({ label, children }: { label: string; children: React.ReactNode }) {
+  const { labelStyle } = useSymptomFieldStyles();
   return (
     <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}>
       <Text style={labelStyle}>{label}</Text>
@@ -243,19 +269,23 @@ function FieldBlock({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-const labelStyle = { fontSize: 14, lineHeight: 20, fontWeight: '600' as const, color: T.textPrimary };
-const hintStyle = { fontSize: 14, lineHeight: 22, color: T.textSecondary };
-
-const fieldBox = {
-  flexDirection: 'row' as const,
-  alignItems: 'center' as const,
-  gap: 12,
-  minHeight: 48,
-  paddingHorizontal: 12,
-  paddingVertical: 10,
-  borderRadius: 14,
-  borderWidth: 1,
-  borderColor: T.borderTertiary,
-  backgroundColor: T.white,
-  ...T.shadowXs,
-};
+function useSymptomFieldStyles() {
+  const T = useFigmaSymptoms();
+  return {
+    labelStyle: { fontSize: 14, lineHeight: 20, fontWeight: '600' as const, color: T.textPrimary },
+    hintStyle: { fontSize: 14, lineHeight: 22, color: T.textSecondary },
+    fieldBox: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: 12,
+      minHeight: 48,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: T.borderTertiary,
+      backgroundColor: T.white,
+      ...T.shadowXs,
+    },
+  };
+}

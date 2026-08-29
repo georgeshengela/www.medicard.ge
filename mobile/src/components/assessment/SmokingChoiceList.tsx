@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { useAssessment } from '@/constants/assessmentLayout';
 import { ka } from '@/i18n/ka';
 
 const ICON = 32;
@@ -84,6 +84,7 @@ function CheckMark() {
 
 /** Figma 11332:64167 — 32pt icons, 14pt list rows, 20pt teal checkbox. */
 export function SmokingChoiceList({ value, onChange, titleFor }: Props) {
+  const ASSESSMENT = useAssessment();
   return (
     <View style={{ width: '100%', gap: 8 }}>
       {OPTIONS.map(({ key, Icon }) => {
@@ -145,7 +146,7 @@ export function SmokingChoiceList({ value, onChange, titleFor }: Props) {
                 width: CHECK,
                 height: CHECK,
                 borderRadius: 4,
-                backgroundColor: active ? '#14B8A6' : '#FFFFFF',
+                backgroundColor: active ? '#14B8A6' : ASSESSMENT.surface,
                 borderWidth: active ? 0 : 1,
                 borderColor: '#D1D5DB',
                 alignItems: 'center',

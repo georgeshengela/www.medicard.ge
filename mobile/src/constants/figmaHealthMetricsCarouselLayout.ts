@@ -1,3 +1,5 @@
+import { useIsDark } from '@/theme/colors';
+
 /** Figma 8911:174697 — home Health Metrics carousel tokens. */
 export const FIGMA_HEALTH_METRICS_CAROUSEL = {
   cardWidth: 160,
@@ -30,3 +32,16 @@ export const FIGMA_HEALTH_METRICS_CAROUSEL = {
     elevation: 1,
   },
 } as const;
+
+export const FIGMA_HEALTH_METRICS_CAROUSEL_DARK = {
+  cardBg: '#111827',
+  cardBorder: '#374151',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#D1D5DB',
+  dotInactive: '#374151',
+} as const;
+
+export function useFigmaHealthMetricsCarousel() {
+  const dark = useIsDark();
+  return dark ? { ...FIGMA_HEALTH_METRICS_CAROUSEL, ...FIGMA_HEALTH_METRICS_CAROUSEL_DARK } : FIGMA_HEALTH_METRICS_CAROUSEL;
+}

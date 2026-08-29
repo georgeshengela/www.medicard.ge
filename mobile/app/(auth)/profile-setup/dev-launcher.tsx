@@ -6,9 +6,11 @@ import { ChevronLeft } from 'lucide-react-native';
 import { ONBOARDING_DEV_STEPS, onboardingDevHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
 import { welcomeTopInset } from '@/constants/figmaWelcomeLayout';
+import { useThemeColors } from '@/theme/colors';
 
 /** Dev menu — pick any post-OTP onboarding screen (preview=1). */
 export default function ProfileSetupDevLauncherScreen() {
+  const colors = useThemeColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { ready, user } = useAuth();
@@ -30,14 +32,14 @@ export default function ProfileSetupDevLauncherScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFBEB', paddingTop: welcomeTopInset(insets.top) }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg100, paddingTop: welcomeTopInset(insets.top) }}>
       <Pressable onPress={() => router.back()} hitSlop={12} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 16 }}>
-        <ChevronLeft size={24} color="#92400E" />
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: '#92400E' }}>უკან</Text>
+        <ChevronLeft size={24} color={colors.text100} />
+        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: colors.text100 }}>უკან</Text>
       </Pressable>
 
       <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, color: '#78350F' }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, color: colors.text100 }}>
           OTP-ის შემდეგ — QA
         </Text>
         <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: '#92400E', marginTop: 6 }}>
@@ -53,12 +55,12 @@ export default function ProfileSetupDevLauncherScreen() {
             style={{
               padding: 16,
               borderRadius: 14,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: colors.surface,
               borderWidth: 1,
               borderColor: '#FDE68A',
             }}
           >
-            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: '#1F2937' }}>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: colors.text100 }}>
               {step.label}
             </Text>
             <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>

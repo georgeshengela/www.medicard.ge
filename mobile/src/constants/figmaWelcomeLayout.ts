@@ -24,11 +24,16 @@ export const WELCOME_PROGRESS_SEGMENTS = 6;
 
 /** Mint/teal hero backdrop (matches Nightingale welcome frames). */
 export const WELCOME_HERO_BG = '#E8F8F5';
+export const WELCOME_HERO_BG_DARK = '#042F2E';
 
 /** Landing hero — logo only, no Figma PNG. */
 export const LANDING_LOGO_SIZE = 112;
 export const LANDING_GRADIENT = {
   colors: ['#C5EFE8', '#E2F7F3', '#FFFFFF'] as const,
+  locations: [0, 0.38, 0.72] as const,
+};
+export const LANDING_GRADIENT_DARK = {
+  colors: ['#042F2E', '#111827', '#030712'] as const,
   locations: [0, 0.38, 0.72] as const,
 };
 

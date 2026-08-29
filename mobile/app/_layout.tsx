@@ -89,12 +89,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        const landing = await getHomeLanding();
+        const onPrivacy = segments.includes('privacy');
+        const onResults = segments.includes('results');
+        if (onPrivacy || onResults) return;
+
         // Dev QA — allow profile-setup preview even when onboarding is complete.
         if (typeof __DEV__ !== 'undefined' && __DEV__ && onProfileSetup) {
           return;
         }
 
-        const landing = await getHomeLanding();
         router.replace(resolveInitialRoute(landing, user.gender) as never);
       })();
     }

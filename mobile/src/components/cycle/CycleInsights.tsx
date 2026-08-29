@@ -10,8 +10,11 @@ import Animated, { FadeInRight, FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronRight, RefreshCw, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import { QuotaSheet } from '@/components/QuotaSheet';
 import { ka } from '@/i18n/ka';
 import { api, ApiError, type CycleInsightCard, type CycleInsights } from '@/lib/api';
+import { useAuth } from '@/store/AuthContext';
 import {
   CycleInsightDetailSheet,
 } from '@/components/cycle/CycleInsightDetailSheet';
@@ -33,12 +36,15 @@ type Props = {
 
 export function CycleInsightsPanel({ seed, onLoaded }: Props) {
   const c = useCycleColors();
+  const router = useRouter();
+  const { applyUsage } = useAuth();
   const [insights, setInsights] = useState<CycleInsights | null>(seed ?? null);
   const [loading, setLoading] = useState(!seed);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
   const [detailCard, setDetailCard] = useState<CycleInsightCard | null>(null);
+  const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
 
   const load = async (refresh = false) => {
     try {
@@ -48,9 +54,15 @@ export function CycleInsightsPanel({ seed, onLoaded }: Props) {
       const res = await api.cycle.insights(refresh);
       setInsights(res.insights);
       setFromCache(Boolean(res.cached));
+      if (res.usage) applyUsage(res.usage);
       onLoaded?.(res.insights);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : ka.common.error);
+      if (err instanceof ApiError && err.isQuotaExceeded) {
+        setQuotaBlock(err.usage?.resetsInMs ?? 0);
+        if (err.usage) applyUsage(err.usage);
+      } else {
+        setError(err instanceof ApiError ? err.message : ka.common.error);
+      }
       if (!insights && seed) setInsights(seed);
     } finally {
       setLoading(false);
@@ -237,6 +249,15 @@ export function CycleInsightsPanel({ seed, onLoaded }: Props) {
         card={detailCard}
         headline={insights?.headline}
         onClose={() => setDetailCard(null)}
+      />
+      <QuotaSheet
+        visible={quotaBlock !== undefined}
+        resetsInMs={quotaBlock}
+        onClose={() => setQuotaBlock(undefined)}
+        onUpgrade={() => {
+          setQuotaBlock(undefined);
+          router.push('/package');
+        }}
       />
     </>
   );

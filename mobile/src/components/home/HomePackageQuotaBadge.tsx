@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, Text } from 'react-native';
-import { FIGMA_HOME_DASHBOARD } from '@/constants/figmaHomeDashboardLayout';
+import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
 import { usePlanUsage } from '@/lib/planUsage';
 
 type Props = {
@@ -9,11 +9,12 @@ type Props = {
 
 /** Compact remaining/limit pill for home header — no label text. */
 export function HomePackageQuotaBadge({ onPress }: Props) {
+  const FIGMA_HOME_DASHBOARD = useFigmaHomeDashboard();
   const { unlimited, remaining, limit, exhausted, usage } = usePlanUsage();
   if (!usage) return null;
 
   const accent = exhausted ? '#F43F5E' : FIGMA_HOME_DASHBOARD.brand;
-  const borderColor = exhausted ? '#FECDD3' : FIGMA_HOME_DASHBOARD.borderTertiary;
+  const borderColor = exhausted ? FIGMA_HOME_DASHBOARD.badgeBorderExhausted : FIGMA_HOME_DASHBOARD.borderTertiary;
 
   const valueLabel = unlimited ? '∞' : `${remaining ?? 0}/${limit}`;
 
@@ -27,7 +28,7 @@ export function HomePackageQuotaBadge({ onPress }: Props) {
         height: 40,
         paddingHorizontal: 10,
         borderRadius: 999,
-        backgroundColor: exhausted ? '#FFF1F2' : '#FFFFFF',
+        backgroundColor: exhausted ? FIGMA_HOME_DASHBOARD.badgeBgExhausted : FIGMA_HOME_DASHBOARD.badgeBg,
         borderWidth: 1,
         borderColor,
         alignItems: 'center',

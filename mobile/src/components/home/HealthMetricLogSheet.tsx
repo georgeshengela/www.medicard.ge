@@ -20,8 +20,9 @@ import {
   X,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { FIGMA_HEALTH_METRICS, METRIC_COLORS } from '@/constants/figmaHealthMetricsLayout';
-import { FIGMA_STEPS } from '@/constants/figmaStepsLayout';
+import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { METRIC_COLORS, useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
+import { FIGMA_STEPS, useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { ka } from '@/i18n/ka';
 import { logManualHealthMetric, type LoggableMetricKey } from '@/lib/logManualHealthMetric';
 import { useAuth } from '@/store/AuthContext';
@@ -52,6 +53,8 @@ const OPTIONS: MetricOption[] = [
 ];
 
 export function HealthMetricLogSheet({ visible, onClose, onSaved }: Props) {
+  const FIGMA_HEALTH_METRICS = useFigmaHealthMetrics();
+  const FIGMA_STEPS = useFigmaSteps();
   const { healthProfile } = useAuth();
   const [selected, setSelected] = useState<MetricOption | null>(null);
   const [value, setValue] = useState('');
@@ -98,7 +101,7 @@ export function HealthMetricLogSheet({ visible, onClose, onSaved }: Props) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <Pressable
         style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.45)', justifyContent: 'flex-end' }}
         onPress={onClose}
@@ -106,7 +109,7 @@ export function HealthMetricLogSheet({ visible, onClose, onSaved }: Props) {
         <Pressable
           onPress={() => undefined}
           style={{
-            backgroundColor: '#FFFFFF',
+            backgroundColor: FIGMA_HEALTH_METRICS.pageBg,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             paddingHorizontal: 20,

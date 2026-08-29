@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { pickerScrollTick, pickerSelectionTick } from '@/components/assessment/pickerHaptics';
 import { isLatinUnitLabel, unitLabelFontFamily } from '@/components/assessment/unitLabelFont';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { ASSESSMENT, useAssessment } from '@/constants/assessmentLayout';
 import { lightColors } from '@/theme/colors';
 
 /** Figma 9217:164598 selected row — display-sm 96/104. Shrink on short screens. */
@@ -65,12 +65,12 @@ function nearestIndex(values: number[], target: number) {
   return best;
 }
 
-function neighborStyle(distance: number) {
+function neighborStyle(distance: number, muted: string) {
   if (distance === 1) {
     const size = Math.min(60, Math.round(ITEM_HEIGHT * 0.58));
     return {
       fontSize: size,
-      color: ASSESSMENT.textSecondary,
+      color: muted,
       includeFontPadding: false,
     };
   }
@@ -91,6 +91,7 @@ type Props = {
 
 /** Figma height wheel — 5 rows, 24pt teal pill, 96/60/30 type scale. */
 export function HeightWheelPicker({ values, selected, onSelect, formatLabel = (v) => String(v) }: Props) {
+  const ASSESSMENT = useAssessment();
   const scrollRef = useRef<ScrollView>(null);
   const dragging = useRef(false);
   const settling = useRef(false);
@@ -180,7 +181,7 @@ export function HeightWheelPicker({ values, selected, onSelect, formatLabel = (v
           const active = index === centerIndex;
           const distance = Math.abs(index - centerIndex);
           const label = formatLabel(value);
-          const type = neighborStyle(distance);
+          const type = neighborStyle(distance, ASSESSMENT.textSecondary);
 
           return (
             <View

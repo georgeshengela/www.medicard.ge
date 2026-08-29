@@ -2,10 +2,11 @@ import React from 'react';
 import { View } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { BrandLogo } from '@/components/ui/BrandLogo';
-import { FIGMA_ASSESSMENT_INTRO, FIGMA_ASSESSMENT_SHADOW } from '@/constants/figmaAssessmentIntro';
+import { useFigmaAssessmentIntro, FIGMA_ASSESSMENT_SHADOW } from '@/constants/figmaAssessmentIntro';
 
 /** Figma intro card mock — logo, skeleton rows, selected check tiles. */
 export function AssessmentIntroIllustration() {
+  const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
   return (
     <View
       style={{
@@ -57,6 +58,7 @@ export function AssessmentIntroIllustration() {
 }
 
 function SkeletonBar({ width }: { width: number }) {
+  const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
   return (
     <View
       style={{
@@ -70,13 +72,14 @@ function SkeletonBar({ width }: { width: number }) {
 }
 
 function ChoiceTile({ selected = false }: { selected?: boolean }) {
+  const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
   return (
     <View
       style={{
         flex: 1,
         height: 40,
         borderRadius: 8,
-        backgroundColor: selected ? '#F0FDF4' : '#F3F4F6',
+        backgroundColor: selected ? FIGMA_ASSESSMENT_INTRO.selectedSoft : FIGMA_ASSESSMENT_INTRO.trackGrey,
         borderWidth: selected ? 1 : 0,
         borderColor: selected ? '#22C55E' : 'transparent',
         alignItems: 'center',

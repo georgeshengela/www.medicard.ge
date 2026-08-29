@@ -1,8 +1,9 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { FIGMA_CHAT } from '@/constants/figmaChatLayout';
+import { useFigmaChat } from '@/constants/figmaChatLayout';
 
 export function ChatSuggestionChip({ label, onPress }: { label: string; onPress: () => void }) {
+  const FIGMA_CHAT = useFigmaChat();
   return (
     <Pressable
       onPress={onPress}
@@ -23,6 +24,7 @@ export function ChatSuggestionChip({ label, onPress }: { label: string; onPress:
 }
 
 export function ChatWidgetCard({ children }: { children: React.ReactNode }) {
+  const FIGMA_CHAT = useFigmaChat();
   return (
     <View
       style={{
@@ -41,6 +43,7 @@ export function ChatWidgetCard({ children }: { children: React.ReactNode }) {
 }
 
 export function ChatEmptyHero({ title, body }: { title: string; body: string }) {
+  const FIGMA_CHAT = useFigmaChat();
   return (
     <View style={{ gap: 8, paddingVertical: 8 }}>
       <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '700', color: FIGMA_CHAT.textPrimary }}>{title}</Text>

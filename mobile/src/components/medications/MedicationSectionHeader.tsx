@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 
 type Props = {
   title: string;
@@ -10,6 +10,7 @@ type Props = {
 };
 
 export function MedicationSectionHeader({ title, actionLabel, onAction }: Props) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
       <Text style={{ fontSize: 18, fontWeight: '800', color: FIGMA_MEDS.textPrimary }}>{title}</Text>

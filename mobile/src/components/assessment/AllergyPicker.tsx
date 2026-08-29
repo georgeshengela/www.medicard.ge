@@ -3,7 +3,7 @@ import { Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { Copy } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { useAssessment } from '@/constants/assessmentLayout';
 import {
   MAX_ALLERGIES,
   allergyLabel,
@@ -39,6 +39,7 @@ function Chip({
   selected?: boolean;
   onPress: () => void;
 }) {
+  const ASSESSMENT = useAssessment();
   return (
     <Pressable
       onPress={onPress}
@@ -48,7 +49,7 @@ function Chip({
         gap: 6,
         borderWidth: 1,
         borderColor: selected ? '#14B8A6' : ASSESSMENT.border,
-        backgroundColor: selected ? '#F0FDFA' : '#FFFFFF',
+        backgroundColor: selected ? ASSESSMENT.selectedSoft : ASSESSMENT.surface,
         borderRadius: 999,
         paddingHorizontal: 12,
         paddingVertical: 8,
@@ -75,6 +76,7 @@ function Chip({
 
 /** Figma 9217:164840 — tag composer,  n / 10 counter, common allergen chips. */
 export function AllergyPicker({ value, onChange }: Props) {
+  const ASSESSMENT = useAssessment();
   const [draft, setDraft] = useState('');
   const atCap = value.length >= MAX_ALLERGIES;
   const trimmed = draft.trim();
@@ -109,7 +111,7 @@ export function AllergyPicker({ value, onChange }: Props) {
           borderWidth: 1.5,
           borderColor: '#14B8A6',
           borderRadius: 16,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: ASSESSMENT.surface,
           paddingHorizontal: 14,
           paddingTop: 12,
           paddingBottom: 10,
@@ -175,7 +177,7 @@ export function AllergyPicker({ value, onChange }: Props) {
             borderWidth: 1,
             borderColor: ASSESSMENT.border,
             borderRadius: 16,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: ASSESSMENT.surface,
             overflow: 'hidden',
           }}
         >

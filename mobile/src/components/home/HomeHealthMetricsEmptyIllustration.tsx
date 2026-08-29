@@ -2,7 +2,8 @@ import React from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, View } from 'react-native';
 import { Activity, Footprints, HeartPulse } from 'lucide-react-native';
-import { FIGMA_HEALTH_METRICS_HOME as H } from '@/constants/figmaHealthMetricsHomeLayout';
+import { useFigmaHealthMetricsHome } from '@/constants/figmaHealthMetricsHomeLayout';
+import { useIsDark } from '@/theme/colors';
 
 function MiniBadge({
   icon: Icon,
@@ -15,6 +16,7 @@ function MiniBadge({
   label: string;
   style: object;
 }) {
+  const H = useFigmaHealthMetricsHome();
   return (
     <View
       style={[
@@ -23,7 +25,7 @@ function MiniBadge({
           flexDirection: 'row',
           alignItems: 'center',
           gap: 6,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: H.cardBg,
           borderRadius: 999,
           paddingHorizontal: 10,
           paddingVertical: 6,
@@ -54,6 +56,9 @@ function MiniBadge({
 
 /** Figma 8912:73627 — empty-state hero art. */
 export function HomeHealthMetricsEmptyIllustration() {
+  const H = useFigmaHealthMetricsHome();
+  const dark = useIsDark();
+  const blob = dark ? (['#042F2E', '#134E4A', '#115E59'] as const) : (['#F0FDFA', '#CCFBF1', '#99F6E4'] as const);
   return (
     <View
       style={{
@@ -64,7 +69,7 @@ export function HomeHealthMetricsEmptyIllustration() {
       }}
     >
       <LinearGradient
-        colors={['#F0FDFA', '#CCFBF1', '#99F6E4']}
+        colors={[...blob]}
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={{
@@ -74,7 +79,7 @@ export function HomeHealthMetricsEmptyIllustration() {
           alignItems: 'center',
           justifyContent: 'center',
           borderWidth: 1,
-          borderColor: '#99F6E4',
+          borderColor: dark ? '#115E59' : '#99F6E4',
         }}
       >
         <View
@@ -82,7 +87,7 @@ export function HomeHealthMetricsEmptyIllustration() {
             width: 72,
             height: 72,
             borderRadius: 36,
-            backgroundColor: 'rgba(255,255,255,0.72)',
+            backgroundColor: dark ? 'rgba(17,24,39,0.72)' : 'rgba(255,255,255,0.72)',
             alignItems: 'center',
             justifyContent: 'center',
           }}

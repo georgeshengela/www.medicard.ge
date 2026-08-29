@@ -65,11 +65,34 @@ export function updateSymptomChecker(patch: Partial<SymptomCheckerState>) {
   setState(patch);
 }
 
+export function addSymptom(label: string): boolean {
+  const next = label.trim().slice(0, 80);
+  if (!next) return false;
+  if (state.symptoms.some((s) => s.toLowerCase() === next.toLowerCase())) return true;
+  if (state.symptoms.length >= 16) return false;
+  setState({
+    symptoms: [...state.symptoms, next],
+    primarySymptom: state.primarySymptom ?? next,
+  });
+  return true;
+}
+
 export function toggleSymptom(label: string) {
-  const next = state.symptoms.includes(label)
-    ? state.symptoms.filter((s) => s !== label)
-    : [...state.symptoms, label].slice(0, 16);
-  setState({ symptoms: next });
+  const next = label.trim().slice(0, 80);
+  if (!next) return;
+  const exists = state.symptoms.some((s) => s.toLowerCase() === next.toLowerCase());
+  if (exists) {
+    const remaining = state.symptoms.filter((s) => s.toLowerCase() !== next.toLowerCase());
+    setState({
+      symptoms: remaining,
+      primarySymptom:
+        state.primarySymptom && remaining.some((s) => s.toLowerCase() === state.primarySymptom.toLowerCase())
+          ? state.primarySymptom
+          : remaining[0] ?? null,
+    });
+    return;
+  }
+  addSymptom(next);
 }
 
 export function removeSymptom(label: string) {

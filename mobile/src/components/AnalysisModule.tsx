@@ -20,7 +20,7 @@ import { ChatTopNav } from '@/components/chat/ChatTopNav';
 import { Disclaimer } from '@/components/Disclaimer';
 import { Markdown } from '@/components/ui/Markdown';
 import { QuotaSheet } from '@/components/QuotaSheet';
-import { FIGMA_CHAT } from '@/constants/figmaChatLayout';
+import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type MedicalRecord } from '@/lib/api';
 import { getAnalysisChatProfile, type AnalysisChatKind } from '@/lib/chatUiConfig';
@@ -57,6 +57,7 @@ export function AnalysisModule({
   regionLabel,
   regionRequired,
 }: Props) {
+  const FIGMA_CHAT = useFigmaChat();
   const router = useRouter();
   const profile = useMemo(() => getAnalysisChatProfile(kind), [kind]);
   const plan = usePlanUsage();
@@ -170,6 +171,7 @@ export function AnalysisModule({
     } catch (err) {
       if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuotaBlock(err.usage?.resetsInMs);
+        if (err.usage) applyUsage(err.usage);
       } else {
         setError(err instanceof ApiError ? err.message : ka.common.error);
       }
@@ -265,7 +267,7 @@ export function AnalysisModule({
                             backgroundColor: selected ? FIGMA_CHAT.brand : FIGMA_CHAT.white,
                           }}
                         >
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: selected ? FIGMA_CHAT.white : FIGMA_CHAT.textSecondary }}>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: selected ? FIGMA_CHAT.textOnBrand : FIGMA_CHAT.textSecondary }}>
                             {item.ka}
                           </Text>
                         </Pressable>
@@ -362,7 +364,7 @@ export function AnalysisModule({
         onClose={() => setQuotaBlock(undefined)}
         onUpgrade={() => {
           setQuotaBlock(undefined);
-          Alert.alert(ka.usage.upsellTitle, ka.usage.premiumSoon);
+          router.push('/package');
         }}
       />
     </ChatScreenShell>
@@ -370,6 +372,7 @@ export function AnalysisModule({
 }
 
 function SourceButton({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+  const FIGMA_CHAT = useFigmaChat();
   return (
     <Pressable
       onPress={onPress}

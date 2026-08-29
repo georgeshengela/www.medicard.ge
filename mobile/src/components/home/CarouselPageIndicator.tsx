@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { FIGMA_HEALTH_METRICS_CAROUSEL as C } from '@/constants/figmaHealthMetricsCarouselLayout';
+import { useFigmaHealthMetricsCarousel } from '@/constants/figmaHealthMetricsCarouselLayout';
 
 type Props = {
   count: number;
@@ -8,6 +8,7 @@ type Props = {
 };
 
 export function CarouselPageIndicator({ count, activeIndex }: Props) {
+  const C = useFigmaHealthMetricsCarousel();
   if (count <= 1) return null;
 
   return (

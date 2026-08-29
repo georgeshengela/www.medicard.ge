@@ -39,29 +39,30 @@ export const lightColors = {
 
 export type Palette = { [K in keyof typeof lightColors]: string };
 
+/** Cool gray-950 navy. Page `#030712` sits under cards `#111827`; brand stays `#14B8A6`. */
 export const darkColors: Palette = {
-  bg100: '#0d1214',
-  bg200: '#1a2225',
-  bg300: '#273236',
-  surface: '#141b1d',
-  surfaceRaised: '#1a2225',
+  bg100: '#030712',
+  bg200: '#1f2937',
+  bg300: '#374151',
+  surface: '#111827',
+  surfaceRaised: '#1f2937',
 
-  primary100: '#5eead4',
+  primary100: '#99f6e4',
   primary200: '#14b8a6',
-  primary300: '#2dd4bf',
-  accent100: '#134e4a',
-  accent200: '#0f766e',
+  primary300: '#5eead4',
+  accent100: '#042f2e',
+  accent200: '#115e59',
 
-  text100: '#eaf0f0',
-  text200: '#a6b4b7',
-  text300: '#74858a',
+  text100: '#ffffff',
+  text200: '#d1d5db',
+  text300: '#6b7280',
 
-  success: '#34d399',
-  successBg: '#0e2a21',
-  warning: '#fbbf24',
-  warningBg: '#2e220b',
-  danger: '#f87171',
-  dangerBg: '#2e1416',
+  success: '#22c55e',
+  successBg: '#052e16',
+  warning: '#f59e0b',
+  warningBg: '#451a03',
+  danger: '#f43f5e',
+  dangerBg: '#4c0519',
 
   onPrimary: '#ffffff',
   white: '#ffffff',

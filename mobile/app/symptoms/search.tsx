@@ -1,18 +1,26 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search } from 'lucide-react-native';
+import { Plus, Search } from 'lucide-react-native';
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
 import { SymptomChip } from '@/components/symptoms/SymptomChip';
 import { SymptomComposer } from '@/components/symptoms/SymptomComposer';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { KEYBOARD_DONE_ACCESSORY_ID, KeyboardDoneAccessory } from '@/components/ui/KeyboardDoneAccessory';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { POPULAR_SYMPTOMS } from '@/constants/symptomCatalog';
 import { ka } from '@/i18n/ka';
-import { removeSymptom, toggleSymptom, useSymptomChecker } from '@/lib/symptomCheckerStore';
+import {
+  addSymptom,
+  getSymptomCheckerState,
+  removeSymptom,
+  toggleSymptom,
+  useSymptomChecker,
+} from '@/lib/symptomCheckerStore';
 import { useAuth } from '@/store/AuthContext';
 
 export default function SymptomSearchScreen() {
+  const T = useFigmaSymptoms();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -20,111 +28,169 @@ export default function SymptomSearchScreen() {
   const [query, setQuery] = useState('');
   const inputRef = useRef<TextInput>(null);
   const firstName = user?.fullName?.split(' ')[0] ?? '';
+  const typed = query.trim();
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const pool = [...POPULAR_SYMPTOMS];
-    if (q && !pool.some((s) => s.toLowerCase() === q)) pool.unshift(query.trim() as (typeof POPULAR_SYMPTOMS)[number]);
-    return q ? pool.filter((s) => s.toLowerCase().includes(q)) : pool;
-  }, [query]);
+    const q = typed.toLowerCase();
+    if (!q) return [...POPULAR_SYMPTOMS];
+    return POPULAR_SYMPTOMS.filter((s) => s.toLowerCase().includes(q));
+  }, [typed]);
 
-  const score = Math.min(92, 28 + state.symptoms.length * 12);
+  const alreadyAdded = state.symptoms.some((s) => s.toLowerCase() === typed.toLowerCase());
+  const showCustom = typed.length > 0 && !POPULAR_SYMPTOMS.some((s) => s.toLowerCase() === typed.toLowerCase());
+  const score = Math.min(92, 28 + state.symptoms.length * 12 + (typed && !alreadyAdded ? 12 : 0));
 
-  const addQuery = () => {
-    const next = query.trim();
-    if (next) {
-      toggleSymptom(next);
-      setQuery('');
+  const commitTyped = () => {
+    if (typed) addSymptom(typed);
+    setQuery('');
+  };
+
+  const goDetails = () => {
+    commitTyped();
+    if (getSymptomCheckerState().symptoms.length === 0) {
+      inputRef.current?.focus();
+      return;
     }
+    router.push('/symptoms/details' as never);
+  };
+
+  const goAnalyze = () => {
+    commitTyped();
+    if (getSymptomCheckerState().symptoms.length === 0) {
+      inputRef.current?.focus();
+      return;
+    }
+    router.push('/symptoms/analyzing' as never);
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: T.white, paddingBottom: insets.bottom }}>
-      <SymptomNavHeader onBack={() => router.back()} />
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
-        <Text
-          style={{
-            paddingHorizontal: 16,
-            paddingVertical: 16,
-            fontSize: 30,
-            lineHeight: 38,
-            fontWeight: '700',
-            color: T.textPrimary,
-            letterSpacing: -0.25,
-            textAlign: 'center',
-          }}
+    <View style={{ flex: 1, backgroundColor: T.white }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+      >
+        <SymptomNavHeader onBack={() => router.back()} />
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
         >
-          {ka.symptoms.askName(firstName)}
-        </Text>
-
-        <View style={{ paddingHorizontal: 16, paddingVertical: 32 }}>
-          <View
+          <Text
             style={{
-              minHeight: 48,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: T.borderTertiary,
-              backgroundColor: T.white,
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              ...T.shadowXs,
+              paddingHorizontal: 16,
+              paddingVertical: 16,
+              fontSize: 30,
+              lineHeight: 38,
+              fontWeight: '700',
+              color: T.textPrimary,
+              letterSpacing: -0.25,
+              textAlign: 'center',
             }}
           >
-            <Search size={20} color={T.textSecondary} strokeWidth={1.8} />
-            <TextInput
-              ref={inputRef}
-              value={query}
-              onChangeText={setQuery}
-              placeholder={ka.symptoms.searchPlaceholder}
-              placeholderTextColor={T.textSecondary}
-              onSubmitEditing={addQuery}
-              style={{ flex: 1, fontSize: 16, lineHeight: 22, color: T.textPrimary, paddingVertical: 0 }}
-            />
-          </View>
-        </View>
+            {ka.symptoms.askName(firstName)}
+          </Text>
 
-        {state.symptoms.length ? (
-          <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-            <Text style={{ fontSize: 14, lineHeight: 20, fontWeight: '600', color: T.textPrimary, marginBottom: 12 }}>
-              {ka.symptoms.mySymptoms}
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {state.symptoms.map((s) => (
-                <SymptomChip key={s} label={s} onRemove={() => removeSymptom(s)} />
-              ))}
+          <View style={{ paddingHorizontal: 16, paddingVertical: 16 }}>
+            <View
+              style={{
+                minHeight: 48,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: typed ? T.brand : T.borderTertiary,
+                backgroundColor: T.white,
+                paddingLeft: 12,
+                paddingRight: 6,
+                paddingVertical: 6,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                ...T.shadowXs,
+              }}
+            >
+              <Search size={20} color={T.textSecondary} strokeWidth={1.8} />
+              <TextInput
+                ref={inputRef}
+                value={query}
+                onChangeText={setQuery}
+                placeholder={ka.symptoms.searchPlaceholder}
+                placeholderTextColor={T.textSecondary}
+                returnKeyType="done"
+                maxLength={80}
+                inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
+                onSubmitEditing={() => {
+                  if (typed) commitTyped();
+                }}
+                style={{ flex: 1, fontSize: 16, lineHeight: 22, color: T.textPrimary, paddingVertical: 0 }}
+              />
+              {typed ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={ka.symptoms.addCustom}
+                  onPress={commitTyped}
+                  style={{
+                    minHeight: 36,
+                    borderRadius: 10,
+                    backgroundColor: T.brand,
+                    paddingHorizontal: 10,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <Plus size={16} color={T.textOnBrand} strokeWidth={2.4} />
+                  <Text style={{ color: T.textOnBrand, fontSize: 13, fontWeight: '600' }}>{ka.symptoms.addCustom}</Text>
+                </Pressable>
+              ) : null}
             </View>
           </View>
-        ) : null}
 
-        <View style={{ paddingHorizontal: 16, paddingTop: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {filtered.map((s) => (
-            <SymptomChip
-              key={s}
-              label={s}
-              selected={state.symptoms.includes(s)}
-              onPress={() => toggleSymptom(s)}
-            />
-          ))}
-        </View>
-      </ScrollView>
+          {state.symptoms.length ? (
+            <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+              <Text style={{ fontSize: 14, lineHeight: 20, fontWeight: '600', color: T.textPrimary, marginBottom: 12 }}>
+                {ka.symptoms.mySymptoms}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {state.symptoms.map((s) => (
+                  <SymptomChip key={s} label={s} onRemove={() => removeSymptom(s)} />
+                ))}
+              </View>
+            </View>
+          ) : null}
 
-      <SymptomComposer
-        score={score}
-        onFocusInput={() => inputRef.current?.focus()}
-        onAnatomy={() => router.push('/symptoms/body' as never)}
-        onSettings={() => {
-          addQuery();
-          router.push('/symptoms/details' as never);
-        }}
-        sendDisabled={state.symptoms.length === 0 && !query.trim()}
-        onSend={() => {
-          addQuery();
-          if (state.symptoms.length || query.trim()) router.push('/symptoms/details' as never);
-        }}
-      />
+          {showCustom ? (
+            <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+              <SymptomChip
+                label={typed}
+                selected={alreadyAdded}
+                onPress={() => (alreadyAdded ? removeSymptom(typed) : addSymptom(typed))}
+              />
+            </View>
+          ) : null}
+
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {filtered.map((s) => (
+              <SymptomChip
+                key={s}
+                label={s}
+                selected={state.symptoms.some((item) => item.toLowerCase() === s.toLowerCase())}
+                onPress={() => toggleSymptom(s)}
+              />
+            ))}
+          </View>
+        </ScrollView>
+
+        <SymptomComposer
+          score={score}
+          onFocusInput={() => inputRef.current?.focus()}
+          onAnatomy={() => router.push('/symptoms/body' as never)}
+          onSettings={goDetails}
+          sendDisabled={state.symptoms.length === 0 && !typed}
+          onSend={goAnalyze}
+        />
+      </KeyboardAvoidingView>
+      <KeyboardDoneAccessory />
+      <View style={{ height: insets.bottom, backgroundColor: T.white }} />
     </View>
   );
 }

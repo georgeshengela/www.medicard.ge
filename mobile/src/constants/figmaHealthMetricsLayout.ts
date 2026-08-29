@@ -1,3 +1,5 @@
+import { useIsDark } from '@/theme/colors';
+
 /** Figma 8848:112415 — health metrics screen tokens. */
 export const FIGMA_HEALTH_METRICS = {
   brand: '#14B8A6',
@@ -6,6 +8,7 @@ export const FIGMA_HEALTH_METRICS = {
   textSecondary: '#4B5563',
   border: '#E5E7EB',
   cardBg: '#F9FAFB',
+  pageBg: '#FFFFFF',
   cardRadius: 24,
   weight: '#F97316',
   bloodPressure: '#8B5CF6',
@@ -23,3 +26,17 @@ export const METRIC_COLORS = {
   nutrition: FIGMA_HEALTH_METRICS.nutrition,
   hydration: FIGMA_HEALTH_METRICS.hydration,
 } as const;
+
+export const FIGMA_HEALTH_METRICS_DARK = {
+  brandQuaternary: '#042F2E',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#D1D5DB',
+  border: '#374151',
+  cardBg: '#111827',
+  pageBg: '#030712',
+} as const;
+
+export function useFigmaHealthMetrics() {
+  const dark = useIsDark();
+  return dark ? { ...FIGMA_HEALTH_METRICS, ...FIGMA_HEALTH_METRICS_DARK } : FIGMA_HEALTH_METRICS;
+}

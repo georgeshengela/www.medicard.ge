@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { X } from 'lucide-react-native';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 
 type Props = {
   label: string;
@@ -11,6 +11,7 @@ type Props = {
 };
 
 export function SymptomChip({ label, selected, onPress, onRemove }: Props) {
+  const T = useFigmaSymptoms();
   return (
     <Pressable
       onPress={onPress}

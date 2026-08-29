@@ -34,6 +34,12 @@ async function loadHealthConnect() {
   return import('react-native-health-connect');
 }
 
+function recordInstant(r: { time?: Date | string; startTime?: Date | string }): Date {
+  if ('time' in r && r.time) return new Date(r.time);
+  if ('startTime' in r && r.startTime) return new Date(r.startTime);
+  return new Date();
+}
+
 function mapFlow(
   flow: string | null,
   MenstruationFlow: Awaited<ReturnType<typeof loadHealthConnect>>['MenstruationFlow'],
@@ -227,7 +233,7 @@ export async function fetchHealthMetricsNative(): Promise<
     const weightPoints: HealthMetricPoint[] = (weight.records ?? [])
       .filter((r): r is Extract<(typeof weight.records)[number], { weight: { inGrams: number } }> => 'weight' in r)
       .map((r) => ({
-        date: dateToYmd(new Date('time' in r && r.time ? r.time : r.startTime ?? new Date())),
+        date: dateToYmd(recordInstant(r)),
         value: r.weight.inGrams / 1000,
       }));
 
@@ -272,12 +278,12 @@ export async function fetchHealthMetricsNative(): Promise<
       };
     });
 
-    const nutritionPoints: HealthMetricPoint[] = (nutrition.records ?? [])
-      .filter((r): r is Extract<(typeof nutrition.records)[number], { energy: { inKilocalories: number } }> => 'energy' in r)
-      .map((r) => ({
-        date: dateToYmd(new Date(r.startTime ?? new Date())),
-        value: r.energy.inKilocalories,
-      }));
+    const nutritionPoints: HealthMetricPoint[] = (nutrition.records ?? []).flatMap((r) => {
+      const energy = 'energy' in r ? r.energy : undefined;
+      const kcal = energy && typeof energy === 'object' && 'inKilocalories' in energy ? energy.inKilocalories : null;
+      if (typeof kcal !== 'number') return [];
+      return [{ date: dateToYmd(recordInstant(r as { time?: Date | string; startTime?: Date | string })), value: kcal }];
+    });
 
     const hydrationPoints: HealthMetricPoint[] = (hydration.records ?? [])
       .filter((r): r is Extract<(typeof hydration.records)[number], { volume: { inMilliliters: number } }> => 'volume' in r)

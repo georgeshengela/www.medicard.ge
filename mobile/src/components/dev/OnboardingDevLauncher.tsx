@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FlaskConical } from 'lucide-react-native';
+import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { ONBOARDING_DEV_STEPS, onboardingDevHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
+import { useThemeColors } from '@/theme/colors';
 
 type Props = {
   /** 'fab' = floating button; 'inline' = full-width bar on welcome */
@@ -14,6 +16,7 @@ type Props = {
 export function OnboardingDevLauncher({ variant = 'fab' }: Props) {
   const router = useRouter();
   const { user } = useAuth();
+  const colors = useThemeColors();
   const [open, setOpen] = useState(false);
 
   if (typeof __DEV__ === 'undefined' || !__DEV__) return null;
@@ -78,13 +81,13 @@ export function OnboardingDevLauncher({ variant = 'fab' }: Props) {
         <FlaskConical size={22} color="#FFFFFF" />
       </Pressable>
 
-      <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} {...APP_MODAL_PROPS} onRequestClose={() => setOpen(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setOpen(false)}>
-          <View style={{ marginTop: 'auto', maxHeight: '70%', backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 }}>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: '#1F2937', marginBottom: 4 }}>
+          <View style={{ marginTop: 'auto', maxHeight: '70%', backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 }}>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: colors.text100, marginBottom: 4 }}>
               Onboarding QA
             </Text>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: colors.text300, marginBottom: 16 }}>
               {user ? 'აირჩიეთ ეკრანი' : 'ჯერ შედით ანგარიშში'}
             </Text>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -99,7 +102,7 @@ export function OnboardingDevLauncher({ variant = 'fab' }: Props) {
                   style={{
                     paddingVertical: 14,
                     borderBottomWidth: 1,
-                    borderBottomColor: '#F3F4F6',
+                    borderBottomColor: colors.bg200,
                     opacity: user ? 1 : 0.45,
                   }}
                 >

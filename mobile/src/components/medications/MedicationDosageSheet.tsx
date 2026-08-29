@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { CircleMinus, CirclePlus } from 'lucide-react-native';
 import { MedicationSheetApplyButton, MedicationSheetChip, MedicationSheetModal } from '@/components/medications/MedicationSheetUI';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 import type { MedicationForm } from '@/types/medications';
 
@@ -21,6 +21,7 @@ type Props = {
 };
 
 export function MedicationDosageSheet({ visible, amount, form, onClose, onApply }: Props) {
+  const FIGMA_MEDS = useFigmaMeds();
   const [draftAmount, setDraftAmount] = useState(amount);
   const [draftForm, setDraftForm] = useState<MedicationForm>(form);
 

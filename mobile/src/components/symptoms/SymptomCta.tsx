@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { ArrowRight } from 'lucide-react-native';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 
 type Props = {
   label: string;
@@ -11,6 +11,7 @@ type Props = {
 };
 
 export function SymptomCta({ label, onPress, disabled, loading }: Props) {
+  const T = useFigmaSymptoms();
   const inactive = disabled || loading;
   return (
     <Pressable
@@ -43,5 +44,6 @@ export function SymptomCta({ label, onPress, disabled, loading }: Props) {
 }
 
 export function SymptomFooter({ children }: { children: React.ReactNode }) {
+  const T = useFigmaSymptoms();
   return <View style={{ padding: T.pad, backgroundColor: T.white }}>{children}</View>;
 }

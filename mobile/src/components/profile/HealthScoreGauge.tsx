@@ -14,6 +14,7 @@ import {
 import {
   FIGMA_ASSESSMENT_RESULT,
   FIGMA_ASSESSMENT_RESULT_SHADOW,
+  useFigmaAssessmentResult,
 } from '@/constants/figmaAssessmentResultLayout';
 import { ka } from '@/i18n/ka';
 
@@ -30,6 +31,7 @@ type GaugeProps = {
 
 /** Figma 8845:313440 — gauge frame 8910:69693. */
 export function HealthScoreGauge({ score, labelKa, onInfoPress }: GaugeProps) {
+  const FIGMA_ASSESSMENT_RESULT = useFigmaAssessmentResult();
   const knob = scoreKnobBox(score);
   const { scoreBlockLeft, scoreBlockTop, scoreBlockWidth, scoreGap } = FIGMA_RESULT;
   const clipD = gaugeProgressClipD(score);
@@ -207,6 +209,7 @@ export function HealthScoreGauge({ score, labelKa, onInfoPress }: GaugeProps) {
 
 /** Figma 8845:313571 */
 export function HealthScoreConfidenceBadge({ confidence }: { confidence: number }) {
+  const FIGMA_ASSESSMENT_RESULT = useFigmaAssessmentResult();
   return (
     <View
       style={{
@@ -241,7 +244,7 @@ export function HealthScoreConfidenceBadge({ confidence }: { confidence: number 
           fontFamily: 'NotoSansGeorgian_500Medium',
           fontSize: 14,
           lineHeight: 20,
-          color: '#1F2937',
+          color: FIGMA_ASSESSMENT_RESULT.titleColor,
         }}
       >
         {ka.profileSetup.confidenceLabel(confidence)}

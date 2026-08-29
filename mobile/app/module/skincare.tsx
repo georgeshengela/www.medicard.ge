@@ -1,52 +1,148 @@
-import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { RefreshCw, Sparkles } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Markdown } from '@/components/ui/Markdown';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import { ChevronRight, Moon, Sparkles, Sun } from 'lucide-react-native';
+import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
+import { ChatAiAvatar } from '@/components/chat/ChatAiAvatar';
+import { ChatTypingBubble } from '@/components/chat/ChatBubble';
+import { ChatScreenShell } from '@/components/chat/ChatScreenShell';
+import { ChatTopNav } from '@/components/chat/ChatTopNav';
 import { Disclaimer } from '@/components/Disclaimer';
+import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { QuotaSheet } from '@/components/QuotaSheet';
-import { UsageBanner } from '@/components/PlanUsageCard';
+import { SkincareConcernGrid, SkincareTypeList } from '@/components/skincare/SkincarePickers';
+import { SkincareResultCard } from '@/components/skincare/SkincareResultCard';
+import { KEYBOARD_DONE_ACCESSORY_ID, KeyboardDoneAccessory } from '@/components/ui/KeyboardDoneAccessory';
+import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
-import { useThemeColors } from '@/theme/colors';
+import { formatRelative } from '@/lib/format';
+import { usePlanUsage } from '@/lib/planUsage';
+import {
+  getLatestSkincareRoutine,
+  saveSkincareRoutine,
+  type SavedSkincareRoutine,
+} from '@/lib/skincareStorage';
 import { useAuth } from '@/store/AuthContext';
+import { useThemeColors } from '@/theme/colors';
 
 export default function SkincareModule() {
-  const { applyUsage } = useAuth();
+  const FIGMA = useFigmaChat();
   const colors = useThemeColors();
+  const router = useRouter();
+  const { applyUsage } = useAuth();
+  const plan = usePlanUsage();
 
   const [skinType, setSkinType] = useState<string>(ka.modules.skincare.skinTypes[0]);
   const [concerns, setConcerns] = useState<string[]>([]);
   const [products, setProducts] = useState('');
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [hydrating, setHydrating] = useState(false);
+  const [result, setResult] = useState<SavedSkincareRoutine | null>(null);
+  const [lastRoutine, setLastRoutine] = useState<SavedSkincareRoutine | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
 
+  const remainingLabel = useMemo(() => {
+    if (plan.unlimited) return ka.usage.unlimitedBanner;
+    if (plan.exhausted) return ka.usage.exhaustedTitle;
+    if (plan.remaining != null) return ka.chat.chatsRemaining(plan.remaining);
+    return undefined;
+  }, [plan]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      void getLatestSkincareRoutine().then((saved) => {
+        if (!alive || !saved) return;
+        setLastRoutine((prev) => {
+          if (prev && prev.recordId === saved.recordId) return prev;
+          return { ...saved, analysis: prev?.analysis ?? '' };
+        });
+      });
+      void api.records
+        .list('SKINCARE')
+        .then(({ records }) => {
+          if (!alive || !records[0]) return;
+          const latest = records[0];
+          setLastRoutine((prev) => {
+            if (prev && prev.recordId === latest.id && prev.analysis) return prev;
+            if (prev && new Date(prev.createdAt).getTime() > new Date(latest.createdAt).getTime()) return prev;
+            return {
+              recordId: latest.id,
+              createdAt: latest.createdAt,
+              skinType: prev?.skinType ?? ka.modules.skincare.skinTypes[0],
+              concerns: prev?.concerns ?? [],
+              products: prev?.products,
+              analysis: latest.aiAnalysis,
+            };
+          });
+        })
+        .catch(() => undefined);
+      return () => {
+        alive = false;
+      };
+    }, []),
+  );
+
   const toggleConcern = (concern: string) => {
     setConcerns((prev) =>
-      prev.includes(concern) ? prev.filter((c) => c !== concern) : prev.length < 10 ? [...prev, concern] : prev,
+      prev.includes(concern) ? prev.filter((item) => item !== concern) : prev.length < 10 ? [...prev, concern] : prev,
     );
+    setError(null);
+  };
+
+  const openRoutine = async (routine: SavedSkincareRoutine) => {
+    if (routine.analysis.trim()) {
+      setResult(routine);
+      return;
+    }
+    setHydrating(true);
+    setError(null);
+    try {
+      const { record } = await api.records.get(routine.recordId);
+      const next = { ...routine, analysis: record.aiAnalysis, createdAt: record.createdAt };
+      setLastRoutine(next);
+      setResult(next);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : ka.common.error);
+    } finally {
+      setHydrating(false);
+    }
   };
 
   const build = async () => {
+    if (plan.exhausted) {
+      setQuotaBlock(plan.usage?.resetsInMs ?? 0);
+      return;
+    }
     if (concerns.length === 0) {
-      setError('აირჩიეთ მინიმუმ ერთი პრობლემა');
+      setError(ka.modules.skincare.needConcern);
       return;
     }
 
     setBusy(true);
     setError(null);
     try {
-      // Age comes from the registered birth date, so the form no longer asks for it.
       const response = await api.ai.skincare({
         skinType,
         concerns,
         currentProducts: products.trim() || undefined,
       });
-      setResult(response.analysis);
       applyUsage(response.usage);
+      const routine: SavedSkincareRoutine = {
+        recordId: response.recordId,
+        createdAt: new Date().toISOString(),
+        skinType,
+        concerns,
+        products: products.trim() || undefined,
+        analysis: response.analysis,
+      };
+      await saveSkincareRoutine(routine);
+      setLastRoutine(routine);
+      setResult(routine);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } catch (err) {
       if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuotaBlock(err.usage?.resetsInMs);
@@ -60,104 +156,277 @@ export default function SkincareModule() {
   };
 
   return (
-    <>
-      <ScrollView
-        className="flex-1 bg-bg-100"
-        contentContainerClassName="px-4 pb-12 pt-3"
-        keyboardShouldPersistTaps="handled"
-      >
-        <UsageBanner compact />
-
-        {result ? (
-          <View className="mt-4">
-            <Card>
-              <View className="mb-3 flex-row items-center">
-                <View className="h-9 w-9 items-center justify-center rounded-xl bg-accent-100/50">
-                  <Sparkles size={17} color={colors.primary200} strokeWidth={2.2} />
-                </View>
-                <Text className="ml-2.5 flex-1 text-lg font-bold text-text-100">თქვენი რუტინა</Text>
-              </View>
-              <Markdown content={result} />
-            </Card>
-
-            <Disclaimer className="mt-4" />
-
-            <View className="mt-4">
-              <Button
-                label="ახალი რუტინა"
-                icon={RefreshCw}
-                variant="secondary"
-                onPress={() => {
-                  setResult(null);
-                  setConcerns([]);
+    <ChatScreenShell
+      header={
+        <ChatTopNav
+          title={ka.modules.skincare.title}
+          subtitle={ka.modules.skincare.subtitle}
+          icon={Sparkles}
+          remainingLabel={remainingLabel}
+          onBack={() => router.back()}
+          onSettings={() => router.push('/package' as never)}
+        />
+      }
+    >
+      {result ? (
+        <SkincareResultCard
+          routine={result}
+          onNew={() => {
+            setResult(null);
+            setConcerns([]);
+            setProducts('');
+            setError(null);
+          }}
+          onOpenRecord={() => router.push(`/record/${result.recordId}` as never)}
+        />
+      ) : busy ? (
+        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 40, alignItems: 'center', gap: 20 }}>
+          <ChatAiAvatar icon={Sparkles} size="lg" />
+          <Text
+            style={{
+              fontFamily: 'NotoSansGeorgian_700Bold',
+              fontSize: 20,
+              lineHeight: 28,
+              color: FIGMA.textPrimary,
+              textAlign: 'center',
+            }}
+          >
+            {ka.modules.skincare.building}
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
+            <View
+              style={{
+                borderRadius: 999,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                backgroundColor: FIGMA.brandQuaternary,
+                borderWidth: 1,
+                borderColor: FIGMA.brandBorderLight,
+              }}
+            >
+              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: FIGMA.brand }}>
+                {skinType}
+              </Text>
+            </View>
+            {concerns.map((concern) => (
+              <View
+                key={concern}
+                style={{
+                  borderRadius: 999,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  backgroundColor: FIGMA.white,
+                  borderWidth: 1,
+                  borderColor: FIGMA.border,
                 }}
-              />
+              >
+                <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: FIGMA.textSecondary }}>
+                  {concern}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <ChatTypingBubble icon={Sparkles} />
+        </View>
+      ) : (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32, paddingTop: 16, gap: 20 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View
+            style={{
+              backgroundColor: FIGMA.white,
+              borderWidth: 1,
+              borderColor: FIGMA.border,
+              borderRadius: 24,
+              padding: 16,
+              gap: 16,
+              ...FIGMA.shadowXs,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <ChatAiAvatar icon={Sparkles} size="lg" />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text
+                  style={{
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    fontSize: 18,
+                    lineHeight: 24,
+                    color: FIGMA.textPrimary,
+                  }}
+                >
+                  {ka.modules.skincare.emptyTitle}
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: 'NotoSansGeorgian_400Regular',
+                    fontSize: 14,
+                    lineHeight: 20,
+                    color: FIGMA.textSecondary,
+                  }}
+                >
+                  {ka.modules.skincare.emptyBody}
+                </Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <PreviewTile icon={Sun} label={ka.modules.skincare.morningLabel} />
+              <PreviewTile icon={Moon} label={ka.modules.skincare.eveningLabel} />
             </View>
           </View>
-        ) : (
-          <>
-            <Card className="mt-4">
-              <Text className="mb-2.5 text-sm font-semibold text-text-200">{ka.modules.skincare.skinTypeLabel}</Text>
-              <View className="flex-row flex-wrap">
-                {ka.modules.skincare.skinTypes.map((type) => (
-                  <Chip key={type} label={type} selected={skinType === type} onPress={() => setSkinType(type)} />
-                ))}
-              </View>
-            </Card>
 
-            <Card className="mt-3">
-              <Text className="text-sm font-semibold text-text-200">{ka.modules.skincare.concernsLabel}</Text>
-              <Text className="mb-2.5 text-xs text-text-300">{ka.modules.skincare.concernsHint}</Text>
-              <View className="flex-row flex-wrap">
-                {ka.modules.skincare.concerns.map((concern) => (
-                  <Chip
-                    key={concern}
-                    label={concern}
-                    selected={concerns.includes(concern)}
-                    onPress={() => toggleConcern(concern)}
-                  />
-                ))}
-              </View>
-            </Card>
-
-            <Card className="mt-3">
-              <Text className="mb-1.5 text-sm font-semibold text-text-200">
-                {ka.modules.skincare.productsLabel}{' '}
-                <Text className="font-normal text-text-300">({ka.common.optional})</Text>
-              </Text>
-              <TextInput
-                value={products}
-                onChangeText={setProducts}
-                placeholder={ka.modules.skincare.productsPlaceholder}
-                placeholderTextColor={colors.text300}
-                multiline
-                textAlignVertical="top"
-                className="min-h-[76px] rounded-xl border border-bg-300 bg-bg-100 p-3 text-base text-text-100"
-                style={{ fontSize: 15, lineHeight: 21 }}
-              />
-            </Card>
-
-            {error ? (
-              <View className="mt-3 rounded-2xl border border-state-danger/20 bg-state-dangerBg p-3.5">
-                <Text className="text-sm text-state-danger">{error}</Text>
-              </View>
-            ) : null}
-
-            <View className="mt-4">
-              <Button
-                label={busy ? ka.common.analyzing : ka.modules.skincare.build}
-                icon={Sparkles}
-                size="lg"
-                loading={busy}
-                disabled={concerns.length === 0}
-                onPress={build}
-              />
+          {lastRoutine ? (
+            <View>
+              <HomeSectionTitle title={ka.modules.skincare.lastRoutine} />
+              <Pressable
+                accessibilityRole="button"
+                disabled={hydrating}
+                onPress={() => void openRoutine(lastRoutine)}
+                style={{
+                  backgroundColor: FIGMA.white,
+                  borderWidth: 1,
+                  borderColor: FIGMA.border,
+                  borderRadius: 16,
+                  padding: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  ...FIGMA.shadowXs,
+                }}
+              >
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 999,
+                    backgroundColor: FIGMA.brandQuaternary,
+                    borderWidth: 1,
+                    borderColor: FIGMA.brandBorderLight,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {hydrating ? (
+                    <ActivityIndicator color={FIGMA.brand} />
+                  ) : (
+                    <Sparkles size={20} color={FIGMA.brand} strokeWidth={2} />
+                  )}
+                </View>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text
+                    style={{
+                      fontFamily: 'NotoSansGeorgian_600SemiBold',
+                      fontSize: 14,
+                      lineHeight: 20,
+                      color: FIGMA.textPrimary,
+                    }}
+                  >
+                    {lastRoutine.skinType}
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: 'NotoSansGeorgian_400Regular',
+                      fontSize: 13,
+                      lineHeight: 18,
+                      color: FIGMA.textSecondary,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {lastRoutine.concerns.length
+                      ? lastRoutine.concerns.slice(0, 3).join(', ')
+                      : formatRelative(lastRoutine.createdAt)}
+                  </Text>
+                </View>
+                <ChevronRight size={20} color={FIGMA.textMuted} strokeWidth={2.2} />
+              </Pressable>
             </View>
+          ) : null}
 
-            <Disclaimer className="mt-4" />
-          </>
-        )}
-      </ScrollView>
+          <View>
+            <HomeSectionTitle title={ka.modules.skincare.skinTypeLabel} />
+            <SkincareTypeList value={skinType} onChange={setSkinType} />
+          </View>
+
+          <View>
+            <HomeSectionTitle title={ka.modules.skincare.concernsLabel} />
+            <Text
+              style={{
+                fontFamily: 'NotoSansGeorgian_400Regular',
+                fontSize: 13,
+                lineHeight: 18,
+                color: FIGMA.textSecondary,
+                marginBottom: 10,
+                marginTop: -4,
+              }}
+            >
+              {ka.modules.skincare.concernsHint}
+            </Text>
+            <SkincareConcernGrid selected={concerns} onToggle={toggleConcern} />
+          </View>
+
+          <View>
+            <HomeSectionTitle title={ka.modules.skincare.productsLabel} />
+            <TextInput
+              value={products}
+              onChangeText={setProducts}
+              placeholder={ka.modules.skincare.productsPlaceholder}
+              placeholderTextColor={FIGMA.textMuted}
+              multiline
+              textAlignVertical="top"
+              inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
+              style={{
+                minHeight: 88,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: FIGMA.border,
+                backgroundColor: FIGMA.white,
+                padding: 14,
+                fontFamily: 'NotoSansGeorgian_400Regular',
+                fontSize: 15,
+                lineHeight: 22,
+                color: FIGMA.textPrimary,
+                ...FIGMA.shadowXs,
+              }}
+            />
+          </View>
+
+          {error ? (
+            <View
+              style={{
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: colors.danger,
+                backgroundColor: colors.dangerBg,
+                padding: 14,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: 'NotoSansGeorgian_400Regular',
+                  fontSize: 14,
+                  lineHeight: 20,
+                  color: colors.danger,
+                }}
+              >
+                {error}
+              </Text>
+            </View>
+          ) : null}
+
+          <AuthPrimaryButton
+            label={ka.modules.skincare.build}
+            loading={busy}
+            disabled={concerns.length === 0}
+            onPress={() => void build()}
+          />
+
+          <Disclaimer />
+        </ScrollView>
+      )}
+
+      <KeyboardDoneAccessory />
 
       <QuotaSheet
         visible={quotaBlock !== undefined}
@@ -165,24 +434,42 @@ export default function SkincareModule() {
         onClose={() => setQuotaBlock(undefined)}
         onUpgrade={() => {
           setQuotaBlock(undefined);
-          Alert.alert(ka.usage.upsellTitle, ka.usage.premiumSoon);
+          router.push('/package');
         }}
       />
-    </>
+    </ChatScreenShell>
   );
 }
 
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+function PreviewTile({ icon: Icon, label }: { icon: typeof Sun; label: string }) {
+  const FIGMA = useFigmaChat();
   return (
-    <Pressable
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: selected }}
-      onPress={onPress}
-      className={`mb-2 mr-2 rounded-full border px-3.5 py-2 active:opacity-70 ${
-        selected ? 'border-primary-200 bg-primary-200' : 'border-bg-300 bg-bg-100'
-      }`}
+    <View
+      style={{
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: FIGMA.brandQuaternary,
+        borderWidth: 1,
+        borderColor: FIGMA.brandBorderLight,
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+      }}
     >
-      <Text className={`text-sm font-semibold ${selected ? 'text-white' : 'text-text-200'}`}>{label}</Text>
-    </Pressable>
+      <Icon size={16} color={FIGMA.brand} strokeWidth={2.2} />
+      <Text
+        style={{
+          flex: 1,
+          fontFamily: 'NotoSansGeorgian_600SemiBold',
+          fontSize: 12,
+          lineHeight: 16,
+          color: FIGMA.brand,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
   );
 }

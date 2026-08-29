@@ -12,10 +12,9 @@ import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { ArrowLeft, ArrowRight, Check, Crown } from 'lucide-react-native';
-import { FIGMA_PLANS } from '@/constants/figmaPlansLayout';
+import { useFigmaPlans } from '@/constants/figmaPlansLayout';
 import { ka } from '@/i18n/ka';
 import { api, type UserPackage } from '@/lib/api';
-import { formatCountdown } from '@/lib/format';
 import { usePlanUsage, type PlanCode } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
 
@@ -31,6 +30,7 @@ const FEATURE_ORDER = [
 ] as const;
 
 function PlanCheckbox({ checked }: { checked: boolean }) {
+  const FIGMA_PLANS = useFigmaPlans();
   if (!checked) {
     return (
       <View
@@ -40,7 +40,7 @@ function PlanCheckbox({ checked }: { checked: boolean }) {
           borderRadius: 4,
           borderWidth: 1,
           borderColor: FIGMA_PLANS.borderTertiary,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: FIGMA_PLANS.pageBg,
         }}
       />
     );
@@ -89,6 +89,7 @@ function enabledFeatures(pkg: UserPackage): string[] {
 
 /** Figma 8846:137103 — package details & upgrade. */
 export default function PackageScreen() {
+  const FIGMA_PLANS = useFigmaPlans();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -150,7 +151,7 @@ export default function PackageScreen() {
       : FIGMA_PLANS.brand;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: FIGMA_PLANS.pageBg, paddingTop: insets.top }}>
       <View
         style={{
           flexDirection: 'row',
@@ -223,14 +224,16 @@ export default function PackageScreen() {
                   >
                     {usageData.unlimited
                       ? ka.plans.unlimited
-                      : ka.plans.usageRemaining(usageData.remaining ?? 0, usageData.limit)}
+                      : usageData.exhausted
+                        ? ka.usage.exhaustedTitle
+                        : ka.usage.remainingQueries(usageData.remaining ?? 0, usageData.limit)}
                   </Text>
                   <View
                     style={{
                       borderRadius: 999,
                       paddingHorizontal: 10,
                       paddingVertical: 4,
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: FIGMA_PLANS.pageBg,
                     }}
                   >
                     <Text
@@ -272,7 +275,7 @@ export default function PackageScreen() {
                   }}
                 >
                   {usageData.exhausted
-                    ? `${ka.usage.resetsIn} ${formatCountdown(usageData.usage.resetsInMs)}`
+                    ? usageData.resetLabel
                     : ka.plans.billingNote}
                 </Text>
               </View>
@@ -439,7 +442,7 @@ export default function PackageScreen() {
                             borderRadius: 999,
                             paddingHorizontal: 8,
                             paddingVertical: 2,
-                            backgroundColor: '#FFFFFF',
+                            backgroundColor: FIGMA_PLANS.pageBg,
                             borderWidth: 1,
                             borderColor: FIGMA_PLANS.border,
                           }}

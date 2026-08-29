@@ -1,5 +1,5 @@
 import { ka } from '@/i18n/ka';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatResetSentence } from '@/lib/format';
 import type { Usage } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
 
@@ -22,23 +22,41 @@ export type PlanUsageSnapshot = {
   limit: number;
   unlimited: boolean;
   remaining: number | null;
+  used: number;
   exhausted: boolean;
   progress: number;
   started: string | null;
   expires: string | null;
   expired: boolean;
   quotaLabel: string;
+  resetLabel: string | null;
 };
+
+/** Same rule as server resolveConsumeLimit — daily cap, not the marketing monthly number. */
+function consumeLimitFromPackage(pkg: { monthlyAiLimit?: number; dailyAiLimit?: number; unlimited?: boolean } | null | undefined) {
+  if (!pkg) return 3;
+  if (pkg.unlimited) return -1;
+  const monthly = pkg.monthlyAiLimit;
+  const daily = pkg.dailyAiLimit;
+  if ((monthly != null && monthly < 0) || (daily != null && daily < 0)) return -1;
+  if (daily != null && daily > 0) return daily;
+  if (monthly != null && monthly > 0) return monthly;
+  return 3;
+}
 
 export function buildPlanUsage(user: ReturnType<typeof useAuth>['user'], usage: Usage | null): PlanUsageSnapshot {
   const code = (user?.package?.code ?? 'FREE') as PlanCode;
   const meta = planMeta(code);
+  const pkgLimit = consumeLimitFromPackage(user?.package ?? null);
 
-  const limit =
-    user?.package?.monthlyAiLimit ?? user?.package?.dailyAiLimit ?? usage?.limit ?? 90;
-  const unlimited = Boolean(usage?.unlimited || user?.package?.unlimited || limit < 0);
-  const remaining = unlimited ? null : (usage?.remaining ?? limit);
-  const exhausted = !unlimited && remaining === 0;
+  const unlimited = Boolean(
+    usage?.unlimited || user?.package?.unlimited || (usage?.limit != null && usage.limit < 0) || pkgLimit < 0,
+  );
+
+  const limit = unlimited ? -1 : (usage && usage.limit >= 0 ? usage.limit : pkgLimit);
+  const used = usage?.used ?? 0;
+  const remaining = unlimited ? null : usage ? Math.max(0, usage.remaining) : limit;
+  const exhausted = !unlimited && usage != null && (Boolean(usage.exceeded) || remaining === 0);
   const progress = unlimited ? 1 : limit > 0 ? Math.min(1, Math.max(0, (remaining ?? 0) / limit)) : 0;
 
   const started = user?.packageStartedAt ? formatDate(user.packageStartedAt) : null;
@@ -50,7 +68,15 @@ export function buildPlanUsage(user: ReturnType<typeof useAuth>['user'], usage: 
     ? ka.usage.exhaustedTitle
     : unlimited
       ? ka.usage.unlimitedBanner
-      : `${remaining} / ${limit} ${ka.usage.queries}`;
+      : ka.usage.remainingQueries(remaining ?? 0, limit);
+
+  const resetLabel = exhausted
+    ? usage?.resetAt
+      ? formatResetSentence(usage.resetAt)
+      : usage?.resetsInMs
+        ? `${ka.usage.resetsIn} ${formatResetSentence(new Date(Date.now() + usage.resetsInMs).toISOString())}`
+        : ka.usage.exhaustedBody
+    : null;
 
   return {
     code,
@@ -59,12 +85,14 @@ export function buildPlanUsage(user: ReturnType<typeof useAuth>['user'], usage: 
     limit,
     unlimited,
     remaining,
+    used,
     exhausted,
     progress,
     started,
     expires,
     expired,
     quotaLabel,
+    resetLabel,
   };
 }
 

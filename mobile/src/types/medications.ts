@@ -33,6 +33,10 @@ export type MedicationConfig = {
   mealTiming?: MealTiming;
   category?: string;
   remainingCount?: number;
+  imageUrl?: string;
+  catalogProductId?: string;
+  manufacturer?: string;
+  strength?: string;
 };
 
 export type DoseStatus = 'pending' | 'taken' | 'skipped';

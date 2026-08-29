@@ -1,7 +1,8 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, Switch, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { FIGMA_HEALTH_METRICS } from '@/constants/figmaHealthMetricsLayout';
+import { FIGMA_HEALTH_METRICS, useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
+import { useIsDark } from '@/theme/colors';
 
 type Props = {
   icon: LucideIcon;
@@ -24,6 +25,9 @@ export function PermissionToggleRow({
   isLast,
   onValueChange,
 }: Props) {
+  const FIGMA_HEALTH_METRICS = useFigmaHealthMetrics();
+  const dark = useIsDark();
+  const trackOff = dark ? '#374151' : '#E5E7EB';
   return (
     <>
       <View
@@ -73,11 +77,11 @@ export function PermissionToggleRow({
             disabled={disabled}
             onValueChange={onValueChange}
             trackColor={{
-              false: '#E5E7EB',
+              false: trackOff,
               true: `${FIGMA_HEALTH_METRICS.brand}99`,
             }}
             thumbColor="#FFFFFF"
-            ios_backgroundColor="#E5E7EB"
+            ios_backgroundColor={trackOff}
           />
         )}
       </View>
@@ -87,10 +91,11 @@ export function PermissionToggleRow({
 }
 
 export function PermissionGroup({ children }: { children: React.ReactNode }) {
+  const FIGMA_HEALTH_METRICS = useFigmaHealthMetrics();
   return (
     <View
       style={{
-        backgroundColor: '#FFFFFF',
+        backgroundColor: FIGMA_HEALTH_METRICS.cardBg,
         borderRadius: 18,
         borderWidth: 1,
         borderColor: FIGMA_HEALTH_METRICS.border,
@@ -103,6 +108,7 @@ export function PermissionGroup({ children }: { children: React.ReactNode }) {
 }
 
 export function PermissionSectionLabel({ title }: { title: string }) {
+  const FIGMA_HEALTH_METRICS = useFigmaHealthMetrics();
   return (
     <Text
       style={{

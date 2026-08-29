@@ -1,5 +1,4 @@
 import { api, type HealthProfile } from '@/lib/api';
-import { pushHealthToServer } from '@/lib/healthDataSync';
 import type { HealthMetricsSyncPayload } from '@/lib/healthMetricsStorage';
 import type { HealthMetricKey } from '@/types/healthMetrics';
 
@@ -95,11 +94,6 @@ export async function logManualHealthMetric(
       ? [{ at: new Date().toISOString(), count: Math.round(value) }]
       : [];
 
-  await pushHealthToServer({ daily: [daily], stepLogs });
-
-  try {
-    await api.healthProfile.update(profilePatchForKey(key, value, valueSecondary, profile));
-  } catch {
-    // Sync succeeded; profile flag is best-effort for setup progress.
-  }
+  await api.healthMetrics.sync({ daily: [daily], stepLogs });
+  await api.healthProfile.update(profilePatchForKey(key, value, valueSecondary, profile));
 }

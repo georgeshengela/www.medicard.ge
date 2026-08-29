@@ -101,15 +101,27 @@ export function StreakWeekRow({
   const FIGMA = useFigmaStreak();
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        width: '100%',
+        overflow: 'visible',
+      }}
+    >
       {days.map((day, index) => (
-        <View key={day.date} style={{ alignItems: 'center', gap: 12, width: 32 }}>
+        <View key={day.date} style={{ flex: 1, alignItems: 'center', gap: 8, minWidth: 0 }}>
           <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
             style={{
-              fontFamily: 'NotoSansGeorgian_400Regular',
-              fontSize: 14,
-              lineHeight: 20,
-              color: FIGMA.textSecondary,
+              fontFamily: 'NotoSansGeorgian_500Medium',
+              fontSize: 11,
+              lineHeight: 14,
+              letterSpacing: -0.2,
+              color: FIGMA.weekday,
               textAlign: 'center',
             }}
           >
@@ -143,18 +155,17 @@ export function StreakBonusChip({ label }: { label: string }) {
       entering={FadeIn.delay(200)}
       style={{
         alignSelf: 'center',
-        marginTop: 12,
         backgroundColor: '#F59E0B',
         borderRadius: 999,
-        paddingHorizontal: 14,
-        paddingVertical: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 5,
       }}
     >
       <Text
         style={{
-          fontFamily: 'NotoSansGeorgian_700Bold',
-          fontSize: 14,
-          lineHeight: 20,
+          fontFamily: 'NotoSansGeorgian_600SemiBold',
+          fontSize: 12,
+          lineHeight: 16,
           color: '#FFFFFF',
         }}
       >

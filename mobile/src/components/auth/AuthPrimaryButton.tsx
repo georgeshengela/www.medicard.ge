@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
-import { FIGMA_AUTH, FIGMA_AUTH_SHADOW } from '@/constants/figmaAuthLayout';
+import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { AuthSignInArrow } from '@/components/auth/AuthSignInArrow';
 
 type Props = {
@@ -11,22 +11,9 @@ type Props = {
   style?: ViewStyle;
 };
 
-const SURFACE: ViewStyle = {
-  width: '100%',
-  minHeight: FIGMA_AUTH.primaryMinHeight,
-  borderRadius: FIGMA_AUTH.primaryRadius,
-  backgroundColor: FIGMA_AUTH.primaryBg,
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  paddingHorizontal: FIGMA_AUTH.primaryPaddingX,
-  paddingVertical: FIGMA_AUTH.primaryPaddingY,
-  gap: FIGMA_AUTH.primaryGap,
-  ...FIGMA_AUTH_SHADOW,
-};
-
 /** Figma primary auth CTA — background lives on inner View (NativeWind breaks Pressable style fns). */
 export function AuthPrimaryButton({ label, onPress, loading = false, disabled = false, style }: Props) {
+  const auth = useFigmaAuth();
   const inactive = loading || disabled;
 
   return (
@@ -38,7 +25,25 @@ export function AuthPrimaryButton({ label, onPress, loading = false, disabled = 
       onPress={onPress}
       style={[{ width: '100%', alignSelf: 'stretch' }, style]}
     >
-      <View pointerEvents="none" style={[SURFACE, inactive && !loading ? { opacity: 0.45 } : null]}>
+      <View
+        pointerEvents="none"
+        style={[
+          {
+            width: '100%',
+            minHeight: auth.primaryMinHeight,
+            borderRadius: auth.primaryRadius,
+            backgroundColor: auth.primaryBg,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: auth.primaryPaddingX,
+            paddingVertical: auth.primaryPaddingY,
+            gap: auth.primaryGap,
+            ...FIGMA_AUTH_SHADOW,
+          },
+          inactive && !loading ? { opacity: 0.45 } : null,
+        ]}
+      >
         {loading ? (
           <>
             <ActivityIndicator color="#FFFFFF" />

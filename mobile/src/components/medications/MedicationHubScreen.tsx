@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Pressable,
   RefreshControl,
@@ -21,18 +20,16 @@ import {
   Plus,
   Search,
 } from 'lucide-react-native';
-import { HomeDashboardHeader } from '@/components/home/HomeDashboardHeader';
 import { MedicationCircularProgress } from '@/components/medications/MedicationCircularProgress';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedCard, MedChip, MedDivider, MedInsetCard, MedSectionHeader } from '@/components/medications/MedicationUI';
-import { POPULAR_SEARCH_META } from '@/constants/medicationPillAssets';
+import { UpcomingDoseCard } from '@/components/medications/UpcomingDoseCard';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
-import { FIGMA_MEDS, MED_POPULAR_CHIPS } from '@/constants/figmaMedicationsLayout';
-import { FIGMA_HOME_DASHBOARD } from '@/constants/figmaHomeDashboardLayout';
-import { MEDICATION_CATALOG } from '@/constants/medicationCatalog';
+import { useFigmaMeds, MED_POPULAR_CHIPS } from '@/constants/figmaMedicationsLayout';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
-import type { Medication } from '@/lib/api';
+import { api, type CatalogProductSummary, type Medication } from '@/lib/api';
+import { catalogProductMeta, catalogProductSetupParams } from '@/lib/medicationCatalogNav';
 import {
   adherenceStats,
   findDoseLog,
@@ -43,39 +40,32 @@ import {
   todayYmd,
 } from '@/lib/medications.shared';
 import { getPreference, setPreference } from '@/lib/storage';
-import { useAuth } from '@/store/AuthContext';
-import type { PillShape } from '@/types/medications';
 
 const ONBOARDING_KEY = 'medicard.meds.onboardingDone';
 
 type Props = { showOnboarding?: boolean };
 
 export function MedicationHubScreen({ showOnboarding }: Props) {
-  const insets = useSafeAreaInsets();
+  const FIGMA_MEDS = useFigmaMeds();
   const router = useRouter();
   const tabInset = useTabBarInset();
-  const { user, healthProfile } = useAuth();
   const { medications, schedule, doseLogs, setDoseLogs, refreshing, loading, onRefresh, load } = useMedications();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProductSummary[]>([]);
   const today = todayYmd();
   const stats = adherenceStats(doseLogs);
   const activeMeds = medications.filter((m) => m.active);
-  const firstName = user?.fullName?.split(' ')[0] ?? '';
-  const initials =
-    user?.fullName
-      ?.split(' ')
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase() ?? 'M';
-  const avatarId =
-    typeof (healthProfile?.extraAnswers as Record<string, unknown> | undefined)?.avatarId === 'string'
-      ? ((healthProfile?.extraAnswers as Record<string, unknown>).avatarId as string)
-      : null;
 
   useEffect(() => {
     getPreference(ONBOARDING_KEY).then((v) => setOnboardingDone(v === '1'));
+  }, []);
+
+  useEffect(() => {
+    void api.pharmacy
+      .products({ sort: 'name', limit: 8 })
+      .then((res) => setCatalogProducts(res.products))
+      .catch(() => undefined);
   }, []);
 
   const todayDoses = useMemo(
@@ -102,7 +92,7 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
   };
 
   if (!loading && onboardingDone === null && medications.length === 0) {
-    return <View style={{ flex: 1, backgroundColor: FIGMA_MEDS.white }} />;
+    return <View style={{ flex: 1, backgroundColor: FIGMA_MEDS.pageBg }} />;
   }
 
   if (!loading && medications.length === 0 && onboardingDone === false && showOnboarding !== false) {
@@ -119,26 +109,12 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: FIGMA_MEDS.white }}
-      contentContainerStyle={{ paddingBottom: tabInset + 16 }}
+      style={{ flex: 1, backgroundColor: FIGMA_MEDS.pageBg }}
+      contentContainerStyle={{ paddingBottom: tabInset }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={FIGMA_MEDS.brand} />}
       showsVerticalScrollIndicator={false}
     >
-      <LinearGradient
-        colors={[FIGMA_HOME_DASHBOARD.brand, 'rgba(20,184,166,0)']}
-        style={{ paddingTop: insets.top, paddingBottom: 8 }}
-      >
-        <HomeDashboardHeader
-          firstName={firstName}
-          initials={initials}
-          gender={user?.gender}
-          avatarId={avatarId}
-          streak={1}
-          onPackagePress={() => router.push('/package' as never)}
-          onAvatarPress={() => router.push('/(tabs)/profile' as never)}
-        />
-
-        <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+      <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
           <MedCard style={{ padding: 16, gap: 16 }}>
             <View style={{ flexDirection: 'row', gap: 16 }}>
               <MetricCell value={`${stats.onTime}`} suffix="x" label={ka.meds.metricOnTime} />
@@ -171,7 +147,7 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
                       <Text style={{ fontSize: 16, fontWeight: '800', color: FIGMA_MEDS.textPrimary }} numberOfLines={1}>{dose.medName}</Text>
                       <Text style={{ fontSize: 14, color: FIGMA_MEDS.textSecondary }} numberOfLines={1}>{dose.dosage}</Text>
                     </View>
-                    <MedicationCircularProgress progress={progress} pillColor={cfg.pillColor} shape={cfg.pillShape} />
+                    <MedicationCircularProgress progress={progress} pillColor={cfg.pillColor} shape={cfg.pillShape} imageUrl={cfg.imageUrl} />
                   </View>
                 );
               })}
@@ -179,13 +155,45 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
           </MedCard>
         </View>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}>
-          <QuickIcon primary icon={Plus} label={ka.meds.quickAdd} onPress={() => router.push('/medications/add')} />
-          <QuickIcon icon={Search} label={ka.meds.quickSearch} onPress={() => router.push('/medications/add/search')} />
-          <QuickIcon icon={FlaskConical} label={ka.meds.quickInteraction} onPress={() => router.push('/medications/interaction')} />
-          <QuickIcon icon={Bell} label={ka.meds.quickReminders} onPress={() => router.push('/medications/reminders')} />
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
+        <View
+          style={{
+            backgroundColor: FIGMA_MEDS.cardBg,
+            borderRadius: FIGMA_MEDS.cardRadiusSm,
+            borderWidth: 1,
+            borderColor: FIGMA_MEDS.border,
+            padding: 8,
+            gap: 8,
+            ...FIGMA_MEDS.shadowCard,
+          }}
+        >
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <QuickActionTile
+              primary
+              icon={Plus}
+              label={ka.meds.quickAdd}
+              onPress={() => router.push('/medications/add')}
+            />
+            <QuickActionTile
+              icon={Search}
+              label={ka.meds.quickSearch}
+              onPress={() => router.push('/medications/add/search')}
+            />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <QuickActionTile
+              icon={FlaskConical}
+              label={ka.meds.quickInteraction}
+              onPress={() => router.push('/medications/interaction')}
+            />
+            <QuickActionTile
+              icon={Bell}
+              label={ka.meds.quickReminders}
+              onPress={() => router.push('/medications/reminders')}
+            />
+          </View>
         </View>
-      </LinearGradient>
+      </View>
 
       <MedSectionHeader title={ka.meds.upcomingTitle} actionLabel={ka.meds.seeAll} onAction={() => router.push('/medications/reminders')} />
       <View style={{ paddingHorizontal: 16 }}>
@@ -223,40 +231,41 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
       <View style={{ paddingHorizontal: 16 }}>
         <MedInsetCard style={{ overflow: 'hidden', padding: 0 }}>
           <View style={{ height: 131, backgroundColor: FIGMA_MEDS.brandQuaternary, alignItems: 'center', justifyContent: 'center' }}>
-            <MedicationPillIcon shape="long" size={72} />
+            <MedicationPillIcon shape="long" size={72} imageUrl={catalogProducts[0]?.imageUrl} />
           </View>
           <View style={{ padding: 16, gap: 12 }}>
             <MedInputSearch value={searchQuery} onChangeText={setSearchQuery} onSubmit={() => router.push({ pathname: '/medications/add/search', params: { q: searchQuery } })} />
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
               <Text style={{ fontSize: 14, fontWeight: '500', color: FIGMA_MEDS.textSecondary }}>{ka.meds.mostCommon}</Text>
               {MED_POPULAR_CHIPS.map((chip) => (
-                <MedChip key={chip} label={chip} onPress={() => router.push({ pathname: '/medications/add/setup', params: { name: chip, generic: chip } })} />
+                <MedChip key={chip} label={chip} onPress={() => router.push({ pathname: '/medications/add/search', params: { q: chip } })} />
               ))}
             </View>
           </View>
         </MedInsetCard>
       </View>
 
-      <MedSectionHeader title={ka.meds.popularSearchesTitle} actionLabel={ka.meds.seeAll} onAction={() => router.push('/medications/add/search')} />
-      <View style={{ paddingHorizontal: 16 }}>
-        <MedInsetCard style={{ padding: 0, overflow: 'hidden' }}>
-          {MEDICATION_CATALOG.slice(0, 3).map((entry, index) => {
-            const meta = POPULAR_SEARCH_META[index];
-            return (
-              <PopularSearchRow
-                key={entry.inn}
-                rank={index + 1}
-                shape={meta?.shape ?? 'long'}
-                alias={meta?.alias ?? entry.inn}
-                title={entry.ka}
-                subtitle={meta?.category ?? entry.inn}
-                onPress={() => router.push({ pathname: '/medications/add/setup', params: { name: entry.ka, generic: entry.inn } })}
-                showDivider={index < 2}
-              />
-            );
-          })}
-        </MedInsetCard>
-      </View>
+      {catalogProducts.length > 0 ? (
+        <>
+          <MedSectionHeader title={ka.meds.popularSearchesTitle} actionLabel={ka.meds.seeAll} onAction={() => router.push('/medications/add/search')} />
+          <View style={{ paddingHorizontal: 16 }}>
+            <MedInsetCard style={{ padding: 0, overflow: 'hidden' }}>
+              {catalogProducts.slice(0, 3).map((product, index) => (
+                <PopularSearchRow
+                  key={product.id}
+                  rank={index + 1}
+                  imageUrl={product.imageUrl}
+                  alias={product.category?.nameKa ?? catalogProductMeta(product)}
+                  title={product.name}
+                  subtitle={catalogProductMeta(product)}
+                  onPress={() => router.push({ pathname: '/medications/add/setup', params: catalogProductSetupParams(product) })}
+                  showDivider={index < Math.min(catalogProducts.length, 3) - 1}
+                />
+              ))}
+            </MedInsetCard>
+          </View>
+        </>
+      ) : null}
 
       <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
         <MedInsetCard style={{ overflow: 'hidden', padding: 0 }}>
@@ -329,6 +338,7 @@ async function apiToggle(med: Medication, reload: () => void) {
 }
 
 function MetricCell({ value, suffix, label }: { value: string; suffix: string; label: string }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
@@ -340,128 +350,68 @@ function MetricCell({ value, suffix, label }: { value: string; suffix: string; l
   );
 }
 
-function QuickIcon({ icon: Icon, label, onPress, primary }: { icon: typeof Plus; label: string; onPress: () => void; primary?: boolean }) {
+function QuickActionTile({
+  icon: Icon,
+  label,
+  onPress,
+  primary,
+}: {
+  icon: typeof Plus;
+  label: string;
+  onPress: () => void;
+  primary?: boolean;
+}) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
-    <Pressable onPress={onPress} style={{ alignItems: 'center', width: 74, gap: 6 }}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={{
+        flex: 1,
+        minHeight: 64,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 16,
+        backgroundColor: primary ? FIGMA_MEDS.brandQuaternary : FIGMA_MEDS.white,
+        borderWidth: 1,
+        borderColor: primary ? FIGMA_MEDS.brandTertiary : FIGMA_MEDS.border,
+      }}
+    >
       <View
         style={{
-          width: FIGMA_MEDS.iconBtn,
-          height: FIGMA_MEDS.iconBtn,
-          borderRadius: 999,
-          backgroundColor: primary ? FIGMA_MEDS.brand : FIGMA_MEDS.cardBg,
-          borderWidth: primary ? 0 : 1,
-          borderColor: FIGMA_MEDS.borderTertiary,
+          width: 36,
+          height: 36,
+          borderRadius: 12,
           alignItems: 'center',
           justifyContent: 'center',
-          padding: 12,
-          ...FIGMA_MEDS.shadowInput,
+          backgroundColor: primary ? FIGMA_MEDS.brand : FIGMA_MEDS.brandQuaternary,
         }}
       >
-        <Icon size={22} color={primary ? '#fff' : FIGMA_MEDS.brand} strokeWidth={2.2} />
+        <Icon size={18} color={primary ? '#fff' : FIGMA_MEDS.brand} strokeWidth={2.3} />
       </View>
-      <Text style={{ fontSize: 12, fontWeight: '600', color: FIGMA_MEDS.textPrimary, textAlign: 'center' }}>{label}</Text>
+      <Text
+        numberOfLines={2}
+        style={{
+          flex: 1,
+          fontSize: 13,
+          fontWeight: '700',
+          lineHeight: 18,
+          color: FIGMA_MEDS.textPrimary,
+        }}
+      >
+        {label}
+      </Text>
     </Pressable>
-  );
-}
-
-function UpcomingDoseCard({
-  dose,
-  cfg,
-  logStatus,
-  onTaken,
-  onSkipped,
-  onOpen,
-}: {
-  dose: { medName: string; dosage: string; time: string; notes: string | null };
-  cfg: ReturnType<typeof parseMedicationConfig>;
-  logStatus?: string;
-  onTaken: () => void;
-  onSkipped: () => void;
-  onOpen: () => void;
-}) {
-  const meal = cfg.mealTiming && cfg.mealTiming !== 'any' ? ka.meds.mealTiming[cfg.mealTiming] : null;
-  const subtitle = cfg.genericName ? `${cfg.genericName} - ${ka.meds.formLabels[cfg.form ?? 'pills']}` : dose.dosage;
-
-  return (
-    <View style={{ gap: 16 }}>
-      <Pressable onPress={onOpen} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-        <MedicationPillIcon shape={cfg.pillShape ?? 'rectangle'} size={48} border />
-        <View style={{ flex: 1, gap: 8 }}>
-          <View style={{ gap: 4 }}>
-            <Text style={{ fontSize: 14, fontWeight: '700', lineHeight: 20, color: FIGMA_MEDS.textPrimary }} numberOfLines={1}>
-              {dose.medName}
-            </Text>
-            <Text style={{ fontSize: 14, lineHeight: 20, color: FIGMA_MEDS.textSecondary }} numberOfLines={2}>
-              {subtitle}
-            </Text>
-          </View>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', lineHeight: 20, color: FIGMA_MEDS.brand }}>
-              {ka.meds.doseAt(formatTime12h(dose.time))}
-            </Text>
-            <ChevronRight size={20} color={FIGMA_MEDS.brand} strokeWidth={2.5} />
-          </View>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 12, lineHeight: 16, color: FIGMA_MEDS.textSecondary }}>{dose.dosage}</Text>
-            {meal ? (
-              <>
-                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: FIGMA_MEDS.border }} />
-                <Text style={{ fontSize: 12, lineHeight: 16, color: FIGMA_MEDS.textSecondary }}>{meal}</Text>
-              </>
-            ) : null}
-          </View>
-        </View>
-      </Pressable>
-
-      {logStatus ? (
-        <Text style={{ fontWeight: '700', fontSize: 14, color: logStatus === 'taken' ? FIGMA_MEDS.success : FIGMA_MEDS.destructive }}>
-          {logStatus === 'taken' ? ka.meds.statusTaken : ka.meds.statusSkipped}
-        </Text>
-      ) : (
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Pressable
-            onPress={onSkipped}
-            style={{
-              flex: 1,
-              paddingVertical: 6,
-              paddingHorizontal: 10,
-              borderRadius: 12,
-              backgroundColor: FIGMA_MEDS.cardBg,
-              borderWidth: 1,
-              borderColor: FIGMA_MEDS.borderTertiary,
-              alignItems: 'center',
-              ...FIGMA_MEDS.shadowInput,
-            }}
-          >
-            <Text style={{ fontWeight: '600', fontSize: 14, lineHeight: 20, color: FIGMA_MEDS.textPrimary }}>{ka.meds.actionSkip}</Text>
-          </Pressable>
-          <Pressable
-            onPress={onTaken}
-            style={{
-              flex: 1,
-              paddingVertical: 6,
-              paddingHorizontal: 10,
-              borderRadius: 12,
-              backgroundColor: FIGMA_MEDS.brandQuaternary,
-              borderWidth: 1,
-              borderColor: FIGMA_MEDS.brandTertiary,
-              alignItems: 'center',
-              ...FIGMA_MEDS.shadowInput,
-            }}
-          >
-            <Text style={{ fontWeight: '600', fontSize: 14, lineHeight: 20, color: FIGMA_MEDS.brand }}>{ka.meds.actionTake}</Text>
-          </Pressable>
-        </View>
-      )}
-    </View>
   );
 }
 
 function PopularSearchRow({
   rank,
-  shape,
+  imageUrl,
   alias,
   title,
   subtitle,
@@ -469,13 +419,14 @@ function PopularSearchRow({
   showDivider,
 }: {
   rank: number;
-  shape: PillShape;
+  imageUrl?: string | null;
   alias: string;
   title: string;
   subtitle: string;
   onPress: () => void;
   showDivider: boolean;
 }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <Pressable onPress={onPress} style={{ position: 'relative' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 }}>
@@ -497,12 +448,16 @@ function PopularSearchRow({
           >
             <Text style={{ fontSize: 14, fontWeight: '600', color: FIGMA_MEDS.brand }}>{rank}</Text>
           </View>
-          <MedicationPillIcon shape={shape} size={48} border />
+          <MedicationPillIcon size={48} border imageUrl={imageUrl} />
         </View>
         <View style={{ flex: 1, gap: 4 }}>
-          <Text style={{ fontSize: 12, fontWeight: '500', color: FIGMA_MEDS.textSecondary }}>{alias}</Text>
+          {alias ? <Text style={{ fontSize: 12, fontWeight: '500', color: FIGMA_MEDS.textSecondary }}>{alias}</Text> : null}
           <Text style={{ fontSize: 14, fontWeight: '600', color: FIGMA_MEDS.textPrimary }}>{title}</Text>
-          <Text style={{ fontSize: 14, color: FIGMA_MEDS.textSecondary }}>{subtitle}</Text>
+          {subtitle && subtitle !== alias ? (
+            <Text style={{ fontSize: 14, color: FIGMA_MEDS.textSecondary }} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
         <ChevronRight size={24} color={FIGMA_MEDS.textMuted} strokeWidth={2} />
       </View>
@@ -512,6 +467,7 @@ function PopularSearchRow({
 }
 
 function MedInputSearch({ value, onChangeText, onSubmit }: { value: string; onChangeText: (v: string) => void; onSubmit: () => void }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <View
       style={{
@@ -541,6 +497,7 @@ function MedInputSearch({ value, onChangeText, onSubmit }: { value: string; onCh
 }
 
 function ReminderRow({ med, showDivider, onToggle }: { med: Medication; showDivider: boolean; onToggle: () => void }) {
+  const FIGMA_MEDS = useFigmaMeds();
   const cfg = parseMedicationConfig(med.config);
   const times = parseFrequencyTimes(med.frequency);
   const [on, setOn] = useState(med.active);
@@ -548,7 +505,7 @@ function ReminderRow({ med, showDivider, onToggle }: { med: Medication; showDivi
     <View>
       {showDivider ? <MedDivider /> : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 }}>
-        <MedicationPillIcon shape={cfg.pillShape ?? 'long'} size={48} border />
+        <MedicationPillIcon shape={cfg.pillShape ?? 'long'} size={48} border imageUrl={cfg.imageUrl} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontWeight: '800', color: FIGMA_MEDS.textPrimary }}>{med.medName}</Text>
           <Text style={{ fontSize: 13, color: FIGMA_MEDS.textSecondary, marginTop: 2 }}>
@@ -570,8 +527,9 @@ function ReminderRow({ med, showDivider, onToggle }: { med: Medication; showDivi
 }
 
 function MedicationOnboarding({ onContinue }: { onContinue: () => void }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
-    <View style={{ flex: 1, backgroundColor: FIGMA_MEDS.white, paddingHorizontal: 16, justifyContent: 'center' }}>
+    <View style={{ flex: 1, backgroundColor: FIGMA_MEDS.pageBg, paddingHorizontal: 16, justifyContent: 'center' }}>
       <View style={{ alignItems: 'center', marginBottom: 48 }}>
         <Pill size={120} color={FIGMA_MEDS.brand} strokeWidth={1.2} />
         <Text style={{ marginTop: 32, fontSize: 30, fontWeight: '800', color: FIGMA_MEDS.textPrimary, textAlign: 'center' }}>{ka.meds.onboardingEmptyTitle}</Text>

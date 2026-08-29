@@ -1,5 +1,8 @@
+import { useIsDark } from '@/theme/colors';
+
 /** Figma 8845:313440 — Assessment Result layout tokens. */
 export const FIGMA_ASSESSMENT_RESULT = {
+  pageBg: '#FFFFFF',
   titleSize: 30,
   titleLineHeight: 38,
   titleColor: '#1F2937',
@@ -31,6 +34,24 @@ export const FIGMA_ASSESSMENT_RESULT = {
   knobSize: 20,
   knobBorder: '#F97316',
 } as const;
+
+export const FIGMA_ASSESSMENT_RESULT_DARK = {
+  pageBg: '#030712',
+  titleColor: '#FFFFFF',
+  labelColor: '#D1D5DB',
+  confidenceBadgeBg: '#1F2937',
+  confidenceBadgeBorder: '#4B5563',
+  rangeCardBg: '#111827',
+  rangeCardBorder: '#374151',
+  bodyCardBg: '#111827',
+  physiqueColor: '#86EFAC',
+  arcTrack: '#374151',
+} as const;
+
+export function useFigmaAssessmentResult() {
+  const dark = useIsDark();
+  return dark ? { ...FIGMA_ASSESSMENT_RESULT, ...FIGMA_ASSESSMENT_RESULT_DARK } : FIGMA_ASSESSMENT_RESULT;
+}
 
 export const SCORE_RANGE_DOT_COLORS = ['#22C55E', '#F43F5E', '#F59E0B', '#14B8A6'] as const;
 

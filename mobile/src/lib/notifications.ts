@@ -17,6 +17,7 @@ export const NOTIF_PREFIX = {
   med: 'med:',
   cycle: 'cycle:',
   visit: 'visit:',
+  steps: 'steps:',
 } as const;
 
 Notifications.setNotificationHandler({

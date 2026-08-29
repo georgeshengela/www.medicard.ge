@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { PAIN_LEVELS } from '@/constants/symptomCatalog';
 
 /** Figma order: emotion-depressed → overjoyed (worst pain on the left). */
@@ -13,6 +13,7 @@ type Props = {
 };
 
 export function SymptomPainScale({ value, onChange }: Props) {
+  const T = useFigmaSymptoms();
   const active = PAIN_LEVELS.find((p) => p.level === value);
 
   return (

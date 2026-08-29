@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { FIGMA_HOME_DASHBOARD } from '@/constants/figmaHomeDashboardLayout';
+import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
 import { ka } from '@/i18n/ka';
 import type { AccountSetupProgress, AccountSetupStep } from '@/lib/homeAccountSetup';
 
@@ -11,6 +11,7 @@ type Props = {
 };
 
 function SetupCheckbox({ checked }: { checked: boolean }) {
+  const FIGMA_HOME_DASHBOARD = useFigmaHomeDashboard();
   if (!checked) {
     return (
       <View
@@ -20,7 +21,7 @@ function SetupCheckbox({ checked }: { checked: boolean }) {
           borderRadius: 4,
           borderWidth: 1,
           borderColor: FIGMA_HOME_DASHBOARD.borderTertiary,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: FIGMA_HOME_DASHBOARD.checkboxBg,
         }}
       />
     );
@@ -50,6 +51,7 @@ function SetupCheckbox({ checked }: { checked: boolean }) {
 
 /** Figma 8911:62396 — account setup checklist. */
 export function HomeAccountSetupCard({ progress, onStepPress }: Props) {
+  const FIGMA_HOME_DASHBOARD = useFigmaHomeDashboard();
   const filledSegments = progress.completedCount;
 
   return (

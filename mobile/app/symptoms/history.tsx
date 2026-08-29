@@ -4,14 +4,15 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
 import { getSymptomSession, loadSymptomHistory, type SavedSymptomSession } from '@/lib/symptomResultStorage';
 import { updateSymptomChecker } from '@/lib/symptomCheckerStore';
 import { formatDateTime } from '@/lib/format';
 
-export default function SymptomHistoryScreen() {
+export default function SymptomHistoryScreen() {
+  const T = useFigmaSymptoms();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<SavedSymptomSession[]>([]);

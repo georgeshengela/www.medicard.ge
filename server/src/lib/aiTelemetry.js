@@ -38,7 +38,8 @@ export async function logAiInteraction({
       chatSessionId,
       medicalRecordId,
       userPrompt: truncateSnippet(userPrompt),
-      assistantReply: truncateSnippet(assistantReply),
+      // Full reply — symptom-check JSON is re-parsed later; truncating it 404s history.
+      assistantReply: assistantReply ? String(assistantReply) : null,
       visionProvider,
       visionModel,
       reasoningModel,

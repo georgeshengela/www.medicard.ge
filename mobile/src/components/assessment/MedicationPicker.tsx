@@ -10,7 +10,7 @@ import {
 import { ChevronDown } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { useAssessment } from '@/constants/assessmentLayout';
 import {
   commonMedications,
   hasMedication,
@@ -64,6 +64,7 @@ function Chip({
   selected?: boolean;
   onPress: () => void;
 }) {
+  const ASSESSMENT = useAssessment();
   return (
     <Pressable
       onPress={onPress}
@@ -73,7 +74,7 @@ function Chip({
         gap: 6,
         borderWidth: 1,
         borderColor: selected ? '#14B8A6' : ASSESSMENT.border,
-        backgroundColor: selected ? '#F0FDFA' : '#FFFFFF',
+        backgroundColor: selected ? ASSESSMENT.selectedSoft : ASSESSMENT.surface,
         borderRadius: 999,
         paddingHorizontal: 12,
         paddingVertical: 8,
@@ -100,6 +101,7 @@ function Chip({
 
 /** Figma 9217:164803 — combobox, catalog search, custom add, most-common chips. */
 export function MedicationPicker({ value, onChange }: Props) {
+  const ASSESSMENT = useAssessment();
   const [draft, setDraft] = useState('');
   const [open, setOpen] = useState(false);
 
@@ -139,7 +141,7 @@ export function MedicationPicker({ value, onChange }: Props) {
             borderWidth: 1,
             borderColor: open ? '#14B8A6' : ASSESSMENT.border,
             borderRadius: 16,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: ASSESSMENT.surface,
             paddingHorizontal: 16,
             gap: 12,
           }}
@@ -185,7 +187,7 @@ export function MedicationPicker({ value, onChange }: Props) {
               borderWidth: 1,
               borderColor: ASSESSMENT.border,
               borderRadius: 16,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: ASSESSMENT.surface,
               overflow: 'hidden',
               shadowColor: '#000',
               shadowOpacity: 0.08,

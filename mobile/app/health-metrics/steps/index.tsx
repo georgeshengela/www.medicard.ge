@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
@@ -22,18 +22,36 @@ import { StepsGoalCard, StepsSection } from '@/components/health/StepsGoalCard';
 import { StepsHistoryRow } from '@/components/health/StepsHistoryRow';
 import { StepsInsightGrid } from '@/components/health/StepsInsightGrid';
 import { StepsPeriodTabs } from '@/components/health/StepsPeriodTabs';
-import { FIGMA_STEPS } from '@/constants/figmaStepsLayout';
+import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { useStepsMetrics } from '@/hooks/useStepsMetrics';
 import { ka } from '@/i18n/ka';
 import { formatStepsCount } from '@/lib/stepsMetrics.shared';
+import { fetchStepsTotalBetween } from '@/lib/stepsMetrics';
+import { buildGoalProgress, loadStepsGoal, todayYmd } from '@/lib/stepsGoal';
 import type { StepChartPeriod } from '@/types/stepsMetrics';
 
 /** Figma 8851:166841 — steps counter detail. */
 export default function StepsDetailScreen() {
+  const FIGMA_STEPS = useFigmaSteps();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { bundle, loading, period, refresh } = useStepsMetrics('1d');
   const [refreshing, setRefreshing] = useState(false);
+  const [campaign, setCampaign] = useState<{ goal: number; current: number; remaining: number } | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadStepsGoal().then(async (goal) => {
+        if (!goal) {
+          setCampaign(null);
+          return;
+        }
+        const current = await fetchStepsTotalBetween(goal.startedYmd, todayYmd());
+        const next = buildGoalProgress(goal, current);
+        setCampaign({ goal: goal.targetSteps, current: next.current, remaining: next.remaining });
+      });
+    }, []),
+  );
 
   const onPeriodChange = useCallback(
     (next: StepChartPeriod) => {
@@ -52,7 +70,7 @@ export default function StepsDetailScreen() {
     bundle && period === '1d' ? Math.round(bundle.goal / 12) : undefined;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: FIGMA_STEPS.pageBg, paddingTop: insets.top }}>
       <View
         style={{
           flexDirection: 'row',
@@ -87,6 +105,7 @@ export default function StepsDetailScreen() {
           </View>
           <Pressable
             accessibilityRole="button"
+            onPress={() => router.push('/health-metrics/steps/goal' as never)}
             style={{
               width: 40,
               height: 40,
@@ -183,7 +202,13 @@ export default function StepsDetailScreen() {
         {bundle ? (
           <>
             <StepsSection title={ka.steps.goalTitle}>
-              <StepsGoalCard goal={bundle.goal} current={bundle.todayTotal} remaining={bundle.remaining} />
+              <Pressable onPress={() => router.push('/health-metrics/steps/goal' as never)}>
+                <StepsGoalCard
+                  goal={campaign?.goal ?? bundle.goal}
+                  current={campaign?.current ?? bundle.todayTotal}
+                  remaining={campaign?.remaining ?? bundle.remaining}
+                />
+              </Pressable>
             </StepsSection>
 
             <StepsSection title={ka.steps.insightTitle} actionLabel={ka.common.seeAll}>

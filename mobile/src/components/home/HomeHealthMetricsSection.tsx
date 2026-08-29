@@ -1,11 +1,12 @@
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronRight, Footprints, Link2, Lock } from 'lucide-react-native';
-import { HealthMetricCard } from '@/components/health/HealthMetricCard';
-import { FIGMA_HEALTH_METRICS } from '@/constants/figmaHealthMetricsLayout';
-import { FIGMA_STEPS } from '@/constants/figmaStepsLayout';
-import { useHealthMetrics } from '@/hooks/useHealthMetrics';
+import { Link2 } from 'lucide-react-native';
+import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { HomeStepsAreaChart, type StepsDayPoint } from '@/components/home/HomeStepsAreaChart';
+import { GoalDotsVertical, GoalTrendUp } from '@/components/health/steps-goal/StepsGoalIcons';
+import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
+import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { useStepsMetrics } from '@/hooks/useStepsMetrics';
 import { ka } from '@/i18n/ka';
 import {
@@ -19,7 +20,6 @@ import type { HealthProfile } from '@/lib/api';
 
 type Props = {
   profile: HealthProfile | null | undefined;
-  onOpenAll: () => void;
 };
 
 function explainFailure(result: Extract<HealthConnectResult, { ok: false }>): string {
@@ -37,10 +37,15 @@ function explainFailure(result: Extract<HealthConnectResult, { ok: false }>): st
   }
 }
 
-export function HomeHealthMetricsSection({ profile, onOpenAll }: Props) {
+function weekdayIndex(date: Date) {
+  return date.getDay() === 0 ? 6 : date.getDay() - 1;
+}
+
+export function HomeHealthMetricsSection({ profile: _profile }: Props) {
+  const FIGMA_HEALTH_METRICS = useFigmaHealthMetrics();
+  const FIGMA_STEPS = useFigmaSteps();
   const router = useRouter();
-  const { bundle, loading, refresh } = useHealthMetrics(profile);
-  const { bundle: stepsBundle, refresh: refreshSteps } = useStepsMetrics('1d');
+  const { bundle, loading, refresh } = useStepsMetrics('1w');
   const [connecting, setConnecting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -51,8 +56,7 @@ export function HomeHealthMetricsSection({ profile, onOpenAll }: Props) {
   useFocusEffect(
     useCallback(() => {
       void refresh();
-      void refreshSteps();
-    }, [refresh, refreshSteps]),
+    }, [refresh]),
   );
 
   const connect = useCallback(async () => {
@@ -65,59 +69,55 @@ export function HomeHealthMetricsSection({ profile, onOpenAll }: Props) {
         return;
       }
       setStatus(ka.cycle.healthConnected);
-      await Promise.all([refresh(), refreshSteps()]);
+      await refresh();
     } finally {
       setConnecting(false);
     }
-  }, [refresh, refreshSteps]);
+  }, [refresh]);
 
-  const previewMetrics =
-    bundle?.metrics.filter((m) => m.value != null).slice(0, 4) ?? bundle?.metrics.slice(0, 4) ?? [];
+  const days = useMemo<StepsDayPoint[]>(() => {
+    const bars = bundle?.chartBars ?? [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (!bars.length) {
+      return Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(today);
+        date.setDate(today.getDate() - (6 - index));
+        return {
+          label: ka.stepsGoal.weekdayShort[weekdayIndex(date)],
+          value: 0,
+          date,
+        };
+      });
+    }
+    return bars.map((bar, index) => {
+      const date = new Date(today);
+      date.setDate(today.getDate() - (bars.length - 1 - index));
+      return {
+        label: ka.stepsGoal.weekdayShort[weekdayIndex(date)] ?? bar.label,
+        value: bar.value,
+        date,
+      };
+    });
+  }, [bundle?.chartBars]);
+
+  const todayTotal = bundle?.todayTotal ?? 0;
+  const previous = days.length >= 2 ? days[days.length - 2].value : 0;
+  const trendPct = previous > 0 ? Math.round(((todayTotal - previous) / previous) * 1000) / 10 : null;
+  const trendUp = trendPct == null ? true : trendPct >= 0;
+
+  const openSteps = () => router.push('/health-metrics/steps' as never);
 
   return (
     <View style={{ paddingVertical: 4, gap: 8 }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 16,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: 'NotoSansGeorgian_600SemiBold',
-            fontSize: 14,
-            color: FIGMA_HEALTH_METRICS.textPrimary,
-          }}
-        >
-          {ka.healthMetrics.overview}
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onOpenAll}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
-        >
-          <Text
-            style={{
-              fontFamily: 'NotoSansGeorgian_600SemiBold',
-              fontSize: 12,
-              color: FIGMA_HEALTH_METRICS.brand,
-            }}
-          >
-            {ka.common.seeAll}
-          </Text>
-          <ChevronRight size={16} color={FIGMA_HEALTH_METRICS.brand} strokeWidth={2.2} />
-        </Pressable>
-      </View>
-
+      <HomeSectionTitle title={ka.home.activityTitle} style={{ marginHorizontal: 16, marginBottom: 0 }} />
       {!bundle?.connected && isHealthPlatformSupported() ? (
         <Pressable
           accessibilityRole="button"
           onPress={() => void connect()}
           style={{
             marginHorizontal: 16,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: FIGMA_HEALTH_METRICS.cardBg,
             borderRadius: 12,
             borderWidth: 1,
             borderColor: FIGMA_HEALTH_METRICS.border,
@@ -175,68 +175,78 @@ export function HomeHealthMetricsSection({ profile, onOpenAll }: Props) {
           <ActivityIndicator size="small" color={FIGMA_HEALTH_METRICS.brand} />
         </View>
       ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+        <Pressable
+          accessibilityRole="button"
+          onPress={openSteps}
+          style={{
+            marginHorizontal: 16,
+            backgroundColor: FIGMA_STEPS.cardBg,
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: FIGMA_STEPS.border,
+            padding: 16,
+            gap: 16,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 3,
+            elevation: 1,
+          }}
         >
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/health-metrics/steps' as never)}
-            style={{
-              minWidth: 108,
-              backgroundColor: FIGMA_STEPS.brandQuaternary,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: FIGMA_STEPS.brandLight,
-              paddingHorizontal: 10,
-              paddingVertical: 8,
-              gap: 4,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Footprints size={14} color={FIGMA_STEPS.brand} strokeWidth={2.2} />
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
+            <View style={{ flex: 1, gap: 4 }}>
               <Text
                 style={{
-                  fontFamily: 'NotoSansGeorgian_600SemiBold',
-                  fontSize: 11,
+                  fontFamily: 'NotoSansGeorgian_700Bold',
+                  fontSize: 24,
+                  lineHeight: 32,
+                  letterSpacing: -0.25,
                   color: FIGMA_STEPS.textPrimary,
                 }}
               >
-                {ka.steps.homePreview}
+                {formatStepsCount(todayTotal)} {ka.steps.unit}
               </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text
+                  style={{
+                    fontFamily: 'NotoSansGeorgian_400Regular',
+                    fontSize: 14,
+                    lineHeight: 20,
+                    color: FIGMA_STEPS.textSecondary,
+                  }}
+                >
+                  {bundle?.statusKa ?? ka.steps.statusLow}
+                </Text>
+                {trendPct != null ? (
+                  <>
+                    <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: FIGMA_STEPS.border }} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <View style={{ transform: [{ scaleY: trendUp ? 1 : -1 }] }}>
+                        <GoalTrendUp size={18} color={trendUp ? '#22C55E' : '#F43F5E'} />
+                      </View>
+                      <Text
+                        style={{
+                          fontFamily: 'NotoSansGeorgian_600SemiBold',
+                          fontSize: 14,
+                          lineHeight: 20,
+                          color: trendUp ? FIGMA_STEPS.trendUp : FIGMA_STEPS.trendDown,
+                        }}
+                      >
+                        {Math.abs(trendPct)}%
+                      </Text>
+                    </View>
+                  </>
+                ) : null}
+              </View>
             </View>
-            <Text
-              style={{
-                fontFamily: 'NotoSansGeorgian_700Bold',
-                fontSize: 16,
-                color: FIGMA_STEPS.textPrimary,
-              }}
-            >
-              {formatStepsCount(stepsBundle?.todayTotal ?? 0)}
-            </Text>
-          </Pressable>
+            <Pressable accessibilityRole="button" onPress={openSteps} hitSlop={8}>
+              <GoalDotsVertical size={24} color={FIGMA_STEPS.textSecondary} />
+            </Pressable>
+          </View>
 
-          {previewMetrics.map((metric) => (
-            <HealthMetricCard key={metric.key} metric={metric} mini onPress={onOpenAll} />
-          ))}
-        </ScrollView>
+          <HomeStepsAreaChart days={days} />
+        </Pressable>
       )}
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingTop: 2 }}>
-        <Lock size={11} color={FIGMA_HEALTH_METRICS.textSecondary} strokeWidth={2} />
-        <Text
-          style={{
-            flex: 1,
-            fontFamily: 'NotoSansGeorgian_400Regular',
-            fontSize: 10,
-            lineHeight: 14,
-            color: FIGMA_HEALTH_METRICS.textSecondary,
-          }}
-        >
-          {ka.healthMetrics.privacyNote}
-        </Text>
-      </View>
     </View>
   );
 }

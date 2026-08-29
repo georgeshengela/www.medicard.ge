@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRight, Footprints } from 'lucide-react-native';
-import { FIGMA_STEPS } from '@/constants/figmaStepsLayout';
+import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { formatStepLogDate, formatStepLogTime, formatStepsCount } from '@/lib/stepsMetrics.shared';
 import { ka } from '@/i18n/ka';
 import type { StepLogEntry } from '@/types/stepsMetrics';
@@ -12,6 +12,7 @@ type Props = {
 };
 
 export function StepsHistoryRow({ log, onPress }: Props) {
+  const FIGMA_STEPS = useFigmaSteps();
   const body = (
     <View
       style={{

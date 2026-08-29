@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { FIGMA_ASSESSMENT_INTRO } from '@/constants/figmaAssessmentIntro';
+import { useFigmaAssessmentIntro } from '@/constants/figmaAssessmentIntro';
 import { ka } from '@/i18n/ka';
 
 type Props = {
@@ -19,6 +19,7 @@ function phaseStatus(index: number, activeIndex: number, completedThrough: numbe
 
 /** Figma Step Group Horizontal — Assessment / Personal Info / Choose Plan. */
 export function AssessmentPhaseStepper({ activeIndex = 0, completedThrough = -1 }: Props) {
+  const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
   const labels = [
     ka.assessment.phases.assessment,
     ka.assessment.phases.personalInfo,
@@ -68,6 +69,7 @@ export function AssessmentPhaseStepper({ activeIndex = 0, completedThrough = -1 
 }
 
 function StepDot({ status }: { status: PhaseStatus }) {
+  const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
   const active = status === 'active';
   const completed = status === 'completed';
 
@@ -77,7 +79,7 @@ function StepDot({ status }: { status: PhaseStatus }) {
         width: FIGMA_ASSESSMENT_INTRO.stepperDotSize,
         height: FIGMA_ASSESSMENT_INTRO.stepperDotSize,
         borderRadius: 999,
-        backgroundColor: completed ? FIGMA_ASSESSMENT_INTRO.brandTeal : '#FFFFFF',
+        backgroundColor: completed ? FIGMA_ASSESSMENT_INTRO.brandTeal : FIGMA_ASSESSMENT_INTRO.cardBg,
         borderWidth: completed ? 0 : 1,
         borderColor: active ? FIGMA_ASSESSMENT_INTRO.brandTeal : FIGMA_ASSESSMENT_INTRO.inactiveBorder,
         alignItems: 'center',

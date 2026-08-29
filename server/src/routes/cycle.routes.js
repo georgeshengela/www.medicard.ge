@@ -380,10 +380,9 @@ cycleRouter.post(
       });
     }
 
-    // Only enforce AI quota when we actually call EvidenceMD
-    await new Promise((resolve, reject) => {
-      enforceAiQuota(req, res, (err) => (err ? reject(err) : resolve()));
-    });
+    // Only enforce AI quota when we actually call EvidenceMD.
+    // Await the middleware itself — a 429 sends the body and never calls next().
+    await enforceAiQuota(req, res, () => undefined);
     if (res.headersSent) return;
 
     const age = calculateAge(req.user.birthDate);
@@ -424,7 +423,7 @@ cycleRouter.post(
       },
     });
 
-    const usage = await req.consumeAiCredit();
+    const usage = parsed ? await req.consumeAiCredit() : req.usage;
 
     return res.json({
       insights,

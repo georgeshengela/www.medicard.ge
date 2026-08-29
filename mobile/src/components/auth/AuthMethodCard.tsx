@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRight, type LucideIcon } from 'lucide-react-native';
+import { useFigmaAuth } from '@/constants/figmaAuthLayout';
 
 type Props = {
   icon: LucideIcon;
@@ -13,6 +14,7 @@ type Props = {
 
 /** Figma forgot-password method row card. */
 export function AuthMethodCard({ icon: Icon, iconBg, iconColor, label, onPress, disabled }: Props) {
+  const auth = useFigmaAuth();
   return (
     <Pressable
       accessibilityRole="button"
@@ -25,8 +27,8 @@ export function AuthMethodCard({ icon: Icon, iconBg, iconColor, label, onPress, 
         paddingVertical: 18,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
-        backgroundColor: '#FFFFFF',
+        borderColor: auth.inputBorder,
+        backgroundColor: auth.inputBg,
         opacity: disabled ? 0.5 : 1,
         shadowColor: '#000',
         shadowOpacity: 0.04,
@@ -51,12 +53,12 @@ export function AuthMethodCard({ icon: Icon, iconBg, iconColor, label, onPress, 
           flex: 1,
           fontFamily: 'NotoSansGeorgian_600SemiBold',
           fontSize: 16,
-          color: '#0F172A',
+          color: auth.fieldText,
         }}
       >
         {label}
       </Text>
-      <ChevronRight size={20} color="#94A3B8" strokeWidth={2.2} />
+      <ChevronRight size={20} color={auth.iconMuted} strokeWidth={2.2} />
     </Pressable>
   );
 }

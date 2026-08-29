@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ThumbsDown, ThumbsUp } from 'lucide-react-native';
-import { FIGMA_CHAT } from '@/constants/figmaChatLayout';
+import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 
 type Props = {
@@ -10,6 +10,7 @@ type Props = {
 };
 
 export function ChatFeedbackRow({ feedbackRating, onRate }: Props) {
+  const FIGMA_CHAT = useFigmaChat();
   return (
     <View style={{ borderTopWidth: 1, borderTopColor: FIGMA_CHAT.border, paddingTop: 12, marginTop: 4, gap: 8 }}>
       <Text style={{ fontSize: 12, lineHeight: 16, color: FIGMA_CHAT.textSecondary }}>

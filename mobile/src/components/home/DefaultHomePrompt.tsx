@@ -3,6 +3,7 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { CalendarHeart, House } from 'lucide-react-native';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
 import { setCyclePromptSeen, setHomeLanding, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { useThemeColors } from '@/theme/colors';
@@ -14,6 +15,7 @@ type Props = {
 
 const PILL = 999;
 const BTN_GAP = 12;
+const CYCLE = '#D4738A';
 
 const SHELL = {
   borderRadius: PILL,
@@ -36,6 +38,7 @@ function PillButton({
   hint: string;
   icon: typeof CalendarHeart;
 }) {
+  const colors = useThemeColors();
   const isPrimary = variant === 'primary';
 
   const inner = (
@@ -47,16 +50,16 @@ function PillButton({
           borderRadius: PILL,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: isPrimary ? 'rgba(255,255,255,0.22)' : 'rgba(42,26,34,0.08)',
+          backgroundColor: isPrimary ? 'rgba(255,255,255,0.22)' : colors.accent100,
           flexShrink: 0,
         }}
       >
-        <Icon size={20} color={isPrimary ? '#fff' : '#5C4550'} strokeWidth={2.1} />
+        <Icon size={20} color={isPrimary ? '#fff' : colors.primary200} strokeWidth={2.1} />
       </View>
       <View style={{ flex: 1, marginLeft: 12, paddingRight: 4 }}>
         <Text
           style={{
-            color: isPrimary ? '#fff' : '#2A1A22',
+            color: isPrimary ? '#fff' : colors.text100,
             fontSize: 15,
             fontWeight: '800',
             lineHeight: 20,
@@ -66,7 +69,7 @@ function PillButton({
         </Text>
         <Text
           style={{
-            color: isPrimary ? 'rgba(255,255,255,0.9)' : '#6E5560',
+            color: isPrimary ? 'rgba(255,255,255,0.9)' : colors.text300,
             fontSize: 12,
             lineHeight: 16,
             marginTop: 2,
@@ -89,11 +92,7 @@ function PillButton({
         opacity: pressed ? 0.92 : 1,
       })}
     >
-      {isPrimary ? (
-        <View style={{ ...SHELL, backgroundColor: '#D4738A' }}>{inner}</View>
-      ) : (
-        <View style={{ ...SHELL, backgroundColor: '#EBE4E7' }}>{inner}</View>
-      )}
+      <View style={{ ...SHELL, backgroundColor: isPrimary ? CYCLE : colors.bg200 }}>{inner}</View>
     </Pressable>
   );
 }
@@ -110,17 +109,17 @@ export function DefaultHomePrompt({ visible, onClose }: Props) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
+    <Modal visible={visible} {...APP_MODAL_PROPS}>
       <View
         style={{
           flex: 1,
-          backgroundColor: 'rgba(8, 16, 20, 0.55)',
+          backgroundColor: APP_MODAL_OVERLAY,
           justifyContent: 'flex-end',
         }}
       >
         <View
           style={{
-            backgroundColor: '#FFFBFC',
+            backgroundColor: colors.surface,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             paddingTop: 12,
@@ -134,7 +133,7 @@ export function DefaultHomePrompt({ visible, onClose }: Props) {
               width: 36,
               height: 4,
               borderRadius: PILL,
-              backgroundColor: '#E8C4CE',
+              backgroundColor: colors.bg300,
               marginBottom: 18,
             }}
           />
@@ -145,12 +144,12 @@ export function DefaultHomePrompt({ visible, onClose }: Props) {
                 width: 60,
                 height: 60,
                 borderRadius: 30,
-                backgroundColor: '#FCE8EE',
+                backgroundColor: colors.accent100,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <CalendarHeart size={28} color="#D4738A" strokeWidth={2.1} />
+              <CalendarHeart size={28} color={CYCLE} strokeWidth={2.1} />
             </View>
           </View>
 
@@ -160,7 +159,7 @@ export function DefaultHomePrompt({ visible, onClose }: Props) {
               fontSize: 20,
               lineHeight: 26,
               fontWeight: '800',
-              color: '#2A1A22',
+              color: colors.text100,
               marginBottom: 6,
             }}
           >
@@ -171,7 +170,7 @@ export function DefaultHomePrompt({ visible, onClose }: Props) {
               textAlign: 'center',
               fontSize: 14,
               lineHeight: 20,
-              color: '#6E5560',
+              color: colors.text200,
               marginBottom: 20,
             }}
           >

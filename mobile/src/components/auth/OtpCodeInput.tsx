@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Keyboard, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { KEYBOARD_DONE_ACCESSORY_ID } from '@/components/ui/KeyboardDoneAccessory';
-import { FIGMA_PROFILE_SETUP, FIGMA_PROFILE_SETUP_SHADOW } from '@/constants/figmaProfileSetupLayout';
+import { useFigmaProfileSetup, FIGMA_PROFILE_SETUP_SHADOW } from '@/constants/figmaProfileSetupLayout';
 
 type Props = {
   value: string;
@@ -23,6 +23,7 @@ export function OtpCodeInput({
   length = 4,
   variant = 'compact',
 }: Props) {
+  const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const inputRef = useRef<TextInput>(null);
   const box = variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxSize : 48;
   const gap = variant === 'hero' ? FIGMA_PROFILE_SETUP.otpGap : 8;
@@ -44,8 +45,8 @@ export function OtpCodeInput({
                   height: box + (variant === 'hero' ? 0 : 4),
                   borderRadius,
                   borderWidth: variant === 'hero' ? 1 : 1.5,
-                  borderColor: error ? '#EF4444' : '#D1D5DB',
-                  backgroundColor: error ? '#FEF2F2' : '#FFFFFF',
+                  borderColor: error ? '#EF4444' : FIGMA_PROFILE_SETUP.inputBorder,
+                  backgroundColor: error ? '#FEF2F2' : FIGMA_PROFILE_SETUP.inputBg,
                   alignItems: 'center',
                   justifyContent: 'center',
                   ...(variant === 'hero' ? FIGMA_PROFILE_SETUP_SHADOW : {

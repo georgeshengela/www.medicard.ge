@@ -19,7 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { useAssessment } from '@/constants/assessmentLayout';
 import { FIGMA_FRAME } from '@/constants/figmaWelcomeLayout';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
@@ -122,6 +122,7 @@ function MoodFace({
 
 /** Figma 9217:164703 — 148/80/48 face carousel, teal arrow, glow rings. */
 export function MoodCarousel({ items, value, onChange }: Props) {
+  const ASSESSMENT = useAssessment();
   const scrollRef = useRef<Animated.ScrollView>(null);
   const initial = Math.max(0, items.findIndex((item) => item.key === value));
   const [centerIndex, setCenterIndex] = useState(initial);

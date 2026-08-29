@@ -25,17 +25,18 @@ export const API_BASE_URL = resolveBaseUrl();
 export type Usage = {
   date: string;
   periodKey?: string;
-  periodType?: 'subscription' | 'calendar';
+  periodType?: 'subscription' | 'calendar' | 'rolling';
   periodLabel?: string;
   periodStart?: string | null;
   periodEnd?: string | null;
-  billingPeriod?: 'monthly';
+  billingPeriod?: 'monthly' | 'daily';
   used: number;
   limit: number;
   remaining: number;
   exceeded: boolean;
   unlimited?: boolean;
   resetsInMs: number;
+  resetAt?: string | null;
 };
 
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER';

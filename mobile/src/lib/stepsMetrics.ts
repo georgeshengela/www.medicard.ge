@@ -66,4 +66,31 @@ export async function fetchStepsMetrics(period: StepChartPeriod = '1d'): Promise
   return buildStepsBundle(merged, deviceConnected || hasData, period);
 }
 
+export async function fetchStepsTotalBetween(fromYmd: string, toYmd: string): Promise<number> {
+  const from = new Date(`${fromYmd}T00:00:00`);
+  const stored = await pullStoredHealth(fromYmd, toYmd);
+  const byDay = new Map<string, number>();
+
+  for (const row of stored.daily) {
+    if (row.date < fromYmd || row.date > toYmd || row.steps == null || row.steps <= 0) continue;
+    byDay.set(row.date, row.steps);
+  }
+
+  const samples = await fetchStepsSamples(from);
+  for (const sample of samples) {
+    const day = ymd(new Date(sample.at));
+    if (day < fromYmd || day > toYmd) continue;
+    if (sample.daily) {
+      byDay.set(day, sample.count);
+      continue;
+    }
+    if (!byDay.has(day)) byDay.set(day, 0);
+    if (!samples.some((s) => s.daily && ymd(new Date(s.at)) === day)) {
+      byDay.set(day, (byDay.get(day) ?? 0) + sample.count);
+    }
+  }
+
+  return [...byDay.values()].reduce((sum, n) => sum + n, 0);
+}
+
 export { getHealthPlatform };

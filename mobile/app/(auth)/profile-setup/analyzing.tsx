@@ -9,9 +9,11 @@ import { api } from '@/lib/api';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
 import { analysisFromProfile } from '@/types/onboardingAnalysis';
+import { useFigmaProfileSetup } from '@/constants/figmaProfileSetupLayout';
 
 /** Generating Asklepios score — Figma 8845:313481 */
 export default function ProfileSetupAnalyzingScreen() {
+  const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const router = useRouter();
   const preview = useOnboardingDevPreview();
   const { ready, user, healthProfile, setHealthProfile } = useAuth();
@@ -72,7 +74,7 @@ export default function ProfileSetupAnalyzingScreen() {
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: FIGMA_PROFILE_SETUP.pageBg }}>
       <AnalyzingBackdrop />
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 }}>
         <Animated.View style={{ transform: [{ scale }] }}>
@@ -85,7 +87,7 @@ export default function ProfileSetupAnalyzingScreen() {
         </Animated.View>
       </View>
       <View style={{ paddingHorizontal: 16, paddingBottom: 48, alignItems: 'center' }}>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 20, lineHeight: 28, color: '#4B5563', textAlign: 'center' }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 20, lineHeight: 28, color: FIGMA_PROFILE_SETUP.bodyColor, textAlign: 'center' }}>
           {ka.profileSetup.analyzingText}
         </Text>
       </View>

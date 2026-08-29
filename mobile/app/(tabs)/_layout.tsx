@@ -20,7 +20,7 @@ export default function TabsLayout() {
     >
       <Stack.Screen name="home" options={{ headerShown: false }} />
       <Stack.Screen name="records" options={{ title: ka.records.title }} />
-      <Stack.Screen name="medications" options={{ headerShown: false }} />
+      <Stack.Screen name="medications" options={{ title: ka.meds.hubTitle }} />
       <Stack.Screen name="profile" options={{ title: ka.profile.title }} />
     </Stack>
   );

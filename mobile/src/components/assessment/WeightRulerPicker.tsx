@@ -4,14 +4,14 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
-  ScrollView,
   Text,
   View,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { pickerScrollTick, pickerSelectionTick } from '@/components/assessment/pickerHaptics';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { ASSESSMENT, useAssessment } from '@/constants/assessmentLayout';
 import { lightColors } from '@/theme/colors';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -83,7 +83,8 @@ export function WeightRulerPicker({
   labelEvery = 5,
   labelOrigin = 0,
 }: Props) {
-  const scrollRef = useRef<ScrollView>(null);
+  const ASSESSMENT = useAssessment();
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const dragging = useRef(false);
   const settling = useRef(false);
   const lastHapticIndex = useRef(-1);
@@ -145,7 +146,10 @@ export function WeightRulerPicker({
   };
 
   return (
-    <View style={{ width: '100%', height: RULER_H }}>
+    <View
+      collapsable={false}
+      style={{ width: '100%', height: RULER_H, maxHeight: RULER_H, overflow: 'hidden', flexGrow: 0, flexShrink: 0 }}
+    >
       <LinearGradient
         pointerEvents="none"
         colors={['rgba(20,184,166,0.4)', 'rgba(20,184,166,0)']}
@@ -178,13 +182,15 @@ export function WeightRulerPicker({
       <ScrollView
         ref={scrollRef}
         horizontal
-        style={{ flex: 1 }}
+        style={{ height: RULER_H, width: '100%' }}
         contentContainerStyle={{ alignItems: 'flex-start' }}
         showsHorizontalScrollIndicator={false}
         snapToOffsets={snapOffsets}
         decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
         scrollEventThrottle={16}
         nestedScrollEnabled
+        directionalLockEnabled
+        disableIntervalMomentum
         bounces={false}
         overScrollMode="never"
         onScrollBeginDrag={() => {
@@ -222,7 +228,7 @@ export function WeightRulerPicker({
                     width: labeled ? 2 : 1,
                     height: barH,
                     borderRadius: 1,
-                    backgroundColor: labeled ? ASSESSMENT.textSecondary : '#D1D5DB',
+                    backgroundColor: labeled ? ASSESSMENT.textSecondary : ASSESSMENT.faint,
                   }}
                 />
               )}

@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowUp, Camera, Mic } from 'lucide-react-native';
-import { FIGMA_CHAT } from '@/constants/figmaChatLayout';
+import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 
 type Props = {
@@ -27,6 +27,7 @@ export function ChatInputBar({
   multiline = true,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const FIGMA_CHAT = useFigmaChat();
   const canSend = value.trim().length >= 2 && !sending;
 
   return (
@@ -104,7 +105,7 @@ export function ChatInputBar({
             ...FIGMA_CHAT.shadowXs,
           }}
         >
-          <ArrowUp size={24} color={FIGMA_CHAT.white} strokeWidth={2.4} />
+          <ArrowUp size={24} color={FIGMA_CHAT.onInverse} strokeWidth={2.4} />
         </Pressable>
       </View>
     </View>

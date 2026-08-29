@@ -2,7 +2,8 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { SymptomCta } from './SymptomCta';
 
 type Props = {
@@ -17,10 +18,11 @@ type Props = {
 };
 
 export function SymptomSheet({ visible, title, subtitle, onClose, children, ctaLabel, onCta, ctaDisabled }: Props) {
+  const T = useFigmaSymptoms();
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.45)' }} onPress={onClose} />
         <View

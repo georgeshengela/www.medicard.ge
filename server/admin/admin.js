@@ -387,6 +387,7 @@ function quotaCell(usage) {
   }
   const used = usage.used ?? 0;
   const limit = usage.limit ?? 0;
+  const remaining = usage.remaining ?? Math.max(0, limit - used);
   const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const tone = pct >= 100 ? 'full' : pct >= 70 ? 'warn' : '';
   return `<div class="users-quota">
@@ -395,6 +396,7 @@ function quotaCell(usage) {
       <span class="users-quota-pct ${tone}">${pct}%</span>
     </div>
     <div class="quota-track ${tone}"><span style="width:${pct}%"></span></div>
+    <span class="users-quota-left muted">დარჩა ${remaining}</span>
   </div>`;
 }
 
@@ -1624,7 +1626,9 @@ async function editUser(id) {
     return `<option value="${p.code}" ${user.package?.code === p.code ? 'selected' : ''}>${p.code} — ${limitLabel}</option>`;
   }).join('');
   const isPaid = user.package?.code && user.package.code !== 'FREE';
-  const aiLabel = user.usage?.unlimited ? '∞ შეუზღუდავი' : `${user.usage?.used ?? 0} / ${user.usage?.limit ?? '—'}`;
+  const aiLabel = user.usage?.unlimited
+    ? '∞ შეუზღუდავი'
+    : `${user.usage?.used ?? 0} / ${user.usage?.limit ?? '—'} · დარჩა ${user.usage?.remaining ?? '—'}`;
 
   $('drawer-body').innerHTML = `
     <div class="umodal">
@@ -1683,6 +1687,7 @@ async function editUser(id) {
       <footer class="umodal-foot">
         <button class="btn danger" id="drawer-del" type="button">${icon('trash')} წაშლა</button>
         <div class="umodal-foot-right">
+          <button class="btn ghost" id="drawer-reset-usage" type="button">${icon('refresh')} ლიმიტის განულება</button>
           ${isPaid ? `<button class="btn ghost" id="drawer-renew" type="button">${icon('calendar')} +30 დღე</button>` : ''}
           <button class="btn ghost" id="drawer-cancel-2" type="button">დახურვა</button>
           <button class="btn primary" id="drawer-save" type="button">${icon('check')} შენახვა</button>
@@ -1704,6 +1709,17 @@ async function editUser(id) {
     if (!paid) {
       $('edit-started').value = '';
       $('edit-expires').value = '';
+    }
+  };
+  $('drawer-reset-usage').onclick = async () => {
+    if (!confirm('განულდეს ამ მომხმარებლის AI ლიმიტი? ამ პერიოდის გამოყენება გახდება 0.')) return;
+    try {
+      await api(`/users/${id}/reset-usage`, { method: 'POST' });
+      toast('AI ლიმიტი განულდა');
+      closeDrawer();
+      await renderUsers();
+    } catch (err) {
+      toast(err.message, 'bad');
     }
   };
   const renewBtn = $('drawer-renew');

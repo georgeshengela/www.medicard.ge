@@ -1,7 +1,6 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, type ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { FIGMA_CHAT } from '@/constants/figmaChatLayout';
+import { KeyboardAvoidingView, Platform, View, type ViewStyle } from 'react-native';
+import { useFigmaChat } from '@/constants/figmaChatLayout';
 
 type Props = {
   header: React.ReactNode;
@@ -10,10 +9,14 @@ type Props = {
   style?: ViewStyle;
 };
 
-/** Full-screen chat chrome with proper iOS safe area (Dynamic Island / notch). */
+/**
+ * Chat canvas. The header owns the top inset so the status bar and
+ * AI details share one `bg/default/primary` fill (Figma 11416:74415).
+ */
 export function ChatScreenShell({ header, footer, children, style }: Props) {
+  const FIGMA_CHAT = useFigmaChat();
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={[{ flex: 1, backgroundColor: FIGMA_CHAT.cardBg }, style]}>
+    <View style={[{ flex: 1, backgroundColor: FIGMA_CHAT.cardBg }, style]}>
       {header}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -23,6 +26,6 @@ export function ChatScreenShell({ header, footer, children, style }: Props) {
         {children}
         {footer}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }

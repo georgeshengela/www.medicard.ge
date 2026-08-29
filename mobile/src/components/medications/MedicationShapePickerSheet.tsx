@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedicationSheetApplyButton, MedicationSheetModal } from '@/components/medications/MedicationSheetUI';
 import { FIGMA_SHAPE_PICKER_ROWS, pillShapeLabel } from '@/constants/medicationPillAssets';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 import type { PillShape } from '@/types/medications';
 
@@ -15,6 +15,7 @@ type Props = {
 };
 
 export function MedicationShapePickerSheet({ visible, value, onClose, onApply }: Props) {
+  const FIGMA_MEDS = useFigmaMeds();
   const [draft, setDraft] = useState<PillShape>(value);
 
   useEffect(() => {

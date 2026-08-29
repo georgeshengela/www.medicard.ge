@@ -27,8 +27,9 @@ import {
   PermissionSectionLabel,
   PermissionToggleRow,
 } from '@/components/profile/PermissionToggleRow';
-import { FIGMA_HEALTH_METRICS } from '@/constants/figmaHealthMetricsLayout';
+import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
 import { ka } from '@/i18n/ka';
+import { useThemeColors } from '@/theme/colors';
 import {
   connectHealthConnection,
   disableBiometricLock,
@@ -73,6 +74,8 @@ function openSettingsAlert(message: string, openSettings: () => Promise<void>) {
 }
 
 export default function PermissionsScreen() {
+  const FIGMA_HEALTH_METRICS = useFigmaHealthMetrics();
+  const colors = useThemeColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [snapshot, setSnapshot] = useState<AppPermissionsSnapshot | null>(null);
@@ -261,13 +264,13 @@ export default function PermissionsScreen() {
   const notificationsOn = snapshot?.push.permission === 'granted';
 
   return (
-    <View style={{ flex: 1, backgroundColor: FIGMA_HEALTH_METRICS.cardBg }}>
+    <View style={{ flex: 1, backgroundColor: FIGMA_HEALTH_METRICS.pageBg }}>
       <View
         style={{
           paddingTop: insets.top + 4,
           paddingHorizontal: 16,
           paddingBottom: 12,
-          backgroundColor: FIGMA_HEALTH_METRICS.cardBg,
+          backgroundColor: FIGMA_HEALTH_METRICS.pageBg,
         }}
       >
         <View
@@ -336,7 +339,7 @@ export default function PermissionsScreen() {
           {toast ? (
             <View
               style={{
-                backgroundColor: '#FFFFFF',
+                backgroundColor: FIGMA_HEALTH_METRICS.cardBg,
                 borderRadius: 14,
                 borderWidth: 1,
                 borderColor: `${FIGMA_HEALTH_METRICS.brand}44`,
@@ -440,7 +443,7 @@ export default function PermissionsScreen() {
               onPress={confirmResetAll}
               disabled={busyId === 'reset-all'}
               style={({ pressed }) => ({
-                backgroundColor: '#FFFFFF',
+                backgroundColor: FIGMA_HEALTH_METRICS.cardBg,
                 borderRadius: 18,
                 borderWidth: 1,
                 borderColor: FIGMA_HEALTH_METRICS.border,
@@ -462,7 +465,7 @@ export default function PermissionsScreen() {
                     width: 36,
                     height: 36,
                     borderRadius: 11,
-                    backgroundColor: '#FFF1F2',
+                    backgroundColor: colors.dangerBg,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}

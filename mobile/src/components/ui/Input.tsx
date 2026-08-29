@@ -1,7 +1,7 @@
 import React, { forwardRef, useState } from 'react';
 import { Pressable, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { Eye, EyeOff, type LucideIcon } from 'lucide-react-native';
-import { FIGMA_AUTH, FIGMA_AUTH_SHADOW } from '@/constants/figmaAuthLayout';
+import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { useThemeColors } from '@/theme/colors';
 
 type Props = TextInputProps & {
@@ -19,20 +19,21 @@ export const Input = forwardRef<TextInput, Props>(function Input(
   ref,
 ) {
   const colors = useThemeColors();
+  const auth = useFigmaAuth();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
 
-  const borderColor = error ? colors.danger : focused ? FIGMA_AUTH.primaryBg : figma ? FIGMA_AUTH.inputBorder : colors.bg300;
+  const borderColor = error ? colors.danger : focused ? auth.primaryBg : figma ? auth.inputBorder : colors.bg300;
 
   const fieldStyle = figma
     ? {
-        minHeight: FIGMA_AUTH.inputMinHeight,
-        borderRadius: FIGMA_AUTH.inputRadius,
-        backgroundColor: FIGMA_AUTH.inputBg,
+        minHeight: auth.inputMinHeight,
+        borderRadius: auth.inputRadius,
+        backgroundColor: auth.inputBg,
         borderWidth: 1,
         borderColor,
-        paddingHorizontal: FIGMA_AUTH.inputPaddingX,
-        paddingVertical: FIGMA_AUTH.inputPaddingY,
+        paddingHorizontal: auth.inputPaddingX,
+        paddingVertical: auth.inputPaddingY,
         ...FIGMA_AUTH_SHADOW,
       }
     : {
@@ -50,9 +51,9 @@ export const Input = forwardRef<TextInput, Props>(function Input(
           style={{
             marginBottom: 8,
             fontFamily: 'NotoSansGeorgian_600SemiBold',
-            fontSize: figma ? FIGMA_AUTH.labelSize : 14,
+            fontSize: figma ? auth.labelSize : 14,
             lineHeight: 20,
-            color: figma ? FIGMA_AUTH.labelColor : colors.text100,
+            color: figma ? auth.labelColor : colors.text100,
           }}
         >
           {label}
@@ -61,12 +62,12 @@ export const Input = forwardRef<TextInput, Props>(function Input(
 
       <View style={[{ flexDirection: 'row', alignItems: 'center' }, fieldStyle]}>
         {Icon ? (
-          <Icon size={20} color={focused ? FIGMA_AUTH.primaryBg : '#6B7280'} strokeWidth={2} />
+          <Icon size={20} color={focused ? auth.primaryBg : auth.iconMuted} strokeWidth={2} />
         ) : null}
 
         <TextInput
           ref={ref}
-          placeholderTextColor={figma ? '#4B5563' : colors.text300}
+          placeholderTextColor={figma ? auth.placeholder : colors.text300}
           secureTextEntry={secure && !revealed}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
@@ -76,7 +77,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
               fontSize: 16,
               lineHeight: 22,
               fontFamily: 'NotoSansGeorgian_400Regular',
-              color: '#1F2937',
+              color: figma ? auth.fieldText : colors.text100,
               paddingVertical: 0,
               marginLeft: Icon ? 8 : 0,
             },
@@ -93,9 +94,9 @@ export const Input = forwardRef<TextInput, Props>(function Input(
             onPress={() => setRevealed((value) => !value)}
           >
             {revealed ? (
-              <EyeOff size={20} color="#6B7280" strokeWidth={2} />
+              <EyeOff size={20} color={auth.iconMuted} strokeWidth={2} />
             ) : (
-              <Eye size={20} color="#6B7280" strokeWidth={2} />
+              <Eye size={20} color={auth.iconMuted} strokeWidth={2} />
             )}
           </Pressable>
         ) : null}

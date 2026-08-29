@@ -1,7 +1,9 @@
 import * as SecureStore from 'expo-secure-store';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 
 const TOKEN_KEY = 'medicard.auth.token';
+const PREFS_DIR = `${FileSystem.documentDirectory ?? ''}medicard-prefs/`;
 
 /**
  * SecureStore is unavailable on web, so fall back to localStorage there.
@@ -36,14 +38,32 @@ export async function clearToken(): Promise<void> {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
+function prefsPath(key: string) {
+  return `${PREFS_DIR}${encodeURIComponent(key)}.json`;
+}
+
 /**
- * Non-secret preferences. Same backing store as the token so the app does not need a
- * second storage dependency; nothing sensitive is written through here.
+ * Non-secret preferences. Large JSON (symptom history, dose logs) lives in the
+ * document directory — SecureStore silently fails above ~2048 bytes on Android.
  */
 export async function getPreference(key: string): Promise<string | null> {
   try {
     if (Platform.OS === 'web') return webStorage.getItem(key);
-    return await SecureStore.getItemAsync(key);
+    const path = prefsPath(key);
+    const info = await FileSystem.getInfoAsync(path);
+    if (info.exists) return await FileSystem.readAsStringAsync(path);
+
+    const legacy = await SecureStore.getItemAsync(key);
+    if (legacy) {
+      await setPreference(key, legacy);
+      try {
+        await SecureStore.deleteItemAsync(key);
+      } catch {
+        /* keep going */
+      }
+      return legacy;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -55,7 +75,8 @@ export async function setPreference(key: string, value: string): Promise<void> {
       webStorage.setItem(key, value);
       return;
     }
-    await SecureStore.setItemAsync(key, value);
+    await FileSystem.makeDirectoryAsync(PREFS_DIR, { intermediates: true }).catch(() => undefined);
+    await FileSystem.writeAsStringAsync(prefsPath(key), value);
   } catch {
     // A failed preference write should never break the UI.
   }

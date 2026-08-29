@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Flag } from 'lucide-react-native';
-import { FIGMA_STEPS } from '@/constants/figmaStepsLayout';
+import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { formatStepsCount } from '@/lib/stepsMetrics.shared';
 import { ka } from '@/i18n/ka';
 
@@ -13,6 +13,7 @@ type Props = {
 };
 
 export function StepsGoalCard({ goal, current, remaining }: Props) {
+  const FIGMA_STEPS = useFigmaSteps();
   const progress = Math.min(1, current / Math.max(goal, 1));
   const size = 72;
   const stroke = 8;
@@ -79,6 +80,7 @@ type SectionProps = {
 };
 
 export function StepsSection({ title, actionLabel, onAction, children }: SectionProps) {
+  const FIGMA_STEPS = useFigmaSteps();
   return (
     <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

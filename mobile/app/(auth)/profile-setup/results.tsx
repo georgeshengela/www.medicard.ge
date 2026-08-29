@@ -23,6 +23,7 @@ import {
   FIGMA_ASSESSMENT_RESULT,
   FIGMA_ASSESSMENT_RESULT_SHADOW,
   SCORE_RANGE_DOT_COLORS,
+  useFigmaAssessmentResult,
 } from '@/constants/figmaAssessmentResultLayout';
 import { ka } from '@/i18n/ka';
 import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
@@ -32,6 +33,7 @@ import { analysisFromProfile, type OnboardingScoreRange } from '@/types/onboardi
 import { welcomeTopInset } from '@/constants/figmaWelcomeLayout';
 
 function SectionHeader({ title }: { title: string }) {
+  const FIGMA_ASSESSMENT_RESULT = useFigmaAssessmentResult();
   return (
     <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 4 }}>
       <Text
@@ -61,6 +63,7 @@ function ScoreRangeRow({
   onToggle: () => void;
   grouped?: boolean;
 }) {
+  const FIGMA_ASSESSMENT_RESULT = useFigmaAssessmentResult();
   return (
     <Pressable
       onPress={onToggle}
@@ -87,7 +90,7 @@ function ScoreRangeRow({
           fontFamily: 'NotoSansGeorgian_600SemiBold',
           fontSize: 14,
           lineHeight: 20,
-          color: '#1F2937',
+          color: FIGMA_ASSESSMENT_RESULT.titleColor,
         }}
       >
         {range.min} - {range.max}
@@ -97,7 +100,7 @@ function ScoreRangeRow({
           fontFamily: 'NotoSansGeorgian_400Regular',
           fontSize: 14,
           lineHeight: 20,
-          color: '#1F2937',
+          color: FIGMA_ASSESSMENT_RESULT.titleColor,
           textAlign: 'right',
           flexShrink: 0,
         }}
@@ -125,6 +128,7 @@ function ScoreRangeRow({
 
 /** Assessment result — Figma 8845:313440 */
 export default function ProfileSetupResultsScreen() {
+  const FIGMA_ASSESSMENT_RESULT = useFigmaAssessmentResult();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const preview = useOnboardingDevPreview();
@@ -146,7 +150,7 @@ export default function ProfileSetupResultsScreen() {
   if (!user || !healthProfile) return <Redirect href="/(auth)/sign-in" />;
   const blocked = onboardingScreenBlocked(preview, user, healthProfile);
   if (blocked === 'assessment') return <Redirect href="/(auth)/assessment" />;
-  if (blocked === 'home') return <Redirect href="/(tabs)/home" />;
+  if (blocked === 'home' && !analysis) return <Redirect href="/(tabs)/home" />;
   if (!analysis) {
     return (
       <Redirect
@@ -162,7 +166,7 @@ export default function ProfileSetupResultsScreen() {
   const dateLabel = new Date().toLocaleDateString('ka-GE', { month: 'short', day: 'numeric', year: 'numeric' });
 
   const finish = async () => {
-    if (preview) {
+    if (preview || blocked === 'home') {
       router.replace('/(tabs)/home');
       return;
     }
@@ -178,7 +182,7 @@ export default function ProfileSetupResultsScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingTop: welcomeTopInset(insets.top) }}>
+    <View style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_RESULT.pageBg, paddingTop: welcomeTopInset(insets.top) }}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 16 }}
         showsVerticalScrollIndicator={false}
@@ -247,7 +251,7 @@ export default function ProfileSetupResultsScreen() {
                       borderRadius: FIGMA_ASSESSMENT_RESULT.rangeGroupRadius,
                       borderWidth: 1,
                       borderColor: FIGMA_ASSESSMENT_RESULT.rangeCardBorder,
-                      backgroundColor: '#FFFFFF',
+                      backgroundColor: FIGMA_ASSESSMENT_RESULT.bodyCardBg,
                       overflow: 'hidden',
                       ...FIGMA_ASSESSMENT_RESULT_SHADOW,
                     }}

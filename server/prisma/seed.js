@@ -10,7 +10,7 @@ const PACKAGES = [
     code: 'FREE',
     nameKa: 'უფასო',
     nameEn: 'Free',
-    descriptionKa: '90 AI შეკითხვა თვეში. საბაზისო ჩატი და ძირითადი მოდულები.',
+    descriptionKa: '3 AI შეკითხვა დღეში. საბაზისო ჩატი და ძირითადი მოდულები.',
     monthlyAiLimit: 90,
     dailyAiLimit: 3,
     priceGel: 0,

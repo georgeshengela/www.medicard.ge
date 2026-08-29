@@ -12,7 +12,7 @@ import { AssessmentIntroIllustration } from '@/components/assessment/AssessmentI
 
 import { AssessmentPhaseStepper } from '@/components/assessment/AssessmentPhaseStepper';
 
-import { FIGMA_ASSESSMENT_INTRO } from '@/constants/figmaAssessmentIntro';
+import { useFigmaAssessmentIntro } from '@/constants/figmaAssessmentIntro';
 
 import { FIGMA_PROGRESS_HEIGHT, welcomeTopInset } from '@/constants/figmaWelcomeLayout';
 
@@ -21,8 +21,6 @@ import { ka } from '@/i18n/ka';
 import { lightColors } from '@/theme/colors';
 
 
-
-const PROGRESS_TRACK = '#E5E7EB';
 
 const TEAL = lightColors.primary200;
 
@@ -133,6 +131,7 @@ export function AssessmentShell({
   largeTitle = false,
 
 }: Props) {
+  const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
 
   const insets = useSafeAreaInsets();
 
@@ -144,7 +143,7 @@ export function AssessmentShell({
 
     return (
 
-      <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      <View style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_INTRO.pageBg }}>
 
         <View style={{ paddingTop: topInset, paddingHorizontal: FIGMA_ASSESSMENT_INTRO.contentPaddingX }}>
 
@@ -296,7 +295,7 @@ export function AssessmentShell({
 
   if (variant === 'phase-complete') {
     return (
-      <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      <View style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_INTRO.pageBg }}>
         <View style={{ paddingTop: topInset, paddingHorizontal: FIGMA_ASSESSMENT_INTRO.contentPaddingX }}>
           <AssessmentPhaseStepper activeIndex={1} completedThrough={0} />
         </View>
@@ -383,7 +382,7 @@ export function AssessmentShell({
 
           letterSpacing: largeTitle ? -0.25 : 0,
 
-          color: largeTitle ? '#1F2937' : '#0F172A',
+          color: FIGMA_ASSESSMENT_INTRO.titleColor,
 
           textAlign: 'center',
 
@@ -411,7 +410,7 @@ export function AssessmentShell({
 
             lineHeight: 22,
 
-            color: '#64748B',
+            color: FIGMA_ASSESSMENT_INTRO.bodyColor,
 
             textAlign: 'center',
 
@@ -467,7 +466,7 @@ export function AssessmentShell({
 
   return (
 
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_INTRO.pageBg }}>
 
       <View style={{ paddingTop: topInset, paddingHorizontal: 16, paddingBottom: 8 }}>
 
@@ -609,6 +608,8 @@ function StepHeader({
 
 }) {
 
+  const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
+
   return (
 
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 40 }}>
@@ -629,7 +630,7 @@ function StepHeader({
 
         >
 
-          <ChevronLeft size={24} color="#64748B" strokeWidth={2.2} />
+          <ChevronLeft size={24} color={FIGMA_ASSESSMENT_INTRO.bodyColor} strokeWidth={2.2} />
 
         </Pressable>
 
@@ -641,7 +642,7 @@ function StepHeader({
 
 
 
-      <View style={{ flex: 1, height: FIGMA_PROGRESS_HEIGHT, borderRadius: 99, backgroundColor: PROGRESS_TRACK, overflow: 'hidden' }}>
+      <View style={{ flex: 1, height: FIGMA_PROGRESS_HEIGHT, borderRadius: 99, backgroundColor: FIGMA_ASSESSMENT_INTRO.trackGrey, overflow: 'hidden' }}>
 
         <View
 

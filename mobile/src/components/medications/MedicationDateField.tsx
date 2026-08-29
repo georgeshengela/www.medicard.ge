@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
+import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { MedFieldLabel, MedInputShell } from '@/components/medications/MedicationUI';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { MONTHS_KA, WEEKDAYS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
 import { digitsToYmd, isoToDigits, toDigits, ymdToDigits } from '@/lib/birthdate';
@@ -83,6 +84,7 @@ function monthGrid(year: number, month: number, now: Date, minIso?: string, maxI
 }
 
 export function MedicationDateField({ label, value, onChange, minIso, maxIso }: Props) {
+  const FIGMA_MEDS = useFigmaMeds();
   const [open, setOpen] = useState(false);
 
   return (
@@ -129,6 +131,7 @@ function MedicationCalendarModal({
   onClose: () => void;
   onConfirm: (digits: string) => void;
 }) {
+  const FIGMA_MEDS = useFigmaMeds();
   const insets = useSafeAreaInsets();
   const now = useMemo(() => new Date(), [visible]);
 
@@ -177,7 +180,7 @@ function MedicationCalendarModal({
   const preview = draftOk && isoFromDigits(draft) ? formatDateDisplay(isoFromDigits(draft)!) : ka.meds.pickDate;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
           style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.52)' }}
@@ -353,6 +356,7 @@ function MedicationCalendarModal({
 }
 
 function NavBtn({ onPress, children }: { onPress: () => void; children: React.ReactNode }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <Pressable
       onPress={onPress}

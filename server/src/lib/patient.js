@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import { resolvePackageAiLimit } from './packages.js';
+
+function packageIsExpired(user) {
+  return Boolean(user?.packageExpiresAt && new Date(user.packageExpiresAt).getTime() < Date.now());
+}
 
 /**
  * Patient demographics.
@@ -68,22 +73,39 @@ export function toDateOnly(birthDate) {
 
 /** The user shape safe to return over the wire — never includes the password hash. */
 export function publicUser(user) {
-  const monthlyAiLimit = user.package.monthlyAiLimit ?? user.package.dailyAiLimit * 30;
-  const pkg = user.package
+  const expiredPaid = packageIsExpired(user) && user.package?.code && user.package.code !== 'FREE';
+  const effectivePkg = expiredPaid ? null : user.package;
+  const monthlyAiLimit = resolvePackageAiLimit(effectivePkg);
+  const unlimited = !Number.isFinite(monthlyAiLimit);
+  const pkg = effectivePkg
     ? {
-        id: user.package.id,
-        code: user.package.code,
-        nameKa: user.package.nameKa,
-        nameEn: user.package.nameEn,
-        descriptionKa: user.package.descriptionKa,
-        monthlyAiLimit,
-        dailyAiLimit: user.package.dailyAiLimit,
-        unlimited: monthlyAiLimit < 0,
-        priceGel: user.package.priceGel,
+        id: effectivePkg.id,
+        code: effectivePkg.code,
+        nameKa: effectivePkg.nameKa,
+        nameEn: effectivePkg.nameEn,
+        descriptionKa: effectivePkg.descriptionKa,
+        monthlyAiLimit: unlimited ? -1 : monthlyAiLimit,
+        dailyAiLimit: effectivePkg.dailyAiLimit,
+        unlimited,
+        priceGel: effectivePkg.priceGel,
         billingPeriod: 'monthly',
-        features: user.package.features ?? {},
+        features: effectivePkg.features ?? {},
       }
-    : null;
+    : expiredPaid
+      ? {
+          id: 'free',
+          code: 'FREE',
+          nameKa: 'უფასო',
+          nameEn: 'Free',
+          descriptionKa: null,
+          monthlyAiLimit: unlimited ? -1 : monthlyAiLimit,
+          dailyAiLimit: 3,
+          unlimited,
+          priceGel: 0,
+          billingPeriod: 'monthly',
+          features: {},
+        }
+      : null;
 
   return {
     id: user.id,

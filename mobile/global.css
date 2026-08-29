@@ -40,28 +40,28 @@
 
   .dark,
   .dark:root {
-    --color-bg-100: 13 18 20;
-    --color-bg-200: 26 34 37;
-    --color-bg-300: 39 50 54;
-    --color-surface: 20 27 29;
-    --color-surface-raised: 26 34 37;
+    /* Cool gray-950 navy — not teal charcoal. Page sits deeper than cards. */
+    --color-bg-100: 3 7 18; /* #030712 — page canvas */
+    --color-bg-200: 31 41 55; /* #1F2937 — chips, icon tiles */
+    --color-bg-300: 55 65 81; /* #374151 — borders, tracks */
+    --color-surface: 17 24 39; /* #111827 — cards, auth screens */
+    --color-surface-raised: 31 41 55; /* #1F2937 — sheets, inputs */
 
-    /* Teal lifted on dark canvas while keeping #14B8A6 as the core brand. */
-    --color-primary-100: 94 234 212; /* #5EEAD4 */
-    --color-primary-200: 20 184 166; /* #14B8A6 */
-    --color-primary-300: 45 212 191; /* #2DD4BF */
-    --color-accent-100: 19 78 74; /* #134E4A */
-    --color-accent-200: 15 118 110; /* #0F766E */
+    --color-primary-100: 153 246 228; /* #99F6E4 — brand text on dark */
+    --color-primary-200: 20 184 166; /* #14B8A6 — links, icons, CTAs */
+    --color-primary-300: 94 234 212; /* #5EEAD4 — hover / glow */
+    --color-accent-100: 4 47 46; /* #042F2E — brand tint fill */
+    --color-accent-200: 17 94 89; /* #115E59 — brand tint border */
 
-    --color-text-100: 234 240 240;
-    --color-text-200: 166 180 183;
-    --color-text-300: 116 133 138;
+    --color-text-100: 255 255 255;
+    --color-text-200: 209 213 219; /* #D1D5DB */
+    --color-text-300: 107 114 128; /* #6B7280 — placeholders, tertiary */
 
-    --color-success: 52 211 153;
-    --color-success-bg: 14 42 33;
-    --color-warning: 251 191 36;
-    --color-warning-bg: 46 34 11;
-    --color-danger: 248 113 113;
-    --color-danger-bg: 46 20 22;
+    --color-success: 34 197 94; /* #22C55E */
+    --color-success-bg: 5 46 22; /* #052E16 */
+    --color-warning: 245 158 11; /* #F59E0B */
+    --color-warning-bg: 69 26 3; /* #451A03 */
+    --color-danger: 244 63 94; /* #F43F5E */
+    --color-danger-bg: 76 5 25; /* #4C0519 */
   }
 }

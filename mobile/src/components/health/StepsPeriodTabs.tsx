@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { FIGMA_STEPS } from '@/constants/figmaStepsLayout';
+import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { ka } from '@/i18n/ka';
 import type { StepChartPeriod } from '@/types/stepsMetrics';
 
@@ -12,6 +12,7 @@ type Props = {
 };
 
 export function StepsPeriodTabs({ value, onChange }: Props) {
+  const FIGMA_STEPS = useFigmaSteps();
   return (
     <View
       style={{
@@ -33,7 +34,7 @@ export function StepsPeriodTabs({ value, onChange }: Props) {
               flex: 1,
               paddingVertical: 8,
               borderRadius: 10,
-              backgroundColor: active ? '#FFFFFF' : 'transparent',
+              backgroundColor: active ? FIGMA_STEPS.tooltipBg : 'transparent',
               alignItems: 'center',
               shadowColor: active ? '#000' : 'transparent',
               shadowOffset: { width: 0, height: 1 },

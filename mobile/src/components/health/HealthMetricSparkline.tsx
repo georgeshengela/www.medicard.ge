@@ -1,6 +1,5 @@
-import React, { useMemo } from 'react';
-import { View } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
+import React, { useId, useMemo } from 'react';
+import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import type { HealthMetricKey } from '@/types/healthMetrics';
 
 type ChartKind = 'line' | 'bar' | 'step' | 'dots';
@@ -11,14 +10,27 @@ type Props = {
   kind?: ChartKind;
   width?: number;
   height?: number;
+  compareValues?: (number | null)[];
 };
 
-function normalize(values: (number | null)[]): number[] {
-  const nums = values.map((v) => (v == null ? 0 : v));
+function lagSeries(values: (number | null)[]): (number | null)[] {
+  if (values.length < 2) return values;
+  return [values[0], ...values.slice(0, -1)];
+}
+
+function normalizeTogether(main: (number | null)[], extra?: (number | null)[]): {
+  main: number[];
+  extra: number[] | null;
+} {
+  const combined = extra ? [...main, ...extra] : main;
+  const nums = combined.map((v) => (v == null ? 0 : v));
+  const positives = combined.filter((v): v is number => v != null && v > 0);
   const max = Math.max(...nums, 1);
-  const min = Math.min(...nums.filter((v) => v > 0), max);
+  const min = positives.length ? Math.min(...positives) : max;
   const span = Math.max(max - min, 1);
-  return nums.map((v) => (v <= 0 ? 0.08 : 0.12 + ((v - min) / span) * 0.88));
+  const map = (series: (number | null)[]) =>
+    series.map((v) => (v == null || v <= 0 ? 0.08 : 0.12 + ((v - min) / span) * 0.88));
+  return { main: map(main), extra: extra ? map(extra) : null };
 }
 
 export function HealthMetricSparkline({
@@ -27,8 +39,15 @@ export function HealthMetricSparkline({
   kind = 'line',
   width = 120,
   height = 56,
+  compareValues,
 }: Props) {
-  const norm = useMemo(() => normalize(values), [values]);
+  const gradientId = `spark-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const compare =
+    compareValues ?? (kind === 'line' && values.length >= 2 ? lagSeries(values) : undefined);
+  const { main: norm, extra: compareNorm } = useMemo(
+    () => normalizeTogether(values, compare),
+    [compare, values],
+  );
   const pad = 4;
   const innerW = width - pad * 2;
   const innerH = height - pad * 2;
@@ -74,21 +93,48 @@ export function HealthMetricSparkline({
     );
   }
 
-  const points = norm.map((h, i) => ({
-    x: pad + i * step,
-    y: pad + innerH * (1 - h),
-  }));
+  if (!values.length) {
+    return <Svg width={width} height={height} />;
+  }
 
-  const linePath = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
-    .join(' ');
+  const toPoints = (heights: number[]) =>
+    heights.map((h, i) => ({
+      x: pad + i * step,
+      y: pad + innerH * (1 - h),
+    }));
 
+  const points = toPoints(norm);
+  const comparePoints = compareNorm ? toPoints(compareNorm) : null;
+
+  const toLine = (pts: { x: number; y: number }[]) =>
+    pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+
+  const linePath = toLine(points);
+  const comparePath = comparePoints ? toLine(comparePoints) : null;
   const areaPath = `${linePath} L ${points[points.length - 1]?.x ?? pad} ${pad + innerH} L ${points[0]?.x ?? pad} ${pad + innerH} Z`;
 
   return (
     <Svg width={width} height={height}>
-      {kind === 'step' ? (
-        <Path d={areaPath} fill={color} opacity={0.18} />
+      <Defs>
+        <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={color} stopOpacity="0.28" />
+          <Stop offset="1" stopColor={color} stopOpacity="0" />
+        </LinearGradient>
+      </Defs>
+      {kind === 'line' || kind === 'step' ? (
+        <Path d={areaPath} fill={`url(#${gradientId})`} />
+      ) : null}
+      {kind === 'step' ? <Path d={areaPath} fill={color} opacity={0.12} /> : null}
+      {comparePath ? (
+        <Path
+          d={comparePath}
+          stroke={color}
+          strokeWidth={2}
+          fill="none"
+          opacity={0.35}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       ) : null}
       <Path
         d={linePath}

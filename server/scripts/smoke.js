@@ -56,7 +56,7 @@ const register = await call('/api/auth/register', {
 check('POST /api/auth/register creates a user', register.status === 201 && !!register.json.token, JSON.stringify(register.json));
 const token = register.json.token;
 
-check('register returns full monthly free quota', register.json.usage?.billingPeriod === 'monthly' && register.json.usage?.remaining === 90);
+check('register returns full daily free quota', register.json.usage?.billingPeriod === 'daily' && register.json.usage?.remaining === 3);
 
 const dupe = await call('/api/auth/register', {
   method: 'POST',
@@ -117,14 +117,14 @@ const chats = await call('/api/chats', { token });
 check('GET /api/chats returns an empty list for a new user', chats.status === 200 && chats.json.sessions?.length === 0);
 
 // Burn free-tier credits. The upstream engine may be unavailable; what matters is that
-// successful generations are metered against the monthly quota.
-console.log('\n  — monthly free-tier metering —');
+// successful generations are metered against the daily quota.
+console.log('\n  — daily free-tier metering —');
 let engineReachable = true;
 const usageBefore = await call('/api/usage', { token });
 check(
-  'GET /api/usage exposes monthly billing',
+  'GET /api/usage exposes daily billing',
   usageBefore.status === 200 &&
-    usageBefore.json.usage?.billingPeriod === 'monthly' &&
+    usageBefore.json.usage?.billingPeriod === 'daily' &&
     typeof usageBefore.json.usage?.limit === 'number',
 );
 
@@ -137,8 +137,9 @@ for (let i = 1; i <= 2; i += 1) {
 
   if (res.status === 429) {
     check(
-      `request #${i} blocked with monthly quota message`,
-      res.json.code === 'MONTHLY_LIMIT_REACHED' && !!res.json.upsell,
+      `request #${i} blocked with daily quota message`,
+      (res.json.code === 'DAILY_LIMIT_REACHED' || res.json.code === 'MONTHLY_LIMIT_REACHED') &&
+        !!res.json.upsell,
       res.json.error,
     );
     break;
@@ -146,7 +147,7 @@ for (let i = 1; i <= 2; i += 1) {
   if (res.status === 200) {
     check(
       `request #${i} answered and metered (${res.json.usage.used}/${res.json.usage.limit})`,
-      res.json.usage.billingPeriod === 'monthly' && res.json.usage.used >= i,
+      res.json.usage.billingPeriod === 'daily' && res.json.usage.used >= i,
     );
   } else {
     engineReachable = false;

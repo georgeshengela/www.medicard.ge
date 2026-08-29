@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
 import type { Gender } from '@/lib/api';
 
@@ -18,13 +19,15 @@ const OPTIONS: { value: Gender; label: string }[] = [
 ];
 
 export function GenderSelect({ label, value, onChange, error, hint }: Props) {
+  const auth = useFigmaAuth();
+
   return (
     <View className="w-full">
       {label ? <Text className="mb-1.5 text-sm font-semibold text-text-200">{label}</Text> : null}
 
       <View
         accessibilityRole="radiogroup"
-        className={`flex-row rounded-2xl border bg-surface p-1 ${error ? 'border-state-danger' : 'border-bg-300'}`}
+        className={`flex-row rounded-2xl border bg-bg-200 p-1 ${error ? 'border-state-danger' : 'border-bg-300'}`}
       >
         {OPTIONS.map((option) => {
           const selected = value === option.value;
@@ -35,7 +38,8 @@ export function GenderSelect({ label, value, onChange, error, hint }: Props) {
               accessibilityState={{ selected }}
               accessibilityLabel={option.label}
               onPress={() => onChange(option.value)}
-              className={`flex-1 items-center rounded-xl py-2.5 active:opacity-70 ${selected ? 'bg-primary-200' : ''}`}
+              className="flex-1 items-center rounded-xl py-2.5 active:opacity-70"
+              style={selected ? { backgroundColor: auth.primaryBg } : undefined}
             >
               <Text
                 // Georgian descenders clip at the default line height.

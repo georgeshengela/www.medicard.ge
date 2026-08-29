@@ -43,15 +43,61 @@ export function formatRelative(iso: string): string {
   return formatDate(iso);
 }
 
+export const DAY_MS = 86_400_000;
+
 /** "4 საათსა და 12 წუთში" — used for the free-tier reset countdown. */
 export function formatCountdown(ms: number): string {
   const totalMinutes = Math.max(0, Math.floor(ms / 60_000));
-  const hours = Math.floor(totalMinutes / 60);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
   const minutes = totalMinutes % 60;
 
-  if (hours === 0) return `${minutes} წუთში`;
-  if (minutes === 0) return `${hours} საათში`;
-  return `${hours} სთ ${minutes} წთ-ში`;
+  if (days >= 2) {
+    if (hours === 0) return `${days} დღეში`;
+    return `${days} დღე ${hours} სთ-ში`;
+  }
+  if (hours === 0 && days === 0) return `${minutes} წუთში`;
+  const totalHours = Math.floor(totalMinutes / 60);
+  if (minutes === 0) return `${totalHours} საათში`;
+  return `${totalHours} სთ ${minutes} წთ-ში`;
+}
+
+/** Live reset clock — `23:59:05` for a 24h window; days only if 48h+. */
+export function formatResetClock(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const days = Math.floor(total / 86_400);
+  if (days >= 2) {
+    const hours = Math.floor((total % 86_400) / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+    return `${days} დღე ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  }
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
+
+function localYmd(date: Date): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function nextYmd(ymd: string): string {
+  const [year, month, day] = ymd.split('-').map(Number);
+  const next = new Date(year, month - 1, day + 1);
+  return localYmd(next);
+}
+
+/** "განახლდება ხვალ, 14:32-ზე" — wall clock on the user's phone. */
+export function formatResetSentence(iso: string): string {
+  const reset = new Date(iso);
+  if (Number.isNaN(reset.getTime())) return ka.usage.exhaustedBody;
+  const time = `${pad(reset.getHours())}:${pad(reset.getMinutes())}`;
+  const today = localYmd(new Date());
+  const resetDay = localYmd(reset);
+  if (resetDay === today) return `განახლდება დღეს, ${time}-ზე`;
+  if (resetDay === nextYmd(today)) return `განახლდება ხვალ, ${time}-ზე`;
+  return `განახლდება ${reset.getDate()} ${KA_MONTHS[reset.getMonth()]}, ${time}-ზე`;
 }
 
 export function greeting(): string {

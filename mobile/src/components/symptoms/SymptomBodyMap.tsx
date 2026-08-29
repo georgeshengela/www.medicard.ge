@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { List } from 'lucide-react-native';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 import { ORGAN_SHEET, ORGAN_SHEET_SIZE, SYMPTOM_ORGAN_PNG, organSheetCrop } from '@/constants/symptomAssets';
 import { bodyPartById, organsForView, symptomsForSelection, type OrganDef } from '@/constants/symptomCatalog';
@@ -40,6 +40,7 @@ export function SymptomBodyMap({
   onRemoveSymptom,
   onContinue,
 }: Props) {
+  const T = useFigmaSymptoms();
   const organs = useMemo(() => organsForView(gender, side), [gender, side]);
   const selectedOrgan = organs.find((o) => o.id === selectedOrganId) ?? null;
   const areaSymptoms = symptomsForSelection(mode, selectedPartId, selectedOrganId);
@@ -131,6 +132,7 @@ function OrganPin({
   gender: SymptomGender;
   selected: boolean;
 }) {
+  const T = useFigmaSymptoms();
   const png = SYMPTOM_ORGAN_PNG[organ.id];
   return (
     <View

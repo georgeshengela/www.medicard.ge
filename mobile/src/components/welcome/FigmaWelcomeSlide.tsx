@@ -23,21 +23,21 @@ import {
   FIGMA_SHEET_RATIO,
   FIGMA_SHEET_RADIUS,
   FIGMA_SHEET_TOP,
-  FIGMA_STATUS_BAR,
   LANDING_GRADIENT,
+  LANDING_GRADIENT_DARK,
   LANDING_LOGO_SIZE,
   WELCOME_HERO_BG,
+  WELCOME_HERO_BG_DARK,
   WELCOME_PROGRESS_SEGMENTS,
   welcomeTopInset,
   type WelcomeProgressState,
 } from '@/constants/figmaWelcomeLayout';
 import { ka } from '@/i18n/ka';
+import { useIsDark, useThemeColors } from '@/theme/colors';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const FRAME_H = (FIGMA_FRAME.height / FIGMA_FRAME.width) * SCREEN_W;
-const SHEET_WHITE = '#FFFFFF';
 const NAV_DARK = '#0F172A';
-const PROGRESS_TRACK = '#E2E8F0';
 
 type Props = {
   frame: ImageSourcePropType;
@@ -65,6 +65,10 @@ export function FigmaWelcomeSlide({
   canPrev,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const dark = useIsDark();
+  const heroBg = dark ? WELCOME_HERO_BG_DARK : WELCOME_HERO_BG;
+  const canvas = kind === 'landing' ? colors.bg100 : heroBg;
   const topInset = welcomeTopInset(insets.top);
   const sheetH = Math.round(SCREEN_H * FIGMA_SHEET_RATIO);
   const progressTop = topInset;
@@ -73,7 +77,7 @@ export function FigmaWelcomeSlide({
   const heroH = SCREEN_H - sheetH - heroTop;
 
   return (
-    <View style={{ width: SCREEN_W, height: SCREEN_H, backgroundColor: kind === 'landing' ? '#FFFFFF' : WELCOME_HERO_BG }}>
+    <View style={{ width: SCREEN_W, height: SCREEN_H, backgroundColor: canvas }}>
       {kind === 'landing' ? (
         <LandingHero topInset={topInset} />
       ) : (
@@ -85,7 +89,7 @@ export function FigmaWelcomeSlide({
             left: 0,
             right: 0,
             height: heroH,
-            backgroundColor: WELCOME_HERO_BG,
+            backgroundColor: heroBg,
             overflow: 'hidden',
           }}
         >
@@ -113,6 +117,7 @@ export function FigmaWelcomeSlide({
             total={WELCOME_PROGRESS_SEGMENTS}
             activeSegment={progress.activeSegment}
             activeFill={progress.activeFill}
+            trackColor={colors.bg300}
           />
         </View>
       ) : null}
@@ -130,6 +135,7 @@ export function FigmaWelcomeSlide({
           body={body}
           sheetH={sheetH}
           bottomInset={insets.bottom}
+          sheetColor={colors.surface}
           onPrev={onPrev}
           onNext={onNext}
           canPrev={canPrev}
@@ -141,12 +147,14 @@ export function FigmaWelcomeSlide({
 
 /** Landing — gradient + centered logo only (no Figma PNG circles / English copy). */
 function LandingHero({ topInset }: { topInset: number }) {
+  const dark = useIsDark();
+  const gradient = dark ? LANDING_GRADIENT_DARK : LANDING_GRADIENT;
   return (
     <>
       <LinearGradient
         pointerEvents="none"
-        colors={[...LANDING_GRADIENT.colors]}
-        locations={[...LANDING_GRADIENT.locations]}
+        colors={[...gradient.colors]}
+        locations={[...gradient.locations]}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
       <View
@@ -221,7 +229,7 @@ function LandingFooter({
         zIndex: 20,
       }}
     >
-      <Text className="text-center font-sans text-[16px] leading-6 text-text-300">{body}</Text>
+      <Text className="text-center font-sans text-[16px] leading-6 text-text-200">{body}</Text>
       <View className="mt-8">
         <AuthPrimaryButton label={ka.onboarding.getStarted} onPress={onPrimary} />
       </View>
@@ -231,7 +239,7 @@ function LandingFooter({
         hitSlop={12}
         className="mt-5 items-center py-2 active:opacity-70"
       >
-        <Text className="font-sans text-[15px] text-text-300">
+        <Text className="font-sans text-[15px] text-text-200">
           {ka.onboarding.alreadyHaveAccount}{' '}
           <Text className="font-sans-bold text-primary-200">{ka.auth.signIn}</Text>
         </Text>
@@ -245,6 +253,7 @@ function CarouselFooter({
   body,
   sheetH,
   bottomInset,
+  sheetColor,
   onPrev,
   onNext,
   canPrev,
@@ -253,6 +262,7 @@ function CarouselFooter({
   body: string;
   sheetH: number;
   bottomInset: number;
+  sheetColor: string;
   onPrev?: () => void;
   onNext?: () => void;
   canPrev: boolean;
@@ -271,7 +281,7 @@ function CarouselFooter({
       <View
         style={{
           height: sheetH,
-          backgroundColor: SHEET_WHITE,
+          backgroundColor: sheetColor,
           borderTopLeftRadius: FIGMA_SHEET_RADIUS,
           borderTopRightRadius: FIGMA_SHEET_RADIUS,
           paddingHorizontal: 24,
@@ -282,7 +292,7 @@ function CarouselFooter({
         <View className="flex-1 justify-between">
           <View>
             <Text className="text-center font-sans-bold text-[24px] leading-8 text-text-100">{title}</Text>
-            <Text className="mt-2 text-center font-sans text-[15px] leading-[22px] text-text-300">{body}</Text>
+            <Text className="mt-2 text-center font-sans text-[15px] leading-[22px] text-text-200">{body}</Text>
           </View>
           <View className="flex-row items-center justify-center gap-5 pb-2">
             <NavCircle onPress={onPrev} disabled={!canPrev} accessibilityLabel={ka.common.back}>
@@ -294,7 +304,7 @@ function CarouselFooter({
           </View>
         </View>
       </View>
-      {bottomInset > 0 ? <View style={{ height: bottomInset, backgroundColor: SHEET_WHITE }} /> : null}
+      {bottomInset > 0 ? <View style={{ height: bottomInset, backgroundColor: sheetColor }} /> : null}
     </View>
   );
 }
@@ -303,10 +313,12 @@ function SplitProgressBar({
   total,
   activeSegment,
   activeFill,
+  trackColor,
 }: {
   total: number;
   activeSegment: number;
   activeFill: number;
+  trackColor: string;
 }) {
   return (
     <View style={{ flexDirection: 'row', gap: FIGMA_PROGRESS_GAP }}>
@@ -323,7 +335,7 @@ function SplitProgressBar({
               flex: 1,
               overflow: 'hidden',
               borderRadius: FIGMA_PROGRESS_HEIGHT / 2,
-              backgroundColor: PROGRESS_TRACK,
+              backgroundColor: trackColor,
             }}
           >
             <View

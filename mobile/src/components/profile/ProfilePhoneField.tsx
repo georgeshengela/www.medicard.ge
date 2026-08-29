@@ -3,7 +3,7 @@ import { Image, Keyboard, Platform, Text, TextInput, View } from 'react-native';
 import { ChevronDown, CircleHelp } from 'lucide-react-native';
 import { KEYBOARD_DONE_ACCESSORY_ID } from '@/components/ui/KeyboardDoneAccessory';
 import { FIGMA_AUTH_SHADOW } from '@/constants/figmaAuthLayout';
-import { FIGMA_PROFILE_SETUP } from '@/constants/figmaProfileSetupLayout';
+import { useFigmaProfileSetup } from '@/constants/figmaProfileSetupLayout';
 import { ka } from '@/i18n/ka';
 
 type Props = {
@@ -22,6 +22,7 @@ function formatDisplayPhone(digits: string) {
 
 /** Figma InputField Type=Country/Phone — GE +995 entry. */
 export function ProfilePhoneField({ value, onChange, error }: Props) {
+  const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   return (
     <View style={{ width: '100%', gap: 8 }}>
       <View
@@ -32,7 +33,7 @@ export function ProfilePhoneField({ value, onChange, error }: Props) {
           borderRadius: FIGMA_PROFILE_SETUP.inputRadius,
           borderWidth: 1,
           borderColor: error ? '#FCA5A5' : FIGMA_PROFILE_SETUP.inputBorder,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: FIGMA_PROFILE_SETUP.inputBg,
           overflow: 'hidden',
           ...FIGMA_AUTH_SHADOW,
         }}

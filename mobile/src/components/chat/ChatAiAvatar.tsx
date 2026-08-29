@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { FIGMA_CHAT } from '@/constants/figmaChatLayout';
+import { useFigmaChat } from '@/constants/figmaChatLayout';
 
 type AiProps = {
   icon: LucideIcon;
@@ -9,17 +9,21 @@ type AiProps = {
 };
 
 export function ChatAiAvatar({ icon: Icon, size = 'md' }: AiProps) {
-  const pad = size === 'lg' ? 8 : 8;
+  const FIGMA_CHAT = useFigmaChat();
+  const box = size === 'lg' ? 48 : 40;
   const iconSize = size === 'lg' ? FIGMA_CHAT.navIconSize : FIGMA_CHAT.bubbleIconSize;
 
   return (
     <View
       style={{
-        padding: pad,
+        width: box,
+        height: box,
         borderRadius: 999,
         backgroundColor: FIGMA_CHAT.brandQuaternary,
         borderWidth: 1,
         borderColor: FIGMA_CHAT.brandBorderLight,
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
       <Icon size={iconSize} color={FIGMA_CHAT.brand} strokeWidth={2} />
@@ -33,6 +37,7 @@ type UserProps = {
 };
 
 export function ChatUserAvatar({ initials = 'M', uri }: UserProps) {
+  const FIGMA_CHAT = useFigmaChat();
   return (
     <View style={{ width: FIGMA_CHAT.userAvatarSize, height: FIGMA_CHAT.userAvatarSize }}>
       <View

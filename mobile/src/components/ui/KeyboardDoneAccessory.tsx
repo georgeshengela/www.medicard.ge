@@ -1,11 +1,13 @@
 import React from 'react';
 import { InputAccessoryView, Keyboard, Platform, Pressable, Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
+import { useThemeColors } from '@/theme/colors';
 
 export const KEYBOARD_DONE_ACCESSORY_ID = 'medicard-keyboard-done';
 
 /** iOS toolbar above number-pad — dismiss keyboard to reach CTAs below. */
 export function KeyboardDoneAccessory() {
+  const colors = useThemeColors();
   if (Platform.OS !== 'ios') return null;
 
   return (
@@ -17,9 +19,9 @@ export function KeyboardDoneAccessory() {
           alignItems: 'center',
           paddingHorizontal: 12,
           paddingVertical: 8,
-          backgroundColor: '#F3F4F6',
+          backgroundColor: colors.bg200,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: colors.bg300,
         }}
       >
         <Pressable

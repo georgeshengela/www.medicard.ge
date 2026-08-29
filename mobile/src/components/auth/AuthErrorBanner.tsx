@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { AlertTriangle, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '@/theme/colors';
+import { useThemeColors } from '@/theme/colors';
 
 type Props = {
   message: string;
@@ -12,6 +12,7 @@ type Props = {
 /** Figma auth error — rose banner pinned above home indicator. */
 export function AuthErrorBanner({ message, onDismiss }: Props) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
 
   return (
     <View
@@ -29,9 +30,9 @@ export function AuthErrorBanner({ message, onDismiss }: Props) {
           flexDirection: 'row',
           alignItems: 'center',
           gap: 10,
-          backgroundColor: '#FEE2E2',
+          backgroundColor: colors.dangerBg,
           borderWidth: 1,
-          borderColor: '#FECACA',
+          borderColor: colors.danger,
           borderRadius: 16,
           paddingHorizontal: 14,
           paddingVertical: 12,
@@ -49,14 +50,14 @@ export function AuthErrorBanner({ message, onDismiss }: Props) {
             fontFamily: 'NotoSansGeorgian_600SemiBold',
             fontSize: 13,
             lineHeight: 18,
-            color: '#B91C1C',
+            color: colors.danger,
           }}
         >
           {message}
         </Text>
         {onDismiss ? (
           <Pressable accessibilityRole="button" hitSlop={10} onPress={onDismiss}>
-            <X size={18} color="#B91C1C" strokeWidth={2.4} />
+            <X size={18} color={colors.danger} strokeWidth={2.4} />
           </Pressable>
         ) : null}
       </View>

@@ -1,11 +1,12 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { AssessmentPhaseStepper } from '@/components/assessment/AssessmentPhaseStepper';
-import { FIGMA_ASSESSMENT_INTRO } from '@/constants/figmaAssessmentIntro';
+import { useFigmaAssessmentIntro } from '@/constants/figmaAssessmentIntro';
 import { ka } from '@/i18n/ka';
 
 /** Assessment phase complete — transition to personal info (Figma stepper state). */
 export function AssessmentCompleteContent() {
+  const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
   return (
     <View style={{ alignItems: 'center', paddingVertical: 16, gap: 24 }}>
       <View
@@ -13,7 +14,7 @@ export function AssessmentCompleteContent() {
           width: 88,
           height: 88,
           borderRadius: 44,
-          backgroundColor: '#F0FDFA',
+          backgroundColor: FIGMA_ASSESSMENT_INTRO.selectedSoft,
           borderWidth: 2,
           borderColor: '#14B8A6',
           alignItems: 'center',

@@ -8,7 +8,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { useAssessment } from '@/constants/assessmentLayout';
 import { ka } from '@/i18n/ka';
 
 const TRACK_H = 36;
@@ -80,6 +80,7 @@ export function FitnessLevelSlider({
   labelForValue,
   hint,
 }: Props) {
+  const ASSESSMENT = useAssessment();
   const [trackW, setTrackW] = useState(0);
   const trackWRef = useRef(0);
   const lastValue = useRef(value);
@@ -154,7 +155,7 @@ export function FitnessLevelSlider({
           style={{
             height: TRACK_H,
             borderRadius: TRACK_RADIUS,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: ASSESSMENT.surface,
             overflow: 'hidden',
             shadowColor: '#0F172A',
             shadowOpacity: 0.05,

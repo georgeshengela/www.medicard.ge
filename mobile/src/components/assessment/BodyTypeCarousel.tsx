@@ -18,7 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { ASSESSMENT, useAssessment } from '@/constants/assessmentLayout';
 import { FIGMA_FRAME } from '@/constants/figmaWelcomeLayout';
 import { bodyTypeImage } from '@/constants/illustrationAssets';
 import { ka } from '@/i18n/ka';
@@ -116,6 +116,7 @@ function BodyTypeItem({ index, gender, type, active, onPress }: ItemProps) {
 
 /** Figma body type — three equal silhouettes, swipe/tap to select. */
 export function BodyTypeCarousel({ gender, value, labelFor, onChange }: Props) {
+  const ASSESSMENT = useAssessment();
   const scrollRef = useRef<Animated.ScrollView>(null);
   const scrollX = useSharedValue(0);
   const initial = Math.max(0, BODY_TYPES.indexOf((value as BodyType) ?? 'ECTOMORPH'));

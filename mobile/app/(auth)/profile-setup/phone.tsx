@@ -3,13 +3,14 @@ import { ActivityIndicator, Image, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { ProfilePhoneField } from '@/components/profile/ProfilePhoneField';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
-import { FIGMA_PROFILE_SETUP } from '@/constants/figmaProfileSetupLayout';
+import { useFigmaProfileSetup } from '@/constants/figmaProfileSetupLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
 
 /** Profile setup — phone entry (Figma 8845:310502). */
 export default function ProfileSetupPhoneScreen() {
+  const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const router = useRouter();
   const { user, ready, healthProfile } = useAuth();
   const [local, setLocal] = useState('');

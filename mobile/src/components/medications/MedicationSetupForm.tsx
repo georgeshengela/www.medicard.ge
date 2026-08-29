@@ -30,7 +30,7 @@ import {
   MedFormSectionHeader,
   MedInputShell,
 } from '@/components/medications/MedicationUI';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { FIGMA_MEDS, useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import {
@@ -49,10 +49,25 @@ const fieldShellStyle = { height: FIGMA_MEDS.inputHeight, paddingVertical: 0 } a
 type Props = {
   initialName?: string;
   initialGeneric?: string;
+  initialImageUrl?: string;
+  catalogProductId?: string;
+  manufacturer?: string;
+  strength?: string;
+  formLabel?: string;
   onSaved: () => void;
 };
 
-export function MedicationSetupForm({ initialName = '', initialGeneric, onSaved }: Props) {
+export function MedicationSetupForm({
+  initialName = '',
+  initialGeneric,
+  initialImageUrl,
+  catalogProductId,
+  manufacturer,
+  strength,
+  formLabel,
+  onSaved,
+}: Props) {
+  const FIGMA_MEDS = useFigmaMeds();
   const [medName] = useState(initialName);
   const [form, setForm] = useState<MedicationForm>('pills');
   const [amount, setAmount] = useState(3);
@@ -74,9 +89,9 @@ export function MedicationSetupForm({ initialName = '', initialGeneric, onSaved 
   const [shapeSheet, setShapeSheet] = useState(false);
 
   const dosageLabel = useMemo(() => `${amount} ${ka.meds.formLabels[form]}`, [amount, form]);
-  const genericLine = initialGeneric
-    ? ka.meds.knownAs(initialGeneric, medName)
-    : ka.meds.knownAsFallback(medName);
+  const genericLine =
+    [manufacturer || initialGeneric, strength, formLabel].filter(Boolean).join(' · ') ||
+    (initialGeneric ? ka.meds.knownAs(initialGeneric, medName) : ka.meds.knownAsFallback(medName));
 
   const minEndDate = startDate;
   const maxStartDate = endDate;
@@ -118,7 +133,7 @@ export function MedicationSetupForm({ initialName = '', initialGeneric, onSaved 
         dosage: dosageLabel,
         frequency: formatFrequencyTimes(times.slice(0, timesPerDay)),
         config: {
-          genericName: initialGeneric,
+          genericName: initialGeneric || manufacturer,
           form,
           amount,
           timesPerDay,
@@ -130,6 +145,10 @@ export function MedicationSetupForm({ initialName = '', initialGeneric, onSaved 
           refillThreshold: Number(refillThreshold) || 12,
           startDate,
           endDate,
+          imageUrl: initialImageUrl,
+          catalogProductId,
+          manufacturer,
+          strength,
         },
       });
       onSaved();
@@ -144,12 +163,11 @@ export function MedicationSetupForm({ initialName = '', initialGeneric, onSaved 
     <>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={{ alignItems: 'center', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8, gap: 24 }}>
-          <Pressable
-            onPress={() => setShapeSheet(true)}
+          <View
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 999,
+              width: 72,
+              height: 72,
+              borderRadius: 20,
               backgroundColor: FIGMA_MEDS.cardBgTertiary,
               borderWidth: 1,
               borderColor: FIGMA_MEDS.border,
@@ -157,20 +175,26 @@ export function MedicationSetupForm({ initialName = '', initialGeneric, onSaved 
               justifyContent: 'center',
             }}
           >
-            <MedicationPillIcon shape={pillShape} size={48} />
-            <View
-              style={{
-                position: 'absolute',
-                bottom: -6,
-                right: -2,
-                backgroundColor: FIGMA_MEDS.textPrimary,
-                borderRadius: 999,
-                padding: 4,
-              }}
-            >
-              <Pencil size={12} color="#fff" strokeWidth={2.2} />
-            </View>
-          </Pressable>
+            {initialImageUrl ? (
+              <MedicationPillIcon shape={pillShape} size={64} imageUrl={initialImageUrl} />
+            ) : (
+              <Pressable onPress={() => setShapeSheet(true)}>
+                <MedicationPillIcon shape={pillShape} size={64} />
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: -6,
+                    right: -2,
+                    backgroundColor: FIGMA_MEDS.textPrimary,
+                    borderRadius: 999,
+                    padding: 4,
+                  }}
+                >
+                  <Pencil size={12} color="#fff" strokeWidth={2.2} />
+                </View>
+              </Pressable>
+            )}
+          </View>
           <View style={{ alignItems: 'center', gap: 8 }}>
             <Text style={{ fontSize: 20, fontWeight: '700', color: FIGMA_MEDS.textPrimary }}>
               {medName || ka.meds.namePlaceholder}
@@ -379,7 +403,7 @@ export function MedicationSetupForm({ initialName = '', initialGeneric, onSaved 
           disabled={busy}
           onPress={save}
           style={{
-            backgroundColor: FIGMA_MEDS.brand,
+            backgroundColor: FIGMA_MEDS.ctaBg,
             borderRadius: 16,
             minHeight: FIGMA_MEDS.inputHeight,
             alignItems: 'center',
@@ -390,7 +414,7 @@ export function MedicationSetupForm({ initialName = '', initialGeneric, onSaved 
             ...FIGMA_MEDS.shadowInput,
           }}
         >
-          <Text style={{ color: FIGMA_MEDS.white, fontWeight: '700', fontSize: 16 }}>
+          <Text style={{ color: FIGMA_MEDS.textOnBrand, fontWeight: '700', fontSize: 16 }}>
             {busy ? ka.common.loading : ka.meds.addMedicationCta}
           </Text>
           <Plus size={20} color="#fff" strokeWidth={2.5} />

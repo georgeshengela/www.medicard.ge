@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Text, View } from 'react-native';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
 import { UnitSegment, type UnitOption } from '@/components/assessment/UnitSegment';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { useAssessment } from '@/constants/assessmentLayout';
 
 type Props = {
   value: number;
@@ -22,6 +22,7 @@ export function SegmentScale({
   labelForValue,
   hint,
 }: Props) {
+  const ASSESSMENT = useAssessment();
   const options = useMemo<UnitOption[]>(
     () => Array.from({ length: max - min + 1 }, (_, i) => {
       const n = String(min + i);

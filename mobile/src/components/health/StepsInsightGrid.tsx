@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Clock, Flame, Footprints, Timer } from 'lucide-react-native';
-import { FIGMA_STEPS } from '@/constants/figmaStepsLayout';
+import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { ka } from '@/i18n/ka';
 import type { StepsInsights } from '@/types/stepsMetrics';
 
@@ -32,6 +32,7 @@ function formatValue(key: keyof StepsInsights, insights: StepsInsights): string 
 }
 
 export function StepsInsightGrid({ insights }: Props) {
+  const FIGMA_STEPS = useFigmaSteps();
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {ITEMS.map(({ key, icon: Icon, label }) => (

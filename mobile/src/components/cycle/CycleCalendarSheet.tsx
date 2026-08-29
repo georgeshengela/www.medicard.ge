@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
+import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { CycleCalendar } from '@/components/cycle/CycleCalendar';
 import type { CycleDayMark } from '@/lib/api';
 import { ka } from '@/i18n/ka';
@@ -34,7 +35,7 @@ export function CycleCalendarSheet({
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <Pressable
         style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: c.overlay }}
         onPress={onClose}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Calendar, Pencil } from 'lucide-react-native';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 
 type Props = {
@@ -12,6 +12,7 @@ type Props = {
 };
 
 export function SymptomResultSummaryCard({ symptoms, durationLabel, painLabel, onEdit }: Props) {
+  const T = useFigmaSymptoms();
   return (
     <View
       style={{

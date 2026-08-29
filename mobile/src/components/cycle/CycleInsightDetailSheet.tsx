@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Bell, Sparkles, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import type { CycleInsightCard } from '@/lib/api';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { CyclePrimaryButton } from '@/components/cycle/CycleUI';
@@ -109,7 +110,7 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
   const showAuto = Boolean(plan.autoLabel && (plan.autoMinutes || plan.route || plan.chatPrefill));
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <Pressable
         style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: c.overlay }}
         onPress={onClose}

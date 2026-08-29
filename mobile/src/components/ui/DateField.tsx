@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { Button } from './Button';
 import { ka } from '@/i18n/ka';
 import {
@@ -40,7 +42,7 @@ export function DateField({ label, value, onChangeText, error, hint }: Props) {
         accessibilityRole="button"
         accessibilityLabel={label ?? ka.auth.birthDate}
         onPress={() => setOpen(true)}
-        className={`flex-row items-center rounded-2xl border bg-surface px-4 py-3.5 active:opacity-80 ${
+        className={`flex-row items-center rounded-2xl border bg-bg-200 px-4 py-3.5 active:opacity-80 ${
           error ? 'border-state-danger' : 'border-bg-300'
         }`}
       >
@@ -86,6 +88,7 @@ function BirthCalendar({
   onConfirm: (digits: string) => void;
 }) {
   const colors = useThemeColors();
+  const auth = useFigmaAuth();
   const insets = useSafeAreaInsets();
   const now = useMemo(() => new Date(), [visible]);
   const { minYear, maxYear } = birthYearBounds(now);
@@ -128,10 +131,14 @@ function BirthCalendar({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable className="flex-1 justify-end bg-text-100/45" onPress={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
+      <Pressable
+        className="flex-1 justify-end"
+        style={{ backgroundColor: APP_MODAL_OVERLAY }}
+        onPress={onClose}
+      >
         <Pressable
-          className="rounded-t-3xl border-t border-bg-300 bg-bg-100 px-5 pt-3"
+          className="rounded-t-3xl border-t border-bg-300 bg-surface px-5 pt-3"
           onPress={() => undefined}
         >
           <View className="mb-4 h-1 w-10 self-center rounded-full bg-bg-300" />
@@ -218,7 +225,8 @@ function BirthCalendar({
                         setCursor((current) => ({ ...current, year }));
                         setYearPicker(false);
                       }}
-                      className={`items-center rounded-2xl py-3.5 ${selected ? 'bg-primary-200' : 'bg-surface'}`}
+                      className={`items-center rounded-2xl py-3.5 ${selected ? '' : 'bg-bg-200'}`}
+                      style={selected ? { backgroundColor: auth.primaryBg } : undefined}
                     >
                       <Text className={`text-base font-bold ${selected ? 'text-white' : 'text-text-100'}`}>{year}</Text>
                     </Pressable>
@@ -252,9 +260,12 @@ function BirthCalendar({
                           setCursor({ year: cell.year, month: cell.month, day: cell.day });
                         }}
                         className={`aspect-square items-center justify-center rounded-full ${
-                          selected ? 'bg-primary-200' : cell.isToday ? 'border border-primary-200' : ''
+                          selected ? '' : cell.isToday ? 'border border-primary-200' : ''
                         }`}
-                        style={{ opacity: cell.disabled ? 0.28 : 1 }}
+                        style={{
+                          opacity: cell.disabled ? 0.28 : 1,
+                          backgroundColor: selected ? auth.primaryBg : undefined,
+                        }}
                       >
                         <Text
                           className={`text-sm font-semibold ${

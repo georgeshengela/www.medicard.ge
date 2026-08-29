@@ -24,7 +24,7 @@ export default function WelcomeScreen() {
   const body = SLIDE_COPY[LANDING.bodyKey as keyof typeof SLIDE_COPY] as string;
 
   return (
-    <View className="flex-1 bg-white" style={{ width: SCREEN_W }}>
+    <View className="flex-1 bg-bg-100" style={{ width: SCREEN_W }}>
       <FigmaWelcomeSlide
         frame={LANDING.frame}
         kind="landing"

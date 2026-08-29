@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { useAssessment } from '@/constants/assessmentLayout';
 import { ka } from '@/i18n/ka';
 
 const ICON = 32;
@@ -96,6 +96,7 @@ const ROWS: DietKey[][] = [
 
 /** Figma 9217:164726 — 2×2 simple cards, 32pt icons, teal selected. */
 export function DietChoiceGrid({ value, onChange, titleFor }: Props) {
+  const ASSESSMENT = useAssessment();
   return (
     <View style={{ width: '100%', gap: 12, paddingVertical: 8 }}>
       {ROWS.map((row) => (

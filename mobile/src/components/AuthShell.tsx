@@ -30,7 +30,7 @@ export function AuthShell({
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-bg-100 font-sans"
+      className="flex-1 bg-surface font-sans"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
     >
@@ -64,7 +64,7 @@ export function AuthShell({
               paddingHorizontal: FIGMA_AUTH.screenPaddingX,
               paddingTop: 12,
               paddingBottom: insets.bottom + 12,
-              backgroundColor: colors.bg100,
+              backgroundColor: colors.surface,
               borderTopWidth: 1,
               borderTopColor: colors.bg300,
             }}

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { MedicationSheetApplyButton, MedicationSheetModal } from '@/components/medications/MedicationSheetUI';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 
 const OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -14,6 +14,7 @@ type Props = {
 };
 
 export function MedicationFrequencySheet({ visible, value, onClose, onApply }: Props) {
+  const FIGMA_MEDS = useFigmaMeds();
   const [draft, setDraft] = useState(value);
   const scrollRef = useRef<ScrollView>(null);
 

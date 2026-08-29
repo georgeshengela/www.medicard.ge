@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { FIGMA_HEALTH_METRICS_CAROUSEL as C } from '@/constants/figmaHealthMetricsCarouselLayout';
+import { useFigmaHealthMetricsCarousel } from '@/constants/figmaHealthMetricsCarouselLayout';
 
 type Props = {
   icon: LucideIcon;
@@ -22,6 +22,7 @@ export function HomeHealthMetricCarouselCard({
   label,
   onPress,
 }: Props) {
+  const C = useFigmaHealthMetricsCarousel();
   const body = (
     <View
       style={{

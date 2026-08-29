@@ -2,7 +2,8 @@ import React from 'react';
 import { Image, View, type ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { FIGMA_PILL_SHAPE_SOURCES } from '@/constants/medicationPillAssets';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { FIGMA_MEDS, useFigmaMeds } from '@/constants/figmaMedicationsLayout';
+import { PharmacyProductImage } from '@/components/pharmacy/PharmacyProductImage';
 import type { PillShape } from '@/types/medications';
 import { pillShapePath } from '@/lib/medications.shared';
 
@@ -12,6 +13,7 @@ type Props = {
   size?: number;
   border?: boolean;
   variant?: 'figma' | 'tinted';
+  imageUrl?: string | null;
   style?: ViewStyle;
 };
 
@@ -21,9 +23,19 @@ export function MedicationPillIcon({
   size = 48,
   border,
   variant = 'figma',
+  imageUrl,
   style,
 }: Props) {
+  const FIGMA_MEDS = useFigmaMeds();
   const source = FIGMA_PILL_SHAPE_SOURCES[shape] ?? FIGMA_PILL_SHAPE_SOURCES.long;
+
+  if (imageUrl) {
+    return (
+      <View style={style}>
+        <PharmacyProductImage uri={imageUrl} size={size} rounded={Math.max(10, Math.round(size * 0.22))} />
+      </View>
+    );
+  }
 
   if (variant === 'figma') {
     return (
@@ -35,7 +47,7 @@ export function MedicationPillIcon({
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: 999,
-            backgroundColor: border ? FIGMA_MEDS.cardBg : 'transparent',
+            backgroundColor: border ? FIGMA_MEDS.surface : 'transparent',
             borderWidth: border ? 1 : 0,
             borderColor: FIGMA_MEDS.border,
             overflow: 'hidden',

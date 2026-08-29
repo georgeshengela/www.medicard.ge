@@ -1,3 +1,5 @@
+import { useIsDark } from '@/theme/colors';
+
 /** Nightingale Authentication — exact tokens from Figma node 11396:82867. */
 export const FIGMA_AUTH = {
   screenPaddingX: 24,
@@ -41,6 +43,27 @@ export const FIGMA_AUTH = {
   textSecondary: '#4B5563',
   textMuted: '#64748B',
   linkColor: '#14B8A6',
+  fieldText: '#1F2937',
+  placeholder: '#4B5563',
+  iconMuted: '#6B7280',
+  socialLabel: '#FFFFFF',
+} as const;
+
+/** Dark auth chrome — Figma 11412:243289. */
+export const FIGMA_AUTH_DARK = {
+  inputBorder: '#4B5563',
+  inputBg: '#111827',
+  labelColor: '#FFFFFF',
+  primaryBg: '#0D9488',
+  socialButtonBg: '#FFFFFF',
+  socialLabel: '#1F2937',
+  dividerColor: '#374151',
+  textSecondary: '#D1D5DB',
+  textMuted: '#6B7280',
+  linkColor: '#14B8A6',
+  fieldText: '#FFFFFF',
+  placeholder: '#6B7280',
+  iconMuted: '#6B7280',
 } as const;
 
 /** Figma Shadow/xs — shared by inputs and buttons. */
@@ -51,6 +74,11 @@ export const FIGMA_AUTH_SHADOW = {
   shadowRadius: 2,
   elevation: 2,
 } as const;
+
+export function useFigmaAuth() {
+  const dark = useIsDark();
+  return dark ? { ...FIGMA_AUTH, ...FIGMA_AUTH_DARK } : FIGMA_AUTH;
+}
 
 export const FIGMA_WELCOME = {
   progressHeight: 4,

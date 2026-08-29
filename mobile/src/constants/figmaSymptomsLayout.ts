@@ -1,3 +1,5 @@
+import { useIsDark } from '@/theme/colors';
+
 /** Figma 11369:94062 — AI Symptom Checker tokens from SH Nightingale UI Kit v3. */
 export const FIGMA_SYMPTOMS = {
   brand: '#14B8A6',
@@ -44,3 +46,24 @@ export const FIGMA_SYMPTOMS = {
     elevation: 2,
   },
 } as const;
+
+export const FIGMA_SYMPTOMS_DARK = {
+  brandSoft: '#042F2E',
+  brandBorder: '#115E59',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#D1D5DB',
+  textMuted: '#6B7280',
+  border: '#374151',
+  borderTertiary: '#4B5563',
+  track: '#374151',
+  composerPrimary: '#5EEAD4',
+  cardBg: '#111827',
+  white: '#1F2937',
+  canvas: '#030712',
+  inverse: '#FFFFFF',
+} as const;
+
+export function useFigmaSymptoms() {
+  const dark = useIsDark();
+  return dark ? { ...FIGMA_SYMPTOMS, ...FIGMA_SYMPTOMS_DARK } : FIGMA_SYMPTOMS;
+}

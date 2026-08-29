@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Monitor, Moon, Sun } from 'lucide-react-native';
+import { useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
 import { useThemeColors } from '@/theme/colors';
 import { useTheme, type ThemePreference } from '@/store/ThemeContext';
@@ -14,6 +15,7 @@ const OPTIONS: { value: ThemePreference; label: string; Icon: typeof Sun }[] = [
 export function ThemeSelect() {
   const { preference, setPreference } = useTheme();
   const colors = useThemeColors();
+  const auth = useFigmaAuth();
 
   return (
     <View className="w-full">
@@ -21,7 +23,7 @@ export function ThemeSelect() {
 
       <View
         accessibilityRole="radiogroup"
-        className="flex-row rounded-2xl border border-bg-300 bg-surface p-1"
+        className="flex-row rounded-2xl border border-bg-300 bg-bg-200 p-1"
       >
         {OPTIONS.map((option) => {
           const selected = preference === option.value;
@@ -32,9 +34,8 @@ export function ThemeSelect() {
               accessibilityState={{ selected }}
               accessibilityLabel={option.label}
               onPress={() => setPreference(option.value)}
-              className={`flex-1 items-center rounded-xl py-2.5 active:opacity-70 ${
-                selected ? 'bg-primary-200' : ''
-              }`}
+              className="flex-1 items-center rounded-xl py-2.5 active:opacity-70"
+              style={selected ? { backgroundColor: auth.primaryBg } : undefined}
             >
               <option.Icon
                 size={16}

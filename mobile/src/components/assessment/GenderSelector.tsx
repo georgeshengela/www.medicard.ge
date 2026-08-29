@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { useAssessment } from '@/constants/assessmentLayout';
 import { ka } from '@/i18n/ka';
 import type { Gender } from '@/lib/api';
 import { lightColors } from '@/theme/colors';
@@ -19,6 +19,7 @@ type Props = {
 
 /** Figma gender — 3 square cards + optional other text area. */
 export function GenderSelector({ gender, genderOther, onChange }: Props) {
+  const ASSESSMENT = useAssessment();
   return (
     <View style={{ width: '100%', gap: 16 }}>
       <View style={{ flexDirection: 'row', gap: 10 }}>

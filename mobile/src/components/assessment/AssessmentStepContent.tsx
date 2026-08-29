@@ -32,7 +32,7 @@ import {
 import { DateWheelPicker } from '@/components/assessment/DateWheelPicker';
 import { AllergyPicker } from '@/components/assessment/AllergyPicker';
 import { MedicationPicker } from '@/components/assessment/MedicationPicker';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { useAssessment } from '@/constants/assessmentLayout';
 import type { AssessmentStep } from '@/constants/assessmentSteps';
 import {
   ILLUSTRATION_SOURCES,
@@ -91,6 +91,7 @@ function CardOption({
   icon?: React.ComponentType<{ size?: number; color?: string }>;
   image?: ImageSourcePropType;
 }) {
+  const ASSESSMENT = useAssessment();
   return (
     <Pressable
       accessibilityRole="radio"
@@ -151,6 +152,7 @@ function GateActions({
   onYes: () => void;
   onNo: () => void;
 }) {
+  const ASSESSMENT = useAssessment();
   return (
     <View style={{ flex: 1, justifyContent: 'flex-end', gap: 16, paddingBottom: 4 }}>
       <Pressable
@@ -175,6 +177,7 @@ function GateActions({
 }
 
 export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: Props) {
+  const ASSESSMENT = useAssessment();
   switch (step.type) {
     case 'intro':
       return null;
@@ -537,6 +540,7 @@ function ChipCloud({
   optionsKey: string;
   onChange: (next: string[]) => void;
 }) {
+  const ASSESSMENT = useAssessment();
   const toggle = (value: string) => {
     if (value === 'none') {
       onChange([]);
@@ -557,13 +561,13 @@ function ChipCloud({
             style={{
               borderRadius: 99,
               borderWidth: active ? 2 : 1,
-              borderColor: active ? lightColors.primary200 : '#E5E7EB',
-              backgroundColor: active ? '#F0FDFA' : '#FFFFFF',
+              borderColor: active ? lightColors.primary200 : ASSESSMENT.border,
+              backgroundColor: active ? ASSESSMENT.selectedSoft : ASSESSMENT.surface,
               paddingHorizontal: 14,
               paddingVertical: 10,
             }}
           >
-            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: active ? lightColors.primary100 : '#475569' }}>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: active ? lightColors.primary200 : ASSESSMENT.textSecondary }}>
               {optionLabel(optionsKey, value)}
             </Text>
           </Pressable>

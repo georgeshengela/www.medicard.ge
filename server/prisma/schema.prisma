@@ -275,9 +275,9 @@ model Package {
   nameKa        String
   nameEn        String
   descriptionKa String
-  /// Monthly AI query cap for this plan (-1 = unlimited). Resets each billing period.
+  /// Monthly equivalent for marketing / admin (-1 = unlimited). Metering uses dailyAiLimit.
   monthlyAiLimit Int      @default(90)
-  /// Legacy daily cap — kept for migration; prefer monthlyAiLimit.
+  /// Consume cap per rolling window. After the user hits this, resetAt is now + 24h.
   dailyAiLimit  Int       @default(3)
   priceGel      Float     @default(0)
   /// JSON feature flags / module access
@@ -319,9 +319,11 @@ model PeriodUsage {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// Billing period key — calendar month (cal:YYYY-MM) or subscription window (sub:start:end).
+  /// Billing period key — rolling daily (roll:daily), calendar month (cal:YYYY-MM), or subscription (sub:start:end).
   periodKey String
   count     Int      @default(0)
+  /// When the daily cap is hit, countdown starts here (typically now + 24h). Null while under the cap.
+  resetAt   DateTime?
   createdAt DateTime @default(now())
 
   @@unique([userId, periodKey])

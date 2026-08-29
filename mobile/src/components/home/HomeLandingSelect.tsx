@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { CalendarHeart, House } from 'lucide-react-native';
+import { useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
 import { getHomeLanding, setCyclePromptSeen, setHomeLanding, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { useThemeColors } from '@/theme/colors';
@@ -19,6 +20,7 @@ const OPTIONS: { value: HomeLanding; label: string; hint: string; Icon: typeof H
 export function HomeLandingSelect() {
   const { user } = useAuth();
   const colors = useThemeColors();
+  const auth = useFigmaAuth();
   const [landing, setLanding] = useState<HomeLanding>('hub');
   const [ready, setReady] = useState(false);
 
@@ -44,12 +46,12 @@ export function HomeLandingSelect() {
 
       <View
         accessibilityRole="radiogroup"
-        className="flex-row rounded-full border border-bg-300 bg-surface p-1"
+        className="flex-row rounded-full border border-bg-300 bg-bg-200 p-1"
         style={{ borderRadius: 999 }}
       >
         {OPTIONS.map((option) => {
           const selected = landing === option.value;
-          const accent = option.value === 'cycle' ? '#D4738A' : colors.primary200;
+          const accent = option.value === 'cycle' ? '#D4738A' : auth.primaryBg;
           return (
             <Pressable
               key={option.value}

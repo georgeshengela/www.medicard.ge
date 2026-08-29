@@ -8,7 +8,7 @@ import { SymptomBodyMap } from '@/components/symptoms/SymptomBodyMap';
 import { SymptomBrowseSheet, SymptomBodyAreaTile, SymptomOrganBrowseRow } from '@/components/symptoms/SymptomBrowseSheet';
 import { SymptomSheet } from '@/components/symptoms/SymptomSheet';
 import { SymptomSprite } from '@/components/symptoms/SymptomSprite';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import {
   ANATOMY_SHEET,
   ANATOMY_SHEET_SIZE,
@@ -38,6 +38,7 @@ function sideFor(partId?: string | null, organId?: string | null) {
 }
 
 export default function SymptomBodyScreen() {
+  const T = useFigmaSymptoms();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const state = useSymptomChecker();

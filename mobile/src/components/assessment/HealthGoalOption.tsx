@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { FIGMA_ASSESSMENT_SHADOW } from '@/constants/figmaAssessmentIntro';
+import { useAssessment } from '@/constants/assessmentLayout';
 
 const TEAL = '#14B8A6';
 
@@ -14,6 +15,7 @@ type Props = {
 
 /** Figma List Item — health goal row (9217:164462). */
 export function HealthGoalOption({ title, selected, onPress, icon: Icon }: Props) {
+  const ASSESSMENT = useAssessment();
   return (
     <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: selected }} activeOpacity={0.88} onPress={onPress}>
       <View
@@ -25,19 +27,19 @@ export function HealthGoalOption({ title, selected, onPress, icon: Icon }: Props
           padding: 16,
           borderRadius: 14,
           borderWidth: 1,
-          borderColor: selected ? TEAL : '#E5E7EB',
-          backgroundColor: selected ? '#F0FDFA' : '#F9FAFB',
+          borderColor: selected ? TEAL : ASSESSMENT.border,
+          backgroundColor: selected ? ASSESSMENT.selectedSoft : ASSESSMENT.surfaceMuted,
           ...FIGMA_ASSESSMENT_SHADOW,
         }}
       >
-        <Icon size={24} color="#1F2937" strokeWidth={2} />
+        <Icon size={24} color={ASSESSMENT.textPrimary} strokeWidth={2} />
         <Text
           style={{
             flex: 1,
             fontFamily: selected ? 'NotoSansGeorgian_600SemiBold' : 'NotoSansGeorgian_500Medium',
             fontSize: 16,
             lineHeight: 22,
-            color: '#1F2937',
+            color: ASSESSMENT.textPrimary,
           }}
         >
           {title}
@@ -48,8 +50,8 @@ export function HealthGoalOption({ title, selected, onPress, icon: Icon }: Props
             height: 20,
             borderRadius: 4,
             borderWidth: selected ? 0 : 1,
-            borderColor: '#D1D5DB',
-            backgroundColor: selected ? TEAL : '#FFFFFF',
+            borderColor: ASSESSMENT.border,
+            backgroundColor: selected ? TEAL : ASSESSMENT.surface,
             alignItems: 'center',
             justifyContent: 'center',
             padding: selected ? 4 : 0,

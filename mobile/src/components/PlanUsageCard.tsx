@@ -3,8 +3,8 @@ import { Alert, Pressable, Text, View } from 'react-native';
 import { Crown, Sparkles, TriangleAlert, Zap } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { ka } from '@/i18n/ka';
-import { formatCountdown } from '@/lib/format';
 import { usePlanUsage, type PlanCode } from '@/lib/planUsage';
+import { useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { useThemeColors, type Palette } from '@/theme/colors';
 
 function ProgressBar({
@@ -68,14 +68,14 @@ export function UsageBanner({ compact = false }: { compact?: boolean }) {
   const data = usePlanUsage();
   if (!data.usage) return null;
 
-  const { code, unlimited, remaining, limit, exhausted, progress, usage } = data;
+  const { code, unlimited, remaining, limit, exhausted, progress } = data;
   const tone = exhausted ? 'warning' : unlimited ? 'success' : 'default';
 
   const quotaLabelCompact = exhausted
     ? ka.usage.exhaustedTitle
     : unlimited
       ? ka.usage.unlimitedBanner
-      : `${remaining} / ${limit} ${ka.usage.queries}`;
+      : ka.usage.remainingQueries(remaining ?? 0, limit);
 
   return (
     <View
@@ -102,7 +102,7 @@ export function UsageBanner({ compact = false }: { compact?: boolean }) {
 
       <Text className="mt-2 text-[11px] leading-4 text-text-300">
         {exhausted
-          ? `${ka.usage.resetsIn} ${formatCountdown(usage!.resetsInMs)}`
+          ? data.resetLabel
           : `${ka.profile.planLabel} · ${code}`}
       </Text>
     </View>
@@ -112,10 +112,11 @@ export function UsageBanner({ compact = false }: { compact?: boolean }) {
 /** Full plan card for profile. */
 export function PlanDetailCard() {
   const colors = useThemeColors();
+  const auth = useFigmaAuth();
   const data = usePlanUsage();
   if (!data.usage) return null;
 
-  const { code, meta, unlimited, remaining, limit, exhausted, progress, started, expires, expired, usage } =
+  const { code, meta, unlimited, remaining, limit, exhausted, progress, started, expires, expired } =
     data;
   const tone = exhausted ? 'warning' : unlimited ? 'success' : 'default';
 
@@ -129,7 +130,7 @@ export function PlanDetailCard() {
                 className="mr-2.5 h-9 w-9 items-center justify-center"
                 style={{
                   borderRadius: 999,
-                  backgroundColor: unlimited ? colors.successBg : `${colors.primary200}14`,
+                  backgroundColor: unlimited ? colors.successBg : colors.accent100,
                 }}
               >
                 {unlimited ? (
@@ -154,15 +155,13 @@ export function PlanDetailCard() {
               {exhausted
                 ? ka.usage.exhaustedTitle
                 : unlimited
-                  ? `∞ ${ka.usage.perMonth}`
-                  : `${remaining} / ${limit}`}
+                  ? ka.usage.unlimitedBanner
+                  : ka.usage.remainingQueries(remaining ?? 0, limit)}
             </Text>
           </View>
           <ProgressBar progress={progress} tone={tone} colors={colors} />
           <Text className="mt-1.5 text-[11px] text-text-300">
-            {exhausted
-              ? `${ka.usage.resetsIn} ${formatCountdown(usage!.resetsInMs)}`
-              : ka.profile.billingMonthly}
+            {exhausted ? data.resetLabel : ka.profile.billingMonthly}
           </Text>
         </View>
 
@@ -198,7 +197,7 @@ export function PlanDetailCard() {
           className="mx-4 mb-4 flex-row items-center justify-center active:opacity-85"
           style={{
             borderRadius: 999,
-            backgroundColor: colors.primary200,
+            backgroundColor: auth.primaryBg,
             paddingVertical: 12,
             paddingHorizontal: 16,
           }}

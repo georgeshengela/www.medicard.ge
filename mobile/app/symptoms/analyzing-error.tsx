@@ -3,11 +3,12 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SymptomCta, SymptomFooter } from '@/components/symptoms/SymptomCta';
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 import { updateSymptomChecker, useSymptomChecker } from '@/lib/symptomCheckerStore';
 
 export default function SymptomAnalyzingErrorScreen() {
+  const T = useFigmaSymptoms();
   const router = useRouter();
   const { lastError } = useSymptomChecker();
   const isQuota = lastError?.includes('ლიმიტი') ?? false;

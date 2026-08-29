@@ -1,24 +1,27 @@
-import React, { useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { History } from 'lucide-react-native';
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
 import { SymptomCta } from '@/components/symptoms/SymptomCta';
 import { SYMPTOM_INTRO_ILLUSTRATION } from '@/constants/symptomAssets';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 import { resetSymptomChecker } from '@/lib/symptomCheckerStore';
 import { useAuth } from '@/store/AuthContext';
 
 export default function SymptomIntroScreen() {
+  const T = useFigmaSymptoms();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
-  useEffect(() => {
-    resetSymptomChecker(user?.gender);
-  }, [user?.gender]);
+  useFocusEffect(
+    useCallback(() => {
+      resetSymptomChecker(user?.gender);
+    }, [user?.gender]),
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: T.white, paddingBottom: insets.bottom }}>

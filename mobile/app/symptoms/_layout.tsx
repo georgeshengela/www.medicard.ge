@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
-import { FIGMA_SYMPTOMS } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 
 export default function SymptomsLayout() {
+  const FIGMA_SYMPTOMS = useFigmaSymptoms();
   return (
     <Stack
       screenOptions={{

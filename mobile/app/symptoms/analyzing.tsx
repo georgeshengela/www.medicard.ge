@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 
 import { bodyPartById, DURATION_OPTIONS, organById } from '@/constants/symptomCatalog';
 
@@ -18,6 +18,8 @@ import { api, ApiError } from '@/lib/api';
 
 import { saveSymptomSession } from '@/lib/symptomResultStorage';
 
+import { useAuth } from '@/store/AuthContext';
+
 import type { SymptomCheckPayload } from '@/types/symptoms';
 
 import { updateSymptomChecker, useSymptomChecker } from '@/lib/symptomCheckerStore';
@@ -25,8 +27,11 @@ import { updateSymptomChecker, useSymptomChecker } from '@/lib/symptomCheckerSto
 
 
 export default function SymptomAnalyzingScreen() {
+  const T = useFigmaSymptoms();
 
   const router = useRouter();
+
+  const { applyUsage } = useAuth();
 
   const state = useSymptomChecker();
 
@@ -101,6 +106,7 @@ export default function SymptomAnalyzingScreen() {
       try {
 
         const res = await api.ai.symptomCheck(snapshot);
+        applyUsage(res.usage);
 
         updateSymptomChecker({
 
@@ -137,6 +143,7 @@ export default function SymptomAnalyzingScreen() {
         router.replace('/symptoms/results?ready=1' as never);
 
       } catch (err) {
+        if (err instanceof ApiError && err.isQuotaExceeded && err.usage) applyUsage(err.usage);
         const message =
           err instanceof ApiError
             ? err.message
@@ -149,7 +156,7 @@ export default function SymptomAnalyzingScreen() {
 
     })();
 
-  }, [router, state]);
+  }, [router, state, applyUsage]);
 
 
 
@@ -196,6 +203,7 @@ export default function SymptomAnalyzingScreen() {
 
 
 function AnalyzingLine({ label, active, done }: { label: string; active: boolean; done: boolean }) {
+  const T = useFigmaSymptoms();
 
   const fade = useRef(new Animated.Value(active ? 1 : done ? 0.55 : 0.28)).current;
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, Text, View } from 'react-native';
+import { FlatList, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { ChatBubbleAssistant, ChatBubbleUser, ChatTypingBubble } from '@/components/chat/ChatBubble';
 import { ChatEmptyHero, ChatSuggestionChip } from '@/components/chat/ChatExtras';
@@ -10,7 +10,7 @@ import { ChatTopNav } from '@/components/chat/ChatTopNav';
 import { Disclaimer } from '@/components/Disclaimer';
 import { Markdown } from '@/components/ui/Markdown';
 import { QuotaSheet } from '@/components/QuotaSheet';
-import { FIGMA_CHAT } from '@/constants/figmaChatLayout';
+import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type ChatMessage } from '@/lib/api';
 import { getConversationalChatProfile } from '@/lib/chatUiConfig';
@@ -18,6 +18,7 @@ import { usePlanUsage } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
 
 export default function ChatScreen() {
+  const FIGMA_CHAT = useFigmaChat();
   const router = useRouter();
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ mode?: string; sessionId?: string; prefill?: string }>();
@@ -202,7 +203,7 @@ export default function ChatScreen() {
         onClose={() => setQuotaBlock(undefined)}
         onUpgrade={() => {
           setQuotaBlock(undefined);
-          Alert.alert(ka.usage.upsellTitle, ka.usage.premiumSoon);
+          router.push('/package');
         }}
       />
     </>

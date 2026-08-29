@@ -5,7 +5,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { Minus, Plus, RotateCcw, RotateCw } from 'lucide-react-native';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { SYMPTOM_BODY_VIEWS } from '@/constants/symptomBodyPaths';
 import { bodyPartById, type OrganDef } from '@/constants/symptomCatalog';
 import { ka } from '@/i18n/ka';
@@ -40,6 +40,7 @@ export function SymptomAnatomyCanvas({
   onSelectOrgan,
   renderOrganPin,
 }: Props) {
+  const T = useFigmaSymptoms();
   const view = SYMPTOM_BODY_VIEWS[gender][side];
   const canvasW = useSharedValue(1);
   const canvasH = useSharedValue(1);
@@ -366,6 +367,7 @@ export function SymptomAnatomyCanvas({
 }
 
 function Tooltip({ label }: { label: string }) {
+  const T = useFigmaSymptoms();
   return (
     <View style={{ alignItems: 'center' }}>
       <View
@@ -398,6 +400,7 @@ function Tooltip({ label }: { label: string }) {
 }
 
 function PerspectiveGrid() {
+  const T = useFigmaSymptoms();
   return (
     <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '62%', opacity: 0.28 }}>
       {Array.from({ length: 9 }).map((_, i) => (
@@ -441,6 +444,7 @@ function ZoomBtn({
   onPress: () => void;
   label: string;
 }) {
+  const T = useFigmaSymptoms();
   return (
     <Pressable
       onPress={() => {

@@ -3,7 +3,7 @@ import { ActivityIndicator, Keyboard, Pressable, Text, View } from 'react-native
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
-import { FIGMA_PROFILE_SETUP } from '@/constants/figmaProfileSetupLayout';
+import { useFigmaProfileSetup } from '@/constants/figmaProfileSetupLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { markPhoneVerified } from '@/lib/profileSetupFlow';
@@ -19,6 +19,7 @@ function maskPhoneLast4(phone: string) {
 
 /** Profile setup — 4-digit OTP verify (Figma 8845:310664). */
 export default function ProfileSetupVerifyScreen() {
+  const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const router = useRouter();
   const params = useLocalSearchParams<{ phone?: string }>();
   const phone = typeof params.phone === 'string' ? params.phone : '';

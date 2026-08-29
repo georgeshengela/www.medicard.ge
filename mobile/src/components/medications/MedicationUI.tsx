@@ -1,9 +1,10 @@
 import React from 'react';
 import { Pressable, Text, View, type ViewStyle } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 
 export function MedCard({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <View
       style={[
@@ -23,6 +24,7 @@ export function MedCard({ children, style }: { children: React.ReactNode; style?
 }
 
 export function MedInsetCard({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <View
       style={[
@@ -53,6 +55,7 @@ export function MedSectionHeader({
   onAction?: () => void;
   icon?: React.ReactNode;
 }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <View
       style={{
@@ -79,6 +82,7 @@ export function MedSectionHeader({
 }
 
 export function MedFormSectionHeader({ title, icon }: { title: string; icon: React.ReactNode }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <View
       style={{
@@ -96,6 +100,7 @@ export function MedFormSectionHeader({ title, icon }: { title: string; icon: Rea
 }
 
 export function MedFieldLabel({ children }: { children: string }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <Text style={{ fontSize: 14, fontWeight: '700', color: FIGMA_MEDS.textPrimary, marginBottom: 8 }}>{children}</Text>
   );
@@ -110,6 +115,7 @@ export function MedInputShell({
   onPress?: () => void;
   style?: ViewStyle;
 }) {
+  const FIGMA_MEDS = useFigmaMeds();
   const shell = (
     <View
       style={[
@@ -137,10 +143,12 @@ export function MedInputShell({
 }
 
 export function MedDivider() {
+  const FIGMA_MEDS = useFigmaMeds();
   return <View style={{ height: 1, backgroundColor: FIGMA_MEDS.border, width: '100%' }} />;
 }
 
 export function MedChip({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <Pressable
       onPress={onPress}
@@ -171,12 +179,13 @@ export function MedPrimaryButton({
   disabled?: boolean;
   icon?: React.ReactNode;
 }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
       style={{
-        backgroundColor: FIGMA_MEDS.brand,
+        backgroundColor: FIGMA_MEDS.ctaBg,
         borderRadius: FIGMA_MEDS.inputRadius,
         minHeight: FIGMA_MEDS.inputHeight,
         alignItems: 'center',
@@ -187,7 +196,7 @@ export function MedPrimaryButton({
       }}
     >
       {icon}
-      <Text style={{ color: FIGMA_MEDS.white, fontWeight: '800', fontSize: 16 }}>{label}</Text>
+      <Text style={{ color: FIGMA_MEDS.textOnBrand, fontWeight: '800', fontSize: 16 }}>{label}</Text>
     </Pressable>
   );
 }

@@ -14,7 +14,7 @@ import { ChevronLeft } from 'lucide-react-native';
 import { AssessmentContinueButton } from '@/components/assessment/AssessmentContinueButton';
 import { AssessmentPhaseStepper } from '@/components/assessment/AssessmentPhaseStepper';
 import { KeyboardDoneAccessory } from '@/components/ui/KeyboardDoneAccessory';
-import { FIGMA_ASSESSMENT_INTRO } from '@/constants/figmaAssessmentIntro';
+import { useFigmaAssessmentIntro } from '@/constants/figmaAssessmentIntro';
 import { welcomeTopInset } from '@/constants/figmaWelcomeLayout';
 
 type Props = {
@@ -59,6 +59,7 @@ export function ProfileSetupShell({
   primaryTone = 'step',
   hidePrimary = false,
 }: Props) {
+  const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
   const insets = useSafeAreaInsets();
   const topInset = welcomeTopInset(insets.top);
 
@@ -69,7 +70,7 @@ export function ProfileSetupShell({
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#FFFFFF' }}
+      style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_INTRO.pageBg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? topInset : 0}
     >
@@ -86,7 +87,7 @@ export function ProfileSetupShell({
             hitSlop={12}
             style={{ width: 40, height: 40, alignItems: 'flex-start', justifyContent: 'center', marginBottom: 4 }}
           >
-            <ChevronLeft size={24} color="#1F2937" strokeWidth={2.2} />
+            <ChevronLeft size={24} color={FIGMA_ASSESSMENT_INTRO.titleColor} strokeWidth={2.2} />
           </Pressable>
         ) : showStepper ? (
           <AssessmentPhaseStepper activeIndex={phaseActiveIndex} completedThrough={phaseCompletedThrough} />

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
+import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
 import {
   digitsToYmd,
@@ -381,7 +382,7 @@ function CycleCalendarModal({
     : ka.cycle.pickDate;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <Pressable
         style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: c.overlay }}
         onPress={onClose}

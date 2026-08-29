@@ -25,7 +25,7 @@ export function AuthBrandHeader({ subtitle, compact }: Props) {
         style={{ marginTop: compact ? 14 : 20 }}
       />
       <Text
-        className="max-w-[320px] text-center font-sans text-text-300"
+        className="max-w-[320px] text-center font-sans text-text-200"
         style={{
           marginTop: FIGMA_AUTH.heroGap,
           fontSize: FIGMA_AUTH.heroSubtitleSize,

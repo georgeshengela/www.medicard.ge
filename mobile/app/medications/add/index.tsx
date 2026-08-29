@@ -3,10 +3,11 @@ import { Pressable, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { ChevronRight, Pill, ScanLine, Search } from 'lucide-react-native';
 import { MedInputShell } from '@/components/medications/MedicationUI';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 
 export default function AddMedicationIntroScreen() {
+  const FIGMA_MEDS = useFigmaMeds();
   const router = useRouter();
 
   return (

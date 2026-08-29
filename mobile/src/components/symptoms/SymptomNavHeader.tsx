@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 
 type Props = {
   title?: string;
@@ -12,6 +12,7 @@ type Props = {
 };
 
 export function SymptomNavHeader({ title, onBack, right, bordered }: Props) {
+  const T = useFigmaSymptoms();
   const insets = useSafeAreaInsets();
 
   return (

@@ -13,9 +13,11 @@ import { registerPushTokenWithServer } from '@/lib/notifications';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
+import { useFigmaProfileSetup } from '@/constants/figmaProfileSetupLayout';
 
 /** Enable notifications — Figma 8845:312878 */
 export default function ProfileSetupNotificationsScreen() {
+  const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const router = useRouter();
   const preview = useOnboardingDevPreview();
   const { ready, user, healthProfile, setHealthProfile } = useAuth();
@@ -81,7 +83,7 @@ export default function ProfileSetupNotificationsScreen() {
           style={{
             height: 240,
             borderBottomWidth: 1,
-            borderBottomColor: '#D1D5DB',
+            borderBottomColor: FIGMA_PROFILE_SETUP.inputBorder,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -90,10 +92,10 @@ export default function ProfileSetupNotificationsScreen() {
             style={{
               width: '100%',
               maxWidth: 320,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: FIGMA_PROFILE_SETUP.cardBg,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: '#E5E7EB',
+              borderColor: FIGMA_PROFILE_SETUP.inputBorder,
               padding: 16,
               flexDirection: 'row',
               gap: 12,
@@ -106,10 +108,10 @@ export default function ProfileSetupNotificationsScreen() {
           >
             <MedicardLogoMark size={40} />
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, color: '#1F2937' }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, color: FIGMA_PROFILE_SETUP.titleColor }}>
                 {ka.profileSetup.notificationsPreviewTitle}
               </Text>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, color: '#4B5563' }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, color: FIGMA_PROFILE_SETUP.bodyColor }}>
                 {ka.profileSetup.notificationsPreviewBody}
               </Text>
               <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, color: '#14B8A6', marginTop: 4 }}>

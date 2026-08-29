@@ -2,18 +2,57 @@ import { prisma } from './prisma.js';
 import { env } from '../config/env.js';
 import { buildSubscriptionDates } from './billing.js';
 
+/**
+ * Canonical monthly AI cap.
+ * Some FREE rows stored the daily cap (3) in monthlyAiLimit — that made admin
+ * show 11/3 at 100%. If monthly equals a small daily cap, expand to a month.
+ */
+export function resolvePackageAiLimit(pkg) {
+  if (!pkg) {
+    return env.FREE_MONTHLY_AI_LIMIT < 0 ? Number.POSITIVE_INFINITY : env.FREE_MONTHLY_AI_LIMIT;
+  }
+  const monthly = Number(pkg.monthlyAiLimit);
+  const daily = Number(pkg.dailyAiLimit);
+  if (monthly < 0 || daily < 0) return Number.POSITIVE_INFINITY;
+  const monthlySet = Number.isFinite(monthly) && monthly > 0;
+  const dailySet = Number.isFinite(daily) && daily > 0;
+  if (monthlySet && dailySet && monthly === daily && monthly <= 10) {
+    return daily * 30;
+  }
+  if (monthlySet) return monthly;
+  if (dailySet) return daily * 30;
+  return env.FREE_MONTHLY_AI_LIMIT;
+}
+
+/**
+ * Cap the user actually spends against. FREE = 3/day, STANDARD = 50/day.
+ * After they hit this number, the window resets 24h later — not at month end.
+ */
+export function resolveConsumeLimit(pkg) {
+  if (!pkg) {
+    return env.FREE_DAILY_AI_LIMIT < 0 ? Number.POSITIVE_INFINITY : env.FREE_DAILY_AI_LIMIT;
+  }
+  const monthly = Number(pkg.monthlyAiLimit);
+  const daily = Number(pkg.dailyAiLimit);
+  if (monthly < 0 || daily < 0) return Number.POSITIVE_INFINITY;
+  if (Number.isFinite(daily) && daily > 0) return daily;
+  if (Number.isFinite(monthly) && monthly > 0) return monthly;
+  return env.FREE_DAILY_AI_LIMIT;
+}
+
 export function publicPackage(pkg) {
   if (!pkg) return null;
-  const monthlyAiLimit = pkg.monthlyAiLimit ?? pkg.dailyAiLimit * 30;
+  const monthlyAiLimit = resolvePackageAiLimit(pkg);
+  const unlimited = !Number.isFinite(monthlyAiLimit);
   return {
     id: pkg.id,
     code: pkg.code,
     nameKa: pkg.nameKa,
     nameEn: pkg.nameEn,
     descriptionKa: pkg.descriptionKa,
-    monthlyAiLimit,
+    monthlyAiLimit: unlimited ? -1 : monthlyAiLimit,
     dailyAiLimit: pkg.dailyAiLimit,
-    unlimited: monthlyAiLimit < 0,
+    unlimited,
     priceGel: pkg.priceGel,
     billingPeriod: 'monthly',
     features: pkg.features ?? {},
@@ -30,7 +69,7 @@ export async function ensureFreePackageId() {
       code: 'FREE',
       nameKa: 'უფასო',
       nameEn: 'Free',
-      descriptionKa: '90 AI შეკითხვა თვეში. საბაზისო ჩატი და ძირითადი მოდულები.',
+      descriptionKa: '3 AI შეკითხვა დღეში. საბაზისო ჩატი და ძირითადი მოდულები.',
       monthlyAiLimit: env.FREE_MONTHLY_AI_LIMIT,
       dailyAiLimit: env.FREE_DAILY_AI_LIMIT,
       priceGel: 0,
@@ -69,19 +108,23 @@ export async function resolveMonthlyLimit(userId) {
   const { package: pkg, expired } = (await getUserPackage(userId)) ?? {};
   if (!pkg || expired) {
     const free = await prisma.package.findUnique({ where: { code: 'FREE' } });
-    const limit = free?.monthlyAiLimit ?? (free?.dailyAiLimit ?? env.FREE_DAILY_AI_LIMIT) * 30;
-    return limit < 0 ? Number.POSITIVE_INFINITY : limit;
+    return resolvePackageAiLimit(free);
   }
-  const limit = pkg.monthlyAiLimit ?? pkg.dailyAiLimit * 30;
-  if (limit < 0) return Number.POSITIVE_INFINITY;
-  return limit;
+  return resolvePackageAiLimit(pkg);
 }
 
-/** @deprecated Use resolveMonthlyLimit */
+export async function resolveUserConsumeLimit(userId) {
+  const { package: pkg, expired } = (await getUserPackage(userId)) ?? {};
+  if (!pkg || expired) {
+    const free = await prisma.package.findUnique({ where: { code: 'FREE' } });
+    return resolveConsumeLimit(free);
+  }
+  return resolveConsumeLimit(pkg);
+}
+
+/** @deprecated Use resolveUserConsumeLimit */
 export async function resolveDailyLimit(userId) {
-  const monthly = await resolveMonthlyLimit(userId);
-  if (!Number.isFinite(monthly)) return Number.POSITIVE_INFINITY;
-  return Math.max(1, Math.ceil(monthly / 30));
+  return resolveUserConsumeLimit(userId);
 }
 
 /**

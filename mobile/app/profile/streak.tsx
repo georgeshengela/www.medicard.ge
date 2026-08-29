@@ -79,18 +79,18 @@ export default function StreakScreen() {
             justifyContent: 'center',
             paddingHorizontal: 16,
             paddingBottom: Math.max(insets.bottom, 24),
-            gap: 40,
+            gap: 32,
           }}
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ gap: 12, alignItems: 'center' }}>
+          <View style={{ gap: 10, alignItems: 'center' }}>
             <StreakFlameHero weekStreak={weekStreak} />
             <Text
               style={{
                 fontFamily: 'NotoSansGeorgian_600SemiBold',
-                fontSize: 30,
-                lineHeight: 38,
-                letterSpacing: -0.25,
+                fontSize: 24,
+                lineHeight: 32,
+                letterSpacing: -0.3,
                 color: FIGMA.textPrimary,
                 textAlign: 'center',
                 width: '100%',
@@ -116,13 +116,13 @@ export default function StreakScreen() {
 
             <View style={{ height: 1, backgroundColor: FIGMA.border, width: '100%' }} />
 
-            <View style={{ alignItems: 'center', gap: 8 }}>
+            <View style={{ alignItems: 'center', gap: 6 }}>
               <Text
                 style={{
                   fontFamily: 'NotoSansGeorgian_700Bold',
-                  fontSize: 30,
-                  lineHeight: 38,
-                  letterSpacing: -0.25,
+                  fontSize: 28,
+                  lineHeight: 34,
+                  letterSpacing: -0.4,
                   color: FIGMA.textPrimary,
                   textAlign: 'center',
                 }}
@@ -132,8 +132,8 @@ export default function StreakScreen() {
               <Text
                 style={{
                   fontFamily: 'NotoSansGeorgian_600SemiBold',
-                  fontSize: 18,
-                  lineHeight: 24,
+                  fontSize: 16,
+                  lineHeight: 22,
                   color: FIGMA.textPrimary,
                   textAlign: 'center',
                 }}
@@ -143,10 +143,11 @@ export default function StreakScreen() {
               <Text
                 style={{
                   fontFamily: 'NotoSansGeorgian_400Regular',
-                  fontSize: 16,
-                  lineHeight: 26,
+                  fontSize: 14,
+                  lineHeight: 22,
                   color: FIGMA.textSecondary,
                   textAlign: 'center',
+                  paddingHorizontal: 8,
                 }}
               >
                 {ka.checkIn.longestBody}

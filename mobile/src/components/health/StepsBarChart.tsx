@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { LayoutChangeEvent, Pressable, Text, View } from 'react-native';
-import { FIGMA_STEPS } from '@/constants/figmaStepsLayout';
+import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { formatStepsCount } from '@/lib/stepsMetrics.shared';
 import type { StepsChartBar } from '@/types/stepsMetrics';
 
@@ -10,6 +10,7 @@ type Props = {
 };
 
 export function StepsBarChart({ bars, goalLine }: Props) {
+  const FIGMA_STEPS = useFigmaSteps();
   const [width, setWidth] = useState(0);
   const max = useMemo(() => Math.max(...bars.map((b) => b.value), goalLine ?? 0, 1), [bars, goalLine]);
   const [selected, setSelected] = useState<number | null>(null);

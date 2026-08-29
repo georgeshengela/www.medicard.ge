@@ -2,9 +2,10 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 
-const OVERLAY = 'rgba(15, 23, 42, 0.52)';
+const OVERLAY = APP_MODAL_OVERLAY;
 
 type Props = {
   visible: boolean;
@@ -16,10 +17,12 @@ type Props = {
 };
 
 export function MedicationBottomSheet({ visible, title, subtitle, onClose, children, scrollable }: Props) {
+  const FIGMA_MEDS = useFigmaMeds();
   const insets = useSafeAreaInsets();
+  const styles = createMedSheetStyles(FIGMA_MEDS);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" />
 
@@ -56,7 +59,8 @@ export function MedicationBottomSheet({ visible, title, subtitle, onClose, child
   );
 }
 
-const styles = StyleSheet.create({
+function createMedSheetStyles(t: ReturnType<typeof useFigmaMeds>) {
+  return StyleSheet.create({
   root: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -66,20 +70,20 @@ const styles = StyleSheet.create({
     backgroundColor: OVERLAY,
   },
   sheet: {
-    backgroundColor: FIGMA_MEDS.white,
+    backgroundColor: t.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
     paddingTop: 12,
     maxHeight: '88%',
     borderTopWidth: 1,
-    borderColor: FIGMA_MEDS.border,
+    borderColor: t.border,
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: FIGMA_MEDS.border,
+    backgroundColor: t.border,
     alignSelf: 'center',
     marginBottom: 16,
   },
@@ -92,11 +96,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: FIGMA_MEDS.textPrimary,
+    color: t.textPrimary,
   },
   subtitle: {
     fontSize: 14,
-    color: FIGMA_MEDS.textSecondary,
+    color: t.textSecondary,
     marginTop: 4,
     lineHeight: 20,
   },
@@ -104,8 +108,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: FIGMA_MEDS.brandQuaternary,
+    backgroundColor: t.brandQuaternary,
     alignItems: 'center',
     justifyContent: 'center',
   },
 });
+}

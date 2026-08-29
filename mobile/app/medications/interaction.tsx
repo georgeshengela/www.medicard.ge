@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { ShieldCheck } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Markdown } from '@/components/ui/Markdown';
 import { QuotaSheet } from '@/components/QuotaSheet';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
 
 export default function MedicationInteractionScreen() {
+  const FIGMA_MEDS = useFigmaMeds();
+  const router = useRouter();
   const { applyUsage } = useAuth();
   const [review, setReview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,7 +66,7 @@ export default function MedicationInteractionScreen() {
           <View
             style={{
               marginTop: 20,
-              backgroundColor: '#fff',
+              backgroundColor: FIGMA_MEDS.surface,
               borderRadius: 24,
               padding: 18,
               borderWidth: 1,
@@ -85,7 +87,7 @@ export default function MedicationInteractionScreen() {
         onClose={() => setQuotaBlock(undefined)}
         onUpgrade={() => {
           setQuotaBlock(undefined);
-          Alert.alert(ka.usage.upsellTitle, ka.usage.premiumSoon);
+          router.push('/package');
         }}
       />
     </>

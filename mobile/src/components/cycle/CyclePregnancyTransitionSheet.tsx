@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
@@ -42,7 +43,7 @@ export function CyclePregnancyTransitionSheet({ visible, lastPeriod, onClose, on
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <Pressable
         style={{ flex: 1, backgroundColor: c.overlay, justifyContent: 'flex-end' }}
         onPress={onClose}

@@ -11,13 +11,14 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Calendar, ChevronDown } from 'lucide-react-native';
 import { StepsHistoryRow } from '@/components/health/StepsHistoryRow';
-import { FIGMA_STEPS } from '@/constants/figmaStepsLayout';
+import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { useStepsMetrics } from '@/hooks/useStepsMetrics';
 import { ka } from '@/i18n/ka';
 import { filterHistoryByMonth, monthLabelKa } from '@/lib/stepsMetrics.shared';
 
 /** Figma 8850:134246 — steps history by day. */
 export default function StepsHistoryScreen() {
+  const FIGMA_STEPS = useFigmaSteps();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { bundle, loading, refresh } = useStepsMetrics('1m');
@@ -44,7 +45,7 @@ export default function StepsHistoryScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: FIGMA_STEPS.pageBg, paddingTop: insets.top }}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 8, minHeight: 56, justifyContent: 'center' }}>
         <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={12} style={{ width: 40 }}>
           <ArrowLeft size={24} color={FIGMA_STEPS.textPrimary} strokeWidth={2.2} />

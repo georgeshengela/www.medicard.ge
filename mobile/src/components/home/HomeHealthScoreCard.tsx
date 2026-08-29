@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRight, Droplets, Heart } from 'lucide-react-native';
-import { FIGMA_HOME_DASHBOARD } from '@/constants/figmaHomeDashboardLayout';
+import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
 import { ka } from '@/i18n/ka';
 
 type Props = {
@@ -19,6 +19,7 @@ export function HomeHealthScoreCard({
   waterLiters,
   onPress,
 }: Props) {
+  const FIGMA_HOME_DASHBOARD = useFigmaHomeDashboard();
   const scoreText = score != null ? Math.round(score).toString() : '—';
 
   return (
@@ -27,7 +28,7 @@ export function HomeHealthScoreCard({
         accessibilityRole="button"
         onPress={onPress}
         style={{
-          backgroundColor: '#FFFFFF',
+          backgroundColor: FIGMA_HOME_DASHBOARD.cardBg,
           borderRadius: FIGMA_HOME_DASHBOARD.cardRadius,
           borderWidth: 1,
           borderColor: FIGMA_HOME_DASHBOARD.border,
@@ -119,7 +120,7 @@ export function HomeHealthScoreCard({
             </View>
           </View>
 
-          <ChevronRight size={24} color="#9CA3AF" strokeWidth={2} />
+          <ChevronRight size={24} color={FIGMA_HOME_DASHBOARD.chevron} strokeWidth={2} />
         </View>
       </Pressable>
     </View>

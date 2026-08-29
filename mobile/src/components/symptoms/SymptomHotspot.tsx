@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, Text, View, type ViewStyle } from 'react-native';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 
 type HotspotStyle = Pick<ViewStyle, 'left' | 'top'>;
 
@@ -12,6 +12,7 @@ type Props = {
 };
 
 export function SymptomHotspot({ selected, onPress, label, style }: Props) {
+  const T = useFigmaSymptoms();
   return (
     <Pressable
       onPress={onPress}

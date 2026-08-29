@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { isLatinUnitLabel, unitLabelFontFamily } from '@/components/assessment/unitLabelFont';
-import { ASSESSMENT } from '@/constants/assessmentLayout';
+import { useAssessment } from '@/constants/assessmentLayout';
 
 export type UnitOption = {
   value: string;
@@ -17,6 +17,7 @@ type Props = {
 
 /** Figma Tab — 4pt inset, 16pt track, 12pt active pill. */
 export function UnitSegment({ value, options, onChange, disabled }: Props) {
+  const ASSESSMENT = useAssessment();
   return (
     <View
       style={{

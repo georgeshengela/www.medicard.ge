@@ -1,23 +1,24 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronRight, Clock, MessageSquareText, Pill, Sparkles } from 'lucide-react-native';
+import { ChevronRight, MessageSquareText, Sparkles } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { UsageBanner } from '@/components/PlanUsageCard';
 import { Disclaimer } from '@/components/Disclaimer';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeDashboardTop } from '@/components/home/HomeDashboardTop';
 import { HomeAccountSetupCard } from '@/components/home/HomeAccountSetupCard';
+import { HomeBmiWeightSection } from '@/components/home/HomeBmiWeightSection';
+import { HomeNextDoseSection } from '@/components/home/HomeNextDoseSection';
 import { HomeHealthMetricsSection } from '@/components/home/HomeHealthMetricsSection';
 import { HomeStartSection } from '@/components/home/HomeStartSection';
-import { HomePowerToolsSection } from '@/components/home/HomePowerToolsSection';
-import { modulesForGender, POWER_TOOL_MODULE_KEYS, SPOTLIGHT_MODULE_KEYS, type ModuleTile } from '@/constants/modules';
+import { HomeAnalysisSection } from '@/components/home/HomeAnalysisSection';
+import { HomeConsiliumCard } from '@/components/home/HomeConsiliumCard';
+import { modulesForGender, POWER_TOOL_MODULE_KEYS, SPOTLIGHT_MODULE_KEYS } from '@/constants/modules';
 import { homeAccentFor } from '@/constants/homeVisuals';
 import { HOME_SPACE as S } from '@/constants/homeSpacing';
 import { ka } from '@/i18n/ka';
-import { api, type ChatSummary, type ScheduledDose } from '@/lib/api';
-import { formatRelative, nextDoseTime } from '@/lib/format';
+import { api, type ChatSummary } from '@/lib/api';
+import { formatRelative } from '@/lib/format';
 import { getCyclePromptSeen, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { useThemeColors, useIsDark } from '@/theme/colors';
@@ -34,14 +35,16 @@ export default function Home() {
   const isDark = useIsDark();
 
   const [chats, setChats] = useState<ChatSummary[]>([]);
-  const [schedule, setSchedule] = useState<ScheduledDose[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showCyclePrompt, setShowCyclePrompt] = useState(false);
 
   const load = useCallback(async () => {
-    const [chatResult, medResult] = await Promise.allSettled([api.chats.list(), api.medications.list()]);
-    if (chatResult.status === 'fulfilled') setChats(chatResult.value.sessions.slice(0, 3));
-    if (medResult.status === 'fulfilled') setSchedule(medResult.value.schedule);
+    try {
+      const { sessions } = await api.chats.list();
+      setChats(sessions.slice(0, 3));
+    } catch {
+      /* pull-to-refresh retries */
+    }
   }, []);
 
   const maybeShowCyclePrompt = useCallback(async () => {
@@ -72,9 +75,6 @@ export default function Home() {
     [router],
   );
 
-  const upcoming = nextDoseTime(schedule.map((dose) => dose.time));
-  const nextDose = upcoming ? schedule.find((dose) => dose.time === upcoming) : undefined;
-
   const firstName = user?.fullName?.split(' ')[0] ?? '';
   const initials = user?.fullName
     ?.split(' ')
@@ -85,10 +85,11 @@ export default function Home() {
 
   const tiles = modulesForGender(user?.gender);
   const spotlights = tiles.filter((tile) => SPOTLIGHT_MODULE_KEYS.has(tile.key));
-  const powerTools = tiles.filter((tile) => POWER_TOOL_MODULE_KEYS.has(tile.key));
   const serviceTiles = tiles.filter(
     (tile) => !SPOTLIGHT_MODULE_KEYS.has(tile.key) && !POWER_TOOL_MODULE_KEYS.has(tile.key),
   );
+  const analysisTiles = serviceTiles.filter((tile) => tile.key !== 'consilium');
+  const consiliumTile = serviceTiles.find((tile) => tile.key === 'consilium');
 
   const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
   const analysis = analysisFromProfile(extra);
@@ -115,17 +116,22 @@ export default function Home() {
           initials={initials || 'M'}
           gender={user?.gender}
           avatarId={avatarId}
-          streak={1}
+          streak={user?.currentStreak ?? 0}
           score={analysis?.score ?? null}
           scoreLabel={analysis?.labelKa ?? ka.home.scorePending}
           statusLabel={analysis?.bodyComposition?.physiqueLabelKa ?? ka.home.healthyStatus}
           waterLiters={healthProfile?.waterIntakeL ?? null}
           onAvatarPress={() => router.push('/(tabs)/profile' as never)}
           onPackagePress={() => router.push('/package' as never)}
+          onStreakPress={() => router.push('/profile/streak' as never)}
           onScorePress={() => {
             if (analysis) router.push('/(auth)/profile-setup/results?preview=1' as never);
           }}
         />
+
+        <HomeNextDoseSection refreshing={refreshing} />
+
+        <HomeBmiWeightSection profile={healthProfile} />
 
         {setupProgress.visible ? (
           <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
@@ -133,63 +139,23 @@ export default function Home() {
           </View>
         ) : null}
 
-        <HomeHealthMetricsSection
-          profile={healthProfile}
-          onOpenAll={() => router.push('/health-metrics' as never)}
-        />
+        <HomeHealthMetricsSection profile={healthProfile} />
 
         <View className="px-4">
-        <View>
-        <UsageBanner compact />
-        </View>
-
         <HomeStartSection
           spotlights={spotlights}
+          firstName={firstName}
           onPress={(tile) => router.push(tile.href as never)}
         />
 
-        {nextDose ? (
-          <>
-            <SectionLabel title={ka.home.nextDose} />
-            <Card onPress={() => router.push('/(tabs)/medications')}>
-              <View className="flex-row items-center">
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 12,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: colors.successBg,
-                    borderWidth: 1,
-                    borderColor: `${colors.success}40`,
-                  }}
-                >
-                  <Pill size={18} color={colors.success} strokeWidth={2.1} />
-                </View>
-                <View className="ml-2.5 flex-1">
-                  <Text className="text-base font-bold text-text-100" numberOfLines={1}>
-                    {nextDose.medName}
-                  </Text>
-                  <Text className="mt-0.5 text-sm text-text-300">{nextDose.dosage}</Text>
-                </View>
-                <Badge label={nextDose.time} tone="success" icon={Clock} />
-              </View>
-            </Card>
-          </>
+        <HomeAnalysisSection
+          tiles={analysisTiles}
+          onPress={(tile) => router.push(tile.href as never)}
+        />
+
+        {consiliumTile ? (
+          <HomeConsiliumCard onPress={() => router.push(consiliumTile.href as never)} />
         ) : null}
-
-        <HomePowerToolsSection
-          tools={powerTools}
-          onPress={(tile) => router.push(tile.href as never)}
-        />
-
-        <SectionLabel title={ka.home.analysisTools} />
-        <View className="flex-row flex-wrap" style={{ gap: S.blockGap }}>
-          {serviceTiles.map((tile) => (
-            <ServiceTile key={tile.key} tile={tile} onPress={() => router.push(tile.href as never)} />
-          ))}
-        </View>
 
         <View
           className="flex-row items-center justify-between"
@@ -266,48 +232,6 @@ function SectionLabel({
     >
       {title}
     </Text>
-  );
-}
-
-function ServiceTile({ tile, onPress }: { tile: ModuleTile; onPress: () => void }) {
-  const isDark = useIsDark();
-  const accent = homeAccentFor(tile.key, isDark);
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={tile.title}
-      onPress={onPress}
-      className="active:opacity-88"
-      style={{
-        width: '48%',
-        borderRadius: S.cardRadius,
-        borderWidth: 1,
-        borderColor: accent.border,
-        backgroundColor: accent.soft,
-        padding: 10,
-        minHeight: 96,
-      }}
-    >
-      <View
-        style={{
-          width: S.iconSm,
-          height: S.iconSm,
-          borderRadius: 11,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: accent.bg,
-        }}
-      >
-        <tile.icon size={18} color="#ffffff" strokeWidth={2.1} />
-      </View>
-      <Text className="mt-2 text-[13px] font-bold leading-[17px] text-text-100" numberOfLines={2}>
-        {tile.title}
-      </Text>
-      <Text className="mt-0.5 text-[10px] leading-[14px] text-text-300" numberOfLines={2}>
-        {tile.subtitle}
-      </Text>
-    </Pressable>
   );
 }
 

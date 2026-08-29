@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Plus } from 'lucide-react-native';
-import { FIGMA_HEALTH_METRICS_CAROUSEL as C } from '@/constants/figmaHealthMetricsCarouselLayout';
+import { useFigmaHealthMetricsCarousel } from '@/constants/figmaHealthMetricsCarouselLayout';
 
 type Props = {
   label: string;
@@ -9,6 +9,7 @@ type Props = {
 };
 
 export function HomeHealthMetricAddCard({ label, onPress }: Props) {
+  const C = useFigmaHealthMetricsCarousel();
   return (
     <Pressable
       accessibilityRole="button"
@@ -19,7 +20,7 @@ export function HomeHealthMetricAddCard({ label, onPress }: Props) {
         style={{
           width: C.cardWidth,
           minHeight: 140,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: C.cardBg,
           borderRadius: C.cardRadius,
           borderWidth: 1.5,
           borderColor: C.brand,

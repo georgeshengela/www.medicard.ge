@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { PersonStanding, Search, Settings, Sparkles } from 'lucide-react-native';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 
 type Props = {
@@ -14,6 +14,7 @@ type Props = {
 };
 
 export function SymptomComposer({ score, onFocusInput, onSend, onAnatomy, onSettings, sendDisabled }: Props) {
+  const T = useFigmaSymptoms();
   const fill = Math.max(2.5, Math.min(100, score));
 
   return (
@@ -70,6 +71,7 @@ function CircleBtn({
   disabled?: boolean;
   label: string;
 }) {
+  const T = useFigmaSymptoms();
   return (
     <Pressable
       accessibilityRole="button"

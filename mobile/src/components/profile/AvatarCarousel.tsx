@@ -22,6 +22,7 @@ import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
 import { AVATAR_IDS, AVATAR_SOURCES, type AvatarId } from '@/constants/avatarAssets';
 import { FIGMA_FRAME } from '@/constants/figmaWelcomeLayout';
 import { ka } from '@/i18n/ka';
+import { useThemeColors } from '@/theme/colors';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 const AnimatedImage = Animated.createAnimatedComponent(Image);
@@ -75,6 +76,9 @@ function AvatarFace({
   scrollX: SharedValue<number>;
   onPress: (index: number) => void;
 }) {
+  const colors = useThemeColors();
+  const faceBg = colors.surfaceRaised;
+  const idleBorder = colors.bg300;
   const containerStyle = useAnimatedStyle(() => {
     const dist = Math.abs(index - scrollX.value / ITEM_W);
     const size = interpolate(dist, [0, 1, 2], [SIZE_CENTER, SIZE_NEAR, SIZE_FAR], Extrapolation.CLAMP);
@@ -85,10 +89,10 @@ function AvatarFace({
       height: size,
       borderRadius: size / 2,
       borderWidth: border,
-      borderColor: dist < 0.35 ? '#14B8A6' : '#E5E7EB',
+      borderColor: dist < 0.35 ? '#14B8A6' : idleBorder,
       opacity,
       overflow: 'hidden' as const,
-      backgroundColor: '#FFFFFF',
+      backgroundColor: faceBg,
     };
   });
 

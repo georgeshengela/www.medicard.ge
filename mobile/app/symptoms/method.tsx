@@ -6,12 +6,13 @@ import { Bot, Check, ClipboardList, type LucideIcon } from 'lucide-react-native'
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
 import { SymptomCta } from '@/components/symptoms/SymptomCta';
 import { SYMPTOM_INTRO_ILLUSTRATION } from '@/constants/symptomAssets';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 import { updateSymptomChecker } from '@/lib/symptomCheckerStore';
 import type { SymptomMethod } from '@/types/symptoms';
 
 export default function SymptomMethodScreen() {
+  const T = useFigmaSymptoms();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [method, setMethod] = useState<SymptomMethod>('manual');
@@ -84,6 +85,7 @@ function MethodRow({
   subtitle: string;
   onPress: () => void;
 }) {
+  const T = useFigmaSymptoms();
   return (
     <Pressable
       onPress={onPress}

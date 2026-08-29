@@ -1,31 +1,64 @@
-import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronRight, Search, X } from 'lucide-react-native';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedChip, MedDivider, MedInsetCard, MedPrimaryButton } from '@/components/medications/MedicationUI';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
-import { MEDICATION_CATALOG } from '@/constants/medicationCatalog';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
+import { api, type CatalogProductSummary, type DrugCategoryInfo } from '@/lib/api';
+import { catalogProductMeta, catalogProductSetupParams } from '@/lib/medicationCatalogNav';
 
-const CATEGORIES = ['ყველა', 'გული', 'დიაბეტი', 'ალერგია', 'ტკივილი', 'ვიტამინები'] as const;
+function paramStr(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? '';
+  return value ?? '';
+}
 
 export default function MedicationSearchScreen() {
+  const FIGMA_MEDS = useFigmaMeds();
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string }>();
-  const [query, setQuery] = useState(params.q ?? '');
-  const [category, setCategory] = useState<string>('ყველა');
+  const [query, setQuery] = useState(paramStr(params.q));
+  const [debouncedQuery, setDebouncedQuery] = useState(paramStr(params.q).trim());
+  const [categorySlug, setCategorySlug] = useState<string | null>(null);
+  const [categories, setCategories] = useState<DrugCategoryInfo[]>([]);
+  const [products, setProducts] = useState<CatalogProductSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return MEDICATION_CATALOG.slice(0, 20);
-    return MEDICATION_CATALOG.filter(
-      (e) =>
-        e.inn.toLowerCase().includes(q) ||
-        e.ka.toLowerCase().includes(q) ||
-        e.aliases?.some((a) => a.toLowerCase().includes(q)),
-    );
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 350);
+    return () => clearTimeout(timer);
   }, [query]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [catRes, prodRes] = await Promise.allSettled([
+        api.pharmacy.categories(),
+        api.pharmacy.products({
+          q: debouncedQuery || undefined,
+          category: categorySlug ?? undefined,
+          sort: 'name',
+          limit: 40,
+        }),
+      ]);
+      if (catRes.status === 'fulfilled') setCategories(catRes.value.categories);
+      if (prodRes.status === 'fulfilled') setProducts(prodRes.value.products);
+      else setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [categorySlug, debouncedQuery]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const chips = useMemo(() => [{ slug: null as string | null, nameKa: 'ყველა' }, ...categories], [categories]);
+
+  const openSetup = (product: CatalogProductSummary) => {
+    router.push({ pathname: '/medications/add/setup', params: catalogProductSetupParams(product) });
+  };
 
   return (
     <>
@@ -56,6 +89,7 @@ export default function MedicationSearchScreen() {
               placeholderTextColor={FIGMA_MEDS.textMuted}
               style={{ flex: 1, paddingVertical: 10, fontSize: 16, lineHeight: 22, color: FIGMA_MEDS.textPrimary }}
               autoFocus={!params.q}
+              returnKeyType="search"
             />
             {query ? (
               <Pressable onPress={() => setQuery('')} hitSlop={12}>
@@ -64,22 +98,34 @@ export default function MedicationSearchScreen() {
             ) : null}
           </View>
 
-          <FlatList
-            horizontal
-            data={CATEGORIES as unknown as string[]}
-            keyExtractor={(item) => item}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, marginBottom: 16 }}
-            renderItem={({ item }) => (
-              <MedChip label={item} active={category === item} onPress={() => setCategory(item)} />
-            )}
-          />
+          {chips.length > 1 ? (
+            <FlatList
+              horizontal
+              data={chips}
+              keyExtractor={(item) => item.slug ?? 'all'}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, marginBottom: 16 }}
+              renderItem={({ item }) => (
+                <MedChip
+                  label={item.nameKa}
+                  active={categorySlug === item.slug}
+                  onPress={() => setCategorySlug(item.slug)}
+                />
+              )}
+            />
+          ) : null}
         </View>
 
-        {results.length === 0 ? (
+        {loading && products.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color={FIGMA_MEDS.brand} />
+          </View>
+        ) : products.length === 0 ? (
           <View style={{ alignItems: 'center', paddingTop: 48, paddingHorizontal: 16 }}>
             <Text style={{ fontWeight: '700', fontSize: 18, color: FIGMA_MEDS.textPrimary }}>{ka.meds.searchNotFound}</Text>
-            <Text style={{ color: FIGMA_MEDS.textSecondary, marginTop: 8, textAlign: 'center', lineHeight: 22 }}>{ka.meds.searchNotFoundHint}</Text>
+            <Text style={{ color: FIGMA_MEDS.textSecondary, marginTop: 8, textAlign: 'center', lineHeight: 22 }}>
+              {ka.meds.searchNotFoundHint}
+            </Text>
             <View style={{ marginTop: 24, width: '100%' }}>
               <MedPrimaryButton
                 label={ka.meds.addCustom}
@@ -91,26 +137,35 @@ export default function MedicationSearchScreen() {
           <View style={{ paddingHorizontal: 16, flex: 1 }}>
             <MedInsetCard style={{ padding: 0, overflow: 'hidden', flex: 1 }}>
               <FlatList
-                data={results}
-                keyExtractor={(item) => item.inn}
+                data={products}
+                keyExtractor={(item) => item.id}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{ paddingBottom: 40 }}
                 renderItem={({ item, index }) => {
-                  const alias = item.aliases?.[0] ?? item.inn;
+                  const meta = catalogProductMeta(item);
                   return (
-                    <Pressable
-                      onPress={() => router.push({ pathname: '/medications/add/setup', params: { name: item.ka, generic: item.inn } })}
-                    >
+                    <Pressable onPress={() => openSetup(item)}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 }}>
-                        <MedicationPillIcon size={48} border />
+                        <MedicationPillIcon size={48} imageUrl={item.imageUrl} border />
                         <View style={{ flex: 1, gap: 4 }}>
-                          <Text style={{ fontSize: 12, fontWeight: '500', color: FIGMA_MEDS.textSecondary }}>{alias}</Text>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: FIGMA_MEDS.textPrimary }}>{item.ka}</Text>
-                          <Text style={{ fontSize: 14, color: FIGMA_MEDS.textSecondary }}>{item.inn}</Text>
+                          {item.category?.nameKa ? (
+                            <Text style={{ fontSize: 12, fontWeight: '500', color: FIGMA_MEDS.textSecondary }} numberOfLines={1}>
+                              {item.category.nameKa}
+                            </Text>
+                          ) : null}
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: FIGMA_MEDS.textPrimary }} numberOfLines={2}>
+                            {item.name}
+                          </Text>
+                          {meta ? (
+                            <Text style={{ fontSize: 14, color: FIGMA_MEDS.textSecondary }} numberOfLines={1}>
+                              {meta}
+                            </Text>
+                          ) : null}
                         </View>
                         <ChevronRight size={24} color={FIGMA_MEDS.textMuted} strokeWidth={2} />
                       </View>
-                      {index < results.length - 1 ? <MedDivider /> : null}
+                      {index < products.length - 1 ? <MedDivider /> : null}
                     </Pressable>
                   );
                 }}

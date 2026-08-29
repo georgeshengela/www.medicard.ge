@@ -12,8 +12,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronRight, Footprints, Link2, Lock } from 'lucide-react-native';
 import { HealthMetricCard } from '@/components/health/HealthMetricCard';
-import { FIGMA_HEALTH_METRICS } from '@/constants/figmaHealthMetricsLayout';
-import { FIGMA_STEPS } from '@/constants/figmaStepsLayout';
+import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
+import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { useHealthMetrics } from '@/hooks/useHealthMetrics';
 import { useStepsMetrics } from '@/hooks/useStepsMetrics';
 import { ka } from '@/i18n/ka';
@@ -43,6 +43,8 @@ function explainFailure(result: Extract<HealthConnectResult, { ok: false }>): st
 
 /** Figma 8848:112415 — full health metrics dashboard. */
 export default function HealthMetricsScreen() {
+  const FIGMA_HEALTH_METRICS = useFigmaHealthMetrics();
+  const FIGMA_STEPS = useFigmaSteps();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { healthProfile } = useAuth();
@@ -79,7 +81,7 @@ export default function HealthMetricsScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: FIGMA_HEALTH_METRICS.pageBg, paddingTop: insets.top }}>
       <View
         style={{
           flexDirection: 'row',

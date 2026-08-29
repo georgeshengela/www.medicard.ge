@@ -8,7 +8,7 @@ import { SymptomCta, SymptomFooter } from '@/components/symptoms/SymptomCta';
 import { SymptomGradientHeader } from '@/components/symptoms/SymptomGradientHeader';
 import { SymptomResultSummaryCard } from '@/components/symptoms/SymptomResultSummaryCard';
 import { SYMPTOM_INTRO_ILLUSTRATION } from '@/constants/symptomAssets';
-import { FIGMA_SYMPTOMS as T } from '@/constants/figmaSymptomsLayout';
+import { FIGMA_SYMPTOMS, useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { DURATION_OPTIONS, PAIN_LEVELS } from '@/constants/symptomCatalog';
 import { ka } from '@/i18n/ka';
 import { useSymptomChecker } from '@/lib/symptomCheckerStore';
@@ -18,6 +18,7 @@ import type { SymptomRisk } from '@/types/symptoms';
 const FILTERS = ['all', 'high', 'medium', 'low'] as const;
 
 export default function SymptomResultsScreen() {
+  const T = useFigmaSymptoms();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { ready } = useLocalSearchParams<{ ready?: string }>();
@@ -192,9 +193,9 @@ export default function SymptomResultsScreen() {
 }
 
 function riskColor(risk: SymptomRisk) {
-  if (risk === 'high') return T.danger;
-  if (risk === 'medium') return T.warning;
-  return T.success;
+  if (risk === 'high') return FIGMA_SYMPTOMS.danger;
+  if (risk === 'medium') return FIGMA_SYMPTOMS.warning;
+  return FIGMA_SYMPTOMS.success;
 }
 
 function RiskBadge({ risk }: { risk: SymptomRisk }) {

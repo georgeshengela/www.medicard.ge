@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MedicationSheetApplyButton, MedicationSheetModal } from '@/components/medications/MedicationSheetUI';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 import { formatTime12h } from '@/lib/medications.shared';
 
@@ -40,6 +40,7 @@ function TimeBox({
   active: boolean;
   onPress: () => void;
 }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <Pressable onPress={onPress} style={{ flex: 1, gap: 7 }}>
       <View
@@ -76,6 +77,7 @@ function TimeBox({
 }
 
 export function MedicationTimePickerSheet({ visible, value, onClose, onApply }: Props) {
+  const FIGMA_MEDS = useFigmaMeds();
   const parsed = useMemo(() => parseTime24(value), [value]);
   const [hour12, setHour12] = useState(parsed.hour12);
   const [minute, setMinute] = useState(parsed.minute);

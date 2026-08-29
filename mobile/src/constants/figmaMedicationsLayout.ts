@@ -1,3 +1,5 @@
+import { useIsDark } from '@/theme/colors';
+
 /** Figma 11405:99213 — Medication Tracker design tokens. */
 export const FIGMA_MEDS = {
   brand: '#14B8A6',
@@ -14,9 +16,17 @@ export const FIGMA_MEDS = {
   cardBg: '#F9FAFB',
   cardBgTertiary: '#F3F4F6',
   white: '#FFFFFF',
+  /** Figma `bg/default/primary` — cards, time chips, unselected day pills. */
+  surface: '#FFFFFF',
+  headerBg: '#FFFFFF',
+  pageBg: '#F9FAFB',
   destructive: '#F43F5E',
   warning: '#F59E0B',
   success: '#22C55E',
+  /** Filled CTA — dark uses `#0D9488`, not bright teal. */
+  ctaBg: '#14B8A6',
+  dangerSoft: '#FEE2E2',
+  dangerText: '#E11D48',
   paddingH: 16,
   sectionPy: 8,
   cardRadius: 24,
@@ -58,6 +68,44 @@ export const FIGMA_MEDS = {
     { key: 'pain', label: 'ტკივილი' },
   ] as const,
 } as const;
+
+export const FIGMA_MEDS_DARK = {
+  brandQuaternary: '#042F2E',
+  brandTertiary: '#115E59',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#D1D5DB',
+  textMuted: '#6B7280',
+  border: '#374151',
+  borderTertiary: '#4B5563',
+  cardBg: '#111827',
+  cardBgTertiary: '#1F2937',
+  white: '#1F2937',
+  surface: '#111827',
+  headerBg: '#030712',
+  pageBg: '#030712',
+  ctaBg: '#0D9488',
+  dangerSoft: '#4C0519',
+  dangerText: '#F43F5E',
+  shadowCard: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  shadowInput: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+} as const;
+
+export function useFigmaMeds() {
+  const dark = useIsDark();
+  return dark ? { ...FIGMA_MEDS, ...FIGMA_MEDS_DARK } : FIGMA_MEDS;
+}
 
 export const MED_POPULAR_CHIPS = ['ibuprofen', 'amoxicillin', 'atorvastatin'] as const;
 

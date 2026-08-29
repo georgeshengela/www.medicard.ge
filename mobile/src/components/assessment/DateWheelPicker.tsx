@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NativeScrollEvent, NativeSyntheticEvent, Platform, ScrollView, Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { pickerScrollTick, pickerSelectionTick } from '@/components/assessment/pickerHaptics';
+import { useIsDark } from '@/theme/colors';
 
 /** Figma node 9217:164479 — birthdate picker row. */
 const FIGMA_PICKER = {
@@ -18,6 +19,12 @@ const FIGMA_PICKER = {
   nearText: '#4B5563',
   farText: '#9CA3AF',
   selectedRadius: 18,
+} as const;
+
+const FIGMA_PICKER_DARK = {
+  selectedBg: '#042F2E',
+  nearText: '#D1D5DB',
+  farText: '#6B7280',
 } as const;
 
 const ITEM_HEIGHT = FIGMA_PICKER.itemHeight;
@@ -44,10 +51,10 @@ function clampIndex(index: number, length: number) {
   return Math.max(0, Math.min(length - 1, index));
 }
 
-function textColorForDistance(distance: number) {
+function textColorForDistance(distance: number, nearText: string, farText: string) {
   if (distance === 0) return FIGMA_PICKER.selectedText;
-  if (distance === 1) return FIGMA_PICKER.nearText;
-  return FIGMA_PICKER.farText;
+  if (distance === 1) return nearText;
+  return farText;
 }
 
 function clampDayForMonthYear(day: number, month: number, year: number) {
@@ -56,6 +63,8 @@ function clampDayForMonthYear(day: number, month: number, year: number) {
 
 /** Figma birthdate — 3-column wheel with shared teal selection row (9217:164472). */
 export function DateWheelPicker({ month, day, year, onChange, minYear, maxYear }: Props) {
+  const dark = useIsDark();
+  const picker = dark ? { ...FIGMA_PICKER, ...FIGMA_PICKER_DARK } : FIGMA_PICKER;
   const now = new Date().getFullYear();
   const yearMin = minYear ?? now - 100;
   const yearMax = maxYear ?? now - 13;
@@ -106,7 +115,7 @@ export function DateWheelPicker({ month, day, year, onChange, minYear, maxYear }
             borderRadius: FIGMA_PICKER.selectedRadius,
             borderWidth: 1,
             borderColor: FIGMA_PICKER.selectedBorder,
-            backgroundColor: FIGMA_PICKER.selectedBg,
+            backgroundColor: picker.selectedBg,
             zIndex: 0,
           }}
         />
@@ -151,6 +160,8 @@ function ColumnWheel({
   flex: number;
   format?: (v: string | number) => string;
 }) {
+  const dark = useIsDark();
+  const picker = dark ? { ...FIGMA_PICKER, ...FIGMA_PICKER_DARK } : FIGMA_PICKER;
   const scrollRef = useRef<ScrollView>(null);
   const dragging = useRef(false);
   const settling = useRef(false);
@@ -277,7 +288,7 @@ function ColumnWheel({
                   fontSize: FIGMA_PICKER.fontSize,
                   lineHeight: FIGMA_PICKER.lineHeight,
                   letterSpacing: FIGMA_PICKER.letterSpacing,
-                  color: textColorForDistance(distance),
+                  color: textColorForDistance(distance, picker.nearText, picker.farText),
                   textAlign: 'center',
                 }}
               >

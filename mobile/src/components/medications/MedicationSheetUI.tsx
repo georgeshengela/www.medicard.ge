@@ -2,10 +2,11 @@ import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, X } from 'lucide-react-native';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 
-const OVERLAY = 'rgba(15, 23, 42, 0.52)';
+const OVERLAY = APP_MODAL_OVERLAY;
 
 type SheetProps = {
   visible: boolean;
@@ -17,10 +18,12 @@ type SheetProps = {
 };
 
 export function MedicationSheetModal({ visible, title, onClose, children, footer, contentStyle }: SheetProps) {
+  const FIGMA_MEDS = useFigmaMeds();
   const insets = useSafeAreaInsets();
+  const styles = createMedModalStyles(FIGMA_MEDS);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={ka.common.close} />
 
@@ -49,12 +52,13 @@ export function MedicationSheetModal({ visible, title, onClose, children, footer
 }
 
 export function MedicationSheetApplyButton({ label, onPress, disabled }: { label?: string; onPress: () => void; disabled?: boolean }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
       style={{
-        backgroundColor: FIGMA_MEDS.brand,
+        backgroundColor: FIGMA_MEDS.ctaBg,
         borderRadius: 16,
         minHeight: 48,
         alignItems: 'center',
@@ -65,8 +69,8 @@ export function MedicationSheetApplyButton({ label, onPress, disabled }: { label
         ...FIGMA_MEDS.shadowInput,
       }}
     >
-      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>{label ?? ka.meds.sheetApply}</Text>
-      <Check size={20} color="#fff" strokeWidth={2.5} />
+      <Text style={{ color: FIGMA_MEDS.textOnBrand, fontWeight: '600', fontSize: 16 }}>{label ?? ka.meds.sheetApply}</Text>
+      <Check size={20} color={FIGMA_MEDS.textOnBrand} strokeWidth={2.5} />
     </Pressable>
   );
 }
@@ -80,6 +84,7 @@ export function MedicationSheetChip({
   active?: boolean;
   onPress: () => void;
 }) {
+  const FIGMA_MEDS = useFigmaMeds();
   return (
     <Pressable
       onPress={onPress}
@@ -99,7 +104,8 @@ export function MedicationSheetChip({
   );
 }
 
-const styles = StyleSheet.create({
+function createMedModalStyles(t: ReturnType<typeof useFigmaMeds>) {
+  return StyleSheet.create({
   root: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -124,7 +130,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: `${t.white}80`,
   },
   stackLayerInner: {
     position: 'absolute',
@@ -134,15 +140,15 @@ const styles = StyleSheet.create({
     height: 20,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: `${t.white}B8`,
   },
   sheet: {
-    backgroundColor: FIGMA_MEDS.white,
+    backgroundColor: t.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '88%',
     borderTopWidth: 1,
-    borderColor: FIGMA_MEDS.border,
+    borderColor: t.border,
   },
   body: {
     paddingHorizontal: 16,
@@ -154,14 +160,14 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
     borderTopWidth: 1,
-    borderTopColor: FIGMA_MEDS.borderTertiary,
-    backgroundColor: FIGMA_MEDS.white,
+    borderTopColor: t.borderTertiary,
+    backgroundColor: t.white,
   },
   handle: {
     width: 36,
     height: 5,
     borderRadius: 100,
-    backgroundColor: FIGMA_MEDS.border,
+    backgroundColor: t.border,
     alignSelf: 'center',
     marginTop: 5,
     marginBottom: 12,
@@ -178,7 +184,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     lineHeight: 24,
-    color: FIGMA_MEDS.textPrimary,
+    color: t.textPrimary,
   },
   closeHit: {
     width: 24,
@@ -187,3 +193,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+}

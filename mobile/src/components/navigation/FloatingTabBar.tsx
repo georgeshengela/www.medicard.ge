@@ -13,9 +13,10 @@ import { useAuth } from '@/store/AuthContext';
 export const TAB_BAR_HEIGHT = 64;
 export const TAB_BAR_SIDE = 20;
 
-/** Extra gap under the last card. The bar sits outside the screen, so only a little is needed. */
+/** Space so scroll content clears the overlay pill. */
 export function useTabBarInset(extra = 16): number {
-  return extra;
+  const insets = useSafeAreaInsets();
+  return TAB_BAR_HEIGHT + 10 + Math.max(insets.bottom, 12) + extra;
 }
 
 type TabHref = '/(tabs)/home' | '/(tabs)/records' | '/(tabs)/medications' | '/(tabs)/profile';
@@ -70,8 +71,14 @@ export function FloatingTabBar() {
 
   return (
     <View
+      pointerEvents="box-none"
       style={{
-        backgroundColor: colors.bg100,
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 20,
+        backgroundColor: 'transparent',
         paddingHorizontal: TAB_BAR_SIDE,
         paddingTop: 10,
         paddingBottom: Math.max(insets.bottom, 12),
@@ -90,6 +97,11 @@ export function FloatingTabBar() {
           alignItems: 'center',
           paddingHorizontal: innerPad,
           overflow: 'hidden',
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.18,
+          shadowRadius: 16,
         }}
       >
         {tabWidth > 0 ? (

@@ -2,10 +2,11 @@ import { getUsage } from '../lib/usage.js';
 import { consumeUsage } from '../lib/usage.js';
 
 export const QUOTA_EXCEEDED_MESSAGE_KA =
-  'თვიური ლიმიტი ამოიწურა. განაახლეთ გამოწერა ან დაელოდეთ ახალ პერიოდს.';
+  'დღიური ლიმიტი ამოიწურა. განახლდება ხვალ ამავე საათზე, ან აირჩიეთ უფრო მაღალი გეგმა.';
 
 /**
- * Enforces the user's monthly package quota before any AI engine is called.
+ * Enforces the user's daily AI cap before any AI engine is called.
+ * The 24h countdown starts when they hit the last query, not at midnight / month end.
  */
 export async function enforceAiQuota(req, res, next) {
   try {
@@ -14,10 +15,10 @@ export async function enforceAiQuota(req, res, next) {
     if (quota.exceeded) {
       return res.status(429).json({
         error: QUOTA_EXCEEDED_MESSAGE_KA,
-        code: 'MONTHLY_LIMIT_REACHED',
+        code: 'DAILY_LIMIT_REACHED',
         upsell: {
-          title: 'განაახლეთ თვიური გამოწერა',
-          body: 'სტანდარტი — 1 500 AI / თვე · ულტიმატი — შეუზღუდავი. ყველა პაკეტი 30-დღიანი პერიოდით.',
+          title: 'განაახლეთ გეგმა',
+          body: 'სტანდარტი — 50 AI / დღე · ულტიმატი — შეუზღუდავი.',
           cta: 'გეგმის არჩევა',
         },
         usage: quota,

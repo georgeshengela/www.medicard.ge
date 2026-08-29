@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Check } from 'lucide-react-native';
-import { FIGMA_AUTH } from '@/constants/figmaAuthLayout';
+import { useFigmaAuth } from '@/constants/figmaAuthLayout';
 
 type Props = {
   label: string;
@@ -11,6 +11,8 @@ type Props = {
 
 /** Figma checkbox — 4px radius teal fill when checked. Inline styles only. */
 export function AuthCheckbox({ label, checked, onToggle }: Props) {
+  const auth = useFigmaAuth();
+
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -24,8 +26,8 @@ export function AuthCheckbox({ label, checked, onToggle }: Props) {
           height: 20,
           borderRadius: 4,
           borderWidth: checked ? 0 : 1,
-          borderColor: '#D1D5DB',
-          backgroundColor: checked ? FIGMA_AUTH.primaryBg : '#FFFFFF',
+          borderColor: auth.inputBorder,
+          backgroundColor: checked ? auth.primaryBg : auth.inputBg,
           alignItems: 'center',
           justifyContent: 'center',
           padding: 4,
@@ -40,7 +42,7 @@ export function AuthCheckbox({ label, checked, onToggle }: Props) {
           fontFamily: 'NotoSansGeorgian_500Medium',
           fontSize: 16,
           lineHeight: 22,
-          color: '#1F2937',
+          color: auth.labelColor,
         }}
       >
         {label}
