@@ -67,6 +67,9 @@ export type OnboardingAnalysis = {
   };
   engine?: string;
   model?: string | null;
+  previousScore?: number | null;
+  scoreDelta?: number | null;
+  analyzedAt?: string | null;
 };
 
 export function analysisFromProfile(extra: Record<string, unknown> | null | undefined): OnboardingAnalysis | null {

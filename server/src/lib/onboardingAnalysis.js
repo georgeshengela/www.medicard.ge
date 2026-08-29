@@ -26,36 +26,119 @@ function bandForScore(score) {
   return SCORE_BANDS.find((b) => score >= b.min && score <= b.max) ?? SCORE_BANDS[2];
 }
 
-function computeHeuristicScore(profile, user) {
-  let score = 72;
-  const bmi =
-    profile.heightCm && profile.weightKg
-      ? profile.weightKg / (profile.heightCm / 100) ** 2
-      : null;
+function asList(value) {
+  return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+}
+
+function latestMetric(metrics, key) {
+  if (!Array.isArray(metrics)) return null;
+  const row = metrics.find((item) => item?.[key] != null);
+  return row ? row[key] : null;
+}
+
+function averageMetric(metrics, key) {
+  if (!Array.isArray(metrics)) return null;
+  const values = metrics.map((item) => Number(item?.[key])).filter((n) => Number.isFinite(n));
+  if (!values.length) return null;
+  return values.reduce((sum, n) => sum + n, 0) / values.length;
+}
+
+export function computeHeuristicScore(profile, user, extras = {}, metrics = []) {
+  let score = 68;
+  const extra = extras && typeof extras === 'object' ? extras : {};
+  const weightKg = profile.weightKg ?? latestMetric(metrics, 'weightKg');
+  const heightCm = profile.heightCm;
+  const bmi = heightCm && weightKg ? weightKg / (heightCm / 100) ** 2 : null;
 
   if (bmi != null) {
-    if (bmi < 18.5 || bmi > 30) score -= 18;
-    else if (bmi < 20 || bmi > 27) score -= 10;
-    else if (bmi > 25) score -= 5;
+    if (bmi >= 18.5 && bmi < 25) score += 8;
+    else if (bmi >= 25 && bmi < 27) score += 1;
+    else if (bmi >= 27 && bmi < 30) score -= 8;
+    else score -= 16;
   }
 
-  if (profile.smokingStatus === 'CURRENT') score -= 15;
-  else if (profile.smokingStatus === 'FORMER') score -= 5;
+  if (profile.smokingStatus === 'NEVER') score += 4;
+  else if (profile.smokingStatus === 'FORMER') score -= 4;
+  else if (profile.smokingStatus === 'CURRENT') score -= 16;
 
-  if (profile.sleepQuality === 'POOR') score -= 12;
+  if (profile.sleepQuality === 'EXCELLENT') score += 6;
+  else if (profile.sleepQuality === 'GOOD') score += 3;
   else if (profile.sleepQuality === 'FAIR') score -= 6;
+  else if (profile.sleepQuality === 'POOR') score -= 12;
 
-  if (profile.stressLevel === 'VERY_HIGH') score -= 12;
+  const sleepHours = profile.sleepHours ?? averageMetric(metrics, 'sleepHours');
+  if (sleepHours != null) {
+    if (sleepHours >= 7 && sleepHours <= 9) score += 4;
+    else if (sleepHours < 6) score -= 10;
+    else if (sleepHours > 10) score -= 4;
+  }
+
+  if (profile.stressLevel === 'LOW') score += 4;
   else if (profile.stressLevel === 'HIGH') score -= 8;
+  else if (profile.stressLevel === 'VERY_HIGH') score -= 12;
 
-  if (profile.activityLevel === 'SEDENTARY') score -= 10;
+  if (profile.activityLevel === 'VERY_ACTIVE' || profile.activityLevel === 'ACTIVE') score += 8;
+  else if (profile.activityLevel === 'MODERATE') score += 3;
   else if (profile.activityLevel === 'LIGHT') score -= 4;
+  else if (profile.activityLevel === 'SEDENTARY') score -= 10;
 
-  const conditions = profile.chronicConditions?.length ?? 0;
-  score -= Math.min(conditions * 4, 16);
+  if (profile.exerciseFrequency === 'DAILY') score += 5;
+  else if (profile.exerciseFrequency === 'WEEKLY') score += 2;
+  else if (profile.exerciseFrequency === 'RARE') score -= 2;
+  else if (profile.exerciseFrequency === 'NEVER') score -= 5;
 
-  const meds = profile.medications?.length ?? 0;
-  if (meds > 3) score -= 6;
+  if (profile.alcoholUse === 'NEVER') score += 3;
+  else if (profile.alcoholUse === 'REGULAR') score -= 8;
+
+  if (profile.waterIntakeL != null) {
+    if (profile.waterIntakeL >= 2) score += 3;
+    else if (profile.waterIntakeL < 1.2) score -= 4;
+  }
+
+  const hr = profile.restingHeartRate ?? latestMetric(metrics, 'heartRate');
+  if (hr != null) {
+    if (hr >= 55 && hr <= 75) score += 3;
+    else if (hr > 90) score -= 8;
+    else if (hr < 48) score -= 3;
+  }
+
+  const sys = profile.bloodPressureSystolic ?? latestMetric(metrics, 'bloodPressureSystolic');
+  const dia = profile.bloodPressureDiastolic ?? latestMetric(metrics, 'bloodPressureDiastolic');
+  if (sys != null) {
+    if (sys < 120 && (dia == null || dia < 80)) score += 4;
+    else if (sys < 130) score -= 2;
+    else if (sys < 140) score -= 8;
+    else score -= 14;
+  }
+
+  score -= Math.min(asList(profile.chronicConditions).length * 5, 20);
+  score -= Math.min(asList(profile.allergies).length, 4);
+  score -= Math.min(asList(profile.familyHistory).length * 2, 8);
+  if (asList(profile.medications).length > 4) score -= 6;
+  if (asList(profile.healthGoals).length > 0) score += 2;
+
+  const mood = typeof extra.mood === 'string' ? extra.mood : null;
+  if (mood === 'GREAT' || mood === 'HAPPY') score += 3;
+  else if (mood === 'SAD' || mood === 'AWFUL') score -= 5;
+
+  const fitness = typeof extra.fitnessLevel === 'number' ? extra.fitnessLevel : null;
+  if (fitness != null) {
+    if (fitness >= 4) score += 4;
+    else if (fitness <= 2) score -= 4;
+  }
+
+  const sleepLevel = typeof extra.sleepLevel === 'number' ? extra.sleepLevel : null;
+  if (sleepLevel != null) {
+    if (sleepLevel >= 4) score += 3;
+    else if (sleepLevel <= 2) score -= 4;
+  }
+
+  const avgSteps = averageMetric(metrics, 'steps');
+  if (avgSteps != null) {
+    if (avgSteps >= 8000) score += 6;
+    else if (avgSteps >= 5000) score += 2;
+    else if (avgSteps < 3000) score -= 6;
+  }
 
   const age = user?.birthDate ? calculateAge(user.birthDate) : null;
   if (age != null && age > 55) score -= 4;
@@ -83,9 +166,17 @@ function estimateBodyComposition(profile) {
   return { fatPct, weightKg: Math.round(weight), musclePct, physiqueLabelKa };
 }
 
-function buildPatientContext(profile, user) {
+function extraForContext(extra) {
+  if (!extra || typeof extra !== 'object') return {};
+  const { onboardingAnalysis: _omit, ...rest } = extra;
+  return rest;
+}
+
+function buildPatientContext(profile, user, extras = {}, extrasContext = {}) {
   const age = user?.birthDate ? calculateAge(user.birthDate) : null;
-  const extra = profile.extraAnswers ?? {};
+  const extra = extraForContext(extras);
+  const metrics = extrasContext.metrics ?? [];
+  const scheduledMeds = extrasContext.scheduledMeds ?? [];
   const lines = [
     `gender: ${user?.gender ?? 'unknown'}`,
     age != null ? `age: ${age}` : null,
@@ -93,17 +184,48 @@ function buildPatientContext(profile, user) {
     profile.weightKg ? `weightKg: ${profile.weightKg}` : null,
     profile.bloodType ? `bloodType: ${profile.bloodType}` : null,
     profile.activityLevel ? `activity: ${profile.activityLevel}` : null,
+    profile.exerciseFrequency ? `exercise: ${profile.exerciseFrequency}` : null,
     profile.sleepQuality ? `sleepQuality: ${profile.sleepQuality}` : null,
-    profile.sleepHours ? `sleepHours: ${profile.sleepHours}` : null,
+    profile.sleepHours != null ? `sleepHours: ${profile.sleepHours}` : null,
     profile.stressLevel ? `stress: ${profile.stressLevel}` : null,
     profile.smokingStatus ? `smoking: ${profile.smokingStatus}` : null,
-    profile.chronicConditions?.length ? `conditions: ${profile.chronicConditions.join(', ')}` : null,
-    profile.medications?.length ? `medications: ${profile.medications.join(', ')}` : null,
-    profile.healthGoals?.length ? `goals: ${profile.healthGoals.join(', ')}` : null,
+    profile.alcoholUse ? `alcohol: ${profile.alcoholUse}` : null,
+    profile.dietType ? `diet: ${profile.dietType}` : null,
+    profile.waterIntakeL != null ? `waterL: ${profile.waterIntakeL}` : null,
+    profile.restingHeartRate != null ? `restingHr: ${profile.restingHeartRate}` : null,
     profile.bloodPressureSystolic
       ? `bp: ${profile.bloodPressureSystolic}/${profile.bloodPressureDiastolic ?? '?'}`
       : null,
+    asList(profile.chronicConditions).length ? `conditions: ${asList(profile.chronicConditions).join(', ')}` : null,
+    asList(profile.allergies).length ? `allergies: ${asList(profile.allergies).join(', ')}` : null,
+    asList(profile.medications).length ? `medications: ${asList(profile.medications).join(', ')}` : null,
+    asList(profile.familyHistory).length ? `familyHistory: ${asList(profile.familyHistory).join(', ')}` : null,
+    asList(profile.healthGoals).length ? `goals: ${asList(profile.healthGoals).join(', ')}` : null,
     extra.bodyType ? `bodyType: ${extra.bodyType}` : null,
+    extra.mood ? `mood: ${extra.mood}` : null,
+    extra.fitnessLevel != null ? `fitnessLevel: ${extra.fitnessLevel}` : null,
+    extra.sleepLevel != null ? `sleepLevel: ${extra.sleepLevel}` : null,
+    extra.checkupFrequency ? `checkupFrequency: ${extra.checkupFrequency}` : null,
+    extra.legalName ? `legalName: ${extra.legalName}` : null,
+    extra.healthNote ? `healthNote: ${String(extra.healthNote).slice(0, 400)}` : null,
+    extra.takesMedications != null ? `takesMedications: ${extra.takesMedications}` : null,
+    extra.hasConditions != null ? `hasConditions: ${extra.hasConditions}` : null,
+    scheduledMeds.length ? `scheduledMeds: ${scheduledMeds.join(', ')}` : null,
+    extrasContext.cycleMode ? `cycleMode: ${extrasContext.cycleMode}` : null,
+    metrics.length
+      ? `recentDailyMetrics: ${JSON.stringify(
+          metrics.slice(0, 14).map((row) => ({
+            date: row.date,
+            steps: row.steps,
+            weightKg: row.weightKg,
+            sleepHours: row.sleepHours,
+            heartRate: row.heartRate,
+            bp: row.bloodPressureSystolic
+              ? `${row.bloodPressureSystolic}/${row.bloodPressureDiastolic ?? '?'}`
+              : null,
+          })),
+        )}`
+      : null,
   ].filter(Boolean);
 
   return lines.join('\n');
@@ -146,8 +268,8 @@ function buildFallbackRecommendations(profile) {
       remote: true,
     },
     {
-      nameKa: 'დრ. მარიამ ჩიხლadze',
-      specialtyKa: 'ნevrolog',
+      nameKa: 'დრ. მარიამ ჩიხლაძე',
+      specialtyKa: 'ნევროლოგი',
       distanceKm: 1.8,
       rating: 4.5,
       reviewCount: 221,
@@ -155,11 +277,11 @@ function buildFallbackRecommendations(profile) {
     },
   ];
 
-  const medications = (profile.medications ?? []).slice(0, 2).map((med) => ({
+  const medications = asList(profile.medications).slice(0, 2).map((med) => ({
     nameKa: med,
-    typeKa: 'tableti',
-    scheduleKa: '1 tablet დღეში — ექიმის დანიშნულების მიხედვით',
-    tagsKa: ['#daily', 'after meal'],
+    typeKa: 'ტაბლეტი',
+    scheduleKa: '1 ტაბლეტი დღეში — ექიმის დანიშნულების მიხედვით',
+    tagsKa: ['ყოველდღე'],
   }));
 
   return {
@@ -177,15 +299,15 @@ function buildFallbackRecommendations(profile) {
       personaKa: profile.sleepQuality === 'POOR' ? 'დაღლილი' : 'საშუალო',
       adviceKa:
         profile.sleepHours != null && profile.sleepHours < 7
-          ? `ძილი ${profile.sleepHours} საათია — რეკომendebuliა მინიმუმ 7 საათი.`
-          : 'ძილის რეჟimის დაცვა გ strengthens იმუნიტetს.',
+          ? `ძილი ${profile.sleepHours} საათია — რეკომენდებულია მინიმუმ 7 საათი.`
+          : 'ძილის რეჟიმის დაცვა აძლიერებს იმუნიტეტს.',
       currentHours,
       optimalHours: [7.5, 7.5, 8, 7.5, 8, 7.5, 8],
     },
     pharmacies: [
       {
-        nameKa: 'PSP ფarmacia',
-        addressKa: 'თბilisი, ვაკe',
+        nameKa: 'PSP აფთიაქი',
+        addressKa: 'თბილისი, ვაკე',
         rating: 4.4,
         freeDelivery: true,
         tagKa: 'personal care',
@@ -203,17 +325,34 @@ function buildFallbackRecommendations(profile) {
       },
     ],
     articles: [
-      { titleKa: 'AI ეპoxის შემდეგ ჯანმრთelobის გაუმჯობესება', readMinutes: 3 },
-      { titleKa: 'კეტo დიეტა — რა უნდა იცოდეთ', readMinutes: 5 },
-      { titleKa: 'ენergetikული სასმelები', readMinutes: 3 },
+      { titleKa: 'როგორ გავაუმჯობესოთ ჯანმრთელობა ყოველდღიური ჩვევებით', readMinutes: 3 },
+      { titleKa: 'კეტო დიეტა — რა უნდა იცოდეთ', readMinutes: 5 },
+      { titleKa: 'ენერგეტიკული სასმელები და გული', readMinutes: 3 },
     ],
   };
 }
 
-export async function generateOnboardingAnalysis({ profile, user }) {
-  const heuristicScore = computeHeuristicScore(profile, user);
+function clampToHeuristic(aiScore, heuristicScore) {
+  if (typeof aiScore !== 'number' || Number.isNaN(aiScore)) return heuristicScore;
+  const lo = Math.max(8, heuristicScore - 12);
+  const hi = Math.min(96, heuristicScore + 12);
+  return Math.max(lo, Math.min(hi, Math.round(aiScore * 10) / 10));
+}
+
+export async function generateOnboardingAnalysis({
+  profile,
+  user,
+  extras = {},
+  metrics = [],
+  scheduledMeds = [],
+  cycleMode = null,
+  previousScore = null,
+}) {
+  const extra = extras && typeof extras === 'object' ? extras : {};
+  const heuristicScore = computeHeuristicScore(profile, user, extra, metrics);
   const bodyComposition = estimateBodyComposition({ ...profile, _gender: user?.gender });
   const band = bandForScore(heuristicScore);
+  const extrasContext = { metrics, scheduledMeds, cycleMode };
 
   const fallback = {
     score: heuristicScore,
@@ -225,7 +364,7 @@ export async function generateOnboardingAnalysis({ profile, user }) {
         ? 'მსუბუქი ვიტამინის დეფიციტი ან ქოლესტერინის მცირე მომატება'
         : `${band.labelKa} — პრევენციული ზომები რეკომენდებულია`,
     summaryBodyKa:
-      'მიუთითებს ოპტიმალური ჯანმრთელობის პარამეტრებისგან მსუბუქ გადახრებზე. რეკომendebuliა ცხოვრების წესის კორექция და რეგულარული კონტროლი.',
+      'ანალიზი ეყრდნობა თქვენს პროფილს, ჩვევებს და შენახულ მაჩვენებლებს. რეკომენდებულია ცხოვრების წესის კორექცია და რეგულარული კონტროლი.',
     scoreRanges: SCORE_BANDS.map((b) => ({
       min: b.min,
       max: b.max,
@@ -238,6 +377,9 @@ export async function generateOnboardingAnalysis({ profile, user }) {
     recommendations: buildFallbackRecommendations(profile),
     engine: 'heuristic',
     model: null,
+    previousScore,
+    scoreDelta: previousScore != null ? Math.round((heuristicScore - previousScore) * 10) / 10 : null,
+    analyzedAt: new Date().toISOString(),
   };
 
   if (!openrouter) return fallback;
@@ -254,7 +396,7 @@ export async function generateOnboardingAnalysis({ profile, user }) {
         },
         {
           role: 'user',
-          content: `Profile:\n${buildPatientContext(profile, user)}\nBaseline score: ${heuristicScore}`,
+          content: `Use ALL of this patient data. Score must move with the data, stay near baseline ${heuristicScore} (±12).\nPrevious score: ${previousScore ?? 'none'}\nProfile:\n${buildPatientContext(profile, user, extra, extrasContext)}`,
         },
       ],
     });
@@ -264,7 +406,7 @@ export async function generateOnboardingAnalysis({ profile, user }) {
 
     const jsonText = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
     const parsed = JSON.parse(jsonText);
-    const score = typeof parsed.score === 'number' ? parsed.score : heuristicScore;
+    const score = clampToHeuristic(parsed.score, heuristicScore);
     const resolvedBand = bandForScore(score);
 
     return {
@@ -286,6 +428,9 @@ export async function generateOnboardingAnalysis({ profile, user }) {
       recommendations: { ...fallback.recommendations, ...parsed.recommendations },
       engine: 'openrouter',
       model: completion.model ?? env.OPENROUTER_MODEL,
+      previousScore,
+      scoreDelta: previousScore != null ? Math.round((score - previousScore) * 10) / 10 : null,
+      analyzedAt: new Date().toISOString(),
     };
   } catch (error) {
     console.error('[medicard] onboarding analysis failed:', error?.message ?? error);

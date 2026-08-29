@@ -416,6 +416,11 @@ export type CycleBundle = {
     topSymptoms90d: { key: string; count: number }[];
     bbtPoints: { date: string; bbt: number }[];
     periodStarts: string[];
+    shortestCycle?: number | null;
+    longestCycle?: number | null;
+    variability?: number | null;
+    cycleCount?: number;
+    confidence?: 'low' | 'medium' | 'high';
   };
   alerts?: {
     level: 'info' | 'warn' | 'urgent';
@@ -434,6 +439,11 @@ export type CycleBundle = {
     fertileWindow: { start: string; end: string } | null;
     topSymptoms: { key: string; count: number }[];
     topMoods: { key: string; count: number }[];
+    shortestCycle?: number | null;
+    longestCycle?: number | null;
+    variability?: number | null;
+    cycleCount?: number;
+    confidence?: 'low' | 'medium' | 'high';
     generatedAt: string;
   };
   localInsights?: CycleInsights;
@@ -613,6 +623,12 @@ export const api = {
         user: User | null;
         checkIn: CheckInState | null;
       }>('/api/check-in/claim', { method: 'POST' }),
+    awardStepsGoal: (goalId: string) =>
+      request<{
+        awarded: boolean;
+        pointsAwarded: number;
+        user: User | null;
+      }>('/api/check-in/steps-goal', { method: 'POST', body: { goalId } }),
   },
 
   healthProfile: {
@@ -632,12 +648,16 @@ export const api = {
         method: 'POST',
         body,
       }),
-    onboardingAnalysis: () =>
+    onboardingAnalysis: (opts?: { force?: boolean }) =>
       request<{
         analysis: import('@/types/onboardingAnalysis').OnboardingAnalysis;
         profile: HealthProfile;
         cached: boolean;
-      }>('/api/health-profile/onboarding-analysis', { method: 'POST', timeoutMs: 120_000 }),
+      }>('/api/health-profile/onboarding-analysis', {
+        method: 'POST',
+        body: { force: Boolean(opts?.force) },
+        timeoutMs: 120_000,
+      }),
   },
 
   healthMetrics: {

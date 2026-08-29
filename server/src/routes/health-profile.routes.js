@@ -77,6 +77,14 @@ healthProfileRouter.put(
       });
     }
 
+    if (profileFields.extraAnswers && typeof profileFields.extraAnswers === 'object') {
+      const existing = await loadProfile(req.user.id);
+      profileFields.extraAnswers = {
+        ...(existing?.extraAnswers ?? {}),
+        ...profileFields.extraAnswers,
+      };
+    }
+
     const profile = await prisma.healthProfile.upsert({
       where: { userId: req.user.id },
       create: { userId: req.user.id, ...profileFields },
@@ -109,7 +117,11 @@ healthProfileRouter.post(
     });
 
     const extra = (profile.extraAnswers ?? {});
-    if (extra.onboardingAnalysis?.score != null) {
+    const force = req.body?.force === true;
+    const previousScore =
+      typeof extra.onboardingAnalysis?.score === 'number' ? extra.onboardingAnalysis.score : null;
+
+    if (!force && previousScore != null) {
       return res.json({
         analysis: extra.onboardingAnalysis,
         profile: publicHealthProfile(profile),
@@ -117,7 +129,31 @@ healthProfileRouter.post(
       });
     }
 
-    const analysis = await generateOnboardingAnalysis({ profile, user });
+    const [metrics, schedules, cycle] = await Promise.all([
+      prisma.healthMetricDaily.findMany({
+        where: { userId: req.user.id },
+        orderBy: { date: 'desc' },
+        take: 14,
+      }),
+      prisma.medicationSchedule.findMany({
+        where: { userId: req.user.id, active: true },
+        select: { medName: true, dosage: true },
+      }),
+      prisma.cycleProfile.findUnique({
+        where: { userId: req.user.id },
+        select: { mode: true },
+      }),
+    ]);
+
+    const analysis = await generateOnboardingAnalysis({
+      profile,
+      user,
+      extras: extra,
+      metrics,
+      scheduledMeds: schedules.map((row) => `${row.medName}${row.dosage ? ` ${row.dosage}` : ''}`),
+      cycleMode: cycle?.mode ?? null,
+      previousScore: force ? previousScore : null,
+    });
     const mergedExtra = { ...extra, onboardingAnalysis: analysis };
 
     const updated = await prisma.healthProfile.update({

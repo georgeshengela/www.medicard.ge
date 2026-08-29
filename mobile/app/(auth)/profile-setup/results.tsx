@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -16,7 +17,7 @@ import {
   HealthScoreConfidenceBadge,
   HealthScoreGauge,
 } from '@/components/profile/HealthScoreGauge';
-import { ProfileSetupPrimaryButton } from '@/components/profile/ProfileSetupButtons';
+import { ProfileSetupLinkButton, ProfileSetupPrimaryButton } from '@/components/profile/ProfileSetupButtons';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { FIGMA_SHADOW_COLLAPSED } from '@/constants/assessmentResultAssets';
 import {
@@ -26,6 +27,7 @@ import {
   useFigmaAssessmentResult,
 } from '@/constants/figmaAssessmentResultLayout';
 import { ka } from '@/i18n/ka';
+import { api } from '@/lib/api';
 import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
 import { finishOnboarding } from '@/lib/profileSetupFlow';
 import { useAuth } from '@/store/AuthContext';
@@ -138,6 +140,7 @@ export default function ProfileSetupResultsScreen() {
 
   const [expandedRange, setExpandedRange] = useState<number | null>(0);
   const [busy, setBusy] = useState(false);
+  const [reanalyzing, setReanalyzing] = useState(false);
 
   if (!ready) {
     return (
@@ -150,7 +153,6 @@ export default function ProfileSetupResultsScreen() {
   if (!user || !healthProfile) return <Redirect href="/(auth)/sign-in" />;
   const blocked = onboardingScreenBlocked(preview, user, healthProfile);
   if (blocked === 'assessment') return <Redirect href="/(auth)/assessment" />;
-  if (blocked === 'home' && !analysis) return <Redirect href="/(tabs)/home" />;
   if (!analysis) {
     return (
       <Redirect
@@ -163,7 +165,20 @@ export default function ProfileSetupResultsScreen() {
   const avatarId = normalizeAvatarForGender(typeof extra.avatarId === 'string' ? extra.avatarId : null, user.gender);
   const avatarSource = isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : AVATAR_SOURCES['avatar-1'];
   const bc = analysis.bodyComposition;
-  const dateLabel = new Date().toLocaleDateString('ka-GE', { month: 'short', day: 'numeric', year: 'numeric' });
+  const dateLabel = new Date(analysis.analyzedAt ?? Date.now()).toLocaleDateString('ka-GE', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const scoreDelta = analysis.scoreDelta;
+  const deltaLabel =
+    scoreDelta == null
+      ? null
+      : scoreDelta > 0
+        ? ka.profileSetup.scoreUp(Math.abs(scoreDelta))
+        : scoreDelta < 0
+          ? ka.profileSetup.scoreDown(Math.abs(scoreDelta))
+          : ka.profileSetup.scoreSame;
 
   const finish = async () => {
     if (preview || blocked === 'home') {
@@ -178,6 +193,19 @@ export default function ProfileSetupResultsScreen() {
       router.replace('/(tabs)/home');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const reanalyze = async () => {
+    if (reanalyzing || busy) return;
+    setReanalyzing(true);
+    try {
+      const res = await api.healthProfile.onboardingAnalysis({ force: true });
+      setHealthProfile(res.profile);
+    } catch {
+      Alert.alert(ka.common.error, ka.common.networkError);
+    } finally {
+      setReanalyzing(false);
     }
   };
 
@@ -208,6 +236,19 @@ export default function ProfileSetupResultsScreen() {
         {/* Confidence badge + summary — Figma 8845:313570 */}
         <View style={{ padding: 16, gap: 16, alignItems: 'center' }}>
           <HealthScoreConfidenceBadge confidence={analysis.confidence} />
+          {deltaLabel ? (
+            <Text
+              style={{
+                fontFamily: 'NotoSansGeorgian_600SemiBold',
+                fontSize: 14,
+                lineHeight: 20,
+                color: scoreDelta && scoreDelta > 0 ? '#0D9488' : scoreDelta && scoreDelta < 0 ? '#F43F5E' : FIGMA_ASSESSMENT_RESULT.labelColor,
+                textAlign: 'center',
+              }}
+            >
+              {deltaLabel}
+            </Text>
+          ) : null}
           <View style={{ gap: 12, width: '100%' }}>
             <Text
               style={{
@@ -412,13 +453,36 @@ export default function ProfileSetupResultsScreen() {
           paddingBottom: Math.max(insets.bottom, 16),
         }}
       >
-        <ProfileSetupPrimaryButton
-          label={ka.profileSetup.startUsingApp}
-          onPress={() => void finish()}
-          loading={busy}
-          icon="check"
-        />
+        <View style={{ gap: 16 }}>
+          <ProfileSetupPrimaryButton
+            label={ka.profileSetup.startUsingApp}
+            onPress={() => void finish()}
+            loading={busy}
+            icon="check"
+          />
+          <ProfileSetupLinkButton
+            label={reanalyzing ? ka.profileSetup.reanalyzing : ka.profileSetup.reanalyze}
+            onPress={() => void reanalyze()}
+          />
+        </View>
       </View>
+      {reanalyzing ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(3,7,18,0.28)',
+          }}
+        >
+          <ActivityIndicator size="large" color="#14B8A6" />
+        </View>
+      ) : null}
     </View>
   );
 }

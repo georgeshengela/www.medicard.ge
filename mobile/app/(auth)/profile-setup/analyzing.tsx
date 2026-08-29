@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, Animated, Easing, Image, Text, View } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AnalyzingBackdrop } from '@/components/profile/AnalyzingBackdrop';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
@@ -16,6 +16,8 @@ export default function ProfileSetupAnalyzingScreen() {
   const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const router = useRouter();
   const preview = useOnboardingDevPreview();
+  const params = useLocalSearchParams<{ force?: string }>();
+  const force = params.force === '1';
   const { ready, user, healthProfile, setHealthProfile } = useAuth();
   const pulse = useRef(new Animated.Value(0)).current;
   const started = useRef(false);
@@ -35,14 +37,14 @@ export default function ProfileSetupAnalyzingScreen() {
 
     const existing = analysisFromProfile(healthProfile.extraAnswers as Record<string, unknown>);
     const resultsPath = onboardingStepHref('/(auth)/profile-setup/results', preview);
-    if (existing) {
+    if (existing && !force) {
       router.replace(resultsPath as never);
       return;
     }
 
     void (async () => {
       try {
-        const res = await api.healthProfile.onboardingAnalysis();
+        const res = await api.healthProfile.onboardingAnalysis({ force });
         setHealthProfile(res.profile);
       } catch {
         // heuristic fallback may still be on profile after retry from results
@@ -50,7 +52,7 @@ export default function ProfileSetupAnalyzingScreen() {
         router.replace(resultsPath as never);
       }
     })();
-  }, [ready, healthProfile, router, setHealthProfile, preview]);
+  }, [ready, healthProfile, router, setHealthProfile, preview, force]);
 
   if (!ready) {
     return (
@@ -63,7 +65,6 @@ export default function ProfileSetupAnalyzingScreen() {
   if (!user || !healthProfile) return <Redirect href="/(auth)/sign-in" />;
   const blocked = onboardingScreenBlocked(preview, user, healthProfile);
   if (blocked === 'assessment') return <Redirect href="/(auth)/assessment" />;
-  if (blocked === 'home') return <Redirect href="/(tabs)/home" />;
 
   const extra = (healthProfile.extraAnswers ?? {}) as Record<string, unknown>;
   const avatarId = normalizeAvatarForGender(
