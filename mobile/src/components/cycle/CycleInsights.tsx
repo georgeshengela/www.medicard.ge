@@ -14,6 +14,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { InsightCardsSkeleton } from '@/components/ui/Skeleton';
 import { QuotaSheet } from '@/components/QuotaSheet';
 import { CycleInsightDetailSheet } from '@/components/cycle/CycleInsightDetailSheet';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
@@ -213,20 +214,7 @@ export function CycleInsightsPanel({
           </Text>
         ) : null}
 
-        {loading && !cards.length ? (
-          <View
-            style={{
-              backgroundColor: c.card,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: c.border,
-              paddingVertical: 36,
-              alignItems: 'center',
-            }}
-          >
-            <ActivityIndicator color={c.brand} />
-          </View>
-        ) : null}
+        {loading && !cards.length ? <InsightCardsSkeleton /> : null}
 
         {error && !cards.length ? (
           <Pressable

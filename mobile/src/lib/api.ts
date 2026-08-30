@@ -1211,7 +1211,26 @@ export const api = {
 
   cycle: {
     get: (opts?: { timeoutMs?: number }) =>
-      request<CycleBundle>('/api/cycle', { timeoutMs: opts?.timeoutMs ?? 20_000 }),
+      request<CycleBundle>('/api/cycle', { timeoutMs: opts?.timeoutMs ?? 20_000, cache: 'no-store' }),
+    exportData: () =>
+      request<{
+        format: string;
+        exportedAt: string;
+        includesJournal: boolean;
+        profile: Record<string, unknown>;
+        logs: CycleLog[];
+        customTags: CycleCustomTag[];
+        periodStarts: string[];
+        periodRanges: CyclePeriodRange[];
+        contraception: { method: string | null; startedAt: string | null; label: string };
+        pregnancyLogs: PregnancyLog[];
+      }>('/api/cycle/export', { cache: 'no-store' }),
+    wipeData: () =>
+      request<{ ok: true; deleted: Record<string, number>; bundle: CycleBundle }>('/api/cycle/wipe', {
+        method: 'POST',
+        body: { confirm: 'DELETE_CYCLE_DATA' },
+        timeoutMs: 30_000,
+      }),
     setLastPeriod: (date: string) =>
       request<CycleBundle>('/api/cycle/last-period', { method: 'POST', body: { date } }),
     updateProfile: (body: Partial<{

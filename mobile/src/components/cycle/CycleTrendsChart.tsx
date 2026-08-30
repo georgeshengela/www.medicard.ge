@@ -10,6 +10,7 @@ import { cycleChipLabel } from '@/lib/cycleLabels';
 import { formatPainEntry, painSeverityLabel } from '@/lib/cycleObservations';
 import { bbtSeriesWithGaps, fertilityTestHistory } from '@/lib/cycleFertility';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
+import { showFertilityUi } from '@/lib/cycleContraception';
 import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
@@ -185,7 +186,11 @@ export function CycleTrendsCharts({ bundle }: Props) {
               <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 10 }}>
                 {ka.cycle.trendsBbtHint}
               </Text>
-              <BbtGapChart points={bbt} estimatedOvulation={bundle.predictions?.ovulationDate} c={c} />
+              <BbtGapChart
+                points={bbt}
+                estimatedOvulation={showFertilityUi(bundle) ? bundle.predictions?.ovulationDate : null}
+                c={c}
+              />
             </CycleCard>
           ) : (
             <CycleCard>
@@ -232,6 +237,7 @@ function QualityCard({
     <CycleCard>
       <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', marginBottom: 6 }}>{label}</Text>
       <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18 }}>{ka.cycle.insightQualityHint}</Text>
+      <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginTop: 6 }}>{ka.cycle.analyticsHorizonHint}</Text>
       {completed != null ? (
         <Text style={{ color: c.muted, fontSize: 12, marginTop: 6 }}>
           {ka.cycle.basedOnCycles(completed)}

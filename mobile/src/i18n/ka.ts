@@ -1326,6 +1326,16 @@ export const ka = {
     settingsPrivacy: 'კონფიდენციალურობა',
     settingsSharing: 'გაზიარება',
     settingsData: 'მონაცემები და ანგარიშები',
+    exportJson: 'JSON ექსპორტი',
+    exportJsonHint: 'თქვენი აღრიცხვები, მათ შორის დღიური. ეს არ არის ექიმის ანგარიში.',
+    exportJsonDone: 'ექსპორტი მზადაა',
+    deleteCycleTitle: 'ციკლის მონაცემების წაშლა',
+    deleteCycleBody:
+      'წაიშლება პროფილი, ყოველდღიური აღრიცხვები, ნიშნები, ორსულობის ჩანაწერები, პარტნიორის ბმული და ადგილობრივი ოფლაინ რიგი. სხვა Medicard მოდულები არ შეეხება.',
+    deleteCycleConfirm: 'წაშლა',
+    deleteCycleAgain: 'კიდევ ერთხელ დაადასტურეთ წაშლა',
+    deleteCycleDone: 'ციკლის მონაცემები წაიშალა',
+    analyticsHorizonHint: 'პერსონალური პატერნები ბოლო 12 დასრულებულ ციკლს ეყრდნობა, არა მთელ ისტორიას.',
     periodLoggedDays: (n: number) => `${n} აღრიცხული დღე`,
     periodGapNote: 'გამოტოვებული დღეები არ არის აღრიცხული გამონადენი.',
     missedPeriodFillConfirm:
@@ -1633,7 +1643,8 @@ export const ka = {
     insightQualityLow: 'მონაცემების სისრულე: დაბალი',
     insightQualityMedium: 'მონაცემების სისრულე: საშუალო',
     insightQualityHigh: 'მონაცემების სისრულე: მაღალი',
-    insightQualityHint: 'ეს აჩვენებს აღრიცხული ციკლების სისრულეს — არა პროგნოზის სიზუსტეს.',
+    insightQualityHint:
+      'ეს აჩვენებს ბოლო აღრიცხული ციკლების სისრულეს — არა პროგნოზის სიზუსტეს და არა სამედიცინო შეფასებას.',
     patternInCycles: (args: { label: string; n: number; m: number; range: string }) =>
       `${args.label} აღირიცხა ${args.n} ციკლში ${args.m}-დან` +
       (args.range !== '—' ? `, მენსტრუაციამდე ${args.range} დღით ადრე` : '') +

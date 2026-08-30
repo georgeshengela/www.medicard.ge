@@ -187,23 +187,17 @@ describe('insights sample rules', () => {
     assert.doesNotMatch(hit.textKa, /იწვევს|100%/);
   });
 
-  it('skips phase-based pain insight under LIMITED contraception', () => {
+  it('does not emit estimated-phase pain patterns', () => {
     const logs = Array.from({ length: 6 }, (_, i) => ({
       date: `2026-08-2${i}`,
       painEntries: [{ type: 'pelvic', severity: 'moderate' }],
     }));
     const phasesByDate = Object.fromEntries(logs.map((l) => [l.date, 'luteal']));
-    const limited = buildObservationInsights(logs, {
-      predictionAvailability: 'LIMITED',
-      phasesByDate,
-    });
-    assert.equal(limited.lifestyle.patterns.some((p) => p.id === 'pelvic_luteal'), false);
     const open = buildObservationInsights(logs, {
       predictionAvailability: 'NORMAL',
       phasesByDate,
     });
-    assert.ok(open.lifestyle.patterns.some((p) => p.id === 'pelvic_luteal'));
-    assert.match(open.lifestyle.patterns[0].textKa, /კორელაციაა/);
+    assert.equal(open.lifestyle.patterns.some((p) => p.id === 'pelvic_luteal'), false);
   });
 });
 

@@ -231,7 +231,6 @@ function hasHeadache(log) {
  */
 export function buildObservationInsights(logs = [], options = {}) {
   const limited = options.predictionAvailability === 'LIMITED';
-  const phasesByDate = options.phasesByDate || {};
   const sampleDays = logs.length;
   const severityCounts = { mild: 0, moderate: 0, severe: 0 };
   const typeCounts = {};
@@ -278,24 +277,6 @@ export function buildObservationInsights(logs = [], options = {}) {
         denominator: poorSleepDays.length,
         textKa: `დაღლილობა აღირიცხა ${withFatigue} დღეს ${poorSleepDays.length}-დან, სადაც ძილი ცუდად იყო აღრიცხული.`,
       });
-    }
-  }
-
-  if (!limited && painDays.size >= OBSERVATION_PATTERN_MIN) {
-    const pelvicDays = logs.filter((l) =>
-      parsePainEntries(l.painEntries).some((p) => p.type === 'pelvic' || p.type === 'cramps'),
-    );
-    if (pelvicDays.length >= OBSERVATION_PATTERN_MIN) {
-      const luteal = pelvicDays.filter((l) => phasesByDate[l.date] === 'luteal').length;
-      if (luteal >= 4 && luteal / pelvicDays.length >= 0.6) {
-        patterns.push({
-          id: 'pelvic_luteal',
-          sampleDays: pelvicDays.length,
-          numerator: luteal,
-          denominator: pelvicDays.length,
-          textKa: `მენჯის ტკივილი უფრო ხშირად აღირიცხა იმ დღეებზე, რომლებსაც Medicard ლუტეალურად აფასებს. ეს კორელაციაა, არა მიზეზი.`,
-        });
-      }
     }
   }
 

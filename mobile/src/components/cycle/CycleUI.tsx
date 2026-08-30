@@ -12,6 +12,7 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import type { LucideIcon } from 'lucide-react-native';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { CyclePageSkeleton } from '@/components/ui/Skeleton';
 import { cycleShadow, useCycleColors, type CyclePalette } from '@/theme/cycle';
 
 /** App page canvas — same navy / gray as home, hydration, steps. */
@@ -21,12 +22,9 @@ export function CycleAtmosphere({ children }: { children: React.ReactNode }) {
 }
 
 export function CycleLoading() {
-  const c = useCycleColors();
   return (
     <CycleAtmosphere>
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={c.brand} size="large" />
-      </View>
+      <CyclePageSkeleton />
     </CycleAtmosphere>
   );
 }

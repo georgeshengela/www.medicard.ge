@@ -8,6 +8,7 @@ import { WEEKDAYS_KA } from '@/constants/cycle';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { useIsDark } from '@/theme/colors';
+import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import type { CycleBundle, CycleDayMark } from '@/lib/api';
 import { loadCycleView } from '@/lib/cycleOffline';
 import { isCyclePrivacyLockEnabled } from '@/lib/cycleReminderPrefs';
@@ -179,7 +180,10 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
   useFocusEffect(
     useCallback(() => {
       let alive = true;
+      setReady(false);
+      setBundle(null);
       if (!user?.id) {
+        setPrivacyLocked(false);
         setReady(true);
         return () => {
           alive = false;
@@ -243,6 +247,26 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
   const title = ka.modules.cycle.title;
   const cta = setupNeeded ? ka.home.cycleSetupCta : ka.home.cycleCta;
 
+  if (!ready) {
+    return (
+      <View>
+        <View style={{ paddingVertical: 8 }}>
+          <Text
+            style={{
+              fontFamily: 'NotoSansGeorgian_600SemiBold',
+              fontSize: 16,
+              lineHeight: 22,
+              color: FIGMA_CHAT.textPrimary,
+            }}
+          >
+            {title}
+          </Text>
+        </View>
+        <MetricCardSkeleton />
+      </View>
+    );
+  }
+
   return (
     <View>
       <View style={{ paddingVertical: 8 }}>
@@ -272,7 +296,9 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
             ...FIGMA_CHAT.shadowXs,
           }}
         >
-          {setupNeeded || (ready && !bundle) ? (
+          {!ready ? (
+            <MetricCardSkeleton />
+          ) : setupNeeded || !bundle ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View
                 style={{

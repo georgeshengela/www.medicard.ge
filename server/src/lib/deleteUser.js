@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { revokeCycleShares } from './cycleLifecycle.js';
 
 /**
  * Permanently remove a user and orphaned rows that are not FK-cascaded.
@@ -20,6 +21,8 @@ export async function deleteUserAccount(userId) {
   if (!user) {
     return { ok: false, status: 404, error: 'მომხმარებელი ვერ მოიძებნა.' };
   }
+
+  await revokeCycleShares(prisma, userId);
 
   await prisma.$transaction([
     prisma.dailyUsage.deleteMany({ where: { userId } }),

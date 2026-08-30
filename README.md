@@ -266,8 +266,19 @@ in the dashboard if you want to try the deploy before paying.
 - **Payments** — the Premium upsell is a placeholder. There is no billing integration yet.
 - **PHI** — confirm HIPAA/GDPR scope, data-retention terms and a BAA with EvidenceMD before
   sending identifiable patient data.
-- **Migrations** — `prisma db push` is used because Neon's pooled connection sits behind
-  PgBouncer. For versioned migrations, point `prisma migrate` at the direct (non-pooler) host.
+- **Migrations** — Production still uses `prisma db push` in `npm run release`. Live Neon
+  inspection (2026-08-30, read-only): there is **no** `_prisma_migrations` table, but
+  `CycleProfile` / `CycleLog` / `CycleCustomTag` / `CyclePartnerShare` already include the
+  Phase 7–9 columns (TTC tests, contraception, pain/lifestyle/tags). The three repo
+  migrations are `IF NOT EXISTS` no-ops against that schema. Do **not** switch Render to
+  `prisma migrate deploy` until: (1) `DIRECT_URL` / unpooled Neon is set (PgBouncer can
+  break migrate), (2) `migrate deploy` is proven on a staging clone, (3) you accept that
+  this database was created by `db push` and must never `migrate reset`. After a successful
+  clone deploy, the first production `migrate deploy` would create `_prisma_migrations` and
+  record those three already-applied Cycle migrations. Seed on release is idempotent for
+  packages/settings/pharmacy catalogs and does not touch Cycle rows; it does re-hash the
+  admin password and assign FREE to users with a null package — prefer running seed only
+  when that is intended, not on every deploy.
 
 ## Medical disclaimer
 

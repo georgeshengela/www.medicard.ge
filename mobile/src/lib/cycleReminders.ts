@@ -126,7 +126,7 @@ export async function syncCycleReminders(
     );
   }
 
-  if (mode === 'TRY_TO_CONCEIVE' && prefs.bbt) {
+  if (mode === 'TRY_TO_CONCEIVE' && prefs.bbt && allowFertilityReminders) {
     const hasBbtToday = logs.some((l) => l.date === today && l.bbt != null);
     if (!hasBbtToday) {
       await schedule('bbt', today, ka.cycle.remBbtTitle, ka.cycle.remBbtBody, '/cycle/log?tab=more');

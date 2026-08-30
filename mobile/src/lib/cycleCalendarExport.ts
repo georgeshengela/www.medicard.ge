@@ -14,6 +14,7 @@ function addDaysKey(key: string, n: number) {
 
 export function buildCycleIcs(bundle: CycleBundle): string {
   const phases = bundle.predictions;
+  const showFertility = bundle.contraception?.presentation?.showFertilityMarkers !== false;
   const events: string[] = [];
   const now = fmtUtc(new Date());
 
@@ -28,7 +29,7 @@ SUMMARY:${ka.cycle.icsPeriod}
 END:VEVENT`);
   }
 
-  if (phases.fertileWindow) {
+  if (showFertility && phases.fertileWindow) {
     const end = addDaysKey(phases.fertileWindow.end, 1);
     events.push(`BEGIN:VEVENT
 UID:medicard-fertile-${phases.fertileWindow.start}@medicard.ge
@@ -39,7 +40,7 @@ SUMMARY:${ka.cycle.icsFertile}
 END:VEVENT`);
   }
 
-  if (phases.ovulationDate) {
+  if (showFertility && phases.ovulationDate) {
     events.push(`BEGIN:VEVENT
 UID:medicard-ovulation-${phases.ovulationDate}@medicard.ge
 DTSTAMP:${now}

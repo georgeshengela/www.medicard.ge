@@ -42,6 +42,11 @@ import {
 } from '../lib/cycle.js';
 import { buildHistoricalAnalytics } from '../lib/cycleHistoryAnalytics.js';
 import {
+  DELETE_CYCLE_CONFIRM,
+  buildCycleExportPayload,
+  wipeCycleHealthData,
+} from '../lib/cycleLifecycle.js';
+import {
   assertCycleDateKey,
   DEFAULT_BLEED_FLOW,
   logHasExtras,
@@ -72,6 +77,10 @@ import {
 
 export const cycleRouter = Router();
 cycleRouter.use(requireAuth);
+cycleRouter.use((_req, res, next) => {
+  applyPrivateCache(res);
+  next();
+});
 
 const MODES = ['TRACK_PERIOD', 'TRY_TO_CONCEIVE', 'PREGNANCY'];
 const FLOWS = ['none', 'spotting', 'light', 'medium', 'heavy'];
@@ -399,6 +408,40 @@ cycleRouter.get(
     assertFemale(req.user);
     const bundle = await loadBundle(req.user.id);
     return res.json(bundle);
+  }),
+);
+
+cycleRouter.get(
+  '/export',
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    const bundle = await loadBundle(req.user.id);
+    return res.json(
+      buildCycleExportPayload({
+        profile: bundle.profile,
+        logs: bundle.logs,
+        customTags: bundle.customTags,
+        inferred: bundle.inferred,
+        contraception: bundle.contraception,
+        pregnancyLogs: bundle.pregnancyLogs,
+      }),
+    );
+  }),
+);
+
+cycleRouter.post(
+  '/wipe',
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    const parsed = z.object({ confirm: z.literal(DELETE_CYCLE_CONFIRM) }).safeParse(req.body);
+    if (!parsed.success) {
+      const err = new Error('ციკლის მონაცემების წასაშლელად საჭიროა დადასტურება.');
+      err.status = 400;
+      throw err;
+    }
+    const deleted = await wipeCycleHealthData(prisma, req.user.id);
+    const bundle = await loadBundle(req.user.id);
+    return res.json({ ok: true, deleted, bundle });
   }),
 );
 

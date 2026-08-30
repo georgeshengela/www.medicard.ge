@@ -359,6 +359,29 @@ describe('health mutations overlay (no local engine)', () => {
   });
 });
 
+describe('cycle wipe clears pending queue', () => {
+  it('does not replay deleted observations after the local account is emptied', () => {
+    let store = persistStore(writeAccount(null, 'user-a', emptyAccount('user-a')));
+    let account = readAccount(store, 'user-a');
+    account = enqueueMutation(
+      account,
+      createMutation('user-a', 'UPSERT_LOG', {
+        date: '2026-08-30',
+        flow: 'none',
+        painEntries: [{ type: 'cramps', severity: 'severe' }],
+        notes: 'should not come back',
+      }),
+    );
+    store = persistStore(writeAccount(store, 'user-a', account));
+    store = persistStore(writeAccount(store, 'user-a', emptyAccount('user-a')));
+    const wiped = readAccount(store, 'user-a');
+    assert.equal(wiped.queue.length, 0);
+    const { bundle } = overlayPendingOnBundle(sampleBundle({ logs: [] }), wiped.queue, 'user-a');
+    assert.equal(bundle.logs.find((l) => l.date === '2026-08-30'), undefined);
+    assert.equal(JSON.stringify(bundle).includes('should not come back'), false);
+  });
+});
+
 describe('offline analytics stay a server snapshot', () => {
   it('does not recompute pain recurrence from a pending log', () => {
     const cached = sampleBundle();

@@ -1,11 +1,11 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, Switch, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Share, Switch, Text, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { Baby, Bell, CalendarPlus, EyeOff, Heart, Link2, Lock, Sparkles } from 'lucide-react-native';
+import { Baby, Bell, CalendarPlus, Download, EyeOff, Heart, Link2, Lock, Sparkles, Trash2 } from 'lucide-react-native';
 import { CycleNotificationMaskPreview } from '@/components/cycle/CycleNotificationMaskPreview';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
 import { CycleHealthConnectCard } from '@/components/cycle/CycleHealthConnectCard';
@@ -21,7 +21,7 @@ import {
 import { ka } from '@/i18n/ka';
 import { api, ApiError, type CycleBundle, type CycleCondition, type CycleContraceptionMethod, type CycleMode } from '@/lib/api';
 import { CycleTtcConflictSheet } from '@/components/cycle/CycleTtcConflictSheet';
-import { cacheCycleBundle, loadCycleView, peekCyclePendingCount } from '@/lib/cycleOffline';
+import { cacheCycleBundle, destroyCycleOfflineAccount, loadCycleView, peekCyclePendingCount } from '@/lib/cycleOffline';
 import { useAuth } from '@/store/AuthContext';
 import { normalizeIsoDate } from '@/lib/birthdate';
 import { buildCycleIcs } from '@/lib/cycleCalendarExport';
@@ -275,6 +275,73 @@ export default function CycleSettings() {
       setMsgTone('error');
       setMsg(err instanceof ApiError ? err.message : ka.common.error);
     }
+  };
+
+  const exportJson = async () => {
+    setMsg(null);
+    try {
+      if ((pendingCount || (user?.id ? await peekCyclePendingCount(user.id) : 0)) > 0) {
+        setMsgTone('error');
+        setMsg(ka.cycle.reportPendingWarn);
+        return;
+      }
+      const data = await api.cycle.exportData();
+      const json = JSON.stringify(data, null, 2);
+      if (Platform.OS === 'web') {
+        await Share.share({ message: json });
+        return;
+      }
+      const path = `${FileSystem.cacheDirectory}medicard-cycle-export.json`;
+      await FileSystem.writeAsStringAsync(path, json, { encoding: FileSystem.EncodingType.UTF8 });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(path, { mimeType: 'application/json', UTI: 'public.json' });
+      }
+      setMsgTone('success');
+      setMsg(ka.cycle.exportJsonDone);
+    } catch (err) {
+      setMsgTone('error');
+      setMsg(err instanceof ApiError ? err.message : ka.common.error);
+    }
+  };
+
+  const wipeCycleData = () => {
+    Alert.alert(ka.cycle.deleteCycleTitle, ka.cycle.deleteCycleBody, [
+      { text: ka.common.cancel, style: 'cancel' },
+      {
+        text: ka.cycle.deleteCycleConfirm,
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert(ka.cycle.deleteCycleAgain, ka.cycle.deleteCycleBody, [
+            { text: ka.common.cancel, style: 'cancel' },
+            {
+              text: ka.cycle.deleteCycleConfirm,
+              style: 'destructive',
+              onPress: () => {
+                void (async () => {
+                  try {
+                    const result = await api.cycle.wipeData();
+                    if (user?.id) await destroyCycleOfflineAccount(user.id);
+                    const next = applyProfile(result.bundle);
+                    setBundle(result.bundle);
+                    setCanonical(result.bundle);
+                    setPendingCount(0);
+                    setMode(next.mode);
+                    setLastPeriod(next.lastPeriod);
+                    setContraceptionMethod(next.contraceptionMethod);
+                    setContraceptionStartedAt(next.contraceptionStartedAt);
+                    setMsgTone('success');
+                    setMsg(ka.cycle.deleteCycleDone);
+                  } catch (err) {
+                    setMsgTone('error');
+                    setMsg(err instanceof ApiError ? err.message : ka.common.error);
+                  }
+                })();
+              },
+            },
+          ]);
+        },
+      },
+    ]);
   };
 
   const togglePrivacyLock = async (on: boolean) => {
@@ -720,6 +787,8 @@ export default function CycleSettings() {
           <CycleCard>
             <Pressable
               onPress={exportCalendar}
+              accessibilityRole="button"
+              accessibilityLabel={ka.cycle.calendarExport}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -731,6 +800,46 @@ export default function CycleSettings() {
               <Text style={{ color: c.ink, fontWeight: '700', marginLeft: 10, flex: 1 }}>
                 {ka.cycle.calendarExport}
               </Text>
+            </Pressable>
+            <View style={{ height: 1, backgroundColor: c.border, marginVertical: 8 }} />
+            <Pressable
+              onPress={() => void exportJson()}
+              accessibilityRole="button"
+              accessibilityLabel={ka.cycle.exportJson}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                minHeight: 48,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Download size={20} color={c.brand} />
+              <View style={{ marginLeft: 10, flex: 1 }}>
+                <Text style={{ color: c.ink, fontWeight: '700' }}>{ka.cycle.exportJson}</Text>
+                <Text style={{ color: c.muted, fontSize: 12, marginTop: 4, lineHeight: 17 }}>
+                  {ka.cycle.exportJsonHint}
+                </Text>
+              </View>
+            </Pressable>
+            <View style={{ height: 1, backgroundColor: c.border, marginVertical: 8 }} />
+            <Pressable
+              onPress={wipeCycleData}
+              accessibilityRole="button"
+              accessibilityLabel={ka.cycle.deleteCycleTitle}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                minHeight: 48,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Trash2 size={20} color={c.danger} />
+              <View style={{ marginLeft: 10, flex: 1 }}>
+                <Text style={{ color: c.danger, fontWeight: '700' }}>{ka.cycle.deleteCycleTitle}</Text>
+                <Text style={{ color: c.muted, fontSize: 12, marginTop: 4, lineHeight: 17 }}>
+                  {ka.cycle.deleteCycleBody}
+                </Text>
+              </View>
             </Pressable>
           </CycleCard>
         </CycleSection>
