@@ -172,6 +172,12 @@ export function buildDayPredictions({
     if (log.pregnancyTest === 'negative' || log.pregnancyTest === 'positive' || log.pregnancyTest === 'unclear') {
       bits.push(ka.cycle.loggedPreg(ka.cycle.testResult[log.pregnancyTest]));
     }
+    if (log.painEntries?.length) bits.push(ka.cycle.loggedPainBit(log.painEntries.length));
+    if (log.sleepQuality || log.stressLevel || log.exerciseLevel || log.caffeine || log.alcohol) {
+      bits.push(ka.cycle.loggedLifestyleBit);
+    }
+    if (log.customTagIds?.length) bits.push(ka.cycle.loggedTagsBit(log.customTagIds.length));
+    if (log.notes?.trim()) bits.push(ka.cycle.loggedJournalBit);
     cards.unshift({
       id: 'logged',
       kind: 'logged',

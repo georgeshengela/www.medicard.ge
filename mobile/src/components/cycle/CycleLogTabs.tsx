@@ -19,12 +19,20 @@ import {
 } from '@/constants/cycle';
 import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
 import { CycleFlowPicker } from '@/components/cycle/CycleFlowPicker';
+import {
+  CycleJournalField,
+  CycleLifestyleFields,
+  CyclePainEditor,
+  CycleTagPicker,
+} from '@/components/cycle/CycleObservationFields';
 import { CycleCard, CycleScalePicker, formatCycleDateKa } from '@/components/cycle/CycleUI';
+import type { CycleCustomTag, CyclePainEntry } from '@/lib/api';
+import { PAIN_MANAGED_SYMPTOM_IDS } from '@/lib/cycleObservations';
 import { ka } from '@/i18n/ka';
 import { cycleShadow, useCycleColors } from '@/theme/cycle';
 
 type TabId = 'flow' | 'feel' | 'more';
-type FeelPane = 'symptoms' | 'moods';
+type FeelPane = 'symptoms' | 'moods' | 'pain';
 
 export type CycleLogForm = {
   flow: string | null;
@@ -38,6 +46,13 @@ export type CycleLogForm = {
   ovulationTest: string | null;
   pregnancyTest: string | null;
   notes: string;
+  painEntries: CyclePainEntry[];
+  sleepQuality: string | null;
+  stressLevel: string | null;
+  exerciseLevel: string | null;
+  caffeine: string | null;
+  alcohol: string | null;
+  customTagIds: string[];
 };
 
 type Props = {
@@ -47,6 +62,9 @@ type Props = {
   onChange: (patch: Partial<CycleLogForm>) => void;
   bottomInset: number;
   initialTab?: TabId;
+  customTags?: CycleCustomTag[];
+  onCreateTag?: (name: string) => Promise<void>;
+  creatingTag?: boolean;
 };
 
 const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
@@ -77,17 +95,27 @@ function withAlpha(hex: string, alpha: number) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialTab }: Props) {
+export function CycleLogTabs({
+  date,
+  mode,
+  form,
+  onChange,
+  bottomInset,
+  initialTab,
+  customTags = [],
+  onCreateTag,
+  creatingTag,
+}: Props) {
   const c = useCycleColors();
   const [tab, setTab] = useState<TabId>(initialTab ?? 'flow');
   const [feelPane, setFeelPane] = useState<FeelPane>('symptoms');
   const [symQuery, setSymQuery] = useState('');
 
-  const showFertility = mode === 'TRY_TO_CONCEIVE' || mode === 'PREGNANCY';
+  const showFertility = mode === 'TRY_TO_CONCEIVE';
 
   const tabDone: Record<TabId, boolean> = {
     flow: Boolean(form.flow),
-    feel: form.symptoms.length > 0 || form.moods.length > 0,
+    feel: form.symptoms.length > 0 || form.moods.length > 0 || form.painEntries.length > 0,
     more:
       form.sexual ||
       form.libido != null ||
@@ -95,13 +123,20 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
       Boolean(form.bbt.trim()) ||
       Boolean(form.mucus) ||
       Boolean(form.ovulationTest) ||
-      Boolean(form.pregnancyTest),
+      Boolean(form.pregnancyTest) ||
+      Boolean(form.sleepQuality) ||
+      Boolean(form.stressLevel) ||
+      Boolean(form.exerciseLevel) ||
+      Boolean(form.caffeine) ||
+      Boolean(form.alcohol) ||
+      form.customTagIds.length > 0,
   };
 
   const filteredSymptoms = useMemo(() => {
     const q = symQuery.trim().toLowerCase();
-    if (!q) return PHYSICAL_SYMPTOMS;
-    return PHYSICAL_SYMPTOMS.filter((o) => o.label.toLowerCase().includes(q));
+    const catalog = PHYSICAL_SYMPTOMS.filter((o) => !PAIN_MANAGED_SYMPTOM_IDS.has(o.id));
+    if (!q) return catalog;
+    return catalog.filter((o) => o.label.toLowerCase().includes(q));
   }, [symQuery]);
 
   const tabIndex = TABS.findIndex((t) => t.id === tab);
@@ -240,6 +275,7 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
                 [
                   { id: 'symptoms' as FeelPane, label: ka.cycle.symptoms, count: form.symptoms.length },
                   { id: 'moods' as FeelPane, label: ka.cycle.moods, count: form.moods.length },
+                  { id: 'pain' as FeelPane, label: ka.cycle.pain, count: form.painEntries.length },
                 ] as const
               ).map((pane) => {
                 const active = feelPane === pane.id;
@@ -264,7 +300,12 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
               })}
             </View>
 
-            {feelPane === 'symptoms' ? (
+            {feelPane === 'pain' ? (
+              <CyclePainEditor
+                entries={form.painEntries}
+                onChange={(painEntries) => onChange({ painEntries })}
+              />
+            ) : feelPane === 'symptoms' ? (
               <>
                 <TextInput
                   value={symQuery}
@@ -303,6 +344,27 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
 
         {tab === 'more' ? (
           <Animated.View entering={FadeInRight.duration(280)}>
+            <Block title={ka.cycle.lifestyle} hint={ka.cycle.lifestyleHint}>
+              <CycleLifestyleFields
+                sleepQuality={form.sleepQuality}
+                stressLevel={form.stressLevel}
+                exerciseLevel={form.exerciseLevel}
+                caffeine={form.caffeine}
+                alcohol={form.alcohol}
+                onChange={onChange}
+              />
+            </Block>
+
+            <Block title={ka.cycle.customTags}>
+              <CycleTagPicker
+                tags={customTags}
+                selectedIds={form.customTagIds}
+                onChange={(customTagIds) => onChange({ customTagIds })}
+                onCreate={onCreateTag}
+                creating={creatingTag}
+              />
+            </Block>
+
             <Block title={ka.cycle.sexual} hint={ka.cycle.logSexHint}>
               <View style={{ flexDirection: 'row', marginHorizontal: -5, marginBottom: form.sexual ? 12 : 0 }}>
                 {[
@@ -424,26 +486,8 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
               </>
             ) : null}
 
-            <Block title={ka.cycle.notes} hint={ka.cycle.logNotesHint}>
-              <TextInput
-                value={form.notes}
-                onChangeText={(notes) => onChange({ notes })}
-                multiline
-                placeholder={ka.cycle.logNotesPlaceholder}
-                placeholderTextColor={c.mutedSoft}
-                style={{
-                  backgroundColor: c.cardSoft,
-                  borderRadius: 24,
-                  padding: 16,
-                  color: c.ink,
-                  minHeight: 120,
-                  textAlignVertical: 'top',
-                  borderWidth: 1.5,
-                  borderColor: c.border,
-                  fontSize: 15,
-                  lineHeight: 22,
-                }}
-              />
+            <Block title={ka.cycle.journalTitle} hint={ka.cycle.logNotesHint}>
+              <CycleJournalField value={form.notes} onChange={(notes) => onChange({ notes })} />
             </Block>
           </Animated.View>
         ) : null}

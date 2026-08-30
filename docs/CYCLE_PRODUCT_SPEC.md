@@ -355,11 +355,11 @@ Period history list = `inferred.periodStarts` (starts only). Cycle length next t
 
 **API:** `symptoms` / `moods` are `z.string().max(40)` arrays (max 40 / 20). Custom keys are **accepted** but there is **no add-custom UI**.
 
-**Not first-class cycle fields:** sleep quality score, exercise, caffeine, alcohol, hydration, meditation, OPK, pregnancy test, pain intensity/location/duration.
+**Phase 9 first-class observations (user-logged, not predictive):** `painEntries` JSON (`type` + `mild|moderate|severe`), lifestyle enums (`sleepQuality`, `stressLevel`, `exerciseLevel`, `caffeine`, `alcohol`), `customTagIds` + `CycleCustomTag` (archive, not hard-delete). Journal reuses `notes` (max 2000). Pain-related symptom chips (`cramps`, `headache`, `back_pain`, `breast_tenderness`, `pelvic_pain`, `ovulation_pain`) are hidden from new pickers so they are not logged twice. Hydration/steps are **not** copied onto CycleLog; the bundle may include read-only `dailyMetrics`. PMS heatmap is **unchanged** (current-LMP modulo, days 18–35). Notes and custom tag names are excluded from Medi prompts and the doctor PDF. Partner share excludes pain/lifestyle/tags/journal.
 
 Hydration/steps live in `/health-metrics/*` and are not written onto `CycleLog`.
 
-PMS heatmap keys: subset in `PMS_SYMPTOM_KEYS` in `cycle.js` (cycle days 18–35 of **current** LMP-aligned cycle only — not a true multi-cycle overlay per historical start).
+PMS heatmap keys: subset in `PMS_SYMPTOM_KEYS` in `cycle.js` (cycle days 18–35 of **current** LMP-aligned cycle only — not a true multi-cycle overlay per historical start). **Phase 9 does not rewrite this mapping.**
 
 ---
 
@@ -612,6 +612,12 @@ Additionally:
 - Phase 8 added `contraceptionMethod` / `contraceptionStartedAt` on CycleProfile plus a server interpretation layer (`NORMAL` / `CAUTION` / `LIMITED`). Engine math is unchanged.
 - Target v1 (no new tables required): settings + hub + PDF disclaimer — hormonal contraception / IUD can make period/ovulation forecasts **wrong**; user should not use Medicard as contraception.
 - Do **not** silently change −14 math without a contraception model (future phase, out of scope until decided).
+
+## B8.1 Phase 9 daily observations
+
+- Implemented as user-logged fields only. They must not change cycle length, period inference, ovulation, fertile window, phase, confidence, or contraception presentation.
+- Custom tag create is online-only. Daily tag assignment uses the existing `UPSERT_LOG` queue.
+- Production still runs `prisma db push` via `npm run release`. Versioned migrations exist under `server/prisma/migrations/`. Recommendation: switch Render to `prisma migrate deploy` when ready — do not change that in this phase.
 
 ## B9. Data privacy rules (target)
 

@@ -39,6 +39,7 @@ model User {
   pushTokens       PushToken[]
   cycleProfile     CycleProfile?
   cycleLogs        CycleLog[]
+  cycleCustomTags  CycleCustomTag[]
   pregnancyLogs    PregnancyLog[]
   cycleSharesOwned    CyclePartnerShare[] @relation("CycleShareOwner")
   cycleSharesAccepted CyclePartnerShare[] @relation("CycleSharePartner")
@@ -268,11 +269,39 @@ model CycleLog {
   /// negative | positive | unclear — user-logged pregnancy-test result, not a diagnosis
   pregnancyTest   String?
   notes           String?
+  /// [{ type, severity }] — user-logged. Does not change predictions.
+  painEntries     Json     @default("[]")
+  /// poor | okay | good
+  sleepQuality    String?
+  /// low | medium | high
+  stressLevel     String?
+  /// none | light | moderate | intense
+  exerciseLevel   String?
+  /// none | low | moderate | high
+  caffeine        String?
+  /// none | light | moderate | heavy
+  alcohol         String?
+  /// CycleCustomTag ids for this calendar day
+  customTagIds    Json     @default("[]")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+/// User-owned Cycle labels. Archive instead of hard-delete.
+model CycleCustomTag {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  nameNormalized String
+  createdAt      DateTime  @default(now())
+  archivedAt     DateTime?
+
+  @@index([userId, archivedAt])
+  @@index([userId, nameNormalized])
 }
 
 /// One active invite per owner in product UI. Token hash is looked up; plaintext is owner-only.

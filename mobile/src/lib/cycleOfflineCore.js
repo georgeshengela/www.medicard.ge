@@ -284,7 +284,14 @@ function hasObservationExtras(body) {
     body.libido != null ||
     Boolean(body.cervicalMucus) ||
     Boolean(body.ovulationTest) ||
-    Boolean(body.pregnancyTest)
+    Boolean(body.pregnancyTest) ||
+    (Array.isArray(body.painEntries) && body.painEntries.length > 0) ||
+    Boolean(body.sleepQuality) ||
+    Boolean(body.stressLevel) ||
+    Boolean(body.exerciseLevel) ||
+    Boolean(body.caffeine) ||
+    Boolean(body.alcohol) ||
+    (Array.isArray(body.customTagIds) && body.customTagIds.length > 0)
   );
 }
 
@@ -358,6 +365,14 @@ function upsertLogOnBundle(bundle, date, patch, userScope) {
     pregnancyTest:
       patch.pregnancyTest !== undefined ? patch.pregnancyTest : prev?.pregnancyTest ?? null,
     notes: patch.notes !== undefined ? patch.notes : prev?.notes ?? null,
+    painEntries: patch.painEntries !== undefined ? patch.painEntries : prev?.painEntries || [],
+    sleepQuality: patch.sleepQuality !== undefined ? patch.sleepQuality : prev?.sleepQuality ?? null,
+    stressLevel: patch.stressLevel !== undefined ? patch.stressLevel : prev?.stressLevel ?? null,
+    exerciseLevel:
+      patch.exerciseLevel !== undefined ? patch.exerciseLevel : prev?.exerciseLevel ?? null,
+    caffeine: patch.caffeine !== undefined ? patch.caffeine : prev?.caffeine ?? null,
+    alcohol: patch.alcohol !== undefined ? patch.alcohol : prev?.alcohol ?? null,
+    customTagIds: patch.customTagIds !== undefined ? patch.customTagIds : prev?.customTagIds || [],
   };
   if (idx >= 0) logs[idx] = next;
   else logs.push(next);
@@ -394,6 +409,7 @@ function restoreCanonicalDerived(original, next) {
   next.trends = original.trends;
   next.alerts = original.alerts;
   next.summary = original.summary;
+  next.analytics = original.analytics;
   next.pregnancy = original.pregnancy;
   if (original.profile) {
     next.profile = {

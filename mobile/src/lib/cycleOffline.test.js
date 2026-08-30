@@ -80,6 +80,20 @@ function sampleBundle(overrides = {}) {
       estimated: true,
     },
     inferred: { avgCycleLength: 28, avgPeriodLength: 5, lastPeriodStart: '2026-08-12' },
+    analytics: {
+      insightDataQuality: 'MEDIUM',
+      completedCycleCount: 4,
+      painPatterns: [
+        {
+          kind: 'pain_before_period',
+          painType: 'cramps',
+          cyclesWithObservation: 3,
+          eligibleCycles: 4,
+          daysBeforeMin: 1,
+          daysBeforeMax: 4,
+        },
+      ],
+    },
     ...overrides,
   };
 }
@@ -342,6 +356,23 @@ describe('health mutations overlay (no local engine)', () => {
     assert.equal(account.queue.length, 1);
     const { bundle } = overlayPendingOnBundle(sampleBundle(), account.queue, 'user-a');
     assert.equal(bundle.logs.find((l) => l.date === '2026-08-30').flow, 'heavy');
+  });
+});
+
+describe('offline analytics stay a server snapshot', () => {
+  it('does not recompute pain recurrence from a pending log', () => {
+    const cached = sampleBundle();
+    const q = [
+      createMutation('user-a', 'UPSERT_LOG', {
+        date: '2026-08-30',
+        flow: 'none',
+        painEntries: [{ type: 'cramps', severity: 'severe' }],
+      }),
+    ];
+    const { bundle } = overlayPendingOnBundle(cached, q, 'user-a');
+    assert.deepEqual(bundle.analytics, cached.analytics);
+    assert.equal(bundle.analytics.painPatterns[0].cyclesWithObservation, 3);
+    assert.equal(bundle.logs.find((l) => l.date === '2026-08-30').painEntries[0].severity, 'severe');
   });
 });
 
@@ -710,6 +741,55 @@ describe('TTC fertility observations stay on UPSERT_LOG', () => {
     const overlayA = overlayPendingOnBundle(sampleBundle(), a.queue, 'user-a').bundle;
     const overlayB = overlayPendingOnBundle(sampleBundle(), b.queue, 'user-b').bundle;
     assert.equal(overlayA.logs.find((l) => l.date === '2026-08-30').ovulationTest, 'positive');
+    assert.equal(overlayB.logs.find((l) => l.date === '2026-08-30'), undefined);
+  });
+});
+
+describe('Phase 9 daily observations stay on UPSERT_LOG', () => {
+  it('overlays pain, lifestyle, tags, and journal without changing predictions', () => {
+    const planned = planQueuedLogMutations(
+      {
+        date: '2026-08-30',
+        painEntries: [{ type: 'pelvic', severity: 'severe' }],
+        sleepQuality: 'poor',
+        stressLevel: 'high',
+        customTagIds: ['11111111-1111-4111-8111-111111111111'],
+        notes: 'offline journal',
+      },
+      {},
+    );
+    assert.equal(planned[0].operation, 'UPSERT_LOG');
+    const q = [
+      createMutation('user-a', 'UPSERT_LOG', {
+        date: '2026-08-30',
+        painEntries: [{ type: 'pelvic', severity: 'severe' }],
+        sleepQuality: 'poor',
+        stressLevel: 'high',
+        customTagIds: ['11111111-1111-4111-8111-111111111111'],
+        notes: 'offline journal',
+      }),
+    ];
+    const { bundle } = overlayPendingOnBundle(sampleBundle(), q, 'user-a');
+    const log = bundle.logs.find((l) => l.date === '2026-08-30');
+    assert.equal(log.painEntries[0].severity, 'severe');
+    assert.equal(log.sleepQuality, 'poor');
+    assert.equal(log.notes, 'offline journal');
+    assert.equal(bundle.predictions.ovulationDate, '2026-08-25');
+    assert.equal(bundle.predictions.nextPeriodStart, '2026-09-09');
+  });
+
+  it('does not replay User A pain/journal onto User B', () => {
+    const a = enqueueMutation(
+      emptyAccount('user-a'),
+      createMutation('user-a', 'UPSERT_LOG', {
+        date: '2026-08-30',
+        painEntries: [{ type: 'pelvic', severity: 'severe' }],
+        notes: 'A only',
+      }),
+    );
+    const overlayA = overlayPendingOnBundle(sampleBundle(), a.queue, 'user-a').bundle;
+    const overlayB = overlayPendingOnBundle(sampleBundle(), emptyAccount('user-b').queue, 'user-b').bundle;
+    assert.equal(overlayA.logs.find((l) => l.date === '2026-08-30').notes, 'A only');
     assert.equal(overlayB.logs.find((l) => l.date === '2026-08-30'), undefined);
   });
 });

@@ -55,8 +55,11 @@ export default function CycleTrendsScreen() {
           </Text>
         ) : null}
         {bundle ? <CycleTrendsCharts bundle={bundle} /> : null}
-        {bundle && !(bundle.trends?.cycleLengths?.length) && !(bundle.trends?.bbtPoints?.length) ? (
-          <Text style={{ color: c.muted, marginTop: 16, lineHeight: 20 }}>{ka.cycle.trendsEmpty}</Text>
+        {bundle &&
+        !(bundle.analytics?.completedCycleCount) &&
+        !(bundle.trends?.cycleLengths?.length) &&
+        !(bundle.trends?.bbtPoints?.length) ? (
+          <Text style={{ color: c.muted, marginTop: 16, lineHeight: 20 }}>{ka.cycle.trendsLogCycles}</Text>
         ) : null}
       </ScrollView>
     </CycleAtmosphere>

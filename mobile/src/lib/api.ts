@@ -439,6 +439,73 @@ export type CycleProfile = {
 
 export type CycleTestResult = 'negative' | 'positive' | 'unclear';
 
+export type CyclePainType =
+  | 'cramps'
+  | 'pelvic'
+  | 'lower_back'
+  | 'headache'
+  | 'breast'
+  | 'ovulation_side'
+  | 'other';
+
+export type CyclePainSeverity = 'mild' | 'moderate' | 'severe';
+
+export type CyclePainEntry = {
+  type: CyclePainType;
+  severity: CyclePainSeverity;
+};
+
+export type CycleSleepQuality = 'poor' | 'okay' | 'good';
+export type CycleStressLevel = 'low' | 'medium' | 'high';
+export type CycleExerciseLevel = 'none' | 'light' | 'moderate' | 'intense';
+export type CycleCaffeineLevel = 'none' | 'low' | 'moderate' | 'high';
+export type CycleAlcoholLevel = 'none' | 'light' | 'moderate' | 'heavy';
+
+export type CycleCustomTag = {
+  id: string;
+  name: string;
+  archivedAt?: string | null;
+  createdAt?: string;
+};
+
+export type CycleDailyMetric = {
+  date: string;
+  hydrationMl: number | null;
+  steps: number | null;
+  sleepHours: number | null;
+};
+
+export type CycleObservationPattern = {
+  id: string;
+  sampleDays: number;
+  numerator: number;
+  denominator: number;
+  textKa: string;
+};
+
+export type CycleObservationInsights = {
+  pain: {
+    daysLogged: number;
+    sampleDays: number;
+    severityCounts: { mild: number; moderate: number; severe: number };
+    typeCounts: Record<string, number>;
+    recent: { date: string; type: CyclePainType; severity: CyclePainSeverity }[];
+  };
+  lifestyle: {
+    sleep: Record<string, number>;
+    stress: Record<string, number>;
+    exercise: Record<string, number>;
+    caffeine: Record<string, number>;
+    alcohol: Record<string, number>;
+    patterns: CycleObservationPattern[];
+  };
+  journal: {
+    noteDays: number;
+    dates: string[];
+  };
+  limitedPhaseInsights?: boolean;
+};
+
 export type CycleLog = {
   id: string;
   userId: string;
@@ -453,6 +520,13 @@ export type CycleLog = {
   ovulationTest?: CycleTestResult | null;
   pregnancyTest?: CycleTestResult | null;
   notes: string | null;
+  painEntries?: CyclePainEntry[];
+  sleepQuality?: CycleSleepQuality | null;
+  stressLevel?: CycleStressLevel | null;
+  exerciseLevel?: CycleExerciseLevel | null;
+  caffeine?: CycleCaffeineLevel | null;
+  alcohol?: CycleAlcoholLevel | null;
+  customTagIds?: string[];
 };
 
 export type PregnancyLog = {
@@ -485,6 +559,104 @@ export type CycleAverages = {
   cycleCount: number;
 };
 
+export type CycleInsightDataQuality = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type CycleHistoricalCycle = {
+  startDate: string;
+  nextPeriodStart: string | null;
+  cycleLength: number | null;
+  loggedBleedDays: number;
+  loggedObservationDays: number;
+  complete: boolean;
+  contraceptionRelation?: 'before_current_method' | 'on_or_after_current_start' | 'unknown';
+};
+
+export type CycleRecurringPattern = {
+  key: string;
+  cyclesWithObservation: number;
+  eligibleCycles: number;
+  daysBeforeMin: number | null;
+  daysBeforeMax: number | null;
+};
+
+export type CyclePainPattern = {
+  kind: 'pain_before_period';
+  painType: string;
+  cyclesWithObservation: number;
+  eligibleCycles: number;
+  daysBeforeMin: number | null;
+  daysBeforeMax: number | null;
+  severeCycles?: number;
+};
+
+export type CycleLifestylePattern = {
+  kind: 'co_occurrence';
+  left: string;
+  right: string;
+  numerator: number;
+  denominator: number;
+};
+
+export type CycleAnalytics = {
+  insightDataQuality: CycleInsightDataQuality;
+  completedCycleCount: number;
+  patternCycleCount: number;
+  loggingCoverage: number;
+  horizonCycles: number;
+  historicalCycles: CycleHistoricalCycle[];
+  cycleLengths: { startDate: string; length: number | null }[];
+  cycleLengthStats: {
+    average: number | null;
+    shortest: number | null;
+    longest: number | null;
+    variability: number | null;
+    count: number;
+  };
+  bleedDurations: {
+    average: number | null;
+    shortest: number | null;
+    longest: number | null;
+    variability: number | null;
+    count: number;
+    label: 'logged_bleeding_duration';
+  };
+  flowPatterns?: {
+    source: 'observed_flow_only';
+    heavyFlowDaysPerCycle: number | null;
+    spottingDayCount: number;
+    flowByBleedDay: { bleedDay: number; mostCommonFlow: string | null; counts: Record<string, number> }[];
+  };
+  pmsByDaysBefore: { daysBefore: number; count: number; topSymptoms: { key: string; count: number }[] }[];
+  pmsRecurringEligible: boolean;
+  painPatterns: CyclePainPattern[];
+  symptomPatterns: CycleRecurringPattern[];
+  moodPatterns: CycleRecurringPattern[];
+  lifestylePatterns: CycleLifestylePattern[];
+  fertilityObservations: {
+    label: 'user_logged';
+    bbtReadingCount: number;
+    bbtMin?: number | null;
+    bbtMax?: number | null;
+    cyclesWithPositiveOpk: number;
+    eligibleCycles: number;
+  };
+  customTagDayCounts: { tagId: string; dayCount: number }[];
+  contraceptionContext: {
+    startedAt: string | null;
+    doNotRetroactivelyApply: boolean;
+    applyLimitedHistorically: boolean;
+    cyclesBeforeCurrentMethod: number;
+  };
+  thresholds: {
+    basicStatsMinCycles: number;
+    recurringPatternMinCycles: number;
+    pmsWindow: { min: number; max: number };
+    patternHorizon: number;
+    coverageMedium: number;
+    coverageHigh: number;
+  };
+};
+
 export type CyclePeriodRange = {
   start: string;
   end: string;
@@ -499,6 +671,7 @@ export type CycleDayMark = {
   predicted?: boolean;
   estimated?: boolean;
   logged?: boolean;
+  hasNote?: boolean;
   flow?: string;
   cycleDay?: number | null;
   phase?: CyclePhaseKind;
@@ -524,6 +697,10 @@ export type CycleBundle = {
   contraception?: CycleContraceptionContext;
   profile: CycleProfile;
   logs: CycleLog[];
+  customTags?: CycleCustomTag[];
+  dailyMetrics?: CycleDailyMetric[];
+  observationInsights?: CycleObservationInsights;
+  analytics?: CycleAnalytics;
   pregnancyLogs: PregnancyLog[];
   predictions: {
     nextPeriodStart: string | null;
@@ -556,6 +733,7 @@ export type CycleBundle = {
   trends?: {
     cycleLengths: { start: string; length: number }[];
     pmsByDay: { cycleDay: number; count: number; topSymptoms: { key: string; count: number }[] }[];
+    pmsByDaysBefore?: { daysBefore: number; count: number; topSymptoms: { key: string; count: number }[] }[];
     topSymptoms90d: { key: string; count: number }[];
     bbtPoints: { date: string; bbt: number }[];
     periodStarts: string[];
@@ -588,6 +766,17 @@ export type CycleBundle = {
     cycleCount?: number;
     confidence?: 'low' | 'medium' | 'high';
     generatedAt: string;
+    historical?: {
+      source: 'calculated_from_logged_history';
+      completeness: 'based_on_recorded_days';
+      completedCycleCount: number;
+      loggingCoverage: number;
+      insightDataQuality: CycleInsightDataQuality;
+      cycleLengthStats: CycleAnalytics['cycleLengthStats'];
+      bleedDurations: CycleAnalytics['bleedDurations'];
+      painPatterns: CyclePainPattern[];
+      symptomPatterns: CycleRecurringPattern[];
+    };
     fertilityTests?: {
       label: 'user_logged';
       ovulationTests: { date: string; result: CycleTestResult; source: string }[];
@@ -1062,6 +1251,13 @@ export const api = {
         ovulationTest: CycleTestResult | null;
         pregnancyTest: CycleTestResult | null;
         notes: string | null;
+        painEntries: CyclePainEntry[];
+        sleepQuality: CycleSleepQuality | null;
+        stressLevel: CycleStressLevel | null;
+        exerciseLevel: CycleExerciseLevel | null;
+        caffeine: CycleCaffeineLevel | null;
+        alcohol: CycleAlcoholLevel | null;
+        customTagIds: string[];
       }>,
       opts?: { timeoutMs?: number },
     ) =>
@@ -1100,6 +1296,23 @@ export const api = {
         notes: string | null;
       }>,
     ) => request<{ log: PregnancyLog; bundle: CycleBundle }>(`/api/cycle/pregnancy/${date}`, { method: 'PUT', body }),
+    createTag: (body: { name: string; id?: string }) =>
+      request<{ tag: CycleCustomTag; bundle: CycleBundle }>('/api/cycle/tags', {
+        method: 'POST',
+        body,
+        timeoutMs: 30_000,
+      }),
+    renameTag: (id: string, name: string) =>
+      request<{ tag: CycleCustomTag; bundle: CycleBundle }>(`/api/cycle/tags/${id}`, {
+        method: 'PATCH',
+        body: { name },
+        timeoutMs: 30_000,
+      }),
+    archiveTag: (id: string) =>
+      request<{ tag: CycleCustomTag; bundle: CycleBundle }>(`/api/cycle/tags/${id}`, {
+        method: 'DELETE',
+        timeoutMs: 30_000,
+      }),
     insights: (refresh = false) =>
       request<{
         insights: CycleInsights;

@@ -29,13 +29,20 @@ import {
 import { CycleFlowPicker } from '@/components/cycle/CycleFlowPicker';
 import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
 import {
+  CycleJournalField,
+  CycleLifestyleFields,
+  CyclePainEditor,
+  CycleTagPicker,
+} from '@/components/cycle/CycleObservationFields';
+import { PAIN_MANAGED_SYMPTOM_IDS } from '@/lib/cycleObservations';
+import { api, type CycleCustomTag, type CycleLog, type CyclePainEntry } from '@/lib/api';
+import {
   MOOD_OPTIONS,
   MUCUS_OPTIONS,
   PHYSICAL_SYMPTOMS,
   SEXUAL_OPTIONS,
 } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
-import type { CycleLog } from '@/lib/api';
 import { CyclePregnancyTransitionSheet } from '@/components/cycle/CyclePregnancyTransitionSheet';
 import { persistCycleLog } from '@/lib/cycleLogSave';
 import { loadCycleView, queueApplyPeriod } from '@/lib/cycleOffline';
@@ -47,6 +54,9 @@ type Pane =
   | 'flow'
   | 'symptoms'
   | 'moods'
+  | 'pain'
+  | 'lifestyle'
+  | 'tags'
   | 'bbt'
   | 'mucus'
   | 'sex'
@@ -68,17 +78,20 @@ const ITEMS: Item[] = [
   { key: 'moods', label: ka.cycle.logHubMood, Icon: HubSleep },
   { key: 'mucus', label: ka.cycle.logHubMucus, Icon: HubLeaf },
   { key: 'flow', label: ka.cycle.logHubFlow, Icon: HubPad },
-  { key: 'symptoms', label: ka.cycle.logHubSymptoms, Icon: HubStethoscope },
+  { key: 'symptoms', label: ka.cycle.symptoms, Icon: HubStethoscope },
+  { key: 'pain', label: ka.cycle.logHubPain, Icon: HubStethoscope },
   { key: 'start', label: ka.cycle.logHubStart, Icon: HubDrug },
   { key: 'sex', label: ka.cycle.logHubSex, Icon: HubVirus },
   { key: 'notes', label: ka.cycle.logHubNotes, Icon: HubBook },
+  { key: 'lifestyle', label: ka.cycle.logHubLifestyle, Icon: HubRunning },
+  { key: 'tags', label: ka.cycle.logHubTags, Icon: HubBook },
   { key: 'opk', label: ka.cycle.logHubOpk, Icon: HubLeaf },
   { key: 'preg', label: ka.cycle.logHubPreg, Icon: HubBook },
 ];
 
-const ROWS = [ITEMS.slice(0, 3), ITEMS.slice(3, 6), ITEMS.slice(6, 9), ITEMS.slice(9, 12)];
+const ROWS = [ITEMS.slice(0, 3), ITEMS.slice(3, 6), ITEMS.slice(6, 9), ITEMS.slice(9, 12), ITEMS.slice(12, 15)];
 const SEX_IDS = new Set(SEXUAL_OPTIONS.map((o) => o.id));
-const FEATURED_SYMPTOMS = ['cramps', 'headache', 'bloating', 'acne', 'fatigue', 'back_pain', 'breast_tenderness', 'nausea', 'ovulation_pain'];
+const FEATURED_SYMPTOMS = ['bloating', 'acne', 'fatigue', 'nausea', 'cravings', 'insomnia', 'dizziness'];
 const FEATURED_MOODS = ['energetic', 'calm', 'happy', 'sensitive', 'anxious', 'irritable', 'sad', 'tired_mood', 'stressed'];
 const HUB_COL = 88;
 const HUB_GAP = 24;
@@ -104,6 +117,13 @@ type Draft = {
   ovulationTest: string | null;
   pregnancyTest: string | null;
   notes: string;
+  painEntries: CyclePainEntry[];
+  sleepQuality: string | null;
+  stressLevel: string | null;
+  exerciseLevel: string | null;
+  caffeine: string | null;
+  alcohol: string | null;
+  customTagIds: string[];
 };
 
 const EMPTY: Draft = {
@@ -118,6 +138,13 @@ const EMPTY: Draft = {
   ovulationTest: null,
   pregnancyTest: null,
   notes: '',
+  painEntries: [],
+  sleepQuality: null,
+  stressLevel: null,
+  exerciseLevel: null,
+  caffeine: null,
+  alcohol: null,
+  customTagIds: [],
 };
 
 function fromLog(log: CycleLog | undefined): Draft {
@@ -135,6 +162,13 @@ function fromLog(log: CycleLog | undefined): Draft {
     ovulationTest: log.ovulationTest ?? null,
     pregnancyTest: log.pregnancyTest ?? null,
     notes: log.notes || '',
+    painEntries: log.painEntries ?? [],
+    sleepQuality: log.sleepQuality ?? null,
+    stressLevel: log.stressLevel ?? null,
+    exerciseLevel: log.exerciseLevel ?? null,
+    caffeine: log.caffeine ?? null,
+    alcohol: log.alcohol ?? null,
+    customTagIds: log.customTagIds ?? [],
   };
 }
 
@@ -165,6 +199,12 @@ function isLogged(key: Item['key'], d: Draft, started: boolean): boolean {
       return d.sexualActivity != null;
     case 'notes':
       return Boolean(d.notes.trim());
+    case 'pain':
+      return d.painEntries.length > 0;
+    case 'lifestyle':
+      return Boolean(d.sleepQuality || d.stressLevel || d.exerciseLevel || d.caffeine || d.alcohol);
+    case 'tags':
+      return d.customTagIds.length > 0;
     case 'opk':
       return Boolean(d.ovulationTest);
     case 'preg':
@@ -194,6 +234,8 @@ export function CycleLogHubModal({ visible, date, onClose, onSaved }: Props) {
   const [lastPeriod, setLastPeriod] = useState(date);
   const [offerPregnancy, setOfferPregnancy] = useState(false);
   const [mode, setMode] = useState('TRACK_PERIOD');
+  const [customTags, setCustomTags] = useState<CycleCustomTag[]>([]);
+  const [creatingTag, setCreatingTag] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -224,6 +266,7 @@ export function CycleLogHubModal({ visible, date, onClose, onSaved }: Props) {
       setStarted(bundle.profile.lastPeriodStart === date || bundle.inferred.lastPeriodStart === date);
       setLastPeriod(bundle.profile.lastPeriodStart || bundle.inferred.lastPeriodStart || date);
       setMode(bundle.profile.mode);
+      setCustomTags(bundle.customTags ?? []);
     });
     return () => {
       alive = false;
@@ -260,6 +303,13 @@ export function CycleLogHubModal({ visible, date, onClose, onSaved }: Props) {
           ovulationTest: next.ovulationTest,
           pregnancyTest: next.pregnancyTest,
           notes: next.notes,
+          painEntries: next.painEntries,
+          sleepQuality: next.sleepQuality,
+          stressLevel: next.stressLevel,
+          exerciseLevel: next.exerciseLevel,
+          caffeine: next.caffeine,
+          alcohol: next.alcohol,
+          customTagIds: next.customTagIds,
         },
         { markStart },
       );
@@ -289,7 +339,10 @@ export function CycleLogHubModal({ visible, date, onClose, onSaved }: Props) {
 
   const active = ITEMS.find((item) => item.key === pane);
   const symptomChips = useMemo(
-    () => (showAllSymptoms ? PHYSICAL_SYMPTOMS : PHYSICAL_SYMPTOMS.filter((o) => FEATURED_SYMPTOMS.includes(o.id))),
+    () => {
+      const catalog = PHYSICAL_SYMPTOMS.filter((o) => !PAIN_MANAGED_SYMPTOM_IDS.has(o.id));
+      return showAllSymptoms ? catalog : catalog.filter((o) => FEATURED_SYMPTOMS.includes(o.id));
+    },
     [showAllSymptoms],
   );
   const moodChips = useMemo(
@@ -577,16 +630,60 @@ export function CycleLogHubModal({ visible, date, onClose, onSaved }: Props) {
 
                   {pane === 'notes' ? (
                     <View style={{ gap: 12 }}>
-                      <TextInput
+                      <CycleJournalField
                         value={draft.notes}
-                        onChangeText={(notes) => setDraft((d) => ({ ...d, notes }))}
-                        placeholder={ka.cycle.logNotesPlaceholder}
-                        placeholderTextColor={c.mutedSoft}
-                        multiline
-                        style={[
-                          styles.notes,
-                          { color: c.ink, borderColor: c.border, backgroundColor: c.cardSoft },
-                        ]}
+                        onChange={(notes) => setDraft((d) => ({ ...d, notes }))}
+                      />
+                      <ApplyRow saving={saving} onPress={() => void persist({})} />
+                    </View>
+                  ) : null}
+
+                  {pane === 'pain' ? (
+                    <View style={{ gap: 12 }}>
+                      <CyclePainEditor
+                        entries={draft.painEntries}
+                        onChange={(painEntries) => setDraft((d) => ({ ...d, painEntries }))}
+                      />
+                      <ApplyRow saving={saving} onPress={() => void persist({})} />
+                    </View>
+                  ) : null}
+
+                  {pane === 'lifestyle' ? (
+                    <View style={{ gap: 12 }}>
+                      <CycleLifestyleFields
+                        sleepQuality={draft.sleepQuality}
+                        stressLevel={draft.stressLevel}
+                        exerciseLevel={draft.exerciseLevel}
+                        caffeine={draft.caffeine}
+                        alcohol={draft.alcohol}
+                        onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+                      />
+                      <ApplyRow saving={saving} onPress={() => void persist({})} />
+                    </View>
+                  ) : null}
+
+                  {pane === 'tags' ? (
+                    <View style={{ gap: 12 }}>
+                      <CycleTagPicker
+                        tags={customTags}
+                        selectedIds={draft.customTagIds}
+                        creating={creatingTag}
+                        onChange={(customTagIds) => setDraft((d) => ({ ...d, customTagIds }))}
+                        onCreate={async (name) => {
+                          setCreatingTag(true);
+                          try {
+                            const result = await api.cycle.createTag({ name });
+                            setCustomTags(result.bundle.customTags ?? [...customTags, result.tag]);
+                            setDraft((d) => ({
+                              ...d,
+                              customTagIds: d.customTagIds.includes(result.tag.id)
+                                ? d.customTagIds
+                                : [...d.customTagIds, result.tag.id],
+                            }));
+                          } finally {
+                            setCreatingTag(false);
+                          }
+                        }}
                       />
                       <ApplyRow saving={saving} onPress={() => void persist({})} />
                     </View>

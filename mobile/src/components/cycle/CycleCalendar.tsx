@@ -149,6 +149,7 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
             predictedPeriod ? ka.cycle.legendPeriodPredicted : null,
             ...fertilityA11yBits(mark),
             mark.logged && !actualPeriod ? ka.cycle.legendLogged : null,
+            mark.hasNote ? ka.cycle.journalTitle : null,
           ]
             .filter(Boolean)
             .join(', ');

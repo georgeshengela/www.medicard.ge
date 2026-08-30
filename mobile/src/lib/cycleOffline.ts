@@ -403,6 +403,13 @@ function logBodyFromPayload(form: {
   ovulationTest?: string | null;
   pregnancyTest?: string | null;
   notes?: string | null;
+  painEntries?: { type: string; severity: string }[];
+  sleepQuality?: string | null;
+  stressLevel?: string | null;
+  exerciseLevel?: string | null;
+  caffeine?: string | null;
+  alcohol?: string | null;
+  customTagIds?: string[];
 }) {
   return {
     flow: form.flow ?? null,
@@ -415,6 +422,13 @@ function logBodyFromPayload(form: {
     ovulationTest: form.ovulationTest ?? null,
     pregnancyTest: form.pregnancyTest ?? null,
     notes: form.notes ?? null,
+    painEntries: form.painEntries ?? [],
+    sleepQuality: form.sleepQuality ?? null,
+    stressLevel: form.stressLevel ?? null,
+    exerciseLevel: form.exerciseLevel ?? null,
+    caffeine: form.caffeine ?? null,
+    alcohol: form.alcohol ?? null,
+    customTagIds: form.customTagIds ?? [],
   };
 }
 

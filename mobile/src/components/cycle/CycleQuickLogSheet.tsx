@@ -5,7 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { CycleFlowPicker } from '@/components/cycle/CycleFlowPicker';
 import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
+import { CyclePainEditor } from '@/components/cycle/CycleObservationFields';
 import { MOOD_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
+import { PAIN_MANAGED_SYMPTOM_IDS } from '@/lib/cycleObservations';
 import { ka } from '@/i18n/ka';
 import { loadCycleView } from '@/lib/cycleOffline';
 import { EMPTY_CYCLE_LOG, formFromCycleLog, isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
@@ -14,7 +16,7 @@ import { useCycleColors } from '@/theme/cycle';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 
 const QUICK_SYMPTOMS = PHYSICAL_SYMPTOMS.filter((o) =>
-  ['cramps', 'headache', 'bloating', 'fatigue'].includes(o.id),
+  ['bloating', 'fatigue', 'nausea'].includes(o.id) && !PAIN_MANAGED_SYMPTOM_IDS.has(o.id),
 );
 const QUICK_MOODS = MOOD_OPTIONS.filter((o) =>
   ['calm', 'happy', 'irritable', 'tired_mood'].includes(o.id),
@@ -166,6 +168,23 @@ export function CycleQuickLogSheet({
               />
             </View>
           ) : null}
+
+          <Text
+            style={{
+              color: c.ink,
+              fontFamily: 'NotoSansGeorgian_700Bold',
+              fontSize: 13,
+              marginTop: 16,
+              marginBottom: 8,
+            }}
+          >
+            {ka.cycle.pain}
+          </Text>
+          <CyclePainEditor
+            compact
+            entries={form.painEntries}
+            onChange={(painEntries) => setForm((prev) => ({ ...prev, painEntries }))}
+          />
 
           <Text
             style={{

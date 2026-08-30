@@ -3,10 +3,10 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, Text, View } from 're
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { SEXUAL_OPTIONS } from '@/constants/cycle';
 import { CycleLogTabs, type CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { CyclePregnancyTransitionSheet } from '@/components/cycle/CyclePregnancyTransitionSheet';
-import { persistCycleLog } from '@/lib/cycleLogSave';
+import { EMPTY_CYCLE_LOG, formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
+import { api, ApiError, type CycleCustomTag, type CycleLog } from '@/lib/api';
 import { loadCycleView, queueRemoveCycleLog } from '@/lib/cycleOffline';
 import { useAuth } from '@/store/AuthContext';
 import {
@@ -18,24 +18,7 @@ import {
 import { ka } from '@/i18n/ka';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
-import { ApiError, type CycleLog } from '@/lib/api';
 import { useCycleColors } from '@/theme/cycle';
-
-const SEX_IDS = new Set(SEXUAL_OPTIONS.map((o) => o.id));
-
-const EMPTY_FORM: CycleLogForm = {
-  flow: null,
-  symptoms: [],
-  moods: [],
-  sexTags: [],
-  sexual: false,
-  libido: null,
-  bbt: '',
-  mucus: null,
-  ovulationTest: null,
-  pregnancyTest: null,
-  notes: '',
-};
 
 export default function CycleLogScreen() {
   const { date: paramDate, tab: paramTab, prefillNote } = useLocalSearchParams<{
@@ -62,7 +45,9 @@ export default function CycleLogScreen() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<CycleLogForm>(EMPTY_FORM);
+  const [form, setForm] = useState(EMPTY_CYCLE_LOG);
+  const [customTags, setCustomTags] = useState<CycleCustomTag[]>([]);
+  const [creatingTag, setCreatingTag] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [hasLog, setHasLog] = useState(false);
@@ -84,25 +69,13 @@ export default function CycleLogScreen() {
         const bundle = view.display;
         setMode(bundle.profile.mode);
         setLastPeriod(bundle.profile.lastPeriodStart || bundle.inferred.lastPeriodStart || date);
+        setCustomTags(bundle.customTags ?? []);
         const existing = bundle.logs.find((l) => l.date === date) as CycleLog | undefined;
         setHasLog(Boolean(existing));
         if (existing) {
-          const all = existing.symptoms || [];
-          setForm({
-            flow: existing.flow,
-            symptoms: all.filter((id) => !SEX_IDS.has(id)),
-            sexTags: all.filter((id) => SEX_IDS.has(id)),
-            moods: existing.moods || [],
-            sexual: Boolean(existing.sexualActivity) || all.some((id) => SEX_IDS.has(id)),
-            libido: existing.libido,
-            bbt: existing.bbt != null ? String(existing.bbt) : '',
-            mucus: existing.cervicalMucus,
-            ovulationTest: existing.ovulationTest ?? null,
-            pregnancyTest: existing.pregnancyTest ?? null,
-            notes: existing.notes || '',
-          });
+          setForm(formFromCycleLog(existing));
         } else if (typeof prefillNote === 'string' && prefillNote.trim()) {
-          setForm({ ...EMPTY_FORM, notes: prefillNote.trim() });
+          setForm({ ...EMPTY_CYCLE_LOG, notes: prefillNote.trim() });
         }
       } catch (err) {
         setError(err instanceof ApiError ? err.message : ka.common.error);
@@ -117,6 +90,24 @@ export default function CycleLogScreen() {
 
   const patchForm = (patch: Partial<CycleLogForm>) => {
     setForm((prev) => ({ ...prev, ...patch }));
+  };
+
+  const createTag = async (name: string) => {
+    setCreatingTag(true);
+    try {
+      const result = await api.cycle.createTag({ name });
+      setCustomTags(result.bundle.customTags ?? [...customTags, result.tag]);
+      setForm((prev) => ({
+        ...prev,
+        customTagIds: prev.customTagIds.includes(result.tag.id)
+          ? prev.customTagIds
+          : [...prev.customTagIds, result.tag.id],
+      }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : ka.cycle.customTagOnlineOnly);
+    } finally {
+      setCreatingTag(false);
+    }
   };
 
   const save = async () => {
@@ -226,6 +217,9 @@ export default function CycleLogScreen() {
           onChange={patchForm}
           bottomInset={insets.bottom + (hasLog ? 72 : 24)}
           initialTab={initialTab}
+          customTags={customTags}
+          onCreateTag={createTag}
+          creatingTag={creatingTag}
         />
 
         <View

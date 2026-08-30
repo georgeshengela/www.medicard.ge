@@ -14,6 +14,15 @@ import { buildDayPredictions } from '@/lib/cyclePhase';
 import { cycleToday, phaseFromBundle } from '@/lib/cycleCanonical';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { showFertilityUi, showPhaseAsBiological } from '@/lib/cycleContraception';
+import {
+  formatPainEntry,
+  sleepLabel,
+  stressLabel,
+  exerciseLabel,
+  caffeineLabel,
+  alcoholLabel,
+  tagNameById,
+} from '@/lib/cycleObservations';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { CycleInsightsPanel } from '@/components/cycle/CycleInsights';
@@ -227,6 +236,52 @@ export function CycleDayInsights({ date, bundle, mark, pending, stale }: Props) 
           );
         })}
       </View>
+
+      {log ? (
+        <View style={{ marginBottom: 12 }}>
+          {log.painEntries?.length ? (
+            <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 6 }}>
+              {ka.cycle.pain}: {log.painEntries.map(formatPainEntry).join(' · ')}
+            </Text>
+          ) : null}
+          {log.sleepQuality || log.stressLevel || log.exerciseLevel || log.caffeine || log.alcohol ? (
+            <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 6 }}>
+              {[
+                log.sleepQuality ? `${ka.cycle.sleep}: ${sleepLabel(log.sleepQuality)}` : null,
+                log.stressLevel ? `${ka.cycle.stress}: ${stressLabel(log.stressLevel)}` : null,
+                log.exerciseLevel ? `${ka.cycle.exercise}: ${exerciseLabel(log.exerciseLevel)}` : null,
+                log.caffeine ? `${ka.cycle.caffeine}: ${caffeineLabel(log.caffeine)}` : null,
+                log.alcohol ? `${ka.cycle.alcohol}: ${alcoholLabel(log.alcohol)}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          ) : null}
+          {log.customTagIds?.length ? (
+            <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 6 }}>
+              {ka.cycle.customTags}: {log.customTagIds.map((id) => tagNameById(bundle.customTags, id)).join(' · ')}
+            </Text>
+          ) : null}
+          {log.notes?.trim() ? (
+            <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 6 }} numberOfLines={4}>
+              {ka.cycle.journalTitle}: {log.notes.trim()}
+            </Text>
+          ) : null}
+          {bundle.dailyMetrics
+            ?.filter((m) => m.date === date)
+            .map((m) => (
+              <Text key={m.date} style={{ color: c.muted, fontSize: 12, lineHeight: 18 }}>
+                {[
+                  m.hydrationMl != null ? ka.cycle.fromHydration(m.hydrationMl) : null,
+                  m.steps != null ? ka.cycle.fromSteps(m.steps) : null,
+                  m.sleepHours != null ? ka.cycle.fromSleepHours(m.sleepHours) : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </Text>
+            ))}
+        </View>
+      ) : null}
 
       {isToday ? (
         <CycleInsightsPanel

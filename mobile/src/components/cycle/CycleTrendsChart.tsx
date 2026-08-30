@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Circle, Line, Polyline, Rect } from 'react-native-svg';
 import { CycleCard } from '@/components/cycle/CycleUI';
+import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
 import { ka } from '@/i18n/ka';
 import type { CycleBundle } from '@/lib/api';
+import { formatRecurrenceKa } from '@/lib/cycleAnalytics';
 import { cycleChipLabel } from '@/lib/cycleLabels';
+import { formatPainEntry, painSeverityLabel } from '@/lib/cycleObservations';
 import { bbtSeriesWithGaps, fertilityTestHistory } from '@/lib/cycleFertility';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { useCycleColors } from '@/theme/cycle';
@@ -15,186 +18,328 @@ type Props = {
 
 export function CycleTrendsCharts({ bundle }: Props) {
   const c = useCycleColors();
+  const analytics = bundle.analytics;
   const trends = bundle.trends;
-  if (!trends) return null;
+  const cycles = analytics?.cycleLengths?.filter((x) => x.length != null) ?? trends?.cycleLengths ?? [];
+  const symptoms = trends?.topSymptoms90d.slice(0, 5) ?? [];
+  const bbt = trends?.bbtPoints ?? [];
+  const insights = bundle.observationInsights;
+  const stats = analytics?.cycleLengthStats;
+  const bleed = analytics?.bleedDurations;
+  const quality = analytics?.insightDataQuality ?? 'LOW';
 
-  const cycles = trends.cycleLengths;
-  const symptoms = trends.topSymptoms90d.slice(0, 5);
-  const bbt = trends.bbtPoints;
+  const cycleA11y = useMemo(() => {
+    const lengths = cycles.map((x) => ('length' in x ? x.length : null)).filter((n): n is number => n != null);
+    return lengths.length ? ka.cycle.cycleLengthsA11y(lengths.join(', ')) : null;
+  }, [cycles]);
 
-  if (cycles.length < 2 && !symptoms.length && !bbt.length) {
+  if (!trends && !analytics) return null;
+
+  const empty =
+    (analytics?.completedCycleCount ?? 0) < 2 &&
+    !symptoms.length &&
+    !bbt.length &&
+    !(insights?.pain.daysLogged);
+
+  if (empty) {
     return (
       <CycleCard>
-        <Text style={{ color: c.muted, fontSize: 13 }}>{ka.cycle.trendsEmpty}</Text>
+        <Text style={{ color: c.muted, fontSize: 13, lineHeight: 20 }}>{ka.cycle.trendsLogCycles}</Text>
       </CycleCard>
     );
   }
 
-  const maxLen = Math.max(...cycles.map((x) => x.length), 28);
-  const maxSym = Math.max(...symptoms.map((x) => x.count), 1);
-
-  const stats: { k: string; v: string }[] = [];
-  if (trends.shortestCycle != null) stats.push({ k: ka.cycle.shortestCycle, v: `${trends.shortestCycle}` });
-  if (trends.longestCycle != null) stats.push({ k: ka.cycle.longestCycle, v: `${trends.longestCycle}` });
-  if (trends.variability != null) stats.push({ k: ka.cycle.cycleVariability, v: `${trends.variability}` });
-
   return (
-    <View style={{ gap: 16 }}>
-      {stats.length ? (
-        <CycleCard>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-            {stats.map((row) => (
-              <View
-                key={row.k}
-                style={{
-                  flexGrow: 1,
-                  minWidth: '30%',
-                  backgroundColor: c.cardSoft,
-                  borderRadius: 14,
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  borderWidth: 1,
-                  borderColor: c.border,
-                }}
-              >
-                <Text
-                  style={{
-                    color: c.muted,
-                    fontSize: 11,
-                    fontFamily: 'NotoSansGeorgian_500Medium',
-                  }}
-                  numberOfLines={1}
-                >
-                  {row.k}
-                </Text>
-                <Text
-                  style={{
-                    color: c.ink,
-                    fontFamily: 'NotoSansGeorgian_700Bold',
-                    fontSize: 16,
-                    marginTop: 4,
-                  }}
-                >
-                  {row.v}
-                </Text>
-              </View>
+    <View style={{ gap: 22 }}>
+      <QualityCard quality={quality} coverage={analytics?.loggingCoverage} completed={analytics?.completedCycleCount} c={c} />
+
+      <Section title={ka.cycle.trendsSectionCycle}>
+        {stats?.count ? (
+          <CycleCard>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              {(
+                [
+                  stats.average != null ? { k: ka.cycle.trendsCycleLength, v: `${stats.average}` } : null,
+                  stats.shortest != null ? { k: ka.cycle.shortestCycle, v: `${stats.shortest}` } : null,
+                  stats.longest != null ? { k: ka.cycle.longestCycle, v: `${stats.longest}` } : null,
+                  stats.variability != null ? { k: ka.cycle.cycleVariability, v: `${stats.variability}` } : null,
+                  bleed?.average != null ? { k: ka.cycle.loggedBleedDuration, v: `${bleed.average}` } : null,
+                ] as Array<{ k: string; v: string } | null>
+              )
+                .filter((row): row is { k: string; v: string } => row != null)
+                .map((row) => (
+                  <StatChip key={row.k} label={row.k} value={row.v} c={c} />
+                ))}
+            </View>
+            <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17 }}>{ka.cycle.trendsLoggedHint}</Text>
+            {cycleA11y ? (
+              <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginTop: 8 }}>{cycleA11y}</Text>
+            ) : null}
+            {bleed?.average != null && bleed.shortest != null && bleed.longest != null ? (
+              <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginTop: 6 }}>
+                {ka.cycle.bleedDurationsA11y(bleed.average, bleed.shortest, bleed.longest)}
+              </Text>
+            ) : null}
+          </CycleCard>
+        ) : null}
+        {cycles.length >= 2 ? <CycleLengthBars cycles={cycles} c={c} /> : null}
+      </Section>
+
+      <Section title={ka.cycle.trendsSectionBefore}>
+        <CyclePmsHeatmap bundle={bundle} />
+        {(analytics?.symptomPatterns ?? []).length ? (
+          <CycleCard>
+            {(analytics?.symptomPatterns ?? []).map((p) => (
+              <Text key={p.key} style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 8 }}>
+                {formatRecurrenceKa(p, cycleChipLabel(p.key), ka.cycle.patternInCycles)}
+              </Text>
             ))}
-          </View>
-          <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 8 }}>
-            {ka.cycle.trendsLoggedHint}
+            {(analytics?.moodPatterns ?? []).map((p) => (
+              <Text key={`mood-${p.key}`} style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 8 }}>
+                {formatRecurrenceKa(p, cycleChipLabel(p.key), ka.cycle.patternInCycles)}
+              </Text>
+            ))}
+          </CycleCard>
+        ) : analytics && analytics.completedCycleCount < 3 ? (
+          <Text style={{ color: c.muted, fontSize: 13, lineHeight: 20 }}>{ka.cycle.trendsNeedMoreCycles}</Text>
+        ) : null}
+        {symptoms.length ? <Symptom90d symptoms={symptoms} c={c} /> : null}
+      </Section>
+
+      <Section title={ka.cycle.trendsSectionPain}>
+        {(analytics?.painPatterns ?? []).map((p) => (
+          <CycleCard key={p.painType}>
+            <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20 }}>
+              {formatRecurrenceKa(
+                p,
+                ka.cycle.painType[p.painType as keyof typeof ka.cycle.painType] ?? p.painType,
+                ka.cycle.patternInCycles,
+              )}
+            </Text>
+          </CycleCard>
+        ))}
+        {insights?.pain.daysLogged ? (
+          <CycleCard>
+            <Text style={{ color: c.muted, fontSize: 12, marginBottom: 8 }}>
+              {ka.cycle.painDaysLogged(insights.pain.daysLogged)} · {ka.cycle.observationBasedOn(insights.pain.sampleDays)}
+            </Text>
+            <Text style={{ color: c.ink, fontSize: 13, marginBottom: 8 }}>
+              {`${painSeverityLabel('mild')} ${insights.pain.severityCounts.mild} · ${painSeverityLabel('moderate')} ${insights.pain.severityCounts.moderate} · ${painSeverityLabel('severe')} ${insights.pain.severityCounts.severe}`}
+            </Text>
+            {(insights.pain.recent ?? []).slice(0, 8).map((row) => (
+              <Text key={`${row.date}-${row.type}`} style={{ color: c.ink, fontSize: 13, marginBottom: 4 }}>
+                {formatCycleDateKa(row.date)} — {formatPainEntry(row)}
+              </Text>
+            ))}
+          </CycleCard>
+        ) : null}
+      </Section>
+
+      <Section title={ka.cycle.trendsSectionLifestyle}>
+        {(analytics?.lifestylePatterns ?? []).map((p, i) => (
+          <CycleCard key={`${p.left}-${i}`}>
+            <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20 }}>
+              {ka.cycle.lifestyleTogether(p.numerator, p.denominator)}
+            </Text>
+          </CycleCard>
+        ))}
+        {(insights?.lifestyle.patterns ?? []).map((p) => (
+          <Text key={p.id} style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 8 }}>
+            {p.textKa}
           </Text>
-          <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17 }}>
-            {trends.cycleCount ? `${ka.cycle.basedOnCycles(trends.cycleCount)} · ` : ''}
-            {trends.confidence === 'high'
-              ? ka.cycle.confidenceHigh
-              : trends.confidence === 'medium'
-                ? ka.cycle.confidenceMedium
-                : ka.cycle.confidenceLow}
-          </Text>
-        </CycleCard>
-      ) : null}
-      {cycles.length >= 2 ? (
-        <CycleCard>
-          <Text
-            style={{
-              color: c.ink,
-              fontFamily: 'NotoSansGeorgian_700Bold',
-              marginBottom: 12,
-            }}
-          >
-            {ka.cycle.trendsCycleLength}
-          </Text>
-          <Svg width="100%" height={120} viewBox={`0 0 ${Math.max(cycles.length * 40, 160)} 120`}>
-            {cycles.map((item, i) => {
-              const h = (item.length / maxLen) * 90;
+        ))}
+        {(analytics?.customTagDayCounts ?? []).length ? (
+          <CycleCard>
+            {(analytics?.customTagDayCounts ?? []).map((row) => {
+              const name = bundle.customTags?.find((t) => t.id === row.tagId)?.name ?? row.tagId;
               return (
-                <Rect
-                  key={item.start}
-                  x={i * 40 + 8}
-                  y={100 - h}
-                  width={24}
-                  height={h}
-                  rx={6}
-                  fill={c.brand}
-                  opacity={0.9}
-                />
+                <Text key={row.tagId} style={{ color: c.ink, fontSize: 13, marginBottom: 4 }}>
+                  {ka.cycle.customTagCount(name, row.dayCount)}
+                </Text>
               );
             })}
-          </Svg>
-        </CycleCard>
-      ) : null}
+          </CycleCard>
+        ) : null}
+      </Section>
 
-      {symptoms.length ? (
-        <CycleCard>
-          <Text
-            style={{
-              color: c.ink,
-              fontFamily: 'NotoSansGeorgian_700Bold',
-              marginBottom: 12,
-            }}
-          >
-            {ka.cycle.trendsSymptoms}
-          </Text>
-          <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 10 }}>
-            {ka.cycle.trendsSymptomsHint}
-          </Text>
-          {symptoms.map((s) => (
-            <View key={s.key} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ color: c.muted, fontSize: 12, width: 100 }} numberOfLines={1}>
-                {cycleChipLabel(s.key)}
+      {bundle.profile.mode === 'TRY_TO_CONCEIVE' ? (
+        <Section title={ka.cycle.trendsSectionFertility}>
+          {analytics?.fertilityObservations ? (
+            <CycleCard>
+              <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20 }}>
+                {ka.cycle.bbtReadingCount(analytics.fertilityObservations.bbtReadingCount)}
               </Text>
-              <View
-                style={{
-                  flex: 1,
-                  height: 8,
-                  backgroundColor: c.border,
-                  borderRadius: 4,
-                  overflow: 'hidden',
-                }}
-              >
-                <View
-                  style={{
-                    width: `${(s.count / maxSym) * 100}%`,
-                    height: '100%',
-                    backgroundColor: c.brand,
-                    borderRadius: 4,
-                  }}
-                />
-              </View>
-              <Text style={{ color: c.muted, fontSize: 11, width: 24, textAlign: 'right' }}>{s.count}</Text>
-            </View>
-          ))}
-        </CycleCard>
+              <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginTop: 6 }}>
+                {ka.cycle.opkPositiveCycles(
+                  analytics.fertilityObservations.cyclesWithPositiveOpk,
+                  analytics.fertilityObservations.eligibleCycles,
+                )}
+              </Text>
+            </CycleCard>
+          ) : null}
+          {bbt.length ? (
+            <CycleCard>
+              <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', marginBottom: 12 }}>
+                {ka.cycle.trendsBbt}
+              </Text>
+              <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 10 }}>
+                {ka.cycle.trendsBbtHint}
+              </Text>
+              <BbtGapChart points={bbt} estimatedOvulation={bundle.predictions?.ovulationDate} c={c} />
+            </CycleCard>
+          ) : (
+            <CycleCard>
+              <Text style={{ color: c.muted, fontSize: 13, lineHeight: 18 }}>{ka.cycle.ttcEmptyBbt}</Text>
+            </CycleCard>
+          )}
+          <FertilityTestHistory logs={bundle.logs} c={c} />
+        </Section>
       ) : null}
 
-      {bundle.profile.mode === 'TRY_TO_CONCEIVE' && bbt.length ? (
-        <CycleCard>
-          <Text
-            style={{
-              color: c.ink,
-              fontFamily: 'NotoSansGeorgian_700Bold',
-              marginBottom: 12,
-            }}
-          >
-            {ka.cycle.trendsBbt}
-          </Text>
-          <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 10 }}>
-            {ka.cycle.trendsBbtHint}
-          </Text>
-          <BbtGapChart
-            points={bbt}
-            estimatedOvulation={bundle.predictions?.ovulationDate}
-            c={c}
-          />
-        </CycleCard>
-      ) : bundle.profile.mode === 'TRY_TO_CONCEIVE' ? (
-        <CycleCard>
-          <Text style={{ color: c.muted, fontSize: 13, lineHeight: 18 }}>{ka.cycle.ttcEmptyBbt}</Text>
-        </CycleCard>
+      {analytics?.contraceptionContext.startedAt ? (
+        <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18 }}>{ka.cycle.contraceptionHistoryNote}</Text>
       ) : null}
-
-      {bundle.profile.mode === 'TRY_TO_CONCEIVE' ? <FertilityTestHistory logs={bundle.logs} c={c} /> : null}
     </View>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const c = useCycleColors();
+  const items = React.Children.toArray(children).filter(Boolean);
+  if (!items.length) return null;
+  return (
+    <View style={{ gap: 12 }}>
+      <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16 }}>{title}</Text>
+      {items}
+    </View>
+  );
+}
+
+function QualityCard({
+  quality,
+  coverage,
+  completed,
+  c,
+}: {
+  quality: 'LOW' | 'MEDIUM' | 'HIGH';
+  coverage?: number;
+  completed?: number;
+  c: ReturnType<typeof useCycleColors>;
+}) {
+  const label =
+    quality === 'HIGH' ? ka.cycle.insightQualityHigh : quality === 'MEDIUM' ? ka.cycle.insightQualityMedium : ka.cycle.insightQualityLow;
+  return (
+    <CycleCard>
+      <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', marginBottom: 6 }}>{label}</Text>
+      <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18 }}>{ka.cycle.insightQualityHint}</Text>
+      {completed != null ? (
+        <Text style={{ color: c.muted, fontSize: 12, marginTop: 6 }}>
+          {ka.cycle.basedOnCycles(completed)}
+          {coverage != null ? ` · ${Math.round(coverage * 100)}%` : ''}
+        </Text>
+      ) : null}
+    </CycleCard>
+  );
+}
+
+function StatChip({
+  label,
+  value,
+  c,
+}: {
+  label: string;
+  value: string;
+  c: ReturnType<typeof useCycleColors>;
+}) {
+  return (
+    <View
+      style={{
+        flexGrow: 1,
+        minWidth: '30%',
+        backgroundColor: c.cardSoft,
+        borderRadius: 14,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: c.border,
+      }}
+    >
+      <Text style={{ color: c.muted, fontSize: 11, fontFamily: 'NotoSansGeorgian_500Medium' }} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, marginTop: 4 }}>{value}</Text>
+    </View>
+  );
+}
+
+function CycleLengthBars({
+  cycles,
+  c,
+}: {
+  cycles: { startDate?: string; start?: string; length: number | null }[];
+  c: ReturnType<typeof useCycleColors>;
+}) {
+  const usable = cycles.filter((x) => x.length != null) as { startDate?: string; start?: string; length: number }[];
+  const maxLen = Math.max(...usable.map((x) => x.length), 28);
+  return (
+    <CycleCard>
+      <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', marginBottom: 12 }}>
+        {ka.cycle.trendsCycleLength}
+      </Text>
+      <Svg width="100%" height={120} viewBox={`0 0 ${Math.max(usable.length * 40, 160)} 120`}>
+        {usable.map((item, i) => {
+          const h = (item.length / maxLen) * 90;
+          return (
+            <Rect
+              key={item.startDate ?? item.start ?? String(i)}
+              x={i * 40 + 8}
+              y={100 - h}
+              width={24}
+              height={h}
+              rx={6}
+              fill={c.brand}
+              opacity={0.9}
+            />
+          );
+        })}
+      </Svg>
+    </CycleCard>
+  );
+}
+
+function Symptom90d({
+  symptoms,
+  c,
+}: {
+  symptoms: { key: string; count: number }[];
+  c: ReturnType<typeof useCycleColors>;
+}) {
+  const maxSym = Math.max(...symptoms.map((x) => x.count), 1);
+  return (
+    <CycleCard>
+      <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', marginBottom: 12 }}>
+        {ka.cycle.trendsSymptoms}
+      </Text>
+      <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 10 }}>{ka.cycle.trendsSymptomsHint}</Text>
+      {symptoms.map((s) => (
+        <View key={s.key} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <Text style={{ color: c.muted, fontSize: 12, width: 100 }} numberOfLines={1}>
+            {cycleChipLabel(s.key)}
+          </Text>
+          <View style={{ flex: 1, height: 8, backgroundColor: c.border, borderRadius: 4, overflow: 'hidden' }}>
+            <View
+              style={{
+                width: `${(s.count / maxSym) * 100}%`,
+                height: '100%',
+                backgroundColor: c.brand,
+                borderRadius: 4,
+              }}
+            />
+          </View>
+          <Text style={{ color: c.muted, fontSize: 11, width: 24, textAlign: 'right' }}>{s.count}</Text>
+        </View>
+      ))}
+    </CycleCard>
   );
 }
 
@@ -218,31 +363,19 @@ function BbtGapChart({
   const max = Math.max(...sorted.map((p) => p.bbt));
   const range = Math.max(max - min, 0.4);
   const xAt = (date: string) => {
-    const days = Math.round(
-      (Date.parse(`${date}T00:00:00`) - Date.parse(`${first}T00:00:00`)) / 86_400_000,
-    );
+    const days = Math.round((Date.parse(`${date}T00:00:00`) - Date.parse(`${first}T00:00:00`)) / 86_400_000);
     return 10 + (days / span) * 260;
   };
   const yAt = (value: number) => 100 - ((value - min) / range) * 80;
   const runs = bbtSeriesWithGaps(sorted);
   const ovX =
-    estimatedOvulation && estimatedOvulation >= first && estimatedOvulation <= last
-      ? xAt(estimatedOvulation)
-      : null;
+    estimatedOvulation && estimatedOvulation >= first && estimatedOvulation <= last ? xAt(estimatedOvulation) : null;
 
   return (
     <Svg width="100%" height={132} viewBox="0 0 280 132">
       <Line x1={0} y1={110} x2={280} y2={110} stroke={c.border} />
       {ovX != null ? (
-        <Line
-          x1={ovX}
-          y1={12}
-          x2={ovX}
-          y2={110}
-          stroke={c.fertile}
-          strokeDasharray="4 4"
-          strokeWidth={1.5}
-        />
+        <Line x1={ovX} y1={12} x2={ovX} y2={110} stroke={c.fertile} strokeDasharray="4 4" strokeWidth={1.5} />
       ) : null}
       {runs.map((run) =>
         run.length > 1 ? (
@@ -272,23 +405,10 @@ function FertilityTestHistory({
   const { ovulationTests, pregnancyTests } = fertilityTestHistory(logs);
   return (
     <CycleCard>
-      <Text
-        style={{
-          color: c.ink,
-          fontFamily: 'NotoSansGeorgian_700Bold',
-          marginBottom: 10,
-        }}
-      >
+      <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', marginBottom: 10 }}>
         {ka.cycle.trendsTests}
       </Text>
-      <Text
-        style={{
-          color: c.muted,
-          fontFamily: 'NotoSansGeorgian_600SemiBold',
-          fontSize: 12,
-          marginBottom: 6,
-        }}
-      >
+      <Text style={{ color: c.muted, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, marginBottom: 6 }}>
         {ka.cycle.opkHistory}
       </Text>
       {ovulationTests.length ? (

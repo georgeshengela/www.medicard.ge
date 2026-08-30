@@ -136,6 +136,13 @@ export function logHasExtras(log) {
     log.libido != null ||
     Boolean(log.cervicalMucus) ||
     Boolean(log.ovulationTest) ||
-    Boolean(log.pregnancyTest)
+    Boolean(log.pregnancyTest) ||
+    (Array.isArray(log.painEntries) && log.painEntries.length > 0) ||
+    Boolean(log.sleepQuality) ||
+    Boolean(log.stressLevel) ||
+    Boolean(log.exerciseLevel) ||
+    Boolean(log.caffeine) ||
+    Boolean(log.alcohol) ||
+    (Array.isArray(log.customTagIds) && log.customTagIds.length > 0)
   );
 }

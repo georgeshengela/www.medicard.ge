@@ -18,6 +18,13 @@ export const EMPTY_CYCLE_LOG: CycleLogForm = {
   ovulationTest: null,
   pregnancyTest: null,
   notes: '',
+  painEntries: [],
+  sleepQuality: null,
+  stressLevel: null,
+  exerciseLevel: null,
+  caffeine: null,
+  alcohol: null,
+  customTagIds: [],
 };
 
 export function parseBbt(raw: string): number | null {
@@ -42,6 +49,13 @@ export function formFromCycleLog(log: CycleLog | undefined): CycleLogForm {
     ovulationTest: log.ovulationTest ?? null,
     pregnancyTest: log.pregnancyTest ?? null,
     notes: log.notes || '',
+    painEntries: log.painEntries ?? [],
+    sleepQuality: log.sleepQuality ?? null,
+    stressLevel: log.stressLevel ?? null,
+    exerciseLevel: log.exerciseLevel ?? null,
+    caffeine: log.caffeine ?? null,
+    alcohol: log.alcohol ?? null,
+    customTagIds: log.customTagIds ?? [],
   };
 }
 
@@ -77,6 +91,13 @@ export async function persistCycleLog(
       ovulationTest: form.ovulationTest,
       pregnancyTest: form.pregnancyTest,
       notes: form.notes.trim() || null,
+      painEntries: form.painEntries,
+      sleepQuality: form.sleepQuality,
+      stressLevel: form.stressLevel,
+      exerciseLevel: form.exerciseLevel,
+      caffeine: form.caffeine,
+      alcohol: form.alcohol,
+      customTagIds: form.customTagIds,
     },
     { markStart: Boolean(options?.markStart && isBleedFlow(form.flow)) },
   );

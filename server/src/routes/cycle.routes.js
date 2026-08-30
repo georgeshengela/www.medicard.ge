@@ -40,6 +40,7 @@ import {
   todayInTimeZone,
   toDateKey,
 } from '../lib/cycle.js';
+import { buildHistoricalAnalytics } from '../lib/cycleHistoryAnalytics.js';
 import {
   assertCycleDateKey,
   DEFAULT_BLEED_FLOW,
@@ -59,6 +60,15 @@ import {
   presentPredictions,
   presentTodayPhase,
 } from '../lib/cycleContraception.js';
+import {
+  buildObservationInsights,
+  CYCLE_TAG_ACTIVE_MAX,
+  foreignTagIds,
+  isClientUuid,
+  normalizeTagName,
+  parseObservationWrite,
+  shapeLogObservations,
+} from '../lib/cycleObservations.js';
 
 export const cycleRouter = Router();
 cycleRouter.use(requireAuth);
@@ -78,6 +88,67 @@ function assertFemale(user) {
 function parseJsonArray(value) {
   if (Array.isArray(value)) return value.map(String);
   return [];
+}
+
+function shapeCycleLog(log) {
+  return {
+    ...log,
+    symptoms: parseJsonArray(log.symptoms),
+    moods: parseJsonArray(log.moods),
+    ...shapeLogObservations(log),
+    notes: log.notes ?? null,
+  };
+}
+
+async function loadCustomTags(userId) {
+  try {
+    const rows = await prisma.cycleCustomTag.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
+      createdAt: row.createdAt.toISOString(),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function loadDailyMetrics(userId) {
+  try {
+    const rows = await prisma.healthMetricDaily.findMany({
+      where: { userId },
+      orderBy: { date: 'desc' },
+      take: 90,
+      select: { date: true, hydrationMl: true, steps: true, sleepHours: true },
+    });
+    return rows.map((row) => ({
+      date: row.date,
+      hydrationMl: row.hydrationMl ?? null,
+      steps: row.steps ?? null,
+      sleepHours: row.sleepHours ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function assertOwnedTagIds(userId, ids) {
+  if (!ids?.length) return [];
+  const rows = await prisma.cycleCustomTag.findMany({
+    where: { userId, id: { in: ids } },
+    select: { id: true },
+  });
+  const foreign = foreignTagIds(ids, rows.map((r) => r.id));
+  if (foreign.length) {
+    const err = new Error('ნიშანი ამ ანგარიშს არ ეკუთვნის.');
+    err.status = 403;
+    throw err;
+  }
+  return ids;
 }
 
 async function getOrCreateProfile(userId) {
@@ -143,8 +214,10 @@ async function clearBleedDay(userId, date) {
 }
 
 async function loadBundle(userId) {
-  const [profile, logs, pregnancyLogs] = await Promise.all([
+  const [profile, logs, pregnancyLogs, customTags, dailyMetrics] = await Promise.all([
     getOrCreateProfile(userId),
+    // Bounded recent history: 400 logs (~1–2 years of daily tracking). Analytics
+    // then uses the last 12 pattern-valid completed cycles from that window.
     prisma.cycleLog.findMany({
       where: { userId },
       orderBy: { date: 'desc' },
@@ -155,13 +228,11 @@ async function loadBundle(userId) {
       orderBy: { date: 'desc' },
       take: 120,
     }),
+    loadCustomTags(userId),
+    loadDailyMetrics(userId),
   ]);
 
-  const shapedLogs = logs.map((l) => ({
-    ...l,
-    symptoms: parseJsonArray(l.symptoms),
-    moods: parseJsonArray(l.moods),
-  }));
+  const shapedLogs = logs.map(shapeCycleLog);
 
   const inferred = inferCycleStats(
     shapedLogs,
@@ -225,6 +296,11 @@ async function loadBundle(userId) {
       : null;
 
   const profileView = { ...profile, lastPeriodStart };
+  const analytics = buildHistoricalAnalytics({
+    logs: shapedLogs,
+    inferred,
+    contraceptionStartedAt: toDateKey(profile.contraceptionStartedAt),
+  });
 
   let partnerShare = ownerShareView(null, null);
   try {
@@ -261,6 +337,22 @@ async function loadBundle(userId) {
       aiInsightsAt: profile.aiInsightsAt ?? null,
     },
     logs: shapedLogs,
+    customTags,
+    dailyMetrics,
+    observationInsights: buildObservationInsights(shapedLogs, {
+      predictionAvailability: contraception.predictionAvailability,
+      phasesByDate: Object.fromEntries(
+        shapedLogs.map((l) => [
+          l.date,
+          detectCyclePhase({
+            lastPeriodStart,
+            avgCycleLength: averages.usedCycleLength,
+            avgPeriodLength: averages.usedPeriodLength,
+            today: l.date,
+          }).phase,
+        ]),
+      ),
+    }),
     pregnancyLogs: pregnancyLogs.map((p) => ({
       ...p,
       symptoms: parseJsonArray(p.symptoms),
@@ -272,7 +364,9 @@ async function loadBundle(userId) {
       profile: profileView,
       logs: shapedLogs,
       predictions,
+      analytics,
     }),
+    analytics,
     localInsights: buildLocalInsights({
       profile: profileView,
       logs: shapedLogs,
@@ -684,9 +778,21 @@ cycleRouter.put(
         cervicalMucus: z.enum(MUCUS).nullable().optional(),
         ovulationTest: z.enum(CYCLE_TEST_RESULTS).nullable().optional(),
         pregnancyTest: z.enum(CYCLE_TEST_RESULTS).nullable().optional(),
-        notes: z.string().trim().max(500).nullable().optional(),
+        notes: z.string().trim().max(2000).nullable().optional(),
+        painEntries: z.array(z.unknown()).max(7).optional(),
+        sleepQuality: z.string().nullable().optional(),
+        stressLevel: z.string().nullable().optional(),
+        exerciseLevel: z.string().nullable().optional(),
+        caffeine: z.string().nullable().optional(),
+        alcohol: z.string().nullable().optional(),
+        customTagIds: z.array(z.string()).max(8).optional(),
       })
       .parse(req.body);
+
+    const observations = parseObservationWrite(body);
+    if (observations.customTagIds) {
+      await assertOwnedTagIds(req.user.id, observations.customTagIds);
+    }
 
     const log = await prisma.cycleLog.upsert({
       where: { userId_date: { userId: req.user.id, date } },
@@ -702,7 +808,14 @@ cycleRouter.put(
         cervicalMucus: body.cervicalMucus ?? null,
         ovulationTest: body.ovulationTest ?? null,
         pregnancyTest: body.pregnancyTest ?? null,
-        notes: body.notes ?? null,
+        notes: observations.notes !== undefined ? observations.notes : body.notes ?? null,
+        painEntries: observations.painEntries ?? [],
+        sleepQuality: observations.sleepQuality ?? null,
+        stressLevel: observations.stressLevel ?? null,
+        exerciseLevel: observations.exerciseLevel ?? null,
+        caffeine: observations.caffeine ?? null,
+        alcohol: observations.alcohol ?? null,
+        customTagIds: observations.customTagIds ?? [],
       },
       update: {
         ...(body.flow !== undefined ? { flow: body.flow } : {}),
@@ -714,13 +827,20 @@ cycleRouter.put(
         ...(body.cervicalMucus !== undefined ? { cervicalMucus: body.cervicalMucus } : {}),
         ...(body.ovulationTest !== undefined ? { ovulationTest: body.ovulationTest } : {}),
         ...(body.pregnancyTest !== undefined ? { pregnancyTest: body.pregnancyTest } : {}),
-        ...(body.notes !== undefined ? { notes: body.notes } : {}),
+        ...(observations.notes !== undefined ? { notes: observations.notes } : {}),
+        ...(observations.painEntries !== undefined ? { painEntries: observations.painEntries } : {}),
+        ...(observations.sleepQuality !== undefined ? { sleepQuality: observations.sleepQuality } : {}),
+        ...(observations.stressLevel !== undefined ? { stressLevel: observations.stressLevel } : {}),
+        ...(observations.exerciseLevel !== undefined ? { exerciseLevel: observations.exerciseLevel } : {}),
+        ...(observations.caffeine !== undefined ? { caffeine: observations.caffeine } : {}),
+        ...(observations.alcohol !== undefined ? { alcohol: observations.alcohol } : {}),
+        ...(observations.customTagIds !== undefined ? { customTagIds: observations.customTagIds } : {}),
       },
     });
 
     await syncLastPeriodStart(req.user.id);
 
-    return res.json({ log: { ...log, symptoms: parseJsonArray(log.symptoms), moods: parseJsonArray(log.moods) }, bundle: await loadBundle(req.user.id) });
+    return res.json({ log: shapeCycleLog(log), bundle: await loadBundle(req.user.id) });
   }),
 );
 
@@ -732,6 +852,148 @@ cycleRouter.delete(
     await prisma.cycleLog.deleteMany({ where: { userId: req.user.id, date } });
     await syncLastPeriodStart(req.user.id);
     return res.json(await loadBundle(req.user.id));
+  }),
+);
+
+cycleRouter.post(
+  '/tags',
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    const body = z
+      .object({
+        id: z.string().optional(),
+        name: z.string(),
+      })
+      .parse(req.body);
+    const parsed = normalizeTagName(body.name);
+    if (!parsed.ok) {
+      const err = new Error(parsed.error === 'too_long' ? 'ნიშანი ძალიან გრძელია.' : 'ნიშნის სახელი ცარიელია.');
+      err.status = 400;
+      throw err;
+    }
+    if (body.id && !isClientUuid(body.id)) {
+      const err = new Error('ნიშნის იდენტიფიკატორი არასწორია.');
+      err.status = 400;
+      throw err;
+    }
+    const activeCount = await prisma.cycleCustomTag.count({
+      where: { userId: req.user.id, archivedAt: null },
+    });
+    const existing = await prisma.cycleCustomTag.findFirst({
+      where: { userId: req.user.id, nameNormalized: parsed.nameNormalized, archivedAt: null },
+    });
+    if (existing) {
+      return res.json({ tag: { id: existing.id, name: existing.name, archivedAt: null, createdAt: existing.createdAt.toISOString() }, bundle: await loadBundle(req.user.id) });
+    }
+    if (activeCount >= CYCLE_TAG_ACTIVE_MAX) {
+      const err = new Error('აქტიური ნიშნების ლიმიტი ამოწურულია.');
+      err.status = 400;
+      throw err;
+    }
+    if (body.id) {
+      const taken = await prisma.cycleCustomTag.findUnique({ where: { id: body.id } });
+      if (taken && taken.userId !== req.user.id) {
+        const err = new Error('ნიშანი ამ ანგარიშს არ ეკუთვნის.');
+        err.status = 403;
+        throw err;
+      }
+      if (taken && taken.userId === req.user.id) {
+        const updated = await prisma.cycleCustomTag.update({
+          where: { id: body.id },
+          data: { name: parsed.name, nameNormalized: parsed.nameNormalized, archivedAt: null },
+        });
+        return res.json({
+          tag: { id: updated.id, name: updated.name, archivedAt: null, createdAt: updated.createdAt.toISOString() },
+          bundle: await loadBundle(req.user.id),
+        });
+      }
+    }
+    const tag = await prisma.cycleCustomTag.create({
+      data: {
+        ...(body.id ? { id: body.id } : {}),
+        userId: req.user.id,
+        name: parsed.name,
+        nameNormalized: parsed.nameNormalized,
+      },
+    });
+    return res.json({
+      tag: { id: tag.id, name: tag.name, archivedAt: null, createdAt: tag.createdAt.toISOString() },
+      bundle: await loadBundle(req.user.id),
+    });
+  }),
+);
+
+cycleRouter.patch(
+  '/tags/:id',
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    const id = z.string().parse(req.params.id);
+    const body = z.object({ name: z.string() }).parse(req.body);
+    const parsed = normalizeTagName(body.name);
+    if (!parsed.ok) {
+      const err = new Error(parsed.error === 'too_long' ? 'ნიშანი ძალიან გრძელია.' : 'ნიშნის სახელი ცარიელია.');
+      err.status = 400;
+      throw err;
+    }
+    const existing = await prisma.cycleCustomTag.findFirst({ where: { id, userId: req.user.id } });
+    if (!existing) {
+      const err = new Error('ნიშანი ვერ მოიძებნა.');
+      err.status = 404;
+      throw err;
+    }
+    const clash = await prisma.cycleCustomTag.findFirst({
+      where: {
+        userId: req.user.id,
+        nameNormalized: parsed.nameNormalized,
+        archivedAt: null,
+        NOT: { id },
+      },
+    });
+    if (clash) {
+      const err = new Error('ასეთი ნიშანი უკვე არსებობს.');
+      err.status = 409;
+      throw err;
+    }
+    const tag = await prisma.cycleCustomTag.update({
+      where: { id },
+      data: { name: parsed.name, nameNormalized: parsed.nameNormalized },
+    });
+    return res.json({
+      tag: {
+        id: tag.id,
+        name: tag.name,
+        archivedAt: tag.archivedAt ? tag.archivedAt.toISOString() : null,
+        createdAt: tag.createdAt.toISOString(),
+      },
+      bundle: await loadBundle(req.user.id),
+    });
+  }),
+);
+
+cycleRouter.delete(
+  '/tags/:id',
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    const id = z.string().parse(req.params.id);
+    const existing = await prisma.cycleCustomTag.findFirst({ where: { id, userId: req.user.id } });
+    if (!existing) {
+      const err = new Error('ნიშანი ვერ მოიძებნა.');
+      err.status = 404;
+      throw err;
+    }
+    const tag = await prisma.cycleCustomTag.update({
+      where: { id },
+      data: { archivedAt: existing.archivedAt || new Date() },
+    });
+    return res.json({
+      tag: {
+        id: tag.id,
+        name: tag.name,
+        archivedAt: tag.archivedAt ? tag.archivedAt.toISOString() : null,
+        createdAt: tag.createdAt.toISOString(),
+      },
+      bundle: await loadBundle(req.user.id),
+    });
   }),
 );
 
@@ -814,6 +1076,8 @@ cycleRouter.post(
       user: { age },
       averages: bundle.averages,
       today: bundle.meta?.today,
+      contraception: bundle.contraception,
+      analytics: bundle.analytics,
     });
 
     const patientAiContext = await withPatientAiContext(req.user);

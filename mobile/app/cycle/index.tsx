@@ -4,7 +4,7 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { BarChart3, Baby, CalendarHeart, FileText, Sparkles } from 'lucide-react-native';
+import { BarChart3, Baby, CalendarHeart, FileText, NotebookPen, Sparkles } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleHero } from '@/components/cycle/CycleHero';
 import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
@@ -555,6 +555,14 @@ export default function CycleHome() {
                 color={c.brand}
                 delay={80}
                 onPress={() => router.push('/cycle/trends' as never)}
+              />
+              <CycleFeatureTile
+                icon={NotebookPen}
+                title={ka.cycle.journalTitle}
+                subtitle={ka.cycle.journalOpen}
+                color={c.brand}
+                delay={100}
+                onPress={() => router.push('/cycle/journal' as never)}
               />
               {bundle?.profile.mode === 'TRY_TO_CONCEIVE' ||
               bundle?.profile.mode === 'PREGNANCY' ? (

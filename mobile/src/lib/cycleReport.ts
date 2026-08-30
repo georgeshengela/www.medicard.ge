@@ -65,6 +65,28 @@ export function buildCycleReportHtml(bundle: CycleBundle): string {
     }
     <li>${s?.cycleCount ? ka.cycle.basedOnCycles(s.cycleCount) : ka.cycle.confidenceLow} — ${confidence}</li>
   </ul>
+  ${(() => {
+    const h = bundle.analytics ?? bundle.summary?.historical;
+    if (!h) return '';
+    const lengths = bundle.analytics?.cycleLengthStats ?? bundle.summary?.historical?.cycleLengthStats;
+    const bleed = bundle.analytics?.bleedDurations ?? bundle.summary?.historical?.bleedDurations;
+    const pain = (bundle.analytics?.painPatterns ?? bundle.summary?.historical?.painPatterns ?? [])
+      .map((p) => `<li>${ka.cycle.painType[p.painType as keyof typeof ka.cycle.painType] ?? p.painType}: ${p.cyclesWithObservation}/${p.eligibleCycles}</li>`)
+      .join('');
+    const symptoms = (bundle.analytics?.symptomPatterns ?? bundle.summary?.historical?.symptomPatterns ?? [])
+      .map((p) => `<li>${cycleChipLabel(p.key)}: ${p.cyclesWithObservation}/${p.eligibleCycles}</li>`)
+      .join('');
+    const coverageLow = (bundle.analytics?.insightDataQuality ?? bundle.summary?.historical?.insightDataQuality) === 'LOW';
+    return `<h2>${ka.cycle.reportHistoricalTitle}</h2>
+    <p>${ka.cycle.reportBasedOnRecorded}${coverageLow ? ` ${ka.cycle.reportCoverageLow}` : ''}</p>
+    <ul>
+      <li>${ka.cycle.basedOnCycles(bundle.analytics?.completedCycleCount ?? bundle.summary?.historical?.completedCycleCount ?? 0)}</li>
+      ${lengths?.average != null ? `<li>${ka.cycle.trendsCycleLength}: ${lengths.average} (${lengths.shortest}–${lengths.longest})</li>` : ''}
+      ${bleed?.average != null ? `<li>${ka.cycle.loggedBleedDuration}: ${bleed.average} (${bleed.shortest}–${bleed.longest})</li>` : ''}
+    </ul>
+    ${pain ? `<h2>${ka.cycle.reportPain}</h2><ul>${pain}</ul>` : ''}
+    ${symptoms ? `<h2>${ka.cycle.trendsSymptoms}</h2><ul>${symptoms}</ul>` : ''}`;
+  })()}
   ${starts ? `<h2>${ka.cycle.reportLoggedTitle} · ${ka.cycle.periodHistory}</h2><ul>${starts}</ul>` : ''}
   ${cycles ? `<h2>ციკლის სიგრძეები</h2><ul>${cycles}</ul>` : ''}
   ${rows ? `<h2>ტოპ სიმპტომები</h2><ul>${rows}</ul>` : ''}
@@ -80,6 +102,16 @@ export function buildCycleReportHtml(bundle: CycleBundle): string {
       .join('');
     if (!opk && !preg) return '';
     return `<h2>${ka.cycle.trendsTests}</h2><ul>${opk}${preg}</ul>`;
+  })()}
+  ${(() => {
+    const pain = (s as { painObservations?: { date: string; type: string; severity: string }[] } | undefined)?.painObservations
+      ?? [];
+    if (!pain.length) return '';
+    const items = pain
+      .slice(0, 20)
+      .map((p) => `<li>${formatCycleDateKa(p.date)} — ${ka.cycle.painType[p.type as keyof typeof ka.cycle.painType] ?? p.type} · ${ka.cycle.painSeverity[p.severity as keyof typeof ka.cycle.painSeverity] ?? p.severity}</li>`)
+      .join('');
+    return `<h2>${ka.cycle.reportPain}</h2><ul>${items}</ul>`;
   })()}
   <p class="disclaimer">${ka.cycle.reportDisclaimer}</p>
   <p class="disclaimer">${ka.cycle.contraceptionDisclaimer}</p>

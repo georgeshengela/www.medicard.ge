@@ -7,6 +7,8 @@
 import {
   CYCLE_AI_HONESTY_RULES,
   CYCLE_CONTRACEPTION_AI_RULES,
+  CYCLE_HISTORY_AI_RULES,
+  CYCLE_OBSERVATION_AI_RULES,
   cycleHonestyFlags,
   irregularLengthAlertKa,
   latePeriodAlertKa,
@@ -25,6 +27,14 @@ import {
   contraceptionInsightsFilter,
   interpretContraception,
 } from './cycleContraception.js';
+import {
+  collectPainObservations,
+  lifestyleSummary,
+  logHasPhase9Extras,
+  observationAiBits,
+} from './cycleObservations.js';
+import { buildPmsByDaysBefore, historicalAnalyticsForAi } from './cycleHistoryAnalytics.js';
+import { segmentHistoricalCycles } from './cycleHistory.js';
 
 export { emptyCycleAiCache };
 
@@ -379,7 +389,9 @@ export function overlayLogsOnCalendar(calendar, logs) {
       log.sexualActivity != null ||
       log.ovulationTest != null ||
       log.pregnancyTest != null ||
-      Boolean(log.cervicalMucus);
+      Boolean(log.cervicalMucus) ||
+      logHasPhase9Extras(log);
+    const hasJournal = Boolean(log.notes);
     if (isPeriodFlow(log.flow)) {
       next[log.date] = {
         ...(next[log.date] || {}),
@@ -387,12 +399,14 @@ export function overlayLogsOnCalendar(calendar, logs) {
         predicted: false,
         estimated: false,
         logged: true,
+        hasNote: Boolean(hasJournal),
         flow: log.flow,
       };
     } else if (log.flow === 'spotting') {
       next[log.date] = {
         ...(next[log.date] || {}),
         logged: true,
+        hasNote: Boolean(hasJournal),
         flow: 'spotting',
         period: false,
       };
@@ -400,6 +414,7 @@ export function overlayLogsOnCalendar(calendar, logs) {
       next[log.date] = {
         ...(next[log.date] || {}),
         logged: true,
+        hasNote: Boolean(hasJournal),
         ...(log.flow ? { flow: log.flow } : {}),
         ...(log.flow === 'none' ? { period: false } : {}),
       };
@@ -449,7 +464,7 @@ export function fetalInsightForWeek(week) {
   return { week, ...(FETAL_SIZE_KA[best] || FETAL_SIZE_KA[14]) };
 }
 
-export function buildDoctorSummary({ profile, logs, predictions }) {
+export function buildDoctorSummary({ profile, logs, predictions, analytics }) {
   const flowDays = logs.filter((l) => isPeriodFlow(l.flow));
   const inferred = inferCycleStats(logs, profile.avgCycleLength, profile.avgPeriodLength);
   const lengths = [];
@@ -509,6 +524,21 @@ export function buildDoctorSummary({ profile, logs, predictions }) {
       ...collectFertilityTests(logs),
       label: 'user_logged',
     },
+    painObservations: collectPainObservations(logs).slice(0, 40),
+    lifestyleSummary: lifestyleSummary(logs),
+    historical: analytics
+      ? {
+          source: 'calculated_from_logged_history',
+          completeness: 'based_on_recorded_days',
+          completedCycleCount: analytics.completedCycleCount,
+          loggingCoverage: analytics.loggingCoverage,
+          insightDataQuality: analytics.insightDataQuality,
+          cycleLengthStats: analytics.cycleLengthStats,
+          bleedDurations: analytics.bleedDurations,
+          painPatterns: analytics.painPatterns,
+          symptomPatterns: (analytics.symptomPatterns || []).slice(0, 5),
+        }
+      : undefined,
   };
 }
 
@@ -666,26 +696,6 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
   };
 }
 
-const PMS_SYMPTOM_KEYS = new Set([
-  'cramps',
-  'headache',
-  'bloating',
-  'fatigue',
-  'back_pain',
-  'breast_tenderness',
-  'breast_swelling',
-  'nausea',
-  'insomnia',
-  'hot_flashes',
-  'pelvic_pain',
-  'anxious',
-  'irritable',
-  'sensitive',
-  'sad',
-  'mood_swings',
-  'cravings',
-]);
-
 export function parseConditions(profile) {
   const raw = profile?.conditions;
   if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
@@ -702,39 +712,9 @@ export function buildCycleTrends({ profile, logs, inferred, averages, today }) {
     }
   }
 
-  const avgCycle =
-    averages?.usedCycleLength ?? profile.avgCycleLength ?? DEFAULT_CYCLE_LENGTH;
-  const lastPeriod = toDateKey(profile.lastPeriodStart) || inferred?.lastPeriodStart;
   const todayKey = today || todayInTimeZone();
-  const pmsByDay = {};
-  for (let d = 18; d <= 35; d += 1) pmsByDay[d] = { count: 0, symptoms: {} };
-
-  for (const log of logs) {
-    if (!lastPeriod) break;
-    const offset = daysBetween(lastPeriod, log.date);
-    if (offset < 0) continue;
-    const cycleDay = ((offset % avgCycle) + 1);
-    if (cycleDay < 18 || cycleDay > 35) continue;
-    const symptoms = Array.isArray(log.symptoms) ? log.symptoms : [];
-    const moods = Array.isArray(log.moods) ? log.moods : [];
-    const hits = [...symptoms, ...moods].filter((k) => PMS_SYMPTOM_KEYS.has(k));
-    if (!hits.length) continue;
-    pmsByDay[cycleDay].count += 1;
-    for (const k of hits) {
-      pmsByDay[cycleDay].symptoms[k] = (pmsByDay[cycleDay].symptoms[k] || 0) + 1;
-    }
-  }
-
-  const pmsSeries = Object.entries(pmsByDay)
-    .map(([cycleDay, v]) => ({
-      cycleDay: Number(cycleDay),
-      count: v.count,
-      topSymptoms: Object.entries(v.symptoms)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([key, count]) => ({ key, count })),
-    }))
-    .filter((row) => row.count > 0);
+  const historicalCycles = segmentHistoricalCycles(inferred?.periodStarts ?? []);
+  const pmsByDaysBefore = buildPmsByDaysBefore(logs, historicalCycles);
 
   const symptomFreq = {};
   const cutoff = addDays(todayKey, -90);
@@ -758,7 +738,8 @@ export function buildCycleTrends({ profile, logs, inferred, averages, today }) {
   const stats = cycleLengthStats(cycleLengths);
   return {
     cycleLengths,
-    pmsByDay: pmsSeries,
+    pmsByDay: [],
+    pmsByDaysBefore,
     topSymptoms90d,
     bbtPoints,
     periodStarts,
@@ -835,7 +816,7 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today }
   return alerts.slice(0, 4);
 }
 
-export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, user, averages, today, contraception }) {
+export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, user, averages, today, contraception, analytics }) {
   const phase = detectCyclePhase({
     lastPeriodStart: toDateKey(profile.lastPeriodStart),
     avgCycleLength: averages?.usedCycleLength ?? profile.avgCycleLength,
@@ -858,7 +839,7 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
   const lines = recent.map((l) => {
     const sym = (l.symptoms || []).map((s) => SYMPTOM_KA[s] || s).join(', ') || '—';
     const mood = (l.moods || []).map((m) => SYMPTOM_KA[m] || m).join(', ') || '—';
-    const extra = fertilityObservationBits(l);
+    const extra = [...fertilityObservationBits(l), ...observationAiBits(l)];
     return `${l.date}: flow=${l.flow || 'none'}; სიმპტომები=${sym}; განწყობა=${mood}${extra.length ? `; ${extra.join('; ')}` : ''}`;
   });
 
@@ -900,10 +881,17 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
     contra.method ? `startedAt: ${contra.startedAt || 'unknown'}` : null,
     contra.method ? `predictionAvailability: ${contra.predictionAvailability}` : null,
     '',
+    ...(() => {
+      const historyLines = historicalAnalyticsForAi(analytics);
+      if (!historyLines.length) return [];
+      return ['HISTORICAL_LOG_PATTERN:', ...historyLines.map((line) => `- ${line}`), ''];
+    })(),
     'HONESTY_RULES:',
     ...CYCLE_AI_HONESTY_RULES.map((rule) => `- ${rule}`),
     ...CYCLE_FERTILITY_AI_RULES.map((rule) => `- ${rule}`),
     ...CYCLE_CONTRACEPTION_AI_RULES.map((rule) => `- ${rule}`),
+    ...CYCLE_OBSERVATION_AI_RULES.map((rule) => `- ${rule}`),
+    ...CYCLE_HISTORY_AI_RULES.map((rule) => `- ${rule}`),
     '',
     'დააბრუნე მხოლოდ JSON რჩევების ბარათებით.',
   ]
