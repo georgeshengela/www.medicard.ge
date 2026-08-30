@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
+import { Image, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Markdown } from '@/components/ui/Markdown';
 import { Disclaimer } from '@/components/Disclaimer';
+import { DetailCardSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { ApiError, absoluteUrl, api, type MedicalRecord } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
-import { useThemeColors } from '@/theme/colors';
 
 export default function RecordDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const colors = useThemeColors();
 
   const [record, setRecord] = useState<MedicalRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +29,7 @@ export default function RecordDetail() {
 
   return (
     <>
-      <Stack.Screen options={{ title: record ? ka.records.types[record.type] ?? record.type : ka.common.loading }} />
+      <Stack.Screen options={{ title: record ? ka.records.types[record.type] ?? record.type : ka.records.title }} />
 
       <ScrollView className="flex-1 bg-bg-100" contentContainerClassName="px-4 pb-12 pt-3">
         {error ? (
@@ -38,9 +37,7 @@ export default function RecordDetail() {
             <Text className="text-sm text-state-danger">{error}</Text>
           </View>
         ) : !record ? (
-          <View className="items-center py-16">
-            <ActivityIndicator color={colors.primary200} />
-          </View>
+          <DetailCardSkeleton />
         ) : (
           <>
             <View className="mb-3 flex-row items-center">

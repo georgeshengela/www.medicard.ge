@@ -30,7 +30,8 @@ export function AuthShell({
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-surface font-sans"
+      className="flex-1 font-sans"
+      style={{ flex: 1, backgroundColor: colors.surface }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
     >
@@ -50,8 +51,14 @@ export function AuthShell({
             <AuthBrandHeader subtitle={heroSubtitle ?? ka.app.tagline} />
           ) : title ? (
             <View className="mb-6">
-              <Text className="font-sans-bold text-2xl text-text-100">{title}</Text>
-              {subtitle ? <Text className="mt-1.5 font-sans text-base text-text-200">{subtitle}</Text> : null}
+              <Text className="font-sans-bold text-2xl" style={{ color: colors.text100 }}>
+                {title}
+              </Text>
+              {subtitle ? (
+                <Text className="mt-1.5 font-sans text-base" style={{ color: colors.text200 }}>
+                  {subtitle}
+                </Text>
+              ) : null}
             </View>
           ) : null}
 

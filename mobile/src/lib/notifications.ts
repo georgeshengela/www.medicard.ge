@@ -86,7 +86,9 @@ export async function registerPushTokenWithServer(): Promise<boolean> {
       projectId ? { projectId } : undefined,
     );
     const token = tokenResult.data;
-    if (!token?.startsWith('ExponentPushToken')) return false;
+    if (!/^ExponentPushToken\[.+\]$/.test(token) && !/^ExpoPushToken\[.+\]$/.test(token)) {
+      return false;
+    }
 
     const platform =
       Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
@@ -202,7 +204,7 @@ export async function unregisterPushFromServer(): Promise<void> {
       projectId ? { projectId } : undefined,
     );
     const token = tokenResult.data;
-    if (token?.startsWith('ExponentPushToken')) {
+    if (token && (/^ExponentPushToken\[.+\]$/.test(token) || /^ExpoPushToken\[.+\]$/.test(token))) {
       await api.push.unregister(token);
     }
   } catch {

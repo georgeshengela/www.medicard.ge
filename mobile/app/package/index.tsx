@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -13,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { ArrowLeft, ArrowRight, Check, Crown } from 'lucide-react-native';
 import { useFigmaPlans } from '@/constants/figmaPlansLayout';
+import { PackagePageSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { api, type UserPackage } from '@/lib/api';
 import { usePlanUsage, type PlanCode } from '@/lib/planUsage';
@@ -180,9 +180,7 @@ export default function PackageScreen() {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={FIGMA_PLANS.brand} />
-        </View>
+        <PackagePageSkeleton />
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -594,7 +592,7 @@ export default function PackageScreen() {
             </Pressable>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-              <Pressable accessibilityRole="button" onPress={() => router.push('/(auth)/profile-setup/privacy' as never)}>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/profile/privacy')}>
                 <Text
                   style={{
                     fontFamily: 'NotoSansGeorgian_600SemiBold',
@@ -613,7 +611,7 @@ export default function PackageScreen() {
                   backgroundColor: FIGMA_PLANS.border,
                 }}
               />
-              <Pressable accessibilityRole="button" onPress={() => Alert.alert(ka.plans.terms, ka.usage.premiumSoon)}>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/profile/terms')}>
                 <Text
                   style={{
                     fontFamily: 'NotoSansGeorgian_600SemiBold',

@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronRight, Search, X } from 'lucide-react-native';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedChip, MedDivider, MedInsetCard, MedPrimaryButton } from '@/components/medications/MedicationUI';
+import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary, type DrugCategoryInfo } from '@/lib/api';
@@ -117,8 +118,8 @@ export default function MedicationSearchScreen() {
         </View>
 
         {loading && products.length === 0 ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator color={FIGMA_MEDS.brand} />
+          <View style={{ paddingTop: 16 }}>
+            <ListRowsSkeleton rows={6} />
           </View>
         ) : products.length === 0 ? (
           <View style={{ alignItems: 'center', paddingTop: 48, paddingHorizontal: 16 }}>

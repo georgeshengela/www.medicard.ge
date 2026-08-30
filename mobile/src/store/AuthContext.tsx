@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { AppState } from 'react-native';
 import { ApiError, api, type CheckInState, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
+import { clearSessionSnapshot, loadSessionSnapshot, saveSessionSnapshot } from '@/lib/sessionSnapshot';
 import { clearToken, getToken, setToken } from '@/lib/storage';
 
 type Stats = { records: number; chats: number; activeMedications: number };
@@ -27,6 +29,7 @@ type AuthState = {
   signUp: (input: SignUpInput) => Promise<void>;
   signInWithPhone: (phone: string, code: string, fullName?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   refresh: () => Promise<void>;
   refreshHealthProfile: () => Promise<HealthProfile | null>;
   setUser: (user: User) => void;
@@ -45,15 +48,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [healthProfile, setHealthProfile] = useState<HealthProfile | null>(null);
   const [pendingDailyBonus, setPendingDailyBonus] = useState<CheckInState | null>(null);
 
+  const resetSession = useCallback(() => {
+    setUser(null);
+    setUsage(null);
+    setStats(null);
+    setHealthProfile(null);
+    setPendingDailyBonus(null);
+  }, []);
+
   const hydrate = useCallback(async () => {
     const token = await getToken();
     if (!token) {
-      setUser(null);
-      setUsage(null);
-      setStats(null);
-      setHealthProfile(null);
-      setPendingDailyBonus(null);
+      await clearSessionSnapshot();
+      resetSession();
       return;
+    }
+
+    const snapshot = await loadSessionSnapshot();
+    if (snapshot) {
+      setUser(snapshot.user);
+      setUsage(snapshot.usage);
+      setStats(snapshot.stats);
+      setHealthProfile(snapshot.healthProfile);
     }
 
     try {
@@ -63,6 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStats(me.stats);
       setHealthProfile(me.healthProfile ?? null);
       if (me.checkInAwarded && me.checkIn) setPendingDailyBonus(me.checkIn);
+      await saveSessionSnapshot({
+        user: me.user,
+        usage: me.usage,
+        stats: me.stats,
+        healthProfile: me.healthProfile ?? null,
+      });
       try {
         const { flushStepsGoalAwards } = await import('@/lib/stepsGoal');
         await flushStepsGoalAwards(setUser);
@@ -78,18 +100,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       if (error instanceof ApiError && error.isUnauthorized) {
         await clearToken();
-        setUser(null);
-        setUsage(null);
-        setStats(null);
-        setHealthProfile(null);
-        setPendingDailyBonus(null);
+        await clearSessionSnapshot();
+        resetSession();
       }
     }
-  }, []);
+  }, [resetSession]);
 
   useEffect(() => {
     hydrate().finally(() => setReady(true));
   }, [hydrate]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') return;
+      void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
+        registerPushTokenWithServer(),
+      );
+    });
+    return () => sub.remove();
+  }, []);
 
   const adopt = useCallback(
     async (result: { token: string; user: User; usage: Usage }) => {
@@ -132,11 +161,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInWithPhone: async (phone, code, fullName) => adopt(await api.auth.phoneVerify({ phone, code, fullName })),
       signOut: async () => {
         await clearToken();
-        setUser(null);
-        setUsage(null);
-        setStats(null);
-        setHealthProfile(null);
-        setPendingDailyBonus(null);
+        await clearSessionSnapshot();
+        resetSession();
+      },
+      deleteAccount: async () => {
+        const userId = user?.id;
+        try {
+          const { cancelAllReminders, unregisterPushFromServer } = await import('@/lib/notifications');
+          await unregisterPushFromServer();
+          await cancelAllReminders();
+        } catch {
+          /* local cleanup still continues */
+        }
+        await api.auth.deleteAccount();
+        if (userId) {
+          void import('@/lib/cycleOffline').then(({ destroyCycleOfflineAccount }) =>
+            destroyCycleOfflineAccount(userId).catch(() => undefined),
+          );
+        }
+        await clearToken();
+        await clearSessionSnapshot();
+        resetSession();
       },
       refresh: hydrate,
       refreshHealthProfile,
@@ -159,6 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       adopt,
       hydrate,
       refreshHealthProfile,
+      resetSession,
     ],
   );
 

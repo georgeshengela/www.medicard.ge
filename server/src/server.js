@@ -30,10 +30,10 @@ import { applyPrivateCache } from './lib/cycleShare.js';
 import { pushRouter } from './routes/push.routes.js';
 import { pharmacyRouter } from './routes/pharmacy.routes.js';
 import { checkInRouter } from './routes/check-in.routes.js';
+import { PRIVACY_HTML, TERMS_HTML } from './lib/legalPages.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const WEB_DIST = path.resolve(__dirname, '../../mobile/dist');
 
 /** Resolve admin UI from several cwd layouts (local, Render, npm --prefix). */
 function resolveAdminDist() {
@@ -48,16 +48,29 @@ function resolveAdminDist() {
   return null;
 }
 
+function resolvePublicDist() {
+  const candidates = [
+    path.resolve(__dirname, '../public'),
+    path.resolve(process.cwd(), 'server/public'),
+    path.resolve(process.cwd(), 'public'),
+  ];
+  for (const dir of candidates) {
+    if (existsSync(path.join(dir, 'index.html'))) return dir;
+  }
+  return null;
+}
+
 const ADMIN_DIST = resolveAdminDist();
-const serveWeb = env.NODE_ENV === 'production' && existsSync(path.join(WEB_DIST, 'index.html'));
+const PUBLIC_DIST = resolvePublicDist();
 const serveAdmin = Boolean(ADMIN_DIST);
+const serveLanding = Boolean(PUBLIC_DIST);
 
 app.set('trust proxy', 1);
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     contentSecurityPolicy:
-      serveWeb || serveAdmin
+      serveLanding || serveAdmin
         ? {
             directives: {
               defaultSrc: ["'self'"],
@@ -121,6 +134,16 @@ app.use(
 
 app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
 
+app.get('/privacy', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.type('html').send(PRIVACY_HTML);
+});
+
+app.get('/terms', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.type('html').send(TERMS_HTML);
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -128,7 +151,7 @@ app.get('/health', (req, res) => {
     time: new Date().toISOString(),
     engines: { evidencemd: true, vision: hasVisionProvider },
     admin: serveAdmin,
-    web: serveWeb,
+    landing: serveLanding,
   });
 });
 
@@ -152,7 +175,7 @@ app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 
 if (serveAdmin) {
-  // Must be registered before the Expo web SPA fallback, otherwise /admin becomes the mobile app.
+  // Must be registered before the marketing-site fallback, otherwise /admin becomes the landing page.
   app.use(
     '/admin',
     express.static(ADMIN_DIST, {
@@ -172,8 +195,21 @@ if (serveAdmin) {
   console.warn('[medicard] Admin UI not found — /admin will not be available.');
 }
 
-if (serveWeb) {
-  app.use(express.static(WEB_DIST, { index: false, maxAge: '1h' }));
+if (serveLanding) {
+  app.use(
+    express.static(PUBLIC_DIST, {
+      index: false,
+      setHeaders(res, filePath) {
+        if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
+        else if (filePath.endsWith('.css')) res.setHeader('Cache-Control', 'public, max-age=3600');
+        else res.setHeader('Cache-Control', 'public, max-age=86400');
+      },
+    }),
+  );
+  app.use('/share', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(PUBLIC_DIST, 'open-app.html'));
+  });
   app.use((req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
     const p = req.path;
@@ -182,11 +218,14 @@ if (serveWeb) {
       p.startsWith('/uploads') ||
       p === '/admin' ||
       p.startsWith('/admin/') ||
-      p === '/health'
+      p === '/health' ||
+      p === '/privacy' ||
+      p === '/terms'
     ) {
       return next();
     }
-    res.sendFile(path.join(WEB_DIST, 'index.html'), (err) => (err ? next(err) : undefined));
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(PUBLIC_DIST, 'index.html'), (err) => (err ? next(err) : undefined));
   });
 }
 
@@ -197,7 +236,8 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
   console.log(`\n  Medicard.GE API  →  http://localhost:${env.PORT}`);
   if (serveAdmin) console.log(`  admin panel     →  http://localhost:${env.PORT}/admin  (${ADMIN_DIST})`);
   else console.warn('  admin panel     →  MISSING (server/admin/index.html not found)');
-  if (serveWeb) console.log(`  web app          →  ${WEB_DIST}`);
+  if (serveLanding) console.log(`  landing          →  ${PUBLIC_DIST}`);
+  else console.warn('  landing          →  MISSING (server/public/index.html not found)');
   console.log(`  environment      →  ${env.NODE_ENV}`);
   console.log(`  free monthly limit →  ${env.FREE_MONTHLY_AI_LIMIT} AI queries (FREE package)`);
   if (!hasVisionProvider) {

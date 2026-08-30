@@ -4,6 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import { Scale } from 'lucide-react-native';
 import { NightingaleMetricCard } from '@/components/health/HealthMetricCard';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import { HomeWeightLogSheet } from '@/components/home/HomeWeightLogSheet';
 import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
 import { useHealthMetrics } from '@/hooks/useHealthMetrics';
@@ -19,7 +20,7 @@ type Props = {
 export function HomeBmiWeightSection({ profile }: Props) {
   const FIGMA_HEALTH_METRICS = useFigmaHealthMetrics();
   const { refreshHealthProfile } = useAuth();
-  const { bundle, refresh } = useHealthMetrics(profile);
+  const { bundle, loading, refresh } = useHealthMetrics(profile);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   useFocusEffect(
@@ -54,17 +55,21 @@ export function HomeBmiWeightSection({ profile }: Props) {
   return (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
       <HomeSectionTitle title={ka.home.bmi.title} />
-      <NightingaleMetricCard
-        Icon={Scale}
-        color={FIGMA_HEALTH_METRICS.weight}
-        title={ka.healthMetrics.metrics.weight}
-        updatedLabel={weight?.updatedLabel ?? ka.healthMetrics.today}
-        valueText={value != null ? value.toFixed(1) : '—'}
-        unit={value != null ? ka.home.bmi.kg : null}
-        status={status}
-        weekValues={weekValues}
-        onPress={openSheet}
-      />
+      {loading && !bundle && value == null ? (
+        <MetricCardSkeleton />
+      ) : (
+        <NightingaleMetricCard
+          Icon={Scale}
+          color={FIGMA_HEALTH_METRICS.weight}
+          title={ka.healthMetrics.metrics.weight}
+          updatedLabel={weight?.updatedLabel ?? ka.healthMetrics.today}
+          valueText={value != null ? value.toFixed(1) : '—'}
+          unit={value != null ? ka.home.bmi.kg : null}
+          status={status}
+          weekValues={weekValues}
+          onPress={openSheet}
+        />
+      )}
 
       <HomeWeightLogSheet
         visible={sheetOpen}

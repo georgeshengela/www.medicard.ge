@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Link2 } from 'lucide-react-native';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { ChartCardSkeleton } from '@/components/ui/Skeleton';
 import { HomeStepsAreaChart, type StepsDayPoint } from '@/components/home/HomeStepsAreaChart';
 import { GoalDotsVertical, GoalTrendUp } from '@/components/health/steps-goal/StepsGoalIcons';
 import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
@@ -171,8 +172,8 @@ export function HomeHealthMetricsSection({ profile: _profile }: Props) {
       ) : null}
 
       {loading && !bundle ? (
-        <View style={{ paddingVertical: 12, alignItems: 'center' }}>
-          <ActivityIndicator size="small" color={FIGMA_HEALTH_METRICS.brand} />
+        <View style={{ marginHorizontal: 16 }}>
+          <ChartCardSkeleton />
         </View>
       ) : (
         <Pressable

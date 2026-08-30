@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { StreakBonusChip, StreakFlameHero, StreakWeekRow } from '@/components/check-in/StreakVisuals';
+import { StreakPageSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaStreak } from '@/constants/figmaStreakLayout';
 import { ka } from '@/i18n/ka';
 import { api, type CheckInState } from '@/lib/api';
@@ -69,9 +70,7 @@ export default function StreakScreen() {
       </View>
 
       {loading && !state ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={FIGMA.warning} />
-        </View>
+        <StreakPageSkeleton />
       ) : (
         <ScrollView
           contentContainerStyle={{

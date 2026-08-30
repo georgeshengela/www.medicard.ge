@@ -5,6 +5,7 @@ import { BellRing, CalendarCheck, Plus } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Disclaimer } from '@/components/Disclaimer';
 import { EmptyState } from '@/components/EmptyState';
+import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { VisitCard } from '@/components/visits/VisitCard';
 import { ka } from '@/i18n/ka';
 import { api, type DoctorVisit } from '@/lib/api';
@@ -20,6 +21,7 @@ export default function VisitsScreen() {
   const [visits, setVisits] = useState<DoctorVisit[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [reminderCount, setReminderCount] = useState<number | null>(null);
+  const [ready, setReady] = useState(false);
   const load = useCallback(async () => {
     try {
       const { visits: rows } = await api.visits.list();
@@ -28,6 +30,8 @@ export default function VisitsScreen() {
       setReminderCount(scheduled);
     } catch {
       /* refresh is retry */
+    } finally {
+      setReady(true);
     }
   }, []);
 
@@ -88,7 +92,9 @@ export default function VisitsScreen() {
           </View>
         ) : null}
 
-        {visits.length === 0 ? (
+        {!ready ? (
+          <ListRowsSkeleton rows={4} padded={false} />
+        ) : visits.length === 0 ? (
           <EmptyState icon={CalendarCheck} title={ka.visits.empty} body={ka.visits.emptyHint}>
             <Button label={ka.visits.addTitle} icon={Plus} size="lg" onPress={openCreate} />
           </EmptyState>

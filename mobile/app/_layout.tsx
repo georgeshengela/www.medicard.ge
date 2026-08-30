@@ -10,6 +10,7 @@ import * as Notifications from 'expo-notifications';
 import { enableScreens } from 'react-native-screens';
 import Constants from 'expo-constants';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { useThemeColors } from '@/theme/colors';
 import { AuthProvider, useAuth, needsHealthAssessment, needsProfileSetup } from '@/store/AuthContext';
@@ -177,6 +178,7 @@ function AppShell() {
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <AuthGate>
         <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+          <OfflineBanner />
           <View style={{ flex: 1 }}>
             <Stack
               screenOptions={{

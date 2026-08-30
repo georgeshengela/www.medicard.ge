@@ -866,7 +866,7 @@ function safeParse(text: string): Record<string, unknown> {
 type AuthResponse = { token: string; user: User; usage: Usage };
 
 export const api = {
-  health: () => request<{ status: string }>('/health', { token: null }),
+  health: () => request<{ status: string }>('/health', { token: null, timeoutMs: 5_000 }),
 
   app: {
     status: (version: string) =>
@@ -964,6 +964,8 @@ export const api = {
 
     updateProfile: (body: { fullName?: string; gender?: Gender; birthDate?: string }) =>
       request<{ user: User }>('/api/auth/me', { method: 'PATCH', body }),
+
+    deleteAccount: () => request<{ ok: boolean }>('/api/auth/me', { method: 'DELETE', timeoutMs: 20_000 }),
   },
 
   usage: {

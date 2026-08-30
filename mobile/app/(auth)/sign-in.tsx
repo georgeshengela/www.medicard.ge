@@ -5,7 +5,6 @@ import { Mail, Lock } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { SignInSwitchLink } from '@/components/auth/AuthSwitchLink';
 import { AuthCheckbox } from '@/components/auth/AuthCheckbox';
-import { AuthGoogleButton } from '@/components/auth/AuthGoogleButton';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { AuthErrorBanner } from '@/components/auth/AuthErrorBanner';
 import { Input } from '@/components/ui/Input';
@@ -13,11 +12,13 @@ import { FIGMA_AUTH, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
+import { useThemeColors } from '@/theme/colors';
 
 export default function SignIn() {
   const { signIn } = useAuth();
   const router = useRouter();
   const auth = useFigmaAuth();
+  const colors = useThemeColors();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,7 +49,7 @@ export default function SignIn() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <AuthShell hero heroSubtitle={ka.auth.signInHero}>
         <View style={{ gap: FIGMA_AUTH.sectionGap, paddingTop: 32 }}>
           <View style={{ gap: 16 }}>
@@ -117,13 +118,13 @@ export default function SignIn() {
               style={{
                 borderRadius: 16,
                 borderWidth: 1,
-                borderColor: 'rgba(239,68,68,0.2)',
-                backgroundColor: 'rgba(254,226,226,0.5)',
+                borderColor: colors.danger,
+                backgroundColor: colors.dangerBg,
                 paddingHorizontal: 16,
                 paddingVertical: 12,
               }}
             >
-              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: '#EF4444' }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.danger }}>
                 {errors.form}
               </Text>
             </View>
@@ -131,26 +132,6 @@ export default function SignIn() {
 
           <View style={{ gap: FIGMA_AUTH.actionsGap }}>
             <AuthPrimaryButton label={ka.auth.signIn} loading={busy} onPress={submit} />
-
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: auth.dividerColor }} />
-              <Text
-                style={{
-                  fontFamily: 'NotoSansGeorgian_500Medium',
-                  fontSize: 12,
-                  lineHeight: 16,
-                  color: auth.textSecondary,
-                }}
-              >
-                {ka.auth.orDivider}
-              </Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: auth.dividerColor }} />
-            </View>
-
-            <AuthGoogleButton
-              label={ka.auth.signInWithGoogle}
-              onPress={() => setBannerError('Google OAuth მალე დაემატება.')}
-            />
           </View>
 
           <SignInSwitchLink />

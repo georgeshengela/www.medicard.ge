@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Calendar, ChevronDown } from 'lucide-react-native';
 import { StepsHistoryRow } from '@/components/health/StepsHistoryRow';
+import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { useStepsMetrics } from '@/hooks/useStepsMetrics';
 import { ka } from '@/i18n/ka';
@@ -110,8 +110,8 @@ export default function StepsHistoryScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
       >
         {loading && !bundle ? (
-          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-            <ActivityIndicator color={FIGMA_STEPS.brand} />
+          <View style={{ paddingTop: 8 }}>
+            <ListRowsSkeleton rows={6} />
           </View>
         ) : filtered.length ? (
           filtered.map((group) => (

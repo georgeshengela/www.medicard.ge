@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { MedicationFigmaStepRing } from '@/components/medications/MedicationCircularProgress';
 import { MedCard } from '@/components/medications/MedicationUI';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { DoseCarouselSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
@@ -105,7 +106,7 @@ function NextDoseCard({
 
 export function HomeNextDoseSection({ refreshing }: Props) {
   const router = useRouter();
-  const { medications, schedule, doseLogs, load } = useMedications();
+  const { medications, schedule, doseLogs, load, loading } = useMedications();
   const today = todayYmd();
 
   useEffect(() => {
@@ -135,6 +136,15 @@ export function HomeNextDoseSection({ refreshing }: Props) {
     const pending = todayDoses.filter((dose) => !findDoseLog(doseLogs, dose.medicationId, today, dose.time));
     return { pending, progressByMed };
   }, [doseLogs, medications, schedule, today]);
+
+  if (loading) {
+    return (
+      <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+        <HomeSectionTitle title={ka.home.nextDose} />
+        <DoseCarouselSkeleton />
+      </View>
+    );
+  }
 
   if (pending.length === 0) return null;
 

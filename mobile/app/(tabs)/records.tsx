@@ -5,6 +5,7 @@ import { ChevronRight, FileText, FolderHeart, MessageSquareText, Trash2 } from '
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/EmptyState';
+import { RecordsPageSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { api, type ChatSummary, type MedicalRecord } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
@@ -22,11 +23,13 @@ export default function Records() {
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('ALL');
   const [refreshing, setRefreshing] = useState(false);
+  const [ready, setReady] = useState(false);
 
   const load = useCallback(async () => {
     const [recordResult, chatResult] = await Promise.allSettled([api.records.list(), api.chats.list()]);
     if (recordResult.status === 'fulfilled') setRecords(recordResult.value.records);
     if (chatResult.status === 'fulfilled') setChats(chatResult.value.sessions);
+    setReady(true);
   }, []);
 
   useFocusEffect(
@@ -66,7 +69,9 @@ export default function Records() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
       showsVerticalScrollIndicator={false}
     >
-      {isEmpty ? (
+      {!ready ? (
+        <RecordsPageSkeleton />
+      ) : isEmpty ? (
         <EmptyState icon={FolderHeart} title={ka.records.empty} body={ka.records.emptyHint} />
       ) : (
         <>

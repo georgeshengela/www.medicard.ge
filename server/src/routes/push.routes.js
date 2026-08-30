@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { isExpoPushToken } from '../lib/push.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 
@@ -12,7 +13,11 @@ pushRouter.post(
   asyncHandler(async (req, res) => {
     const body = z
       .object({
-        token: z.string().trim().min(10),
+        token: z
+          .string()
+          .trim()
+          .min(10)
+          .refine(isExpoPushToken, { message: 'არასწორი Expo push token' }),
         platform: z.enum(['ios', 'android', 'web']).default('android'),
       })
       .parse(req.body);

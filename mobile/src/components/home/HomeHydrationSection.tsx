@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { ChartCardSkeleton } from '@/components/ui/Skeleton';
 import { HydrationWeekChart } from '@/components/hydration/HydrationWeekChart';
 import { GoalTrendUp } from '@/components/health/steps-goal/StepsGoalIcons';
 import { useFigmaHydration } from '@/constants/figmaHydrationLayout';
@@ -13,12 +14,23 @@ import { HYDRATION_DROP_ML } from '@/types/hydration';
 export function HomeHydrationSection() {
   const T = useFigmaHydration();
   const router = useRouter();
-  const { todayMl, weekTotals, lastWeekTotals, weekTrend, best } = useHydration();
+  const { todayMl, weekTotals, lastWeekTotals, weekTrend, best, loading } = useHydration();
   const up = weekTrend == null ? true : weekTrend >= 0;
   const glasses = best ? Math.max(1, Math.round(best.ml / HYDRATION_DROP_ML)) : 0;
   const bestLabel = best
     ? new Date(`${best.date}T12:00:00`).toLocaleDateString('ka-GE', { month: 'short', day: 'numeric', year: 'numeric' })
     : '';
+
+  if (loading) {
+    return (
+      <View style={{ paddingVertical: 4, gap: 8 }}>
+        <HomeSectionTitle title={ka.home.hydrationTitle} style={{ marginHorizontal: 16, marginBottom: 0 }} />
+        <View style={{ marginHorizontal: 16 }}>
+          <ChartCardSkeleton />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={{ paddingVertical: 4, gap: 8 }}>

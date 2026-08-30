@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -25,6 +24,7 @@ import {
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
+import { DetailCardSkeleton } from '@/components/ui/Skeleton';
 import { Input } from '@/components/ui/Input';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
 import { AddressSearchField } from '@/components/visits/AddressSearchField';
@@ -238,8 +238,8 @@ export function VisitEditorScreen({ visitId }: Props) {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-bg-100">
-        <ActivityIndicator size="large" color={colors.primary200} />
+      <View className="flex-1 bg-bg-100 px-5 pt-8">
+        <DetailCardSkeleton />
       </View>
     );
   }

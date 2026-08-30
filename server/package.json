@@ -17,7 +17,7 @@
     "prisma:studio": "prisma studio",
     "seed": "node prisma/seed.js",
     "db:setup": "prisma db push && node prisma/seed.js",
-    "test": "node --test src/lib/cycle.test.js src/lib/cyclePeriod.test.js src/lib/cycleShare.test.js src/lib/cycleHonesty.test.js src/lib/cycleFertility.test.js src/lib/cycleContraception.test.js src/lib/cycleObservations.test.js src/lib/cycleHistory.test.js src/lib/cycleLifecycle.test.js src/lib/checkIn.test.js src/lib/onboardingAnalysis.test.js ../mobile/src/lib/cycleOffline.test.js"
+    "test": "node --test src/lib/cycle.test.js src/lib/cyclePeriod.test.js src/lib/cycleShare.test.js src/lib/cycleHonesty.test.js src/lib/cycleFertility.test.js src/lib/cycleContraception.test.js src/lib/cycleObservations.test.js src/lib/cycleHistory.test.js src/lib/cycleLifecycle.test.js src/lib/checkIn.test.js src/lib/onboardingAnalysis.test.js src/lib/push.test.js ../mobile/src/lib/cycleOffline.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",

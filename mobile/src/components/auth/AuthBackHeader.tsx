@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
-import { lightColors } from '@/theme/colors';
+import { useThemeColors } from '@/theme/colors';
 
 type Props = {
   title: string;
@@ -12,6 +12,7 @@ type Props = {
 /** Forgot-password stack header with back chevron. */
 export function AuthBackHeader({ title, subtitle }: Props) {
   const router = useRouter();
+  const colors = useThemeColors();
 
   return (
     <View style={{ marginBottom: 24 }}>
@@ -29,14 +30,14 @@ export function AuthBackHeader({ title, subtitle }: Props) {
           marginLeft: -4,
         }}
       >
-        <ChevronLeft size={24} color={lightColors.text100} strokeWidth={2.2} />
+        <ChevronLeft size={24} color={colors.text100} strokeWidth={2.2} />
       </Pressable>
       <Text
         style={{
           fontFamily: 'NotoSansGeorgian_700Bold',
           fontSize: 24,
           lineHeight: 32,
-          color: '#0F172A',
+          color: colors.text100,
         }}
       >
         {title}
@@ -48,7 +49,7 @@ export function AuthBackHeader({ title, subtitle }: Props) {
             fontFamily: 'NotoSansGeorgian_400Regular',
             fontSize: 15,
             lineHeight: 22,
-            color: '#64748B',
+            color: colors.text200,
           }}
         >
           {subtitle}

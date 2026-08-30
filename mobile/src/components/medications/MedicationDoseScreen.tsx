@@ -16,6 +16,7 @@ import {
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { useMedications } from '@/hooks/useMedications';
+import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
 import {
@@ -32,7 +33,7 @@ export function MedicationDoseScreen() {
   const FIGMA_MEDS = useFigmaMeds();
   const router = useRouter();
   const { id, time, date } = useLocalSearchParams<{ id: string; time?: string; date?: string }>();
-  const { medications, setDoseLogs, load } = useMedications();
+  const { medications, setDoseLogs, load, loading } = useMedications();
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const med = medications.find((item) => item.id === id);
   const cfg = parseMedicationConfig(med?.config);
@@ -89,8 +90,8 @@ export function MedicationDoseScreen() {
     return (
       <>
         <Stack.Screen options={{ title: ka.meds.scheduleScreenTitle }} />
-        <View className="flex-1 items-center justify-center bg-bg-100">
-          <Text className="font-sans text-base text-text-200">{ka.common.loading}</Text>
+        <View className="flex-1 bg-bg-100 px-4 pt-4">
+          {loading ? <MetricCardSkeleton /> : <Text className="font-sans text-base text-text-200">{ka.meds.empty}</Text>}
         </View>
       </>
     );

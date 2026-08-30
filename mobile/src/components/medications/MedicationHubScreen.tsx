@@ -40,6 +40,7 @@ import {
   todayYmd,
 } from '@/lib/medications.shared';
 import { getPreference, setPreference } from '@/lib/storage';
+import { MedsHubSkeleton } from '@/components/ui/Skeleton';
 
 const ONBOARDING_KEY = 'medicard.meds.onboardingDone';
 
@@ -90,6 +91,14 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
     await saveDoseLog(entry);
     setDoseLogs((prev) => [...prev.filter((l) => !(l.medicationId === medicationId && l.date === today && l.time === time)), entry]);
   };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: FIGMA_MEDS.pageBg, paddingTop: 8 }}>
+        <MedsHubSkeleton />
+      </View>
+    );
+  }
 
   if (!loading && onboardingDone === null && medications.length === 0) {
     return <View style={{ flex: 1, backgroundColor: FIGMA_MEDS.pageBg }} />;

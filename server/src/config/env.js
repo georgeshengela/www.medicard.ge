@@ -37,6 +37,9 @@ const schema = z.object({
 
   SMS_OFFICE_API_KEY: z.string().default(''),
   SMS_OFFICE_SENDER: z.string().default('MEDICARD'),
+
+  // Optional. Required only if the Expo project has Enhanced Push Security on.
+  EXPO_ACCESS_TOKEN: z.string().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

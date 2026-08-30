@@ -853,9 +853,9 @@ async function renderOverview(freshBalances = false) {
           <em>${act.smsFailed ? `${act.smsFailed} წარუმატებელი სულ` : 'სტაბილური'}</em>
         </div>
         <div class="dash-glance-item">
-          <span>Push მოწყობილობა</span>
-          <strong>${act.pushTokens ?? 0}</strong>
-          <em>აქტიური ტოკენი</em>
+          <span>Push გაგზავნილი</span>
+          <strong>${act.pushSent ?? 0}</strong>
+          <em>${act.pushLast24h ?? 0} ბოლო 24სთ · ${act.pushTokens ?? 0} მოწყობილობა</em>
         </div>
         <div class="dash-glance-item">
           <span>ფარმაცია</span>
@@ -1867,10 +1867,19 @@ function editPackage(pkg) {
 }
 
 async function renderPush() {
-  const [{ activeDevices, subscribedUsers, recentCampaigns }, { campaigns }] = await Promise.all([
+  const [stats, { campaigns }] = await Promise.all([
     api('/push/stats'),
     api('/push/campaigns'),
   ]);
+  const {
+    activeDevices,
+    subscribedUsers,
+    recentCampaigns,
+    devices = [],
+    totalSent: statsSent,
+    totalFailed: statsFailed,
+    sentLast24h = 0,
+  } = stats;
 
   const SEGMENTS = {
     ALL: 'ყველა მოწყობილობა',
@@ -1880,14 +1889,19 @@ async function renderPush() {
     ULTIMATE: 'ULTIMATE',
   };
 
-  const totalSent = campaigns.reduce((sum, c) => sum + (c.sentCount || 0), 0);
-  const totalFailed = campaigns.reduce((sum, c) => sum + (c.failedCount || 0), 0);
+  const totalSent = statsSent ?? campaigns.reduce((sum, c) => sum + (c.sentCount || 0), 0);
+  const totalFailed = statsFailed ?? campaigns.reduce((sum, c) => sum + (c.failedCount || 0), 0);
   const totalTarget = campaigns.reduce((sum, c) => sum + (c.targetCount || 0), 0);
-  const deliveryPct = totalTarget ? Math.round((totalSent / totalTarget) * 100) : null;
   const lastCampaign = campaigns[0];
   const reachPct = subscribedUsers
     ? Math.min(100, Math.round((activeDevices / Math.max(subscribedUsers, 1)) * 100))
     : null;
+  const platformLabel = (platform) => {
+    if (platform === 'ios') return 'iOS';
+    if (platform === 'android') return 'Android';
+    if (platform === 'web') return 'Web';
+    return platform || '—';
+  };
 
   function campaignStatus(c) {
     if (c.status === 'SENT') return '<span class="badge ok">გაგზავნილი</span>';
@@ -1922,7 +1936,7 @@ async function renderPush() {
         <article class="ai-kpi">
           <div class="label">გაგზავნილი</div>
           <div class="value">${totalSent}</div>
-          <div class="hint">${totalFailed} ვერ მივიდა</div>
+          <div class="hint">${sentLast24h} ბოლო 24სთ · ${totalFailed} ვერ მივიდა</div>
         </article>
         <article class="ai-kpi">
           <div class="label">ბოლო კამპანია</div>
@@ -1944,7 +1958,7 @@ async function renderPush() {
                 </select>
               </div>
               <button class="btn primary" id="push-send">${icon('send')} გაგზავნა</button>
-              <p class="push-compose-note">გადახდილი პაკეტის სეგმენტი ითვალისწინებს ვადის გასვლას — ვადაგასული STANDARD/ULTIMATE → FREE.</p>
+              <p class="push-compose-note">ადგილობრივი შეხსენებები (მედიკამენტი, ციკლი, ნაბიჯები) აქ არ ითვლება — მხოლოდ ამ გვერდიდან გაგზავნილი broadcast. ვადაგასული STANDARD/ULTIMATE → FREE.</p>
             </div>
             <div class="push-preview">
               <div class="push-preview-label">გადახედვა</div>
@@ -1981,7 +1995,21 @@ async function renderPush() {
                 </button>
               `).join('')}
             </div>
-          ` : '<div class="empty"><strong>ჯერ არ გაგზავნილა</strong>პირველი broadcast ზემოთ შექმენით.</div>'}
+          ` : '<div class="empty"><strong>ჯერ არ გაგზავნილა</strong>პირველი push broadcast ზემოთ შექმენით.</div>'}
+          ${devices.length ? `
+            <div class="push-device-list">
+              <p class="push-device-heading">დარეგისტრირებული მოწყობილობები</p>
+              ${devices.map((d) => `
+                <div class="push-device-row">
+                  <span class="badge neutral">${escapeHtml(platformLabel(d.platform))}</span>
+                  <div class="stack">
+                    <strong>${escapeHtml(d.user?.fullName || '—')}</strong>
+                    <span class="sub muted">${escapeHtml(d.user?.email || '')} · ${fmtDateShort(d.lastSeenAt)}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
         </div>
       </div>
 
@@ -2145,6 +2173,21 @@ async function viewPushCampaign(id) {
     ${pushDeliveryRing(campaign.sentCount || 0, campaign.targetCount || 0, fmtDate(campaign.sentAt || campaign.createdAt), { compact: true })}
     <div class="field"><span>ტექსტი</span><div class="ai-drawer-block"><pre>${escapeHtml(campaign.body)}</pre></div></div>
     <div class="field"><span>ადმინი</span><div class="ai-drawer-block"><pre>${escapeHtml(campaign.createdBy?.fullName || '—')}${campaign.createdBy?.email ? `\n${campaign.createdBy.email}` : ''}</pre></div></div>
+    ${Array.isArray(campaign.data?.deliveries) && campaign.data.deliveries.length ? `
+      <div class="field"><span>მიწოდება მოწყობილობებზე</span>
+        <div class="push-device-list">
+          ${campaign.data.deliveries.map((d) => `
+            <div class="push-device-row">
+              <span class="badge ${d.status === 'ok' ? 'ok' : 'bad'}">${d.status === 'ok' ? 'OK' : 'ERR'}</span>
+              <div class="stack">
+                <strong>${escapeHtml(d.tokenPreview || '—')}</strong>
+                <span class="sub muted">${escapeHtml(d.ticketId || d.error || '')}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
     <div class="row"><button class="btn ghost" id="drawer-cancel">დახურვა</button></div>
   `);
   $('drawer-cancel').onclick = closeDrawer;

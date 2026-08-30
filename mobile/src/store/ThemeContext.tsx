@@ -61,6 +61,34 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.remove();
   }, [preference, setColorScheme]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const dark = colorScheme === 'dark';
+    document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    if (document.body) {
+      document.body.classList.toggle('dark', dark);
+      document.body.style.backgroundColor = dark ? '#030712' : '#f5f7f7';
+    }
+
+    const autofillId = 'medicard-web-autofill';
+    if (!document.getElementById(autofillId)) {
+      const style = document.createElement('style');
+      style.id = autofillId;
+      style.textContent = `
+        .dark input:-webkit-autofill,
+        .dark input:-webkit-autofill:hover,
+        .dark input:-webkit-autofill:focus {
+          -webkit-text-fill-color: #ffffff;
+          caret-color: #ffffff;
+          box-shadow: 0 0 0 1000px #1f2937 inset;
+          transition: background-color 9999s ease-out 0s;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, [colorScheme]);
+
   const choose = useCallback(
     (next: ThemePreference) => {
       setPreferenceState(next);

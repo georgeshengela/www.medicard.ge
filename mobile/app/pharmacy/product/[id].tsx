@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Loader2, Tag } from 'lucide-react-native';
+import { Tag } from 'lucide-react-native';
 import { PharmacyComparePanel } from '@/components/pharmacy/PharmacyComparePanel';
 import { PharmacyProductImage } from '@/components/pharmacy/PharmacyProductImage';
-import { EmptyState } from '@/components/EmptyState';
+import { ProductHeroSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductDetail } from '@/lib/api';
 import { useThemeColors } from '@/theme/colors';
@@ -45,8 +45,8 @@ export default function PharmacyProductScreen() {
 
   if (!product) {
     return (
-      <View className="flex-1 bg-bg-100 px-4 pt-4">
-        <EmptyState icon={Loader2} title={ka.common.loading} body="" />
+      <View className="flex-1 bg-bg-100">
+        <ProductHeroSkeleton />
       </View>
     );
   }

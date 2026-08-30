@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react-native';
 import { StepsBarChart } from '@/components/health/StepsBarChart';
+import { ChartCardSkeleton } from '@/components/ui/Skeleton';
 import { StepsGoalCard, StepsReachedGoalsList, StepsSection } from '@/components/health/StepsGoalCard';
 import { StepsHistoryRow } from '@/components/health/StepsHistoryRow';
 import { StepsInsightGrid } from '@/components/health/StepsInsightGrid';
@@ -199,9 +199,7 @@ export default function StepsDetailScreen() {
 
         <View style={{ paddingHorizontal: 16, paddingBottom: 8, gap: 12 }}>
           {loading && !bundle ? (
-            <View style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
-              <ActivityIndicator color={FIGMA_STEPS.brand} />
-            </View>
+            <ChartCardSkeleton />
           ) : (
             <StepsBarChart bars={bundle?.chartBars ?? []} goalLine={goalLine} />
           )}

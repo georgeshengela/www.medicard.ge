@@ -6,10 +6,12 @@ import { Mail } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { ka } from '@/i18n/ka';
+import { useThemeColors } from '@/theme/colors';
 
 export default function ForgotPasswordSent() {
   const router = useRouter();
   const { email, devCode } = useLocalSearchParams<{ email: string; devCode?: string }>();
+  const colors = useThemeColors();
 
   const continueToVerify = () => {
     router.push({
@@ -26,7 +28,7 @@ export default function ForgotPasswordSent() {
             width: 120,
             height: 120,
             borderRadius: 32,
-            backgroundColor: '#FFFBEB',
+            backgroundColor: colors.warningBg,
             alignItems: 'center',
             justifyContent: 'center',
             shadowColor: '#000',
@@ -44,7 +46,7 @@ export default function ForgotPasswordSent() {
             fontFamily: 'NotoSansGeorgian_700Bold',
             fontSize: 24,
             lineHeight: 32,
-            color: '#0F172A',
+            color: colors.text100,
             textAlign: 'center',
           }}
         >
@@ -57,7 +59,7 @@ export default function ForgotPasswordSent() {
             fontFamily: 'NotoSansGeorgian_400Regular',
             fontSize: 15,
             lineHeight: 24,
-            color: '#64748B',
+            color: colors.text200,
             textAlign: 'center',
             paddingHorizontal: 8,
           }}
@@ -87,7 +89,7 @@ export default function ForgotPasswordSent() {
         onPress={() => Linking.openURL('mailto:')}
         style={{ marginTop: 14, alignItems: 'center', paddingVertical: 8 }}
       >
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: '#14B8A6' }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>
           {ka.auth.forgotPasswordOpenEmail}
         </Text>
       </Pressable>

@@ -8,6 +8,7 @@ import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { Input } from '@/components/ui/Input';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { useThemeColors } from '@/theme/colors';
 
 export default function ForgotPasswordEmail() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function ForgotPasswordEmail() {
   const [email, setEmail] = useState(params.email ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const colors = useThemeColors();
 
   const submit = async () => {
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
@@ -65,10 +67,10 @@ export default function ForgotPasswordEmail() {
         onPress={() => Linking.openURL('mailto:support@medicard.ge')}
         style={{ marginTop: 28, alignItems: 'center' }}
       >
-        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: '#64748B', textAlign: 'center' }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: colors.text300, textAlign: 'center' }}>
           {ka.auth.forgotPasswordHelp}
         </Text>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: '#14B8A6', marginTop: 4 }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: colors.primary200, marginTop: 4 }}>
           {ka.auth.forgotPasswordHelpContact}
         </Text>
       </Pressable>

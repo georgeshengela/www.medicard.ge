@@ -192,8 +192,9 @@ in a phone-sized Chromium viewport and writes `mobile/screenshots/*.png`. Run th
 
 ## Deploy (Render + medicard.ge)
 
-The app ships as **one** Render web service: Express serves `/api`, `/health` and the
-Expo web export on [medicard.ge](https://medicard.ge). Database stays on Neon.
+The app ships as **one** Render web service: Express serves `/api`, `/health`, `/admin`,
+and a Georgian **marketing landing** on [medicard.ge](https://medicard.ge). The product itself
+is **mobile-only** (Expo). There is no web login or app shell. Database stays on Neon.
 
 ### 1. GitHub
 
@@ -230,7 +231,8 @@ Also set (or rely on Blueprint defaults):
 
 `JWT_SECRET` is generated. `PORT` is set by Render. Frankfurt is the closest region to Georgia.
 
-First deploy runs `prisma db push`, exports the Expo web app, then starts `node server/src/server.js`.
+First deploy runs `prisma db push`, then starts `node server/src/server.js`. The public site is
+`server/public/` (not an Expo web export).
 
 ### 3. DNS for medicard.ge
 

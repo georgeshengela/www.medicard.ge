@@ -1,26 +1,43 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Image, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Image, Linking, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import Constants from 'expo-constants';
-import { BellRing, ChevronRight, FileText, LogOut, MessageSquareText, Pill, Save, ShieldCheck } from 'lucide-react-native';
+import {
+  BellRing,
+  FileText,
+  HeartPulse,
+  LogOut,
+  Mail,
+  MessageSquareText,
+  Pill,
+  Save,
+  Scale,
+  ShieldCheck,
+  Trash2,
+} from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
 import { DateField } from '@/components/ui/DateField';
 import { GenderSelect } from '@/components/ui/GenderSelect';
 import { ThemeSelect } from '@/components/ui/ThemeSelect';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeLandingSelect } from '@/components/home/HomeLandingSelect';
+import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { PlanDetailCard } from '@/components/PlanUsageCard';
 import { ProfilePointsCard } from '@/components/check-in/ProfilePointsCard';
+import { DeleteAccountModal } from '@/components/profile/DeleteAccountModal';
+import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
+import { SUPPORT_MAILTO } from '@/constants/legal';
 import { ka } from '@/i18n/ka';
 import { ApiError, type Gender } from '@/lib/api';
 import { isoToDisplay, parseBirthDate } from '@/lib/birthdate';
+import { bmiCategory, bmiFromWeight } from '@/lib/bmi';
 import { formatDate } from '@/lib/format';
 import { requestNotificationPermission, registerPushTokenWithServer } from '@/lib/notifications';
 import { getCyclePromptSeen } from '@/lib/homeScreenPrefs';
+import { usePlanUsage } from '@/lib/planUsage';
 import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 
@@ -32,15 +49,24 @@ const GENDER_LABELS: Record<Gender, string> = {
 
 const APP_VERSION = Constants.expoConfig?.version ?? '3.4.0';
 
+function optionLabel(group: 'smokingStatus' | 'chronicConditions', key: string): string {
+  const map = ka.assessment.options[group] as Record<string, string>;
+  return map[key] ?? key;
+}
+
 export default function Profile() {
-  const { user, stats, refresh, signOut, healthProfile, setUser } = useAuth();
+  const { user, stats, refresh, signOut, deleteAccount, healthProfile, setUser } = useAuth();
   const colors = useThemeColors();
   const tabInset = useTabBarInset();
   const router = useRouter();
+  const plan = usePlanUsage();
 
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
   const [showCyclePrompt, setShowCyclePrompt] = useState(false);
+  const [editingMedical, setEditingMedical] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -74,6 +100,21 @@ export default function Profile() {
     ]);
   };
 
+  const confirmDelete = async () => {
+    setDeleteBusy(true);
+    try {
+      await deleteAccount();
+      setDeleteOpen(false);
+    } catch (error) {
+      Alert.alert(
+        ka.profile.deleteAccount,
+        error instanceof ApiError ? error.message : ka.profile.deleteAccountFailed,
+      );
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   const initials = user?.fullName
     ?.split(' ')
     .slice(0, 2)
@@ -88,6 +129,18 @@ export default function Profile() {
     : null;
   const avatarSource = avatarId && isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : null;
 
+  const bmi = healthProfile?.bmi ?? bmiFromWeight(healthProfile?.weightKg, healthProfile?.heightCm);
+  const smoking =
+    healthProfile?.smokingStatus != null
+      ? optionLabel('smokingStatus', healthProfile.smokingStatus)
+      : null;
+  const allergyLabels = (healthProfile?.allergies ?? [])
+    .filter((item) => item && item !== 'none')
+    .map((item) => optionLabel('chronicConditions', item));
+  const conditionLabels = (healthProfile?.chronicConditions ?? [])
+    .filter((item) => item && item !== 'none')
+    .map((item) => optionLabel('chronicConditions', item));
+
   return (
     <ScrollView
       className="flex-1 bg-bg-100"
@@ -99,24 +152,65 @@ export default function Profile() {
     >
       <Card>
         <View className="flex-row items-center">
-          <View className="h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-accent-100">
-            {avatarSource ? (
-              <Image source={avatarSource} style={{ width: 56, height: 56 }} />
-            ) : (
-              <Text className="text-lg font-bold text-primary-100">{initials || '—'}</Text>
-            )}
+          <View
+            style={{
+              width: 76,
+              height: 76,
+              borderRadius: 22,
+              padding: 3,
+              backgroundColor: `${colors.primary200}33`,
+            }}
+          >
+            <View className="h-full w-full items-center justify-center overflow-hidden rounded-[18px] bg-accent-100">
+              {avatarSource ? (
+                <Image source={avatarSource} style={{ width: 70, height: 70 }} />
+              ) : (
+                <Text className="text-xl font-bold text-primary-100">{initials || '—'}</Text>
+              )}
+            </View>
           </View>
           <View className="ml-3.5 flex-1">
-            <Text className="text-lg font-bold text-text-100">{user?.fullName}</Text>
-            <Text numberOfLines={1} className="mt-0.5 text-sm text-text-300">
-              {user?.phone ?? user?.email}
+            <Text
+              style={{
+                fontFamily: 'NotoSansGeorgian_700Bold',
+                fontSize: 20,
+                lineHeight: 26,
+                color: colors.text100,
+              }}
+            >
+              {user?.fullName}
             </Text>
-            {user?.createdAt ? (
-              <Text className="mt-1 text-xs text-text-300">
-                {ka.profile.memberSince}: {formatDate(user.createdAt)}
-              </Text>
-            ) : null}
+            <View className="mt-2 flex-row flex-wrap items-center" style={{ gap: 8 }}>
+              <View
+                style={{
+                  borderRadius: 999,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  backgroundColor: plan.code === 'ULTIMATE' ? colors.successBg : `${colors.primary200}18`,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    fontSize: 11,
+                    color: plan.code === 'ULTIMATE' ? colors.success : colors.primary100,
+                  }}
+                >
+                  {plan.meta.title}
+                </Text>
+              </View>
+              {user?.createdAt ? (
+                <Text className="text-xs text-text-300">
+                  {ka.profile.memberSince} {formatDate(user.createdAt)}
+                </Text>
+              ) : null}
+            </View>
           </View>
+        </View>
+
+        <View className="mt-4" style={{ gap: 10 }}>
+          {user?.phone ? <HeroFact label={ka.profile.phone} value={user.phone} /> : null}
+          {user?.email ? <HeroFact label={ka.profile.email} value={user.email} /> : null}
         </View>
       </Card>
 
@@ -126,112 +220,212 @@ export default function Profile() {
         onPress={() => router.push('/profile/streak')}
       />
 
-      <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.appearance}</Text>
-      <Card className="gap-4">
-        <ThemeSelect />
-        <View className="h-px bg-bg-300" />
-        <HomeLandingSelect />
-      </Card>
-
-      <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">
-        {ka.profile.medicalProfile}
-      </Text>
-      <MedicalProfileCard onFemaleSaved={() => setShowCyclePrompt(true)} />
-
-      <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.stats}</Text>
-      <View className="flex-row">
-        <StatTile icon={FileText} value={stats?.records ?? 0} label={ka.profile.statRecords} />
-        <View className="w-2.5" />
-        <StatTile icon={MessageSquareText} value={stats?.chats ?? 0} label={ka.profile.statChats} />
-        <View className="w-2.5" />
-        <StatTile icon={Pill} value={stats?.activeMedications ?? 0} label={ka.profile.statMeds} />
+      <View className="mt-5">
+        <HomeSectionTitle title={ka.profile.appearance} />
+        <Card className="gap-4">
+          <ThemeSelect />
+          <View className="h-px bg-bg-300" />
+          <HomeLandingSelect />
+        </Card>
       </View>
 
-      <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.subscription}</Text>
-      <PlanDetailCard />
+      <View className="mt-5">
+        <HomeSectionTitle title={ka.profile.medicalProfile} />
+        {user?.gender && user?.birthDate && !editingMedical ? (
+          <Card>
+            <FactRow label={ka.auth.gender} value={GENDER_LABELS[user.gender]} />
+            <FactRow label={ka.profile.age} value={`${user.age ?? '—'} ${ka.profile.years}`} />
+            <FactRow label={ka.auth.birthDate} value={isoToDisplay(user.birthDate)} />
+            {healthProfile?.heightCm != null ? (
+              <FactRow label={ka.profile.height} value={`${Math.round(healthProfile.heightCm)} ${ka.profile.cm}`} />
+            ) : null}
+            {healthProfile?.weightKg != null ? (
+              <FactRow label={ka.profile.weight} value={`${healthProfile.weightKg} ${ka.profile.kg}`} />
+            ) : null}
+            {bmi != null ? (
+              <FactRow
+                label={ka.profile.bmi}
+                value={`${bmi.toFixed(1)} · ${ka.home.bmi.categories[bmiCategory(bmi)]}`}
+              />
+            ) : null}
+            {healthProfile?.bloodType ? (
+              <FactRow label={ka.profile.bloodType} value={healthProfile.bloodType} last={!smoking && !allergyLabels.length && !conditionLabels.length} />
+            ) : null}
+            {smoking ? <FactRow label={ka.profile.smoking} value={smoking} last={!allergyLabels.length && !conditionLabels.length} /> : null}
+            {allergyLabels.length ? (
+              <FactRow label={ka.profile.allergies} value={allergyLabels.join(', ')} last={!conditionLabels.length} />
+            ) : null}
+            {conditionLabels.length ? (
+              <FactRow label={ka.profile.conditions} value={conditionLabels.join(', ')} last />
+            ) : null}
+            <View className="mt-3">
+              <Button
+                label={ka.profile.editMedical}
+                variant="ghost"
+                size="sm"
+                icon={Scale}
+                onPress={() => setEditingMedical(true)}
+              />
+            </View>
+          </Card>
+        ) : (
+          <MedicalProfileCard
+            onFemaleSaved={() => setShowCyclePrompt(true)}
+            onSaved={() => setEditingMedical(false)}
+            allowCancel={Boolean(user?.gender && user?.birthDate)}
+            onCancel={() => setEditingMedical(false)}
+          />
+        )}
+      </View>
 
-      <Text className="mb-2.5 mt-5 text-sm font-bold uppercase text-text-300">{ka.profile.settings}</Text>
-      <Card padded={false}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push('/profile/permissions')}
-          className="flex-row items-center p-4 active:opacity-70"
-        >
-          <ShieldCheck size={18} color={colors.primary200} strokeWidth={2.1} />
-          <Text className="ml-3 flex-1 text-base text-text-100">{ka.profile.permissions}</Text>
-          <ChevronRight size={18} color={colors.text300} strokeWidth={2.1} />
-        </Pressable>
-
-        <View className="h-px bg-bg-300" />
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={enableNotifications}
-          className="flex-row items-center p-4 active:opacity-70"
-        >
-          <BellRing size={18} color={colors.primary200} strokeWidth={2.1} />
-          <Text className="ml-3 flex-1 text-base text-text-100">{ka.profile.notifications}</Text>
-          {notificationsOn !== null ? (
-            <Badge
-              label={notificationsOn ? ka.meds.notificationsEnabled : ka.meds.notificationsDenied}
-              tone={notificationsOn ? 'success' : 'warning'}
-            />
-          ) : null}
-        </Pressable>
-
-        <View className="h-px bg-bg-300" />
-
-        <View className="flex-row items-center p-4">
-          <Text className="flex-1 text-base text-text-100">{ka.profile.version}</Text>
-          <Text className="text-base text-text-300">{APP_VERSION}</Text>
+      <View className="mt-5">
+        <HomeSectionTitle title={ka.profile.stats} />
+        <View className="flex-row">
+          <StatTile icon={FileText} value={stats?.records ?? 0} label={ka.profile.statRecords} />
+          <View className="w-2.5" />
+          <StatTile icon={MessageSquareText} value={stats?.chats ?? 0} label={ka.profile.statChats} />
+          <View className="w-2.5" />
+          <StatTile icon={Pill} value={stats?.activeMedications ?? 0} label={ka.profile.statMeds} />
         </View>
-      </Card>
+      </View>
+
+      <View className="mt-5">
+        <HomeSectionTitle title={ka.profile.subscription} />
+        <PlanDetailCard />
+      </View>
+
+      <View className="mt-5">
+        <HomeSectionTitle title={ka.profile.settings} />
+        <Card padded={false}>
+          <ProfileMenuRow
+            icon={ShieldCheck}
+            label={ka.profile.permissions}
+            onPress={() => router.push('/profile/permissions')}
+          />
+          <ProfileMenuRow
+            icon={BellRing}
+            label={ka.profile.notifications}
+            value={
+              notificationsOn == null
+                ? undefined
+                : notificationsOn
+                  ? ka.meds.notificationsEnabled
+                  : ka.meds.notificationsDenied
+            }
+            onPress={enableNotifications}
+            isLast
+          />
+        </Card>
+      </View>
+
+      <View className="mt-5">
+        <HomeSectionTitle title={ka.profile.legal} />
+        <Card padded={false}>
+          <ProfileMenuRow
+            icon={ShieldCheck}
+            label={ka.profile.privacyPolicy}
+            onPress={() => router.push('/profile/privacy')}
+          />
+          <ProfileMenuRow
+            icon={FileText}
+            label={ka.profile.terms}
+            onPress={() => router.push('/profile/terms')}
+          />
+          <ProfileMenuRow
+            icon={Mail}
+            label={ka.profile.support}
+            value={ka.profile.supportEmail}
+            onPress={() => void Linking.openURL(SUPPORT_MAILTO)}
+            isLast
+          />
+        </Card>
+      </View>
+
+      <View className="mt-5">
+        <HomeSectionTitle title={ka.profile.about} />
+        <Card padded={false}>
+          <ProfileMenuRow icon={HeartPulse} label={ka.profile.version} value={APP_VERSION} isLast />
+        </Card>
+      </View>
 
       <View className="mt-5">
         <Button label={ka.auth.signOut} icon={LogOut} variant="danger" onPress={confirmSignOut} />
+        <View className="mt-3">
+          <Button
+            label={ka.profile.deleteAccount}
+            icon={Trash2}
+            variant="ghost"
+            onPress={() => setDeleteOpen(true)}
+          />
+        </View>
       </View>
 
       <Text className="mt-6 text-center text-xs leading-5 text-text-300">{ka.app.disclaimer}</Text>
 
       <DefaultHomePrompt visible={showCyclePrompt} onClose={() => setShowCyclePrompt(false)} />
+      <DeleteAccountModal
+        visible={deleteOpen}
+        busy={deleteBusy}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => void confirmDelete()}
+      />
     </ScrollView>
   );
 }
 
-function MedicalProfileCard({ onFemaleSaved }: { onFemaleSaved?: () => void }) {
+function HeroFact({ label, value }: { label: string; value: string }) {
+  const colors = useThemeColors();
+  return (
+    <View className="flex-row items-center justify-between">
+      <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: colors.text300 }}>
+        {label}
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={{
+          flex: 1,
+          marginLeft: 12,
+          textAlign: 'right',
+          fontFamily: 'NotoSansGeorgian_600SemiBold',
+          fontSize: 13,
+          color: colors.text100,
+        }}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function FactRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  return (
+    <>
+      <View className="flex-row items-center">
+        <Text className="flex-1 text-base text-text-200">{label}</Text>
+        <Text className="max-w-[58%] text-right text-base font-bold text-text-100">{value}</Text>
+      </View>
+      {last ? null : <View className="my-3 h-px bg-bg-300" />}
+    </>
+  );
+}
+
+function MedicalProfileCard({
+  onFemaleSaved,
+  onSaved,
+  allowCancel,
+  onCancel,
+}: {
+  onFemaleSaved?: () => void;
+  onSaved?: () => void;
+  allowCancel?: boolean;
+  onCancel?: () => void;
+}) {
   const { user, updateProfile } = useAuth();
 
-  const [gender, setGender] = useState<Gender | null>(null);
-  const [birthDate, setBirthDate] = useState('');
+  const [gender, setGender] = useState<Gender | null>(user?.gender ?? null);
+  const [birthDate, setBirthDate] = useState(user?.birthDate ? isoToDisplay(user.birthDate) : '');
   const [errors, setErrors] = useState<{ gender?: string; birthDate?: string; form?: string }>({});
   const [busy, setBusy] = useState(false);
-
-  if (user?.gender && user?.birthDate) {
-    return (
-      <Card>
-        <View className="flex-row items-center">
-          <Text className="flex-1 text-base text-text-200">{ka.auth.gender}</Text>
-          <Text className="text-base font-bold text-text-100">{GENDER_LABELS[user.gender]}</Text>
-        </View>
-
-        <View className="my-3 h-px bg-bg-300" />
-
-        <View className="flex-row items-center">
-          <Text className="flex-1 text-base text-text-200">{ka.profile.age}</Text>
-          <Text className="text-base font-bold text-text-100">
-            {user.age} {ka.profile.years}
-          </Text>
-        </View>
-
-        <View className="my-3 h-px bg-bg-300" />
-
-        <View className="flex-row items-center">
-          <Text className="flex-1 text-base text-text-200">{ka.auth.birthDate}</Text>
-          <Text className="text-base font-bold text-text-100">{isoToDisplay(user.birthDate)}</Text>
-        </View>
-      </Card>
-    );
-  }
 
   const save = async () => {
     const next: typeof errors = {};
@@ -250,6 +444,7 @@ function MedicalProfileCard({ onFemaleSaved }: { onFemaleSaved?: () => void }) {
         const seen = await getCyclePromptSeen();
         if (!seen) onFemaleSaved?.();
       }
+      onSaved?.();
     } catch (error) {
       setErrors({ form: error instanceof ApiError ? error.message : ka.common.error });
     } finally {
@@ -281,12 +476,15 @@ function MedicalProfileCard({ onFemaleSaved }: { onFemaleSaved?: () => void }) {
         />
       </View>
 
-      {errors.form ? (
-        <Text className="mt-3 text-sm text-state-danger">{errors.form}</Text>
-      ) : null}
+      {errors.form ? <Text className="mt-3 text-sm text-state-danger">{errors.form}</Text> : null}
 
       <View className="mt-4">
         <Button label={ka.profile.save} icon={Save} loading={busy} onPress={save} />
+        {allowCancel ? (
+          <View className="mt-2">
+            <Button label={ka.common.cancel} variant="ghost" onPress={onCancel} />
+          </View>
+        ) : null}
       </View>
     </Card>
   );

@@ -128,7 +128,7 @@ adminRouter.get(
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const [users, blocked, records, chats, medications, packages, newToday, newWeek, newMonth, withPhone, genderGroups, trendRows, aiTrendRows, chatTrendRows, recordTrendRows, aiTotal, aiLast24h, aiLast7d, aiErrors24h, smsTotal, smsLast24h, smsFailed, visits, cycleProfiles, pushTokens, catalogProducts] = await Promise.all([
+    const [users, blocked, records, chats, medications, packages, newToday, newWeek, newMonth, withPhone, genderGroups, trendRows, aiTrendRows, chatTrendRows, recordTrendRows, aiTotal, aiLast24h, aiLast7d, aiErrors24h, smsTotal, smsLast24h, smsFailed, visits, cycleProfiles, pushTokens, catalogProducts, pushSentAgg, pushSent24hAgg] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { status: 'BLOCKED' } }),
       prisma.medicalRecord.count(),
@@ -167,6 +167,11 @@ adminRouter.get(
       prisma.cycleProfile.count(),
       prisma.pushToken.count(),
       prisma.catalogProduct.count(),
+      prisma.pushCampaign.aggregate({ _sum: { sentCount: true } }),
+      prisma.pushCampaign.aggregate({
+        where: { sentAt: { gte: since24h } },
+        _sum: { sentCount: true },
+      }),
     ]);
 
     const byPackage = await Promise.all(
@@ -212,6 +217,8 @@ adminRouter.get(
         visits,
         cycleProfiles,
         pushTokens,
+        pushSent: pushSentAgg._sum.sentCount ?? 0,
+        pushLast24h: pushSent24hAgg._sum.sentCount ?? 0,
         catalogProducts,
         smsTotal,
         smsLast24h,
@@ -604,6 +611,11 @@ adminRouter.post(
         sentCount: result.sent,
         failedCount: result.failed,
         sentAt: new Date(),
+        data: {
+          ...(body.data ?? {}),
+          tickets: result.tickets,
+          deliveries: result.deliveries,
+        },
       },
     });
 

@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronRight, Footprints, Link2, Lock } from 'lucide-react-native';
 import { HealthMetricCard } from '@/components/health/HealthMetricCard';
+import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
 import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { useHealthMetrics } from '@/hooks/useHealthMetrics';
@@ -244,8 +245,10 @@ export default function HealthMetricsScreen() {
         </View>
 
         {loading && !bundle ? (
-          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-            <ActivityIndicator color={FIGMA_HEALTH_METRICS.brand} />
+          <View style={{ paddingHorizontal: 16, gap: 6 }}>
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
           </View>
         ) : (
           <View style={{ paddingHorizontal: 16, gap: 6 }}>

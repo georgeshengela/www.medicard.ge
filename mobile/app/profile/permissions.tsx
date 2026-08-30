@@ -27,6 +27,7 @@ import {
   PermissionSectionLabel,
   PermissionToggleRow,
 } from '@/components/profile/PermissionToggleRow';
+import { PermissionsPageSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
 import { ka } from '@/i18n/ka';
 import { useThemeColors } from '@/theme/colors';
@@ -325,8 +326,8 @@ export default function PermissionsScreen() {
       </View>
 
       {loading && !snapshot ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={FIGMA_HEALTH_METRICS.brand} />
+        <View style={{ flex: 1, paddingTop: 8 }}>
+          <PermissionsPageSkeleton />
         </View>
       ) : (
         <ScrollView

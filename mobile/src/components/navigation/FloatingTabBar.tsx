@@ -12,9 +12,11 @@ import { useAuth } from '@/store/AuthContext';
 
 export const TAB_BAR_HEIGHT = 64;
 export const TAB_BAR_SIDE = 20;
+/** Extra clearance so the last Home / Meds cards sit above the overlay pill (OBS-VIS-01). */
+export const TAB_BAR_SCROLL_EXTRA = 96;
 
 /** Space so scroll content clears the overlay pill. */
-export function useTabBarInset(extra = 16): number {
+export function useTabBarInset(extra = TAB_BAR_SCROLL_EXTRA): number {
   const insets = useSafeAreaInsets();
   return TAB_BAR_HEIGHT + 10 + Math.max(insets.bottom, 12) + extra;
 }

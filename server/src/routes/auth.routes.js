@@ -12,6 +12,7 @@ import { normalizeSmsDestination } from '../lib/sms.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 import { claimDailyCheckIn } from '../lib/checkIn.js';
+import { deleteUserAccount } from '../lib/deleteUser.js';
 
 export const authRouter = Router();
 
@@ -357,5 +358,17 @@ authRouter.patch(
     });
 
     return res.json({ user: publicUser(user) });
+  }),
+);
+
+authRouter.delete(
+  '/me',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const result = await deleteUserAccount(req.user.id);
+    if (!result.ok) {
+      return res.status(result.status).json({ error: result.error });
+    }
+    return res.json({ ok: true });
   }),
 );

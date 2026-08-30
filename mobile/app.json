@@ -3,7 +3,7 @@
     "name": "MEDICARD",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "18.0.1",
+    "version": "18.0.10",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -16,6 +16,8 @@
         "CFBundleDisplayName": "MEDICARD",
         "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენისა და კანის ფოტოს გადასაღებად.",
         "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა სამედიცინო დოკუმენტებისა და ფოტოების ასატვირთად.",
+        "NSMicrophoneUsageDescription": "მიკროფონი საჭიროა ხმის ანალიზისთვის, თუ ამ ნაბიჯს გაივლით.",
+        "NSFaceIDUsageDescription": "Medicard-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -85,11 +87,20 @@
         }
       ],
       "expo-font",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Medicard-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად."
+        }
+      ]
     ],
     "extra": {
       "router": {},
       "apiUrl": "https://medicard.ge",
+      "privacyPolicyUrl": "https://medicard.ge/privacy",
+      "termsOfServiceUrl": "https://medicard.ge/terms",
+      "supportEmail": "support@medicard.ge",
       "eas": {
         "projectId": "7dd7dc9b-9e05-4e8c-a26e-8fc6800dc492"
       }

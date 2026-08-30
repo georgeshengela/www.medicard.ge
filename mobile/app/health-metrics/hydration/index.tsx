@@ -15,6 +15,7 @@ import { HydrationMonthCalendar } from '@/components/hydration/HydrationMonthCal
 import { HydrationWeekChart } from '@/components/hydration/HydrationWeekChart';
 import { useFigmaHydration } from '@/constants/figmaHydrationLayout';
 import { useHydration } from '@/hooks/useHydration';
+import { HydrationHubSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { formatLiters, formatMl, formatMlTight, monthGrid, todayYmd } from '@/lib/hydration';
 import type { StepChartPeriod } from '@/types/stepsMetrics';
@@ -46,7 +47,9 @@ export default function HydrationHomeScreen({ initialPeriod }: Props) {
         todayMl={h.todayMl}
         goalMl={h.goalMl}
       />
-      {period === '1d' ? (
+      {h.loading ? (
+        <HydrationHubSkeleton />
+      ) : period === '1d' ? (
         <>
           <HydrationHero h={h} T={T} />
           <HydrationGlass ml={h.todayMl} goalMl={h.goalMl} />

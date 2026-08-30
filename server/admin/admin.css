@@ -1778,6 +1778,31 @@ body.modal-open { overflow: hidden; }
   background: var(--bg-raise);
 }
 
+.push-device-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 14px 14px;
+}
+
+.push-device-heading {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.push-device-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-raise);
+}
+
 /* Dashboard overview */
 .dash-page { display: grid; gap: 14px; }
 

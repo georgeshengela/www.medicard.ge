@@ -1,5 +1,5 @@
 import React, { forwardRef, useState } from 'react';
-import { Pressable, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { Platform, Pressable, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { Eye, EyeOff, type LucideIcon } from 'lucide-react-native';
 import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { useThemeColors } from '@/theme/colors';
@@ -80,6 +80,12 @@ export const Input = forwardRef<TextInput, Props>(function Input(
               color: figma ? auth.fieldText : colors.text100,
               paddingVertical: 0,
               marginLeft: Icon ? 8 : 0,
+              ...(Platform.OS === 'web'
+                ? {
+                    outlineStyle: 'none' as const,
+                    backgroundColor: 'transparent',
+                  }
+                : null),
             },
             style,
           ]}

@@ -52,7 +52,7 @@ export const FIGMA_AUTH = {
 /** Dark auth chrome — Figma 11412:243289. */
 export const FIGMA_AUTH_DARK = {
   inputBorder: '#4B5563',
-  inputBg: '#111827',
+  inputBg: '#1F2937',
   labelColor: '#FFFFFF',
   primaryBg: '#0D9488',
   socialButtonBg: '#FFFFFF',
