@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
@@ -39,6 +39,11 @@ type Props = {
   range?: RangeMode;
   /** `hero` = large tappable card that clearly opens the calendar */
   variant?: 'default' | 'hero';
+  /**
+   * Native Modals (especially nested / New Architecture) drop confirms on Expo Go.
+   * Default: inline on iOS/Android, overlay Modal on web.
+   */
+  inline?: boolean;
 };
 
 /** Same calendar UX as registration DateField, tuned for cycle dates. */
@@ -50,9 +55,11 @@ export function CycleDateField({
   placeholder,
   range = 'past',
   variant = 'default',
+  inline,
 }: Props) {
   const c = useCycleColors();
-  const [open, setOpen] = useState(false);
+  const useInline = inline ?? Platform.OS !== 'web';
+  const [open, setOpen] = useState(useInline && variant === 'hero');
   const iso = normalizeIsoDate(value);
   const digits = isoToDigits(iso || null);
   const displayKa = iso ? formatCycleDateKa(iso) : '';
@@ -213,6 +220,7 @@ export function CycleDateField({
 
       <CycleCalendarModal
         visible={open}
+        inline={useInline}
         value={digits}
         title={label || ka.cycle.lastPeriod}
         range={range}
@@ -310,6 +318,7 @@ function makeCycleCell(
 
 function CycleCalendarModal({
   visible,
+  inline,
   value,
   title,
   range,
@@ -317,6 +326,7 @@ function CycleCalendarModal({
   onConfirm,
 }: {
   visible: boolean;
+  inline?: boolean;
   value: string;
   title: string;
   range: RangeMode;
@@ -381,59 +391,67 @@ function CycleCalendarModal({
       : formatBirthDateInput(draft)
     : ka.cycle.pickDate;
 
-  return (
-    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <View style={styles.sheetRoot}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={ka.common.close}
-          onPress={onClose}
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: c.overlay }]}
-        />
+  if (!visible) return null;
+
+  const pickDay = (digits: string, year: number, month: number, day: number) => {
+    setDraft(digits);
+    setCursor({ year, month, day });
+    if (inline) onConfirm(digits);
+  };
+
+  const sheet = (
         <View
           style={{
             backgroundColor: c.card,
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
+            borderTopLeftRadius: inline ? 16 : 28,
+            borderTopRightRadius: inline ? 16 : 28,
+            borderBottomLeftRadius: inline ? 16 : 0,
+            borderBottomRightRadius: inline ? 16 : 0,
             paddingHorizontal: 20,
             paddingTop: 12,
+            borderWidth: inline ? 1 : 0,
             borderTopWidth: 1,
             borderColor: c.border,
+            marginTop: inline ? 12 : 0,
           }}
         >
-          <View
-            style={{
-              width: 40,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: c.creamDeep,
-              alignSelf: 'center',
-              marginBottom: 16,
-            }}
-          />
+          {inline ? null : (
+            <View
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: c.creamDeep,
+                alignSelf: 'center',
+                marginBottom: 16,
+              }}
+            />
+          )}
 
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
             <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={{ color: c.ink, fontSize: 20, fontFamily: 'NotoSansGeorgian_700Bold' }}>{title}</Text>
+              <Text style={{ color: c.ink, fontSize: inline ? 15 : 20, fontFamily: 'NotoSansGeorgian_700Bold' }}>{title}</Text>
               <Text style={{ color: c.muted, marginTop: 4, fontSize: 13 }}>
                 {previewLabel}
               </Text>
             </View>
-            <Pressable
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel={ka.common.close}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 14,
-                backgroundColor: c.cardSoft,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <X size={18} color={c.ink} strokeWidth={2.2} />
-            </Pressable>
+            {inline ? null : (
+              <Pressable
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel={ka.common.close}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  backgroundColor: c.cardSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <X size={18} color={c.ink} strokeWidth={2.2} />
+              </Pressable>
+            )}
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
@@ -512,8 +530,7 @@ function CycleCalendarModal({
                         disabled={cell.disabled}
                         onPress={() => {
                           if (cell.disabled) return;
-                          setDraft(cell.digits);
-                          setCursor({ year: cell.year, month: cell.month, day: cell.day });
+                          pickDay(cell.digits, cell.year, cell.month, cell.day);
                         }}
                         style={{
                           aspectRatio: 1,
@@ -543,30 +560,48 @@ function CycleCalendarModal({
             </>
           )}
 
-          <View style={{ marginTop: 18, paddingBottom: Math.max(insets.bottom, 16) }}>
-            <Pressable
-              disabled={!draftOk}
-              onPress={() => {
-                if (draftOk) onConfirm(draft);
-              }}
-              style={{
-                backgroundColor: draftOk ? c.cta : c.creamDeep,
-                borderRadius: 16,
-                paddingVertical: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: draftOk ? 1 : 0.55,
-                ...cycleShadow.soft,
-              }}
-            >
-              <Check size={18} color="#fff" strokeWidth={2.6} />
-              <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, marginLeft: 8 }}>
-                {ka.auth.birthDateConfirm}
-              </Text>
-            </Pressable>
-          </View>
+          {inline ? (
+            <View style={{ height: 12 }} />
+          ) : (
+            <View style={{ marginTop: 18, paddingBottom: Math.max(insets.bottom, 16) }}>
+              <Pressable
+                disabled={!draftOk}
+                onPress={() => {
+                  if (draftOk) onConfirm(draft);
+                }}
+                style={{
+                  backgroundColor: draftOk ? c.cta : c.creamDeep,
+                  borderRadius: 16,
+                  paddingVertical: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: draftOk ? 1 : 0.55,
+                  ...cycleShadow.soft,
+                }}
+              >
+                <Check size={18} color="#fff" strokeWidth={2.6} />
+                <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, marginLeft: 8 }}>
+                  {ka.auth.birthDateConfirm}
+                </Text>
+              </Pressable>
+            </View>
+          )}
         </View>
+  );
+
+  if (inline) return sheet;
+
+  return (
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
+      <View style={styles.sheetRoot}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={ka.common.close}
+          onPress={onClose}
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: c.overlay }]}
+        />
+        {sheet}
       </View>
     </Modal>
   );

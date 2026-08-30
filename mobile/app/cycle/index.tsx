@@ -57,6 +57,7 @@ export default function CycleHome() {
   const [cycleView, setCycleView] = useState<CycleView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [onboardSaving, setOnboardSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [hubOpen, setHubOpen] = useState(false);
@@ -151,23 +152,29 @@ export default function CycleHome() {
 
   const saveLastPeriod = async (iso: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-      setError(ka.cycle.pickDate);
+      setSaveError(ka.cycle.pickDate);
       return;
     }
     setOnboardSaving(true);
-    setError(null);
+    setSaveError(null);
+    const optimistic = bundle
+      ? { ...bundle, profile: { ...bundle.profile, lastPeriodStart: iso } }
+      : null;
     try {
-      const data = await api.cycle.updateProfile({ lastPeriodStart: iso });
+      let data: CycleBundle | null = null;
+      try {
+        data = await api.cycle.setLastPeriod(iso);
+      } catch {
+        data = await api.cycle.updateProfile({ lastPeriodStart: iso });
+      }
+      const stamped = data?.profile?.lastPeriodStart || iso;
       const next =
-        data?.profile
-          ? {
-              ...data,
-              profile: { ...data.profile, lastPeriodStart: data.profile.lastPeriodStart || iso },
-            }
-          : bundle
-            ? { ...bundle, profile: { ...bundle.profile, lastPeriodStart: iso } }
+        data?.predictions && data?.profile
+          ? { ...data, profile: { ...data.profile, lastPeriodStart: stamped } }
+          : optimistic
+            ? { ...optimistic, profile: { ...optimistic.profile, lastPeriodStart: stamped } }
             : data;
-      setBundle(next);
+      if (next) setBundle(next);
       if (user?.id && next) {
         try {
           await cacheCycleBundle(user.id, next);
@@ -175,9 +182,13 @@ export default function CycleHome() {
           /* Profile is already saved on the server. */
         }
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        /* Haptics must not fail a saved date. */
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : ka.common.error);
+      setSaveError(err instanceof ApiError ? err.message : ka.common.error);
     } finally {
       setOnboardSaving(false);
     }
@@ -258,7 +269,7 @@ export default function CycleHome() {
         visible
         saving={onboardSaving}
         userName={user?.fullName}
-        error={error}
+        error={saveError}
         onSave={saveLastPeriod}
       />
     );

@@ -285,79 +285,112 @@ cycleRouter.get(
   }),
 );
 
-cycleRouter.patch(
-  '/profile',
+const DATE_KEY = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+const profileUpdateSchema = z.object({
+  mode: z.enum(MODES).optional(),
+  avgCycleLength: z.number().int().min(21).max(45).optional(),
+  avgPeriodLength: z.number().int().min(2).max(10).optional(),
+  lastPeriodStart: DATE_KEY.nullable().optional(),
+  isIrregular: z.boolean().optional(),
+  dueDate: DATE_KEY.nullable().optional(),
+  privacyEnabled: z.boolean().optional(),
+  enablePartnerShare: z.boolean().optional(),
+  sharePermissions: z
+    .object({
+      period: z.boolean().optional(),
+      cyclePhase: z.boolean().optional(),
+      fertileWindow: z.boolean().optional(),
+      symptoms: z.boolean().optional(),
+    })
+    .optional(),
+  conditions: z.array(z.enum(['pcos', 'endometriosis', 'perimenopause'])).optional(),
+  reminderPrefs: z
+    .object({
+      enabled: z.boolean().optional(),
+      periodDaysBefore: z.number().int().min(0).max(5).optional(),
+      ovulation: z.boolean().optional(),
+      dailyLog: z.boolean().optional(),
+      pms: z.boolean().optional(),
+      opk: z.boolean().optional(),
+      bbt: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+async function respondWithBundle(userId, res, fallback) {
+  try {
+    return res.json(await loadBundle(userId));
+  } catch (err) {
+    console.error('[cycle] loadBundle failed after write', err);
+    return res.json(fallback);
+  }
+}
+
+async function applyProfileUpdate(req, res) {
+  assertFemale(req.user);
+  const body = profileUpdateSchema.parse(req.body ?? {});
+
+  const data = {};
+  if (body.mode !== undefined) data.mode = body.mode;
+  if (body.avgCycleLength !== undefined) data.avgCycleLength = body.avgCycleLength;
+  if (body.avgPeriodLength !== undefined) data.avgPeriodLength = body.avgPeriodLength;
+  if (body.isIrregular !== undefined) data.isIrregular = body.isIrregular;
+  if (body.privacyEnabled !== undefined) data.privacyEnabled = body.privacyEnabled;
+  if (body.lastPeriodStart !== undefined) {
+    data.lastPeriodStart = body.lastPeriodStart
+      ? new Date(`${body.lastPeriodStart}T00:00:00.000Z`)
+      : null;
+  }
+  if (body.dueDate !== undefined) {
+    data.dueDate = body.dueDate ? new Date(`${body.dueDate}T00:00:00.000Z`) : null;
+  }
+  if (body.conditions !== undefined) data.conditions = body.conditions;
+  if (body.reminderPrefs !== undefined) data.reminderPrefs = body.reminderPrefs;
+
+  await getOrCreateProfile(req.user.id);
+  if (Object.keys(data).length) {
+    await prisma.cycleProfile.update({
+      where: { userId: req.user.id },
+      data,
+    });
+  }
+
+  if (body.enablePartnerShare === true) {
+    await createOwnerShare(req.user.id, body.sharePermissions);
+  }
+  if (body.enablePartnerShare === false) {
+    await revokeOwnerShares(req.user.id);
+  }
+  if (body.sharePermissions && body.enablePartnerShare !== true && body.enablePartnerShare !== false) {
+    await updateOwnerSharePermissions(req.user.id, body.sharePermissions);
+  }
+
+  return respondWithBundle(req.user.id, res, {
+    profile: { lastPeriodStart: body.lastPeriodStart ?? null },
+    meta: { today: todayInTimeZone(), timezone: CYCLE_TIMEZONE },
+  });
+}
+
+/** Android/Expo Go often drops or mishandles PATCH bodies — keep PUT + PATCH. */
+cycleRouter.put('/profile', asyncHandler(applyProfileUpdate));
+cycleRouter.patch('/profile', asyncHandler(applyProfileUpdate));
+
+/** Lean first-visit save: POST is reliable on Expo Go / Android OkHttp. */
+cycleRouter.post(
+  '/last-period',
   asyncHandler(async (req, res) => {
     assertFemale(req.user);
-    const body = z
-      .object({
-        mode: z.enum(MODES).optional(),
-        avgCycleLength: z.number().int().min(21).max(45).optional(),
-        avgPeriodLength: z.number().int().min(2).max(10).optional(),
-        lastPeriodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-        isIrregular: z.boolean().optional(),
-        dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-        privacyEnabled: z.boolean().optional(),
-        enablePartnerShare: z.boolean().optional(),
-        sharePermissions: z
-          .object({
-            period: z.boolean().optional(),
-            cyclePhase: z.boolean().optional(),
-            fertileWindow: z.boolean().optional(),
-            symptoms: z.boolean().optional(),
-          })
-          .optional(),
-        conditions: z.array(z.enum(['pcos', 'endometriosis', 'perimenopause'])).optional(),
-        reminderPrefs: z
-          .object({
-            enabled: z.boolean().optional(),
-            periodDaysBefore: z.number().int().min(0).max(5).optional(),
-            ovulation: z.boolean().optional(),
-            dailyLog: z.boolean().optional(),
-            pms: z.boolean().optional(),
-            opk: z.boolean().optional(),
-            bbt: z.boolean().optional(),
-          })
-          .optional(),
-      })
-      .parse(req.body);
-
-    const data = {};
-    if (body.mode !== undefined) data.mode = body.mode;
-    if (body.avgCycleLength !== undefined) data.avgCycleLength = body.avgCycleLength;
-    if (body.avgPeriodLength !== undefined) data.avgPeriodLength = body.avgPeriodLength;
-    if (body.isIrregular !== undefined) data.isIrregular = body.isIrregular;
-    if (body.privacyEnabled !== undefined) data.privacyEnabled = body.privacyEnabled;
-    if (body.lastPeriodStart !== undefined) {
-      data.lastPeriodStart = body.lastPeriodStart
-        ? new Date(`${body.lastPeriodStart}T00:00:00.000Z`)
-        : null;
-    }
-    if (body.dueDate !== undefined) {
-      data.dueDate = body.dueDate ? new Date(`${body.dueDate}T00:00:00.000Z`) : null;
-    }
-    if (body.conditions !== undefined) data.conditions = body.conditions;
-    if (body.reminderPrefs !== undefined) data.reminderPrefs = body.reminderPrefs;
-
+    const date = DATE_KEY.parse(req.body?.date ?? req.body?.lastPeriodStart);
     await getOrCreateProfile(req.user.id);
-    if (Object.keys(data).length) {
-      await prisma.cycleProfile.update({
-        where: { userId: req.user.id },
-        data,
-      });
-    }
-
-    if (body.enablePartnerShare === true) {
-      await createOwnerShare(req.user.id, body.sharePermissions);
-    }
-    if (body.enablePartnerShare === false) {
-      await revokeOwnerShares(req.user.id);
-    }
-    if (body.sharePermissions && body.enablePartnerShare !== true && body.enablePartnerShare !== false) {
-      await updateOwnerSharePermissions(req.user.id, body.sharePermissions);
-    }
-
-    return res.json(await loadBundle(req.user.id));
+    await prisma.cycleProfile.update({
+      where: { userId: req.user.id },
+      data: { lastPeriodStart: new Date(`${date}T00:00:00.000Z`) },
+    });
+    return respondWithBundle(req.user.id, res, {
+      profile: { lastPeriodStart: date },
+      meta: { today: todayInTimeZone(), timezone: CYCLE_TIMEZONE },
+    });
   }),
 );
 

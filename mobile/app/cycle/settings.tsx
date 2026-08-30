@@ -167,7 +167,7 @@ export default function CycleSettings() {
     try {
       const lastPeriodStart = /^\d{4}-\d{2}-\d{2}$/.test(lastPeriod) ? lastPeriod : null;
       if (lastPeriodStart) {
-        await api.cycle.updateProfile({ lastPeriodStart });
+        await api.cycle.setLastPeriod(lastPeriodStart);
       }
       const data = await api.cycle.updateProfile({
         mode,

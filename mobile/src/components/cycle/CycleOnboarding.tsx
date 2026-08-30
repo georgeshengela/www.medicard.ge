@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { ChevronRight, Heart } from 'lucide-react-native';
@@ -31,16 +31,18 @@ export function CycleOnboarding({ visible, saving, userName, error, onSave }: Pr
   if (!visible) return null;
 
   return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: c.cream,
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.cream }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
           paddingTop: insets.top + 28,
           paddingBottom: insets.bottom + 28,
           paddingHorizontal: 22,
         }}
+        keyboardShouldPersistTaps="handled"
       >
-        <Animated.View entering={FadeIn.duration(480)} style={{ flex: 1, justifyContent: 'center' }}>
+        <Animated.View entering={FadeIn.duration(480)} style={{ flexGrow: 1, justifyContent: 'center' }}>
           <Animated.View entering={FadeInUp.delay(40).duration(420)} style={{ alignItems: 'center' }}>
             <View
               style={{
@@ -125,6 +127,7 @@ export function CycleOnboarding({ visible, saving, userName, error, onSave }: Pr
               placeholder={ka.cycle.onboardTapCalendar}
               range="past"
               variant="hero"
+              inline
             />
 
             <View style={{ height: 32 }} />
@@ -198,6 +201,6 @@ export function CycleOnboarding({ visible, saving, userName, error, onSave }: Pr
             {ka.cycle.onboardPrivacy}
           </Text>
         </Animated.View>
-      </View>
+      </ScrollView>
   );
 }

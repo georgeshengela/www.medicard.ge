@@ -982,6 +982,8 @@ export const api = {
   cycle: {
     get: (opts?: { timeoutMs?: number }) =>
       request<CycleBundle>('/api/cycle', { timeoutMs: opts?.timeoutMs ?? 20_000 }),
+    setLastPeriod: (date: string) =>
+      request<CycleBundle>('/api/cycle/last-period', { method: 'POST', body: { date } }),
     updateProfile: (body: Partial<{
       mode: CycleMode;
       avgCycleLength: number;
@@ -994,7 +996,7 @@ export const api = {
       sharePermissions: Partial<CycleSharePermissions>;
       conditions: CycleCondition[];
       reminderPrefs: CycleReminderPrefsServer;
-    }>) => request<CycleBundle>('/api/cycle/profile', { method: 'PATCH', body }),
+    }>) => request<CycleBundle>('/api/cycle/profile', { method: 'PUT', body }),
     createShare: (permissions?: Partial<CycleSharePermissions>) =>
       request<CycleBundle>('/api/cycle/share', { method: 'POST', body: { permissions } }),
     updateShare: (permissions: Partial<CycleSharePermissions>) =>

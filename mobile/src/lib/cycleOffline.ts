@@ -522,7 +522,11 @@ export async function queueApplyPeriod(
 export async function loadCycleView(userId: string): Promise<CycleView> {
   if (!userId) throw new ApiError('unauthorized', 401);
   try {
-    await flushCycleQueue(userId);
+    try {
+      await flushCycleQueue(userId);
+    } catch {
+      /* Offline queue must not block Cycle GET or last-period save. */
+    }
     const fresh = await api.cycle.get({ timeoutMs: GET_TIMEOUT_MS });
     try {
       await cacheCycleBundle(userId, fresh);
@@ -557,7 +561,12 @@ export async function loadCycleView(userId: string): Promise<CycleView> {
       attention: attentionItems(account),
     };
   } catch (error) {
-    const account = await loadCycleAccount(userId);
+    let account: CycleOfflineAccount;
+    try {
+      account = await loadCycleAccount(userId);
+    } catch {
+      account = emptyAccount(userId);
+    }
     const stale = viewFromAccount(account, {
       stale: true,
       reachable: false,
