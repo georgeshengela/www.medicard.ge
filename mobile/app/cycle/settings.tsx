@@ -19,7 +19,8 @@ import {
   cycleNavHeader,
 } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
-import { api, ApiError, type CycleBundle, type CycleCondition, type CycleMode } from '@/lib/api';
+import { api, ApiError, type CycleBundle, type CycleCondition, type CycleContraceptionMethod, type CycleMode } from '@/lib/api';
+import { CycleTtcConflictSheet } from '@/components/cycle/CycleTtcConflictSheet';
 import { cacheCycleBundle, loadCycleView, peekCyclePendingCount } from '@/lib/cycleOffline';
 import { useAuth } from '@/store/AuthContext';
 import { normalizeIsoDate } from '@/lib/birthdate';
@@ -77,6 +78,8 @@ function applyProfile(data: CycleBundle) {
     irregular: Boolean(profile.isIrregular),
     privacy: Boolean(profile.privacyEnabled),
     conditions: (profile.conditions ?? []) as CycleCondition[],
+    contraceptionMethod: (profile.contraceptionMethod ?? null) as CycleContraceptionMethod | null,
+    contraceptionStartedAt: normalizeIsoDate(profile.contraceptionStartedAt),
   };
 }
 
@@ -126,6 +129,9 @@ export default function CycleSettings() {
     maskStyle: 'neutral',
   });
   const [pregnancySheet, setPregnancySheet] = useState(false);
+  const [contraceptionMethod, setContraceptionMethod] = useState<CycleContraceptionMethod | null>(null);
+  const [contraceptionStartedAt, setContraceptionStartedAt] = useState('');
+  const [ttcConflictOpen, setTtcConflictOpen] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions(cycleNavHeader(c, ka.cycle.settings));
@@ -151,6 +157,8 @@ export default function CycleSettings() {
         setIrregular(next.irregular);
         setPrivacy(next.privacy);
         setConditions(next.conditions);
+        setContraceptionMethod(next.contraceptionMethod);
+        setContraceptionStartedAt(next.contraceptionStartedAt);
         setReminders(remPrefs);
         setPrivacyLock(lockOn);
       })
@@ -179,7 +187,12 @@ export default function CycleSettings() {
         privacyEnabled: privacy,
         conditions,
         reminderPrefs: serverReminderPrefs(reminders),
+        contraceptionMethod,
+        contraceptionStartedAt: /^\d{4}-\d{2}-\d{2}$/.test(contraceptionStartedAt)
+          ? contraceptionStartedAt
+          : null,
       });
+      if (data.contraception?.ttcConflict) setTtcConflictOpen(true);
       setBundle(data);
       setCanonical(data);
       if (user?.id) {
@@ -530,13 +543,62 @@ export default function CycleSettings() {
           </CycleCard>
         </CycleSection>
 
+        <CycleSection title={ka.cycle.contraceptionTitle} subtitle={ka.cycle.contraceptionHint} delay={145}>
+          <CycleCard>
+            <Text style={{ color: c.mutedSoft, fontSize: 11, lineHeight: 16, marginBottom: 12 }}>
+              {ka.cycle.contraceptionNotMethod}
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {(Object.keys(ka.cycle.contraceptionMethod) as CycleContraceptionMethod[]).map((id) => {
+                const on = contraceptionMethod === id;
+                return (
+                  <Pressable
+                    key={id}
+                    onPress={() => setContraceptionMethod(id)}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      borderRadius: 999,
+                      backgroundColor: on ? c.cta : c.creamDeep,
+                      borderWidth: 1,
+                      borderColor: on ? c.cta : c.border,
+                    }}
+                  >
+                    <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 12 }}>
+                      {ka.cycle.contraceptionMethod[id]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {contraceptionMethod && contraceptionMethod !== 'NONE' ? (
+              <View style={{ marginTop: 14 }}>
+                <CycleDateField
+                  value={contraceptionStartedAt}
+                  onChange={setContraceptionStartedAt}
+                  placeholder={ka.cycle.contraceptionUnknownStart}
+                  range="past"
+                />
+              </View>
+            ) : null}
+            <Pressable
+              onPress={() => {
+                setContraceptionMethod('NONE');
+                setContraceptionStartedAt('');
+              }}
+              style={{ marginTop: 12 }}
+            >
+              <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13 }}>
+                {ka.cycle.contraceptionClear}
+              </Text>
+            </Pressable>
+          </CycleCard>
+        </CycleSection>
+
         <CycleSection title={ka.cycle.conditionsTitle} subtitle={ka.cycle.conditionsHint} delay={150}>
           <CycleCard>
             <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginBottom: 14 }}>
               {ka.cycle.conditionsExplain}
-            </Text>
-            <Text style={{ color: c.mutedSoft, fontSize: 11, lineHeight: 16, marginBottom: 14 }}>
-              {ka.cycle.contraceptionDisclaimer}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {CONDITIONS.map((item) => {
@@ -815,6 +877,19 @@ export default function CycleSettings() {
               setDueDate(next.dueDate);
             });
           }
+        }}
+      />
+      <CycleTtcConflictSheet
+        visible={ttcConflictOpen}
+        onClose={() => setTtcConflictOpen(false)}
+        onKeepTtc={() => setTtcConflictOpen(false)}
+        onSwitchTrack={() => {
+          setTtcConflictOpen(false);
+          setMode('TRACK_PERIOD');
+          void api.cycle.updateProfile({ mode: 'TRACK_PERIOD' }).then((data) => {
+            setBundle(data);
+            setCanonical(data);
+          }).catch(() => undefined);
         }}
       />
     </CycleAtmosphere>

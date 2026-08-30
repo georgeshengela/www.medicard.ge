@@ -380,6 +380,44 @@ export type CycleReminderPrefsServer = {
   maskStyle?: 'neutral' | 'wellness' | 'calendar' | 'notes';
 };
 
+export type CycleContraceptionMethod =
+  | 'NONE'
+  | 'COMBINED_PILL'
+  | 'PROGESTIN_PILL'
+  | 'HORMONAL_IUD'
+  | 'COPPER_IUD'
+  | 'IMPLANT'
+  | 'INJECTION'
+  | 'PATCH'
+  | 'VAGINAL_RING'
+  | 'BARRIER'
+  | 'FERTILITY_AWARENESS'
+  | 'OTHER';
+
+export type CyclePredictionAvailability = 'NORMAL' | 'CAUTION' | 'LIMITED';
+
+export type CycleContraceptionContext = {
+  method: CycleContraceptionMethod | null;
+  startedAt: string | null;
+  set: boolean;
+  category: string;
+  predictionAvailability: CyclePredictionAvailability;
+  ttcConflict: boolean;
+  bleedingLabel: 'period' | 'bleeding';
+  presentation: {
+    showFertilityMarkers: boolean;
+    showOvulationDate: boolean;
+    showFertileWindow: boolean;
+    showPhaseAsBiological: boolean;
+    emphasizeFertility: boolean;
+    phaseLabelOverride: string | null;
+    loggedBleedKeepsPeriod: boolean;
+    famNotCertified: boolean;
+    showContextCard: boolean;
+    contextKind: 'limited' | 'caution' | null;
+  };
+};
+
 export type CycleProfile = {
   id: string;
   userId: string;
@@ -393,6 +431,8 @@ export type CycleProfile = {
   partnerShareCode: string | null;
   conditions: CycleCondition[];
   reminderPrefs: CycleReminderPrefsServer | null;
+  contraceptionMethod?: CycleContraceptionMethod | null;
+  contraceptionStartedAt?: string | null;
   aiInsights?: CycleInsights | null;
   aiInsightsAt?: string | null;
 };
@@ -481,6 +521,7 @@ export type CycleBundle = {
   periodRanges: CyclePeriodRange[];
   averages: CycleAverages;
   partnerShare?: CyclePartnerShare;
+  contraception?: CycleContraceptionContext;
   profile: CycleProfile;
   logs: CycleLog[];
   pregnancyLogs: PregnancyLog[];
@@ -989,6 +1030,8 @@ export const api = {
       avgCycleLength: number;
       avgPeriodLength: number;
       lastPeriodStart: string | null;
+      contraceptionMethod: CycleContraceptionMethod | null;
+      contraceptionStartedAt: string | null;
       isIrregular: boolean;
       dueDate: string | null;
       privacyEnabled: boolean;

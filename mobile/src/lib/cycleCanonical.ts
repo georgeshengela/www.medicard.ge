@@ -71,6 +71,7 @@ export function phaseFromLmp(
 
 /** Read server-stamped day/phase. Falls back to LMP math if stamps are missing. */
 export function phaseFromBundle(bundle: CycleBundle, date: string): CyclePhaseInfo {
+  const allowBiological = bundle.contraception?.presentation?.showPhaseAsBiological !== false;
   const serverToday = bundle.meta?.today;
   if (serverToday && date === serverToday && bundle.phase && bundle.phase !== 'unknown') {
     return {
@@ -94,6 +95,15 @@ export function phaseFromBundle(bundle: CycleBundle, date: string): CyclePhaseIn
       day: bundle.cycleDay ?? null,
       phase: bundle.phase,
       phaseKa: bundle.phaseKa ?? CYCLE_PHASE_KA[bundle.phase],
+    };
+  }
+
+  if (!allowBiological) {
+    const override = bundle.contraception?.presentation?.phaseLabelOverride;
+    return {
+      day: mark?.cycleDay ?? (date === serverToday ? bundle.cycleDay ?? null : null),
+      phase: 'unknown',
+      phaseKa: override || CYCLE_PHASE_KA.unknown,
     };
   }
 

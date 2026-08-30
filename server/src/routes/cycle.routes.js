@@ -53,6 +53,12 @@ import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
 import { calculateAge, withPatientAiContext } from '../lib/patient.js';
 import { CYCLE_TEST_RESULTS } from '../lib/cycleFertility.js';
+import {
+  CONTRACEPTION_METHODS,
+  interpretContraception,
+  presentPredictions,
+  presentTodayPhase,
+} from '../lib/cycleContraception.js';
 
 export const cycleRouter = Router();
 cycleRouter.use(requireAuth);
@@ -168,7 +174,7 @@ async function loadBundle(userId) {
     toDateKey(profile.lastPeriodStart) || inferred.lastPeriodStart;
 
   const today = todayInTimeZone();
-  const predictions = buildPredictions({
+  const rawPredictions = buildPredictions({
     lastPeriodStart,
     avgCycleLength: averages.usedCycleLength,
     avgPeriodLength: averages.usedPeriodLength,
@@ -176,10 +182,19 @@ async function loadBundle(userId) {
     isIrregular: profile.isIrregular,
     logs: shapedLogs,
   });
+  const contraception = interpretContraception(
+    {
+      ...profile,
+      contraceptionMethod: profile.contraceptionMethod,
+      contraceptionStartedAt: toDateKey(profile.contraceptionStartedAt),
+      mode: profile.mode,
+    },
+    { todayLog: shapedLogs.find((l) => l.date === today) },
+  );
 
   const historyStart = inferred.periodRanges?.[0]?.start;
   if (lastPeriodStart && historyStart && historyStart < lastPeriodStart) {
-    predictions.calendar = stampCalendarPhases(predictions.calendar, {
+    rawPredictions.calendar = stampCalendarPhases(rawPredictions.calendar, {
       lastPeriodStart,
       avgCycleLength: averages.usedCycleLength,
       avgPeriodLength: averages.usedPeriodLength,
@@ -187,13 +202,17 @@ async function loadBundle(userId) {
       toKey: lastPeriodStart,
     });
   }
+  const predictions = presentPredictions(rawPredictions, contraception);
 
-  const todayPhase = detectCyclePhase({
-    lastPeriodStart,
-    avgCycleLength: averages.usedCycleLength,
-    avgPeriodLength: averages.usedPeriodLength,
-    today,
-  });
+  const todayPhase = presentTodayPhase(
+    detectCyclePhase({
+      lastPeriodStart,
+      avgCycleLength: averages.usedCycleLength,
+      avgPeriodLength: averages.usedPeriodLength,
+      today,
+    }),
+    contraception,
+  );
 
   const due = toDateKey(profile.dueDate);
   const pregnancy =
@@ -228,11 +247,14 @@ async function loadBundle(userId) {
     periodRanges: inferred.periodRanges ?? [],
     averages,
     partnerShare,
+    contraception,
     profile: {
       ...profile,
       partnerShareCode: isShareTokenFormat(profile.partnerShareCode) ? profile.partnerShareCode : null,
       lastPeriodStart,
       dueDate: due,
+      contraceptionMethod: contraception.method,
+      contraceptionStartedAt: contraception.startedAt,
       conditions: Array.isArray(profile.conditions) ? profile.conditions.map(String) : [],
       reminderPrefs: profile.reminderPrefs ?? null,
       aiInsights: profile.aiInsights ?? null,
@@ -258,6 +280,7 @@ async function loadBundle(userId) {
       pregnancy,
       averages,
       today,
+      contraception,
     }),
     trends: buildCycleTrends({
       profile: profileView,
@@ -292,6 +315,8 @@ const profileUpdateSchema = z.object({
   avgCycleLength: z.number().int().min(21).max(45).optional(),
   avgPeriodLength: z.number().int().min(2).max(10).optional(),
   lastPeriodStart: DATE_KEY.nullable().optional(),
+  contraceptionMethod: z.enum(CONTRACEPTION_METHODS).nullable().optional(),
+  contraceptionStartedAt: DATE_KEY.nullable().optional(),
   isIrregular: z.boolean().optional(),
   dueDate: DATE_KEY.nullable().optional(),
   privacyEnabled: z.boolean().optional(),
@@ -347,6 +372,15 @@ async function applyProfileUpdate(req, res) {
   }
   if (body.conditions !== undefined) data.conditions = body.conditions;
   if (body.reminderPrefs !== undefined) data.reminderPrefs = body.reminderPrefs;
+  if (body.contraceptionMethod !== undefined) data.contraceptionMethod = body.contraceptionMethod;
+  if (body.contraceptionStartedAt !== undefined) {
+    data.contraceptionStartedAt = body.contraceptionStartedAt
+      ? new Date(`${body.contraceptionStartedAt}T00:00:00.000Z`)
+      : null;
+  }
+  if (body.contraceptionMethod === 'NONE' && body.contraceptionStartedAt === undefined) {
+    data.contraceptionStartedAt = null;
+  }
 
   await getOrCreateProfile(req.user.id);
   if (Object.keys(data).length) {

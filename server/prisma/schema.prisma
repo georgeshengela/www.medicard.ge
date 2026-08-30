@@ -239,6 +239,9 @@ model CycleProfile {
   conditions       Json      @default("[]")
   /// Optional mirror of mobile reminder prefs for cross-device sync
   reminderPrefs    Json?
+  /// Current method only. null = never asked; NONE = explicit no method.
+  contraceptionMethod     String?
+  contraceptionStartedAt  DateTime? @db.Date
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }

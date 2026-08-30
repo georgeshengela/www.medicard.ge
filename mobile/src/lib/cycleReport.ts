@@ -53,7 +53,16 @@ export function buildCycleReportHtml(bundle: CycleBundle): string {
     <li>${ka.cycle.longestCycle}: ${s?.longestCycle ?? '—'} დღე</li>
     <li>${ka.cycle.cycleVariability}: ${s?.variability ?? '—'} დღე</li>
     <li>${ka.cycle.estimatedNextPeriod}: ${s?.nextPeriodStart ? formatCycleDateKa(s.nextPeriodStart) : '—'}</li>
-    <li>${ka.cycle.estimatedOvulationTitle}: ${s?.ovulationDate ? formatCycleDateKa(s.ovulationDate) : '—'}</li>
+    ${
+      bundle.contraception?.presentation.showOvulationDate === false
+        ? ''
+        : `<li>${ka.cycle.estimatedOvulationTitle}: ${s?.ovulationDate ? formatCycleDateKa(s.ovulationDate) : '—'}</li>`
+    }
+    ${
+      bundle.contraception?.method
+        ? `<li>${ka.cycle.reportContraception}: ${ka.cycle.contraceptionMethod[bundle.contraception.method]}${bundle.contraception.startedAt ? ` · ${formatCycleDateKa(bundle.contraception.startedAt)}` : ''}</li>`
+        : ''
+    }
     <li>${s?.cycleCount ? ka.cycle.basedOnCycles(s.cycleCount) : ka.cycle.confidenceLow} — ${confidence}</li>
   </ul>
   ${starts ? `<h2>${ka.cycle.reportLoggedTitle} · ${ka.cycle.periodHistory}</h2><ul>${starts}</ul>` : ''}

@@ -6,6 +6,7 @@
 
 import {
   CYCLE_AI_HONESTY_RULES,
+  CYCLE_CONTRACEPTION_AI_RULES,
   cycleHonestyFlags,
   irregularLengthAlertKa,
   latePeriodAlertKa,
@@ -20,6 +21,10 @@ import {
   CYCLE_FERTILITY_AI_RULES,
   fertilityObservationBits,
 } from './cycleFertility.js';
+import {
+  contraceptionInsightsFilter,
+  interpretContraception,
+} from './cycleContraception.js';
 
 export { emptyCycleAiCache };
 
@@ -486,6 +491,12 @@ export function buildDoctorSummary({ profile, logs, predictions }) {
     nextPeriodStart: predictions.nextPeriodStart,
     ovulationDate: predictions.ovulationDate,
     fertileWindow: predictions.fertileWindow,
+    selfReportedContraception: {
+      method: profile.contraceptionMethod ?? null,
+      startedAt: toDateKey(profile.contraceptionStartedAt) ??
+        (typeof profile.contraceptionStartedAt === 'string' ? profile.contraceptionStartedAt : null),
+      label: 'self_reported',
+    },
     topSymptoms,
     topMoods,
     shortestCycle: stats.shortest,
@@ -546,7 +557,7 @@ export function detectCyclePhase({
 }
 
 /** Instant Flo-like tips (no AI) — shown while / as fallback to EvidenceMD. */
-export function buildLocalInsights({ profile, logs, predictions, pregnancy, averages, today }) {
+export function buildLocalInsights({ profile, logs, predictions, pregnancy, averages, today, contraception }) {
   const phase = detectCyclePhase({
     lastPeriodStart: toDateKey(profile.lastPeriodStart),
     avgCycleLength: averages?.usedCycleLength ?? profile.avgCycleLength,
@@ -592,7 +603,11 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
       action: '5 წუთი სიღრმისეული სუნთქვა',
     });
   }
-  if (profile.mode === 'TRY_TO_CONCEIVE' && predictions?.fertileWindow) {
+  if (
+    profile.mode === 'TRY_TO_CONCEIVE' &&
+    predictions?.fertileWindow &&
+    contraception?.presentation?.showFertileWindow !== false
+  ) {
     cards.push({
       id: 'ttc_window',
       tone: 'fertile',
@@ -623,16 +638,29 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
     cards.push({
       id: 'next_period',
       tone: 'energy',
-      title: 'სავარაუდო შემდეგი მენსტრუაცია',
+      title:
+        contraception?.bleedingLabel === 'bleeding'
+          ? 'სავარაუდო შემდეგი სისხლდენა'
+          : 'სავარაუდო შემდეგი მენსტრუაცია',
       body: nextPeriodEstimateBody(predictions.nextPeriodStart, flags),
       action: null,
     });
   }
 
+  const filtered = contraceptionInsightsFilter(cards, contraception);
+
   return {
-    headline: phase.day != null ? `დღეს: სავარაუდო ${phase.phaseKa}` : 'თქვენი ციკლის რჩევები',
-    phaseLabel: phase.phaseKa,
-    cards: cards.slice(0, 7),
+    headline:
+      contraception?.predictionAvailability === 'LIMITED'
+        ? 'აღრიცხვები და კონტრაცეფციის კონტექსტი'
+        : phase.day != null
+          ? `დღეს: სავარაუდო ${phase.phaseKa}`
+          : 'თქვენი ციკლის რჩევები',
+    phaseLabel:
+      contraception?.predictionAvailability === 'LIMITED'
+        ? contraception.presentation?.phaseLabelOverride || phase.phaseKa
+        : phase.phaseKa,
+    cards: filtered.slice(0, 7),
     source: 'local',
     generatedAt: new Date().toISOString(),
   };
@@ -807,7 +835,7 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today }
   return alerts.slice(0, 4);
 }
 
-export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, user, averages, today }) {
+export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, user, averages, today, contraception }) {
   const phase = detectCyclePhase({
     lastPeriodStart: toDateKey(profile.lastPeriodStart),
     avgCycleLength: averages?.usedCycleLength ?? profile.avgCycleLength,
@@ -819,6 +847,13 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
     isIrregular: profile.isIrregular,
     conditions: parseConditions(profile),
   });
+  const contra =
+    contraception ||
+    interpretContraception({
+      ...profile,
+      contraceptionStartedAt: toDateKey(profile.contraceptionStartedAt),
+    });
+  const limited = contra.predictionAvailability === 'LIMITED';
   const recent = [...logs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
   const lines = recent.map((l) => {
     const sym = (l.symptoms || []).map((s) => SYMPTOM_KA[s] || s).join(', ') || '—';
@@ -835,12 +870,20 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
     ...lines,
     '',
     'ESTIMATED:',
-    `ციკლის დღე: ${phase.day ?? '—'} · სავარაუდო ფაზა: ${phase.phaseKa}`,
-    `სავარაუდო შემდეგი მენსტრუაცია: ${predictions?.nextPeriodStart ?? '—'}`,
-    `სავარაუდო ოვულაცია: ${predictions?.ovulationDate ?? '—'}`,
-    predictions?.fertileWindow
-      ? `სავარაუდო ნაყოფიერი ფანჯარა: ${predictions.fertileWindow.start} – ${predictions.fertileWindow.end}`
-      : 'სავარაუდო ნაყოფიერი ფანჯარა: —',
+    limited
+      ? `ციკლის დღე: ${phase.day ?? '—'} · კალენდარული ფაზა არ არის ხაზგასასმელი (LIMITED)`
+      : `ციკლის დღე: ${phase.day ?? '—'} · სავარაუდო ფაზა: ${phase.phaseKa}`,
+    limited
+      ? `სავარაუდო შემდეგი სისხლდენა: ${predictions?.nextPeriodStart ?? '—'}`
+      : `სავარაუდო შემდეგი მენსტრუაცია: ${predictions?.nextPeriodStart ?? '—'}`,
+    limited
+      ? 'ოვულაცია / ნაყოფიერი ფანჯარა: ნუ ხაზს უსვამ — კონტრაცეფციის კონტექსტში შეიძლება შეცდომაში შემყვანი იყოს.'
+      : `სავარაუდო ოვულაცია: ${predictions?.ovulationDate ?? '—'}`,
+    limited
+      ? null
+      : predictions?.fertileWindow
+        ? `სავარაუდო ნაყოფიერი ფანჯარა: ${predictions.fertileWindow.start} – ${predictions.fertileWindow.end}`
+        : 'სავარაუდო ნაყოფიერი ფანჯარა: —',
     `სიზუსტე: ${flags.confidence}`,
     `არარეგულარული (მომხმარებლის მითითება): ${profile.isIrregular ? 'კი' : 'არა'}`,
     averages?.source ? `პროგნოზის წყარო: ${averages.source}` : null,
@@ -851,10 +894,16 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
     '',
     'CONDITIONS_SELF_REPORTED:',
     flags.conditions.length ? flags.conditions.join(', ') : '—',
+    contra.method ? '' : null,
+    contra.method ? 'CONTRACEPTION_SELF_REPORTED:' : null,
+    contra.method ? `method: ${contra.method}` : null,
+    contra.method ? `startedAt: ${contra.startedAt || 'unknown'}` : null,
+    contra.method ? `predictionAvailability: ${contra.predictionAvailability}` : null,
     '',
     'HONESTY_RULES:',
     ...CYCLE_AI_HONESTY_RULES.map((rule) => `- ${rule}`),
     ...CYCLE_FERTILITY_AI_RULES.map((rule) => `- ${rule}`),
+    ...CYCLE_CONTRACEPTION_AI_RULES.map((rule) => `- ${rule}`),
     '',
     'დააბრუნე მხოლოდ JSON რჩევების ბარათებით.',
   ]

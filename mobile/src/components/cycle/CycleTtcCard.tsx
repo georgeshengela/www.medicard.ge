@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import type { CycleBundle, CycleLog } from '@/lib/api';
 import { isCycleTestResult, prioritizeTtcActions } from '@/lib/cycleFertility';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
+import { showFertilityUi } from '@/lib/cycleContraception';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
 
@@ -72,10 +73,14 @@ export function CycleTtcCard({ bundle, date, log, onAction }: Props) {
         {ka.cycle.ttcEstimateLabel}
       </Text>
       <Text style={{ color: c.ink, fontSize: 13, lineHeight: 18, marginBottom: 12 }}>
-        {window
-          ? `${ka.cycle.estimatedFertileTitle}: ${formatCycleDateKa(window.start)} – ${formatCycleDateKa(window.end)}`
-          : ka.cycle.estimatedFertileTitle}
-        {ovulation ? `\n${ka.cycle.estimatedOvulationTitle}: ${formatCycleDateKa(ovulation)}` : ''}
+        {!showFertilityUi(bundle)
+          ? ka.cycle.contraceptionTtcLimited
+          : window
+            ? `${ka.cycle.estimatedFertileTitle}: ${formatCycleDateKa(window.start)} – ${formatCycleDateKa(window.end)}`
+            : ka.cycle.estimatedFertileTitle}
+        {showFertilityUi(bundle) && ovulation
+          ? `\n${ka.cycle.estimatedOvulationTitle}: ${formatCycleDateKa(ovulation)}`
+          : ''}
       </Text>
 
       <Text

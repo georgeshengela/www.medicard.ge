@@ -80,7 +80,9 @@ export async function syncCycleReminders(
     );
   }
 
-  if (mode === 'TRY_TO_CONCEIVE' && prefs.ovulation) {
+  const allowFertilityReminders = bundle.contraception?.presentation?.showFertilityMarkers !== false;
+
+  if (mode === 'TRY_TO_CONCEIVE' && prefs.ovulation && allowFertilityReminders) {
     if (predictions.ovulationDate) {
       const ovulation = ttcReminderCopy('ovulation', flags);
       await schedule(
@@ -103,7 +105,7 @@ export async function syncCycleReminders(
     }
   }
 
-  if (prefs.pms && mode !== 'PREGNANCY' && profile.lastPeriodStart && predictions.ovulationDate) {
+  if (prefs.pms && allowFertilityReminders && mode !== 'PREGNANCY' && profile.lastPeriodStart && predictions.ovulationDate) {
     const pmsStart = addDaysToKey(predictions.ovulationDate, 2);
     await schedule(
       'pms',
@@ -114,7 +116,7 @@ export async function syncCycleReminders(
     );
   }
 
-  if (mode === 'TRY_TO_CONCEIVE' && prefs.opk && predictions.fertileWindow?.start) {
+  if (mode === 'TRY_TO_CONCEIVE' && prefs.opk && allowFertilityReminders && predictions.fertileWindow?.start) {
     await schedule(
       'opk',
       predictions.fertileWindow.start,

@@ -4,15 +4,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { ChevronRight, Heart } from 'lucide-react-native';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
+import type { CycleContraceptionMethod } from '@/lib/api';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
+
+const METHODS = Object.keys(ka.cycle.contraceptionMethod) as CycleContraceptionMethod[];
 
 type Props = {
   visible: boolean;
   saving?: boolean;
   userName?: string | null;
   error?: string | null;
-  onSave: (iso: string) => void;
+  onSave: (iso: string) => void | Promise<void>;
+  onFinishContraception?: (input: {
+    method: CycleContraceptionMethod | null;
+    startedAt: string | null;
+  }) => void | Promise<void>;
 };
 
 function firstName(full?: string | null) {
@@ -21,10 +28,12 @@ function firstName(full?: string | null) {
 }
 
 /** First-visit gate: ask for last period start before the main cycle UI. */
-export function CycleOnboarding({ visible, saving, userName, error, onSave }: Props) {
+export function CycleOnboarding({ visible, saving, userName, error, onSave, onFinishContraception }: Props) {
   const c = useCycleColors();
   const insets = useSafeAreaInsets();
   const [date, setDate] = useState('');
+  const [step, setStep] = useState<'date' | 'contraception'>('date');
+  const [method, setMethod] = useState<CycleContraceptionMethod | null>(null);
   const name = firstName(userName);
   const greeting = name ? `${ka.cycle.onboardHi}, ${name}` : ka.cycle.onboardHi;
 
@@ -98,6 +107,7 @@ export function CycleOnboarding({ visible, saving, userName, error, onSave }: Pr
               borderColor: c.border,
             }}
           >
+            {step === 'date' ? (
             <Text
               style={{
                 color: c.ink,
@@ -108,6 +118,7 @@ export function CycleOnboarding({ visible, saving, userName, error, onSave }: Pr
             >
               {ka.cycle.lastPeriod}
             </Text>
+            ) : null}
             <Text
               style={{
                 color: c.muted,
@@ -121,6 +132,8 @@ export function CycleOnboarding({ visible, saving, userName, error, onSave }: Pr
               {ka.cycle.onboardHint}
             </Text>
 
+            {step === 'date' ? (
+              <>
             <CycleDateField
               value={date}
               onChange={setDate}
@@ -129,15 +142,98 @@ export function CycleOnboarding({ visible, saving, userName, error, onSave }: Pr
               variant="hero"
               inline
             />
-
             <View style={{ height: 32 }} />
+              </>
+            ) : null}
+
+            {step === 'contraception' ? (
+              <>
+                <Text
+                  style={{
+                    color: c.ink,
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    fontSize: 17,
+                  }}
+                >
+                  {ka.cycle.contraceptionAsk}
+                </Text>
+                <Text
+                  style={{
+                    color: c.muted,
+                    fontSize: 13,
+                    lineHeight: 19,
+                    marginTop: 6,
+                    marginBottom: 14,
+                  }}
+                >
+                  {ka.cycle.contraceptionHint}
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {METHODS.map((id) => {
+                    const on = method === id;
+                    return (
+                      <Pressable
+                        key={id}
+                        onPress={() => setMethod(id)}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          borderRadius: 999,
+                          backgroundColor: on ? c.cta : c.cardSoft,
+                          borderWidth: 1,
+                          borderColor: on ? c.cta : c.border,
+                        }}
+                      >
+                        <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 12 }}>
+                          {ka.cycle.contraceptionMethod[id]}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Pressable
+                  disabled={saving}
+                  onPress={() => void onFinishContraception?.({ method, startedAt: null })}
+                  style={{
+                    marginTop: 20,
+                    minHeight: 52,
+                    borderRadius: 16,
+                    backgroundColor: c.cta,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: saving ? 0.5 : 1,
+                  }}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold' }}>
+                      {ka.cycle.onboardCta}
+                    </Text>
+                  )}
+                </Pressable>
+                <Pressable
+                  disabled={saving}
+                  onPress={() => void onFinishContraception?.({ method: null, startedAt: null })}
+                  style={{ marginTop: 10, paddingVertical: 12, alignItems: 'center' }}
+                >
+                  <Text style={{ color: c.muted, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+                    {ka.cycle.contraceptionSkip} · {ka.cycle.contraceptionPreferNot}
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
 
             <Pressable
-              disabled={!date || saving}
-              onPress={() => date && onSave(date)}
+              disabled={!date || saving || step !== 'date'}
+              onPress={() => {
+                if (!date || step !== 'date') return;
+                void Promise.resolve(onSave(date)).then(() => setStep('contraception'));
+              }}
               style={({ pressed }) => ({
                 borderRadius: 16,
                 overflow: 'hidden',
+                display: step === 'date' ? 'flex' : 'none',
                 opacity: !date || saving ? 0.45 : pressed ? 0.92 : 1,
               })}
             >

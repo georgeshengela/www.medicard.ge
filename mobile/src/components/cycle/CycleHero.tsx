@@ -6,6 +6,7 @@ import { ka } from '@/i18n/ka';
 import type { CycleBundle } from '@/lib/api';
 import { cycleHonestyFlags, displayPhaseLabel, nextPeriodConfidenceCopy } from '@/lib/cycleHonesty';
 import { isBleedFlow } from '@/lib/cycleLogSave';
+import { bleedingIsUncertain } from '@/lib/cycleContraception';
 import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
@@ -77,7 +78,7 @@ export function CycleHero({
               textAlign: 'center',
             }}
           >
-            {ka.cycle.currentlyOnPeriod}
+            {bleedingIsUncertain(bundle) ? ka.cycle.loggedBleedingToday : ka.cycle.currentlyOnPeriod}
           </Text>
         ) : predictedToday ? (
           <Text
@@ -102,7 +103,7 @@ export function CycleHero({
                 fontFamily: 'NotoSansGeorgian_500Medium',
               }}
             >
-              {ka.cycle.estimatedNextPeriod}
+              {bleedingIsUncertain(bundle) ? ka.cycle.estimatedNextBleeding : ka.cycle.estimatedNextPeriod}
             </Text>
             <Text
               style={{

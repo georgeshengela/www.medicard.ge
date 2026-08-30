@@ -609,7 +609,7 @@ Additionally:
 
 ## B8. Contraception rules (target)
 
-- **No birth-control model in the current schema.** Predictions assume a typical ovulatory cycle.
+- Phase 8 added `contraceptionMethod` / `contraceptionStartedAt` on CycleProfile plus a server interpretation layer (`NORMAL` / `CAUTION` / `LIMITED`). Engine math is unchanged.
 - Target v1 (no new tables required): settings + hub + PDF disclaimer — hormonal contraception / IUD can make period/ovulation forecasts **wrong**; user should not use Medicard as contraception.
 - Do **not** silently change −14 math without a contraception model (future phase, out of scope until decided).
 

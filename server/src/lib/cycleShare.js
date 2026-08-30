@@ -260,6 +260,9 @@ export function partnerPayloadHasLeak(payload) {
     'sexualActivity',
     'libido',
     'intercourse',
+    'contraceptionMethod',
+    'contraceptionStartedAt',
+    'contraception',
   ];
   return forbidden.some((key) => Object.hasOwn(payload, key) || new RegExp(`"${key}"`).test(text));
 }

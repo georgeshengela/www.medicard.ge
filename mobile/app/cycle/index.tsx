@@ -15,6 +15,8 @@ import { CycleOnboarding } from '@/components/cycle/CycleOnboarding';
 import { CycleDayStrip } from '@/components/cycle/CycleDayStrip';
 import { CycleDayInsights } from '@/components/cycle/CycleDayInsights';
 import { CycleTtcCard } from '@/components/cycle/CycleTtcCard';
+import { CycleContraceptionCard } from '@/components/cycle/CycleContraceptionCard';
+import { CycleTtcConflictSheet } from '@/components/cycle/CycleTtcConflictSheet';
 import { mergeFertilityMarks } from '@/lib/cycleFertility';
 import { CycleCalendarSheet } from '@/components/cycle/CycleCalendarSheet';
 import { todayKey } from '@/components/cycle/CycleCalendar';
@@ -59,6 +61,8 @@ export default function CycleHome() {
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [onboardSaving, setOnboardSaving] = useState(false);
+  const [holdOnboarding, setHoldOnboarding] = useState(false);
+  const [ttcConflictOpen, setTtcConflictOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [hubOpen, setHubOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
@@ -110,7 +114,7 @@ export default function CycleHome() {
 
   const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
   const needsOnboarding =
-    Boolean(bundle) && user?.gender === 'FEMALE' && !lastPeriod;
+    Boolean(bundle) && user?.gender === 'FEMALE' && (!lastPeriod || holdOnboarding);
   const cycleTodayKey = cycleToday(bundle, todayKey());
   const cycleLen = bundle ? usedCycleLength(bundle) : 28;
 
@@ -182,6 +186,7 @@ export default function CycleHome() {
           /* Profile is already saved on the server. */
         }
       }
+      setHoldOnboarding(true);
       try {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch {
@@ -271,6 +276,31 @@ export default function CycleHome() {
         userName={user?.fullName}
         error={saveError}
         onSave={saveLastPeriod}
+        onFinishContraception={async ({ method, startedAt }) => {
+          setOnboardSaving(true);
+          setSaveError(null);
+          try {
+            if (method) {
+              const data = await api.cycle.updateProfile({
+                contraceptionMethod: method,
+                contraceptionStartedAt: startedAt,
+              });
+              if (data?.profile) setBundle(data);
+              if (data?.contraception?.ttcConflict) setTtcConflictOpen(true);
+            }
+            setHoldOnboarding(false);
+          } catch (err) {
+            setSaveError(
+              err instanceof ApiError && err.status === 0
+                ? ka.cycle.contraceptionNeedsInternet
+                : err instanceof ApiError
+                  ? err.message
+                  : ka.cycle.contraceptionNeedsInternet,
+            );
+          } finally {
+            setOnboardSaving(false);
+          }
+        }}
       />
     );
   }
@@ -282,7 +312,8 @@ export default function CycleHome() {
   const showPms =
     Boolean(bundle) &&
     selectedPhase.phase === 'luteal' &&
-    hasPmsPattern(bundle!);
+    hasPmsPattern(bundle!) &&
+    bundle?.contraception?.presentation.showPhaseAsBiological !== false;
 
   return (
     <CycleAtmosphere>
@@ -402,6 +433,12 @@ export default function CycleHome() {
               }}
             />
           </Animated.View>
+        ) : null}
+
+        {bundle ? (
+          <View style={{ paddingHorizontal: 16 }}>
+            <CycleContraceptionCard bundle={bundle} />
+          </View>
         ) : null}
 
         {bundle?.profile.mode === 'TRY_TO_CONCEIVE' ? (
@@ -599,6 +636,20 @@ export default function CycleHome() {
         date={selected}
         onClose={() => setHubOpen(false)}
         onSaved={load}
+      />
+      <CycleTtcConflictSheet
+        visible={ttcConflictOpen}
+        onClose={() => setTtcConflictOpen(false)}
+        onKeepTtc={() => setTtcConflictOpen(false)}
+        onSwitchTrack={() => {
+          setTtcConflictOpen(false);
+          void api.cycle
+            .updateProfile({ mode: 'TRACK_PERIOD' })
+            .then((data) => {
+              if (data?.profile) setBundle(data);
+            })
+            .catch(() => undefined);
+        }}
       />
     </CycleAtmosphere>
   );

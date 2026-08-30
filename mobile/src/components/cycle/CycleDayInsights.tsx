@@ -13,6 +13,7 @@ import type { CycleBundle, CycleDayMark } from '@/lib/api';
 import { buildDayPredictions } from '@/lib/cyclePhase';
 import { cycleToday, phaseFromBundle } from '@/lib/cycleCanonical';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
+import { showFertilityUi, showPhaseAsBiological } from '@/lib/cycleContraception';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { CycleInsightsPanel } from '@/components/cycle/CycleInsights';
@@ -54,23 +55,30 @@ export function CycleDayInsights({ date, bundle, mark, pending, stale }: Props) 
     [bundle.logs, date],
   );
 
-  const cards = useMemo(
-    () =>
-      buildDayPredictions({
-        date,
-        today,
-        mark,
-        phase,
-        mode: bundle.profile.mode,
-        log,
-        nextPeriodStart: bundle.predictions?.nextPeriodStart,
-        ovulationDate: bundle.predictions?.ovulationDate,
-        confidence: bundle.predictions?.confidence,
-        isIrregular: bundle.profile.isIrregular,
-        conditions: bundle.profile.conditions,
-      }),
-    [date, today, mark, phase, bundle],
-  );
+  const cards = useMemo(() => {
+    const built = buildDayPredictions({
+      date,
+      today,
+      mark,
+      phase,
+      mode: bundle.profile.mode,
+      log,
+      nextPeriodStart: bundle.predictions?.nextPeriodStart,
+      ovulationDate: showFertilityUi(bundle) ? bundle.predictions?.ovulationDate : null,
+      confidence: bundle.predictions?.confidence,
+      isIrregular: bundle.profile.isIrregular,
+      conditions: bundle.profile.conditions,
+    });
+    if (showPhaseAsBiological(bundle)) return built;
+    return built.filter(
+      (card) =>
+        card.tone !== 'fertile' &&
+        card.tone !== 'ovulation' &&
+        card.id !== 'follicular' &&
+        card.id !== 'luteal' &&
+        card.id !== 'phase',
+    );
+  }, [date, today, mark, phase, bundle]);
 
   const tones = insightTones(c);
 
