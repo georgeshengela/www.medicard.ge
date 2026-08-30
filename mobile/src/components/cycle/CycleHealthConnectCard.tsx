@@ -12,7 +12,7 @@ import {
   openHealthAppSettings,
   type HealthConnectResult,
 } from '@/lib/healthSync';
-import { cycleShadow, useCycleColors } from '@/theme/cycle';
+import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
   onConnected?: () => void | Promise<void>;
@@ -128,12 +128,12 @@ export function CycleHealthConnectCard({ onConnected }: Props) {
           </View>
         </View>
         {busy ? (
-          <ActivityIndicator color={c.rose} />
+          <ActivityIndicator color={c.brand} />
         ) : (
           <Switch
             value={enabled}
             onValueChange={onToggle}
-            trackColor={{ true: c.blushDeep, false: c.creamDeep }}
+            trackColor={{ true: c.cta, false: c.creamDeep }}
             thumbColor="#fff"
           />
         )}
@@ -166,11 +166,12 @@ export function CycleHealthConnectCard({ onConnected }: Props) {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: c.lavenderSoft,
+            backgroundColor: c.cardSoft,
             borderRadius: 14,
             paddingVertical: 12,
             opacity: pressed ? 0.85 : 1,
-            ...cycleShadow.soft,
+            borderWidth: 1,
+            borderColor: c.border,
           })}
         >
           <ExternalLink size={16} color={c.ink} />

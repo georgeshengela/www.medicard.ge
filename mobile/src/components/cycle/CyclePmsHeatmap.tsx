@@ -38,7 +38,7 @@ export function CyclePmsHeatmap({ bundle, compact }: Props) {
 
   return (
     <CycleCard>
-      <Text style={{ color: c.ink, fontWeight: '800', fontSize: 15 }}>{ka.cycle.pmsPattern}</Text>
+      <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>{ka.cycle.pmsPattern}</Text>
       {!compact ? (
         <Text style={{ color: c.muted, fontSize: 12, marginTop: 4, marginBottom: 12 }}>
           {ka.cycle.pmsPatternHint}

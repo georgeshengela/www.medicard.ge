@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Bell, Sparkles, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -14,14 +13,19 @@ import { scheduleCycleReminder } from '@/lib/notifications';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
 
-const TONE_ACCENT: Record<string, string> = {
-  calm: '#AB47BC',
-  energy: '#EC407A',
-  care: '#C2185B',
-  fertile: '#8E24AA',
-  pregnancy: '#EC407A',
-  mood: '#D81B60',
-};
+function toneAccent(c: ReturnType<typeof useCycleColors>, tone: string) {
+  switch (tone) {
+    case 'care':
+    case 'pregnancy':
+      return c.rose;
+    case 'fertile':
+      return c.fertile;
+    case 'mood':
+      return c.lavender;
+    default:
+      return c.brand;
+  }
+}
 
 type Props = {
   visible: boolean;
@@ -37,7 +41,7 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
   const [busy, setBusy] = useState(false);
 
   const plan = useMemo(() => (card ? resolveInsightAction(card) : null), [card]);
-  const accent = card ? TONE_ACCENT[card.tone] || c.rose : c.rose;
+  const accent = card ? toneAccent(c, card.tone) : c.rose;
 
   if (!card || !plan) return null;
 
@@ -111,12 +115,14 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
 
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <Pressable
-        style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: c.overlay }}
-        onPress={onClose}
-      >
+      <View style={styles.root}>
         <Pressable
-          onPress={() => undefined}
+          accessibilityRole="button"
+          accessibilityLabel={ka.common.close}
+          onPress={onClose}
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: c.overlay }]}
+        />
+        <View
           style={{
             backgroundColor: c.card,
             borderTopLeftRadius: 28,
@@ -141,10 +147,7 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
           />
 
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
-            <LinearGradient
-              colors={[c.roseSoft, c.lavenderSoft]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
               style={{
                 width: 44,
                 height: 44,
@@ -152,10 +155,13 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginRight: 12,
+                backgroundColor: c.cardSoft,
+                borderWidth: 1,
+                borderColor: c.border,
               }}
             >
               <Sparkles size={20} color={accent} strokeWidth={2.2} />
-            </LinearGradient>
+            </View>
             <View style={{ flex: 1, paddingRight: 8 }}>
               <Text style={{ color: c.muted, fontSize: 11, fontWeight: '700' }}>
                 {headline || ka.cycle.aiTips}
@@ -164,7 +170,7 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
                 style={{
                   color: c.ink,
                   fontSize: 20,
-                  fontWeight: '800',
+                  fontFamily: 'NotoSansGeorgian_700Bold',
                   marginTop: 4,
                   lineHeight: 26,
                   letterSpacing: -0.3,
@@ -180,12 +186,12 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
                 width: 36,
                 height: 36,
                 borderRadius: 12,
-                backgroundColor: c.roseSoft,
+                backgroundColor: c.cardSoft,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <X size={18} color={c.rose} strokeWidth={2.4} />
+              <X size={18} color={c.ink} strokeWidth={2.4} />
             </Pressable>
           </View>
 
@@ -223,9 +229,9 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
               >
                 <Text
                   style={{
-                    color: c.rose,
+                    color: c.brand,
                     fontSize: 11,
-                    fontWeight: '800',
+                    fontFamily: 'NotoSansGeorgian_700Bold',
                     letterSpacing: 0.3,
                     marginBottom: 8,
                     textTransform: 'uppercase',
@@ -243,7 +249,7 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
               style={{
                 color: c.ink,
                 fontSize: 14,
-                fontWeight: '800',
+                fontFamily: 'NotoSansGeorgian_700Bold',
                 marginBottom: 10,
               }}
             >
@@ -258,12 +264,12 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
                       width: 24,
                       height: 24,
                       borderRadius: 12,
-                      backgroundColor: c.roseSoft,
+                      backgroundColor: c.cardSoft,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <Text style={{ color: c.rose, fontSize: 12, fontWeight: '800' }}>{idx + 1}</Text>
+                    <Text style={{ color: c.brand, fontSize: 12, fontFamily: 'NotoSansGeorgian_700Bold' }}>{idx + 1}</Text>
                   </View>
                   <Text style={{ flex: 1, color: c.muted, fontSize: 13, lineHeight: 19, paddingTop: 2 }}>
                     {step}
@@ -300,22 +306,26 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
                   justifyContent: 'center',
                   gap: 8,
                   paddingVertical: 14,
-                  borderRadius: 24,
-                  borderWidth: 1.5,
+                  borderRadius: 16,
+                  borderWidth: 1,
                   borderColor: c.border,
-                  backgroundColor: pressed ? c.roseSoft : c.cardSoft,
+                  backgroundColor: pressed ? c.card : c.cardSoft,
                   opacity: busy ? 0.6 : 1,
                 })}
               >
-                <Bell size={16} color={c.rose} strokeWidth={2.2} />
-                <Text style={{ color: c.rose, fontWeight: '800', fontSize: 14 }}>
+                <Bell size={16} color={c.brand} strokeWidth={2.2} />
+                <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>
                   {plan.autoLabel || ka.cycle.aiAutomate}
                 </Text>
               </Pressable>
             ) : null}
           </View>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, justifyContent: 'flex-end' },
+});

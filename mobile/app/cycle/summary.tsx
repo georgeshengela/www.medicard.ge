@@ -3,10 +3,10 @@ import { Platform, Pressable, ScrollView, Share, Text, View } from 'react-native
 import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { BarChart3, FileDown, MessageSquareText, Sparkles } from 'lucide-react-native';
+import { CyclePeriodHistory } from '@/components/cycle/CyclePeriodHistory';
 import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
 import { FLOW_OPTIONS, MOOD_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
 import {
@@ -19,9 +19,11 @@ import {
   cycleNavHeader,
 } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
-import { api, ApiError, type CycleBundle } from '@/lib/api';
+import { ApiError, type CycleBundle } from '@/lib/api';
+import { loadCycleView } from '@/lib/cycleOffline';
 import { buildCycleReportHtml } from '@/lib/cycleReport';
-import { cycleShadow, useCycleColors } from '@/theme/cycle';
+import { useAuth } from '@/store/AuthContext';
+import { useCycleColors } from '@/theme/cycle';
 
 function labelOf(id: string, lists: { id: string; label: string }[][]) {
   for (const list of lists) {
@@ -32,11 +34,14 @@ function labelOf(id: string, lists: { id: string; label: string }[][]) {
 }
 
 export default function CycleSummary() {
+  const { user } = useAuth();
   const c = useCycleColors();
   const navigation = useNavigation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [bundle, setBundle] = useState<CycleBundle | null>(null);
+  const [reportBundle, setReportBundle] = useState<CycleBundle | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -45,13 +50,24 @@ export default function CycleSummary() {
     navigation.setOptions(cycleNavHeader(c, ka.cycle.summary));
   }, [navigation, c]);
 
-  useEffect(() => {
-    api.cycle
-      .get()
-      .then(setBundle)
+  const reload = () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    loadCycleView(user.id)
+      .then((view) => {
+        setBundle(view.display);
+        setReportBundle(view.canonical);
+        setPendingCount(view.pendingCount);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : ka.common.error))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => {
+    reload();
+  }, [user?.id]);
 
   if (loading) return <CycleLoading />;
 
@@ -66,8 +82,8 @@ export default function CycleSummary() {
         `რეჟიმი: ${s.mode}`,
         `საშუალო ციკლი: ${s.avgCycleLength} დღე, მენსტრუაცია: ${s.avgPeriodLength} დღე`,
         s.isIrregular ? 'არარეგულარული ციკლი' : 'რეგულარული ციკლი',
-        `შემდეგი მენსტრუაცია: ${fmt(s.nextPeriodStart)}`,
-        `ოვულაცია: ${fmt(s.ovulationDate)}`,
+        `${ka.cycle.estimatedNextPeriod}: ${fmt(s.nextPeriodStart)}`,
+        `${ka.cycle.estimatedOvulationTitle}: ${fmt(s.ovulationDate)}`,
         `ტოპ სიმპტომები: ${
           s.topSymptoms
             .map((t) => `${labelOf(t.key, [PHYSICAL_SYMPTOMS, FLOW_OPTIONS])} (${t.count})`)
@@ -80,10 +96,10 @@ export default function CycleSummary() {
     : '';
 
   const sharePdf = async () => {
-    if (!bundle) return;
+    if (!reportBundle) return;
     setPdfBusy(true);
     try {
-      const html = buildCycleReportHtml(bundle);
+      const html = buildCycleReportHtml(reportBundle);
       if (Platform.OS === 'web') {
         await Share.share({ message: html.replace(/<[^>]+>/g, ' ').slice(0, 4000) });
         return;
@@ -106,26 +122,30 @@ export default function CycleSummary() {
         {error ? (
           <Text style={{ color: c.danger, fontWeight: '600' }}>{error}</Text>
         ) : null}
+        {pendingCount > 0 ? (
+          <Text style={{ color: c.muted, marginBottom: 12, lineHeight: 20 }}>
+            {ka.cycle.reportPendingWarn}
+          </Text>
+        ) : null}
 
         {s ? (
           <>
             <Animated.View entering={FadeInUp.duration(420)} style={{ marginBottom: 16 }}>
-              <LinearGradient
-                colors={[c.roseSoft, c.lavenderSoft]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+              <View
                 style={{
-                  borderRadius: 26,
+                  borderRadius: 16,
                   padding: 22,
-                  ...cycleShadow.soft,
+                  backgroundColor: c.card,
+                  borderWidth: 1,
+                  borderColor: c.border,
                 }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <Sparkles size={18} color={c.rose} />
+                  <Sparkles size={18} color={c.brand} />
                   <Text
                     style={{
-                      color: c.rose,
-                      fontWeight: '800',
+                      color: c.brand,
+                      fontFamily: 'NotoSansGeorgian_700Bold',
                       marginLeft: 8,
                       fontSize: 12,
                       letterSpacing: 0.4,
@@ -134,24 +154,58 @@ export default function CycleSummary() {
                     ექიმისთვის მზად
                   </Text>
                 </View>
-                <Text style={{ color: c.ink, fontSize: 22, fontWeight: '800' }}>
+                <Text
+                  style={{
+                    color: c.ink,
+                    fontSize: 22,
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                  }}
+                >
                   ციკლის შეჯამება
                 </Text>
                 <Text style={{ color: c.muted, marginTop: 6, lineHeight: 20 }}>
                   {s.loggedDays} დღის აღრიცხვა ·{' '}
                   {s.isIrregular ? 'არარეგულარული' : 'რეგულარული'} ციკლი
                 </Text>
-              </LinearGradient>
+              </View>
             </Animated.View>
 
             <CycleSection title="ციკლი" delay={60}>
               <CycleCard>
                 <Line c={c} k={ka.cycle.avgCycle} v={`${s.avgCycleLength} დღე`} />
                 <Line c={c} k={ka.cycle.avgPeriod} v={`${s.avgPeriodLength} დღე`} />
-                <Line c={c} k={ka.cycle.nextPeriod} v={fmt(s.nextPeriodStart)} />
+                {s.shortestCycle != null ? (
+                  <Line c={c} k={ka.cycle.shortestCycle} v={`${s.shortestCycle} დღე`} />
+                ) : null}
+                {s.longestCycle != null ? (
+                  <Line c={c} k={ka.cycle.longestCycle} v={`${s.longestCycle} დღე`} />
+                ) : null}
+                {s.variability != null ? (
+                  <Line c={c} k={ka.cycle.cycleVariability} v={`${s.variability} დღე`} />
+                ) : null}
+                <Line c={c} k={ka.cycle.estimatedNextPeriod} v={fmt(s.nextPeriodStart)} />
                 <Line c={c} k={ka.cycle.ovulation} v={fmt(s.ovulationDate)} last />
+                {s.cycleCount ? (
+                  <Text style={{ color: c.muted, fontSize: 12, marginTop: 8 }}>
+                    {ka.cycle.basedOnCycles(s.cycleCount)}
+                    {' · '}
+                    {s.confidence === 'high'
+                      ? ka.cycle.confidenceHigh
+                      : s.confidence === 'medium'
+                        ? ka.cycle.confidenceMedium
+                        : ka.cycle.confidenceLow}
+                  </Text>
+                ) : (
+                  <Text style={{ color: c.muted, fontSize: 12, marginTop: 8 }}>{ka.cycle.confidenceLow}</Text>
+                )}
               </CycleCard>
             </CycleSection>
+
+            {bundle ? (
+              <CycleSection title={ka.cycle.periodHistory} delay={80}>
+                <CyclePeriodHistory bundle={bundle} onChanged={reload} />
+              </CycleSection>
+            ) : null}
 
             <CycleSection title={ka.cycle.symptoms} delay={100}>
               <CycleCard>
@@ -232,7 +286,9 @@ export default function CycleSummary() {
               />
             </View>
           </>
-        ) : null}
+        ) : (
+          <Text style={{ color: c.muted, fontWeight: '600' }}>{ka.cycle.emptyHint}</Text>
+        )}
       </ScrollView>
     </CycleAtmosphere>
   );
@@ -283,7 +339,7 @@ function FreqRow({
     <View style={{ paddingVertical: 10, borderBottomWidth: last ? 0 : 1, borderBottomColor: c.border }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
         <Text style={{ color: c.ink, fontWeight: '600', flex: 1 }}>{label}</Text>
-        <Text style={{ color: c.rose, fontWeight: '800' }}>{count}×</Text>
+        <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold' }}>{count}×</Text>
       </View>
       <View
         style={{
@@ -297,7 +353,7 @@ function FreqRow({
           style={{
             width: `${Math.round(pct * 100)}%`,
             height: '100%',
-            backgroundColor: c.rose,
+            backgroundColor: c.brand,
             borderRadius: 3,
           }}
         />

@@ -22,6 +22,9 @@ export type CycleHealthPayload = {
   isPeriodStart?: boolean;
 };
 
+/** Phase 7: OPK / pregnancy-test results are not written to HealthKit or Health Connect.
+ *  There is no safe mapping from a user-logged positive OPK to confirmed ovulation. */
+
 export function getHealthPlatform(): HealthPlatform | null {
   if (Platform.OS === 'ios') return 'apple';
   if (Platform.OS === 'android') return 'google';

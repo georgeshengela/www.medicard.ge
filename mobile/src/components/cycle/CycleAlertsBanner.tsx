@@ -41,7 +41,7 @@ export function CycleAlertsBanner({ bundle }: Props) {
     >
       <AlertTriangle size={18} color={bg} strokeWidth={2.2} />
       <View style={{ flex: 1, marginLeft: 10 }}>
-        <Text style={{ color: c.ink, fontWeight: '800', fontSize: 13 }}>{ka.cycle.alertsTitle}</Text>
+        <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13 }}>{ka.cycle.alertsTitle}</Text>
         <Text style={{ color: c.muted, fontSize: 12, marginTop: 4, lineHeight: 17 }}>{top.messageKa}</Text>
         {top.action === 'chat' ? (
           <Text style={{ color: bg, fontWeight: '700', fontSize: 12, marginTop: 8 }}>

@@ -1,4 +1,5 @@
 import type { CycleBundle } from '@/lib/api';
+import { ka } from '@/i18n/ka';
 
 function fmtUtc(d: Date) {
   return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
@@ -8,7 +9,7 @@ function addDaysKey(key: string, n: number) {
   const [y, m, d] = key.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
   dt.setUTCDate(dt.getUTCDate() + n);
-  return dt.toISOString().slice(0, 10);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
 }
 
 export function buildCycleIcs(bundle: CycleBundle): string {
@@ -23,7 +24,7 @@ UID:medicard-period-${phases.nextPeriodStart}@medicard.ge
 DTSTAMP:${now}
 DTSTART;VALUE=DATE:${phases.nextPeriodStart.replace(/-/g, '')}
 DTEND;VALUE=DATE:${end.replace(/-/g, '')}
-SUMMARY:მენსტრუაცია (პროგნოზი)
+SUMMARY:${ka.cycle.icsPeriod}
 END:VEVENT`);
   }
 
@@ -34,7 +35,7 @@ UID:medicard-fertile-${phases.fertileWindow.start}@medicard.ge
 DTSTAMP:${now}
 DTSTART;VALUE=DATE:${phases.fertileWindow.start.replace(/-/g, '')}
 DTEND;VALUE=DATE:${end.replace(/-/g, '')}
-SUMMARY:ნაყოფიერი ფანჯარა
+SUMMARY:${ka.cycle.icsFertile}
 END:VEVENT`);
   }
 
@@ -43,7 +44,7 @@ END:VEVENT`);
 UID:medicard-ovulation-${phases.ovulationDate}@medicard.ge
 DTSTAMP:${now}
 DTSTART;VALUE=DATE:${phases.ovulationDate.replace(/-/g, '')}
-SUMMARY:ოვულაცია (პროგნოზი)
+SUMMARY:${ka.cycle.icsOvulation}
 END:VEVENT`);
   }
 

@@ -8,61 +8,16 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import type { LucideIcon } from 'lucide-react-native';
+import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { cycleShadow, useCycleColors, type CyclePalette } from '@/theme/cycle';
 
-/** Soft pink atmosphere — Material pink, no brown. */
+/** App page canvas — same navy / gray as home, hydration, steps. */
 export function CycleAtmosphere({ children }: { children: React.ReactNode }) {
   const c = useCycleColors();
-  return (
-    <View style={{ flex: 1, backgroundColor: c.cream }}>
-      <View
-        pointerEvents="none"
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}
-      >
-        <View
-          style={{
-            position: 'absolute',
-            top: -100,
-            right: -70,
-            width: 280,
-            height: 280,
-            borderRadius: 140,
-            backgroundColor: c.blush,
-            opacity: 0.55,
-          }}
-        />
-        <View
-          style={{
-            position: 'absolute',
-            top: 160,
-            left: -100,
-            width: 240,
-            height: 240,
-            borderRadius: 120,
-            backgroundColor: c.lavenderSoft,
-            opacity: 0.85,
-          }}
-        />
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 40,
-            right: -50,
-            width: 200,
-            height: 200,
-            borderRadius: 100,
-            backgroundColor: c.accentGlow,
-            opacity: 0.22,
-          }}
-        />
-      </View>
-      {children}
-    </View>
-  );
+  return <View style={{ flex: 1, backgroundColor: c.cream }}>{children}</View>;
 }
 
 export function CycleLoading() {
@@ -70,7 +25,7 @@ export function CycleLoading() {
   return (
     <CycleAtmosphere>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={c.rose} size="large" />
+        <ActivityIndicator color={c.brand} size="large" />
       </View>
     </CycleAtmosphere>
   );
@@ -94,8 +49,9 @@ export function CycleCard({
       style={[
         {
           backgroundColor: c.card,
-          borderRadius: 24,
-          padding: padded ? 18 : 0,
+          borderRadius: 16,
+          padding: padded ? 16 : 0,
+          overflow: 'hidden',
           borderWidth: 1,
           borderColor: c.border,
           ...cycleShadow.card,
@@ -134,11 +90,16 @@ export function CycleSection({
         }}
       >
         <View style={{ flex: 1, paddingRight: 12 }}>
-          <Text style={{ color: c.ink, fontWeight: '800', fontSize: 16, letterSpacing: -0.2 }}>
-            {title}
-          </Text>
+          <HomeSectionTitle title={title} style={{ marginBottom: subtitle ? 4 : 0 }} />
           {subtitle ? (
-            <Text style={{ color: c.muted, fontSize: 12, marginTop: 3, lineHeight: 16 }}>
+            <Text
+              style={{
+                color: c.muted,
+                fontSize: 12,
+                lineHeight: 16,
+                fontFamily: 'NotoSansGeorgian_500Medium',
+              }}
+            >
               {subtitle}
             </Text>
           ) : null}
@@ -190,13 +151,13 @@ function CycleOptionTile({
       accessibilityState={{ selected }}
       style={({ pressed }) => ({
         minHeight: 58,
-        borderRadius: 24,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 10,
         paddingVertical: 14,
         backgroundColor: selected ? accent : c.cardSoft,
-        borderWidth: selected ? 0 : 1.5,
+        borderWidth: selected ? 0 : 1,
         borderColor: c.border,
         opacity: pressed ? 0.92 : 1,
         transform: [{ scale: pressed ? 0.98 : 1 }],
@@ -207,7 +168,7 @@ function CycleOptionTile({
         style={{
           textAlign: 'center',
           color: selected ? '#fff' : c.ink,
-          fontWeight: selected ? '800' : '600',
+          fontFamily: selected ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium',
           fontSize: 14,
           lineHeight: 18,
         }}
@@ -273,15 +234,15 @@ function CycleTileGrid({
             onPress={onToggleExpand}
             style={{
               minHeight: 52,
-              borderRadius: 24,
+              borderRadius: 16,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: c.roseSoft,
-              borderWidth: 1.5,
+              backgroundColor: c.cardSoft,
+              borderWidth: 1,
               borderColor: c.border,
             }}
           >
-            <Text style={{ color: c.rose, fontWeight: '800', fontSize: 14 }}>
+            <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>
               {expanded ? 'ნაკლები' : `+${hidden} მეტი`}
             </Text>
           </Pressable>
@@ -395,18 +356,24 @@ export function CycleScalePicker({
                 accessibilityState={{ selected: on }}
                 style={({ pressed }) => ({
                   height: 56,
-                  borderRadius: 24,
+                  borderRadius: 16,
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: on ? accent : c.cardSoft,
-                  borderWidth: on ? 0 : 1.5,
+                  borderWidth: on ? 0 : 1,
                   borderColor: c.border,
                   opacity: pressed ? 0.92 : 1,
                   transform: [{ scale: pressed ? 0.97 : 1 }],
                   ...(on ? cycleShadow.soft : {}),
                 })}
               >
-                <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '800', fontSize: 18 }}>
+                <Text
+                  style={{
+                    color: on ? '#fff' : c.ink,
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    fontSize: 18,
+                  }}
+                >
                   {n}
                 </Text>
               </Pressable>
@@ -495,10 +462,7 @@ export function CyclePrimaryButton({
         ...cycleShadow.soft,
       })}
     >
-      <LinearGradient
-        colors={[c.blushDeep, c.rose]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      <View
         style={{
           minHeight: 56,
           borderRadius: 16,
@@ -507,6 +471,7 @@ export function CyclePrimaryButton({
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
+          backgroundColor: c.cta,
         }}
       >
         {loading ? (
@@ -522,7 +487,7 @@ export function CyclePrimaryButton({
               numberOfLines={1}
               style={{
                 color: '#fff',
-                fontWeight: '800',
+                fontFamily: 'NotoSansGeorgian_700Bold',
                 fontSize: 16,
                 includeFontPadding: false,
               }}
@@ -531,7 +496,7 @@ export function CyclePrimaryButton({
             </Text>
           </View>
         )}
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 }
@@ -555,10 +520,7 @@ export function CycleFab({ onPress, label }: { onPress: () => void; label?: stri
         ...cycleShadow.fab,
       })}
     >
-      <LinearGradient
-        colors={[c.blushDeep, c.rose]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -567,6 +529,7 @@ export function CycleFab({ onPress, label }: { onPress: () => void; label?: stri
           paddingLeft: 18,
           paddingRight: 22,
           paddingVertical: 14,
+          backgroundColor: c.cta,
         }}
       >
         <View
@@ -574,7 +537,7 @@ export function CycleFab({ onPress, label }: { onPress: () => void; label?: stri
             width: 34,
             height: 34,
             borderRadius: 17,
-            backgroundColor: 'rgba(255,255,255,0.22)',
+            backgroundColor: 'rgba(255,255,255,0.18)',
             alignItems: 'center',
             justifyContent: 'center',
             marginRight: 10,
@@ -584,10 +547,17 @@ export function CycleFab({ onPress, label }: { onPress: () => void; label?: stri
             +
           </Text>
         </View>
-        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15, letterSpacing: -0.2 }}>
+        <Text
+          style={{
+            color: '#fff',
+            fontFamily: 'NotoSansGeorgian_700Bold',
+            fontSize: 15,
+            letterSpacing: -0.2,
+          }}
+        >
           {text}
         </Text>
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 }
@@ -598,7 +568,7 @@ export function CycleActionPanel({ children }: { children: React.ReactNode }) {
     <View
       style={{
         backgroundColor: c.card,
-        borderRadius: 24,
+        borderRadius: 16,
         borderWidth: 1,
         borderColor: c.border,
         overflow: 'hidden',
@@ -617,7 +587,7 @@ export function CycleFeatureTile({
   subtitle,
   color,
   onPress,
-  delay = 0,
+  delay: _delay = 0,
 }: {
   icon: LucideIcon;
   title: string;
@@ -628,31 +598,30 @@ export function CycleFeatureTile({
 }) {
   const c = useCycleColors();
   return (
-    <Animated.View entering={FadeInUp.delay(delay).duration(380)} style={{ width: '100%' }}>
+    <View style={{ width: '100%', paddingBottom: 10 }}>
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={`${title}. ${subtitle}`}
         style={({ pressed }) => ({
-          borderRadius: 24,
-          overflow: 'hidden',
           opacity: pressed ? 0.92 : 1,
           transform: [{ scale: pressed ? 0.985 : 1 }],
-          ...cycleShadow.card,
         })}
       >
-        <LinearGradient
-          colors={[c.card, withAlpha(color, 0.12)]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             paddingVertical: 16,
             paddingHorizontal: 14,
-            borderRadius: 24,
+            borderRadius: 16,
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            borderBottomLeftRadius: 16,
+            borderBottomRightRadius: 16,
             borderWidth: 1,
             borderColor: c.border,
+            backgroundColor: c.card,
             minHeight: 84,
           }}
         >
@@ -674,9 +643,9 @@ export function CycleFeatureTile({
               numberOfLines={1}
               style={{
                 color: c.ink,
-                fontWeight: '800',
-                fontSize: 16,
-                lineHeight: 20,
+            fontFamily: 'NotoSansGeorgian_700Bold',
+            fontSize: 16,
+            lineHeight: 20,
               }}
             >
               {title}
@@ -699,7 +668,7 @@ export function CycleFeatureTile({
               width: 36,
               height: 36,
               borderRadius: 18,
-              backgroundColor: color,
+              backgroundColor: c.cardSoft,
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -710,14 +679,14 @@ export function CycleFeatureTile({
                 height: 7,
                 borderTopWidth: 2,
                 borderRightWidth: 2,
-                borderColor: '#fff',
+                borderColor: c.muted,
                 transform: [{ rotate: '45deg' }, { translateX: -1 }],
               }}
             />
           </View>
-        </LinearGradient>
+        </View>
       </Pressable>
-    </Animated.View>
+    </View>
   );
 }
 
@@ -804,7 +773,7 @@ export function CycleActionRow({
             width: 28,
             height: 28,
             borderRadius: 14,
-            backgroundColor: c.roseSoft,
+            backgroundColor: c.cardSoft,
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
@@ -816,7 +785,7 @@ export function CycleActionRow({
               height: 7,
               borderTopWidth: 2,
               borderRightWidth: 2,
-              borderColor: c.rose,
+              borderColor: c.muted,
               transform: [{ rotate: '45deg' }],
               marginLeft: -1,
             }}
@@ -862,8 +831,12 @@ export function cycleNavHeader(c: CyclePalette, title: string) {
     title,
     headerStyle: { backgroundColor: c.cream },
     headerShadowVisible: false,
-    headerTintColor: c.rose,
-    headerTitleStyle: { color: c.ink, fontWeight: '700' as const, fontSize: 17 },
+    headerTintColor: c.brand,
+    headerTitleStyle: {
+      color: c.ink,
+      fontFamily: 'NotoSansGeorgian_700Bold',
+      fontSize: 17,
+    },
   };
 }
 

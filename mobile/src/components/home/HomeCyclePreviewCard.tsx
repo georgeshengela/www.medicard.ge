@@ -8,8 +8,14 @@ import { WEEKDAYS_KA } from '@/constants/cycle';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { useIsDark } from '@/theme/colors';
-import { api, type CycleBundle, type CycleDayMark } from '@/lib/api';
-import { addDaysToKey, daysBetween, detectCyclePhaseForDate, parseDateKey } from '@/lib/cyclePhase';
+import type { CycleBundle, CycleDayMark } from '@/lib/api';
+import { loadCycleView } from '@/lib/cycleOffline';
+import { isCyclePrivacyLockEnabled } from '@/lib/cycleReminderPrefs';
+import { addDaysToKey, daysBetween, parseDateKey } from '@/lib/cyclePhase';
+import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonical';
+import { displayPhaseLabel } from '@/lib/cycleHonesty';
+import { isBleedFlow } from '@/lib/cycleLogSave';
+import { useAuth } from '@/store/AuthContext';
 
 const ROSE = '#E11D48';
 const ROSE_SOFT = '#FFF1F2';
@@ -159,21 +165,45 @@ function WeekDots({ today, marks }: { today: string; marks: Record<string, Cycle
 }
 
 export function HomeCyclePreviewCard({ onPress }: Props) {
+  const { user } = useAuth();
   const FIGMA_CHAT = useFigmaChat();
   const dark = useIsDark();
   const roseFill = dark ? '#4c0519' : ROSE_SOFT;
   const roseLine = dark ? '#9f1239' : ROSE_BORDER;
   const [bundle, setBundle] = useState<CycleBundle | null>(null);
+  const [offline, setOffline] = useState(false);
+  const [privacyLocked, setPrivacyLocked] = useState(false);
   const [ready, setReady] = useState(false);
-  const today = todayKey();
+  const today = cycleToday(bundle, todayKey());
 
   useFocusEffect(
     useCallback(() => {
       let alive = true;
-      void api.cycle
-        .get()
-        .then((data) => {
-          if (alive) setBundle(data);
+      if (!user?.id) {
+        setReady(true);
+        return () => {
+          alive = false;
+        };
+      }
+      void isCyclePrivacyLockEnabled()
+        .then((locked) => {
+          if (!alive) return locked;
+          setPrivacyLocked(locked);
+          if (locked) {
+            setBundle(null);
+            setOffline(false);
+            return true;
+          }
+          return false;
+        })
+        .then((locked) => {
+          if (!alive || locked) return null;
+          return loadCycleView(user.id);
+        })
+        .then((view) => {
+          if (!alive || !view) return;
+          setBundle(view.display);
+          setOffline(view.reachable === false);
         })
         .catch(() => {
           if (alive) setBundle(null);
@@ -184,34 +214,24 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
       return () => {
         alive = false;
       };
-    }, []),
+    }, [user?.id]),
   );
 
-  const cycleLen = bundle?.profile.avgCycleLength ?? 28;
-  const periodLen = bundle?.profile.avgPeriodLength ?? 5;
+  const cycleLen = bundle ? usedCycleLength(bundle) : 28;
   const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
   const pregnancy = bundle?.profile.mode === 'PREGNANCY' ? bundle.pregnancy : null;
   const setupNeeded = ready && Boolean(bundle) && !lastPeriod && !pregnancy;
 
-  const phase = useMemo(
-    () =>
-      detectCyclePhaseForDate({
-        lastPeriodStart: lastPeriod,
-        targetDate: today,
-        avgCycleLength: cycleLen,
-        avgPeriodLength: periodLen,
-      }),
-    [lastPeriod, today, cycleLen, periodLen],
-  );
+  const phase = bundle ? phaseFromBundle(bundle, today) : { day: null, phase: 'unknown' as const, phaseKa: '' };
 
   const nextLine = useMemo(() => {
-    const start = bundle?.predictions.nextPeriodStart;
+    const start = bundle?.predictions?.nextPeriodStart;
     if (!start) return null;
     const n = daysBetween(today, start);
     if (n <= 0) return ka.home.cycleNextToday;
     if (n === 1) return ka.home.cycleNextTomorrow;
     return ka.home.cycleNextIn(n);
-  }, [bundle?.predictions.nextPeriodStart, today]);
+  }, [bundle?.predictions?.nextPeriodStart, today]);
 
   const phaseColor = PHASE_COLOR[phase.phase] ?? ROSE;
   const progress = pregnancy?.age
@@ -277,7 +297,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                   color: FIGMA_CHAT.textPrimary,
                 }}
               >
-                {ka.home.cycleSetupBody}
+                {privacyLocked ? ka.cycle.privacyLockTitle : ka.home.cycleSetupBody}
               </Text>
             </View>
           ) : (
@@ -302,7 +322,9 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                     {pregnancy?.age
                       ? ka.home.cyclePregnantLine(pregnancy.age.week, pregnancy.age.trimester)
                       : phase.day != null
-                        ? phase.phaseKa
+                        ? displayPhaseLabel(phase.phase, phase.phaseKa, {
+                            loggedPeriod: isBleedFlow(bundle?.logs.find((l) => l.date === today)?.flow),
+                          })
                         : ka.modules.cycle.subtitle}
                   </Text>
                   <Text
@@ -313,7 +335,9 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                       color: FIGMA_CHAT.textSecondary,
                     }}
                   >
-                    {pregnancy?.dueDate
+                    {offline
+                      ? ka.cycle.offlineBanner
+                      : pregnancy?.dueDate
                       ? ka.home.cycleDueIn(daysBetween(today, pregnancy.dueDate))
                       : phase.day != null
                         ? ka.home.cycleDayOf(phase.day, cycleLen)

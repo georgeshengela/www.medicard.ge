@@ -2,6 +2,7 @@ import { prisma } from './prisma.js';
 import { publicUser, toDateOnly } from './patient.js';
 
 export const DAILY_LOGIN_POINTS = 5;
+export const STEPS_GOAL_POINTS = 3;
 const TBILISI = 'Asia/Tbilisi';
 
 /** `YYYY-MM-DD` in Georgia time — the calendar day a login counts for. */
@@ -126,6 +127,68 @@ export async function claimDailyCheckIn(userId) {
         pointsAwarded: 0,
         user: user ? publicUser(user) : null,
         checkIn,
+      };
+    }
+    throw error;
+  }
+}
+
+export function normalizeAwardRef(goalId) {
+  return String(goalId || '').trim().slice(0, 80);
+}
+
+async function incrementUserPoints(tx, userId, points) {
+  await tx.user.update({
+    where: { id: userId },
+    data: { points: { increment: points } },
+  });
+}
+
+async function insertStepsGoalAward(tx, userId, ref) {
+  if (typeof tx.pointAward?.create === 'function') {
+    await tx.pointAward.create({
+      data: { userId, kind: 'steps_goal', ref, points: STEPS_GOAL_POINTS },
+    });
+    return;
+  }
+
+  const { randomUUID } = await import('node:crypto');
+  const rows = await tx.$queryRaw`
+    INSERT INTO "PointAward" (id, "userId", kind, ref, points, "createdAt")
+    VALUES (${randomUUID()}, ${userId}, 'steps_goal', ${ref}, ${STEPS_GOAL_POINTS}, NOW())
+    ON CONFLICT ("userId", kind, ref) DO NOTHING
+    RETURNING id
+  `;
+  if (!rows?.length) {
+    const error = new Error('PointAward already exists');
+    error.code = 'P2002';
+    throw error;
+  }
+}
+
+export async function awardStepsGoalPoints(userId, goalId) {
+  const ref = normalizeAwardRef(goalId);
+  if (!ref) return { awarded: false, pointsAwarded: 0, user: null };
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await insertStepsGoalAward(tx, userId, ref);
+      await incrementUserPoints(tx, userId, STEPS_GOAL_POINTS);
+    });
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { package: true } });
+    return {
+      awarded: true,
+      pointsAwarded: STEPS_GOAL_POINTS,
+      user: publicUser(user),
+    };
+  } catch (error) {
+    if (error?.code === 'P2002') {
+      const user = await prisma.user.findUnique({ where: { id: userId }, include: { package: true } });
+      return {
+        awarded: false,
+        pointsAwarded: 0,
+        user: user ? publicUser(user) : null,
       };
     }
     throw error;

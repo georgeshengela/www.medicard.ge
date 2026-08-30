@@ -1,12 +1,12 @@
 import React from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { CycleCalendar } from '@/components/cycle/CycleCalendar';
 import type { CycleDayMark } from '@/lib/api';
 import { ka } from '@/i18n/ka';
-import { useCycleColors } from '@/theme/cycle';
+import { useCycleColors, type CyclePalette } from '@/theme/cycle';
 
 type Props = {
   visible: boolean;
@@ -18,6 +18,7 @@ type Props = {
   onSelect: (date: string) => void;
   onPrev: () => void;
   onNext: () => void;
+  onToday?: () => void;
 };
 
 export function CycleCalendarSheet({
@@ -30,28 +31,39 @@ export function CycleCalendarSheet({
   onSelect,
   onPrev,
   onNext,
+  onToday,
 }: Props) {
   const c = useCycleColors();
   const insets = useSafeAreaInsets();
 
+  const legend = [
+    { fill: c.period, label: ka.cycle.legendPeriod },
+    { ring: c.period, label: ka.cycle.legendPeriodPredicted },
+    { fill: c.fertile, label: ka.cycle.legendFertile },
+    { fill: c.ovulation, label: ka.cycle.legendOvulation },
+    { dot: c.blushDeep, label: ka.cycle.legendLogged },
+  ];
+
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <Pressable
-        style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: c.overlay }}
-        onPress={onClose}
-      >
+      <View style={styles.root}>
         <Pressable
-          onPress={() => undefined}
+          accessibilityRole="button"
+          accessibilityLabel={ka.common.close}
+          onPress={onClose}
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: c.overlay }]}
+        />
+
+        <View
           style={{
             backgroundColor: c.card,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
-            paddingHorizontal: 16,
-            paddingTop: 12,
-            paddingBottom: insets.bottom + 16,
+            paddingHorizontal: 20,
+            paddingTop: 10,
+            paddingBottom: Math.max(insets.bottom, 16) + 8,
             borderTopWidth: 1,
             borderColor: c.border,
-            maxHeight: '88%',
           }}
         >
           <View
@@ -61,7 +73,7 @@ export function CycleCalendarSheet({
               borderRadius: 2,
               backgroundColor: c.creamDeep,
               alignSelf: 'center',
-              marginBottom: 14,
+              marginBottom: 16,
             }}
           />
 
@@ -69,35 +81,74 @@ export function CycleCalendarSheet({
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              marginBottom: 12,
-              paddingHorizontal: 4,
+              marginBottom: 16,
+              gap: 10,
             }}
           >
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: c.ink, fontSize: 20, fontWeight: '800' }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={{
+                  color: c.ink,
+                  fontSize: 20,
+                  fontFamily: 'NotoSansGeorgian_700Bold',
+                  letterSpacing: -0.3,
+                }}
+              >
                 {ka.cycle.calendarTitle}
               </Text>
-              <Text style={{ color: c.muted, fontSize: 12, marginTop: 3 }}>
+              <Text style={{ color: c.muted, fontSize: 12, marginTop: 4, lineHeight: 16 }}>
                 {ka.cycle.calendarSheetHint}
               </Text>
             </View>
+            {onToday ? (
+              <Pressable
+                onPress={onToday}
+                accessibilityRole="button"
+                accessibilityLabel={ka.cycle.jumpToday}
+                style={({ pressed }) => ({
+                  height: 36,
+                  paddingHorizontal: 14,
+                  borderRadius: 18,
+                  backgroundColor: c.cardSoft,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.75 : 1,
+                })}
+              >
+                <Text
+                  style={{
+                    color: c.brand,
+                    fontSize: 13,
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                  }}
+                >
+                  {ka.cycle.jumpToday}
+                </Text>
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={onClose}
-              hitSlop={10}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 12,
-                backgroundColor: c.roseSoft,
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={ka.common.close}
+              style={({ pressed }) => ({
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                backgroundColor: c.cardSoft,
                 alignItems: 'center',
                 justifyContent: 'center',
-              }}
+                opacity: pressed ? 0.75 : 1,
+              })}
             >
-              <X size={18} color={c.rose} strokeWidth={2.4} />
+              <X size={18} color={c.ink} strokeWidth={2.4} />
             </Pressable>
           </View>
 
           <CycleCalendar
+            embedded
             year={year}
             month={month}
             marks={marks}
@@ -110,30 +161,49 @@ export function CycleCalendarSheet({
             onNext={onNext}
           />
 
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'center',
-              flexWrap: 'wrap',
-              gap: 14,
-              marginTop: 14,
-            }}
-          >
-            <Legend dot={c.period} label={ka.cycle.legendPeriod} ink={c.muted} />
-            <Legend dot={c.fertile} label={ka.cycle.legendFertile} ink={c.muted} />
-            <Legend dot={c.ovulation} label={ka.cycle.legendOvulation} ink={c.muted} />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 16, rowGap: 10 }}>
+            {legend.map((item) => (
+              <Legend key={item.label} {...item} c={c} />
+            ))}
           </View>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
 
-function Legend({ dot, label, ink }: { dot: string; label: string; ink: string }) {
+function Legend({
+  fill,
+  ring,
+  dot,
+  label,
+  c,
+}: {
+  fill?: string;
+  ring?: string;
+  dot?: string;
+  label: string;
+  c: CyclePalette;
+}) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dot }} />
-      <Text style={{ color: ink, fontSize: 11, fontWeight: '600' }}>{label}</Text>
+    <View style={{ width: '50%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 }}>
+      <View
+        style={{
+          width: 12,
+          height: 12,
+          borderRadius: 6,
+          backgroundColor: fill || (dot ? dot : 'transparent'),
+          borderWidth: ring ? 2 : 0,
+          borderColor: ring || 'transparent',
+        }}
+      />
+      <Text style={{ color: c.muted, fontSize: 12, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+        {label}
+      </Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, justifyContent: 'flex-end' },
+});

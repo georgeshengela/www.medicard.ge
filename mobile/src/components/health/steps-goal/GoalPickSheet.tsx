@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { ka } from '@/i18n/ka';
 import { GoalCloseX } from '@/components/health/steps-goal/StepsGoalIcons';
@@ -23,11 +23,16 @@ export function GoalPickSheet({ visible, title, items, selectedKey, onClose, onS
 
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', justifyContent: 'flex-end' }} onPress={onClose}>
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
-          onPress={() => undefined}
+          accessibilityRole="button"
+          accessibilityLabel={ka.common.close}
+          onPress={onClose}
+          style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: APP_MODAL_OVERLAY }}
+        />
+        <View
           style={{
-            backgroundColor: FIGMA_STEPS.pageBg,
+            backgroundColor: FIGMA_STEPS.cardBg,
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
             maxHeight: '70%',
@@ -65,7 +70,7 @@ export function GoalPickSheet({ visible, title, items, selectedKey, onClose, onS
                   style={{
                     paddingHorizontal: 16,
                     paddingVertical: 14,
-                    backgroundColor: selected ? FIGMA_STEPS.brandQuaternary : '#FFFFFF',
+                    backgroundColor: selected ? FIGMA_STEPS.brandQuaternary : FIGMA_STEPS.cardBg,
                   }}
                 >
                   <Text
@@ -81,8 +86,8 @@ export function GoalPickSheet({ visible, title, items, selectedKey, onClose, onS
               );
             })}
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

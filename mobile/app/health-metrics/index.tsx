@@ -250,7 +250,16 @@ export default function HealthMetricsScreen() {
         ) : (
           <View style={{ paddingHorizontal: 16, gap: 6 }}>
             {bundle?.metrics.map((metric) => (
-              <HealthMetricCard key={metric.key} metric={metric} compact />
+              <HealthMetricCard
+                key={metric.key}
+                metric={metric}
+                compact
+                onPress={
+                  metric.key === 'hydration'
+                    ? () => router.push('/health-metrics/hydration' as never)
+                    : undefined
+                }
+              />
             ))}
           </View>
         )}

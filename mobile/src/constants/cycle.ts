@@ -98,6 +98,13 @@ export const MUCUS_OPTIONS: CycleChip[] = [
   { id: 'eggwhite', label: 'კვერცხის ცილისებრი' },
 ];
 
+/** User-logged OPK / pregnancy-test results — not a diagnosis. */
+export const CYCLE_TEST_OPTIONS: CycleChip[] = [
+  { id: 'negative', label: 'უარყოფითი' },
+  { id: 'positive', label: 'დადებითი' },
+  { id: 'unclear', label: 'გაურკვეველი' },
+];
+
 /** ორსულობის შემოწმების ჩეკლისტი */
 export const PREGNANCY_CHECKLIST: CycleChip[] = [
   { id: 'prenatal_vitamin', label: 'პრენატალური ვიტამინი' },

@@ -63,6 +63,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStats(me.stats);
       setHealthProfile(me.healthProfile ?? null);
       if (me.checkInAwarded && me.checkIn) setPendingDailyBonus(me.checkIn);
+      try {
+        const { flushStepsGoalAwards } = await import('@/lib/stepsGoal');
+        await flushStepsGoalAwards(setUser);
+      } catch {
+        /* pending +3 retries on profile focus */
+      }
+      void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
+        flushCycleQueue(me.user.id).catch(() => undefined),
+      );
       void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
         registerPushTokenWithServer(),
       );

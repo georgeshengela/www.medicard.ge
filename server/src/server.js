@@ -25,11 +25,11 @@ import { visitsRouter } from './routes/visits.routes.js';
 import { usageRouter } from './routes/usage.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { appRouter } from './routes/app.routes.js';
-import { cycleRouter, partnerShareHandler } from './routes/cycle.routes.js';
+import { cycleRouter, partnerShareClosedHandler } from './routes/cycle.routes.js';
+import { applyPrivateCache } from './lib/cycleShare.js';
 import { pushRouter } from './routes/push.routes.js';
 import { pharmacyRouter } from './routes/pharmacy.routes.js';
 import { checkInRouter } from './routes/check-in.routes.js';
-import { asyncHandler } from './middleware/error.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -77,7 +77,21 @@ app.use(
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
+app.use(
+  morgan((tokens, req, res) => {
+    let url = tokens.url(req, res) || '';
+    if (url.startsWith('/api/cycle/share')) url = '/api/cycle/share/[redacted]';
+    return [
+      tokens.method(req, res),
+      url,
+      tokens.status(req, res),
+      tokens.res(req, res, 'content-length'),
+      '-',
+      tokens['response-time'](req, res),
+      'ms',
+    ].join(' ');
+  }),
+);
 
 app.use(
   '/api/',
@@ -88,6 +102,21 @@ app.use(
     legacyHeaders: false,
     message: { error: 'ძალიან ბევრი მოთხოვნა. გთხოვთ, დაელოდოთ ერთ წუთს.' },
   }),
+);
+
+app.use(
+  '/api/cycle/share',
+  rateLimit({
+    windowMs: 60_000,
+    limit: 20,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'ძალიან ბევრი მოთხოვნა. გთხოვთ, დაელოდოთ ერთ წუთს.' },
+  }),
+  (req, res, next) => {
+    applyPrivateCache(res);
+    next();
+  },
 );
 
 app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
@@ -114,7 +143,7 @@ app.use('/api/records', recordsRouter);
 app.use('/api/medications', medicationsRouter);
 app.use('/api/visits', visitsRouter);
 app.use('/api/cycle', cycleRouter);
-app.get('/api/cycle/share/:code', asyncHandler(partnerShareHandler));
+app.get('/api/cycle/share/:code', partnerShareClosedHandler);
 app.use('/api/usage', usageRouter);
 app.use('/api/push', pushRouter);
 app.use('/api/pharmacy', pharmacyRouter);

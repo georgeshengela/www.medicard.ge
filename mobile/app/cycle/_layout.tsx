@@ -52,7 +52,7 @@ function CyclePrivacyGate({ children }: { children: React.ReactNode }) {
           style={{
             color: c.ink,
             fontSize: 20,
-            fontWeight: '800',
+            fontFamily: 'NotoSansGeorgian_700Bold',
             marginTop: 20,
             textAlign: 'center',
           }}
@@ -63,13 +63,13 @@ function CyclePrivacyGate({ children }: { children: React.ReactNode }) {
           onPress={check}
           style={{
             marginTop: 24,
-            backgroundColor: c.rose,
+            backgroundColor: c.cta,
             paddingHorizontal: 28,
             paddingVertical: 14,
             borderRadius: 16,
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: '700' }}>{ka.cycle.privacyUnlock}</Text>
+          <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.privacyUnlock}</Text>
         </Pressable>
       </View>
     );

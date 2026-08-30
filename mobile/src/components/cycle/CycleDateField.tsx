@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
@@ -74,12 +74,12 @@ export function CycleDateField({
         style={({ pressed }) =>
           hero
             ? {
-                backgroundColor: displayKa ? c.roseSoft : c.cardSoft,
-                borderRadius: 24,
+                backgroundColor: displayKa ? c.card : c.cardSoft,
+                borderRadius: 16,
                 paddingVertical: 16,
                 paddingHorizontal: 16,
-                borderWidth: 1.5,
-                borderColor: displayKa ? c.rose : c.border,
+                borderWidth: 1,
+                borderColor: displayKa ? c.brand : c.border,
                 borderStyle: displayKa ? 'solid' : 'dashed',
                 opacity: pressed ? 0.92 : 1,
               }
@@ -87,11 +87,11 @@ export function CycleDateField({
                 flexDirection: 'row',
                 alignItems: 'center',
                 backgroundColor: c.card,
-                borderRadius: 24,
+                borderRadius: 16,
                 paddingHorizontal: 16,
                 paddingVertical: 15,
-                borderWidth: 1.5,
-                borderColor: displayKa ? c.rose : c.border,
+                borderWidth: 1,
+                borderColor: displayKa ? c.brand : c.border,
                 opacity: pressed ? 0.9 : 1,
                 ...cycleShadow.card,
               }
@@ -115,14 +115,14 @@ export function CycleDateField({
                 justifyContent: 'center',
               }}
             >
-              <CalendarDays size={24} color={c.rose} strokeWidth={2.2} />
+              <CalendarDays size={24} color={c.brand} strokeWidth={2.2} />
             </View>
             <View style={{ flex: 1, marginLeft: 14, marginRight: 8, minWidth: 0 }}>
               <Text
                 style={{
-                  color: displayKa ? c.ink : c.rose,
+                  color: displayKa ? c.ink : c.brand,
                   fontSize: displayKa ? 17 : 14,
-                  fontWeight: '800',
+                  fontFamily: 'NotoSansGeorgian_700Bold',
                   lineHeight: displayKa ? 22 : 20,
                 }}
                 numberOfLines={2}
@@ -143,9 +143,9 @@ export function CycleDateField({
               ) : (
                 <Text
                   style={{
-                    color: c.rose,
+                    color: c.brand,
                     fontSize: 12,
-                    fontWeight: '700',
+                    fontFamily: 'NotoSansGeorgian_600SemiBold',
                     marginTop: 4,
                   }}
                 >
@@ -158,7 +158,7 @@ export function CycleDateField({
                 width: 36,
                 height: 36,
                 borderRadius: 18,
-                backgroundColor: c.rose,
+                backgroundColor: c.cta,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -173,12 +173,12 @@ export function CycleDateField({
                 width: 44,
                 height: 44,
                 borderRadius: 16,
-                backgroundColor: c.roseSoft,
+                backgroundColor: c.cardSoft,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <CalendarDays size={20} color={c.rose} strokeWidth={2.2} />
+              <CalendarDays size={20} color={c.brand} strokeWidth={2.2} />
             </View>
             <Text
               style={{
@@ -193,13 +193,13 @@ export function CycleDateField({
             </Text>
             <View
               style={{
-                backgroundColor: c.roseSoft,
-                borderRadius: 24,
+                backgroundColor: c.cardSoft,
+                borderRadius: 16,
                 paddingHorizontal: 12,
                 paddingVertical: 8,
               }}
             >
-              <Text style={{ color: c.rose, fontWeight: '800', fontSize: 12 }}>
+              <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12 }}>
                 {displayKa ? ka.cycle.onboardChangeDate : ka.cycle.onboardOpenCalendar}
               </Text>
             </View>
@@ -383,12 +383,14 @@ function CycleCalendarModal({
 
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <Pressable
-        style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: c.overlay }}
-        onPress={onClose}
-      >
+      <View style={styles.sheetRoot}>
         <Pressable
-          onPress={() => undefined}
+          accessibilityRole="button"
+          accessibilityLabel={ka.common.close}
+          onPress={onClose}
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: c.overlay }]}
+        />
+        <View
           style={{
             backgroundColor: c.card,
             borderTopLeftRadius: 28,
@@ -412,23 +414,25 @@ function CycleCalendarModal({
 
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
             <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={{ color: c.ink, fontSize: 20, fontWeight: '800' }}>{title}</Text>
+              <Text style={{ color: c.ink, fontSize: 20, fontFamily: 'NotoSansGeorgian_700Bold' }}>{title}</Text>
               <Text style={{ color: c.muted, marginTop: 4, fontSize: 13 }}>
                 {previewLabel}
               </Text>
             </View>
             <Pressable
               onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel={ka.common.close}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: c.roseSoft,
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                backgroundColor: c.cardSoft,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <X size={18} color={c.rose} strokeWidth={2.2} />
+              <X size={18} color={c.ink} strokeWidth={2.2} />
             </Pressable>
           </View>
 
@@ -441,7 +445,7 @@ function CycleCalendarModal({
               style={{
                 flex: 1,
                 marginHorizontal: 8,
-                backgroundColor: c.roseSoft,
+                backgroundColor: c.cardSoft,
                 borderRadius: 16,
                 paddingVertical: 10,
                 flexDirection: 'row',
@@ -449,12 +453,12 @@ function CycleCalendarModal({
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ color: c.ink, fontWeight: '800', fontSize: 15 }}>
+              <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
                 {yearPicker
                   ? `${minYear} – ${maxYear}`
                   : `${MONTHS_KA[cursor.month - 1]} ${cursor.year}`}
               </Text>
-              <ChevronDown size={16} color={c.rose} style={{ marginLeft: 6 }} />
+              <ChevronDown size={16} color={c.brand} style={{ marginLeft: 6 }} />
             </Pressable>
             <NavBtn c={c} onPress={() => !yearPicker && shiftMonth(1)}>
               <ChevronRight size={18} color={c.ink} strokeWidth={2.2} />
@@ -477,7 +481,7 @@ function CycleCalendarModal({
                       paddingVertical: 16,
                       borderRadius: 16,
                       alignItems: 'center',
-                      backgroundColor: selected ? c.rose : c.roseSoft,
+                      backgroundColor: selected ? c.cta : c.cardSoft,
                     }}
                   >
                     <Text style={{ color: selected ? '#fff' : c.ink, fontWeight: '800', fontSize: 16 }}>
@@ -516,9 +520,9 @@ function CycleCalendarModal({
                           borderRadius: 999,
                           alignItems: 'center',
                           justifyContent: 'center',
-                          backgroundColor: selected ? c.rose : 'transparent',
-                          borderWidth: cell.isToday && !selected ? 1.5 : 0,
-                          borderColor: c.rose,
+                          backgroundColor: selected ? c.card : 'transparent',
+                          borderWidth: selected || cell.isToday ? 2 : 0,
+                          borderColor: selected ? c.brand : c.todayRing,
                           opacity: cell.disabled ? 0.25 : 1,
                         }}
                       >
@@ -526,7 +530,7 @@ function CycleCalendarModal({
                           style={{
                             fontWeight: '700',
                             fontSize: 14,
-                            color: selected ? '#fff' : cell.inMonth ? c.ink : c.mutedSoft,
+                            color: cell.inMonth ? c.ink : c.mutedSoft,
                           }}
                         >
                           {cell.day}
@@ -546,8 +550,8 @@ function CycleCalendarModal({
                 if (draftOk) onConfirm(draft);
               }}
               style={{
-                backgroundColor: draftOk ? c.rose : c.creamDeep,
-                borderRadius: 24,
+                backgroundColor: draftOk ? c.cta : c.creamDeep,
+                borderRadius: 16,
                 paddingVertical: 16,
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -557,16 +561,20 @@ function CycleCalendarModal({
               }}
             >
               <Check size={18} color="#fff" strokeWidth={2.6} />
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16, marginLeft: 8 }}>
+              <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, marginLeft: 8 }}>
                 {ka.auth.birthDateConfirm}
               </Text>
             </Pressable>
           </View>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  sheetRoot: { flex: 1, justifyContent: 'flex-end' },
+});
 
 function NavBtn({
   c,
@@ -581,10 +589,10 @@ function NavBtn({
     <Pressable
       onPress={onPress}
       style={{
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         borderRadius: 14,
-        backgroundColor: c.roseSoft,
+        backgroundColor: c.cardSoft,
         alignItems: 'center',
         justifyContent: 'center',
       }}

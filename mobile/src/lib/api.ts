@@ -284,8 +284,14 @@ export class ApiError extends Error {
   fields?: { field: string; message: string }[];
   usage?: Usage;
   upsell?: Upsell;
+  retryAfterSeconds?: number;
 
-  constructor(message: string, status: number, payload?: Record<string, unknown>) {
+  constructor(
+    message: string,
+    status: number,
+    payload?: Record<string, unknown>,
+    retryAfterSeconds?: number,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -293,6 +299,7 @@ export class ApiError extends Error {
     this.fields = payload?.fields as ApiError['fields'];
     this.usage = payload?.usage as Usage | undefined;
     this.upsell = payload?.upsell as Upsell | undefined;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 
   get isQuotaExceeded() {
@@ -327,12 +334,48 @@ export type CycleInsights = {
 
 export type CycleCondition = 'pcos' | 'endometriosis' | 'perimenopause';
 
+export type CycleSharePermissions = {
+  period: boolean;
+  cyclePhase: boolean;
+  fertileWindow: boolean;
+  symptoms: boolean;
+};
+
+export type CyclePartnerShare = {
+  active: boolean;
+  code: string | null;
+  expiresAt: string | null;
+  partnerBound: boolean;
+  permissions: CycleSharePermissions;
+};
+
+export type CyclePartnerPayload = {
+  estimated: true;
+  permissions: CycleSharePermissions;
+  period?: {
+    inPeriod: boolean;
+    inPeriodEstimated?: boolean;
+    nextPeriodStart: string | null;
+    nextPeriodEstimated?: boolean;
+  };
+  phase?: { phase: string; phaseKa: string; cycleDay: number | null; estimated?: boolean };
+  fertileWindow?: {
+    start: string | null;
+    end: string | null;
+    ovulationDate: string | null;
+    estimated: true;
+  };
+  symptoms?: { keys: string[] };
+};
+
 export type CycleReminderPrefsServer = {
   enabled?: boolean;
   periodDaysBefore?: number;
   ovulation?: boolean;
   dailyLog?: boolean;
   pms?: boolean;
+  opk?: boolean;
+  bbt?: boolean;
   maskNotifications?: boolean;
   maskStyle?: 'neutral' | 'wellness' | 'calendar' | 'notes';
 };
@@ -354,6 +397,8 @@ export type CycleProfile = {
   aiInsightsAt?: string | null;
 };
 
+export type CycleTestResult = 'negative' | 'positive' | 'unclear';
+
 export type CycleLog = {
   id: string;
   userId: string;
@@ -365,6 +410,8 @@ export type CycleLog = {
   libido: number | null;
   bbt: number | null;
   cervicalMucus: string | null;
+  ovulationTest?: CycleTestResult | null;
+  pregnancyTest?: CycleTestResult | null;
   notes: string | null;
 };
 
@@ -379,16 +426,61 @@ export type PregnancyLog = {
   notes: string | null;
 };
 
+export type CyclePhaseKind =
+  | 'period'
+  | 'follicular'
+  | 'fertile'
+  | 'ovulation'
+  | 'luteal'
+  | 'unknown';
+
+export type CycleAverages = {
+  storedCycleLength: number | null;
+  storedPeriodLength: number | null;
+  inferredCycleLength: number | null;
+  inferredPeriodLength: number | null;
+  usedCycleLength: number | null;
+  usedPeriodLength: number | null;
+  source: 'user' | 'inferred' | 'default';
+  cycleCount: number;
+};
+
+export type CyclePeriodRange = {
+  start: string;
+  end: string;
+  lengthDays: number;
+  source: 'logged';
+};
+
 export type CycleDayMark = {
   period?: boolean;
   fertile?: boolean;
   ovulation?: boolean;
   predicted?: boolean;
+  estimated?: boolean;
   logged?: boolean;
   flow?: string;
+  cycleDay?: number | null;
+  phase?: CyclePhaseKind;
+  phaseKa?: string;
+  ovulationTest?: CycleTestResult | null;
+  pregnancyTest?: CycleTestResult | null;
+  hasBbt?: boolean;
+  hasMucus?: boolean;
+  hasSex?: boolean;
 };
 
 export type CycleBundle = {
+  meta: {
+    today: string;
+    timezone: string;
+  };
+  cycleDay: number | null;
+  phase: CyclePhaseKind;
+  phaseKa: string;
+  periodRanges: CyclePeriodRange[];
+  averages: CycleAverages;
+  partnerShare?: CyclePartnerShare;
   profile: CycleProfile;
   logs: CycleLog[];
   pregnancyLogs: PregnancyLog[];
@@ -398,6 +490,16 @@ export type CycleBundle = {
     ovulationDate: string | null;
     fertileWindow: { start: string; end: string } | null;
     calendar: Record<string, CycleDayMark>;
+    confidence: 'low' | 'medium' | 'high';
+    estimated: true;
+    phases?: {
+      periodStart: string;
+      periodEnd: string;
+      ovulation: string;
+      fertileStart: string;
+      fertileEnd: string;
+      nextPeriodStart: string;
+    }[];
   };
   pregnancy: {
     dueDate: string;
@@ -445,6 +547,11 @@ export type CycleBundle = {
     cycleCount?: number;
     confidence?: 'low' | 'medium' | 'high';
     generatedAt: string;
+    fertilityTests?: {
+      label: 'user_logged';
+      ovulationTests: { date: string; result: CycleTestResult; source: string }[];
+      pregnancyTests: { date: string; result: CycleTestResult; source: string }[];
+    };
   };
   localInsights?: CycleInsights;
 };
@@ -455,10 +562,11 @@ type RequestOptions = {
   formData?: FormData;
   token?: string | null;
   timeoutMs?: number;
+  cache?: RequestCache;
 };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, formData, timeoutMs = 180_000 } = options;
+  const { method = 'GET', body, formData, timeoutMs = 180_000, cache } = options;
   const token = options.token !== undefined ? options.token : await getToken();
 
   const controller = new AbortController();
@@ -467,6 +575,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method,
+      cache: cache ?? (method === 'GET' ? 'default' : 'no-store'),
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
@@ -480,10 +589,27 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     const payload = text ? safeParse(text) : {};
 
     if (!response.ok) {
+      const retryRaw = response.headers.get('Retry-After');
+      let retryAfterSeconds: number | undefined;
+      if (retryRaw) {
+        const asNumber = Number(retryRaw);
+        if (Number.isFinite(asNumber) && asNumber >= 0) retryAfterSeconds = Math.floor(asNumber);
+        else {
+          const when = Date.parse(retryRaw);
+          if (!Number.isNaN(when)) {
+            retryAfterSeconds = Math.max(0, Math.ceil((when - Date.now()) / 1000));
+          }
+        }
+      }
+      const serverError =
+        (typeof payload?.error === 'string' && payload.error) ||
+        (typeof payload?.detail === 'string' && payload.detail) ||
+        `${ka.common.error} (${response.status})`;
       throw new ApiError(
-        (payload?.error as string) ?? ka.common.error,
+        serverError,
         response.status,
         payload as Record<string, unknown>,
+        retryAfterSeconds,
       );
     }
 
@@ -854,7 +980,8 @@ export const api = {
   },
 
   cycle: {
-    get: () => request<CycleBundle>('/api/cycle'),
+    get: (opts?: { timeoutMs?: number }) =>
+      request<CycleBundle>('/api/cycle', { timeoutMs: opts?.timeoutMs ?? 20_000 }),
     updateProfile: (body: Partial<{
       mode: CycleMode;
       avgCycleLength: number;
@@ -864,9 +991,19 @@ export const api = {
       dueDate: string | null;
       privacyEnabled: boolean;
       enablePartnerShare: boolean;
+      sharePermissions: Partial<CycleSharePermissions>;
       conditions: CycleCondition[];
       reminderPrefs: CycleReminderPrefsServer;
     }>) => request<CycleBundle>('/api/cycle/profile', { method: 'PATCH', body }),
+    createShare: (permissions?: Partial<CycleSharePermissions>) =>
+      request<CycleBundle>('/api/cycle/share', { method: 'POST', body: { permissions } }),
+    updateShare: (permissions: Partial<CycleSharePermissions>) =>
+      request<CycleBundle>('/api/cycle/share', { method: 'PATCH', body: { permissions } }),
+    revokeShare: () => request<CycleBundle>('/api/cycle/share', { method: 'DELETE' }),
+    acceptShare: (code: string) =>
+      request<{ ok: true }>(`/api/cycle/share/${code}/accept`, { method: 'POST', body: {} }),
+    peekShare: (code: string) =>
+      request<CyclePartnerPayload>(`/api/cycle/share/${code}`, { cache: 'no-store' }),
     upsertLog: (
       date: string,
       body: Partial<{
@@ -877,10 +1014,37 @@ export const api = {
         libido: number | null;
         bbt: number | null;
         cervicalMucus: string | null;
+        ovulationTest: CycleTestResult | null;
+        pregnancyTest: CycleTestResult | null;
         notes: string | null;
       }>,
-    ) => request<{ log: CycleLog; bundle: CycleBundle }>(`/api/cycle/logs/${date}`, { method: 'PUT', body }),
-    removeLog: (date: string) => request<CycleBundle>(`/api/cycle/logs/${date}`, { method: 'DELETE' }),
+      opts?: { timeoutMs?: number },
+    ) =>
+      request<{ log: CycleLog; bundle: CycleBundle }>(`/api/cycle/logs/${date}`, {
+        method: 'PUT',
+        body,
+        timeoutMs: opts?.timeoutMs ?? 30_000,
+      }),
+    removeLog: (date: string, opts?: { timeoutMs?: number }) =>
+      request<CycleBundle>(`/api/cycle/logs/${date}`, {
+        method: 'DELETE',
+        timeoutMs: opts?.timeoutMs ?? 30_000,
+      }),
+    applyPeriod: (
+      body: {
+        action: 'start' | 'end' | 'fill';
+        date?: string;
+        start?: string;
+        end?: string;
+        flow?: 'light' | 'medium' | 'heavy';
+      },
+      opts?: { timeoutMs?: number },
+    ) =>
+      request<CycleBundle>('/api/cycle/period', {
+        method: 'PUT',
+        body,
+        timeoutMs: opts?.timeoutMs ?? 30_000,
+      }),
     upsertPregnancy: (
       date: string,
       body: Partial<{

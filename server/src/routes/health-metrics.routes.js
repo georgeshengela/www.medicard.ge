@@ -19,7 +19,7 @@ const dailyRowSchema = z.object({
   heartRate: z.number().min(30).max(220).optional(),
   sleepHours: z.number().min(0).max(24).optional(),
   nutritionKcal: z.number().min(0).max(20_000).optional(),
-  hydrationMl: z.number().min(0).max(20_000).optional(),
+  hydrationMl: z.number().min(-20_000).max(20_000).optional(),
   activeMinutes: z.number().int().min(0).max(1_440).optional(),
   distanceKm: z.number().min(0).max(500).optional(),
 });
@@ -62,9 +62,7 @@ function mergeDaily(existing, incoming) {
         : (existing?.nutritionKcal ?? null),
     hydrationMl:
       incoming.hydrationMl != null
-        ? existing?.hydrationMl != null
-          ? existing.hydrationMl + incoming.hydrationMl
-          : incoming.hydrationMl
+        ? Math.max(0, Math.min(20_000, (existing?.hydrationMl ?? 0) + incoming.hydrationMl))
         : (existing?.hydrationMl ?? null),
     activeMinutes: maxInt(incoming.activeMinutes, existing?.activeMinutes),
     distanceKm: pick(incoming.distanceKm, existing?.distanceKm),

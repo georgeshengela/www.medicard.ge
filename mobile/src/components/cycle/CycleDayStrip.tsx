@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import type { CycleDayMark } from '@/lib/api';
 import { WEEKDAYS_KA } from '@/constants/cycle';
+import { ka } from '@/i18n/ka';
 import { addDaysToKey } from '@/lib/cyclePhase';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { useCycleColors } from '@/theme/cycle';
@@ -99,7 +100,7 @@ export function CycleDayStrip({ selected, onSelect, marks, onLongPress }: Props)
   };
 
   return (
-    <View style={{ marginBottom: 4 }}>
+    <View style={{ marginBottom: 8 }}>
       <FlatList
         ref={listRef}
         key={anchor}
@@ -128,11 +129,24 @@ export function CycleDayStrip({ selected, onSelect, marks, onLongPress }: Props)
           const [, , dd] = item.split('-');
           const weekday = weekdayLabel(item);
 
-          let dot = c.mutedSoft;
+          const actualPeriod = Boolean(mark?.period && mark.predicted === false);
+          const predictedPeriod = Boolean(mark?.period && mark.predicted);
+          let dot: string = c.mutedSoft;
           if (mark?.ovulation) dot = c.ovulation;
           else if (mark?.fertile) dot = c.fertile;
-          else if (mark?.period) dot = c.period;
+          else if (actualPeriod) dot = c.period;
           else if (mark?.logged) dot = c.blushDeep;
+          const a11y = [
+            isToday ? ka.cycle.jumpToday : weekday,
+            String(Number(dd)),
+            actualPeriod ? ka.cycle.legendPeriod : null,
+            predictedPeriod ? ka.cycle.legendPeriodPredicted : null,
+            mark?.fertile && !mark?.ovulation ? ka.cycle.legendFertile : null,
+            mark?.ovulation ? ka.cycle.legendOvulation : null,
+            mark?.logged && !actualPeriod ? ka.cycle.legendLogged : null,
+          ]
+            .filter(Boolean)
+            .join(', ');
 
           return (
             <Pressable
@@ -145,23 +159,27 @@ export function CycleDayStrip({ selected, onSelect, marks, onLongPress }: Props)
                 onLongPress?.(item);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
               }}
+              accessibilityRole="button"
+              accessibilityLabel={a11y}
+              accessibilityState={{ selected: active }}
               style={{
                 width: ITEM_WIDTH,
                 alignItems: 'center',
                 justifyContent: 'center',
                 paddingVertical: 2,
+                minHeight: 88,
               }}
             >
               <Text
                 style={{
-                  color: active ? c.rose : c.mutedSoft,
+                  color: active ? c.brand : c.mutedSoft,
                   fontSize: 10,
-                  fontWeight: '700',
+                  fontFamily: 'NotoSansGeorgian_600SemiBold',
                   letterSpacing: 0.2,
                   marginBottom: 6,
                 }}
               >
-                {isToday ? 'დღეს' : weekday}
+                {isToday ? ka.cycle.jumpToday : weekday}
               </Text>
               <View
                 style={{
@@ -170,15 +188,15 @@ export function CycleDayStrip({ selected, onSelect, marks, onLongPress }: Props)
                   borderRadius: active ? 22 : 19,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: active ? c.rose : 'transparent',
-                  borderWidth: active ? 0 : isToday ? 2 : 0,
-                  borderColor: isToday ? c.todayRing : 'transparent',
+                  backgroundColor: active ? c.card : 'transparent',
+                  borderWidth: active || isToday ? 2 : 0,
+                  borderColor: active ? (isToday ? c.todayRing : c.brand) : isToday ? c.todayRing : 'transparent',
                 }}
               >
                 <Text
                   style={{
-                    color: active ? '#fff' : c.ink,
-                    fontWeight: '800',
+                    color: c.ink,
+                    fontFamily: 'NotoSansGeorgian_700Bold',
                     fontSize: active ? 17 : 15,
                   }}
                 >
@@ -187,10 +205,12 @@ export function CycleDayStrip({ selected, onSelect, marks, onLongPress }: Props)
               </View>
               <View
                 style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: 2.5,
-                  backgroundColor: dot,
+                  width: predictedPeriod ? 7 : 5,
+                  height: predictedPeriod ? 7 : 5,
+                  borderRadius: 4,
+                  backgroundColor: predictedPeriod ? 'transparent' : dot,
+                  borderWidth: predictedPeriod ? 1.5 : 0,
+                  borderColor: predictedPeriod ? c.period : 'transparent',
                   marginTop: 6,
                   opacity: mark ? 1 : 0.25,
                 }}

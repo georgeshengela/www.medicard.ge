@@ -33,7 +33,7 @@ const GENDER_LABELS: Record<Gender, string> = {
 const APP_VERSION = Constants.expoConfig?.version ?? '3.4.0';
 
 export default function Profile() {
-  const { user, stats, refresh, signOut, healthProfile } = useAuth();
+  const { user, stats, refresh, signOut, healthProfile, setUser } = useAuth();
   const colors = useThemeColors();
   const tabInset = useTabBarInset();
   const router = useRouter();
@@ -44,15 +44,21 @@ export default function Profile() {
 
   useFocusEffect(
     useCallback(() => {
-      refresh();
-    }, [refresh]),
+      void (async () => {
+        const { flushStepsGoalAwards } = await import('@/lib/stepsGoal');
+        await flushStepsGoalAwards(setUser);
+        await refresh();
+      })();
+    }, [refresh, setUser]),
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    const { flushStepsGoalAwards } = await import('@/lib/stepsGoal');
+    await flushStepsGoalAwards(setUser);
     await refresh();
     setRefreshing(false);
-  }, [refresh]);
+  }, [refresh, setUser]);
 
   const enableNotifications = async () => {
     const granted = await requestNotificationPermission();

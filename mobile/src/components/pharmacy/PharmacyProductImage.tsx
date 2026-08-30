@@ -8,12 +8,15 @@ type Props = {
   size?: number;
   style?: StyleProp<ImageStyle>;
   rounded?: number;
+  /** `cover` fills the frame (crops). `contain` letterboxes inside it. */
+  fit?: 'contain' | 'cover';
 };
 
-export function PharmacyProductImage({ uri, size = 88, style, rounded = 16 }: Props) {
+export function PharmacyProductImage({ uri, size = 88, style, rounded = 16, fit = 'contain' }: Props) {
   const colors = useThemeColors();
   const [failed, setFailed] = useState(false);
   const showImage = uri && !failed;
+  const fill = fit === 'cover';
 
   return (
     <View
@@ -33,8 +36,8 @@ export function PharmacyProductImage({ uri, size = 88, style, rounded = 16 }: Pr
         <Image
           source={{ uri }}
           onError={() => setFailed(true)}
-          resizeMode="contain"
-          style={[{ width: size - 8, height: size - 8 }, style]}
+          resizeMode={fit}
+          style={[{ width: fill ? size : size - 8, height: fill ? size : size - 8 }, style]}
         />
       ) : (
         <Pill size={Math.round(size * 0.32)} color={colors.primary200} strokeWidth={2.2} />

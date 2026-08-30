@@ -94,14 +94,14 @@ export default function SymptomSearchScreen() {
           <View style={{ paddingHorizontal: 16, paddingVertical: 16 }}>
             <View
               style={{
-                minHeight: 48,
+                minHeight: 56,
                 borderRadius: 14,
                 borderWidth: 1,
                 borderColor: typed ? T.brand : T.borderTertiary,
                 backgroundColor: T.white,
                 paddingLeft: 12,
-                paddingRight: 6,
-                paddingVertical: 6,
+                paddingRight: 8,
+                paddingVertical: 8,
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 8,
@@ -121,7 +121,17 @@ export default function SymptomSearchScreen() {
                 onSubmitEditing={() => {
                   if (typed) commitTyped();
                 }}
-                style={{ flex: 1, fontSize: 16, lineHeight: 22, color: T.textPrimary, paddingVertical: 0 }}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  minHeight: 40,
+                  fontSize: 16,
+                  color: T.textPrimary,
+                  paddingVertical: Platform.OS === 'android' ? 8 : 10,
+                  paddingHorizontal: 0,
+                  textAlignVertical: 'center',
+                  includeFontPadding: false,
+                }}
               />
               {typed ? (
                 <Pressable

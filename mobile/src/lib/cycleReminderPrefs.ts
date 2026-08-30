@@ -8,6 +8,8 @@ export type CycleReminderPrefs = {
   ovulation: boolean;
   dailyLog: boolean;
   pms: boolean;
+  opk: boolean;
+  bbt: boolean;
   maskNotifications: boolean;
   maskStyle: CycleNotificationMaskStyle;
 };
@@ -18,6 +20,8 @@ export const CYCLE_REMINDER_KEYS = {
   ovulation: 'medicard.cycle.reminders.ovulation',
   dailyLog: 'medicard.cycle.reminders.dailyLog',
   pms: 'medicard.cycle.reminders.pms',
+  opk: 'medicard.cycle.reminders.opk',
+  bbt: 'medicard.cycle.reminders.bbt',
   maskNotifications: 'medicard.cycle.notifications.masked',
   maskStyle: 'medicard.cycle.notifications.maskStyle',
   privacyLock: 'medicard.cycle.privacy.lock',
@@ -29,18 +33,22 @@ const DEFAULTS: CycleReminderPrefs = {
   ovulation: true,
   dailyLog: false,
   pms: true,
+  opk: false,
+  bbt: false,
   maskNotifications: true,
   maskStyle: 'neutral',
 };
 
 export async function getCycleReminderPrefs(): Promise<CycleReminderPrefs> {
-  const [enabled, periodDaysBefore, ovulation, dailyLog, pms, maskNotifications, maskStyle] =
+  const [enabled, periodDaysBefore, ovulation, dailyLog, pms, opk, bbt, maskNotifications, maskStyle] =
     await Promise.all([
     getPreference(CYCLE_REMINDER_KEYS.enabled),
     getPreference(CYCLE_REMINDER_KEYS.periodDaysBefore),
     getPreference(CYCLE_REMINDER_KEYS.ovulation),
     getPreference(CYCLE_REMINDER_KEYS.dailyLog),
     getPreference(CYCLE_REMINDER_KEYS.pms),
+    getPreference(CYCLE_REMINDER_KEYS.opk),
+    getPreference(CYCLE_REMINDER_KEYS.bbt),
     getPreference(CYCLE_REMINDER_KEYS.maskNotifications),
     getPreference(CYCLE_REMINDER_KEYS.maskStyle),
   ]);
@@ -57,6 +65,8 @@ export async function getCycleReminderPrefs(): Promise<CycleReminderPrefs> {
     ovulation: ovulation !== '0',
     dailyLog: dailyLog === '1',
     pms: pms !== '0',
+    opk: opk === '1',
+    bbt: bbt === '1',
     maskNotifications: maskNotifications !== '0',
     maskStyle: style,
   };
@@ -83,6 +93,12 @@ export async function setCycleReminderPrefs(prefs: Partial<CycleReminderPrefs>):
   }
   if (prefs.pms !== undefined) {
     tasks.push(setPreference(CYCLE_REMINDER_KEYS.pms, prefs.pms ? '1' : '0'));
+  }
+  if (prefs.opk !== undefined) {
+    tasks.push(setPreference(CYCLE_REMINDER_KEYS.opk, prefs.opk ? '1' : '0'));
+  }
+  if (prefs.bbt !== undefined) {
+    tasks.push(setPreference(CYCLE_REMINDER_KEYS.bbt, prefs.bbt ? '1' : '0'));
   }
   if (prefs.maskNotifications !== undefined) {
     tasks.push(

@@ -3,8 +3,9 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GoalSetSuccessModal } from '@/components/health/steps-goal/GoalSetSuccessModal';
-import { GoalPickSheet, reminderTimeItems, upcomingDeadlineItems } from '@/components/health/steps-goal/GoalPickSheet';
+import { GoalPickSheet, reminderTimeItems } from '@/components/health/steps-goal/GoalPickSheet';
 import { GoalToggle } from '@/components/health/steps-goal/GoalToggle';
+import { GoalDeadlineCalendar } from '@/components/health/steps-goal/GoalDeadlineCalendar';
 import { SetStepGoalSheet } from '@/components/health/steps-goal/SetStepGoalSheet';
 import {
   GoalCalendar,
@@ -66,7 +67,6 @@ export default function SetStepsGoalScreen() {
   }, [isFresh]);
 
   const daysOut = Math.max(0, daysBetween(todayYmd(), draft.deadlineYmd));
-  const deadlineItems = useMemo(() => upcomingDeadlineItems(), []);
   const timeItems = useMemo(() => reminderTimeItems(), []);
 
   const save = async () => {
@@ -118,13 +118,12 @@ export default function SetStepsGoalScreen() {
             <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20, color: FIGMA_STEPS.textPrimary }}>
               {ka.stepsGoal.stepCount}
             </Text>
-            <Pressable
-              onPress={() => setAmountOpen(true)}
+            <View
               style={{
                 minHeight: 48,
                 borderRadius: 14,
                 borderWidth: 1,
-                borderColor: FIGMA_STEPS.border,
+                borderColor: '#D1D5DB',
                 backgroundColor: FIGMA_STEPS.tooltipBg,
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -132,7 +131,12 @@ export default function SetStepsGoalScreen() {
                 ...FIGMA_STEPS.shadowXs,
               }}
             >
-              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={ka.stepsGoal.stepCount}
+                onPress={() => setAmountOpen(true)}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10 }}
+              >
                 <GoalStepSneaker size={20} />
                 <Text
                   style={{
@@ -145,8 +149,8 @@ export default function SetStepsGoalScreen() {
                 >
                   {formatStepsCount(draft.targetSteps)}
                 </Text>
-              </View>
-              <View style={{ flexDirection: 'row', borderLeftWidth: 1, borderLeftColor: '#D1D5DB' }}>
+              </Pressable>
+              <View style={{ flexDirection: 'row', alignSelf: 'stretch', borderLeftWidth: 1, borderLeftColor: '#D1D5DB' }}>
                 <Pressable
                   onPress={() => setDraft((g) => ({ ...g, targetSteps: clampGoalSteps(g.targetSteps - STEPS_GOAL_FIELD_STEP) }))}
                   style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}
@@ -167,7 +171,7 @@ export default function SetStepsGoalScreen() {
                   <GoalPlus size={20} />
                 </Pressable>
               </View>
-            </Pressable>
+            </View>
           </View>
 
           <View style={{ gap: 8 }}>
@@ -181,6 +185,7 @@ export default function SetStepsGoalScreen() {
                 borderRadius: 14,
                 borderWidth: 1,
                 borderColor: '#D1D5DB',
+                backgroundColor: FIGMA_STEPS.tooltipBg,
                 paddingHorizontal: 12,
                 paddingVertical: 10,
                 flexDirection: 'row',
@@ -363,11 +368,9 @@ export default function SetStepsGoalScreen() {
           setAmountOpen(false);
         }}
       />
-      <GoalPickSheet
+      <GoalDeadlineCalendar
         visible={deadlineOpen}
-        title={ka.stepsGoal.pickDeadline}
-        items={deadlineItems}
-        selectedKey={draft.deadlineYmd}
+        value={draft.deadlineYmd}
         onClose={() => setDeadlineOpen(false)}
         onSelect={(deadlineYmd) => setDraft((g) => ({ ...g, deadlineYmd }))}
       />

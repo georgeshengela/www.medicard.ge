@@ -7,6 +7,7 @@ import {
   scheduleCycleDateNotification,
 } from '@/lib/notifications';
 import type { CycleReminderPrefs } from '@/lib/cycleReminderPrefs';
+import { cycleHonestyFlags, periodSoonBody, ttcReminderCopy } from '@/lib/cycleHonesty';
 
 const REMINDER_HOUR = 9;
 const REMINDER_MINUTE = 0;
@@ -30,6 +31,11 @@ export async function syncCycleReminders(
   let count = 0;
   const { profile, predictions, logs } = bundle;
   const mode = profile.mode;
+  const flags = cycleHonestyFlags({
+    confidence: predictions.confidence,
+    isIrregular: profile.isIrregular,
+    conditions: profile.conditions,
+  });
   const today = todayKey();
   const hasLogToday = logs.some((l) => l.date === today);
 
@@ -61,7 +67,7 @@ export async function syncCycleReminders(
         'period_soon',
         soon,
         ka.cycle.remPeriodSoon,
-        ka.cycle.remPeriodSoonBody(prefs.periodDaysBefore),
+        periodSoonBody(prefs.periodDaysBefore, flags),
         '/cycle',
       );
     }
@@ -76,20 +82,22 @@ export async function syncCycleReminders(
 
   if (mode === 'TRY_TO_CONCEIVE' && prefs.ovulation) {
     if (predictions.ovulationDate) {
+      const ovulation = ttcReminderCopy('ovulation', flags);
       await schedule(
         'ovulation',
         predictions.ovulationDate,
-        ka.cycle.remOvulation,
-        ka.cycle.remOvulationBody,
+        ovulation.title,
+        ovulation.body,
         '/cycle/log?tab=more',
       );
     }
     if (predictions.fertileWindow?.start) {
+      const fertile = ttcReminderCopy('fertile', flags);
       await schedule(
         'fertile',
         predictions.fertileWindow.start,
-        ka.cycle.remFertile,
-        ka.cycle.remFertileBody,
+        fertile.title,
+        fertile.body,
         '/cycle',
       );
     }
@@ -104,6 +112,23 @@ export async function syncCycleReminders(
       ka.cycle.remPmsBody,
       '/cycle',
     );
+  }
+
+  if (mode === 'TRY_TO_CONCEIVE' && prefs.opk && predictions.fertileWindow?.start) {
+    await schedule(
+      'opk',
+      predictions.fertileWindow.start,
+      ka.cycle.remOpkTitle,
+      ka.cycle.remOpkBody,
+      '/cycle/log?tab=more',
+    );
+  }
+
+  if (mode === 'TRY_TO_CONCEIVE' && prefs.bbt) {
+    const hasBbtToday = logs.some((l) => l.date === today && l.bbt != null);
+    if (!hasBbtToday) {
+      await schedule('bbt', today, ka.cycle.remBbtTitle, ka.cycle.remBbtBody, '/cycle/log?tab=more');
+    }
   }
 
   if (prefs.dailyLog && !hasLogToday) {

@@ -31,6 +31,7 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   onSaved: () => void;
+  initialKey?: LoggableMetricKey;
 };
 
 type MetricOption = {
@@ -52,7 +53,7 @@ const OPTIONS: MetricOption[] = [
   { key: 'hydration', icon: Droplets, color: METRIC_COLORS.hydration, label: ka.healthMetrics.metrics.hydration, unit: 'ml' },
 ];
 
-export function HealthMetricLogSheet({ visible, onClose, onSaved }: Props) {
+export function HealthMetricLogSheet({ visible, onClose, onSaved, initialKey }: Props) {
   const FIGMA_HEALTH_METRICS = useFigmaHealthMetrics();
   const FIGMA_STEPS = useFigmaSteps();
   const { healthProfile } = useAuth();
@@ -68,8 +69,14 @@ export function HealthMetricLogSheet({ visible, onClose, onSaved }: Props) {
       setValue('');
       setValueSecondary('');
       setError(null);
+      return;
     }
-  }, [visible]);
+    const prefill = initialKey ? OPTIONS.find((opt) => opt.key === initialKey) ?? null : null;
+    setSelected(prefill);
+    setValue('');
+    setValueSecondary('');
+    setError(null);
+  }, [visible, initialKey]);
 
   const parsed = useMemo(() => {
     const primary = Number(value.replace(',', '.'));

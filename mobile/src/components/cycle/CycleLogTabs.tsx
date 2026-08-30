@@ -17,6 +17,8 @@ import {
   PHYSICAL_SYMPTOMS,
   SEXUAL_OPTIONS,
 } from '@/constants/cycle';
+import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
+import { CycleFlowPicker } from '@/components/cycle/CycleFlowPicker';
 import { CycleCard, CycleScalePicker, formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import { cycleShadow, useCycleColors } from '@/theme/cycle';
@@ -33,6 +35,8 @@ export type CycleLogForm = {
   libido: number | null;
   bbt: string;
   mucus: string | null;
+  ovulationTest: string | null;
+  pregnancyTest: string | null;
   notes: string;
 };
 
@@ -89,7 +93,9 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
       form.libido != null ||
       form.notes.trim().length > 0 ||
       Boolean(form.bbt.trim()) ||
-      Boolean(form.mucus),
+      Boolean(form.mucus) ||
+      Boolean(form.ovulationTest) ||
+      Boolean(form.pregnancyTest),
   };
 
   const filteredSymptoms = useMemo(() => {
@@ -109,10 +115,24 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
   return (
     <View style={{ flex: 1 }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 }}>
-        <Text style={{ color: c.muted, fontSize: 12, fontWeight: '700' }}>
+        <Text
+          style={{
+            color: c.muted,
+            fontSize: 12,
+            fontFamily: 'NotoSansGeorgian_600SemiBold',
+          }}
+        >
           {ka.cycle.logHeroEyebrow}
         </Text>
-        <Text style={{ color: c.ink, fontSize: 22, fontWeight: '800', marginTop: 4, letterSpacing: -0.3 }}>
+        <Text
+          style={{
+            color: c.ink,
+            fontSize: 22,
+            fontFamily: 'NotoSansGeorgian_700Bold',
+            marginTop: 4,
+            letterSpacing: -0.3,
+          }}
+        >
           {formatCycleDateKa(date)}
         </Text>
 
@@ -121,7 +141,7 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
             flexDirection: 'row',
             marginTop: 16,
             backgroundColor: c.cardSoft,
-            borderRadius: 24,
+            borderRadius: 16,
             padding: 4,
             borderWidth: 1,
             borderColor: c.border,
@@ -141,16 +161,15 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
                   flex: 1,
                   alignItems: 'center',
                   paddingVertical: 10,
-                  borderRadius: 20,
+                  borderRadius: 12,
                   backgroundColor: active ? c.card : 'transparent',
-                  ...(active ? cycleShadow.card : {}),
                 }}
               >
-                <Icon size={16} color={active ? c.rose : c.muted} strokeWidth={2.2} />
+                <Icon size={16} color={active ? c.brand : c.muted} strokeWidth={2.2} />
                 <Text
                   style={{
                     color: active ? c.ink : c.muted,
-                    fontWeight: active ? '800' : '600',
+                    fontFamily: active ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium',
                     fontSize: 11,
                     marginTop: 4,
                   }}
@@ -167,7 +186,7 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
                       width: 8,
                       height: 8,
                       borderRadius: 4,
-                      backgroundColor: c.rose,
+                      backgroundColor: c.brand,
                     }}
                   />
                 ) : null}
@@ -184,16 +203,22 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
       >
         {tab === 'flow' ? (
           <Animated.View entering={FadeInRight.duration(280)}>
-            <Text style={{ color: c.ink, fontWeight: '800', fontSize: 17, marginBottom: 6 }}>
+            <Text
+              style={{
+                color: c.ink,
+                fontFamily: 'NotoSansGeorgian_700Bold',
+                fontSize: 17,
+                marginBottom: 6,
+              }}
+            >
               {ka.cycle.flow}
             </Text>
             <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19, marginBottom: 16 }}>
               {ka.cycle.logFlowHint}
             </Text>
-            <FlowMeter
+            <CycleFlowPicker
               value={form.flow}
               onChange={(id) => onChange({ flow: id === form.flow ? null : id })}
-              accent={c.period}
             />
           </Animated.View>
         ) : null}
@@ -262,7 +287,7 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
                   options={filteredSymptoms}
                   selected={form.symptoms}
                   onToggle={(id) => onChange({ symptoms: toggle(form.symptoms, id) })}
-                  accent={c.rose}
+                  accent={c.brand}
                 />
               </>
             ) : (
@@ -297,7 +322,7 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
                           borderRadius: 24,
                           alignItems: 'center',
                           justifyContent: 'center',
-                          backgroundColor: active ? c.blushDeep : c.cardSoft,
+                          backgroundColor: active ? c.cta : c.cardSoft,
                           borderWidth: active ? 0 : 1.5,
                           borderColor: c.border,
                         }}
@@ -330,6 +355,45 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
 
             {showFertility ? (
               <>
+                <Block title={ka.cycle.fertilityTests} hint={ka.cycle.fertilityTestsHint}>
+                  <Text
+                    style={{
+                      color: c.ink,
+                      fontFamily: 'NotoSansGeorgian_700Bold',
+                      fontSize: 14,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {ka.cycle.ovulationTest}
+                  </Text>
+                  <Text style={{ color: c.muted, fontSize: 12, lineHeight: 16, marginBottom: 10 }}>
+                    {ka.cycle.ovulationTestHint}
+                  </Text>
+                  <CycleTestResultRow
+                    value={form.ovulationTest}
+                    onChange={(ovulationTest) => onChange({ ovulationTest })}
+                    accent={c.fertile}
+                  />
+                  <View style={{ height: 16 }} />
+                  <Text
+                    style={{
+                      color: c.ink,
+                      fontFamily: 'NotoSansGeorgian_700Bold',
+                      fontSize: 14,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {ka.cycle.pregnancyTest}
+                  </Text>
+                  <Text style={{ color: c.muted, fontSize: 12, lineHeight: 16, marginBottom: 10 }}>
+                    {ka.cycle.pregnancyTestHint}
+                  </Text>
+                  <CycleTestResultRow
+                    value={form.pregnancyTest}
+                    onChange={(pregnancyTest) => onChange({ pregnancyTest })}
+                    accent={c.rose}
+                  />
+                </Block>
                 <Block title={ka.cycle.bbt} hint="°C">
                   <TextInput
                     value={form.bbt}
@@ -350,7 +414,7 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
                     }}
                   />
                 </Block>
-                <Block title={ka.cycle.mucus}>
+                <Block title={ka.cycle.mucus} hint={ka.cycle.mucusHint}>
                   <MucusRow
                     value={form.mucus}
                     onChange={(mucus) => onChange({ mucus })}
@@ -394,6 +458,7 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
               alignItems: 'center',
               backgroundColor: c.card,
               borderRadius: 999,
+              minHeight: 44,
               paddingVertical: 12,
               paddingHorizontal: 18,
               borderWidth: 1.5,
@@ -401,10 +466,17 @@ export function CycleLogTabs({ date, mode, form, onChange, bottomInset, initialT
               ...cycleShadow.card,
             }}
           >
-            <Text style={{ color: c.rose, fontWeight: '800', fontSize: 14, marginRight: 4 }}>
+            <Text
+              style={{
+                color: c.brand,
+                fontFamily: 'NotoSansGeorgian_700Bold',
+                fontSize: 14,
+                marginRight: 4,
+              }}
+            >
               {ka.cycle.logNext}
             </Text>
-            <ChevronRight size={16} color={c.rose} strokeWidth={2.6} />
+            <ChevronRight size={16} color={c.brand} strokeWidth={2.6} />
           </Pressable>
         </View>
       ) : null}
@@ -424,7 +496,14 @@ function Block({
   const c = useCycleColors();
   return (
     <View style={{ marginBottom: 20 }}>
-      <Text style={{ color: c.ink, fontWeight: '800', fontSize: 16, marginBottom: hint ? 4 : 10 }}>
+      <Text
+        style={{
+          color: c.ink,
+          fontFamily: 'NotoSansGeorgian_700Bold',
+          fontSize: 16,
+          marginBottom: hint ? 4 : 10,
+        }}
+      >
         {title}
       </Text>
       {hint ? (

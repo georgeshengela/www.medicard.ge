@@ -71,13 +71,37 @@ export async function getPreference(key: string): Promise<string | null> {
 
 export async function setPreference(key: string, value: string): Promise<void> {
   try {
-    if (Platform.OS === 'web') {
-      webStorage.setItem(key, value);
-      return;
-    }
-    await FileSystem.makeDirectoryAsync(PREFS_DIR, { intermediates: true }).catch(() => undefined);
-    await FileSystem.writeAsStringAsync(prefsPath(key), value);
+    await setPreferenceStrict(key, value);
   } catch {
     // A failed preference write should never break the UI.
+  }
+}
+
+/** Throws if the write cannot be verified. Use for health data. */
+export async function setPreferenceStrict(key: string, value: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    webStorage.setItem(key, value);
+    if (webStorage.getItem(key) !== value) {
+      throw new Error('preference_write_failed');
+    }
+    return;
+  }
+  await FileSystem.makeDirectoryAsync(PREFS_DIR, { intermediates: true });
+  await FileSystem.writeAsStringAsync(prefsPath(key), value);
+  const readBack = await FileSystem.readAsStringAsync(prefsPath(key));
+  if (readBack !== value) throw new Error('preference_write_verify_failed');
+}
+
+export async function deletePreference(key: string): Promise<void> {
+  try {
+    if (Platform.OS === 'web') {
+      webStorage.deleteItem(key);
+      return;
+    }
+    const path = prefsPath(key);
+    const info = await FileSystem.getInfoAsync(path);
+    if (info.exists) await FileSystem.deleteAsync(path, { idempotent: true });
+  } catch {
+    /* keep going */
   }
 }

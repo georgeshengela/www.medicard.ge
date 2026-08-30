@@ -1,19 +1,21 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { BarChart3, Baby, CalendarHeart, FileText, Sparkles } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
-import { CycleRing } from '@/components/cycle/CycleRing';
+import { CycleHero } from '@/components/cycle/CycleHero';
 import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
+import { CycleLogHubModal } from '@/components/cycle/CycleLogHubModal';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
 import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
 import { CycleOnboarding } from '@/components/cycle/CycleOnboarding';
 import { CycleDayStrip } from '@/components/cycle/CycleDayStrip';
 import { CycleDayInsights } from '@/components/cycle/CycleDayInsights';
+import { CycleTtcCard } from '@/components/cycle/CycleTtcCard';
+import { mergeFertilityMarks } from '@/lib/cycleFertility';
 import { CycleCalendarSheet } from '@/components/cycle/CycleCalendarSheet';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import {
@@ -21,18 +23,25 @@ import {
   CycleFab,
   CycleFeatureTile,
   CycleLoading,
+  CycleSection,
 } from '@/components/cycle/CycleUI';
 import { MONTHS_KA } from '@/constants/cycle';
-import { cycleShadow } from '@/theme/cycle';
 import { ka } from '@/i18n/ka';
-import {
-  cycleDayForDate,
-  detectCyclePhaseForDate,
-  parseDateKey,
-} from '@/lib/cyclePhase';
+import { parseDateKey } from '@/lib/cyclePhase';
+import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonical';
+import { displayPhaseLabel } from '@/lib/cycleHonesty';
+import { isBleedFlow } from '@/lib/cycleLogSave';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
+import { CycleOfflineBanner } from '@/components/cycle/CycleOfflineBanner';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
+import {
+  cacheCycleBundle,
+  discardCycleMutation,
+  loadCycleView,
+  queueApplyPeriod,
+  type CycleView,
+} from '@/lib/cycleOffline';
 import { api, ApiError, type CycleBundle } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
@@ -45,11 +54,14 @@ export default function CycleHome() {
   const c = useCycleColors();
 
   const [bundle, setBundle] = useState<CycleBundle | null>(null);
+  const [cycleView, setCycleView] = useState<CycleView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [onboardSaving, setOnboardSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [quickLogOpen, setQuickLogOpen] = useState(false);
+  const [hubOpen, setHubOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [startIntent, setStartIntent] = useState(false);
   const [selected, setSelected] = useState(todayKey());
   const [cursor, setCursor] = useState(() => {
     const n = new Date();
@@ -61,18 +73,29 @@ export default function CycleHome() {
   }, [navigation]);
 
   const load = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
-      const data = await api.cycle.get();
-      setBundle(data);
-      const prefs = await getCycleReminderPrefs();
-      await syncCycleReminders(data, prefs);
+      const view = await loadCycleView(user.id);
+      setCycleView(view);
+      setBundle(view.display);
+      if (!view.stale && view.pendingCount === 0) {
+        try {
+          const prefs = await getCycleReminderPrefs();
+          await syncCycleReminders(view.canonical, prefs);
+        } catch {
+          /* Reminders must not block last-period date pick. */
+        }
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : ka.common.error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -84,50 +107,77 @@ export default function CycleHome() {
     }, [user?.gender, load]),
   );
 
-  const cycleLen = bundle?.profile.avgCycleLength ?? 28;
-  const periodLen = bundle?.profile.avgPeriodLength ?? 5;
   const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
   const needsOnboarding =
     Boolean(bundle) && user?.gender === 'FEMALE' && !lastPeriod;
+  const cycleTodayKey = cycleToday(bundle, todayKey());
+  const cycleLen = bundle ? usedCycleLength(bundle) : 28;
 
   const selectedPhase = useMemo(
     () =>
-      detectCyclePhaseForDate({
-        lastPeriodStart: lastPeriod,
-        targetDate: selected,
-        avgCycleLength: cycleLen,
-        avgPeriodLength: periodLen,
-      }),
-    [lastPeriod, selected, cycleLen, periodLen],
+      bundle
+        ? phaseFromBundle(bundle, selected)
+        : { day: null, phase: 'unknown' as const, phaseKa: ka.cycle.adviceUnknownTitle },
+    [bundle, selected],
   );
 
-  const selectedCycleDay = useMemo(
-    () => cycleDayForDate(lastPeriod, selected, cycleLen),
-    [lastPeriod, selected, cycleLen],
-  );
+  const selectedCycleDay = selectedPhase.day;
 
   const selectedMonth = useMemo(() => parseDateKey(selected), [selected]);
 
   const headerSubtitle = useMemo(() => {
     if (selectedPhase.day != null) {
-      return `${ka.cycle.cycleDay} ${selectedPhase.day} · ${selectedPhase.phaseKa}`;
+      return `${ka.cycle.cycleDay} ${selectedPhase.day} · ${displayPhaseLabel(selectedPhase.phase, selectedPhase.phaseKa, {
+        loggedPeriod: isBleedFlow(bundle?.logs.find((l) => l.date === selected)?.flow),
+      })}`;
     }
     return ka.cycle.swipeDaysHint;
-  }, [selectedPhase]);
+  }, [selectedPhase, bundle, selected]);
 
   useEffect(() => {
     setCursor({ y: selectedMonth.y, m: selectedMonth.m });
   }, [selectedMonth.y, selectedMonth.m]);
 
+  useEffect(() => {
+    const serverToday = bundle?.meta?.today;
+    if (!serverToday) return;
+    setSelected((prev) => (prev === todayKey() ? serverToday : prev));
+  }, [bundle?.meta?.today]);
+
+  const marks = useMemo(
+    () => mergeFertilityMarks(bundle?.predictions?.calendar, bundle?.logs),
+    [bundle?.predictions?.calendar, bundle?.logs],
+  );
+
   const saveLastPeriod = async (iso: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+      setError(ka.cycle.pickDate);
+      return;
+    }
     setOnboardSaving(true);
     setError(null);
     try {
       const data = await api.cycle.updateProfile({ lastPeriodStart: iso });
-      setBundle(data);
+      const next =
+        data?.profile
+          ? {
+              ...data,
+              profile: { ...data.profile, lastPeriodStart: data.profile.lastPeriodStart || iso },
+            }
+          : bundle
+            ? { ...bundle, profile: { ...bundle.profile, lastPeriodStart: iso } }
+            : data;
+      setBundle(next);
+      if (user?.id && next) {
+        try {
+          await cacheCycleBundle(user.id, next);
+        } catch {
+          /* Profile is already saved on the server. */
+        }
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : ka.common.error);
+      setError(err instanceof Error ? err.message : ka.common.error);
     } finally {
       setOnboardSaving(false);
     }
@@ -144,9 +194,11 @@ export default function CycleHome() {
           <View
             style={{
               backgroundColor: c.card,
-              borderRadius: 28,
+              borderRadius: 16,
               padding: 28,
               alignItems: 'center',
+              borderWidth: 1,
+              borderColor: c.border,
             }}
           >
             <View
@@ -162,7 +214,14 @@ export default function CycleHome() {
             >
               <CalendarHeart size={28} color={c.rose} strokeWidth={2} />
             </View>
-            <Text style={{ color: c.ink, fontSize: 22, fontWeight: '800', textAlign: 'center' }}>
+            <Text
+              style={{
+                color: c.ink,
+                fontSize: 22,
+                fontFamily: 'NotoSansGeorgian_700Bold',
+                textAlign: 'center',
+              }}
+            >
               {ka.cycle.onlyFemale}
             </Text>
             <Text
@@ -179,7 +238,7 @@ export default function CycleHome() {
               onPress={() => router.push('/(tabs)/profile')}
               style={{
                 marginTop: 24,
-                backgroundColor: c.rose,
+                backgroundColor: c.cta,
                 paddingHorizontal: 24,
                 paddingVertical: 14,
                 borderRadius: 16,
@@ -193,12 +252,22 @@ export default function CycleHome() {
     );
   }
 
+  if (needsOnboarding) {
+    return (
+      <CycleOnboarding
+        visible
+        saving={onboardSaving}
+        userName={user?.fullName}
+        error={error}
+        onSave={saveLastPeriod}
+      />
+    );
+  }
+
   if (loading && !bundle) return <CycleLoading />;
 
-  const marks = bundle?.predictions.calendar ?? {};
   const selectedMark = marks[selected];
-  const today = todayKey();
-  const todayLog = bundle?.logs.find((l) => l.date === today);
+  const today = cycleTodayKey;
   const showPms =
     Boolean(bundle) &&
     selectedPhase.phase === 'luteal' &&
@@ -206,13 +275,6 @@ export default function CycleHome() {
 
   return (
     <CycleAtmosphere>
-      <CycleOnboarding
-        visible={needsOnboarding}
-        saving={onboardSaving}
-        userName={user?.fullName}
-        onSave={saveLastPeriod}
-      />
-
       <View style={{ flex: 1 }}>
         <CycleHomeHeader
           monthLabel={`${MONTHS_KA[selectedMonth.m]} ${selectedMonth.y}`}
@@ -230,7 +292,7 @@ export default function CycleHome() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}
           refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={load} tintColor={c.rose} />
+            <RefreshControl refreshing={loading} onRefresh={load} tintColor={c.brand} />
           }
           showsVerticalScrollIndicator={false}
         >
@@ -241,79 +303,130 @@ export default function CycleHome() {
           onLongPress={(date) => {
             if (date === today) {
               setSelected(date);
-              setQuickLogOpen(true);
+              setHubOpen(true);
             }
           }}
         />
 
-        {error ? (
-          <Text
+        <CycleOfflineBanner
+          view={cycleView}
+          today={todayKey()}
+          onRetry={() => void load()}
+          onDiscard={(id) => {
+            if (!user?.id) return;
+            void discardCycleMutation(user.id, id).then(() => load());
+          }}
+        />
+
+        {error && !bundle ? (
+          <View
             style={{
-              color: c.danger,
+              marginHorizontal: 16,
               marginBottom: 8,
-              fontWeight: '600',
-              paddingHorizontal: 20,
+              padding: 12,
+              borderRadius: 14,
+              backgroundColor: c.card,
+              borderWidth: 1,
+              borderColor: c.border,
+              flexDirection: 'row',
+              alignItems: 'center',
             }}
           >
-            {error}
-          </Text>
+            <Text style={{ color: c.danger, fontWeight: '600', flex: 1 }}>{error}</Text>
+            <Pressable
+              onPress={() => void load()}
+              accessibilityRole="button"
+              accessibilityLabel={ka.cycle.retry}
+              style={{ paddingHorizontal: 12, minHeight: 44, justifyContent: 'center' }}
+            >
+              <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.retry}</Text>
+            </Pressable>
+          </View>
         ) : null}
 
         {bundle ? <CycleAlertsBanner bundle={bundle} /> : null}
 
-        <Pressable onPress={() => setQuickLogOpen(true)}>
-        <Animated.View
-          entering={FadeInUp.duration(420)}
-          style={{ marginHorizontal: 20, marginBottom: 16, marginTop: 4 }}
-        >
-          <LinearGradient
-            colors={[c.heroFrom, c.heroTo]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              borderRadius: 28,
-              paddingVertical: 18,
-              paddingHorizontal: 14,
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: c.border,
-              ...cycleShadow.soft,
-            }}
+        {bundle ? (
+          <Animated.View
+            entering={FadeInUp.duration(360)}
+            style={{ marginHorizontal: 16, marginBottom: 16, marginTop: 4 }}
           >
-            <CycleRing
+            <CycleHero
+              bundle={bundle}
               day={selectedCycleDay}
               cycleLength={cycleLen}
-              label={ka.cycle.cycleDay}
-              phaseHint={selectedPhase.phaseKa}
-            />
-          </LinearGradient>
-          {selected === today ? (
-            <View
-              style={{
-                marginTop: 10,
-                alignSelf: 'center',
-                backgroundColor: todayLog ? `${c.success}22` : c.roseSoft,
-                paddingHorizontal: 14,
-                paddingVertical: 6,
-                borderRadius: 999,
+              phaseKa={selectedPhase.phaseKa}
+              phase={selectedPhase.phase}
+              today={today}
+              onLog={() => setQuickOpen(true)}
+              onStart={() => {
+                setSelected(today);
+                setStartIntent(true);
+                setQuickOpen(true);
               }}
-            >
-              <Text style={{ color: todayLog ? c.success : c.rose, fontWeight: '700', fontSize: 12 }}>
-                {todayLog ? ka.cycle.quickLogDone : ka.cycle.quickLogTap}
-              </Text>
-            </View>
-          ) : null}
-        </Animated.View>
-        </Pressable>
+              onEnd={() => {
+                Alert.alert(ka.cycle.periodEndCta, ka.cycle.periodEndHint, [
+                  { text: ka.common.cancel, style: 'cancel' },
+                  {
+                    text: ka.cycle.periodEndCta,
+                    onPress: () => {
+                      void (async () => {
+                        if (!user?.id) return;
+                        try {
+                          const result = await queueApplyPeriod(user.id, {
+                            action: 'end',
+                            date: selected,
+                          });
+                          if (result.view) {
+                            setCycleView(result.view);
+                            setBundle(result.view.display);
+                          }
+                        } catch {
+                          setError(ka.common.error);
+                        }
+                      })();
+                    },
+                  },
+                ]);
+              }}
+            />
+          </Animated.View>
+        ) : null}
+
+        {bundle?.profile.mode === 'TRY_TO_CONCEIVE' ? (
+          <View style={{ paddingHorizontal: 16 }}>
+            <CycleTtcCard
+              bundle={bundle}
+              date={selected}
+              log={bundle.logs.find((l) => l.date === selected)}
+              onAction={(key) => {
+                if (key === 'full') {
+                  router.push({ pathname: '/cycle/log', params: { date: selected } } as never);
+                  return;
+                }
+                router.push({
+                  pathname: '/cycle/log',
+                  params: { date: selected, tab: 'more' },
+                } as never);
+              }}
+            />
+          </View>
+        ) : null}
 
         {bundle ? (
-          <View style={{ paddingHorizontal: 20 }}>
-            <CycleDayInsights date={selected} bundle={bundle} mark={selectedMark} />
+          <View style={{ paddingHorizontal: 16 }}>
+            <CycleDayInsights
+              date={selected}
+              bundle={bundle}
+              mark={selectedMark}
+              pending={cycleView?.pendingDates.includes(selected)}
+              stale={Boolean(cycleView?.stale)}
+            />
           </View>
         ) : null}
 
         {showPms && bundle ? (
-          <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+          <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
             <CyclePmsHeatmap bundle={bundle} compact />
           </View>
         ) : null}
@@ -321,16 +434,17 @@ export default function CycleHome() {
         {bundle?.profile.mode === 'PREGNANCY' && bundle.pregnancy?.age ? (
           <Pressable
             onPress={() => router.push('/cycle/pregnancy' as never)}
-            style={{ marginHorizontal: 20, marginBottom: 16, borderRadius: 24, overflow: 'hidden' }}
+            style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 16, overflow: 'hidden' }}
           >
-            <LinearGradient
-              colors={[c.lavenderSoft, c.roseSoft]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
               style={{
-                padding: 18,
+                padding: 16,
                 flexDirection: 'row',
                 alignItems: 'center',
+                backgroundColor: c.card,
+                borderWidth: 1,
+                borderColor: c.border,
+                borderRadius: 16,
               }}
             >
               <View
@@ -346,7 +460,13 @@ export default function CycleHome() {
                 <Baby size={26} color={c.lavender} strokeWidth={2} />
               </View>
               <View style={{ marginLeft: 14, flex: 1 }}>
-                <Text style={{ color: c.ink, fontWeight: '800', fontSize: 17 }}>
+                <Text
+                  style={{
+                    color: c.ink,
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    fontSize: 17,
+                  }}
+                >
                   {ka.cycle.week} {bundle.pregnancy.age.week}, {ka.cycle.day}{' '}
                   {bundle.pregnancy.age.day}
                 </Text>
@@ -354,64 +474,55 @@ export default function CycleHome() {
                   {ka.cycle.babySize}: {bundle.pregnancy.insight.size}
                 </Text>
               </View>
-              <Text style={{ color: c.lavender, fontSize: 22, fontWeight: '700' }}>›</Text>
-            </LinearGradient>
+              <Text style={{ color: c.muted, fontSize: 22, fontWeight: '700' }}>›</Text>
+            </View>
           </Pressable>
         ) : null}
 
-        <View style={{ paddingHorizontal: 20 }}>
-          <Text
-            style={{
-              color: c.ink,
-              fontWeight: '800',
-              fontSize: 16,
-              marginBottom: 12,
-            }}
-          >
-            {ka.cycle.quickActions}
-          </Text>
-
-          <View style={{ gap: 10 }}>
-            <CycleFeatureTile
-              icon={CalendarHeart}
-              title={ka.cycle.logToday}
-              subtitle={ka.cycle.logHint}
-              color={c.rose}
-              delay={40}
-              onPress={() =>
-                router.push({ pathname: '/cycle/log', params: { date: selected } } as never)
-              }
-            />
-            <CycleFeatureTile
-              icon={FileText}
-              title={ka.cycle.summary}
-              subtitle={ka.cycle.summaryHint}
-              color={c.lavender}
-              delay={80}
-              onPress={() => router.push('/cycle/summary' as never)}
-            />
-            <CycleFeatureTile
-              icon={BarChart3}
-              title={ka.cycle.trendsTitle}
-              subtitle={ka.cycle.trendsOpen}
-              color={c.blushDeep}
-              delay={100}
-              onPress={() => router.push('/cycle/trends' as never)}
-            />
-            {bundle?.profile.mode === 'TRY_TO_CONCEIVE' ||
-            bundle?.profile.mode === 'PREGNANCY' ? (
+        <View style={{ paddingHorizontal: 16 }}>
+          <CycleSection title={ka.cycle.quickActions} delay={40}>
+            <View>
               <CycleFeatureTile
-                icon={Sparkles}
-                title={
-                  bundle.profile.mode === 'PREGNANCY' ? ka.cycle.pregnancy : ka.cycle.modeTtc
+                icon={CalendarHeart}
+                title={ka.cycle.logToday}
+                subtitle={ka.cycle.logHint}
+                color={c.rose}
+                delay={0}
+                onPress={() =>
+                  router.push({ pathname: '/cycle/log', params: { date: selected } } as never)
                 }
-                subtitle={ka.modules.cycle.subtitle}
-                color={c.blushDeep}
-                delay={120}
-                onPress={() => router.push('/cycle/pregnancy' as never)}
               />
-            ) : null}
-          </View>
+              <CycleFeatureTile
+                icon={FileText}
+                title={ka.cycle.summary}
+                subtitle={ka.cycle.summaryHint}
+                color={c.brand}
+                delay={40}
+                onPress={() => router.push('/cycle/summary' as never)}
+              />
+              <CycleFeatureTile
+                icon={BarChart3}
+                title={ka.cycle.trendsTitle}
+                subtitle={ka.cycle.trendsOpen}
+                color={c.brand}
+                delay={80}
+                onPress={() => router.push('/cycle/trends' as never)}
+              />
+              {bundle?.profile.mode === 'TRY_TO_CONCEIVE' ||
+              bundle?.profile.mode === 'PREGNANCY' ? (
+                <CycleFeatureTile
+                  icon={Sparkles}
+                  title={
+                    bundle.profile.mode === 'PREGNANCY' ? ka.cycle.pregnancy : ka.cycle.modeTtc
+                  }
+                  subtitle={ka.modules.cycle.subtitle}
+                  color={c.blushDeep}
+                  delay={120}
+                  onPress={() => router.push('/cycle/pregnancy' as never)}
+                />
+              ) : null}
+            </View>
+          </CycleSection>
         </View>
         </ScrollView>
       </View>
@@ -436,21 +547,46 @@ export default function CycleHome() {
             return m > 11 ? { y: cur.y + 1, m: 0 } : { y: cur.y, m };
           })
         }
+        onToday={() => {
+          const key = cycleTodayKey;
+          const [y, m] = key.split('-').map(Number);
+          setCursor({ y, m: m - 1 });
+          pickDate(key);
+        }}
       />
 
       {!needsOnboarding ? (
         <View style={{ position: 'absolute', right: 18, bottom: insets.bottom + 20 }}>
           <CycleFab
             label={ka.cycle.logFab}
-            onPress={() => setQuickLogOpen(true)}
+            onPress={() => setQuickOpen(true)}
           />
         </View>
       ) : null}
 
       <CycleQuickLogSheet
-        visible={quickLogOpen}
+        visible={quickOpen}
         date={selected}
-        onClose={() => setQuickLogOpen(false)}
+        onClose={() => {
+          setQuickOpen(false);
+          setStartIntent(false);
+        }}
+        onSaved={load}
+        isPeriodStart={startIntent}
+        onOpenFull={() => {
+          setQuickOpen(false);
+          router.push({ pathname: '/cycle/log', params: { date: selected } } as never);
+        }}
+        onOpenHub={() => {
+          setQuickOpen(false);
+          setHubOpen(true);
+        }}
+      />
+
+      <CycleLogHubModal
+        visible={hubOpen}
+        date={selected}
+        onClose={() => setHubOpen(false)}
         onSaved={load}
       />
     </CycleAtmosphere>

@@ -7,7 +7,7 @@ import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { describeImage, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
-import { calculateAge, withPatientProfile } from '../lib/patient.js';
+import { calculateAge, withPatientAiContext } from '../lib/patient.js';
 import { buildSymptomPrompt, formatSymptomRecordKa, runSymptomCheck } from '../lib/symptomCheck.js';
 import { saveUpload } from '../lib/storage.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -62,7 +62,7 @@ aiRouter.post(
     const userTurnCount = priorTurns.filter((m) => m.role === 'user').length + 1;
     const assistantTurnCount = priorTurns.filter((m) => m.role === 'assistant').length;
 
-    const profileContext = withPatientProfile(req.user, context);
+    const profileContext = await withPatientAiContext(req.user, context);
     const turnContext =
       mode === 'DOCTOR'
         ? buildDoctorTurnContext({ userTurnCount, assistantTurnCount })
@@ -184,6 +184,7 @@ aiRouter.post(
       extractor = { provider: described.provider, model: described.model };
     }
 
+    const patientAiContext = await withPatientAiContext(req.user);
     const analysis = await runTrackedAi({
       userId: req.user.id,
       mode: kind,
@@ -193,7 +194,7 @@ aiRouter.post(
       fn: () =>
         askEvidenceMd({
           mode: kind,
-          context: withPatientProfile(req.user),
+          context: patientAiContext,
           messages: [
             { role: 'user', content: buildVisionHandoff({ kind, visionNotes, patientContext: context }) },
           ],
@@ -263,6 +264,7 @@ aiRouter.post(
       .filter(Boolean)
       .join('\n');
 
+    const patientAiContext = await withPatientAiContext(req.user);
     const answer = await runTrackedAi({
       userId: req.user.id,
       mode: 'SKINCARE',
@@ -270,7 +272,7 @@ aiRouter.post(
       fn: () =>
         askEvidenceMd({
           mode: 'SKINCARE',
-          context: withPatientProfile(req.user),
+          context: patientAiContext,
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.3,
         }),
@@ -316,6 +318,7 @@ aiRouter.post(
       .map((m, i) => `${i + 1}. ${m.medName} — დოზა: ${m.dosage}; მიღება: ${m.frequency}${m.notes ? `; შენიშვნა: ${m.notes}` : ''}`)
       .join('\n');
 
+    const patientAiContext = await withPatientAiContext(req.user);
     const answer = await runTrackedAi({
       userId: req.user.id,
       mode: 'MEDICATION',
@@ -323,7 +326,7 @@ aiRouter.post(
       fn: () =>
         askEvidenceMd({
           mode: 'MEDICATION',
-          context: withPatientProfile(req.user),
+          context: patientAiContext,
           messages: [{ role: 'user', content: `პაციენტის მიმდინარე მედიკამენტები:\n${list}` }],
         }),
     });
@@ -379,7 +382,7 @@ aiRouter.post(
       fn: async () => {
         const result = await runSymptomCheck({
           prompt,
-          patientContext: withPatientProfile(req.user),
+          patientContext: await withPatientAiContext(req.user),
           symptoms: data.symptoms,
           bodyPartKa: data.bodyPartKa,
           notes: data.notes,

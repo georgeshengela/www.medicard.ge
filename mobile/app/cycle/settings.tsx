@@ -3,7 +3,6 @@ import { Platform, Pressable, ScrollView, Share, Switch, Text, View } from 'reac
 import { useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Baby, Bell, CalendarPlus, EyeOff, Heart, Link2, Lock, Sparkles } from 'lucide-react-native';
@@ -21,6 +20,8 @@ import {
 } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import { api, ApiError, type CycleBundle, type CycleCondition, type CycleMode } from '@/lib/api';
+import { cacheCycleBundle, loadCycleView, peekCyclePendingCount } from '@/lib/cycleOffline';
+import { useAuth } from '@/store/AuthContext';
 import { normalizeIsoDate } from '@/lib/birthdate';
 import { buildCycleIcs } from '@/lib/cycleCalendarExport';
 import {
@@ -36,25 +37,25 @@ import {
   maskStyleLabel,
 } from '@/lib/cycleNotificationMask';
 import { importLatestPeriodStart, syncPeriodStartToHealth } from '@/lib/healthSync';
-import { cycleShadow, useCycleColors } from '@/theme/cycle';
+import { useCycleColors } from '@/theme/cycle';
 
 const MODES: { id: CycleMode; label: string; hint: string; icon: typeof Heart }[] = [
   {
     id: 'TRACK_PERIOD',
     label: ka.cycle.modePeriod,
-    hint: 'პროგნოზები და სიმპტომები',
+    hint: ka.cycle.modePeriodHint,
     icon: Heart,
   },
   {
     id: 'TRY_TO_CONCEIVE',
     label: ka.cycle.modeTtc,
-    hint: 'ნაყოფიერი ფანჯარა · BBT',
+    hint: ka.cycle.modeTtcHint,
     icon: Sparkles,
   },
   {
     id: 'PREGNANCY',
     label: ka.cycle.modePregnancy,
-    hint: 'კვირები და ჩეკლისტი',
+    hint: ka.cycle.modePregnancyHint,
     icon: Baby,
   },
 ];
@@ -66,23 +67,39 @@ const CONDITIONS: { id: CycleCondition; label: string }[] = [
 ];
 
 function applyProfile(data: CycleBundle) {
+  const profile = data?.profile ?? ({} as CycleBundle['profile']);
   return {
-    mode: data.profile.mode ?? 'TRACK_PERIOD',
-    avgCycle: String(data.profile.avgCycleLength ?? 28),
-    avgPeriod: String(data.profile.avgPeriodLength ?? 5),
-    lastPeriod: normalizeIsoDate(data.profile.lastPeriodStart),
-    dueDate: normalizeIsoDate(data.profile.dueDate),
-    irregular: Boolean(data.profile.isIrregular),
-    privacy: Boolean(data.profile.privacyEnabled),
-    conditions: (data.profile.conditions ?? []) as CycleCondition[],
+    mode: profile.mode ?? 'TRACK_PERIOD',
+    avgCycle: String(profile.avgCycleLength ?? 28),
+    avgPeriod: String(profile.avgPeriodLength ?? 5),
+    lastPeriod: normalizeIsoDate(profile.lastPeriodStart),
+    dueDate: normalizeIsoDate(profile.dueDate),
+    irregular: Boolean(profile.isIrregular),
+    privacy: Boolean(profile.privacyEnabled),
+    conditions: (profile.conditions ?? []) as CycleCondition[],
+  };
+}
+
+function serverReminderPrefs(prefs: CycleReminderPrefs) {
+  return {
+    enabled: prefs.enabled,
+    periodDaysBefore: prefs.periodDaysBefore,
+    ovulation: prefs.ovulation,
+    dailyLog: prefs.dailyLog,
+    pms: prefs.pms,
+    opk: prefs.opk,
+    bbt: prefs.bbt,
   };
 }
 
 export default function CycleSettings() {
+  const { user } = useAuth();
   const c = useCycleColors();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [bundle, setBundle] = useState<CycleBundle | null>(null);
+  const [canonical, setCanonical] = useState<CycleBundle | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -103,6 +120,8 @@ export default function CycleSettings() {
     ovulation: true,
     dailyLog: false,
     pms: true,
+    opk: false,
+    bbt: false,
     maskNotifications: true,
     maskStyle: 'neutral',
   });
@@ -113,9 +132,16 @@ export default function CycleSettings() {
   }, [navigation, c]);
 
   useEffect(() => {
-    Promise.all([api.cycle.get(), getCycleReminderPrefs(), isCyclePrivacyLockEnabled()])
-      .then(([data, remPrefs, lockOn]) => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    Promise.all([loadCycleView(user.id), getCycleReminderPrefs(), isCyclePrivacyLockEnabled()])
+      .then(([view, remPrefs, lockOn]) => {
+        const data = view.display;
         setBundle(data);
+        setCanonical(view.canonical);
+        setPendingCount(view.pendingCount);
         const next = applyProfile(data);
         setMode(next.mode);
         setAvgCycle(next.avgCycle);
@@ -133,32 +159,57 @@ export default function CycleSettings() {
         setMsg(err instanceof ApiError ? err.message : ka.common.error);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [user?.id]);
 
   const save = async () => {
     setSaving(true);
     setMsg(null);
     try {
+      const lastPeriodStart = /^\d{4}-\d{2}-\d{2}$/.test(lastPeriod) ? lastPeriod : null;
+      if (lastPeriodStart) {
+        await api.cycle.updateProfile({ lastPeriodStart });
+      }
       const data = await api.cycle.updateProfile({
         mode,
         avgCycleLength: Math.min(45, Math.max(21, Number(avgCycle) || 28)),
         avgPeriodLength: Math.min(10, Math.max(2, Number(avgPeriod) || 5)),
-        lastPeriodStart: /^\d{4}-\d{2}-\d{2}$/.test(lastPeriod) ? lastPeriod : null,
+        lastPeriodStart,
         dueDate: mode === 'PREGNANCY' && /^\d{4}-\d{2}-\d{2}$/.test(dueDate) ? dueDate : null,
         isIrregular: irregular,
         privacyEnabled: privacy,
         conditions,
-        reminderPrefs: reminders,
+        reminderPrefs: serverReminderPrefs(reminders),
       });
       setBundle(data);
+      setCanonical(data);
+      if (user?.id) {
+        try {
+          await cacheCycleBundle(user.id, data);
+        } catch {
+          /* Profile is already saved on the server. */
+        }
+      }
       const next = applyProfile(data);
       setLastPeriod(next.lastPeriod);
       setDueDate(next.dueDate);
       if (/^\d{4}-\d{2}-\d{2}$/.test(next.lastPeriod)) {
-        await syncPeriodStartToHealth(next.lastPeriod);
+        try {
+          await syncPeriodStartToHealth(next.lastPeriod);
+        } catch {
+          /* Health sync is optional. */
+        }
       }
-      await setCycleReminderPrefs(reminders);
-      const count = await syncCycleReminders(data, reminders);
+      try {
+        await setCycleReminderPrefs(reminders);
+      } catch {
+        /* Local reminder prefs must not fail a saved last-period date. */
+      }
+      let count = 0;
+      try {
+        count = await syncCycleReminders(data, reminders);
+      } catch {
+        /* Reminders must not fail a saved last-period date. */
+      }
       setMsgTone('success');
       setMsg(
         reminders.enabled && count > 0
@@ -186,10 +237,16 @@ export default function CycleSettings() {
   };
 
   const exportCalendar = async () => {
-    if (!bundle) return;
+    const source = canonical ?? bundle;
+    if (!source) return;
     setMsg(null);
     try {
-      const ics = buildCycleIcs(bundle);
+      if ((pendingCount || (user?.id ? await peekCyclePendingCount(user.id) : 0)) > 0) {
+        setMsgTone('error');
+        setMsg(ka.cycle.reportPendingWarn);
+        return;
+      }
+      const ics = buildCycleIcs(source);
       if (Platform.OS === 'web') {
         await Share.share({ message: ics });
         return;
@@ -221,8 +278,9 @@ export default function CycleSettings() {
     try {
       const data = await api.cycle.updateProfile({ enablePartnerShare: on });
       setBundle(data);
-      if (on && data.profile.partnerShareCode) {
-        const url = `https://medicard.ge/api/cycle/share/${data.profile.partnerShareCode}`;
+      const code = data.partnerShare?.code ?? data.profile.partnerShareCode;
+      if (on && code) {
+        const url = `https://medicard.ge/share/cycle/${code}`;
         await Share.share({ message: url });
         setMsgTone('success');
         setMsg(ka.common.share);
@@ -230,6 +288,17 @@ export default function CycleSettings() {
         setMsgTone('success');
         setMsg(ka.cycle.partnerOff);
       }
+    } catch (err) {
+      setMsgTone('error');
+      setMsg(err instanceof ApiError ? err.message : ka.common.error);
+    }
+  };
+
+  const patchSharePerm = async (key: keyof NonNullable<CycleBundle['partnerShare']>['permissions'], value: boolean) => {
+    setMsg(null);
+    try {
+      const data = await api.cycle.updateProfile({ sharePermissions: { [key]: value } });
+      setBundle(data);
     } catch (err) {
       setMsgTone('error');
       setMsg(err instanceof ApiError ? err.message : ka.common.error);
@@ -246,26 +315,30 @@ export default function CycleSettings() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInUp.duration(400)} style={{ marginBottom: 20 }}>
-          <LinearGradient
-            colors={[c.heroFrom, c.heroTo]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          <View
             style={{
-              borderRadius: 24,
+              borderRadius: 16,
               padding: 18,
               borderWidth: 1,
               borderColor: c.border,
-              ...cycleShadow.soft,
+              backgroundColor: c.card,
             }}
           >
-            <Text style={{ color: c.rose, fontSize: 12, fontWeight: '800', letterSpacing: 0.6 }}>
+            <Text
+              style={{
+                color: c.brand,
+                fontSize: 12,
+                fontFamily: 'NotoSansGeorgian_700Bold',
+                letterSpacing: 0.6,
+              }}
+            >
               {ka.cycle.settings}
             </Text>
             <Text
               style={{
                 color: c.ink,
                 fontSize: 20,
-                fontWeight: '800',
+                fontFamily: 'NotoSansGeorgian_700Bold',
                 marginTop: 6,
                 letterSpacing: -0.3,
               }}
@@ -275,10 +348,10 @@ export default function CycleSettings() {
             <Text style={{ color: c.muted, fontSize: 13, marginTop: 6, lineHeight: 18 }}>
               {ka.cycle.settingsHeroHint}
             </Text>
-          </LinearGradient>
+          </View>
         </Animated.View>
 
-        <CycleSection title="რეჟიმი" subtitle="აირჩიეთ თქვენი მიზანი" delay={40}>
+        <CycleSection title={ka.cycle.settingsMode} subtitle={ka.cycle.settingsModeHint} delay={40}>
           <View style={{ gap: 10 }}>
             {MODES.map((m, i) => {
               const on = mode === m.id;
@@ -290,12 +363,11 @@ export default function CycleSettings() {
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      backgroundColor: on ? c.rose : c.card,
-                      borderRadius: 20,
+                      backgroundColor: on ? c.cta : c.card,
+                      borderRadius: 16,
                       padding: 16,
                       borderWidth: on ? 0 : 1,
                       borderColor: c.border,
-                      ...(on ? cycleShadow.soft : {}),
                     }}
                   >
                     <View
@@ -303,15 +375,21 @@ export default function CycleSettings() {
                         width: 44,
                         height: 44,
                         borderRadius: 14,
-                        backgroundColor: on ? 'rgba(255,255,255,0.2)' : c.roseSoft,
+                        backgroundColor: on ? 'rgba(255,255,255,0.2)' : c.cardSoft,
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <Icon size={20} color={on ? '#fff' : c.rose} strokeWidth={2.1} />
+                      <Icon size={20} color={on ? '#fff' : c.brand} strokeWidth={2.1} />
                     </View>
                     <View style={{ marginLeft: 12, flex: 1 }}>
-                      <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '800', fontSize: 15 }}>
+                      <Text
+                        style={{
+                          color: on ? '#fff' : c.ink,
+                          fontFamily: 'NotoSansGeorgian_700Bold',
+                          fontSize: 15,
+                        }}
+                      >
                         {m.label}
                       </Text>
                       <Text
@@ -331,7 +409,7 @@ export default function CycleSettings() {
           </View>
         </CycleSection>
 
-        <CycleSection title={ka.cycle.remindersTitle} subtitle={ka.cycle.remindersHint} delay={140}>
+        <CycleSection title={ka.cycle.settingsReminders} subtitle={ka.cycle.remindersHint} delay={140}>
           <CycleCard>
             <RowSwitch
               icon={Bell}
@@ -375,6 +453,29 @@ export default function CycleSettings() {
                   onChange={(v) => updateReminders({ pms: v })}
                   c={c}
                 />
+                {mode === 'TRY_TO_CONCEIVE' ? (
+                  <>
+                    <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
+                    <RowSwitch
+                      icon={Sparkles}
+                      label={ka.cycle.remindersOpk}
+                      value={reminders.opk}
+                      onChange={(v) => updateReminders({ opk: v })}
+                      c={c}
+                    />
+                    <Text style={{ color: c.muted, fontSize: 12, lineHeight: 16, marginTop: 6 }}>
+                      {ka.cycle.remindersOpkHint}
+                    </Text>
+                    <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
+                    <RowSwitch
+                      icon={Heart}
+                      label={ka.cycle.remindersBbt}
+                      value={reminders.bbt}
+                      onChange={(v) => updateReminders({ bbt: v })}
+                      c={c}
+                    />
+                  </>
+                ) : null}
               </>
             ) : null}
           </CycleCard>
@@ -412,9 +513,9 @@ export default function CycleSettings() {
                           paddingHorizontal: 14,
                           paddingVertical: 10,
                           borderRadius: 999,
-                          backgroundColor: on ? c.rose : c.creamDeep,
+                          backgroundColor: on ? c.cta : c.creamDeep,
                           borderWidth: 1,
-                          borderColor: on ? c.rose : c.border,
+                          borderColor: on ? c.cta : c.border,
                         }}
                       >
                         <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 13 }}>
@@ -434,6 +535,9 @@ export default function CycleSettings() {
             <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginBottom: 14 }}>
               {ka.cycle.conditionsExplain}
             </Text>
+            <Text style={{ color: c.mutedSoft, fontSize: 11, lineHeight: 16, marginBottom: 14 }}>
+              {ka.cycle.contraceptionDisclaimer}
+            </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {CONDITIONS.map((item) => {
                 const on = conditions.includes(item.id);
@@ -445,9 +549,9 @@ export default function CycleSettings() {
                       paddingHorizontal: 14,
                       paddingVertical: 10,
                       borderRadius: 999,
-                      backgroundColor: on ? c.rose : c.creamDeep,
+                      backgroundColor: on ? c.cta : c.creamDeep,
                       borderWidth: 1,
-                      borderColor: on ? c.rose : c.border,
+                      borderColor: on ? c.cta : c.border,
                     }}
                   >
                     <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 13 }}>
@@ -460,7 +564,7 @@ export default function CycleSettings() {
           </CycleCard>
         </CycleSection>
 
-        <CycleSection title="ციკლის პარამეტრები" delay={120}>
+        <CycleSection title={ka.cycle.settingsProfile} delay={120}>
           <CycleCard>
             <Stepper
               label={ka.cycle.avgCycle}
@@ -499,7 +603,7 @@ export default function CycleSettings() {
         </CycleSection>
 
         {mode === 'PREGNANCY' ? (
-          <CycleSection title={ka.cycle.dueDate} subtitle="აირჩიეთ კალენდრიდან" delay={180}>
+          <CycleSection title={ka.cycle.dueDate} subtitle={ka.cycle.dueDateHint} delay={180}>
             <CycleDateField
               value={dueDate}
               onChange={setDueDate}
@@ -509,7 +613,7 @@ export default function CycleSettings() {
           </CycleSection>
         ) : null}
 
-        <CycleSection title={ka.cycle.healthTitle} subtitle={ka.cycle.healthHint} delay={200}>
+        <CycleSection title={ka.cycle.settingsHealth} subtitle={ka.cycle.healthHint} delay={200}>
           <CycleHealthConnectCard
             onConnected={async () => {
               const imported = await importLatestPeriodStart();
@@ -522,7 +626,8 @@ export default function CycleSettings() {
           />
         </CycleSection>
 
-        <CycleCard style={{ marginBottom: 14 }} delay={240}>
+        <CycleSection title={ka.cycle.settingsPrivacy} delay={240}>
+        <CycleCard delay={0}>
           <RowSwitch
             icon={Sparkles}
             label={ka.cycle.irregular}
@@ -547,18 +652,20 @@ export default function CycleSettings() {
             c={c}
           />
         </CycleCard>
+        </CycleSection>
 
-        <CycleSection title={ka.cycle.calendarExport} subtitle={ka.cycle.calendarExportHint} delay={260}>
+        <CycleSection title={ka.cycle.settingsData} subtitle={ka.cycle.calendarExportHint} delay={260}>
           <CycleCard>
             <Pressable
               onPress={exportCalendar}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
+                minHeight: 48,
                 opacity: pressed ? 0.85 : 1,
               })}
             >
-              <CalendarPlus size={20} color={c.rose} />
+              <CalendarPlus size={20} color={c.brand} />
               <Text style={{ color: c.ink, fontWeight: '700', marginLeft: 10, flex: 1 }}>
                 {ka.cycle.calendarExport}
               </Text>
@@ -566,21 +673,63 @@ export default function CycleSettings() {
           </CycleCard>
         </CycleSection>
 
-        <CycleSection title={ka.cycle.partnerShare} delay={280}>
+        <CycleSection title={ka.cycle.settingsSharing} delay={280}>
           <CycleCard>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
               <Link2 size={18} color={c.lavender} />
               <Text style={{ color: c.muted, marginLeft: 8, fontSize: 13, flex: 1 }}>
-                უსაფრთხო ბმული პარტნიორისთვის
+                {ka.cycle.partnerShareHint}
               </Text>
             </View>
-            {bundle?.profile.partnerShareCode ? (
+            {bundle?.partnerShare?.code ? (
               <Text
-                style={{ color: c.ink, fontSize: 12, marginBottom: 12, fontWeight: '600' }}
+                style={{ color: c.ink, fontSize: 12, marginBottom: 8, fontWeight: '600' }}
                 selectable
               >
-                medicard.ge/api/cycle/share/{bundle.profile.partnerShareCode}
+                medicard.ge/share/cycle/{bundle.partnerShare.code}
               </Text>
+            ) : null}
+            {bundle?.partnerShare?.active ? (
+              <Text style={{ color: c.success, fontSize: 12, marginBottom: 8, fontWeight: '600' }}>
+                {ka.cycle.partnerShareAccepted}
+              </Text>
+            ) : null}
+            {bundle?.partnerShare?.active && bundle.partnerShare.expiresAt ? (
+              <Text style={{ color: c.muted, fontSize: 12, marginBottom: 12, fontWeight: '600' }}>
+                {ka.cycle.partnerShareExpires}: {bundle.partnerShare.expiresAt.slice(0, 10)}
+              </Text>
+            ) : null}
+            {bundle?.partnerShare?.active ? (
+              <View style={{ gap: 4, marginBottom: 12 }}>
+                <RowSwitch
+                  icon={Heart}
+                  label={ka.cycle.partnerPermPeriod}
+                  value={bundle.partnerShare.permissions.period}
+                  onChange={(v) => void patchSharePerm('period', v)}
+                  c={c}
+                />
+                <RowSwitch
+                  icon={Sparkles}
+                  label={ka.cycle.partnerPermPhase}
+                  value={bundle.partnerShare.permissions.cyclePhase}
+                  onChange={(v) => void patchSharePerm('cyclePhase', v)}
+                  c={c}
+                />
+                <RowSwitch
+                  icon={Baby}
+                  label={ka.cycle.partnerPermFertile}
+                  value={bundle.partnerShare.permissions.fertileWindow}
+                  onChange={(v) => void patchSharePerm('fertileWindow', v)}
+                  c={c}
+                />
+                <RowSwitch
+                  icon={EyeOff}
+                  label={ka.cycle.partnerPermSymptoms}
+                  value={bundle.partnerShare.permissions.symptoms}
+                  onChange={(v) => void patchSharePerm('symptoms', v)}
+                  c={c}
+                />
+              </View>
             ) : null}
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Pressable
@@ -624,16 +773,25 @@ export default function CycleSettings() {
         </CycleSection>
 
         {msg ? (
-          <Text
+          <View
             style={{
-              color: msgTone === 'error' ? c.danger : c.success,
               marginBottom: 12,
-              fontWeight: '700',
-              textAlign: 'center',
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              backgroundColor: msgTone === 'error' ? `${c.danger}14` : `${c.success}18`,
             }}
           >
-            {msg}
-          </Text>
+            <Text
+              style={{
+                color: msgTone === 'error' ? c.danger : c.success,
+                fontWeight: '700',
+                textAlign: 'center',
+              }}
+            >
+              {msg}
+            </Text>
+          </View>
         ) : null}
         <CyclePrimaryButton
           label={saving ? ka.common.loading : ka.common.save}
@@ -649,11 +807,14 @@ export default function CycleSettings() {
         onClose={() => setPregnancySheet(false)}
         onComplete={() => {
           setMode('PREGNANCY');
-          api.cycle.get().then((data) => {
-            setBundle(data);
-            const next = applyProfile(data);
-            setDueDate(next.dueDate);
-          });
+          if (user?.id) {
+            void loadCycleView(user.id).then((view) => {
+              setBundle(view.display);
+              setCanonical(view.canonical);
+              const next = applyProfile(view.display);
+              setDueDate(next.dueDate);
+            });
+          }
         }}
       />
     </CycleAtmosphere>
@@ -682,33 +843,39 @@ function Stepper({
         <Pressable
           onPress={() => onChange(Math.max(min, value - 1))}
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 12,
-            backgroundColor: c.roseSoft,
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            backgroundColor: c.cardSoft,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: c.rose, fontWeight: '800', fontSize: 18 }}>−</Text>
+          <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18 }}>−</Text>
         </Pressable>
         <Text
-          style={{ color: c.ink, fontWeight: '800', fontSize: 20, minWidth: 28, textAlign: 'center' }}
+          style={{
+            color: c.ink,
+            fontFamily: 'NotoSansGeorgian_700Bold',
+            fontSize: 20,
+            minWidth: 28,
+            textAlign: 'center',
+          }}
         >
           {value}
         </Text>
         <Pressable
           onPress={() => onChange(Math.min(max, value + 1))}
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 12,
-            backgroundColor: c.roseSoft,
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            backgroundColor: c.cardSoft,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: c.rose, fontWeight: '800', fontSize: 18 }}>+</Text>
+          <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18 }}>+</Text>
         </Pressable>
       </View>
     </View>
@@ -729,15 +896,15 @@ function RowSwitch({
   c: ReturnType<typeof useCycleColors>;
 }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 12 }}>
-        <Icon size={18} color={c.rose} strokeWidth={2.1} />
+        <Icon size={18} color={c.brand} strokeWidth={2.1} />
         <Text style={{ color: c.ink, fontWeight: '700', marginLeft: 10 }}>{label}</Text>
       </View>
       <Switch
         value={value}
         onValueChange={onChange}
-        trackColor={{ true: c.blushDeep, false: c.creamDeep }}
+        trackColor={{ true: c.cta, false: c.creamDeep }}
         thumbColor="#fff"
       />
     </View>

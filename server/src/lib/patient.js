@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { prisma } from './prisma.js';
 import { resolvePackageAiLimit } from './packages.js';
 
 function packageIsExpired(user) {
@@ -145,6 +146,15 @@ export function buildPatientProfile(user) {
   if (hp?.heightCm) lines.push(`- სიმაღლე: ${hp.heightCm} სმ`);
   if (hp?.weightKg) lines.push(`- წონა: ${hp.weightKg} კგ`);
   if (hp?.bloodType && hp.bloodType !== 'UNKNOWN') lines.push(`- სისხლის ჯგუფი: ${hp.bloodType}`);
+  if (hp?.activityLevel) lines.push(`- აქტივობა: ${hp.activityLevel}`);
+  if (hp?.exerciseFrequency) lines.push(`- ვარჯიში: ${hp.exerciseFrequency}`);
+  if (hp?.sleepHours != null) lines.push(`- ძილი: ${hp.sleepHours} სთ`);
+  if (hp?.sleepQuality) lines.push(`- ძილის ხარისხი: ${hp.sleepQuality}`);
+  if (hp?.waterIntakeL != null) lines.push(`- წყლის მიზანი: ${hp.waterIntakeL} ლ`);
+  if (hp?.restingHeartRate != null) lines.push(`- მოსვენების პულსი: ${hp.restingHeartRate}`);
+  if (hp?.bloodPressureSystolic) {
+    lines.push(`- წნევა: ${hp.bloodPressureSystolic}/${hp.bloodPressureDiastolic ?? '?'}`);
+  }
   if (Array.isArray(hp?.allergies) && hp.allergies.length) {
     lines.push(`- ალერგიები: ${hp.allergies.join(', ')}`);
   }
@@ -153,6 +163,12 @@ export function buildPatientProfile(user) {
   }
   if (Array.isArray(hp?.medications) && hp.medications.length) {
     lines.push(`- მედიკამენტები: ${hp.medications.join(', ')}`);
+  }
+  if (Array.isArray(hp?.familyHistory) && hp.familyHistory.length) {
+    lines.push(`- ოჯახური ანამნეზი: ${hp.familyHistory.join(', ')}`);
+  }
+  if (Array.isArray(hp?.healthGoals) && hp.healthGoals.length) {
+    lines.push(`- ჯანმრთელობის მიზნები: ${hp.healthGoals.join(', ')}`);
   }
 
   if (lines.length === 0) return null;
@@ -201,5 +217,81 @@ export function publicHealthProfile(profile) {
 /** Merges the demographics block with any context the user typed in themselves. */
 export function withPatientProfile(user, extra) {
   const merged = [buildPatientProfile(user), extra?.trim() || null].filter(Boolean).join('\n\n');
+  return merged || undefined;
+}
+
+export async function loadPatientAiBundle(userId) {
+  const [healthProfile, metrics, schedules, cycle] = await Promise.all([
+    prisma.healthProfile.findUnique({ where: { userId } }),
+    prisma.healthMetricDaily.findMany({
+      where: { userId },
+      orderBy: { date: 'desc' },
+      take: 14,
+    }),
+    prisma.medicationSchedule.findMany({
+      where: { userId, active: true },
+      select: { medName: true, dosage: true, frequency: true },
+    }),
+    prisma.cycleProfile.findUnique({
+      where: { userId },
+      select: { mode: true },
+    }),
+  ]);
+  return { healthProfile, metrics, schedules, cycleMode: cycle?.mode ?? null };
+}
+
+function formatMetricDay(row) {
+  const bits = [row.date];
+  if (row.steps != null) bits.push(`ნაბიჯები ${row.steps}`);
+  if (row.hydrationMl != null) bits.push(`ჰიდრატაცია ${Math.round(row.hydrationMl)}ml`);
+  if (row.weightKg != null) bits.push(`წონა ${row.weightKg}კგ`);
+  if (row.sleepHours != null) bits.push(`ძილი ${row.sleepHours}სთ`);
+  if (row.heartRate != null) bits.push(`პულსი ${Math.round(row.heartRate)}`);
+  if (row.bloodPressureSystolic != null) {
+    bits.push(`წნევა ${row.bloodPressureSystolic}/${row.bloodPressureDiastolic ?? '?'}`);
+  }
+  if (row.nutritionKcal != null) bits.push(`კვება ${Math.round(row.nutritionKcal)}კკალ`);
+  if (row.activeMinutes != null) bits.push(`აქტივობა ${row.activeMinutes}წთ`);
+  if (row.distanceKm != null) bits.push(`მანძილი ${row.distanceKm}კმ`);
+  return bits.length > 1 ? `- ${bits.join(', ')}` : null;
+}
+
+export function buildTrackedMetricsBlock(metrics) {
+  const lines = (metrics ?? []).map(formatMetricDay).filter(Boolean);
+  if (!lines.length) return null;
+  return [
+    'ბოლო 14 დღის ჯანმრთელობის მაჩვენებლები (ნაბიჯები, ჰიდრატაცია, წონა, ძილი, პულსი, წნევა, კვება):',
+    ...lines,
+    'გაითვალისწინე ეს მონაცემები რჩევებში და რისკების შეფასებაში. ეს არ არის დიაგნოზი.',
+  ].join('\n');
+}
+
+/**
+ * Full clinical context for Medi / analysis — profile + scheduled meds + recent daily metrics.
+ * Use this on every EvidenceMD call. `withPatientProfile` is only the sync leftover.
+ */
+export async function withPatientAiContext(user, extra) {
+  if (!user?.id) return withPatientProfile(user, extra);
+  const bundle = await loadPatientAiBundle(user.id);
+  const enriched = { ...user, healthProfile: user.healthProfile ?? bundle.healthProfile };
+  const meds = bundle.schedules.length
+    ? [
+        'დაგეგმილი მედიკამენტები:',
+        ...bundle.schedules.map(
+          (row) =>
+            `- ${row.medName}${row.dosage ? ` ${row.dosage}` : ''}${row.frequency ? ` (${row.frequency})` : ''}`,
+        ),
+      ].join('\n')
+    : null;
+  const cycle = bundle.cycleMode ? `ციკლის რეჟიმი: ${bundle.cycleMode}` : null;
+  const merged = [
+    buildPatientProfile(enriched),
+    buildTrackedMetricsBlock(bundle.metrics),
+    meds,
+    cycle,
+    extra?.trim() || null,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
   return merged || undefined;
 }

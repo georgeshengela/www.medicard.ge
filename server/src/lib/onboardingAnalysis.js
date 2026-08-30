@@ -90,9 +90,11 @@ export function computeHeuristicScore(profile, user, extras = {}, metrics = []) 
   if (profile.alcoholUse === 'NEVER') score += 3;
   else if (profile.alcoholUse === 'REGULAR') score -= 8;
 
-  if (profile.waterIntakeL != null) {
-    if (profile.waterIntakeL >= 2) score += 3;
-    else if (profile.waterIntakeL < 1.2) score -= 4;
+  const avgHydrationMl = averageMetric(metrics, 'hydrationMl');
+  const waterL = avgHydrationMl != null ? avgHydrationMl / 1000 : profile.waterIntakeL;
+  if (waterL != null) {
+    if (waterL >= 2) score += 3;
+    else if (waterL < 1.2) score -= 4;
   }
 
   const hr = profile.restingHeartRate ?? latestMetric(metrics, 'heartRate');
@@ -217,9 +219,13 @@ function buildPatientContext(profile, user, extras = {}, extrasContext = {}) {
           metrics.slice(0, 14).map((row) => ({
             date: row.date,
             steps: row.steps,
+            hydrationMl: row.hydrationMl,
             weightKg: row.weightKg,
             sleepHours: row.sleepHours,
             heartRate: row.heartRate,
+            nutritionKcal: row.nutritionKcal,
+            activeMinutes: row.activeMinutes,
+            distanceKm: row.distanceKm,
             bp: row.bloodPressureSystolic
               ? `${row.bloodPressureSystolic}/${row.bloodPressureDiastolic ?? '?'}`
               : null,

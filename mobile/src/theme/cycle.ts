@@ -1,100 +1,131 @@
-import { useColorScheme } from 'nativewind';
+import { darkColors, lightColors, useIsDark, useThemeColors, type Palette } from '@/theme/colors';
 
 /**
- * Cycle palette — Material pink / magenta (no brown cream).
- * Light: soft pink canvas · Dark: deep rose night.
+ * Cycle chrome follows the app (navy / teal / flat cards).
+ * Rose / purple stay on period, fertile, ovulation — data only.
  */
-export const cycleLight = {
+const PHASE_LIGHT = {
   blush: '#F8BBD0',
-  blushDeep: '#EC407A',
-  rose: '#E91E63',
-  roseSoft: '#FCE4EC',
-  lavender: '#CE93D8',
-  lavenderSoft: '#F3E5F5',
-  peach: '#F8BBD0',
-  mint: '#F48FB1',
-  cream: '#FFF5F8',
-  creamDeep: '#FFE0EC',
-  ink: '#3D0A24',
-  muted: '#9C2760',
-  mutedSoft: '#C2185B88',
-  period: '#E91E63',
-  fertile: '#AB47BC',
-  ovulation: '#8E24AA',
-  todayRing: '#00BFA5',
-  card: '#FFFFFF',
-  cardSoft: '#FFF0F5',
-  fab: '#E91E63',
-  border: 'rgba(233, 30, 99, 0.10)',
-  shadow: '#C2185B',
-  danger: '#D50000',
-  success: '#00C853',
-  white: '#FFFFFF',
-  overlay: 'rgba(74, 20, 140, 0.42)',
-  heroFrom: '#FCE4EC',
-  heroTo: '#F8BBD0',
-  accentGlow: '#FF80AB',
+  blushDeep: '#E11D48',
+  rose: '#E11D48',
+  roseSoft: '#FCE8EE',
+  lavender: '#C026D3',
+  lavenderSoft: '#F5E8FA',
+  peach: '#FCE8EE',
+  mint: '#F9A8D4',
+  period: '#E11D48',
+  fertile: '#C026D3',
+  ovulation: '#A21CAF',
+  todayRing: '#14B8A6',
 };
 
-export const cycleDark = {
-  blush: '#880E4F',
-  blushDeep: '#F06292',
-  rose: '#FF4081',
-  roseSoft: '#3D1528',
-  lavender: '#CE93D8',
-  lavenderSoft: '#2A1630',
-  peach: '#4A1830',
-  mint: '#F48FB1',
-  cream: '#140A10',
-  creamDeep: '#1F1018',
-  ink: '#FCE4EC',
-  muted: '#F8BBD0',
-  mutedSoft: '#F48FB1AA',
-  period: '#FF4081',
-  fertile: '#CE93D8',
-  ovulation: '#EA80FC',
-  todayRing: '#1DE9B6',
-  card: '#1E1218',
-  cardSoft: '#26151E',
-  fab: '#FF4081',
-  border: 'rgba(255, 64, 129, 0.16)',
-  shadow: '#000000',
-  danger: '#FF5252',
-  success: '#69F0AE',
-  white: '#FFFFFF',
-  overlay: 'rgba(0, 0, 0, 0.55)',
-  heroFrom: '#3D1528',
-  heroTo: '#4A1830',
-  accentGlow: '#FF80AB',
+const PHASE_DARK = {
+  blush: '#9F1239',
+  blushDeep: '#FB7185',
+  rose: '#FB7185',
+  roseSoft: '#3A1A24',
+  lavender: '#E879F9',
+  lavenderSoft: '#3B1A40',
+  peach: '#3A1A24',
+  mint: '#F9A8D4',
+  period: '#FB7185',
+  fertile: '#E879F9',
+  ovulation: '#E879F9',
+  todayRing: '#14B8A6',
 };
 
-export type CyclePalette = typeof cycleLight;
+export type CyclePhaseTokens = {
+  blush: string;
+  blushDeep: string;
+  rose: string;
+  roseSoft: string;
+  lavender: string;
+  lavenderSoft: string;
+  peach: string;
+  mint: string;
+  period: string;
+  fertile: string;
+  ovulation: string;
+  todayRing: string;
+};
 
-export function useCycleColors(): CyclePalette {
-  const { colorScheme } = useColorScheme();
-  return colorScheme === 'dark' ? cycleDark : cycleLight;
+export type CycleChromeTokens = {
+  cream: string;
+  creamDeep: string;
+  ink: string;
+  muted: string;
+  mutedSoft: string;
+  card: string;
+  cardSoft: string;
+  fab: string;
+  brand: string;
+  cta: string;
+  border: string;
+  shadow: string;
+  danger: string;
+  success: string;
+  white: string;
+  overlay: string;
+  heroFrom: string;
+  heroTo: string;
+  accentGlow: string;
+};
+
+export type CyclePalette = CyclePhaseTokens & CycleChromeTokens;
+
+function chrome(theme: Palette, dark: boolean): CycleChromeTokens {
+  return {
+    cream: theme.bg100,
+    creamDeep: theme.bg200,
+    ink: theme.text100,
+    muted: theme.text200,
+    mutedSoft: theme.text300,
+    card: theme.surface,
+    cardSoft: theme.bg200,
+    fab: dark ? '#0D9488' : theme.primary200,
+    brand: theme.primary200,
+    cta: dark ? '#0D9488' : theme.primary200,
+    border: theme.bg300,
+    shadow: 'transparent',
+    danger: theme.danger,
+    success: theme.success,
+    white: theme.white,
+    overlay: dark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(15, 26, 28, 0.40)',
+    heroFrom: theme.surface,
+    heroTo: theme.surface,
+    accentGlow: 'transparent',
+  };
 }
 
+export const cycleLight: CyclePalette = {
+  ...PHASE_LIGHT,
+  ...chrome(lightColors, false),
+};
+
+export const cycleDark: CyclePalette = {
+  ...PHASE_DARK,
+  ...chrome(darkColors, true),
+};
+
+export function useCycleColors(): CyclePalette {
+  const theme = useThemeColors();
+  const dark = useIsDark();
+  return {
+    ...(dark ? PHASE_DARK : PHASE_LIGHT),
+    ...chrome(theme, dark),
+  };
+}
+
+const FLAT = {
+  shadowColor: 'transparent',
+  shadowOpacity: 0,
+  shadowRadius: 0,
+  shadowOffset: { width: 0, height: 0 },
+  elevation: 0,
+} as const;
+
 export const cycleShadow = {
-  soft: {
-    shadowColor: '#E91E63',
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 5,
-  },
-  fab: {
-    shadowColor: '#E91E63',
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 10,
-  },
-  card: {
-    shadowColor: '#AD1457',
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
+  soft: FLAT,
+  fab: FLAT,
+  card: FLAT,
 } as const;

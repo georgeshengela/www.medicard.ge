@@ -6,5 +6,15 @@ export function hasPmsPattern(bundle: CycleBundle): boolean {
 }
 
 export function loggedCycleCount(bundle: CycleBundle): number {
-  return bundle.trends?.cycleLengths?.length ?? bundle.inferred?.periodStarts?.length ?? 0;
+  return (
+    bundle.averages?.cycleCount ??
+    bundle.trends?.cycleCount ??
+    bundle.trends?.cycleLengths?.length ??
+    bundle.inferred?.periodStarts?.length ??
+    0
+  );
+}
+
+export function cycleConfidenceLabel(bundle: CycleBundle): 'low' | 'medium' | 'high' {
+  return bundle.predictions?.confidence ?? bundle.summary?.confidence ?? bundle.trends?.confidence ?? 'low';
 }

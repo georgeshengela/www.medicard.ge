@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
   Droplets,
   Heart,
@@ -8,53 +7,47 @@ import {
   Sun,
   Moon,
   NotebookPen,
-  type LucideIcon,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import type { CycleBundle, CycleDayMark } from '@/lib/api';
-import { buildDayPredictions, detectCyclePhaseForDate } from '@/lib/cyclePhase';
+import { buildDayPredictions } from '@/lib/cyclePhase';
+import { cycleToday, phaseFromBundle } from '@/lib/cycleCanonical';
+import { displayPhaseLabel } from '@/lib/cycleHonesty';
+import { isBleedFlow } from '@/lib/cycleLogSave';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { CycleInsightsPanel } from '@/components/cycle/CycleInsights';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
-import { cycleShadow, useCycleColors } from '@/theme/cycle';
+import { useCycleColors } from '@/theme/cycle';
 
-const TONE: Record<
-  string,
-  { bg: string; accent: string; Icon: LucideIcon }
-> = {
-  period: { bg: '#FCE4EC', accent: '#E91E63', Icon: Droplets },
-  fertile: { bg: '#F3E5F5', accent: '#AB47BC', Icon: Heart },
-  ovulation: { bg: '#EDE7F6', accent: '#8E24AA', Icon: Sparkles },
-  calm: { bg: '#F3E5F5', accent: '#AB47BC', Icon: Moon },
-  energy: { bg: '#FCE4EC', accent: '#EC407A', Icon: Sun },
-  care: { bg: '#F8BBD0', accent: '#C2185B', Icon: Heart },
-  mood: { bg: '#FFF0F5', accent: '#D81B60', Icon: Sparkles },
-  log: { bg: '#FFF0F5', accent: '#E91E63', Icon: NotebookPen },
-};
+function insightTones(c: ReturnType<typeof useCycleColors>) {
+  return {
+    period: { bg: c.roseSoft, accent: c.period, Icon: Droplets },
+    fertile: { bg: c.lavenderSoft, accent: c.fertile, Icon: Heart },
+    ovulation: { bg: c.lavenderSoft, accent: c.ovulation, Icon: Sparkles },
+    calm: { bg: c.lavenderSoft, accent: c.lavender, Icon: Moon },
+    energy: { bg: c.roseSoft, accent: c.blushDeep, Icon: Sun },
+    care: { bg: c.roseSoft, accent: c.rose, Icon: Heart },
+    mood: { bg: c.cardSoft, accent: c.blushDeep, Icon: Sparkles },
+    log: { bg: c.cardSoft, accent: c.rose, Icon: NotebookPen },
+  } as const;
+}
 
 type Props = {
   date: string;
   bundle: CycleBundle;
   mark?: CycleDayMark;
+  pending?: boolean;
+  stale?: boolean;
 };
 
-export function CycleDayInsights({ date, bundle, mark }: Props) {
+export function CycleDayInsights({ date, bundle, mark, pending, stale }: Props) {
   const c = useCycleColors();
   const router = useRouter();
-  const today = todayKey();
+  const today = cycleToday(bundle, todayKey());
   const isToday = date === today;
 
-  const phase = useMemo(
-    () =>
-      detectCyclePhaseForDate({
-        lastPeriodStart: bundle.profile.lastPeriodStart,
-        targetDate: date,
-        avgCycleLength: bundle.profile.avgCycleLength,
-        avgPeriodLength: bundle.profile.avgPeriodLength,
-      }),
-    [bundle.profile, date],
-  );
+  const phase = useMemo(() => phaseFromBundle(bundle, date), [bundle, date]);
 
   const log = useMemo(
     () => bundle.logs.find((l) => l.date === date) ?? null,
@@ -70,35 +63,46 @@ export function CycleDayInsights({ date, bundle, mark }: Props) {
         phase,
         mode: bundle.profile.mode,
         log,
-        nextPeriodStart: bundle.predictions.nextPeriodStart,
-        ovulationDate: bundle.predictions.ovulationDate,
+        nextPeriodStart: bundle.predictions?.nextPeriodStart,
+        ovulationDate: bundle.predictions?.ovulationDate,
+        confidence: bundle.predictions?.confidence,
+        isIrregular: bundle.profile.isIrregular,
+        conditions: bundle.profile.conditions,
       }),
     [date, today, mark, phase, bundle],
   );
 
+  const tones = insightTones(c);
+
   return (
-    <View key={date} style={{ marginBottom: 8 }}>
-      <LinearGradient
-          colors={[c.heroFrom, c.heroTo]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+    <View key={date} style={{ marginBottom: 16 }}>
+      <View
           style={{
-            borderRadius: 24,
+            borderRadius: 16,
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            borderBottomLeftRadius: 16,
+            borderBottomRightRadius: 16,
             padding: 16,
             borderWidth: 1,
             borderColor: c.border,
-            marginBottom: 12,
-            ...cycleShadow.soft,
+            backgroundColor: c.card,
           }}
         >
-          <Text style={{ color: c.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.4 }}>
+          <Text
+            style={{
+              color: c.muted,
+              fontFamily: 'NotoSansGeorgian_500Medium',
+              fontSize: 11,
+            }}
+          >
             {isToday ? ka.cycle.todayInsight : ka.cycle.dayInsight}
           </Text>
           <Text
             style={{
               color: c.ink,
+              fontFamily: 'NotoSansGeorgian_700Bold',
               fontSize: 20,
-              fontWeight: '800',
               marginTop: 4,
               letterSpacing: -0.3,
             }}
@@ -106,33 +110,75 @@ export function CycleDayInsights({ date, bundle, mark }: Props) {
             {formatCycleDateKa(date)}
           </Text>
           {phase.day != null ? (
-            <Text style={{ color: c.rose, fontSize: 13, fontWeight: '700', marginTop: 6 }}>
-              {ka.cycle.cycleDay} {phase.day} · {phase.phaseKa}
+            <Text
+              style={{
+                color: c.rose,
+                fontFamily: 'NotoSansGeorgian_600SemiBold',
+                fontSize: 13,
+                marginTop: 6,
+              }}
+            >
+              {ka.cycle.cycleDay} {phase.day} ·{' '}
+              {displayPhaseLabel(phase.phase, phase.phaseKa, { loggedPeriod: isBleedFlow(log?.flow) })}
             </Text>
           ) : null}
-        </LinearGradient>
+          {pending ? (
+            <Text
+              style={{
+                color: c.brand,
+                fontFamily: 'NotoSansGeorgian_600SemiBold',
+                fontSize: 12,
+                marginTop: 8,
+              }}
+            >
+              {ka.cycle.pendingSync}
+            </Text>
+          ) : null}
+        </View>
+        <View style={{ height: 12, width: '100%' }} />
 
-      <View style={{ gap: 10, marginBottom: isToday ? 12 : 0 }}>
-        {cards.map((card) => {
-          const tone = TONE[card.tone] || TONE.calm;
+      <View style={{ paddingBottom: isToday ? 12 : 0 }}>
+        {(['logged', 'estimated'] as const).map((kind) => {
+          const group = cards.filter((card) => card.kind === kind);
+          if (!group.length) return null;
+          return (
+            <View key={kind} style={{ marginBottom: 12 }}>
+              <Text
+                style={{
+                  color: c.muted,
+                  fontFamily: 'NotoSansGeorgian_600SemiBold',
+                  fontSize: 11,
+                  marginBottom: 8,
+                  letterSpacing: 0.3,
+                }}
+              >
+                {kind === 'logged' ? ka.cycle.loggedByYou : ka.cycle.estimatedSection}
+              </Text>
+              {group.map((card, idx) => {
+          const tone = tones[card.tone as keyof typeof tones] || tones.calm;
           const Icon = tone.Icon;
           return (
-            <Pressable
+            <View
               key={`${date}-${card.id}`}
+              style={{ paddingBottom: idx < group.length - 1 ? 10 : 0, width: '100%' }}
+            >
+            <Pressable
                 onPress={() => {
                   if (card.id === 'log_today' || card.id === 'logged') {
                     router.push({ pathname: '/cycle/log', params: { date } } as never);
                   }
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={card.title}
                 style={{
                   backgroundColor: c.card,
-                  borderRadius: 20,
+                  borderRadius: 16,
+                  overflow: 'hidden',
                   padding: 14,
                   borderWidth: 1,
                   borderColor: c.border,
                   flexDirection: 'row',
                   alignItems: 'flex-start',
-                  ...cycleShadow.card,
                 }}
               >
                 <View
@@ -149,7 +195,14 @@ export function CycleDayInsights({ date, bundle, mark }: Props) {
                   <Icon size={18} color={tone.accent} strokeWidth={2.2} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ color: c.ink, fontWeight: '800', fontSize: 14, lineHeight: 18 }}>
+                  <Text
+                    style={{
+                      color: c.ink,
+                      fontFamily: 'NotoSansGeorgian_700Bold',
+                      fontSize: 14,
+                      lineHeight: 18,
+                    }}
+                  >
                     {card.title}
                   </Text>
                   <Text
@@ -159,6 +212,10 @@ export function CycleDayInsights({ date, bundle, mark }: Props) {
                   </Text>
                 </View>
               </Pressable>
+            </View>
+          );
+              })}
+            </View>
           );
         })}
       </View>
@@ -170,6 +227,13 @@ export function CycleDayInsights({ date, bundle, mark }: Props) {
             bundle.localInsights ||
             null
           }
+          phase={phase}
+          mode={bundle.profile.mode}
+          conditions={bundle.profile.conditions}
+          log={log}
+          confidence={bundle.predictions?.confidence}
+          isIrregular={bundle.profile.isIrregular}
+          offline={Boolean(stale || pending)}
         />
       ) : null}
     </View>

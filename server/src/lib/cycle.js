@@ -1,14 +1,55 @@
 /**
  * Cycle prediction helpers — period, fertile window, ovulation.
- * Dates are calendar days as YYYY-MM-DD (no timezone math beyond that).
+ * Identity is a civil calendar day YYYY-MM-DD, never a timestamp.
+ * Engine "today" is Asia/Tbilisi — never Date#toISOString, never host TZ.
  */
 
+import {
+  CYCLE_AI_HONESTY_RULES,
+  cycleHonestyFlags,
+  irregularLengthAlertKa,
+  latePeriodAlertKa,
+  nextPeriodEstimateBody,
+  pcosCautionKa,
+  ttcWindowBody,
+  emptyCycleAiCache,
+} from './cycleHonesty.js';
+import {
+  buildTtcObservationCards,
+  collectFertilityTests,
+  CYCLE_FERTILITY_AI_RULES,
+  fertilityObservationBits,
+} from './cycleFertility.js';
+
+export { emptyCycleAiCache };
+
+export const CYCLE_TIMEZONE = 'Asia/Tbilisi';
+export const DEFAULT_CYCLE_LENGTH = 28;
+export const DEFAULT_PERIOD_LENGTH = 5;
+
+/** Product "today" in an IANA zone. Host / browser TZ must not leak in. */
+export function todayInTimeZone(timeZone = CYCLE_TIMEZONE, now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const pick = (type) => parts.find((p) => p.type === type)?.value;
+  return `${pick('year')}-${pick('month')}-${pick('day')}`;
+}
+
+/**
+ * Serialize a stored date-only value (@db.Date or YYYY-MM-DD).
+ * Uses UTC civil parts so midnight UTC does not shift the calendar day.
+ * Do not use this for "now" — use todayInTimeZone.
+ */
 export function toDateKey(value) {
   if (!value) return null;
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString().slice(0, 10);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
 export function parseDateKey(key) {
@@ -27,16 +68,51 @@ export function daysBetween(a, b) {
   return Math.round(ms / 86_400_000);
 }
 
-/** Infer average cycle length from period-start logs (flow days). */
-export function inferCycleStats(logs, fallbackCycle = 28, fallbackPeriod = 5) {
+/** Confirmed bleed — spotting is not a period start. */
+export const PERIOD_FLOWS = ['light', 'medium', 'heavy'];
+
+export function isPeriodFlow(flow) {
+  return PERIOD_FLOWS.includes(flow);
+}
+
+/** Infer averages and logged period ranges from bleed days (not spotting). */
+export function inferCycleStats(
+  logs,
+  fallbackCycle = DEFAULT_CYCLE_LENGTH,
+  fallbackPeriod = DEFAULT_PERIOD_LENGTH,
+) {
   const periodStarts = [];
+  const periodRanges = [];
   const sorted = [...logs].sort((x, y) => x.date.localeCompare(y.date));
-  let prevWasFlow = false;
+  let lastBleedDate = null;
+  let runStart = null;
+  let runEnd = null;
+
+  const flushRun = () => {
+    if (!runStart || !runEnd) return;
+    periodRanges.push({
+      start: runStart,
+      end: runEnd,
+      lengthDays: daysBetween(runStart, runEnd) + 1,
+      source: 'logged',
+    });
+    runStart = null;
+    runEnd = null;
+  };
+
   for (const log of sorted) {
-    const hasFlow = Boolean(log.flow && log.flow !== 'none');
-    if (hasFlow && !prevWasFlow) periodStarts.push(log.date);
-    prevWasFlow = hasFlow;
+    if (!isPeriodFlow(log.flow)) continue;
+    if (!lastBleedDate || daysBetween(lastBleedDate, log.date) > 1) {
+      flushRun();
+      periodStarts.push(log.date);
+      runStart = log.date;
+      runEnd = log.date;
+    } else {
+      runEnd = log.date;
+    }
+    lastBleedDate = log.date;
   }
+  flushRun();
 
   const gaps = [];
   for (let i = 1; i < periodStarts.length; i += 1) {
@@ -44,49 +120,117 @@ export function inferCycleStats(logs, fallbackCycle = 28, fallbackPeriod = 5) {
     if (gap >= 18 && gap <= 45) gaps.push(gap);
   }
 
-  const avgCycle =
-    gaps.length >= 2
-      ? Math.round(gaps.reduce((s, n) => s + n, 0) / gaps.length)
-      : fallbackCycle;
+  const hasInferredCycle = gaps.length >= 2;
+  const avgCycle = hasInferredCycle
+    ? Math.round(gaps.reduce((s, n) => s + n, 0) / gaps.length)
+    : fallbackCycle;
 
-  let periodLengths = [];
-  let run = 0;
-  prevWasFlow = false;
-  for (const log of sorted) {
-    const hasFlow = Boolean(log.flow && log.flow !== 'none');
-    if (hasFlow) {
-      run += 1;
-    } else if (prevWasFlow && run > 0) {
-      periodLengths.push(run);
-      run = 0;
-    }
-    prevWasFlow = hasFlow;
-  }
-  if (run > 0) periodLengths.push(run);
-  periodLengths = periodLengths.filter((n) => n >= 2 && n <= 10);
-  const avgPeriod =
-    periodLengths.length >= 1
-      ? Math.round(periodLengths.reduce((s, n) => s + n, 0) / periodLengths.length)
-      : fallbackPeriod;
+  const periodLengths = periodRanges
+    .map((r) => r.lengthDays)
+    .filter((n) => n >= 2 && n <= 10);
+  const hasInferredPeriod = periodLengths.length >= 1;
+  const avgPeriod = hasInferredPeriod
+    ? Math.round(periodLengths.reduce((s, n) => s + n, 0) / periodLengths.length)
+    : fallbackPeriod;
+
+  const inferredCycleLength = hasInferredCycle
+    ? Math.min(45, Math.max(21, avgCycle))
+    : null;
+  const inferredPeriodLength = hasInferredPeriod
+    ? Math.min(10, Math.max(2, avgPeriod))
+    : null;
 
   return {
-    avgCycleLength: Math.min(45, Math.max(21, avgCycle)),
-    avgPeriodLength: Math.min(10, Math.max(2, avgPeriod)),
+    avgCycleLength: inferredCycleLength ?? Math.min(45, Math.max(21, fallbackCycle)),
+    avgPeriodLength: inferredPeriodLength ?? Math.min(10, Math.max(2, fallbackPeriod)),
+    inferredCycleLength,
+    inferredPeriodLength,
     periodStarts,
+    periodRanges,
+    cycleCount: gaps.length,
     lastPeriodStart: periodStarts[periodStarts.length - 1] ?? null,
   };
 }
 
 /**
+ * Recommendation C: never overwrite stored profile averages.
+ * Forecast uses inferred lengths when cycleCount >= 2, else stored, else defaults.
+ */
+export function resolveForecastAverages(profile, inferred) {
+  const storedCycle = Number.isFinite(profile?.avgCycleLength)
+    ? profile.avgCycleLength
+    : DEFAULT_CYCLE_LENGTH;
+  const storedPeriod = Number.isFinite(profile?.avgPeriodLength)
+    ? profile.avgPeriodLength
+    : DEFAULT_PERIOD_LENGTH;
+  const cycleCount = inferred?.cycleCount ?? 0;
+  const inferredCycle = inferred?.inferredCycleLength ?? null;
+  const inferredPeriod = inferred?.inferredPeriodLength ?? null;
+
+  if (cycleCount >= 2 && inferredCycle != null) {
+    return {
+      storedCycleLength: storedCycle,
+      storedPeriodLength: storedPeriod,
+      inferredCycleLength: inferredCycle,
+      inferredPeriodLength: inferredPeriod,
+      usedCycleLength: inferredCycle,
+      usedPeriodLength: inferredPeriod ?? storedPeriod,
+      source: 'inferred',
+      cycleCount,
+    };
+  }
+
+  const usingDefaults =
+    storedCycle === DEFAULT_CYCLE_LENGTH && storedPeriod === DEFAULT_PERIOD_LENGTH;
+
+  return {
+    storedCycleLength: storedCycle,
+    storedPeriodLength: storedPeriod,
+    inferredCycleLength: inferredCycle,
+    inferredPeriodLength: inferredPeriod,
+    usedCycleLength: storedCycle,
+    usedPeriodLength: storedPeriod,
+    source: usingDefaults ? 'default' : 'user',
+    cycleCount,
+  };
+}
+
+export function cycleLengthStats(cycleLengths = []) {
+  const lengths = cycleLengths.map((c) => c.length).filter((n) => Number.isFinite(n));
+  if (!lengths.length) {
+    return { shortest: null, longest: null, variability: null, count: 0 };
+  }
+  const shortest = Math.min(...lengths);
+  const longest = Math.max(...lengths);
+  return {
+    shortest,
+    longest,
+    variability: longest - shortest,
+    count: lengths.length,
+  };
+}
+
+export function predictionConfidence({ cycleCount = 0, isIrregular = false }) {
+  if (isIrregular || cycleCount < 2) return 'low';
+  if (cycleCount < 6) return 'medium';
+  return 'high';
+}
+
+/**
  * Build predictions from last period start + averages.
  * Fertile window ≈ ovulation −5 … ovulation +1; ovulation ≈ cycleLength − 14.
+ * Forecast object is always estimated. Logs must overlay predicted:false separately.
  */
 export function buildPredictions({
   lastPeriodStart,
-  avgCycleLength = 28,
-  avgPeriodLength = 5,
+  avgCycleLength = DEFAULT_CYCLE_LENGTH,
+  avgPeriodLength = DEFAULT_PERIOD_LENGTH,
   horizonDays = 90,
+  cycleCount = 0,
+  isIrregular = false,
+  logs = [],
 }) {
+  const confidence = predictionConfidence({ cycleCount, isIrregular });
   if (!lastPeriodStart) {
     return {
       nextPeriodStart: null,
@@ -95,6 +239,8 @@ export function buildPredictions({
       fertileWindow: null,
       phases: [],
       calendar: {},
+      confidence,
+      estimated: true,
     };
   }
 
@@ -120,13 +266,23 @@ export function buildPredictions({
 
     for (let i = 0; i < avgPeriodLength; i += 1) {
       const key = addDays(start, i);
-      calendar[key] = { ...(calendar[key] || {}), period: true, predicted: cycle > 0 || i > 0 };
+      calendar[key] = {
+        ...(calendar[key] || {}),
+        period: true,
+        predicted: true,
+        estimated: true,
+      };
     }
     for (let i = 0; i <= daysBetween(fertileStart, fertileEnd); i += 1) {
       const key = addDays(fertileStart, i);
-      calendar[key] = { ...(calendar[key] || {}), fertile: true };
+      calendar[key] = { ...(calendar[key] || {}), fertile: true, estimated: true };
     }
-    calendar[ovulation] = { ...(calendar[ovulation] || {}), ovulation: true, fertile: true };
+    calendar[ovulation] = {
+      ...(calendar[ovulation] || {}),
+      ovulation: true,
+      fertile: true,
+      estimated: true,
+    };
 
     start = nextStart;
     if (daysBetween(lastPeriodStart, start) > horizonDays) break;
@@ -134,6 +290,16 @@ export function buildPredictions({
 
   const upcoming = phases.find((p) => p.periodStart >= lastPeriodStart) || phases[0];
   const next = phases.find((p) => p.periodStart > lastPeriodStart) || phases[1] || upcoming;
+
+  let marked = calendar;
+  if (logs.length) marked = overlayLogsOnCalendar(marked, logs);
+  marked = stampCalendarPhases(marked, {
+    lastPeriodStart,
+    avgCycleLength,
+    avgPeriodLength,
+    fromKey: lastPeriodStart,
+    toKey: addDays(lastPeriodStart, horizonDays),
+  });
 
   return {
     nextPeriodStart: next?.periodStart ?? null,
@@ -143,11 +309,101 @@ export function buildPredictions({
       ? { start: upcoming.fertileStart, end: upcoming.fertileEnd }
       : null,
     phases,
-    calendar,
+    calendar: marked,
+    confidence,
+    estimated: true,
   };
 }
 
-export function gestationalAge(dueDateKey, todayKey = toDateKey(new Date())) {
+/** Fill every civil day in [fromKey, toKey] with server cycleDay + phase. */
+export function stampCalendarPhases(calendar, {
+  lastPeriodStart,
+  avgCycleLength = DEFAULT_CYCLE_LENGTH,
+  avgPeriodLength = DEFAULT_PERIOD_LENGTH,
+  fromKey,
+  toKey,
+}) {
+  if (!lastPeriodStart || !fromKey || !toKey) return calendar;
+  const next = { ...calendar };
+  let key = fromKey;
+  for (let i = 0; i < 500 && key <= toKey; i += 1) {
+    const info = detectCyclePhase({
+      lastPeriodStart,
+      avgCycleLength,
+      avgPeriodLength,
+      today: key,
+    });
+    const prev = next[key] || {};
+    const loggedActual = prev.predicted === false;
+    next[key] = {
+      ...prev,
+      cycleDay: info.day,
+      phase: info.phase,
+      phaseKa: info.phaseKa,
+      estimated: loggedActual ? false : Boolean(prev.predicted || prev.fertile || prev.ovulation),
+    };
+    key = addDays(key, 1);
+  }
+  return next;
+}
+
+/** Keep onboarding/profile start when logs have no confirmed bleed run. */
+export function pickLastPeriodStart(
+  current,
+  logs,
+  fallbackCycle = DEFAULT_CYCLE_LENGTH,
+  fallbackPeriod = DEFAULT_PERIOD_LENGTH,
+) {
+  const inferred = inferCycleStats(logs, fallbackCycle, fallbackPeriod);
+  return inferred.lastPeriodStart || current || null;
+}
+
+/**
+ * Overlay daily logs on a forecast calendar.
+ * Logged light/medium/heavy → period + predicted:false.
+ * Spotting / none never count as a period day.
+ */
+export function overlayLogsOnCalendar(calendar, logs) {
+  const next = { ...calendar };
+  for (const log of logs) {
+    const hasNotes =
+      (Array.isArray(log.symptoms) && log.symptoms.length > 0) ||
+      (Array.isArray(log.moods) && log.moods.length > 0) ||
+      log.notes ||
+      log.bbt != null ||
+      log.sexualActivity != null ||
+      log.ovulationTest != null ||
+      log.pregnancyTest != null ||
+      Boolean(log.cervicalMucus);
+    if (isPeriodFlow(log.flow)) {
+      next[log.date] = {
+        ...(next[log.date] || {}),
+        period: true,
+        predicted: false,
+        estimated: false,
+        logged: true,
+        flow: log.flow,
+      };
+    } else if (log.flow === 'spotting') {
+      next[log.date] = {
+        ...(next[log.date] || {}),
+        logged: true,
+        flow: 'spotting',
+        period: false,
+      };
+    } else if (log.flow === 'none' || hasNotes) {
+      next[log.date] = {
+        ...(next[log.date] || {}),
+        logged: true,
+        ...(log.flow ? { flow: log.flow } : {}),
+        ...(log.flow === 'none' ? { period: false } : {}),
+      };
+    }
+  }
+  return next;
+}
+
+export function gestationalAge(dueDateKey, todayKey = todayInTimeZone()) {
   if (!dueDateKey || !todayKey) return null;
   // Pregnancy: due date = LMP + 280 days → current day of pregnancy = 280 - daysUntilDue
   const daysUntilDue = daysBetween(todayKey, dueDateKey);
@@ -189,7 +445,18 @@ export function fetalInsightForWeek(week) {
 }
 
 export function buildDoctorSummary({ profile, logs, predictions }) {
-  const flowDays = logs.filter((l) => l.flow && l.flow !== 'none');
+  const flowDays = logs.filter((l) => isPeriodFlow(l.flow));
+  const inferred = inferCycleStats(logs, profile.avgCycleLength, profile.avgPeriodLength);
+  const lengths = [];
+  for (let i = 1; i < (inferred.periodStarts?.length ?? 0); i += 1) {
+    const gap = daysBetween(inferred.periodStarts[i - 1], inferred.periodStarts[i]);
+    if (gap >= 18 && gap <= 45) lengths.push(gap);
+  }
+  const stats = cycleLengthStats(lengths.map((length) => ({ length })));
+  const confidence = predictionConfidence({
+    cycleCount: stats.count,
+    isIrregular: profile.isIrregular,
+  });
   const symptomFreq = {};
   const moodFreq = {};
   for (const log of logs) {
@@ -221,7 +488,16 @@ export function buildDoctorSummary({ profile, logs, predictions }) {
     fertileWindow: predictions.fertileWindow,
     topSymptoms,
     topMoods,
+    shortestCycle: stats.shortest,
+    longestCycle: stats.longest,
+    variability: stats.variability,
+    cycleCount: stats.count,
+    confidence,
     generatedAt: new Date().toISOString(),
+    fertilityTests: {
+      ...collectFertilityTests(logs),
+      label: 'user_logged',
+    },
   };
 }
 
@@ -243,37 +519,44 @@ const SYMPTOM_KA = {
 
 export function detectCyclePhase({
   lastPeriodStart,
-  avgCycleLength = 28,
-  avgPeriodLength = 5,
-  today = toDateKey(new Date()),
+  avgCycleLength = DEFAULT_CYCLE_LENGTH,
+  avgPeriodLength = DEFAULT_PERIOD_LENGTH,
+  today = todayInTimeZone(),
 }) {
   if (!lastPeriodStart) return { day: null, phase: 'unknown', phaseKa: 'უცნობი ფაზა' };
   const day = daysBetween(lastPeriodStart, today) + 1;
   if (day < 1) return { day: null, phase: 'unknown', phaseKa: 'უცნობი ფაზა' };
   const cycleDay = ((day - 1) % avgCycleLength) + 1;
-  const ovulation = avgCycleLength - 14;
+  // Same civil day as buildPredictions: ovulation = LMP + (length − 14) → cycle day length − 13.
+  const ovulationCycleDay = avgCycleLength - 13;
   if (cycleDay <= avgPeriodLength) {
     return { day: cycleDay, phase: 'period', phaseKa: 'მენსტრუაცია' };
   }
-  if (cycleDay >= ovulation - 5 && cycleDay <= ovulation + 1) {
+  if (cycleDay >= ovulationCycleDay - 5 && cycleDay <= ovulationCycleDay + 1) {
     return {
       day: cycleDay,
-      phase: cycleDay === ovulation ? 'ovulation' : 'fertile',
-      phaseKa: cycleDay === ovulation ? 'ოვულაცია' : 'ნაყოფიერი ფანჯარა',
+      phase: cycleDay === ovulationCycleDay ? 'ovulation' : 'fertile',
+      phaseKa: cycleDay === ovulationCycleDay ? 'ოვულაცია' : 'ნაყოფიერი ფანჯარა',
     };
   }
-  if (cycleDay > ovulation + 1) {
+  if (cycleDay > ovulationCycleDay + 1) {
     return { day: cycleDay, phase: 'luteal', phaseKa: 'ლუთეალური ფაზა' };
   }
   return { day: cycleDay, phase: 'follicular', phaseKa: 'ფოლიკულური ფაზა' };
 }
 
 /** Instant Flo-like tips (no AI) — shown while / as fallback to EvidenceMD. */
-export function buildLocalInsights({ profile, logs, predictions, pregnancy }) {
+export function buildLocalInsights({ profile, logs, predictions, pregnancy, averages, today }) {
   const phase = detectCyclePhase({
     lastPeriodStart: toDateKey(profile.lastPeriodStart),
-    avgCycleLength: profile.avgCycleLength,
-    avgPeriodLength: profile.avgPeriodLength,
+    avgCycleLength: averages?.usedCycleLength ?? profile.avgCycleLength,
+    avgPeriodLength: averages?.usedPeriodLength ?? profile.avgPeriodLength,
+    today: today || todayInTimeZone(),
+  });
+  const flags = cycleHonestyFlags({
+    confidence: predictions?.confidence,
+    isIrregular: profile.isIrregular,
+    conditions: parseConditions(profile),
   });
   const recent = [...logs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
   const symptoms = recent.flatMap((l) => (Array.isArray(l.symptoms) ? l.symptoms : []));
@@ -286,7 +569,7 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy }) {
     title: phase.phaseKa,
     body:
       phase.day != null
-        ? `დღეს ციკლის ${phase.day}-ე დღეა (${phase.phaseKa}). მოუსმინეთ სხეულს და აღრიცხეთ სიმპტომები.`
+        ? `დღეს ციკლის ${phase.day}-ე დღეა. სავარაუდო ფაზა: ${phase.phaseKa}. ეს კალენდარული შეფასებაა, არა ჰორმონის გაზომვა.`
         : 'მონიშნეთ ბოლო მენსტრუაციის დასაწყისი უფრო ზუსტი პროგნოზებისთვის.',
     action: 'გახსენი დღის აღრიცხვა',
   });
@@ -313,10 +596,17 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy }) {
     cards.push({
       id: 'ttc_window',
       tone: 'fertile',
-      title: 'ნაყოფიერი ფანჯარა',
-      body: `თქვენი ნაყოფიერი პერიოდი დაახლოებით ${predictions.fertileWindow.start} – ${predictions.fertileWindow.end}. ოვულაცია: ${predictions.ovulationDate ?? '—'}.`,
+      title: 'სავარაუდო ნაყოფიერი ფანჯარა',
+      body: ttcWindowBody(predictions, flags),
       action: 'აღრიცხე BBT ან ლორწო',
     });
+    cards.push(
+      ...buildTtcObservationCards({
+        logs,
+        today: today || todayInTimeZone(),
+        lastPeriodStart: toDateKey(profile.lastPeriodStart),
+      }),
+    );
   }
   if (profile.mode === 'PREGNANCY' && pregnancy?.age) {
     cards.push({
@@ -333,16 +623,16 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy }) {
     cards.push({
       id: 'next_period',
       tone: 'energy',
-      title: 'შემდეგი მენსტრუაცია',
-      body: `პროგნოზი: ${predictions.nextPeriodStart}. წინასწარ მოამზადეთ საშუალებები და შეამცირეთ სტრესი.`,
+      title: 'სავარაუდო შემდეგი მენსტრუაცია',
+      body: nextPeriodEstimateBody(predictions.nextPeriodStart, flags),
       action: null,
     });
   }
 
   return {
-    headline: phase.day != null ? `დღეს: ${phase.phaseKa}` : 'თქვენი ციკლის რჩევები',
+    headline: phase.day != null ? `დღეს: სავარაუდო ${phase.phaseKa}` : 'თქვენი ციკლის რჩევები',
     phaseLabel: phase.phaseKa,
-    cards: cards.slice(0, 5),
+    cards: cards.slice(0, 7),
     source: 'local',
     generatedAt: new Date().toISOString(),
   };
@@ -374,7 +664,7 @@ export function parseConditions(profile) {
   return [];
 }
 
-export function buildCycleTrends({ profile, logs, inferred }) {
+export function buildCycleTrends({ profile, logs, inferred, averages, today }) {
   const periodStarts = inferred?.periodStarts ?? [];
   const cycleLengths = [];
   for (let i = 1; i < periodStarts.length; i += 1) {
@@ -384,8 +674,10 @@ export function buildCycleTrends({ profile, logs, inferred }) {
     }
   }
 
-  const avgCycle = profile.avgCycleLength || inferred?.avgCycleLength || 28;
+  const avgCycle =
+    averages?.usedCycleLength ?? profile.avgCycleLength ?? DEFAULT_CYCLE_LENGTH;
   const lastPeriod = toDateKey(profile.lastPeriodStart) || inferred?.lastPeriodStart;
+  const todayKey = today || todayInTimeZone();
   const pmsByDay = {};
   for (let d = 18; d <= 35; d += 1) pmsByDay[d] = { count: 0, symptoms: {} };
 
@@ -417,7 +709,7 @@ export function buildCycleTrends({ profile, logs, inferred }) {
     .filter((row) => row.count > 0);
 
   const symptomFreq = {};
-  const cutoff = addDays(toDateKey(new Date()), -90);
+  const cutoff = addDays(todayKey, -90);
   for (const log of logs) {
     if (log.date < cutoff) continue;
     for (const s of Array.isArray(log.symptoms) ? log.symptoms : []) {
@@ -435,18 +727,27 @@ export function buildCycleTrends({ profile, logs, inferred }) {
     .slice(-60)
     .map((l) => ({ date: l.date, bbt: l.bbt }));
 
+  const stats = cycleLengthStats(cycleLengths);
   return {
     cycleLengths,
     pmsByDay: pmsSeries,
     topSymptoms90d,
     bbtPoints,
     periodStarts,
+    shortestCycle: stats.shortest,
+    longestCycle: stats.longest,
+    variability: stats.variability,
+    cycleCount: stats.count,
+    confidence: predictionConfidence({
+      cycleCount: stats.count,
+      isIrregular: profile.isIrregular,
+    }),
   };
 }
 
-export function buildCycleAlerts({ profile, logs, predictions, inferred }) {
+export function buildCycleAlerts({ profile, logs, predictions, inferred, today }) {
   const alerts = [];
-  const today = toDateKey(new Date());
+  const todayKey = today || todayInTimeZone();
   const conditions = parseConditions(profile);
 
   const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date));
@@ -469,28 +770,27 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred }) {
     if (lastGap > 35 || lastGap < 21) {
       alerts.push({
         level: profile.isIrregular ? 'warn' : 'info',
-        messageKa: `ბოლო ციკლის სიგრძე ${lastGap} დღეა — ნორმალურია 21–35 დღე. გირჩევთ ექიმთან კონსულტაციას.`,
+        messageKa: irregularLengthAlertKa(lastGap),
         action: 'chat',
       });
     }
   }
 
   if (profile.mode !== 'PREGNANCY' && sorted.length > 0) {
-    const lastFlow = sorted.find((l) => l.flow && l.flow !== 'none');
-    if (lastFlow && daysBetween(lastFlow.date, today) > 40) {
+    const lastFlow = sorted.find((l) => isPeriodFlow(l.flow));
+    if (lastFlow && daysBetween(lastFlow.date, todayKey) > 40) {
       alerts.push({
         level: 'warn',
-        messageKa: '40+ დღეა მენსტრუაცია არ არის აღრიცხული — გამორიცხეთ ორსულობა ან მიმართეთ ექიმს.',
+        messageKa: latePeriodAlertKa(),
         action: 'chat',
       });
     }
   }
 
-  if (conditions.includes('pcos') && profile.isIrregular) {
+  if (conditions.includes('pcos')) {
     alerts.push({
       level: 'info',
-      messageKa:
-        'PCOS და არარეგულარული ციკლი — ნაყოფიერი ფანჯარა შეიძლება უფრო ხანგრძლივი იყოს. პროგნოზები დაახლოებითია.',
+      messageKa: pcosCautionKa(),
       action: null,
     });
   }
@@ -507,41 +807,58 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred }) {
   return alerts.slice(0, 4);
 }
 
-export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, user }) {
+export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, user, averages, today }) {
   const phase = detectCyclePhase({
     lastPeriodStart: toDateKey(profile.lastPeriodStart),
-    avgCycleLength: profile.avgCycleLength,
-    avgPeriodLength: profile.avgPeriodLength,
+    avgCycleLength: averages?.usedCycleLength ?? profile.avgCycleLength,
+    avgPeriodLength: averages?.usedPeriodLength ?? profile.avgPeriodLength,
+    today: today || todayInTimeZone(),
+  });
+  const flags = cycleHonestyFlags({
+    confidence: predictions?.confidence,
+    isIrregular: profile.isIrregular,
+    conditions: parseConditions(profile),
   });
   const recent = [...logs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
   const lines = recent.map((l) => {
     const sym = (l.symptoms || []).map((s) => SYMPTOM_KA[s] || s).join(', ') || '—';
     const mood = (l.moods || []).map((m) => SYMPTOM_KA[m] || m).join(', ') || '—';
-    return `${l.date}: flow=${l.flow || 'none'}; სიმპტომები=${sym}; განწყობა=${mood}`;
+    const extra = fertilityObservationBits(l);
+    return `${l.date}: flow=${l.flow || 'none'}; სიმპტომები=${sym}; განწყობა=${mood}${extra.length ? `; ${extra.join('; ')}` : ''}`;
   });
 
-  const conditions = parseConditions(profile);
-
   return [
+    'USER_LOGGED:',
     `რეჟიმი: ${profile.mode}`,
     `ასაკი: ${user?.age ?? 'უცნობი'}`,
-    `საშუალო ციკლი: ${profile.avgCycleLength} დღე, მენსტრუაცია: ${profile.avgPeriodLength} დღე`,
-    `არარეგულარული: ${profile.isIrregular ? 'კი' : 'არა'}`,
-    conditions.length ? `ჯანმრთელობის კონტექსტი: ${conditions.join(', ')}` : null,
-    `ციკლის დღე: ${phase.day ?? '—'} · ფაზა: ${phase.phaseKa}`,
-    `შემდეგი მენსტრუაცია: ${predictions?.nextPeriodStart ?? '—'}`,
-    `ოვულაცია: ${predictions?.ovulationDate ?? '—'}`,
-    predictions?.fertileWindow
-      ? `ნაყოფიერი ფანჯარა: ${predictions.fertileWindow.start} – ${predictions.fertileWindow.end}`
-      : null,
-    pregnancy?.age
-      ? `ორსულობა: კვირა ${pregnancy.age.week}, დღე ${pregnancy.age.day}, ტრიმესტრი ${pregnancy.age.trimester}`
-      : null,
-    'ბოლო აღრიცხვები:',
+    lines.length ? 'ბოლო აღრიცხვები:' : 'ბოლო აღრიცხვები: —',
     ...lines,
+    '',
+    'ESTIMATED:',
+    `ციკლის დღე: ${phase.day ?? '—'} · სავარაუდო ფაზა: ${phase.phaseKa}`,
+    `სავარაუდო შემდეგი მენსტრუაცია: ${predictions?.nextPeriodStart ?? '—'}`,
+    `სავარაუდო ოვულაცია: ${predictions?.ovulationDate ?? '—'}`,
+    predictions?.fertileWindow
+      ? `სავარაუდო ნაყოფიერი ფანჯარა: ${predictions.fertileWindow.start} – ${predictions.fertileWindow.end}`
+      : 'სავარაუდო ნაყოფიერი ფანჯარა: —',
+    `სიზუსტე: ${flags.confidence}`,
+    `არარეგულარული (მომხმარებლის მითითება): ${profile.isIrregular ? 'კი' : 'არა'}`,
+    averages?.source ? `პროგნოზის წყარო: ${averages.source}` : null,
+    `საშუალო ციკლი (შეფასება): ${averages?.usedCycleLength ?? profile.avgCycleLength} დღე, მენსტრუაცია: ${averages?.usedPeriodLength ?? profile.avgPeriodLength} დღე`,
+    pregnancy?.age
+      ? `ორსულობის რეჟიმი (მომხმარებლის მითითება): კვირა ${pregnancy.age.week}, დღე ${pregnancy.age.day}, ტრიმესტრი ${pregnancy.age.trimester}`
+      : null,
+    '',
+    'CONDITIONS_SELF_REPORTED:',
+    flags.conditions.length ? flags.conditions.join(', ') : '—',
+    '',
+    'HONESTY_RULES:',
+    ...CYCLE_AI_HONESTY_RULES.map((rule) => `- ${rule}`),
+    ...CYCLE_FERTILITY_AI_RULES.map((rule) => `- ${rule}`),
+    '',
     'დააბრუნე მხოლოდ JSON რჩევების ბარათებით.',
   ]
-    .filter(Boolean)
+    .filter((line) => line != null)
     .join('\n');
 }
 

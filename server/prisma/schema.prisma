@@ -32,6 +32,7 @@ model User {
   updatedAt        DateTime             @updatedAt
   records          MedicalRecord[]
   checkIns         DailyCheckIn[]
+  pointAwards      PointAward[]
   chats            ChatSession[]
   medications      MedicationSchedule[]
   periodUsages     PeriodUsage[]
@@ -39,6 +40,8 @@ model User {
   cycleProfile     CycleProfile?
   cycleLogs        CycleLog[]
   pregnancyLogs    PregnancyLog[]
+  cycleSharesOwned    CyclePartnerShare[] @relation("CycleShareOwner")
+  cycleSharesAccepted CyclePartnerShare[] @relation("CycleSharePartner")
   aiInteractions   AiInteraction[]
   aiFeedback       AiFeedback[]
   doctorVisits     DoctorVisit[]
@@ -61,6 +64,20 @@ model DailyCheckIn {
   createdAt     DateTime @default(now())
 
   @@unique([userId, date])
+  @@index([userId])
+}
+
+/// Idempotent bonus ledger — steps goal, future rewards.
+model PointAward {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  ref       String
+  points    Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, kind, ref])
   @@index([userId])
 }
 
@@ -243,12 +260,35 @@ model CycleLog {
   bbt             Float?
   /// dry | sticky | creamy | watery | eggwhite
   cervicalMucus   String?
+  /// negative | positive | unclear — user-logged OPK result, not confirmed ovulation
+  ovulationTest   String?
+  /// negative | positive | unclear — user-logged pregnancy-test result, not a diagnosis
+  pregnancyTest   String?
   notes           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+/// One active invite per owner in product UI. Token hash is looked up; plaintext is owner-only.
+model CyclePartnerShare {
+  id            String    @id @default(uuid())
+  ownerUserId   String
+  owner         User      @relation("CycleShareOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  partnerUserId String?
+  partner       User?     @relation("CycleSharePartner", fields: [partnerUserId], references: [id], onDelete: SetNull)
+  /// SHA-256 hex of the invite token
+  tokenHash     String    @unique
+  /// period | cyclePhase | fertileWindow | symptoms
+  permissions   Json
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+
+  @@index([ownerUserId])
+  @@index([partnerUserId])
 }
 
 model PregnancyLog {

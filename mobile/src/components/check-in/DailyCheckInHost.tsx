@@ -37,7 +37,14 @@ export function DailyCheckInHost() {
   useEffect(() => {
     if (!user) return;
     const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void refresh();
+      if (next === 'active') {
+        void refresh();
+        if (user.id) {
+          void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
+            flushCycleQueue(user.id).catch(() => undefined),
+          );
+        }
+      }
     });
     return () => sub.remove();
   }, [user, refresh]);

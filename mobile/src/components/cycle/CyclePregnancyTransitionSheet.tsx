@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
 import { ka } from '@/i18n/ka';
@@ -18,6 +19,7 @@ type Props = {
 
 export function CyclePregnancyTransitionSheet({ visible, lastPeriod, onClose, onComplete }: Props) {
   const c = useCycleColors();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const suggestedDue = useMemo(() => {
     const lmp = /^\d{4}-\d{2}-\d{2}$/.test(lastPeriod) ? lastPeriod : todayKey();
@@ -44,26 +46,39 @@ export function CyclePregnancyTransitionSheet({ visible, lastPeriod, onClose, on
 
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <Pressable
-        style={{ flex: 1, backgroundColor: c.overlay, justifyContent: 'flex-end' }}
-        onPress={onClose}
-      >
+      <View style={styles.root}>
         <Pressable
-          onPress={() => undefined}
+          accessibilityRole="button"
+          accessibilityLabel={ka.common.close}
+          onPress={onClose}
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: c.overlay }]}
+        />
+        <View
           style={{
             backgroundColor: c.card,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
-            padding: 20,
-            paddingBottom: 28,
+            paddingHorizontal: 20,
+            paddingTop: 12,
+            paddingBottom: Math.max(insets.bottom, 16) + 8,
             borderTopWidth: 1,
             borderColor: c.border,
           }}
         >
-          <Text style={{ color: c.ink, fontSize: 18, fontWeight: '800' }}>
+          <View
+            style={{
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: c.creamDeep,
+              alignSelf: 'center',
+              marginBottom: 16,
+            }}
+          />
+          <Text style={{ color: c.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.3 }}>
             {ka.cycle.pregnancyTransitionTitle}
           </Text>
-          <Text style={{ color: c.muted, fontSize: 13, marginTop: 4, marginBottom: 16 }}>
+          <Text style={{ color: c.muted, fontSize: 13, lineHeight: 18, marginTop: 6, marginBottom: 16 }}>
             {ka.cycle.pregnancyTransitionHint}
           </Text>
           <CycleDateField
@@ -77,10 +92,12 @@ export function CyclePregnancyTransitionSheet({ visible, lastPeriod, onClose, on
             onPress={confirm}
             style={({ pressed }) => ({
               marginTop: 16,
-              backgroundColor: c.rose,
+              minHeight: 52,
+              backgroundColor: c.cta,
               borderRadius: 20,
               paddingVertical: 16,
               alignItems: 'center',
+              justifyContent: 'center',
               opacity: pressed ? 0.9 : 1,
               ...cycleShadow.soft,
             })}
@@ -93,11 +110,18 @@ export function CyclePregnancyTransitionSheet({ visible, lastPeriod, onClose, on
               </Text>
             )}
           </Pressable>
-          <Pressable onPress={onClose} style={{ marginTop: 12, alignItems: 'center' }}>
-            <Text style={{ color: c.muted, fontWeight: '600' }}>{ka.common.cancel}</Text>
+          <Pressable
+            onPress={onClose}
+            style={{ alignItems: 'center', justifyContent: 'center', minHeight: 44, marginTop: 4 }}
+          >
+            <Text style={{ color: c.muted, fontWeight: '700' }}>{ka.common.cancel}</Text>
           </Pressable>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, justifyContent: 'flex-end' },
+});

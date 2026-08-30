@@ -3,7 +3,6 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Baby, Check, Footprints } from 'lucide-react-native';
 import { PREGNANCY_CHECKLIST } from '@/constants/cycle';
@@ -17,9 +16,12 @@ import {
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { ka } from '@/i18n/ka';
 import { api, ApiError, type CycleBundle } from '@/lib/api';
-import { cycleShadow, useCycleColors } from '@/theme/cycle';
+import { cacheCycleBundle, loadCycleView } from '@/lib/cycleOffline';
+import { useAuth } from '@/store/AuthContext';
+import { useCycleColors } from '@/theme/cycle';
 
 export default function PregnancyScreen() {
+  const { user } = useAuth();
   const c = useCycleColors();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -35,7 +37,9 @@ export default function PregnancyScreen() {
 
   const load = async () => {
     try {
-      const data = await api.cycle.get();
+      if (!user?.id) return;
+      const view = await loadCycleView(user.id);
+      const data = view.display;
       setBundle(data);
       const today = data.pregnancyLogs.find((p) => p.date === todayKey());
       setKicks(today?.kickCount ?? 0);
@@ -49,16 +53,17 @@ export default function PregnancyScreen() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [user?.id]);
 
   const persist = async (nextKicks: number, nextChecks: string[]) => {
     try {
       const age = bundle?.pregnancy?.age;
-      await api.cycle.upsertPregnancy(todayKey(), {
+      const res = await api.cycle.upsertPregnancy(todayKey(), {
         kickCount: nextKicks,
         currentWeek: age?.week ?? null,
         symptoms: nextChecks,
       });
+      if (user?.id && res.bundle) await cacheCycleBundle(user.id, res.bundle);
     } catch (err) {
       setMsg(err instanceof ApiError ? err.message : ka.common.error);
     }
@@ -90,41 +95,67 @@ export default function PregnancyScreen() {
         showsVerticalScrollIndicator={false}
       >
         {msg ? (
-          <Text style={{ color: c.danger, marginBottom: 10, fontWeight: '600' }}>{msg}</Text>
+          <View
+            style={{
+              marginBottom: 12,
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              backgroundColor: `${c.danger}14`,
+            }}
+          >
+            <Text style={{ color: c.danger, fontWeight: '600' }}>{msg}</Text>
+          </View>
         ) : null}
 
         {!bundle?.pregnancy ? (
           <CycleCard>
             <Text style={{ color: c.muted, lineHeight: 22 }}>
-              ორსულობის რეჟიმი და მოსალოდნელი თარიღი დააყენეთ პარამეტრებში.
+              {ka.cycle.pregnancySettingsHint}
             </Text>
           </CycleCard>
         ) : (
           <Animated.View entering={FadeIn.duration(500)}>
-            <View style={{ borderRadius: 28, overflow: 'hidden', marginBottom: 16, ...cycleShadow.soft }}>
-              <LinearGradient
-                colors={[c.lavenderSoft, c.roseSoft, c.peach]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ padding: 28, alignItems: 'center' }}
-              >
+            <View
+              style={{
+                borderRadius: 16,
+                marginBottom: 16,
+                padding: 28,
+                alignItems: 'center',
+                backgroundColor: c.card,
+                borderWidth: 1,
+                borderColor: c.border,
+              }}
+            >
                 <View
                   style={{
                     width: 72,
                     height: 72,
-                    borderRadius: 26,
-                    backgroundColor: c.card,
+                    borderRadius: 16,
+                    backgroundColor: c.cardSoft,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    ...cycleShadow.card,
                   }}
                 >
                   <Baby size={34} color={c.lavender} strokeWidth={1.8} />
                 </View>
-                <Text style={{ color: c.ink, fontSize: 32, fontWeight: '800', marginTop: 16 }}>
+                <Text
+                  style={{
+                    color: c.ink,
+                    fontSize: 32,
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    marginTop: 16,
+                  }}
+                >
                   {ka.cycle.week} {age?.week ?? '—'}
                 </Text>
-                <Text style={{ color: c.muted, marginTop: 4, fontWeight: '600' }}>
+                <Text
+                  style={{
+                    color: c.muted,
+                    marginTop: 4,
+                    fontFamily: 'NotoSansGeorgian_500Medium',
+                  }}
+                >
                   {ka.cycle.day} {age?.day ?? 0} · {ka.cycle.trimester} {age?.trimester ?? '—'}
                 </Text>
                 <View
@@ -132,7 +163,7 @@ export default function PregnancyScreen() {
                     width: '100%',
                     height: 10,
                     borderRadius: 5,
-                    backgroundColor: 'rgba(255,255,255,0.55)',
+                    backgroundColor: c.border,
                     marginTop: 20,
                     overflow: 'hidden',
                   }}
@@ -146,10 +177,16 @@ export default function PregnancyScreen() {
                     }}
                   />
                 </View>
-                <Text style={{ color: c.muted, fontSize: 12, marginTop: 8, fontWeight: '600' }}>
+                <Text
+                  style={{
+                    color: c.muted,
+                    fontSize: 12,
+                    marginTop: 8,
+                    fontFamily: 'NotoSansGeorgian_500Medium',
+                  }}
+                >
                   {Math.round(weekProgress * 100)}% · 40 კვირა
                 </Text>
-              </LinearGradient>
             </View>
 
             <CycleCard delay={80} style={{ marginBottom: 14 }}>
@@ -166,8 +203,15 @@ export default function PregnancyScreen() {
 
             <CycleCard delay={140} style={{ marginBottom: 14 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <Footprints size={20} color={c.rose} />
-                <Text style={{ color: c.ink, fontWeight: '800', marginLeft: 8, fontSize: 16 }}>
+                <Footprints size={20} color={c.brand} />
+                <Text
+                  style={{
+                    color: c.ink,
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    marginLeft: 8,
+                    fontSize: 16,
+                  }}
+                >
                   {ka.cycle.kicks}
                 </Text>
               </View>
@@ -175,7 +219,7 @@ export default function PregnancyScreen() {
                 style={{
                   color: c.ink,
                   fontSize: 56,
-                  fontWeight: '800',
+                  fontFamily: 'NotoSansGeorgian_700Bold',
                   textAlign: 'center',
                   letterSpacing: -2,
                 }}
@@ -187,25 +231,31 @@ export default function PregnancyScreen() {
                   onPress={() => saveKicks(Math.max(0, kicks - 1))}
                   style={{
                     flex: 1,
-                    backgroundColor: c.lavenderSoft,
+                    minHeight: 52,
+                    backgroundColor: c.cardSoft,
                     borderRadius: 16,
                     padding: 16,
                     alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: c.border,
                   }}
                 >
-                  <Text style={{ color: c.ink, fontWeight: '800', fontSize: 22 }}>−</Text>
+                  <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22 }}>−</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => saveKicks(kicks + 1)}
                   style={{
                     flex: 1,
-                    backgroundColor: c.rose,
+                    minHeight: 52,
+                    backgroundColor: c.cta,
                     borderRadius: 16,
                     padding: 16,
                     alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 22 }}>+</Text>
+                  <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22 }}>+</Text>
                 </Pressable>
               </View>
             </CycleCard>
@@ -222,6 +272,7 @@ export default function PregnancyScreen() {
                         style={{
                           flexDirection: 'row',
                           alignItems: 'center',
+                          minHeight: 52,
                           paddingVertical: 14,
                           paddingHorizontal: 16,
                           borderBottomWidth: last ? 0 : 1,
@@ -233,7 +284,7 @@ export default function PregnancyScreen() {
                             width: 28,
                             height: 28,
                             borderRadius: 10,
-                            backgroundColor: on ? c.rose : c.lavenderSoft,
+                            backgroundColor: on ? c.cta : c.cardSoft,
                             alignItems: 'center',
                             justifyContent: 'center',
                             marginRight: 12,

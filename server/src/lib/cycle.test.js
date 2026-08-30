@@ -4,12 +4,19 @@ import {
   addDays,
   buildDoctorSummary,
   buildPredictions,
+  CYCLE_TIMEZONE,
   cycleLengthStats,
+  daysBetween,
+  detectCyclePhase,
   inferCycleStats,
   isPeriodFlow,
   overlayLogsOnCalendar,
   pickLastPeriodStart,
   predictionConfidence,
+  resolveForecastAverages,
+  stampCalendarPhases,
+  todayInTimeZone,
+  toDateKey,
 } from './cycle.js';
 
 function logs(rows) {
@@ -267,5 +274,288 @@ describe('cycleLengthStats + confidence', () => {
 describe('addDays', () => {
   it('stays on calendar days', () => {
     assert.equal(addDays('2026-01-30', 2), '2026-02-01');
+  });
+
+  it('crosses month, year, February, and leap day', () => {
+    assert.equal(addDays('2026-01-31', 1), '2026-02-01');
+    assert.equal(addDays('2025-12-31', 1), '2026-01-01');
+    assert.equal(addDays('2025-02-28', 1), '2025-03-01');
+    assert.equal(addDays('2024-02-28', 1), '2024-02-29');
+    assert.equal(addDays('2024-02-29', 1), '2024-03-01');
+    assert.equal(daysBetween('2024-02-28', '2024-03-01'), 2);
+  });
+});
+
+describe('todayInTimeZone + toDateKey', () => {
+  it('uses Asia/Tbilisi, not UTC ISO, around midnight', () => {
+    // 22:00 UTC 29 Aug = 02:00 30 Aug in Tbilisi (UTC+4)
+    const utcEvening = new Date('2026-08-29T22:00:00.000Z');
+    assert.equal(utcEvening.toISOString().slice(0, 10), '2026-08-29');
+    assert.equal(todayInTimeZone(CYCLE_TIMEZONE, utcEvening), '2026-08-30');
+  });
+
+  it('does not shift a stored @db.Date midnight UTC key', () => {
+    assert.equal(toDateKey(new Date('2026-08-30T00:00:00.000Z')), '2026-08-30');
+    assert.equal(toDateKey('2026-08-30T00:00:00.000Z'), '2026-08-30');
+    assert.equal(toDateKey('2026-08-30'), '2026-08-30');
+  });
+
+  it('formats a DST spring-forward instant in Europe/London without throwing', () => {
+    const gap = new Date('2026-03-29T00:30:00.000Z');
+    const key = todayInTimeZone('Europe/London', gap);
+    assert.match(key, /^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('period ranges', () => {
+  it('builds a five-day logged range and ignores spotting on both sides', () => {
+    const stats = inferCycleStats(
+      logs([
+        ['2026-08-09', 'spotting'],
+        ['2026-08-10', 'light'],
+        ['2026-08-11', 'medium'],
+        ['2026-08-12', 'heavy'],
+        ['2026-08-13', 'medium'],
+        ['2026-08-14', 'light'],
+        ['2026-08-15', 'spotting'],
+      ]),
+    );
+    assert.deepEqual(stats.periodRanges, [
+      { start: '2026-08-10', end: '2026-08-14', lengthDays: 5, source: 'logged' },
+    ]);
+    assert.deepEqual(stats.periodStarts, ['2026-08-10']);
+    assert.equal(stats.inferredPeriodLength, 5);
+    assert.equal(stats.inferredCycleLength, null);
+    assert.equal(stats.cycleCount, 0);
+  });
+
+  it('keeps a single-day period as its own range', () => {
+    const stats = inferCycleStats(logs([['2026-04-01', 'heavy']]));
+    assert.deepEqual(stats.periodRanges, [
+      { start: '2026-04-01', end: '2026-04-01', lengthDays: 1, source: 'logged' },
+    ]);
+    assert.equal(stats.inferredPeriodLength, null);
+  });
+
+  it('splits ranges across a gap', () => {
+    const stats = inferCycleStats(
+      logs([
+        ['2026-01-01', 'medium'],
+        ['2026-01-02', 'medium'],
+        ['2026-01-10', 'medium'],
+        ['2026-01-11', 'light'],
+      ]),
+    );
+    assert.equal(stats.periodRanges.length, 2);
+    assert.deepEqual(stats.periodRanges[0], {
+      start: '2026-01-01',
+      end: '2026-01-02',
+      lengthDays: 2,
+      source: 'logged',
+    });
+    assert.deepEqual(stats.periodRanges[1], {
+      start: '2026-01-10',
+      end: '2026-01-11',
+      lengthDays: 2,
+      source: 'logged',
+    });
+  });
+});
+
+function cycleStarts(...starts) {
+  return logs(starts.map((date) => [date, 'medium']));
+}
+
+describe('forecast source (recommendation C)', () => {
+  it('uses default 28/5 when history is empty and profile is default', () => {
+    const inferred = inferCycleStats([]);
+    const averages = resolveForecastAverages(
+      { avgCycleLength: 28, avgPeriodLength: 5 },
+      inferred,
+    );
+    assert.equal(averages.source, 'default');
+    assert.equal(averages.usedCycleLength, 28);
+    assert.equal(averages.usedPeriodLength, 5);
+    assert.equal(averages.storedCycleLength, 28);
+    assert.equal(averages.inferredCycleLength, null);
+    assert.equal(averages.cycleCount, 0);
+  });
+
+  it('uses the stored user value when history is insufficient', () => {
+    const inferred = inferCycleStats(cycleStarts('2026-03-01'));
+    const averages = resolveForecastAverages(
+      { avgCycleLength: 32, avgPeriodLength: 6 },
+      inferred,
+    );
+    assert.equal(averages.source, 'user');
+    assert.equal(averages.usedCycleLength, 32);
+    assert.equal(averages.usedPeriodLength, 6);
+    assert.equal(averages.storedCycleLength, 32);
+    assert.equal(averages.inferredCycleLength, null);
+    assert.equal(averages.cycleCount, 0);
+  });
+
+  it('uses inferred 31 and keeps stored 28 when cycleCount >= 2', () => {
+    const inferred = inferCycleStats(
+      cycleStarts('2026-01-01', '2026-02-01', '2026-03-04'),
+    );
+    assert.equal(inferred.cycleCount, 2);
+    assert.equal(inferred.inferredCycleLength, 31);
+    const averages = resolveForecastAverages(
+      { avgCycleLength: 28, avgPeriodLength: 5 },
+      inferred,
+    );
+    assert.equal(averages.source, 'inferred');
+    assert.equal(averages.usedCycleLength, 31);
+    assert.equal(averages.storedCycleLength, 28);
+    assert.equal(averages.inferredCycleLength, 31);
+  });
+
+  it('does not overwrite the stored profile object', () => {
+    const profile = { avgCycleLength: 28, avgPeriodLength: 5 };
+    const inferred = inferCycleStats(
+      cycleStarts('2026-01-01', '2026-02-01', '2026-03-04'),
+    );
+    resolveForecastAverages(profile, inferred);
+    assert.equal(profile.avgCycleLength, 28);
+    assert.equal(profile.avgPeriodLength, 5);
+  });
+
+  it('drives forecast length from inferred 24 / 31 / 40 when enough gaps exist', () => {
+    const cases = [
+      { starts: ['2026-01-01', '2026-01-25', '2026-02-18'], length: 24 },
+      { starts: ['2026-01-01', '2026-02-01', '2026-03-04'], length: 31 },
+      { starts: ['2026-01-01', '2026-02-10', '2026-03-22'], length: 40 },
+    ];
+    for (const row of cases) {
+      const inferred = inferCycleStats(cycleStarts(...row.starts));
+      const averages = resolveForecastAverages(
+        { avgCycleLength: 28, avgPeriodLength: 5 },
+        inferred,
+      );
+      assert.equal(averages.usedCycleLength, row.length, row.starts.join(','));
+      const pred = buildPredictions({
+        lastPeriodStart: row.starts[row.starts.length - 1],
+        avgCycleLength: averages.usedCycleLength,
+        avgPeriodLength: averages.usedPeriodLength,
+        cycleCount: averages.cycleCount,
+      });
+      assert.equal(pred.nextPeriodStart, addDays(row.starts[row.starts.length - 1], row.length));
+    }
+  });
+
+  it('uses inferred 28 from two valid 28-day gaps', () => {
+    const inferred = inferCycleStats(
+      cycleStarts('2026-01-01', '2026-01-29', '2026-02-26'),
+    );
+    assert.equal(inferred.inferredCycleLength, 28);
+    assert.equal(inferred.cycleCount, 2);
+  });
+});
+
+describe('history depth → confidence', () => {
+  it('zero and one cycle stay low; four medium; six high', () => {
+    assert.equal(predictionConfidence({ cycleCount: 0 }), 'low');
+    assert.equal(predictionConfidence({ cycleCount: 1 }), 'low');
+    const two = inferCycleStats(cycleStarts('2026-01-01', '2026-01-29', '2026-02-26'));
+    assert.equal(two.cycleCount, 2);
+    assert.equal(predictionConfidence({ cycleCount: two.cycleCount }), 'medium');
+    const four = inferCycleStats(
+      cycleStarts('2026-01-01', '2026-01-29', '2026-02-26', '2026-03-26', '2026-04-23'),
+    );
+    assert.equal(four.cycleCount, 4);
+    assert.equal(predictionConfidence({ cycleCount: 4 }), 'medium');
+    const six = inferCycleStats(
+      cycleStarts(
+        '2026-01-01',
+        '2026-01-29',
+        '2026-02-26',
+        '2026-03-26',
+        '2026-04-23',
+        '2026-05-21',
+        '2026-06-18',
+      ),
+    );
+    assert.equal(six.cycleCount, 6);
+    assert.equal(predictionConfidence({ cycleCount: 6 }), 'high');
+  });
+});
+
+describe('canonical predictions', () => {
+  it('flags the forecast as estimated and attaches confidence', () => {
+    const pred = buildPredictions({
+      lastPeriodStart: '2026-03-01',
+      avgCycleLength: 28,
+      avgPeriodLength: 5,
+      cycleCount: 6,
+    });
+    assert.equal(pred.estimated, true);
+    assert.equal(pred.confidence, 'high');
+    assert.equal(pred.nextPeriodStart, '2026-03-29');
+    assert.equal(pred.ovulationDate, '2026-03-15');
+    assert.deepEqual(pred.fertileWindow, { start: '2026-03-10', end: '2026-03-16' });
+    assert.equal(pred.calendar['2026-03-29'].predicted, true);
+    assert.equal(pred.calendar['2026-03-29'].estimated, true);
+    assert.equal(pred.calendar['2026-03-15'].ovulation, true);
+    assert.equal(pred.calendar['2026-03-15'].estimated, true);
+  });
+
+  it('stamps cycle day and phase from the server, not the client', () => {
+    const pred = buildPredictions({
+      lastPeriodStart: '2026-03-01',
+      avgCycleLength: 28,
+      avgPeriodLength: 5,
+    });
+    assert.equal(pred.calendar['2026-03-01'].cycleDay, 1);
+    assert.equal(pred.calendar['2026-03-01'].phase, 'period');
+    assert.equal(pred.calendar['2026-03-08'].phase, 'follicular');
+    assert.equal(pred.calendar['2026-03-15'].cycleDay, 15);
+    assert.equal(pred.calendar['2026-03-15'].phase, 'ovulation');
+    assert.equal(pred.calendar['2026-03-20'].phase, 'luteal');
+  });
+
+  it('keeps logged bleed predicted:false and estimated:false', () => {
+    const pred = buildPredictions({
+      lastPeriodStart: '2026-03-01',
+      avgCycleLength: 28,
+      avgPeriodLength: 5,
+      logs: logs([
+        ['2026-03-01', 'medium'],
+        ['2026-03-02', 'light'],
+      ]),
+    });
+    assert.equal(pred.calendar['2026-03-01'].predicted, false);
+    assert.equal(pred.calendar['2026-03-01'].estimated, false);
+    assert.equal(pred.calendar['2026-03-01'].logged, true);
+    assert.equal(pred.calendar['2026-03-03'].predicted, true);
+    assert.equal(pred.calendar['2026-03-29'].predicted, true);
+    assert.equal(pred.calendar['2026-03-29'].estimated, true);
+  });
+
+  it('detectCyclePhase uses an explicit calendar day, not host TZ', () => {
+    const info = detectCyclePhase({
+      lastPeriodStart: '2026-03-01',
+      avgCycleLength: 28,
+      avgPeriodLength: 5,
+      today: '2026-03-10',
+    });
+    assert.equal(info.day, 10);
+    assert.equal(info.phase, 'fertile');
+  });
+});
+
+describe('stampCalendarPhases', () => {
+  it('does not invent CycleLog rows', () => {
+    const calendar = stampCalendarPhases(
+      {},
+      {
+        lastPeriodStart: '2026-03-01',
+        fromKey: '2026-03-01',
+        toKey: '2026-03-03',
+      },
+    );
+    assert.equal(calendar['2026-03-02'].cycleDay, 2);
+    assert.equal(calendar['2026-03-02'].logged, undefined);
+    assert.equal(calendar['2026-03-02'].flow, undefined);
   });
 });

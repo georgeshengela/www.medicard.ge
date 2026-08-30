@@ -16,6 +16,7 @@ import { AuthProvider, useAuth, needsHealthAssessment, needsProfileSetup } from 
 import { FontsProvider } from '@/store/FontsContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
 import { api } from '@/lib/api';
+import { consumePendingCycleShare, isCycleShareCode, savePendingCycleShare } from '@/lib/cycleSharePending';
 import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
 
 enableScreens(false);
@@ -67,10 +68,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     const inAuthGroup = segments[0] === '(auth)';
+    const parts = segments as string[];
+    const onShare = parts[0] === 'share';
     const onAssessment = segments.includes('assessment');
     const onProfileSetup = segments.includes('profile-setup');
+    const shareCode = onShare && parts[1] === 'cycle' ? String(parts[2] || '') : '';
 
     if (!user && !inAuthGroup) {
+      if (isCycleShareCode(shareCode)) {
+        void savePendingCycleShare(shareCode);
+      }
       router.replace('/(auth)');
       return;
     }
@@ -96,6 +103,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
         // Dev QA — allow profile-setup preview even when onboarding is complete.
         if (typeof __DEV__ !== 'undefined' && __DEV__ && onProfileSetup) {
+          return;
+        }
+
+        const pendingShare = await consumePendingCycleShare();
+        if (pendingShare) {
+          router.replace(`/share/cycle/${pendingShare}` as never);
           return;
         }
 
@@ -182,6 +195,7 @@ function AppShell() {
               <Stack.Screen name="chat" options={{ headerShown: false }} />
               <Stack.Screen name="module" options={{ headerShown: false }} />
               <Stack.Screen name="cycle" options={{ headerShown: false }} />
+              <Stack.Screen name="share" options={{ headerShown: false }} />
               <Stack.Screen name="visits" options={{ headerShown: false }} />
               <Stack.Screen name="medications" options={{ headerShown: false }} />
               <Stack.Screen name="symptoms" options={{ headerShown: false }} />

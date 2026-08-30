@@ -83,11 +83,12 @@ export function toggleSymptom(label: string) {
   const exists = state.symptoms.some((s) => s.toLowerCase() === next.toLowerCase());
   if (exists) {
     const remaining = state.symptoms.filter((s) => s.toLowerCase() !== next.toLowerCase());
+    const primary = state.primarySymptom;
     setState({
       symptoms: remaining,
       primarySymptom:
-        state.primarySymptom && remaining.some((s) => s.toLowerCase() === state.primarySymptom.toLowerCase())
-          ? state.primarySymptom
+        primary && remaining.some((s) => s.toLowerCase() === primary.toLowerCase())
+          ? primary
           : remaining[0] ?? null,
     });
     return;

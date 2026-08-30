@@ -2,6 +2,8 @@ import type { ImageSourcePropType } from 'react-native';
 import type { BodyPartId, BodySide, OrganId, SymptomGender } from '@/types/symptoms';
 
 export const SYMPTOM_INTRO_ILLUSTRATION = require('../../assets/figma/symptoms/illustrations/intro-virus.png');
+export const SYMPTOM_INTRO_POSTER = require('../../assets/figma/symptoms/illustrations/intro-body-dark-recraft.png');
+export const SYMPTOM_INTRO_VIDEO = require('../../assets/figma/symptoms/illustrations/intro-body.mp4');
 
 export const SYMPTOM_BODY_SOURCES: Record<SymptomGender, Record<BodySide, ImageSourcePropType>> = {
   MALE: {

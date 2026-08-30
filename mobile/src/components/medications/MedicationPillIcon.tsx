@@ -32,7 +32,12 @@ export function MedicationPillIcon({
   if (imageUrl) {
     return (
       <View style={style}>
-        <PharmacyProductImage uri={imageUrl} size={size} rounded={Math.max(10, Math.round(size * 0.22))} />
+        <PharmacyProductImage
+          uri={imageUrl}
+          size={size}
+          rounded={Math.max(10, Math.round(size * 0.22))}
+          fit="cover"
+        />
       </View>
     );
   }
