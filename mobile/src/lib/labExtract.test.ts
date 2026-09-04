@@ -33,6 +33,26 @@ describe('labExtract', () => {
     assert.equal(extracted.parameters[0].flag, 'N');
   });
 
+  it('reads a French dotted lab PDF table', () => {
+    const text = [
+      'Date de la biologie :.2024-06-18.08:15:26',
+      '......Hémoglobine. -. 12.6. g/dlg/dL. 13.0 - 16.5',
+      '......Hématocrite.. 42.1. %%. 40.0 - 50.0',
+      '......CRP. +. 73.2. mg/lmg/L. - 5.0',
+    ].join('\n');
+    const extracted = parseLabExtract(text);
+    assert.equal(extracted.date, '2024-06-18');
+    assert.equal(extracted.parameters.length, 3);
+    const hgb = extracted.parameters.find((row) => row.key === 'hemoglobin');
+    const crp = extracted.parameters.find((row) => row.key === 'crp');
+    assert.ok(hgb);
+    assert.equal(hgb.flag, 'L');
+    assert.equal(hgb.unit, 'g/dL');
+    assert.ok(crp);
+    assert.equal(crp.flag, 'H');
+    assert.equal(crp.refHigh, 5);
+  });
+
   it('normalizes EU and ISO dates and strips the machine block', () => {
     assert.equal(normalizeLooseDate('2026/9/4'), '2026-09-04');
     assert.equal(normalizeLooseDate('4.9.2026'), '2026-09-04');

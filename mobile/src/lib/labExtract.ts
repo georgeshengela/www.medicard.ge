@@ -38,17 +38,30 @@ const ALIASES: Record<string, string> = {
   '\u10e8\u10d0\u10e0\u10d3\u10d8': 'urea',
   '\u10e5\u10dd\u10da\u10d4\u10e1\u10e2\u10d4\u10e0\u10d8\u10dc\u10d8': 'cholesterol',
   '\u10e4\u10d4\u10e0\u10d8\u10e2\u10d8\u10dc\u10d8': 'ferritin',
+  hemoglobine: 'hemoglobin',
+  hematocrite: 'hct',
+  'globules rouges': 'rbc',
+  'globules blancs': 'wbc',
+  plaquettes: 'plt',
+  creatinine: 'creatinine',
+  uree: 'urea',
+  tgp: 'alt',
+  crp: 'crp',
+  'gamma gt': 'ggt',
 };
 
 
 export function slugLabKey(raw: string): string {
   const compact = raw
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/\[.*?\]/g, ' ')
     .replace(/[^a-z0-9\u10A0-\u10FF\u0400-\u04FF]+/gi, ' ')
     .trim();
   const first = compact.split(/\s+/)[0] ?? compact;
-  return (ALIASES[compact] ?? ALIASES[first] ?? compact.replace(/\s+/g, '_').slice(0, 48)) || 'analyte';
+  const aliased = ALIASES[compact] ?? (compact.includes(' ') ? undefined : ALIASES[first]);
+  return aliased || compact.replace(/\s+/g, '_').slice(0, 48) || 'analyte';
 }
 
 function parseNumber(raw: string): number | null {
@@ -59,11 +72,16 @@ function parseNumber(raw: string): number | null {
 }
 
 function parseRange(raw: string): { low: number | null; high: number | null } {
-  const match = raw.replace(',', '.').match(/(-?[\d.]+)\s*[-–—]\s*(-?[\d.]+)/);
+  const text = raw.replace(',', '.');
+  const match = text.match(/(-?[\d.]+)\s*[-–—]\s*(-?[\d.]+)/);
   if (match) return { low: parseNumber(match[1]), high: parseNumber(match[2]) };
-  const lt = raw.match(/[≤<]\s*(-?[\d.]+)/);
+  const maxOnly = text.match(/^\s*[-–—<≤]\s*(-?[\d.]+)\s*$/);
+  if (maxOnly) return { low: null, high: parseNumber(maxOnly[1]) };
+  const minOnly = text.match(/^(-?[\d.]+)\s*[-–—>≥]\s*$/);
+  if (minOnly) return { low: parseNumber(minOnly[1]), high: null };
+  const lt = text.match(/[≤<]\s*(-?[\d.]+)/);
   if (lt) return { low: null, high: parseNumber(lt[1]) };
-  const gt = raw.match(/[≥>]\s*(-?[\d.]+)/);
+  const gt = text.match(/[≥>]\s*(-?[\d.]+)/);
   if (gt) return { low: parseNumber(gt[1]), high: null };
   return { low: null, high: null };
 }
@@ -113,6 +131,51 @@ function toParam(input: {
     refHigh: high,
     flag: flagFrom(input.flagRaw, value, low, high),
   };
+}
+
+function tidyUnit(unit: string): string {
+  const u = unit.replace(/\s+/g, '');
+  if (!u) return '';
+  if (u === '%%') return '%';
+  if (u === 'ss') return 's';
+  const lower = u.toLowerCase();
+  const half = Math.floor(u.length / 2);
+  if (half >= 2 && lower.slice(0, half) === lower.slice(half)) return u.slice(half);
+  return u;
+}
+
+function parseDotSeparatedLab(text: string): LabParameter[] {
+  const rows: LabParameter[] = [];
+  const skip =
+    /^(biologie|date de|contenu|descriptif|hematologie|hemato|hemostase|biochimie|end\.?$|file:|https?:|non r[eé]alis|commentaire|l'ekfc|marqueurs|inflammation|proteines|glucides|tests globaux|hemogramme|\d+\/\d+$)/i;
+
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/^[\s.]+/, '').trim();
+    if (!line || skip.test(line) || !/\d/.test(line)) continue;
+    const cells = line
+      .split(/\.\s+/)
+      .map((cell) => cell.replace(/^\.+|\.+$/g, '').trim())
+      .filter(Boolean);
+    if (cells.length < 3) continue;
+    let name = cells[0];
+    let idx = 1;
+    let flagRaw = '';
+    if (cells[1] === '+' || cells[1] === '-') {
+      flagRaw = cells[1] === '+' ? 'H' : 'L';
+      idx = 2;
+    }
+    const valueRaw = cells[idx];
+    if (!valueRaw || !/^\d+(?:[.,]\d+)?$/.test(valueRaw.trim())) continue;
+    const param = toParam({
+      name,
+      valueRaw,
+      unit: tidyUnit(cells[idx + 1] ?? ''),
+      range: cells.slice(idx + 2).join(' '),
+      flagRaw,
+    });
+    if (param) rows.push(param);
+  }
+  return rows;
 }
 
 function parsePipeTable(text: string): LabParameter[] {
@@ -188,7 +251,7 @@ export function normalizeLooseDate(raw: unknown): string | null {
 
 function parseDocumentDate(text: string): string | null {
   const labeled = text.match(
-    /(?:date|collected|\u10d7\u10d0\u10e0\u10d8\u10e6|\u10d2\u10d0\u10d9\u10d4\u10d7\u10d3)[^\d]{0,24}(\d{1,4}[-./]\d{1,2}[-./]\d{1,4})/i,
+    /(?:date|collected|biologie|\u10d7\u10d0\u10e0\u10d8\u10e6|\u10d2\u10d0\u10d9\u10d4\u10d7\u10d3)[^\d]{0,40}(\d{1,4}[-./]\d{1,2}[-./]\d{1,4})/i,
   );
   if (labeled) return normalizeLooseDate(labeled[1]);
   const any = text.match(/\b(\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2}[-./]\d{4})\b/);
@@ -202,8 +265,9 @@ export function stripLabJson(text: string): string {
 export function parseLabExtract(text: string): LabExtract {
   const fromJson = parseLabJson(text);
   const fromTable = parsePipeTable(text);
+  const fromDots = parseDotSeparatedLab(text);
   const merged = new Map<string, LabParameter>();
-  for (const row of [...(fromJson?.parameters ?? []), ...fromTable]) {
+  for (const row of [...(fromJson?.parameters ?? []), ...fromTable, ...fromDots]) {
     merged.set(row.key, row);
   }
   return {

@@ -93,6 +93,23 @@ export async function describeImages({ images, kind, patientContext }) {
   };
 }
 
+export async function structureLabText(text) {
+  const source = String(text ?? '').trim();
+  if (!source || source.length < 24) return null;
+  if (!openrouter) return null;
+  return describeWithOpenAiCompatible({
+    client: openrouter,
+    model: env.OPENROUTER_MODEL,
+    provider: 'openrouter',
+    prompt: [
+      VISION_PROMPTS.LAB,
+      'This is already-extracted text from a laboratory PDF. Structure every analyte. Do not invent values.',
+      source.slice(0, 12000),
+    ].join('\n\n'),
+    maxTokens: 4000,
+  });
+}
+
 export async function describeImage({ buffer, mimeType, kind, patientContext }) {
   if (!openrouter && !anthropic && !openai) {
     throw new AiEngineError(
@@ -200,12 +217,14 @@ async function describeWithOpenAiCompatible({
           detail: 'high',
         },
       }))
-    : [
-        {
-          type: 'image_url',
-          image_url: { url: `data:${mimeType};base64,${base64}`, detail: detail ?? 'high' },
-        },
-      ];
+    : base64
+      ? [
+          {
+            type: 'image_url',
+            image_url: { url: `data:${mimeType};base64,${base64}`, detail: detail ?? 'high' },
+          },
+        ]
+      : [];
 
   const response = await client.chat.completions.create({
     model,

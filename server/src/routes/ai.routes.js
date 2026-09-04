@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { askEvidenceMd, AiEngineError } from '../lib/evidencemd.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
-import { describeImage, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
+import { describeImage, structureLabText, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
 import { calculateAge, withPatientAiContext } from '../lib/patient.js';
@@ -384,6 +384,16 @@ aiRouter.post(
       extractor = { provider: last?.provider ?? 'openrouter', model: last?.model ?? '' };
     }
 
+    let labExtract = extractLabFromText(visionNotes);
+    if (labExtract.parameters.length < 3 && visionNotes.length >= 24) {
+      const structured = await structureLabText(visionNotes).catch(() => null);
+      if (structured?.notes) {
+        visionNotes = `${visionNotes}\n\n${structured.notes}`;
+        labExtract = extractLabFromText(visionNotes);
+        extractor = { provider: structured.provider, model: structured.model };
+      }
+    }
+
     if (req.labAppend) {
       if (!recordId) {
         return res.status(400).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
@@ -416,7 +426,6 @@ aiRouter.post(
       });
     }
 
-    const labExtract = extractLabFromText(visionNotes);
     const preview = images[0] ?? files[0];
     const imageUrl = preview
       ? await saveUpload(preview.buffer, preview.mimeType ?? preview.mimetype ?? 'application/pdf')
