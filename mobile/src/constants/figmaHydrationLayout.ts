@@ -1,6 +1,6 @@
 import { useIsDark } from '@/theme/colors';
 
-/** Figma 9017:196580 / 9017:209643 / 8852:117118 — hydration tokens. */
+/** Figma 9283:202564 / 9017:196580 / 9017:209643 / 8852:117118 — hydration tokens. */
 export const FIGMA_HYDRATION = {
   brand: '#14B8A6',
   brandLight: '#99F6E4',

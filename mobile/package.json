@@ -13,6 +13,7 @@
     "expo-file-system": "~19.0.23",
     "expo-font": "~14.0.12",
     "expo-haptics": "~15.0.0",
+    "expo-image-manipulator": "~14.0.8",
     "expo-image-picker": "~17.0.0",
     "expo-linear-gradient": "~15.0.8",
     "expo-linking": "~8.0.0",
@@ -60,6 +61,7 @@
     "export:web": "expo export --platform web --output-dir dist",
     "typecheck": "tsc --noEmit",
     "test:offline": "node --test src/lib/cycleOffline.test.js",
+    "test:lab": "node --experimental-strip-types --test src/lib/labExtract.test.ts",
     "icons:generate": "node scripts/generate-app-icons.mjs"
   },
   "private": true

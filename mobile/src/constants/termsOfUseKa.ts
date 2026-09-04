@@ -3,7 +3,7 @@ import type { LegalSection } from '@/constants/privacyPolicyKa';
 /** Medicard.GE — წესები და პირობები (ქართული). */
 export const TERMS_OF_USE_KA = {
   title: 'წესები და პირობები',
-  effectiveDate: '31 აგვისტო, 2026',
+  effectiveDate: '4 სექტემბერი, 2026',
   intro:
     'ამ წესებით რეგულირდება Medicard.GE აპლიკაციისა და დაკავშირებული სერვისების გამოყენება. აპში რეგისტრაციით ან გამოყენებით ეთანხმებით ამ პირობებს.',
   highlight:

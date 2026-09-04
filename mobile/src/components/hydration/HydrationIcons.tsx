@@ -14,6 +14,31 @@ export function HydrationDrop({ size = 40, color = '#38BDF8' }: { size?: number;
   );
 }
 
+/** Figma 9283:202570 / assets/figma/hydration/water-drop-9283.svg — outer 32, leaf 20.67×25.31 */
+const FIGMA_DROP =
+  'M8.57682 0.796823C9.50645 -0.265609 11.1602 -0.265606 12.0898 0.796823L17.7852 7.30594C19.6427 9.42886 20.6667 12.1543 20.6667 14.9752C20.6667 16.3322 20.3995 17.676 19.8802 18.9296C19.3609 20.1833 18.6002 21.323 17.6406 22.2825C16.6811 23.242 15.5414 24.0028 14.2878 24.5221C13.0341 25.0414 11.6903 25.3085 10.3333 25.3085C8.97635 25.3085 7.63259 25.0414 6.37891 24.5221C5.12522 24.0028 3.98557 23.242 3.02604 22.2825C2.06651 21.323 1.30576 20.1833 0.786458 18.9296C0.267171 17.676 6.93905e-06 16.3322 0 14.9752C2.46608e-07 12.1543 1.02396 9.42886 2.88151 7.30594L8.57682 0.796823Z';
+
+export function FigmaHydrationDrop({ color = '#14B8A6' }: { color?: string }) {
+  return (
+    <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={20.6667} height={25.3085} viewBox="0 0 20.6667 25.3085" fill="none">
+        <Path d={FIGMA_DROP} fill={color} />
+      </Svg>
+    </View>
+  );
+}
+
+/** Figma 9283:202587 / assets/figma/hydration/hatch-a-9283.svg — 173×97, rotate 60° in the fill. */
+export function FigmaHydrationHatch({ color = '#0D9488' }: { color?: string }) {
+  return (
+    <Svg width={173} height={97} viewBox="0 0 173 97" fill="none">
+      {Array.from({ length: 13 }, (_, i) => (
+        <Path key={i} d={`M0 ${0.5 + i * 8}H173`} stroke={color} />
+      ))}
+    </Svg>
+  );
+}
+
 const SMALL_BODY =
   'M53.6482 9H18.3518C16.5638 9 15.1727 10.5542 15.3701 12.3313L20.407 57.6626C20.7446 60.7012 23.313 63 26.3703 63H45.6297C48.687 63 51.2554 60.7012 51.593 57.6626L56.6299 12.3313C56.8273 10.5542 55.4362 9 53.6482 9Z';
 const SMALL_FILL =

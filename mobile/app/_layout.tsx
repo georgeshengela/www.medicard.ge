@@ -200,6 +200,7 @@ function AppShell() {
               <Stack.Screen name="share" options={{ headerShown: false }} />
               <Stack.Screen name="visits" options={{ headerShown: false }} />
               <Stack.Screen name="medications" options={{ headerShown: false }} />
+              <Stack.Screen name="lab" options={{ headerShown: false }} />
               <Stack.Screen name="symptoms" options={{ headerShown: false }} />
               <Stack.Screen name="pharmacy" options={{ headerShown: false }} />
               <Stack.Screen name="record/[id]" options={{ headerBackTitle: 'უკან' }} />

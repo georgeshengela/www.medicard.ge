@@ -4,12 +4,13 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { askEvidenceMd, AiEngineError } from '../lib/evidencemd.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
-import { describeImage, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
+import { describeImage, describeImages, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
 import { calculateAge, withPatientAiContext } from '../lib/patient.js';
 import { buildSymptomPrompt, formatSymptomRecordKa, runSymptomCheck } from '../lib/symptomCheck.js';
 import { saveUpload } from '../lib/storage.js';
+import { extractLabFromText } from '../lib/labExtract.js';
 import { requireAuth } from '../middleware/auth.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
 import { asyncHandler } from '../middleware/error.js';
@@ -18,18 +19,65 @@ export const aiRouter = Router();
 
 aiRouter.use(requireAuth);
 
+const UPLOAD_MIME_ALIASES = {
+  'image/jpg': 'image/jpeg',
+  'image/pjpeg': 'image/jpeg',
+  'image/heic': 'image/heic',
+  'image/heif': 'image/heic',
+  'image/heic-sequence': 'image/heic',
+};
+
+function normalizeUploadMime(mime) {
+  const raw = String(mime || '').toLowerCase().trim();
+  return UPLOAD_MIME_ALIASES[raw] ?? raw;
+}
+
+/** JPEG/PNG/WEBP magic beats a lying iPhone HEIC Content-Type. */
+function sniffImageMime(buffer, declared) {
+  if (!buffer?.length) return declared;
+  if (buffer[0] === 0xff && buffer[1] === 0xd8) return 'image/jpeg';
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e) return 'image/png';
+  if (buffer.length > 12 && buffer.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  if (buffer.length > 8 && buffer.toString('ascii', 4, 8) === 'ftyp') return 'image/heic';
+  return declared === 'image/jpg' ? 'image/jpeg' : declared;
+}
+
+function acceptLabUpload(req, file, cb) {
+  const mime = normalizeUploadMime(file.mimetype);
+  const allowed = new Set([
+    ...SUPPORTED_IMAGE_TYPES,
+    ...SUPPORTED_DOCUMENT_TYPES,
+    'image/heic',
+    'image/heif',
+  ]);
+  if (!allowed.has(mime) && !allowed.has(file.mimetype)) {
+    cb(new AiEngineError('დაშვებულია მხოლოდ JPG, PNG, WEBP ან PDF ფაილი.', { status: 400 }));
+    return;
+  }
+  file.mimetype = mime;
+  cb(null, true);
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 12 * 1024 * 1024, files: 1 },
-  fileFilter: (req, file, cb) => {
-    const allowed = [...SUPPORTED_IMAGE_TYPES, ...SUPPORTED_DOCUMENT_TYPES];
-    if (!allowed.includes(file.mimetype)) {
-      cb(new AiEngineError('დაშვებულია მხოლოდ JPG, PNG, WEBP ან PDF ფაილი.', { status: 400 }));
-      return;
-    }
-    cb(null, true);
-  },
+  fileFilter: acceptLabUpload,
 });
+
+const uploadMany = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024, files: 8 },
+  fileFilter: acceptLabUpload,
+});
+
+function formatLabTable(parameters) {
+  return (parameters ?? [])
+    .map((row) => {
+      const range = row.refLow != null || row.refHigh != null ? `${row.refLow ?? ''}–${row.refHigh ?? ''}` : '';
+      return `${row.nameKa || row.nameEn} | ${row.display} | ${row.unit ?? ''} | ${range} | ${row.flag ?? 'U'}`;
+    })
+    .join('\n');
+}
 
 /* ────────────────────────────────────────────────────────────────
  * POST /api/ai/query — text consultation (AI ექიმი & კონსილიუმი)
@@ -151,8 +199,14 @@ aiRouter.post(
     }
 
     const { kind, context } = analyzeSchema.parse(req.body);
-    const { buffer, mimetype } = req.file;
+    const { buffer } = req.file;
+    const mimetype = sniffImageMime(buffer, normalizeUploadMime(req.file.mimetype));
     const isPdf = mimetype === 'application/pdf';
+    if (mimetype === 'image/heic') {
+      return res.status(400).json({
+        error: 'iPhone HEIC photo could not be read. Please pick the photos again.',
+      });
+    }
 
     if (isPdf && kind !== 'LAB') {
       return res.status(400).json({ error: 'PDF ფორმატი მხოლოდ ანალიზების გასაშიფრადაა დაშვებული.' });
@@ -184,22 +238,32 @@ aiRouter.post(
       extractor = { provider: described.provider, model: described.model };
     }
 
-    const patientAiContext = await withPatientAiContext(req.user);
-    const analysis = await runTrackedAi({
-      userId: req.user.id,
-      mode: kind,
-      userPrompt: buildVisionHandoff({ kind, visionNotes, patientContext: context }),
-      visionProvider: extractor.provider,
-      visionModel: extractor.model,
-      fn: () =>
-        askEvidenceMd({
-          mode: kind,
-          context: patientAiContext,
-          messages: [
-            { role: 'user', content: buildVisionHandoff({ kind, visionNotes, patientContext: context }) },
-          ],
-        }),
-    });
+    let analysisContent = visionNotes;
+    let interactionId = null;
+    let reasoning = { provider: 'vision', model: extractor.model };
+
+    // Lab sheets are extract-only here. Clinical write-up is POST /api/ai/explain-lab.
+    if (kind !== 'LAB') {
+      const patientAiContext = await withPatientAiContext(req.user);
+      const analysis = await runTrackedAi({
+        userId: req.user.id,
+        mode: kind,
+        userPrompt: buildVisionHandoff({ kind, visionNotes, patientContext: context }),
+        visionProvider: extractor.provider,
+        visionModel: extractor.model,
+        fn: () =>
+          askEvidenceMd({
+            mode: kind,
+            context: patientAiContext,
+            messages: [
+              { role: 'user', content: buildVisionHandoff({ kind, visionNotes, patientContext: context }) },
+            ],
+          }),
+      });
+      analysisContent = analysis.content;
+      interactionId = analysis.interactionId;
+      reasoning = { provider: 'evidencemd', model: analysis.model };
+    }
 
     const imageUrl = await saveUpload(buffer, mimetype);
 
@@ -208,13 +272,117 @@ aiRouter.post(
         userId: req.user.id,
         type: RECORD_TYPE_BY_KIND[kind],
         imageUrl,
-        aiAnalysis: analysis.content,
+        aiAnalysis: analysisContent,
       },
     });
 
-    await prisma.aiInteraction.update({
-      where: { id: analysis.interactionId },
-      data: { medicalRecordId: record.id },
+    if (interactionId) {
+      await prisma.aiInteraction.update({
+        where: { id: interactionId },
+        data: { medicalRecordId: record.id },
+      });
+    }
+
+    const usage = await req.consumeAiCredit();
+
+    return res.status(201).json({
+      record: {
+        id: record.id,
+        type: record.type,
+        imageUrl: record.imageUrl,
+        aiAnalysis: record.aiAnalysis,
+        createdAt: record.createdAt,
+      },
+      analysis: analysisContent,
+      labExtract: kind === 'LAB' ? extractLabFromText(visionNotes) : undefined,
+      interactionId,
+      pipeline: { extractor, reasoning },
+      usage,
+    });
+  }),
+);
+
+/* ────────────────────────────────────────────────────────────────
+ * POST /api/ai/extract-lab — one OpenRouter read for one day's test
+ * ──────────────────────────────────────────────────────────────── */
+
+const extractLabSchema = z.object({
+  context: z.string().trim().max(2000).optional(),
+});
+
+aiRouter.post(
+  '/extract-lab',
+  enforceAiQuota,
+  uploadMany.array('files', 8),
+  asyncHandler(async (req, res) => {
+    const files = req.files ?? [];
+    if (!files.length) {
+      return res.status(400).json({ error: 'ფაილი არ არის ატვირთული.' });
+    }
+
+    const { context } = extractLabSchema.parse(req.body ?? {});
+    const images = [];
+    const pdfNotes = [];
+
+    for (const file of files) {
+      const declared = normalizeUploadMime(file.mimetype);
+      const isPdf =
+        declared === 'application/pdf' ||
+        (file.buffer?.length >= 4 && file.buffer.toString('ascii', 0, 4) === '%PDF');
+      if (isPdf) {
+        const { text, pages } = await extractPdfText(file.buffer);
+        if (text.length < 24) {
+          return res.status(422).json({
+            error: 'PDF-დან ტექსტის ამოკითხვა ვერ მოხერხდა. სცადეთ დოკუმენტის ფოტოს ატვირთვა.',
+          });
+        }
+        pdfNotes.push(`[PDF, ${pages} გვერდი]\n\n${text}`);
+        continue;
+      }
+
+      const mimeType = sniffImageMime(file.buffer, declared);
+      if (mimeType === 'image/heic') {
+        return res.status(400).json({
+          error: 'iPhone HEIC photo could not be read. Please pick the photos again.',
+        });
+      }
+      images.push({ buffer: file.buffer, mimeType });
+    }
+
+    let visionNotes = pdfNotes.join('\n\n');
+    let extractor = { provider: pdfNotes.length ? 'pdf-parse' : 'none', model: pdfNotes.length ? 'pdf-parse' : '' };
+
+    if (images.length) {
+      const described = await describeImages({
+        images,
+        kind: 'LAB',
+        patientContext: context,
+      }).catch(async (error) => {
+        const texts = [];
+        for (const image of images) {
+          const text = await ocrImage(image.buffer);
+          if (text) texts.push(text);
+        }
+        if (!texts.length) throw error;
+        return { notes: texts.join('\n\n--- PAGE ---\n\n'), provider: 'tesseract', model: 'tesseract-kat+eng+rus' };
+      });
+      visionNotes = [visionNotes, described.notes].filter(Boolean).join('\n\n');
+      extractor = { provider: described.provider, model: described.model };
+    }
+
+    const labExtract = extractLabFromText(visionNotes);
+    const preview = images[0] ?? files[0];
+    const imageUrl = preview
+      ? await saveUpload(preview.buffer, preview.mimeType ?? preview.mimetype ?? 'application/pdf')
+      : null;
+
+    const record = await prisma.medicalRecord.create({
+      data: {
+        userId: req.user.id,
+        type: 'LAB',
+        imageUrl,
+        aiAnalysis: visionNotes,
+      },
     });
 
     const usage = await req.consumeAiCredit();
@@ -227,9 +395,89 @@ aiRouter.post(
         aiAnalysis: record.aiAnalysis,
         createdAt: record.createdAt,
       },
+      notes: visionNotes,
+      labExtract,
+      interactionId: null,
+      pipeline: { extractor, reasoning: null },
+      usage,
+    });
+  }),
+);
+
+/* ────────────────────────────────────────────────────────────────
+ * POST /api/ai/explain-lab — one EvidenceMD write-up for a saved test
+ * ──────────────────────────────────────────────────────────────── */
+
+const explainLabSchema = z.object({
+  parameters: z
+    .array(
+      z.object({
+        key: z.string().trim().min(1).max(80),
+        nameKa: z.string().trim().min(1).max(160),
+        nameEn: z.string().trim().max(160).optional().default(''),
+        display: z.string().trim().min(1).max(40),
+        unit: z.string().trim().max(40).optional().default(''),
+        value: z.number().finite().optional(),
+        refLow: z.number().finite().nullable().optional(),
+        refHigh: z.number().finite().nullable().optional(),
+        flag: z.enum(['N', 'H', 'L', 'U']).optional(),
+      }),
+    )
+    .min(1)
+    .max(80),
+  visionNotes: z.string().trim().max(40000).optional(),
+  date: z.string().trim().max(32).optional(),
+  context: z.string().trim().max(2000).optional(),
+  recordId: z.string().trim().max(80).optional(),
+});
+
+aiRouter.post(
+  '/explain-lab',
+  enforceAiQuota,
+  asyncHandler(async (req, res) => {
+    const body = explainLabSchema.parse(req.body);
+    const table = formatLabTable(body.parameters);
+    const visionNotes = [
+      body.date ? `DOCUMENT META\ndate: ${body.date}` : '',
+      'STRUCTURED ANALYTES (already extracted — do not invent values):',
+      table,
+      body.visionNotes ? `OCR / vision notes:\n${body.visionNotes}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    const patientAiContext = await withPatientAiContext(req.user);
+    const analysis = await runTrackedAi({
+      userId: req.user.id,
+      mode: 'LAB',
+      userPrompt: buildVisionHandoff({ kind: 'LAB', visionNotes, patientContext: body.context }),
+      fn: () =>
+        askEvidenceMd({
+          mode: 'LAB',
+          context: patientAiContext,
+          messages: [
+            { role: 'user', content: buildVisionHandoff({ kind: 'LAB', visionNotes, patientContext: body.context }) },
+          ],
+        }),
+    });
+
+    if (body.recordId) {
+      const existing = await prisma.medicalRecord.findFirst({
+        where: { id: body.recordId, userId: req.user.id },
+      });
+      if (existing) {
+        await prisma.medicalRecord.update({
+          where: { id: existing.id },
+          data: { aiAnalysis: analysis.content },
+        });
+      }
+    }
+
+    const usage = await req.consumeAiCredit();
+
+    return res.json({
       analysis: analysis.content,
       interactionId: analysis.interactionId,
-      pipeline: { extractor, reasoning: { provider: 'evidencemd', model: analysis.model } },
       usage,
     });
   }),

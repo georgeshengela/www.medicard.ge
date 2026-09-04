@@ -11,6 +11,7 @@ import { HomeBmiWeightSection } from '@/components/home/HomeBmiWeightSection';
 import { HomeNextDoseSection } from '@/components/home/HomeNextDoseSection';
 import { HomeHealthMetricsSection } from '@/components/home/HomeHealthMetricsSection';
 import { HomeHydrationSection } from '@/components/home/HomeHydrationSection';
+import { HomeLabSection } from '@/components/home/HomeLabSection';
 import { HomeStartSection } from '@/components/home/HomeStartSection';
 import { HomeAnalysisSection } from '@/components/home/HomeAnalysisSection';
 import { HomeConsiliumCard } from '@/components/home/HomeConsiliumCard';
@@ -143,6 +144,8 @@ export default function Home() {
         <HomeHealthMetricsSection profile={healthProfile} />
 
         <HomeHydrationSection />
+
+        <HomeLabSection />
 
         <View className="px-4">
         <HomeStartSection

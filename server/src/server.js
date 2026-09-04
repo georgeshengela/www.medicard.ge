@@ -136,11 +136,13 @@ app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
 
 app.get('/privacy', (_req, res) => {
   res.set('Cache-Control', 'public, max-age=3600');
+  if (PUBLIC_DIST) return res.sendFile(path.join(PUBLIC_DIST, 'privacy.html'));
   res.type('html').send(PRIVACY_HTML);
 });
 
 app.get('/terms', (_req, res) => {
   res.set('Cache-Control', 'public, max-age=3600');
+  if (PUBLIC_DIST) return res.sendFile(path.join(PUBLIC_DIST, 'terms.html'));
   res.type('html').send(TERMS_HTML);
 });
 

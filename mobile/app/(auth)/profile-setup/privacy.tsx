@@ -112,7 +112,7 @@ export default function ProfileSetupPrivacyScreen() {
             {ka.profileSetup.privacyTitle}
           </Text>
           <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 18, color: FIGMA_PROFILE_SETUP.bodyColor }}>
-            {ka.profileSetup.privacyEffective('25 აგვ. 2026')}
+            {ka.profileSetup.privacyEffective('4 სექტემბერი, 2026')}
           </Text>
           <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 22, color: FIGMA_PROFILE_SETUP.bodyColor, textAlign: 'center' }}>
             {ka.profileSetup.privacyIntro}

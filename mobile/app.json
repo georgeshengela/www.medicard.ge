@@ -3,7 +3,7 @@
     "name": "MEDICARD",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "18.0.10",
+    "version": "20.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",

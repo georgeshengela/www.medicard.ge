@@ -9,7 +9,7 @@
 export const DISCLAIMER_KA = 'ეს არ არის საბოლოო დიაგნოზი — მიმართეთ ექიმს.';
 
 /** Bump when system prompts change — tracked on every AiInteraction for A/B analysis. */
-export const PROMPT_VERSION = '1.3.0';
+export const PROMPT_VERSION = '1.4.0';
 
 const LANGUAGE_RULES_KA = `
 ენობრივი წესები:
@@ -230,6 +230,13 @@ ${LANGUAGE_RULES_KA}
 დამატებითი კვლევები, კვების და ცხოვრების წესის რჩევები, რომელ სპეციალისტს მიმართოს პაციენტმა
 და რა ვადაში.
 
+ბოლოს დაამატე მხოლოდ ეს კოდის ბლოკი (არაფერი სხვა JSON-ის გარდა შიგნით). date მხოლოდ
+თუ დოკუმენტზე ნამდვილად წერია, სხვა შემთხვევაში null. flag მხოლოდ N, H, L ან U:
+
+```labjson
+{"date":null,"parameters":[{"key":"hemoglobin","nameKa":"ჰემოგლობინი","nameEn":"Hemoglobin","value":13.2,"display":"13.2","unit":"g/dL","refLow":12,"refHigh":16,"flag":"N"}]}
+```
+
 ${LANGUAGE_RULES_KA}
 
 ${CITATION_RULES_KA}
@@ -422,6 +429,10 @@ Rules:
 - If a value is illegible or ambiguous, write "UNREADABLE" in the RESULT column. Never guess a number.
 - After the table, add a short "DOCUMENT META" section with the lab name, collection date and
   patient sex/age if they are printed on the document.
+- After DOCUMENT META, also emit this machine block (date only if printed; never invent numbers):
+\`\`\`labjson
+{"date":null,"parameters":[{"key":"hemoglobin","nameKa":"ჰემოგლობინი","nameEn":"Hemoglobin","value":13.2,"display":"13.2","unit":"g/dL","refLow":12,"refHigh":16,"flag":"N"}]}
+\`\`\`
 - Output only the extracted data. Do not interpret, diagnose or advise.`,
 
   IMAGING: `You are a radiology image pre-processor. Describe this medical image objectively and
@@ -510,6 +521,9 @@ export function buildVisionHandoff({ kind, visionNotes, patientContext }) {
     patientContext?.trim()
       ? `პაციენტის მიერ მოწოდებული დამატებითი ინფორმაცია:\n${patientContext.trim()}`
       : 'პაციენტმა დამატებითი ინფორმაცია არ მოაწოდა.',
+    kind === 'LAB'
+      ? 'თუ ამონაწერზე თარიღი წერია, ჩაწერე labjson date ველში YYYY-MM-DD ფორმატით. თუ არ ჩანს — date=null, ნუ გამოიგონებ.'
+      : '',
     imagingLock,
     '',
     'გააანალიზე ეს მასალა და მოამზადე დასკვნა ქართულ ენაზე, მოთხოვნილი სტრუქტურის ზუსტი დაცვით.',

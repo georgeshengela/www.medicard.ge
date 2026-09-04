@@ -4,8 +4,7 @@
   if (year) year.textContent = String(new Date().getFullYear());
 
   const stored = localStorage.getItem("medicard.landing.theme");
-  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  applyTheme(stored === "light" || stored === "dark" ? stored : systemDark ? "dark" : "light");
+  applyTheme(stored === "light" || stored === "dark" ? stored : "light");
 
   document.getElementById("theme-toggle")?.addEventListener("click", () => {
     const next = root.dataset.theme === "dark" ? "light" : "dark";
@@ -14,10 +13,6 @@
   });
 
   const nav = document.querySelector(".nav");
-  const onScroll = () => nav?.classList.toggle("is-scrolled", window.scrollY > 8);
-  onScroll();
-  window.addEventListener("scroll", onScroll, { passive: true });
-
   const links = document.querySelector(".nav-links");
   const menuBtn = document.getElementById("menu-toggle");
   menuBtn?.addEventListener("click", () => {
@@ -31,6 +26,16 @@
     });
   });
 
+  function updateNavTone() {
+    const y = (nav?.getBoundingClientRect().bottom || 72) + 10;
+    const probe = document.elementFromPoint(Math.min(120, window.innerWidth / 2), y);
+    const light = Boolean(probe?.closest(".band-paper, .band-soft, .band-cta, footer"));
+    nav?.classList.toggle("on-light", light);
+  }
+  updateNavTone();
+  window.addEventListener("scroll", updateNavTone, { passive: true });
+  window.addEventListener("resize", updateNavTone);
+
   const io = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
@@ -40,108 +45,28 @@
         }
       }
     },
-    { threshold: 0.14 },
+    { threshold: 0.12 },
   );
   document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
 
-  const labels = {
-    home: "მთავარი",
-    medi: "Medi",
-    cycle: "ციკლი",
-    symptoms: "სიმპტომები",
-    metrics: "მაჩვენებლები",
-    meds: "მედები",
-    streak: "სტრიკი",
-    profile: "პროფილი",
-    hydration: "ჰიდრატაცია",
-    signin: "შესვლა",
-  };
   const order = ["home", "medi", "cycle", "symptoms", "metrics", "meds", "streak", "profile"];
-  const phone = document.getElementById("stage-phone");
-  const caption = document.getElementById("phone-caption");
-  const counter = document.getElementById("phone-count");
-  const chapters = [...document.querySelectorAll(".chapter[data-screen]")];
-  const dock = document.getElementById("phone-dock");
-  const dayBtns = [...document.querySelectorAll("[data-day]")];
-  const cards = [...document.querySelectorAll(".card[data-screen]")];
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let current = "home";
   let autoplay = null;
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  function setScreen(key, { scrollChapter = false } = {}) {
-    if (!phone || !labels[key]) return;
-    current = key;
-    phone.querySelectorAll(".phone-screen img").forEach((img) => {
+  function setScreen(key, scope) {
+    const rootEl = scope || document;
+    rootEl.querySelectorAll(".phone-screen img").forEach((img) => {
       img.classList.toggle("is-on", img.dataset.key === key);
     });
-    if (caption) caption.textContent = labels[key];
-    if (counter) {
-      const i = order.indexOf(key);
-      counter.textContent = i >= 0 ? `${String(i + 1).padStart(2, "0")} / ${String(order.length).padStart(2, "0")}` : "";
-    }
-    dock?.querySelectorAll("button").forEach((btn) => {
-      btn.classList.toggle("is-on", btn.dataset.screen === key);
+    if (!scope || scope.id === "hero-phone") current = key;
+    document.querySelectorAll(".fcard[data-screen], .card[data-screen]").forEach((card) => {
+      card.classList.toggle("is-on", card.dataset.screen === key);
     });
-    chapters.forEach((ch) => ch.classList.toggle("is-on", ch.dataset.screen === key));
-    dayBtns.forEach((btn) => btn.classList.toggle("is-on", btn.dataset.day === key));
-    cards.forEach((card) => card.classList.toggle("is-on", card.dataset.screen === key));
-    if (scrollChapter) {
-      const ch = chapters.find((el) => el.dataset.screen === key);
-      ch?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
-    }
+    document.querySelectorAll("[data-day]").forEach((btn) => {
+      btn.classList.toggle("is-on", btn.dataset.day === key);
+    });
   }
-
-  dock?.querySelectorAll("button").forEach((btn) => {
-    if (!btn.title) btn.title = btn.textContent.trim();
-    btn.addEventListener("click", () => {
-      stopAuto();
-      setScreen(btn.dataset.screen, { scrollChapter: true });
-    });
-  });
-  dayBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      stopAuto();
-      setScreen(btn.dataset.day, { scrollChapter: true });
-    });
-  });
-  function phoneInView() {
-    const theater = document.querySelector(".theater");
-    if (!theater) return false;
-    const r = theater.getBoundingClientRect();
-    return r.top < window.innerHeight && r.bottom > 80;
-  }
-  cards.forEach((card) => {
-    card.addEventListener("mouseenter", () => {
-      if (phoneInView()) setScreen(card.dataset.screen);
-    });
-    card.addEventListener("focus", () => {
-      if (phoneInView()) setScreen(card.dataset.screen);
-    });
-    const open = () => {
-      stopAuto();
-      setScreen(card.dataset.screen, { scrollChapter: true });
-    };
-    card.addEventListener("click", open);
-    card.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        open();
-      }
-    });
-  });
-
-  const chapterIo = new IntersectionObserver(
-    (entries) => {
-      const visible = entries
-        .filter((entry) => entry.isIntersecting)
-        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (!visible) return;
-      const key = visible.target.dataset.screen;
-      if (key && key !== current) setScreen(key);
-    },
-    { rootMargin: "-28% 0px -42% 0px", threshold: [0.25, 0.5, 0.75] },
-  );
-  chapters.forEach((ch) => chapterIo.observe(ch));
 
   function stopAuto() {
     if (autoplay) {
@@ -153,21 +78,35 @@
     if (reduced || autoplay) return;
     autoplay = setInterval(() => {
       const i = order.indexOf(current);
-      setScreen(order[(i + 1) % order.length]);
+      setScreen(order[(i + 1) % order.length], document.getElementById("hero-phone"));
     }, 3200);
   }
 
-  const hero = document.querySelector(".hero-copy") || document.getElementById("hero-chapter");
+  const hero = document.querySelector(".hero-copy");
   if (hero && !reduced) {
     const heroIo = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) startAuto();
         else stopAuto();
       },
-      { threshold: 0.45 },
+      { threshold: 0.35 },
     );
     heroIo.observe(hero);
   }
+
+  function bindScreen(sel, phoneId) {
+    document.querySelectorAll(sel).forEach((el) => {
+      const show = () => {
+        stopAuto();
+        setScreen(el.dataset.screen || el.dataset.day, document.getElementById(phoneId));
+      };
+      el.addEventListener("mouseenter", show);
+      el.addEventListener("focus", show);
+      el.addEventListener("click", show);
+    });
+  }
+  bindScreen(".card[data-screen]", "hero-phone");
+  bindScreen("[data-day]", "hero-phone");
 
   window.addEventListener("keydown", (e) => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
@@ -175,14 +114,32 @@
     if (i < 0) return;
     stopAuto();
     const next = e.key === "ArrowRight" ? order[(i + 1) % order.length] : order[(i - 1 + order.length) % order.length];
-    setScreen(next);
+    setScreen(next, document.getElementById("hero-phone"));
   });
 
-  setScreen("home");
+  setScreen("home", document.getElementById("hero-phone"));
 
   function applyTheme(theme) {
     root.dataset.theme = theme;
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", theme === "light" ? "#f3f5f6" : "#030712");
+    updateNavTone();
+  }
+
+  const tocLinks = [...document.querySelectorAll(".legal-toc a[href^='#']")];
+  const tocHeads = tocLinks
+    .map((a) => document.getElementById(a.getAttribute("href").slice(1)))
+    .filter(Boolean);
+  if (tocHeads.length) {
+    const markToc = () => {
+      const y = 120;
+      let current = tocHeads[0];
+      for (const el of tocHeads) {
+        if (el.getBoundingClientRect().top <= y) current = el;
+      }
+      tocLinks.forEach((a) => a.classList.toggle("is-on", a.getAttribute("href") === `#${current.id}`));
+    };
+    markToc();
+    window.addEventListener("scroll", markToc, { passive: true });
   }
 })();

@@ -1073,6 +1073,41 @@ export const api = {
         input?: import('@/types/symptoms').SymptomCheckPayload;
       }>(`/api/ai/symptom-result/${recordId}`),
 
+    extractLab: (params: {
+      files: Array<{ uri: string; name: string; mimeType: string }>;
+      context?: string;
+    }) => {
+      const formData = new FormData();
+      for (const file of params.files) {
+        formData.append('files', {
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType,
+        } as unknown as Blob);
+      }
+      if (params.context) formData.append('context', params.context);
+
+      return request<{
+        record: MedicalRecord;
+        notes: string;
+        labExtract: import('@/types/lab').LabExtract;
+        pipeline: { extractor: { provider: string; model?: string }; reasoning: null };
+        usage: Usage;
+      }>('/api/ai/extract-lab', { method: 'POST', formData });
+    },
+
+    explainLab: (body: {
+      parameters: import('@/types/lab').LabParameter[];
+      visionNotes?: string;
+      date?: string;
+      context?: string;
+      recordId?: string;
+    }) =>
+      request<{ analysis: string; interactionId: string; usage: Usage }>('/api/ai/explain-lab', {
+        method: 'POST',
+        body,
+      }),
+
     analyzeImage: (params: {
       uri: string;
       name: string;
@@ -1093,6 +1128,7 @@ export const api = {
       return request<{
         record: MedicalRecord;
         analysis: string;
+        labExtract?: import('@/types/lab').LabExtract | null;
         pipeline: { extractor: { provider: string; model: string }; reasoning: { provider: string; model: string } };
         usage: Usage;
       }>('/api/ai/analyze-image', { method: 'POST', formData });
