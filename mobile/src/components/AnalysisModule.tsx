@@ -28,7 +28,7 @@ import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type MedicalRecord } from '@/lib/api';
 import { getAnalysisChatProfile, type AnalysisChatKind } from '@/lib/chatUiConfig';
-import { IMAGE_PICKER_OPTIONS, toUploadableImage } from '@/lib/imageUpload';
+import { IMAGE_PICKER_OPTIONS, prepareLabImage, toUploadableImage } from '@/lib/imageUpload';
 import { formatLabDateKa, mergeLabExtracts, parseLabExtract, stripLabJson } from '@/lib/labExtract';
 import { setLabPanelAnalysis, upsertLabPanel } from '@/lib/labStore';
 import { usePlanUsage } from '@/lib/planUsage';
@@ -111,7 +111,7 @@ export function AnalysisModule({
     async (assets: Array<{ uri: string; name?: string; fileName?: string; mimeType?: string | null; size?: number | null; fileSize?: number | null }>) => {
       const next: Picked[] = [];
       for (const asset of assets) {
-        const file = await toUploadableImage(asset);
+        const file = isLab ? await prepareLabImage(asset) : await toUploadableImage(asset);
         if (file.size && file.size > MAX_BYTES) {
           setError(ka.upload.fileTooLarge);
           continue;
@@ -231,30 +231,48 @@ export function AnalysisModule({
 
     try {
       if (isLab) {
-        const response = await api.ai.extractLab({
-          files: files.map((file) => ({ uri: file.uri, name: file.name, mimeType: file.mimeType })),
-          context: combinedContext,
-        });
-        applyUsage(response.usage);
-        const merged = mergeLabExtracts([
-          response.labExtract ?? { date: null, parameters: [] },
-          parseLabExtract(response.notes),
-        ]);
+        const extracts: LabExtract[] = [];
+        let notes = '';
+        let record: MedicalRecord | null = null;
+        for (let i = 0; i < files.length; i += 1) {
+          const file = files[i];
+          setWaitIndex(i);
+          setStage(ka.lab.readingPage(i + 1, files.length));
+          const response = await api.ai.extractLab({
+            files: [{ uri: file.uri, name: file.name, mimeType: file.mimeType }],
+            context: combinedContext,
+            recordId: record?.id,
+            append: i > 0,
+          });
+          applyUsage(response.usage);
+          record = response.record;
+          notes = response.notes;
+          if (response.labExtract) extracts.push(response.labExtract);
+          extracts.push(parseLabExtract(response.notes));
+        }
+        const merged = mergeLabExtracts(extracts);
+        const saved = record ?? {
+          id: '',
+          type: 'LAB' as const,
+          imageUrl: null,
+          aiAnalysis: notes,
+          createdAt: new Date().toISOString(),
+        };
         setResult({
           analysis: '',
-          record: response.record,
+          record: saved,
           extract: merged,
-          visionNotes: response.notes,
+          visionNotes: notes,
         });
         if (merged.parameters.length) {
           if (merged.date) {
-            await persistLab(merged.date, merged, '', [response.record.id], response.notes);
+            await persistLab(merged.date, merged, '', saved.id ? [saved.id] : [], notes);
           } else {
             setPendingExtract({
               extract: merged,
               analysis: '',
-              recordIds: [response.record.id],
-              visionNotes: response.notes,
+              recordIds: saved.id ? [saved.id] : [],
+              visionNotes: notes,
             });
             setAskDate(true);
           }
@@ -278,7 +296,9 @@ export function AnalysisModule({
         setQuotaBlock(err.usage?.resetsInMs);
         if (err.usage) applyUsage(err.usage);
       } else {
-        setError(err instanceof ApiError ? err.message : ka.common.error);
+        const message = err instanceof ApiError ? err.message : ka.common.error;
+        console.warn('[lab-extract]', message, err);
+        setError(message);
       }
       setSubmitted(false);
     } finally {
@@ -384,6 +404,7 @@ export function AnalysisModule({
               busy={busy}
               waitIndex={waitIndex}
               stage={stage}
+              error={error}
               allowPdf={allowPdf}
               context={context}
               contextLabel={contextLabel}

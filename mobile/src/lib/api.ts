@@ -1076,6 +1076,8 @@ export const api = {
     extractLab: (params: {
       files: Array<{ uri: string; name: string; mimeType: string }>;
       context?: string;
+      recordId?: string;
+      append?: boolean;
     }) => {
       const formData = new FormData();
       for (const file of params.files) {
@@ -1086,6 +1088,8 @@ export const api = {
         } as unknown as Blob);
       }
       if (params.context) formData.append('context', params.context);
+      if (params.recordId) formData.append('recordId', params.recordId);
+      if (params.append) formData.append('append', '1');
 
       return request<{
         record: MedicalRecord;

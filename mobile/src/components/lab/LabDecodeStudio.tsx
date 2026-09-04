@@ -22,6 +22,7 @@ type Props = {
   busy: boolean;
   waitIndex: number;
   stage: string;
+  error?: string | null;
   allowPdf?: boolean;
   context: string;
   contextLabel: string;
@@ -41,6 +42,7 @@ export function LabDecodeStudio({
   busy,
   waitIndex,
   stage,
+  error,
   allowPdf,
   context,
   contextLabel,
@@ -88,6 +90,20 @@ export function LabDecodeStudio({
             onGallery={onGallery}
             onPdf={allowPdf ? onPdf : undefined}
           />
+        ) : null}
+
+        {error ? (
+          <View
+            style={{
+              borderRadius: 16,
+              padding: 12,
+              backgroundColor: '#FEF2F2',
+              borderWidth: 1,
+              borderColor: '#FECACA',
+            }}
+          >
+            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: '#DC2626' }}>{error}</Text>
+          </View>
         ) : null}
 
         {showAnotherShot && !busy ? (
@@ -512,7 +528,7 @@ export function LabAnalyzeDock({
       >
         <Sparkles size={18} color="#fff" />
         <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16 }}>
-          {busy ? ka.lab.extractBusy(Math.max(total, 1)) : ka.lab.extractCta}
+          {busy ? ka.lab.readingPage(Math.min(waitIndex + 1, Math.max(total, 1)), Math.max(total, 1)) : ka.lab.extractCta}
         </Text>
       </Pressable>
     </View>

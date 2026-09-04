@@ -63,3 +63,25 @@ export async function toUploadableImage(asset: {
 
   return { uri: asset.uri, name, mimeType: mime, size };
 }
+
+/** Shrink lab sheets so OpenRouter can read the printed range without a huge upload. */
+export async function prepareLabImage(asset: {
+  uri: string;
+  name?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
+  size?: number | null;
+  fileSize?: number | null;
+}): Promise<{ uri: string; name: string; mimeType: string; size?: number }> {
+  const file = await toUploadableImage(asset);
+  if (file.mimeType === 'application/pdf') return file;
+  try {
+    const out = await ImageManipulator.manipulateAsync(file.uri, [{ resize: { width: 1600 } }], {
+      compress: 0.72,
+      format: ImageManipulator.SaveFormat.JPEG,
+    });
+    return { uri: out.uri, name: jpegName(file.name), mimeType: 'image/jpeg' };
+  } catch {
+    return file;
+  }
+}

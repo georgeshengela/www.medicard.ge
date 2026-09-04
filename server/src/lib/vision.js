@@ -118,6 +118,7 @@ export async function describeImage({ buffer, mimeType, kind, patientContext }) 
         base64,
         mimeType,
         prompt,
+        detail: kind === 'LAB' ? 'auto' : 'high',
       });
     } catch (error) {
       errors.push(`openrouter: ${error?.message ?? error}`);
@@ -141,6 +142,7 @@ export async function describeImage({ buffer, mimeType, kind, patientContext }) 
         base64,
         mimeType,
         prompt,
+        detail: kind === 'LAB' ? 'auto' : 'high',
       });
     } catch (error) {
       errors.push(`openai: ${error?.message ?? error}`);
@@ -188,6 +190,7 @@ async function describeWithOpenAiCompatible({
   images,
   prompt,
   maxTokens = 2000,
+  detail = 'high',
 }) {
   const imageParts = images?.length
     ? images.map((image) => ({
@@ -200,7 +203,7 @@ async function describeWithOpenAiCompatible({
     : [
         {
           type: 'image_url',
-          image_url: { url: `data:${mimeType};base64,${base64}`, detail: 'high' },
+          image_url: { url: `data:${mimeType};base64,${base64}`, detail: detail ?? 'high' },
         },
       ];
 

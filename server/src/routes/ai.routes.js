@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { askEvidenceMd, AiEngineError } from '../lib/evidencemd.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
-import { describeImage, describeImages, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
+import { describeImage, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
 import { buildVisionHandoff, buildDoctorTurnContext, sanitizeDoctorReply } from '../lib/prompts.js';
 import { calculateAge, withPatientAiContext } from '../lib/patient.js';
@@ -13,6 +13,7 @@ import { saveUpload } from '../lib/storage.js';
 import { extractLabFromText } from '../lib/labExtract.js';
 import { requireAuth } from '../middleware/auth.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
+import { getUsage } from '../lib/usage.js';
 import { asyncHandler } from '../middleware/error.js';
 
 export const aiRouter = Router();
@@ -308,19 +309,29 @@ aiRouter.post(
 
 const extractLabSchema = z.object({
   context: z.string().trim().max(2000).optional(),
+  recordId: z.string().trim().max(80).optional(),
+  append: z.string().trim().optional(),
 });
+
+function isLabAppend(body) {
+  return ['1', 'true', 'yes'].includes(String(body?.append ?? '').toLowerCase());
+}
 
 aiRouter.post(
   '/extract-lab',
-  enforceAiQuota,
   uploadMany.array('files', 8),
+  (req, res, next) => {
+    req.labAppend = isLabAppend(req.body);
+    if (req.labAppend) return next();
+    return enforceAiQuota(req, res, next);
+  },
   asyncHandler(async (req, res) => {
     const files = req.files ?? [];
     if (!files.length) {
       return res.status(400).json({ error: 'ფაილი არ არის ატვირთული.' });
     }
 
-    const { context } = extractLabSchema.parse(req.body ?? {});
+    const { context, recordId } = extractLabSchema.parse(req.body ?? {});
     const images = [];
     const pdfNotes = [];
 
@@ -353,21 +364,56 @@ aiRouter.post(
     let extractor = { provider: pdfNotes.length ? 'pdf-parse' : 'none', model: pdfNotes.length ? 'pdf-parse' : '' };
 
     if (images.length) {
-      const described = await describeImages({
-        images,
-        kind: 'LAB',
-        patientContext: context,
-      }).catch(async (error) => {
-        const texts = [];
-        for (const image of images) {
+      const parts = [];
+      let last = null;
+      for (const [index, image] of images.entries()) {
+        const described = await describeImage({
+          buffer: image.buffer,
+          mimeType: image.mimeType,
+          kind: 'LAB',
+          patientContext: context,
+        }).catch(async (error) => {
           const text = await ocrImage(image.buffer);
-          if (text) texts.push(text);
-        }
-        if (!texts.length) throw error;
-        return { notes: texts.join('\n\n--- PAGE ---\n\n'), provider: 'tesseract', model: 'tesseract-kat+eng+rus' };
+          if (!text) throw error;
+          return { notes: text, provider: 'tesseract', model: 'tesseract-kat+eng+rus' };
+        });
+        parts.push(images.length > 1 ? `--- PAGE ${index + 1} ---\n${described.notes}` : described.notes);
+        last = described;
+      }
+      visionNotes = [visionNotes, ...parts].filter(Boolean).join('\n\n');
+      extractor = { provider: last?.provider ?? 'openrouter', model: last?.model ?? '' };
+    }
+
+    if (req.labAppend) {
+      if (!recordId) {
+        return res.status(400).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
+      }
+      const existing = await prisma.medicalRecord.findFirst({
+        where: { id: recordId, userId: req.user.id, type: 'LAB' },
       });
-      visionNotes = [visionNotes, described.notes].filter(Boolean).join('\n\n');
-      extractor = { provider: described.provider, model: described.model };
+      if (!existing) {
+        return res.status(404).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
+      }
+      visionNotes = [existing.aiAnalysis, visionNotes].filter(Boolean).join('\n\n--- PAGE ---\n\n');
+      const labExtract = extractLabFromText(visionNotes);
+      const record = await prisma.medicalRecord.update({
+        where: { id: existing.id },
+        data: { aiAnalysis: visionNotes },
+      });
+      return res.json({
+        record: {
+          id: record.id,
+          type: record.type,
+          imageUrl: record.imageUrl,
+          aiAnalysis: record.aiAnalysis,
+          createdAt: record.createdAt,
+        },
+        notes: visionNotes,
+        labExtract,
+        interactionId: null,
+        pipeline: { extractor, reasoning: null },
+        usage: await getUsage(req.user.id),
+      });
     }
 
     const labExtract = extractLabFromText(visionNotes);
