@@ -3,7 +3,6 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { useAssessment } from '@/constants/assessmentLayout';
 import { ka } from '@/i18n/ka';
 import type { Gender } from '@/lib/api';
-import { lightColors } from '@/theme/colors';
 
 const OPTIONS: { value: Gender; label: string; icon: string }[] = [
   { value: 'MALE', label: ka.auth.genderMale, icon: '♂' },
@@ -34,21 +33,21 @@ export function GenderSelector({ gender, genderOther, onChange }: Props) {
                 minHeight: 108,
                 borderRadius: ASSESSMENT.cardRadius,
                 borderWidth: active ? 2 : 1,
-                borderColor: active ? lightColors.primary200 : ASSESSMENT.border,
-                backgroundColor: active ? `${lightColors.primary200}10` : ASSESSMENT.surface,
+                borderColor: active ? ASSESSMENT.brand : ASSESSMENT.border,
+                backgroundColor: active ? ASSESSMENT.selectedSoft : ASSESSMENT.surface,
                 alignItems: 'center',
                 justifyContent: 'center',
                 paddingVertical: 16,
                 paddingHorizontal: 8,
               }}
             >
-              <Text style={{ fontSize: 28, color: active ? lightColors.primary100 : ASSESSMENT.muted }}>{icon}</Text>
+              <Text style={{ fontSize: 28, color: active ? ASSESSMENT.brandInk : ASSESSMENT.muted }}>{icon}</Text>
               <Text
                 style={{
                   marginTop: 10,
                   fontFamily: 'NotoSansGeorgian_600SemiBold',
                   fontSize: 13,
-                  color: active ? lightColors.primary100 : ASSESSMENT.text,
+                  color: active ? ASSESSMENT.brandInk : ASSESSMENT.text,
                   textAlign: 'center',
                 }}
               >

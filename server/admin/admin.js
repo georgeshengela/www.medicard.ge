@@ -2481,6 +2481,13 @@ async function renderSettings() {
           </div>
           <span class="switch"><input id="set-reg" type="checkbox" ${settings.allowRegistrations ? 'checked' : ''}/><i></i></span>
         </label>
+        <label class="toggle">
+          <div>
+            <strong>QA OTP</strong>
+            <p>ტესტის კოდი 0000 (ტელეფონი) და 000000 (ელ-ფოსტა) ყოველთვის მუშაობს. გამორთე ტესტის შემდეგ.</p>
+          </div>
+          <span class="switch"><input id="set-qa-otp" type="checkbox" ${settings.qaOtpEnabled ? 'checked' : ''}/><i></i></span>
+        </label>
         <div class="field" style="margin-top:12px">
           <span>ოფლაინის შეტყობინება</span>
           <textarea id="set-msg" rows="3">${escapeHtml(settings.maintenanceMessage)}</textarea>
@@ -2507,6 +2514,7 @@ async function renderSettings() {
           <div class="detail"><span>${icon('globe')} ოფლაინი</span><strong>${onOffLabel(settings.maintenanceMode)}</strong></div>
           <div class="detail"><span>${icon('zap')} იძ. განახლება</span><strong>${onOffLabel(settings.forceUpdate)}</strong></div>
           <div class="detail"><span>${icon('users')} რეგისტრაცია</span><strong>${settings.allowRegistrations ? 'ღიაა' : 'დახურულია'}</strong></div>
+          <div class="detail"><span>${icon('shield')} QA OTP</span><strong>${onOffLabel(settings.qaOtpEnabled)}</strong></div>
           <div class="detail"><span>${icon('activity')} აპის ვერსია</span><strong class="mono">${escapeHtml(settings.mobileAppVersion || '—')}</strong></div>
           <div class="detail"><span>${icon('zap')} მინ. ვერსია</span><strong class="mono">${escapeHtml(settings.minAppVersion)}</strong></div>
           <div class="detail"><span>${icon('mail')} მხარდაჭერა</span><strong>${escapeHtml(settings.supportEmail || '—')}</strong></div>
@@ -2524,6 +2532,7 @@ async function renderSettings() {
         minAppVersion: $('set-minver').value.trim(),
         forceUpdate: $('set-force').checked,
         allowRegistrations: $('set-reg').checked,
+        qaOtpEnabled: $('set-qa-otp').checked,
         supportEmail: $('set-email').value.trim(),
       },
     });

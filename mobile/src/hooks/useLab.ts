@@ -1,16 +1,23 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { loadLabPanels, removeLabPanel, removeLabParameter, setLabPanelAnalysis, upsertLabPanel } from '@/lib/labStore';
+import { useAuth } from '@/store/AuthContext';
 import type { LabPanel, LabParameter } from '@/types/lab';
 
 export function useLab() {
+  const { user } = useAuth();
   const [panels, setPanels] = useState<LabPanel[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    if (!user?.id) {
+      setPanels([]);
+      setLoading(false);
+      return;
+    }
     setPanels(await loadLabPanels());
     setLoading(false);
-  }, []);
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {

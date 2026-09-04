@@ -8,6 +8,7 @@ import {
   bmiGaugeT,
   type BmiCategory,
 } from '@/lib/bmi';
+import { useIsDark } from '@/theme/colors';
 
 const WIDTH = 148;
 const HEIGHT = 92;
@@ -47,7 +48,64 @@ type Props = {
   category: BmiCategory | null;
 };
 
+const ZONE_FLEX = ZONES.map((zone) => zone.to - zone.from);
+
+/** Compact WHO BMI scale — fits the Nightingale metric-card sparkline slot. */
+export function HomeBmiZoneBar({
+  bmi,
+  category,
+  width = 108,
+}: {
+  bmi: number | null;
+  category: BmiCategory | null;
+  width?: number;
+}) {
+  const t = bmi != null ? bmiGaugeT(bmi) : null;
+  const accent = category ? BMI_ZONE_COLORS[category] : '#14B8A6';
+
+  return (
+    <View style={{ width, height: 14, justifyContent: 'center' }}>
+      <View
+        style={{
+          height: 8,
+          borderRadius: 99,
+          flexDirection: 'row',
+          overflow: 'hidden',
+        }}
+      >
+        {ZONES.map((zone, index) => (
+          <View
+            key={zone.color}
+            style={{
+              flex: ZONE_FLEX[index],
+              backgroundColor: zone.color,
+              opacity: 0.92,
+            }}
+          />
+        ))}
+      </View>
+      {t != null ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: Math.max(0, Math.min(width - 12, t * width - 6)),
+            top: 1,
+            width: 12,
+            height: 12,
+            borderRadius: 6,
+            backgroundColor: '#FFFFFF',
+            borderWidth: 2.5,
+            borderColor: accent,
+          }}
+        />
+      ) : null}
+    </View>
+  );
+}
+
 export function HomeBmiGauge({ bmi, category }: Props) {
+  const dark = useIsDark();
   const needle = useMemo(() => {
     if (bmi == null) return null;
     const angle = angleFor(bmi);
@@ -56,13 +114,15 @@ export function HomeBmiGauge({ bmi, category }: Props) {
   }, [bmi]);
 
   const accent = category ? BMI_ZONE_COLORS[category] : '#14B8A6';
+  const track = dark ? '#374151' : '#E5E7EB';
+  const hub = dark ? '#111827' : '#FFFFFF';
 
   return (
     <View style={{ width: WIDTH, height: HEIGHT }}>
       <Svg width={WIDTH} height={HEIGHT}>
         <Path
           d={arcPath(BMI_GAUGE_MIN, BMI_GAUGE_MAX, RADIUS)}
-          stroke="#E5E7EB"
+          stroke={track}
           strokeWidth={STROKE + 4}
           strokeLinecap="round"
           fill="none"
@@ -89,11 +149,11 @@ export function HomeBmiGauge({ bmi, category }: Props) {
               strokeWidth={3}
               strokeLinecap="round"
             />
-            <Circle cx={CX} cy={CY} r={7} fill="#FFFFFF" stroke={accent} strokeWidth={3} />
+            <Circle cx={CX} cy={CY} r={7} fill={hub} stroke={accent} strokeWidth={3} />
             <Circle cx={needle.tip.x} cy={needle.tip.y} r={4} fill={accent} />
           </>
         ) : (
-          <Circle cx={CX} cy={CY} r={6} fill="#FFFFFF" stroke="#D1D5DB" strokeWidth={2} />
+          <Circle cx={CX} cy={CY} r={6} fill={hub} stroke={track} strokeWidth={2} />
         )}
       </Svg>
     </View>

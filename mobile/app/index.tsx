@@ -2,6 +2,7 @@ import { Redirect } from 'expo-router';
 import { View } from 'react-native';
 import { resolveInitialRoute, getHomeLanding } from '@/lib/homeScreenPrefs';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
+import { nextProfileSetupHref } from '@/lib/onboarding';
 import { useEffect, useState } from 'react';
 
 export default function Index() {
@@ -28,7 +29,7 @@ export default function Index() {
       }
 
       if (needsProfileSetup(profile)) {
-        setHref('/(auth)/profile-setup/avatar');
+        setHref(nextProfileSetupHref(profile, user));
         return;
       }
 

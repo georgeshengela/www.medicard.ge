@@ -5,7 +5,6 @@ import { UnitSegment } from '@/components/assessment/UnitSegment';
 import { isLatinUnitLabel, unitLabelFontFamily } from '@/components/assessment/unitLabelFont';
 import { useAssessment } from '@/constants/assessmentLayout';
 import { ka } from '@/i18n/ka';
-import { lightColors } from '@/theme/colors';
 
 const GROUPS = ['A', 'B', 'AB', 'O'] as const;
 const RH = ['+', '-'] as const;
@@ -106,7 +105,7 @@ export function BloodTypeSelector({ value, onChange }: Props) {
             width: 80,
             height: 80,
             borderRadius: 40,
-            backgroundColor: rh === '-' ? '#F43F5E' : lightColors.primary200,
+            backgroundColor: rh === '-' ? '#F43F5E' : ASSESSMENT.brand,
             alignItems: 'center',
             justifyContent: 'center',
             marginLeft: 4,
@@ -130,7 +129,7 @@ export function BloodTypeSelector({ value, onChange }: Props) {
           fontFamily: 'NotoSansGeorgian_600SemiBold',
           fontSize: 15,
           lineHeight: 22,
-          color: lightColors.primary100,
+          color: ASSESSMENT.brandInk,
           textAlign: 'center',
           marginBottom: 8,
         }}
@@ -142,7 +141,7 @@ export function BloodTypeSelector({ value, onChange }: Props) {
       <View style={{ flexDirection: 'row', gap: 16, paddingVertical: 8 }}>
         {RH.map((r) => {
           const active = rh === r;
-          const color = active ? lightColors.primary200 : ASSESSMENT.textSecondary;
+          const color = active ? ASSESSMENT.brand : ASSESSMENT.textSecondary;
           return (
             <Pressable
               key={r}
@@ -154,8 +153,8 @@ export function BloodTypeSelector({ value, onChange }: Props) {
                 height: 48,
                 borderRadius: 999,
                 borderWidth: 1,
-                borderColor: active ? lightColors.primary200 : '#D1D5DB',
-                backgroundColor: active ? '#F0FDFA' : ASSESSMENT.surfaceMuted,
+                borderColor: active ? ASSESSMENT.brand : ASSESSMENT.hairline,
+                backgroundColor: active ? ASSESSMENT.tint : ASSESSMENT.surfaceMuted,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -182,9 +181,9 @@ function BloodTypeExplainer() {
       style={{
         marginTop: 12,
         borderRadius: 16,
-        backgroundColor: '#F0FDFA',
+        backgroundColor: ASSESSMENT.tint,
         borderWidth: 1,
-        borderColor: '#99F6E4',
+        borderColor: ASSESSMENT.tintBorder,
         padding: 16,
         gap: 14,
       }}
@@ -194,7 +193,7 @@ function BloodTypeExplainer() {
           fontFamily: 'NotoSansGeorgian_700Bold',
           fontSize: 16,
           lineHeight: 22,
-          color: lightColors.primary100,
+          color: ASSESSMENT.brandInk,
         }}
       >
         {help.title}
@@ -228,7 +227,7 @@ function BloodTypeExplainer() {
                 minWidth: 44,
                 height: 32,
                 borderRadius: 8,
-                backgroundColor: '#CCFBF1',
+                backgroundColor: ASSESSMENT.tintStrong,
                 alignItems: 'center',
                 justifyContent: 'center',
                 paddingHorizontal: 8,
@@ -238,7 +237,7 @@ function BloodTypeExplainer() {
                 style={{
                   fontFamily: isLatinUnitLabel(row.geo) ? unitLabelFontFamily(row.geo, true) : 'NotoSansGeorgian_700Bold',
                   fontSize: 14,
-                  color: lightColors.primary100,
+                  color: ASSESSMENT.brandInk,
                 }}
               >
                 {row.geo}
@@ -303,13 +302,13 @@ function BloodTypeExplainer() {
             >
               {ex.geo}
             </Text>
-            <Text style={{ color: lightColors.primary200, fontSize: 12 }}>=</Text>
+            <Text style={{ color: ASSESSMENT.brand, fontSize: 12 }}>=</Text>
             <Text
               style={{
                 fontFamily: unitLabelFontFamily(ex.abo, true),
                 fontWeight: '700',
                 fontSize: 13,
-                color: lightColors.primary100,
+                color: ASSESSMENT.brandInk,
               }}
             >
               {ex.abo}
@@ -320,7 +319,7 @@ function BloodTypeExplainer() {
 
       <View
         style={{
-          backgroundColor: lightColors.primary200,
+          backgroundColor: ASSESSMENT.brand,
           borderRadius: 12,
           paddingVertical: 12,
           paddingHorizontal: 14,

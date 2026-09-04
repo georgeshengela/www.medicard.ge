@@ -32,18 +32,26 @@ function dateKey(value) {
   return toDateOnly(value);
 }
 
-function serializeState(user, weekRows, todayYmd) {
+/** Days before the account existed stay empty — never paint a fake skip/X. */
+export function checkInWeekDays(todayYmd, claimedYmds, joinedOnYmd) {
   const monday = mondayOfWeek(todayYmd);
-  const claimed = new Set(weekRows.map((row) => dateKey(row.date)).filter(Boolean));
-
+  const claimed = new Set(claimedYmds);
+  const joined = joinedOnYmd || todayYmd;
   const week = [];
   for (let i = 0; i < 7; i += 1) {
     const date = addDaysYmd(monday, i);
     let status = 'empty';
     if (claimed.has(date)) status = 'completed';
-    else if (date < todayYmd) status = 'skipped';
+    else if (date < todayYmd && date >= joined) status = 'skipped';
     week.push({ date, status });
   }
+  return week;
+}
+
+function serializeState(user, weekRows, todayYmd) {
+  const claimed = weekRows.map((row) => dateKey(row.date)).filter(Boolean);
+  const joinedOn = user.createdAt ? tbilisiYmd(new Date(user.createdAt)) : todayYmd;
+  const week = checkInWeekDays(todayYmd, claimed, joinedOn);
 
   let weekStreak = 0;
   for (let i = week.length - 1; i >= 0; i -= 1) {
@@ -58,7 +66,7 @@ function serializeState(user, weekRows, todayYmd) {
     longestStreak: user.longestStreak ?? 0,
     lastCheckInDate: dateKey(user.lastCheckInDate),
     weekStreak,
-    claimedToday: claimed.has(todayYmd),
+    claimedToday: claimed.includes(todayYmd),
     today: todayYmd,
     pointsPerDay: DAILY_LOGIN_POINTS,
     week,

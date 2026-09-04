@@ -2,8 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CalendarDays, Sparkles } from 'lucide-react-native';
-import { LabBackChevron, LabChevronDown } from '@/components/lab/LabIcons';
+import { Sparkles } from 'lucide-react-native';
+import { LabFilterBar } from '@/components/lab/LabFilterBar';
+import { LabBackChevron } from '@/components/lab/LabIcons';
 import { LabLogRow } from '@/components/lab/LabLogRow';
 import { QuotaSheet } from '@/components/QuotaSheet';
 import { Markdown } from '@/components/ui/Markdown';
@@ -11,6 +12,7 @@ import { useFigmaLab } from '@/constants/figmaLabLayout';
 import { useLab } from '@/hooks/useLab';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { labFlagCounts, labParamMatches, sortLabRows, type LabFlagFilter, type LabSort } from '@/lib/labFilter';
 import { formatLabDateKa, isTodayYmd } from '@/lib/labExtract';
 import { usePlanUsage } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
@@ -24,7 +26,9 @@ export default function LabDateScreen() {
   const { byDate, removeParam, setAnalysis } = useLab();
   const plan = usePlanUsage();
   const { applyUsage } = useAuth();
-  const [newestFirst, setNewestFirst] = useState(true);
+  const [query, setQuery] = useState('');
+  const [flag, setFlag] = useState<LabFlagFilter>('all');
+  const [sort, setSort] = useState<LabSort>('new');
   const [explaining, setExplaining] = useState(false);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
   const [explainError, setExplainError] = useState<string | null>(null);
@@ -32,16 +36,22 @@ export default function LabDateScreen() {
   const panel = panels[0];
   const analysis = panels.map((row) => row.analysis).find((text) => text?.trim()) ?? '';
   const needsExplain = Boolean(panel?.parameters.length) && !analysis.trim();
-  const rows = useMemo(() => {
-    const list = panels.flatMap((panel) =>
-      panel.parameters.map((param) => ({
-        ...param,
-        panelId: panel.id,
-        time: new Date(panel.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      })),
-    );
-    return newestFirst ? list : [...list].reverse();
-  }, [newestFirst, panels]);
+  const allRows = useMemo(
+    () =>
+      panels.flatMap((panel) =>
+        panel.parameters.map((param) => ({
+          ...param,
+          panelId: panel.id,
+          time: new Date(panel.createdAt).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' }),
+        })),
+      ),
+    [panels],
+  );
+  const counts = useMemo(() => labFlagCounts(allRows), [allRows]);
+  const rows = useMemo(
+    () => sortLabRows(allRows.filter((row) => labParamMatches(row, query, flag)), sort),
+    [allRows, flag, query, sort],
+  );
 
   const title = dateKey && isTodayYmd(dateKey) ? ka.common.today : dateKey ? formatLabDateKa(dateKey) : ka.lab.title;
   const cta = T.pageBg === '#030712' ? '#0D9488' : T.brand;
@@ -61,15 +71,26 @@ export default function LabDateScreen() {
           {ka.lab.datePageHint}
         </Text>
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 }}>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 18, color: T.textPrimary }}>{ka.lab.allLogs}</Text>
-        <Pressable onPress={() => setNewestFirst((v) => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <CalendarDays size={20} color={T.brand} />
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: T.brand }}>
-            {newestFirst ? ka.lab.newestFirst : ka.lab.oldestFirst}
-          </Text>
-          <LabChevronDown color={T.brand} />
-        </Pressable>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 18, color: T.textPrimary }}>{ka.lab.allLogs}</Text>
+          {allRows.length ? (
+            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: T.textSecondary }}>
+              {ka.lab.resultCount(rows.length, allRows.length)}
+            </Text>
+          ) : null}
+        </View>
+        {allRows.length ? (
+          <LabFilterBar
+            query={query}
+            onQuery={setQuery}
+            flag={flag}
+            onFlag={setFlag}
+            counts={counts}
+            sort={sort}
+            onSort={setSort}
+          />
+        ) : null}
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32, gap: 8 }} showsVerticalScrollIndicator={false}>
         {needsExplain || analysis ? (
@@ -158,8 +179,10 @@ export default function LabDateScreen() {
             }}
           />
         ))}
-        {!rows.length ? (
+        {!allRows.length ? (
           <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: T.textSecondary }}>{ka.lab.emptyDate}</Text>
+        ) : !rows.length ? (
+          <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: T.textSecondary }}>{ka.lab.filterEmpty}</Text>
         ) : null}
       </ScrollView>
       <QuotaSheet

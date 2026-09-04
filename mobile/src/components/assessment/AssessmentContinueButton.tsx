@@ -2,7 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { ArrowRight } from 'lucide-react-native';
 import { FIGMA_ASSESSMENT_SHADOW } from '@/constants/figmaAssessmentIntro';
-import { useThemeColors } from '@/theme/colors';
+import { useIsDark, useThemeColors } from '@/theme/colors';
 
 type Props = {
   label: string;
@@ -24,10 +24,12 @@ export function AssessmentContinueButton({
   tone = 'step',
 }: Props) {
   const colors = useThemeColors();
+  const dark = useIsDark();
   const inactive = loading || disabled;
   const isIntro = tone === 'intro';
+  const mint = dark ? '#115E59' : '#99F6E4';
 
-  const bg = variant === 'recording' ? '#99F6E4' : colors.primary200;
+  const bg = variant === 'recording' ? mint : colors.primary200;
   const labelColor = variant === 'recording' ? colors.primary100 : colors.white;
 
   return (
@@ -44,7 +46,7 @@ export function AssessmentContinueButton({
         style={{
           minHeight: isIntro ? 48 : 52,
           borderRadius: 16,
-          backgroundColor: inactive && variant === 'primary' ? '#99F6E4' : bg,
+          backgroundColor: inactive && variant === 'primary' ? mint : bg,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',

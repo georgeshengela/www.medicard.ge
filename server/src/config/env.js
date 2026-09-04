@@ -38,6 +38,9 @@ const schema = z.object({
   SMS_OFFICE_API_KEY: z.string().default(''),
   SMS_OFFICE_SENDER: z.string().default('MEDICARD'),
 
+  /** QA master OTP. Set to 0000 while testers work; leave empty to turn off. */
+  QA_OTP_CODE: z.string().default(''),
+
   // Optional. Required only if the Expo project has Enhanced Push Security on.
   EXPO_ACCESS_TOKEN: z.string().default(''),
 });

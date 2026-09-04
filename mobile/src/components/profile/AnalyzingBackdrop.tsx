@@ -1,58 +1,100 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 
-/** Figma 8845:313481 + gradient blobs 9001:283396 */
+/** Figma 8846:211832 — brand wash + three overlapping ring bands. */
+const FIGMA_W = 375;
+const FIGMA_H = 812;
+const BRAND_500 = '#14B8A6';
+const BRAND_400 = '#2DD4BF';
+const RING = '#5EEAD4';
+
+const RINGS = [
+  { cx: -321.5, cy: 268.5, r: 652.5, opacity: 0.64 },
+  { cx: 373.5, cy: 443.5, r: 321.5, opacity: 1 },
+  { cx: -78, cy: 222, r: 273, opacity: 0.32 },
+] as const;
+
 export function AnalyzingBackdrop() {
-  const pulse1 = useRef(new Animated.Value(0)).current;
-  const pulse2 = useRef(new Animated.Value(0)).current;
+  const spin = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+  const { width, height } = Dimensions.get('window');
 
   useEffect(() => {
-    const loop = (val: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(val, { toValue: 1, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(val, { toValue: 0, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        ]),
-      ).start();
+    Animated.loop(
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: 32000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, [spin, pulse]);
 
-    loop(pulse1, 0);
-    loop(pulse2, 800);
-  }, [pulse1, pulse2]);
-
-  const scale1 = pulse1.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
-  const scale2 = pulse2.interpolate({ inputRange: [0, 1], outputRange: [1.05, 0.95] });
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Animated.View style={[styles.blob, { top: -80, left: -60, transform: [{ scale: scale1 }] }]}>
-        <LinearGradient colors={['#FDA4AF', '#FECDD3', 'transparent']} style={styles.blobInner} />
+      <LinearGradient
+        colors={[BRAND_500, BRAND_400, BRAND_500]}
+        locations={[0, 0.48, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          { transform: [{ rotate }, { scale }] },
+        ]}
+      >
+        <Svg width={width} height={height} viewBox={`0 0 ${FIGMA_W} ${FIGMA_H}`}>
+          {RINGS.map((ring, i) => (
+            <Circle
+              key={i}
+              cx={ring.cx}
+              cy={ring.cy}
+              r={ring.r}
+              stroke={RING}
+              strokeWidth={48}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+              opacity={ring.opacity}
+            />
+          ))}
+        </Svg>
       </Animated.View>
-      <Animated.View style={[styles.blob, { top: -40, right: -80, transform: [{ scale: scale2 }] }]}>
-        <LinearGradient colors={['#5EEAD4', '#99F6E4', 'transparent']} style={styles.blobInner} />
-      </Animated.View>
-      <Animated.View style={[styles.blob, { bottom: 120, left: -120, transform: [{ scale: scale2 }] }]}>
-        <LinearGradient colors={['#FDBA74', '#FED7AA', 'transparent']} style={styles.blobInner} />
-      </Animated.View>
-      <Animated.View style={[styles.blob, { bottom: -60, right: -40, transform: [{ scale: scale1 }] }]}>
-        <LinearGradient colors={['#F9A8D4', '#FBCFE8', 'transparent']} style={styles.blobInner} />
-      </Animated.View>
+      <LinearGradient
+        colors={['rgba(20,184,166,0)', BRAND_500]}
+        style={styles.bottomFade}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  blob: {
+  bottomFade: {
     position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    overflow: 'hidden',
-    opacity: 0.55,
-  },
-  blobInner: {
-    flex: 1,
-    borderRadius: 140,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 200,
   },
 });

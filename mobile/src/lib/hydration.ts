@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { getPreference, setPreference } from '@/lib/storage';
+import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
 import {
   DEFAULT_HYDRATION_GOAL_ML,
   HYDRATION_CONTAINERS,
@@ -32,21 +32,21 @@ function parseLogs(raw: string | null): HydrationLog[] {
 }
 
 export async function loadHydrationLogs(): Promise<HydrationLog[]> {
-  return parseLogs(await getPreference(LOGS_KEY));
+  return parseLogs(await getScopedPreference(LOGS_KEY));
 }
 
 export async function saveHydrationLogs(logs: HydrationLog[]): Promise<void> {
-  await setPreference(LOGS_KEY, JSON.stringify(logs));
+  await setScopedPreference(LOGS_KEY, JSON.stringify(logs));
 }
 
 export async function loadHydrationGoalMl(): Promise<number> {
-  const raw = await getPreference(GOAL_KEY);
+  const raw = await getScopedPreference(GOAL_KEY);
   const n = raw ? Number(raw) : DEFAULT_HYDRATION_GOAL_ML;
   return Number.isFinite(n) && n >= 500 ? Math.round(n) : DEFAULT_HYDRATION_GOAL_ML;
 }
 
 export async function saveHydrationGoalMl(ml: number): Promise<void> {
-  await setPreference(GOAL_KEY, String(Math.max(500, Math.round(ml))));
+  await setScopedPreference(GOAL_KEY, String(Math.max(500, Math.round(ml))));
 }
 
 export function containerMl(container: HydrationContainer): number {

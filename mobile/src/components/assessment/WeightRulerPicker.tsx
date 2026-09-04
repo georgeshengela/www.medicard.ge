@@ -4,15 +4,14 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
+  ScrollView,
   Text,
   View,
 } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { pickerScrollTick, pickerSelectionTick } from '@/components/assessment/pickerHaptics';
 import { ASSESSMENT, useAssessment } from '@/constants/assessmentLayout';
-import { lightColors } from '@/theme/colors';
 
 const SCREEN_W = Dimensions.get('window').width;
 const TICK_W = 10;
@@ -67,10 +66,10 @@ function tickTop(height: number) {
 }
 
 /** Figma 9217:164581 needle — `assets/figma/icons/weight-needle.svg`. */
-function WeightNeedle() {
+function WeightNeedle({ color }: { color: string }) {
   return (
     <Svg width={NEEDLE_W} height={NEEDLE_H} viewBox="0 0 4 141" fill="none">
-      <Path d="M2 139V2" stroke={lightColors.primary200} strokeWidth={4} strokeLinecap="round" />
+      <Path d="M2 139V2" stroke={color} strokeWidth={4} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -176,7 +175,7 @@ export function WeightRulerPicker({
           zIndex: 10,
         }}
       >
-        <WeightNeedle />
+        <WeightNeedle color={ASSESSMENT.brand} />
       </View>
 
       <ScrollView

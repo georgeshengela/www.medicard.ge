@@ -8,6 +8,7 @@ import { getAppSettings } from '../lib/settings.js';
 import { birthDateSchema, genderSchema, publicHealthProfile, publicUser } from '../lib/patient.js';
 import { requestPasswordReset, resetPasswordWithCode } from '../lib/passwordReset.js';
 import { requestPhoneOtp, verifyPhoneOtp } from '../lib/phoneOtp.js';
+import { findUserByPhone, phoneTakenPayload } from '../lib/phoneUsers.js';
 import { normalizeSmsDestination } from '../lib/sms.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
@@ -78,19 +79,34 @@ authRouter.post(
       return res.status(409).json({ error: 'ამ ელ-ფოსტით მომხმარებელი უკვე რეგისტრირებულია.' });
     }
 
+    if (data.phone) {
+      const taken = await findUserByPhone(data.phone);
+      if (taken) {
+        return res.status(409).json(phoneTakenPayload());
+      }
+    }
+
     const packageId = await ensureFreePackageId();
-    const created = await prisma.user.create({
-      data: {
-        email: data.email,
-        fullName: data.fullName,
-        phone: data.phone ?? null,
-        gender: data.gender ?? null,
-        birthDate: data.birthDate ?? null,
-        passwordHash: await bcrypt.hash(data.password, 12),
-        packageId,
-        status: 'ACTIVE',
-      },
-    });
+    let created;
+    try {
+      created = await prisma.user.create({
+        data: {
+          email: data.email,
+          fullName: data.fullName,
+          phone: data.phone ?? null,
+          gender: data.gender ?? null,
+          birthDate: data.birthDate ?? null,
+          passwordHash: await bcrypt.hash(data.password, 12),
+          packageId,
+          status: 'ACTIVE',
+        },
+      });
+    } catch (err) {
+      if (err?.code === 'P2002' && err?.meta?.target?.includes?.('phone')) {
+        return res.status(409).json(phoneTakenPayload());
+      }
+      throw err;
+    }
     const user = await loadUserBundle(created.id);
 
     return res.status(201).json({
@@ -204,22 +220,37 @@ authRouter.post(
       return res.status(verified.status ?? 400).json({ error: verified.error });
     }
 
-    let user = await prisma.user.findUnique({ where: { phone }, include: { package: true } });
-    if (!user) {
+    let user = await findUserByPhone(phone);
+    if (user) {
+      user = await loadUserBundle(user.id);
+    } else {
       const packageId = await ensureFreePackageId();
-      const created = await prisma.user.create({
-        data: {
-          phone,
-          email: `${normalizeSmsDestination(phone)}@phone.medicard.ge`,
-          fullName: fullName ?? 'Medicard მომხმარებელი',
-          gender: gender ?? null,
-          birthDate: birthDate ?? null,
-          passwordHash: await bcrypt.hash(`phone:${phone}:${Date.now()}`, 12),
-          packageId,
-          status: 'ACTIVE',
-        },
-      });
-      user = await loadUserBundle(created.id);
+      try {
+        const created = await prisma.user.create({
+          data: {
+            phone,
+            email: `${normalizeSmsDestination(phone)}@phone.medicard.ge`,
+            fullName: fullName ?? 'Medicard მომხმარებელი',
+            gender: gender ?? null,
+            birthDate: birthDate ?? null,
+            passwordHash: await bcrypt.hash(`phone:${phone}:${Date.now()}`, 12),
+            packageId,
+            status: 'ACTIVE',
+          },
+        });
+        user = await loadUserBundle(created.id);
+      } catch (err) {
+        if (err?.code === 'P2002') {
+          const existing = await findUserByPhone(phone);
+          if (existing) {
+            user = await loadUserBundle(existing.id);
+          } else {
+            return res.status(409).json(phoneTakenPayload());
+          }
+        } else {
+          throw err;
+        }
+      }
     }
 
     if (user.status === 'BLOCKED') {
@@ -244,11 +275,9 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const { phone } = phoneLinkStartSchema.parse(req.body);
 
-    const taken = await prisma.user.findFirst({
-      where: { phone, NOT: { id: req.user.id } },
-    });
+    const taken = await findUserByPhone(phone, { excludeUserId: req.user.id });
     if (taken) {
-      return res.status(409).json({ error: 'ეს ნომერი უკვე მიბმულია სხვა ანგარიშზე.' });
+      return res.status(409).json(phoneTakenPayload());
     }
 
     const result = await requestPhoneOtp({ phone, purpose: 'LINK', userId: req.user.id });
@@ -276,18 +305,24 @@ authRouter.post(
       return res.status(verified.status ?? 400).json({ error: verified.error });
     }
 
-    const taken = await prisma.user.findFirst({
-      where: { phone, NOT: { id: req.user.id } },
-    });
+    const taken = await findUserByPhone(phone, { excludeUserId: req.user.id });
     if (taken) {
-      return res.status(409).json({ error: 'ეს ნომერი უკვე მიბმულია სხვა ანგარიშზე.' });
+      return res.status(409).json(phoneTakenPayload());
     }
 
-    const user = await prisma.user.update({
-      where: { id: req.user.id },
-      data: { phone },
-      include: { package: true },
-    });
+    let user;
+    try {
+      user = await prisma.user.update({
+        where: { id: req.user.id },
+        data: { phone },
+        include: { package: true },
+      });
+    } catch (err) {
+      if (err?.code === 'P2002' && err?.meta?.target?.includes?.('phone')) {
+        return res.status(409).json(phoneTakenPayload());
+      }
+      throw err;
+    }
 
     return res.json({ ok: true, user: publicUser(user) });
   }),

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Image, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { ProfilePhoneField } from '@/components/profile/ProfilePhoneField';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
@@ -46,7 +46,16 @@ export default function ProfileSetupPhoneScreen() {
       await api.auth.phoneLinkStart(normalised);
       router.push({ pathname: '/(auth)/profile-setup/verify', params: { phone: normalised } });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : ka.common.error);
+      const taken = e instanceof ApiError && (e.code === 'PHONE_TAKEN' || e.status === 409);
+      const message = taken
+        ? ka.auth.phoneTakenBody
+        : e instanceof ApiError
+          ? e.message
+          : ka.common.error;
+      setError(message);
+      if (taken) {
+        Alert.alert(ka.auth.phoneTakenTitle, ka.auth.phoneTakenBody, [{ text: ka.common.close }]);
+      }
     } finally {
       setBusy(false);
     }

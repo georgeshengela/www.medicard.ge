@@ -11,7 +11,6 @@ import {
 import { pickerScrollTick, pickerSelectionTick } from '@/components/assessment/pickerHaptics';
 import { isLatinUnitLabel, unitLabelFontFamily } from '@/components/assessment/unitLabelFont';
 import { ASSESSMENT, useAssessment } from '@/constants/assessmentLayout';
-import { lightColors } from '@/theme/colors';
 
 /** Figma 9217:164598 selected row — display-sm 96/104. Shrink on short screens. */
 const SCREEN_H = Dimensions.get('window').height;
@@ -65,7 +64,7 @@ function nearestIndex(values: number[], target: number) {
   return best;
 }
 
-function neighborStyle(distance: number, muted: string) {
+function neighborStyle(distance: number, muted: string, faint: string) {
   if (distance === 1) {
     const size = Math.min(60, Math.round(ITEM_HEIGHT * 0.58));
     return {
@@ -77,7 +76,7 @@ function neighborStyle(distance: number, muted: string) {
   const size = Math.min(30, Math.round(ITEM_HEIGHT * 0.32));
   return {
     fontSize: size,
-    color: '#9CA3AF',
+    color: faint,
     includeFontPadding: false,
   };
 }
@@ -181,7 +180,7 @@ export function HeightWheelPicker({ values, selected, onSelect, formatLabel = (v
           const active = index === centerIndex;
           const distance = Math.abs(index - centerIndex);
           const label = formatLabel(value);
-          const type = neighborStyle(distance, ASSESSMENT.textSecondary);
+          const type = neighborStyle(distance, ASSESSMENT.textSecondary, ASSESSMENT.faint);
 
           return (
             <View
@@ -222,8 +221,8 @@ export function HeightWheelPicker({ values, selected, onSelect, formatLabel = (v
           height: ITEM_HEIGHT,
           borderRadius: 24,
           borderWidth: 1,
-          borderColor: lightColors.primary200,
-          backgroundColor: '#F0FDFA',
+          borderColor: ASSESSMENT.brand,
+          backgroundColor: ASSESSMENT.tint,
           justifyContent: 'center',
           alignItems: 'center',
         }}
@@ -237,7 +236,7 @@ export function HeightWheelPicker({ values, selected, onSelect, formatLabel = (v
             fontWeight: isLatinUnitLabel(activeLabel) ? '600' : undefined,
             fontSize: selectedSize,
             letterSpacing: -2,
-            color: lightColors.primary200,
+            color: ASSESSMENT.brand,
             textAlign: 'center',
             includeFontPadding: false,
           }}

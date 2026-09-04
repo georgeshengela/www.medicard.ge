@@ -7,6 +7,7 @@ import { defaultAvatarForGender, avatarsForGender, normalizeAvatarForGender, typ
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { extraAnswersPayload, formFromProfile, fullProfilePayload } from '@/lib/assessmentForm';
+import { nextProfileSetupHref } from '@/lib/onboarding';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
 
 export default function ProfileSetupAvatarScreen() {
@@ -37,6 +38,12 @@ export default function ProfileSetupAvatarScreen() {
   if (needsHealthAssessment(healthProfile)) return <Redirect href="/(auth)/assessment" />;
   if (!needsProfileSetup(healthProfile)) return <Redirect href="/(tabs)/home" />;
 
+  const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
+  if (typeof extra.avatarId === 'string' && extra.avatarId.length > 0 && extra.phoneVerified === true) {
+    const next = nextProfileSetupHref(healthProfile, user);
+    if (!next.includes('/avatar')) return <Redirect href={next as never} />;
+  }
+
   const saveAvatarAndContinue = async () => {
     setBusy(true);
     setError(null);
@@ -46,6 +53,7 @@ export default function ProfileSetupAvatarScreen() {
         ...fullProfilePayload(form, healthProfile?.currentStepIndex ?? 0),
         extraAnswers: {
           ...extraAnswersPayload(form),
+          ...((healthProfile?.extraAnswers ?? {}) as Record<string, unknown>),
           assessmentPhaseComplete: true,
           avatarId,
         },

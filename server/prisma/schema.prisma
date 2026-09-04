@@ -384,6 +384,8 @@ model AppSettings {
   forceUpdate        Boolean  @default(false)
   allowRegistrations Boolean  @default(true)
   supportEmail       String   @default("support@medicard.ge")
+  /// When true, phone OTP 0000 and email reset 000000 always verify. Turn off after QA.
+  qaOtpEnabled       Boolean  @default(false)
   updatedAt          DateTime @updatedAt
 }
 

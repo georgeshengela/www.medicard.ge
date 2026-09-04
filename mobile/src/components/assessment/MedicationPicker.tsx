@@ -161,7 +161,7 @@ export function MedicationPicker({ value, onChange }: Props) {
               else if (canAddCustom) add(trimmed);
             }}
             placeholder={ka.assessment.medPlaceholder}
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={ASSESSMENT.muted}
             autoCorrect={false}
             autoCapitalize="none"
             returnKeyType="done"
@@ -175,7 +175,7 @@ export function MedicationPicker({ value, onChange }: Props) {
             }}
           />
           <Pressable onPress={() => setOpen((v) => !v)} hitSlop={8}>
-            <ChevronDown size={CHEVRON} color="#9CA3AF" strokeWidth={2} />
+            <ChevronDown size={CHEVRON} color={ASSESSMENT.muted} strokeWidth={2} />
           </Pressable>
         </View>
 
@@ -200,7 +200,7 @@ export function MedicationPicker({ value, onChange }: Props) {
               {canAddCustom && !exactInCatalog ? (
                 <Pressable
                   onPress={() => add(trimmed)}
-                  style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
+                  style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: ASSESSMENT.rowLine }}
                 >
                   <Text
                     style={{
@@ -226,7 +226,7 @@ export function MedicationPicker({ value, onChange }: Props) {
                       paddingVertical: 12,
                       opacity: selected ? 0.45 : 1,
                       borderBottomWidth: 1,
-                      borderBottomColor: '#F3F4F6',
+                      borderBottomColor: ASSESSMENT.rowLine,
                     }}
                   >
                     <Text

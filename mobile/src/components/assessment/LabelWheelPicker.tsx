@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { pickerScrollTick, pickerSelectionTick } from '@/components/assessment/pickerHaptics';
-import { lightColors } from '@/theme/colors';
+import { useAssessment } from '@/constants/assessmentLayout';
 
 const ITEM_HEIGHT = 56;
 const VISIBLE_ROWS = 5;
@@ -34,6 +34,7 @@ function nearestIndex(values: string[], target: string) {
 
 /** Full-width wheel for Georgian option labels (checkup frequency). */
 export function LabelWheelPicker({ values, selected, onSelect, formatLabel }: Props) {
+  const ASSESSMENT = useAssessment();
   const scrollRef = useRef<ScrollView>(null);
   const dragging = useRef(false);
   const settling = useRef(false);
@@ -88,8 +89,8 @@ export function LabelWheelPicker({ values, selected, onSelect, formatLabel }: Pr
           height: ITEM_HEIGHT,
           borderRadius: 16,
           borderWidth: 2,
-          borderColor: lightColors.primary200,
-          backgroundColor: lightColors.accent100,
+          borderColor: ASSESSMENT.brand,
+          backgroundColor: ASSESSMENT.tint,
           zIndex: 0,
         }}
       />
@@ -136,7 +137,7 @@ export function LabelWheelPicker({ values, selected, onSelect, formatLabel }: Pr
                   fontFamily: active ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_400Regular',
                   fontSize,
                   lineHeight: fontSize + 6,
-                  color: active ? lightColors.primary100 : '#64748B',
+                  color: active ? ASSESSMENT.brandInk : ASSESSMENT.muted,
                   opacity,
                   textAlign: 'center',
                 }}

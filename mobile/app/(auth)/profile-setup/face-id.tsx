@@ -33,27 +33,44 @@ export default function ProfileSetupFaceIdScreen() {
   if (blocked === 'assessment') return <Redirect href="/(auth)/assessment" />;
   if (blocked === 'home') return <Redirect href="/(tabs)/home" />;
 
-  const goNext = () => router.replace(onboardingStepHref('/(auth)/profile-setup/privacy', preview) as never);
+  const goPrivacy = () => router.replace(onboardingStepHref('/(auth)/profile-setup/privacy', preview) as never);
+
+  const markFaceId = async (enabled: boolean) => {
+    const updated = await patchProfileExtra(healthProfile, user, {
+      faceIdPrompted: true,
+      biometricEnabled: enabled,
+    });
+    setHealthProfile(updated);
+  };
 
   const enable = async () => {
     setBusy(true);
     try {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
+      let enabled = false;
       if (hasHardware && enrolled) {
         const result = await LocalAuthentication.authenticateAsync({
           promptMessage: ka.profileSetup.faceIdEnable,
           cancelLabel: ka.common.cancel,
         });
-        if (result.success) {
-          await setBiometricEnabled(true);
-          const updated = await patchProfileExtra(healthProfile, user, { biometricEnabled: true });
-          setHealthProfile(updated);
-        }
+        enabled = result.success;
+        if (enabled) await setBiometricEnabled(true);
       }
+      await markFaceId(enabled);
     } finally {
       setBusy(false);
-      goNext();
+      goPrivacy();
+    }
+  };
+
+  const skip = async () => {
+    setBusy(true);
+    try {
+      await markFaceId(false);
+    } finally {
+      setBusy(false);
+      goPrivacy();
     }
   };
 
@@ -72,7 +89,7 @@ export default function ProfileSetupFaceIdScreen() {
             loading={busy}
             icon="check"
           />
-          <ProfileSetupLinkButton label={ka.profileSetup.faceIdSkip} onPress={goNext} />
+          <ProfileSetupLinkButton label={ka.profileSetup.faceIdSkip} onPress={() => void skip()} />
         </View>
       }
     >

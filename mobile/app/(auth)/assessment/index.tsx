@@ -18,6 +18,7 @@ import {
   patchPayloadForStep,
   type AssessmentFormState,
 } from '@/lib/assessmentForm';
+import { nextProfileSetupHref } from '@/lib/onboarding';
 import { needsProfileSetup, useAuth } from '@/store/AuthContext';
 
 function resolveNextIndex(from: number, form: AssessmentFormState): number {
@@ -263,7 +264,7 @@ export default function AssessmentScreen() {
   }
 
   if (needsProfileSetup(healthProfile)) {
-    return <Redirect href="/(auth)/profile-setup/avatar" />;
+    return <Redirect href={nextProfileSetupHref(healthProfile, user) as never} />;
   }
 
   if (loading || !form || !step) {

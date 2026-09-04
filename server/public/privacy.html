@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="/icon.png" />
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/davit-guramishvili/DM-Davit-Guramishvili.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="/landing.css?v=35" />
+  <link rel="stylesheet" href="/landing.css?v=36" />
 </head>
 <body>
   <header class="nav">
@@ -502,21 +502,23 @@
       </div>
     </section>
 
-    <section class="cta-full band-cta">
-      <div class="wrap cta-grid">
-        <div class="cta-copy">
+    <section class="ask band-cta" id="request">
+      <div class="wrap ask-grid">
+        <div class="ask-copy">
           <h2>კონფიდენციალობის მოთხოვნა</h2>
           <p>წვდომა, გასწორება, წაშლა ან ნებისმიერი კითხვა თქვენს მონაცემებზე — მოგვწერეთ.</p>
-          <a class="btn btn-inverse" href="mailto:support@medicard.ge"><span class="ic ic-chat" aria-hidden="true"></span>support@medicard.ge</a>
+          <a class="ask-mail" href="mailto:support@medicard.ge"><span class="ic ic-chat" aria-hidden="true"></span>support@medicard.ge</a>
         </div>
-        <aside class="cta-aside">
-          <div>
-            <p>სრული პოლიტიკა ყოველთვის ხელმისაწვდომია medicard.ge/privacy-ზე. აპშიც: პროფილი → კონფიდენციალურობა.</p>
-            <div class="store">
-              <span><span class="ic ic-lock" aria-hidden="true"></span><span><small>ძალაშია</small><b>4 სექტემბერი, 2026</b></span></span>
-            </div>
-          </div>
-        </aside>
+        <div class="ask-side">
+          <article class="ask-card">
+            <span class="ic ic-lg ic-lock" aria-hidden="true"></span>
+            <p>სრული პოლიტიკა ყოველთვის ხელმისაწვდომია <a href="/privacy">medicard.ge/privacy</a>-ზე. აპშიც: პროფილი → კონფიდენციალურობა.</p>
+          </article>
+          <article class="ask-date">
+            <span class="ic ic-calendar" aria-hidden="true"></span>
+            <span><small>ძალაშია</small><b>4 სექტემბერი, 2026</b></span>
+          </article>
+        </div>
       </div>
     </section>
   </main>

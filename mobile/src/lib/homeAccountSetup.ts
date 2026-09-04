@@ -1,5 +1,5 @@
 import type { HealthProfile, User } from '@/lib/api';
-import { assessmentPhaseComplete } from '@/lib/onboarding';
+import { assessmentPhaseComplete, nextProfileSetupHref } from '@/lib/onboarding';
 import { ka } from '@/i18n/ka';
 import { analysisFromProfile } from '@/types/onboardingAnalysis';
 
@@ -39,8 +39,8 @@ function isPhoneVerified(user: User | null | undefined, extra: Record<string, un
 function isProfileSetupComplete(extra: Record<string, unknown>): boolean {
   const hasAvatar = typeof extra.avatarId === 'string' && extra.avatarId.length > 0;
   const acceptedPrivacy = extra.privacyAccepted === true;
-  const hasAnalysis = analysisFromProfile(extra) != null;
-  return hasAvatar && acceptedPrivacy && hasAnalysis;
+  const setupDone = extra.onboardingComplete === true || analysisFromProfile(extra) != null;
+  return hasAvatar && acceptedPrivacy && setupDone;
 }
 
 function hasLoggedHealthMetric(
@@ -53,12 +53,8 @@ function hasLoggedHealthMetric(
   return false;
 }
 
-function profileSetupHref(extra: Record<string, unknown>): string {
-  if (typeof extra.avatarId !== 'string') return '/(auth)/profile-setup/avatar';
-  if (extra.privacyAccepted !== true) return '/(auth)/profile-setup/privacy';
-  if (extra.notificationsEnabled === undefined) return '/(auth)/profile-setup/notifications';
-  if (!analysisFromProfile(extra)) return '/(auth)/profile-setup/analyzing';
-  return '/(auth)/profile-setup/avatar';
+function profileSetupHref(profile: HealthProfile | null | undefined, user: User | null | undefined): string {
+  return nextProfileSetupHref(profile, user);
 }
 
 function verifyHref(user: User | null | undefined): string {
@@ -92,7 +88,7 @@ export function getAccountSetupProgress(
       index: 2,
       label: ka.home.setupStepProfile,
       done: profileDone,
-      href: profileSetupHref(extra),
+      href: profileSetupHref(profile, user),
     },
     {
       key: 'verifyAccount',

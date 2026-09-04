@@ -61,7 +61,7 @@
     "export:web": "expo export --platform web --output-dir dist",
     "typecheck": "tsc --noEmit",
     "test:offline": "node --test src/lib/cycleOffline.test.js",
-    "test:lab": "node --experimental-strip-types --test src/lib/labExtract.test.ts",
+    "test:lab": "node --experimental-strip-types --test src/lib/labExtract.test.ts src/lib/labChartScale.test.ts src/lib/labFilter.test.ts src/lib/labExplain.test.ts",
     "icons:generate": "node scripts/generate-app-icons.mjs"
   },
   "private": true

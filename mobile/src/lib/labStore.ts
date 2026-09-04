@@ -1,4 +1,4 @@
-import { getPreference, setPreferenceStrict } from '@/lib/storage';
+import { getScopedPreference, setScopedPreferenceStrict } from '@/lib/localAccount';
 import type { LabPanel } from '@/types/lab';
 
 const KEY = 'medicard.lab.panels.v1';
@@ -14,11 +14,11 @@ function parsePanels(raw: string | null): LabPanel[] {
 }
 
 export async function loadLabPanels(): Promise<LabPanel[]> {
-  return parsePanels(await getPreference(KEY));
+  return parsePanels(await getScopedPreference(KEY));
 }
 
 export async function saveLabPanels(panels: LabPanel[]): Promise<void> {
-  await setPreferenceStrict(KEY, JSON.stringify(panels));
+  await setScopedPreferenceStrict(KEY, JSON.stringify(panels));
 }
 
 export async function upsertLabPanel(panel: LabPanel): Promise<LabPanel[]> {

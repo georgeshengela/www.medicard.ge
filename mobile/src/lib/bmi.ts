@@ -47,3 +47,11 @@ export function weightDeltaKg(weekValues: (number | null)[], current: number): n
   if (previous == null) return null;
   return Math.round((current - previous) * 10) / 10;
 }
+
+/** How far current weight sits from the WHO healthy band. Negative = below. */
+export function kgFromHealthyRange(weightKg: number, heightCm: number): number {
+  const { min, max } = healthyWeightRangeKg(heightCm);
+  if (weightKg < min) return Math.round((weightKg - min) * 10) / 10;
+  if (weightKg > max) return Math.round((weightKg - max) * 10) / 10;
+  return 0;
+}

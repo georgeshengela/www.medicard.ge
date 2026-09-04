@@ -1,4 +1,4 @@
-import { getPreference, setPreference } from '@/lib/storage';
+import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
 
 const KEY = 'medicard.skincare-routines';
 const MAX = 12;
@@ -24,12 +24,12 @@ export async function saveSkincareRoutine(routine: SavedSkincareRoutine) {
     products: routine.products,
   };
   const next = [stored, ...list.filter((item) => item.recordId !== routine.recordId)].slice(0, MAX);
-  await setPreference(KEY, JSON.stringify(next));
+  await setScopedPreference(KEY, JSON.stringify(next));
 }
 
 export async function loadSkincareHistory(): Promise<StoredRoutine[]> {
   try {
-    const raw = await getPreference(KEY);
+    const raw = await getScopedPreference(KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as StoredRoutine[];
     return Array.isArray(parsed) ? parsed : [];

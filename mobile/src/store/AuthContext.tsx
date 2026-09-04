@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 import { ApiError, api, type CheckInState, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
+import { setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAccount';
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
 import { clearSessionSnapshot, loadSessionSnapshot, saveSessionSnapshot } from '@/lib/sessionSnapshot';
 import { clearToken, getToken, setToken } from '@/lib/storage';
@@ -49,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [pendingDailyBonus, setPendingDailyBonus] = useState<CheckInState | null>(null);
 
   const resetSession = useCallback(() => {
+    setLocalAccountId(null);
     setUser(null);
     setUsage(null);
     setStats(null);
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const snapshot = await loadSessionSnapshot();
     if (snapshot) {
+      setLocalAccountId(snapshot.user.id);
       setUser(snapshot.user);
       setUsage(snapshot.usage);
       setStats(snapshot.stats);
@@ -74,6 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const me = await api.auth.me();
+      setLocalAccountId(me.user.id);
+      await wipeLegacyUnscopedHealthCaches();
       setUser(me.user);
       setUsage(me.usage);
       setStats(me.stats);
@@ -122,6 +127,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const adopt = useCallback(
     async (result: { token: string; user: User; usage: Usage }) => {
+      setLocalAccountId(result.user.id);
+      await wipeLegacyUnscopedHealthCaches();
       await setToken(result.token);
       setUser(result.user);
       setUsage(result.usage);

@@ -30,6 +30,7 @@ import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { SUPPORT_MAILTO } from '@/constants/legal';
+import { resolveConditionLabel } from '@/constants/conditionCatalog';
 import { ka } from '@/i18n/ka';
 import { ApiError, type Gender } from '@/lib/api';
 import { isoToDisplay, parseBirthDate } from '@/lib/birthdate';
@@ -50,6 +51,7 @@ const GENDER_LABELS: Record<Gender, string> = {
 const APP_VERSION = Constants.expoConfig?.version ?? '3.4.0';
 
 function optionLabel(group: 'smokingStatus' | 'chronicConditions', key: string): string {
+  if (group === 'chronicConditions') return resolveConditionLabel(key);
   const map = ka.assessment.options[group] as Record<string, string>;
   return map[key] ?? key;
 }
@@ -156,14 +158,27 @@ export default function Profile() {
             style={{
               width: 76,
               height: 76,
-              borderRadius: 22,
+              borderRadius: 38,
               padding: 3,
               backgroundColor: `${colors.primary200}33`,
             }}
           >
-            <View className="h-full w-full items-center justify-center overflow-hidden rounded-[18px] bg-accent-100">
+            <View
+              style={{
+                flex: 1,
+                borderRadius: 35,
+                overflow: 'hidden',
+                backgroundColor: colors.accent100,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               {avatarSource ? (
-                <Image source={avatarSource} style={{ width: 70, height: 70 }} />
+                <Image
+                  source={avatarSource}
+                  resizeMode="contain"
+                  style={{ width: 70, height: 70, borderRadius: 35 }}
+                />
               ) : (
                 <Text className="text-xl font-bold text-primary-100">{initials || '—'}</Text>
               )}
@@ -222,12 +237,19 @@ export default function Profile() {
 
       <View className="mt-5">
         <HomeSectionTitle title={ka.profile.appearance} />
-        <Card className="gap-4">
+        <Card>
           <ThemeSelect />
-          <View className="h-px bg-bg-300" />
-          <HomeLandingSelect />
         </Card>
       </View>
+
+      {user?.gender === 'FEMALE' ? (
+        <View className="mt-5">
+          <HomeSectionTitle title={ka.profile.homeLandingTitle} />
+          <Card>
+            <HomeLandingSelect />
+          </Card>
+        </View>
+      ) : null}
 
       <View className="mt-5">
         <HomeSectionTitle title={ka.profile.medicalProfile} />

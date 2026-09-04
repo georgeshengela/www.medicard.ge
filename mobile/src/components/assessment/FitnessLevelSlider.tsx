@@ -10,6 +10,7 @@ import Svg, { Path } from 'react-native-svg';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
 import { useAssessment } from '@/constants/assessmentLayout';
 import { ka } from '@/i18n/ka';
+import { useIsDark } from '@/theme/colors';
 
 const TRACK_H = 36;
 const TRACK_RADIUS = 16;
@@ -81,6 +82,7 @@ export function FitnessLevelSlider({
   hint,
 }: Props) {
   const ASSESSMENT = useAssessment();
+  const dark = useIsDark();
   const [trackW, setTrackW] = useState(0);
   const trackWRef = useRef(0);
   const lastValue = useRef(value);
@@ -129,9 +131,9 @@ export function FitnessLevelSlider({
           paddingHorizontal: 8,
           paddingVertical: 4,
           borderRadius: 8,
-          backgroundColor: '#F0FDF4',
+          backgroundColor: dark ? '#052E16' : '#F0FDF4',
           borderWidth: 1,
-          borderColor: '#BBF7D0',
+          borderColor: dark ? '#166534' : '#BBF7D0',
         }}
       >
         <Text
@@ -193,7 +195,7 @@ export function FitnessLevelSlider({
                   width: DOT,
                   height: DOT,
                   borderRadius: DOT / 2,
-                  backgroundColor: filled ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)',
+                  backgroundColor: filled ? 'rgba(255,255,255,0.3)' : dark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)',
                   borderWidth: filled ? 1 : 0,
                   borderColor: '#FFFFFF',
                 }}

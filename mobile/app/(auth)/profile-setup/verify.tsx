@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Keyboard, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Keyboard, Pressable, Text, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
@@ -77,10 +77,20 @@ export default function ProfileSetupVerifyScreen() {
       setUser(linked.user);
       await finishPhoneVerify();
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : ka.common.error;
+      const taken = e instanceof ApiError && (e.code === 'PHONE_TAKEN' || e.status === 409);
+      const msg = taken
+        ? ka.auth.phoneTakenBody
+        : e instanceof ApiError
+          ? e.message
+          : ka.common.error;
       setError(msg);
-      setToast(msg);
+      setToast(taken ? null : msg);
       setCode('');
+      if (taken) {
+        Alert.alert(ka.auth.phoneTakenTitle, ka.auth.phoneTakenBody, [
+          { text: ka.common.close, onPress: () => router.replace('/(auth)/profile-setup/phone') },
+        ]);
+      }
     } finally {
       setBusy(false);
     }
@@ -95,6 +105,13 @@ export default function ProfileSetupVerifyScreen() {
       setDevCode(res.devCode ?? null);
       setCooldown(res.cooldownSec ?? RESEND_SEC);
     } catch (e) {
+      const taken = e instanceof ApiError && (e.code === 'PHONE_TAKEN' || e.status === 409);
+      if (taken) {
+        Alert.alert(ka.auth.phoneTakenTitle, ka.auth.phoneTakenBody, [
+          { text: ka.common.close, onPress: () => router.replace('/(auth)/profile-setup/phone') },
+        ]);
+        return;
+      }
       setError(e instanceof ApiError ? e.message : ka.common.error);
     }
   };

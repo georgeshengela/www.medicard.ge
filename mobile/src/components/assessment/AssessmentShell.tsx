@@ -18,11 +18,6 @@ import { FIGMA_PROGRESS_HEIGHT, welcomeTopInset } from '@/constants/figmaWelcome
 
 import { ka } from '@/i18n/ka';
 
-import { lightColors } from '@/theme/colors';
-
-
-
-const TEAL = lightColors.primary200;
 
 
 
@@ -153,19 +148,22 @@ export function AssessmentShell({
 
 
 
-        <View style={{ flex: 1, justifyContent: 'center' }}>
+        <View style={{ flex: 1, justifyContent: 'center', overflow: 'hidden' }} pointerEvents="box-none">
 
           <View
 
             style={{
 
-              height: FIGMA_ASSESSMENT_INTRO.heroHeight,
+              maxHeight: FIGMA_ASSESSMENT_INTRO.heroHeight,
+              flexShrink: 1,
 
               alignItems: 'center',
 
               justifyContent: 'center',
 
             }}
+
+            pointerEvents="none"
 
           >
 
@@ -182,6 +180,7 @@ export function AssessmentShell({
               paddingHorizontal: FIGMA_ASSESSMENT_INTRO.contentPaddingX,
 
               paddingVertical: FIGMA_ASSESSMENT_INTRO.contentPaddingY,
+              flexShrink: 0,
 
             }}
 
@@ -256,6 +255,8 @@ export function AssessmentShell({
             paddingTop: 8,
 
             paddingBottom: Math.max(insets.bottom, 16),
+            zIndex: 2,
+            elevation: 4,
 
           }}
 
@@ -652,7 +653,7 @@ function StepHeader({
 
             width: `${Math.round(fraction * 100)}%`,
 
-            backgroundColor: TEAL,
+            backgroundColor: FIGMA_ASSESSMENT_INTRO.brandTeal,
 
             borderRadius: 99,
 
@@ -668,7 +669,7 @@ function StepHeader({
 
         <Pressable accessibilityRole="button" onPress={onSkip} hitSlop={8} style={{ paddingHorizontal: 4 }}>
 
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: TEAL }}>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: FIGMA_ASSESSMENT_INTRO.brandTeal }}>
 
             {ka.assessment.skipStep}
 

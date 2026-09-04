@@ -182,8 +182,7 @@ export function buildMetricSnapshot(
     };
   }
 
-  const liters = profile?.waterIntakeL ?? null;
-  const value = latest?.value ?? (liters != null ? liters * 1000 : null);
+  const value = latest?.value ?? null;
   return {
     key,
     value,
@@ -191,7 +190,7 @@ export function buildMetricSnapshot(
     statusKa: value != null ? hydrationStatus(value) : ka.healthMetrics.noData,
     updatedLabel: updatedLabelFromDate(latest?.date ?? null),
     weekValues,
-    source: latest ? source : liters != null ? 'profile' : 'none',
+    source: latest ? source : 'none',
   };
 }
 

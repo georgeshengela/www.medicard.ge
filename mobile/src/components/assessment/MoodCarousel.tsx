@@ -27,14 +27,18 @@ const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 const SCREEN_W = Dimensions.get('window').width;
 const SCALE = SCREEN_W / FIGMA_FRAME.width;
-const SIZE_CENTER = 148 * SCALE;
-const SIZE_NEAR = 80 * SCALE;
-const SIZE_FAR = 48 * SCALE;
+const FACE_SCALE = 0.9;
+const SIZE_CENTER = 148 * SCALE * FACE_SCALE;
+const SIZE_NEAR = 80 * SCALE * FACE_SCALE;
+const SIZE_FAR = 48 * SCALE * FACE_SCALE;
 const GAP = 8 * SCALE;
 const ITEM_W = SIZE_CENTER / 2 + GAP + SIZE_NEAR / 2;
 const SIDE_PAD = (SCREEN_W - ITEM_W) / 2;
 const ARROW = 32 * SCALE;
 const COL_GAP = 24 * SCALE;
+/** Extra room so the chin/shadow is not clipped by the scroll lane. */
+const FACE_BLEED = 20;
+const LANE_H = SIZE_CENTER + FACE_BLEED;
 const RINGS = [388, 294, 206] as const;
 
 type MoodItem = { key: string; image: ImageSourcePropType; label: string };
@@ -56,7 +60,7 @@ function ArrowDownIcon({ size }: { size: number }) {
   );
 }
 
-function GlowRing({ size }: { size: number }) {
+function GlowRing({ size, stroke }: { size: number; stroke: string }) {
   const id = `moodRing${Math.round(size)}`;
   return (
     <Svg width={size} height={size} pointerEvents="none">
@@ -71,7 +75,7 @@ function GlowRing({ size }: { size: number }) {
         cy={size / 2}
         r={size / 2 - 0.5}
         fill={`url(#${id})`}
-        stroke="#FFFFFF"
+        stroke={stroke}
       />
     </Svg>
   );
@@ -96,10 +100,10 @@ function MoodFace({
       width: size,
       height: size,
       shadowColor: '#000',
-      shadowOpacity: elevation * 0.08,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 12 },
-      elevation: elevation * 8,
+      shadowOpacity: elevation * 0.06,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: elevation * 3,
     };
   });
 
@@ -109,7 +113,7 @@ function MoodFace({
       onPress={() => onPress(index)}
       style={{
         width: ITEM_W,
-        height: SIZE_CENTER,
+        height: LANE_H,
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'visible',
@@ -169,7 +173,7 @@ export function MoodCarousel({ items, value, onChange }: Props) {
 
   const active = items[centerIndex] ?? items[0];
   const faceTop = ARROW + COL_GAP;
-  const stageH = faceTop + SIZE_CENTER;
+  const stageH = faceTop + LANE_H;
 
   return (
     <View style={{ width: '100%', alignItems: 'center', paddingVertical: 24, gap: COL_GAP }}>
@@ -186,7 +190,7 @@ export function MoodCarousel({ items, value, onChange }: Props) {
                 top: faceTop + SIZE_CENTER / 2 - size / 2,
               }}
             >
-              <GlowRing size={size} />
+              <GlowRing size={size} stroke={ASSESSMENT.surface} />
             </View>
           );
         })}
@@ -204,12 +208,13 @@ export function MoodCarousel({ items, value, onChange }: Props) {
           snapToInterval={ITEM_W}
           decelerationRate="fast"
           disableIntervalMomentum
-          style={{ position: 'absolute', top: faceTop, left: 0, right: 0, height: SIZE_CENTER, overflow: 'visible' }}
+          style={{ position: 'absolute', top: faceTop, left: 0, right: 0, height: LANE_H, overflow: 'visible' }}
           contentContainerStyle={{
             paddingHorizontal: SIDE_PAD,
             alignItems: 'center',
-            height: SIZE_CENTER,
+            height: LANE_H,
           }}
+          removeClippedSubviews={false}
           onScroll={scrollHandler}
           scrollEventThrottle={16}
           onMomentumScrollEnd={(e) => syncCenter(Math.round(e.nativeEvent.contentOffset.x / ITEM_W))}

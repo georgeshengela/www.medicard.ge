@@ -31,6 +31,7 @@ import {
 } from '@/components/assessment/HeightWheelPicker';
 import { DateWheelPicker } from '@/components/assessment/DateWheelPicker';
 import { AllergyPicker } from '@/components/assessment/AllergyPicker';
+import { ConditionPicker } from '@/components/assessment/ConditionPicker';
 import { MedicationPicker } from '@/components/assessment/MedicationPicker';
 import { useAssessment } from '@/constants/assessmentLayout';
 import type { AssessmentStep } from '@/constants/assessmentSteps';
@@ -41,7 +42,6 @@ import {
 } from '@/constants/illustrationAssets';
 import { ka } from '@/i18n/ka';
 import { ageFromForm, type AssessmentFormState } from '@/lib/assessmentForm';
-import { lightColors } from '@/theme/colors';
 
 type Props = {
   step: AssessmentStep;
@@ -103,7 +103,7 @@ function CardOption({
         gap: 12,
         borderRadius: ASSESSMENT.cardRadius,
         borderWidth: active ? 2 : 1,
-        borderColor: active ? lightColors.primary200 : ASSESSMENT.border,
+        borderColor: active ? ASSESSMENT.brand : ASSESSMENT.border,
         backgroundColor: ASSESSMENT.surface,
         paddingHorizontal: 16,
         paddingVertical: 16,
@@ -113,7 +113,7 @@ function CardOption({
       {image ? (
         <Image source={image} resizeMode="contain" style={{ width: 36, height: 36 }} />
       ) : Icon ? (
-        <Icon size={22} color={active ? lightColors.primary100 : '#94A3B8'} />
+        <Icon size={22} color={active ? ASSESSMENT.brandInk : ASSESSMENT.faint} />
       ) : null}
       <View style={{ flex: 1 }}>
         <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: ASSESSMENT.text }}>{title}</Text>
@@ -129,8 +129,8 @@ function CardOption({
           height: 22,
           borderRadius: 6,
           borderWidth: active ? 0 : 1.5,
-          borderColor: '#D1D5DB',
-          backgroundColor: active ? lightColors.primary200 : 'transparent',
+          borderColor: ASSESSMENT.hairline,
+          backgroundColor: active ? ASSESSMENT.brand : 'transparent',
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -160,7 +160,7 @@ function GateActions({
         style={{
           height: 52,
           borderRadius: ASSESSMENT.cardRadius,
-          backgroundColor: lightColors.primary200,
+          backgroundColor: ASSESSMENT.brand,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -168,7 +168,7 @@ function GateActions({
         <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 17, color: '#FFFFFF' }}>{yesLabel}</Text>
       </Pressable>
       <Pressable onPress={onNo} style={{ alignItems: 'center', paddingVertical: 12 }}>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: lightColors.primary200 }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: ASSESSMENT.brand }}>
           {noLabel}
         </Text>
       </Pressable>
@@ -263,7 +263,7 @@ export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: P
                 fontFamily: 'NotoSansGeorgian_400Regular',
                 fontSize: 16,
                 lineHeight: 22,
-                color: '#4B5563',
+                color: ASSESSMENT.textSecondary,
                 textAlign: 'center',
               }}
             >
@@ -501,10 +501,8 @@ export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: P
 
     case 'conditions-list':
       return (
-        <ChipCloud
-          options={Object.keys(ka.assessment.options.chronicConditions)}
-          selected={form.chronicConditions}
-          optionsKey="chronicConditions"
+        <ConditionPicker
+          value={form.chronicConditions}
           onChange={(chronicConditions) => onChange({ chronicConditions })}
         />
       );
@@ -527,54 +525,6 @@ export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: P
     default:
       return null;
   }
-}
-
-function ChipCloud({
-  options,
-  selected,
-  optionsKey,
-  onChange,
-}: {
-  options: string[];
-  selected: string[];
-  optionsKey: string;
-  onChange: (next: string[]) => void;
-}) {
-  const ASSESSMENT = useAssessment();
-  const toggle = (value: string) => {
-    if (value === 'none') {
-      onChange([]);
-      return;
-    }
-    const next = selected.includes(value) ? selected.filter((v) => v !== value) : [...selected.filter((v) => v !== 'none'), value];
-    onChange(next);
-  };
-
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-      {options.filter((o) => o !== 'none').map((value) => {
-        const active = selected.includes(value);
-        return (
-          <Pressable
-            key={value}
-            onPress={() => toggle(value)}
-            style={{
-              borderRadius: 99,
-              borderWidth: active ? 2 : 1,
-              borderColor: active ? lightColors.primary200 : ASSESSMENT.border,
-              backgroundColor: active ? ASSESSMENT.selectedSoft : ASSESSMENT.surface,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-            }}
-          >
-            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: active ? lightColors.primary200 : ASSESSMENT.textSecondary }}>
-              {optionLabel(optionsKey, value)}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
 }
 
 export function stepCanContinue(step: AssessmentStep, form: AssessmentFormState): boolean {

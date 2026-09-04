@@ -2,6 +2,7 @@ import '../global.css';
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { useThemeColors } from '@/theme/colors';
 import { AuthProvider, useAuth, needsHealthAssessment, needsProfileSetup } from '@/store/AuthContext';
+import { nextProfileSetupHref } from '@/lib/onboarding';
 import { FontsProvider } from '@/store/FontsContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
 import { api } from '@/lib/api';
@@ -93,14 +95,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         }
 
         if (needsProfileSetup(profile)) {
-          if (!onProfileSetup) router.replace('/(auth)/profile-setup/avatar');
+          if (!onProfileSetup) router.replace(nextProfileSetupHref(profile, user) as never);
           return;
         }
 
         const landing = await getHomeLanding();
         const onPrivacy = segments.includes('privacy');
         const onResults = segments.includes('results');
-        if (onPrivacy || onResults) return;
+        const onAnalyzing = segments.includes('analyzing');
+        if (onPrivacy || onResults || onAnalyzing) return;
 
         // Dev QA — allow profile-setup preview even when onboarding is complete.
         if (typeof __DEV__ !== 'undefined' && __DEV__ && onProfileSetup) {
@@ -216,7 +219,7 @@ function AppShell() {
 
 export default function RootLayout() {
   return (
-    <View style={{ flex: 1 }} className="font-sans">
+    <GestureHandlerRootView style={{ flex: 1 }} className="font-sans">
       <SafeAreaProvider>
         <FontsProvider>
           <ThemeProvider>
@@ -226,6 +229,6 @@ export default function RootLayout() {
           </ThemeProvider>
         </FontsProvider>
       </SafeAreaProvider>
-    </View>
+    </GestureHandlerRootView>
   );
 }

@@ -8,6 +8,7 @@ import { StreakPageSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaStreak } from '@/constants/figmaStreakLayout';
 import { ka } from '@/i18n/ka';
 import { api, type CheckInState } from '@/lib/api';
+import { weekFromJoin } from '@/lib/checkInWeek';
 import { useAuth } from '@/store/AuthContext';
 
 export default function StreakScreen() {
@@ -40,7 +41,7 @@ export default function StreakScreen() {
 
   const weekStreak = state?.weekStreak ?? user?.currentStreak ?? 0;
   const longest = state?.longestStreak ?? user?.longestStreak ?? 0;
-  const week = state?.week ?? [];
+  const week = weekFromJoin(state?.week ?? [], user?.createdAt, state?.today);
 
   return (
     <View style={{ flex: 1, backgroundColor: FIGMA.pageBg }}>

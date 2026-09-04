@@ -131,7 +131,7 @@ export function AllergyPicker({ value, onChange }: Props) {
                 else if (canAddCustom) add(trimmed);
               }}
               placeholder={value.length === 0 ? ka.assessment.allergyPlaceholder : undefined}
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={ASSESSMENT.muted}
               autoCorrect={false}
               autoCapitalize="none"
               returnKeyType="done"
@@ -162,12 +162,12 @@ export function AllergyPicker({ value, onChange }: Props) {
               fontFamily: 'NotoSansGeorgian_400Regular',
               fontSize: 13,
               lineHeight: 18,
-              color: '#9CA3AF',
+              color: ASSESSMENT.muted,
             }}
           >
             {ka.assessment.allergyCount(value.length, MAX_ALLERGIES)}
           </Text>
-          <Copy size={14} color="#9CA3AF" strokeWidth={2} />
+          <Copy size={14} color={ASSESSMENT.muted} strokeWidth={2} />
         </View>
       </View>
 
@@ -184,7 +184,7 @@ export function AllergyPicker({ value, onChange }: Props) {
           {canAddCustom && !exactInCatalog ? (
             <Pressable
               onPress={() => add(trimmed)}
-              style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
+              style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: ASSESSMENT.rowLine }}
             >
               <Text
                 style={{
@@ -211,7 +211,7 @@ export function AllergyPicker({ value, onChange }: Props) {
                   paddingVertical: 12,
                   opacity: selected || atCap ? 0.45 : 1,
                   borderBottomWidth: 1,
-                  borderBottomColor: '#F3F4F6',
+                  borderBottomColor: ASSESSMENT.rowLine,
                 }}
               >
                 <Text

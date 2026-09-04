@@ -16,6 +16,13 @@ export const FIGMA_LAB = {
   destructiveBorder: '#FECDD3',
   iconWell: '#F3E8FF',
   iconWellInk: '#7C3AED',
+  chartViolet: '#8B5CF6',
+  chartArea: '#F43F5E',
+  chartGrid: '#E5E7EB',
+  tabTrack: '#F3F4F6',
+  tabSelected: '#FFFFFF',
+  tooltipBg: '#1F2937',
+  tooltipText: '#FFFFFF',
   shadowXs: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -37,6 +44,11 @@ export const FIGMA_LAB_DARK = {
   destructiveBorder: '#9F1239',
   iconWell: '#1F2937',
   iconWellInk: '#C4B5FD',
+  chartGrid: '#6B7280',
+  tabTrack: '#1F2937',
+  tabSelected: '#111827',
+  tooltipBg: '#F9FAFB',
+  tooltipText: '#111827',
 } as const;
 
 export function useFigmaLab() {

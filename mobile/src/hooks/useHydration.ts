@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
+import { useAuth } from '@/store/AuthContext';
 import {
   addHydrationLog,
   bestDay,
@@ -16,16 +17,22 @@ import {
 import type { HydrationLog } from '@/types/hydration';
 
 export function useHydration() {
+  const { user } = useAuth();
   const [logs, setLogs] = useState<HydrationLog[]>([]);
   const [goalMl, setGoalMl] = useState(2000);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    if (!user?.id) {
+      setLogs([]);
+      setLoading(false);
+      return;
+    }
     const [nextLogs, nextGoal] = await Promise.all([loadHydrationLogs(), loadHydrationGoalMl()]);
     setLogs(nextLogs);
     setGoalMl(nextGoal);
     setLoading(false);
-  }, []);
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {

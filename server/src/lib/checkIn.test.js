@@ -1,6 +1,24 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeAwardRef, STEPS_GOAL_POINTS } from './checkIn.js';
+import { checkInWeekDays, normalizeAwardRef, STEPS_GOAL_POINTS } from './checkIn.js';
+
+describe('checkInWeekDays', () => {
+  it('does not mark days before join as skipped', () => {
+    const week = checkInWeekDays('2026-09-04', ['2026-09-04'], '2026-09-04');
+    assert.deepEqual(
+      week.map((d) => d.status),
+      ['empty', 'empty', 'empty', 'empty', 'completed', 'empty', 'empty'],
+    );
+  });
+
+  it('marks missed days after join as skipped', () => {
+    const week = checkInWeekDays('2026-09-04', ['2026-09-04'], '2026-08-31');
+    assert.deepEqual(
+      week.map((d) => d.status),
+      ['skipped', 'skipped', 'skipped', 'skipped', 'completed', 'empty', 'empty'],
+    );
+  });
+});
 
 describe('normalizeAwardRef', () => {
   it('trims and keeps short goal ids', () => {

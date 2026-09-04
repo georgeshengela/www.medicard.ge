@@ -1315,7 +1315,8 @@ footer { padding: 36px 0 28px; }
   .hero-actions .btn,
   .cta-full .btn,
   .ask-mail { width: 100%; justify-content: center; }
-  .cta-full { padding: 48px 0; }
+  .cta-full,
+  .ask { padding: 48px 0; }
   .day { grid-template-columns: repeat(2, 1fr); }
   .foot-legal { flex-direction: column; }
 }

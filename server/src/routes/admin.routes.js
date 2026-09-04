@@ -55,6 +55,7 @@ function signAdminToken(admin) {
 function adminAppSettings(settings) {
   return {
     ...publicAppSettings(settings),
+    qaOtpEnabled: Boolean(settings.qaOtpEnabled),
     mobileAppVersion: getMobileAppVersion(),
   };
 }
@@ -527,6 +528,7 @@ adminRouter.patch(
         minAppVersion: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
         forceUpdate: z.boolean().optional(),
         allowRegistrations: z.boolean().optional(),
+        qaOtpEnabled: z.boolean().optional(),
         supportEmail: z.string().email().optional(),
       })
       .parse(req.body);

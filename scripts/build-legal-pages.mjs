@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const root = new URL("../", import.meta.url);
-const CSS = "/landing.css?v=35";
+const CSS = "/landing.css?v=36";
 
 const pages = [
   {
@@ -16,7 +16,9 @@ const pages = [
     chips: ["ჯანმრთელობის მონაცემები არ იყიდება", "Privacy by Design", "Medi არ არის ექიმი"],
     ctaTitle: "კონფიდენციალობის მოთხოვნა",
     ctaBody: "წვდომა, გასწორება, წაშლა ან ნებისმიერი კითხვა თქვენს მონაცემებზე — მოგვწერეთ.",
-    ctaNote: "სრული პოლიტიკა ყოველთვის ხელმისაწვდომია medicard.ge/privacy-ზე. აპშიც: პროფილი → კონფიდენციალურობა.",
+    ctaNoteHtml:
+      'სრული პოლიტიკა ყოველთვის ხელმისაწვდომია <a href="/privacy">medicard.ge/privacy</a>-ზე. აპშიც: პროფილი → კონფიდენციალურობა.',
+    ctaIcon: "lock",
     current: "privacy",
   },
   {
@@ -30,7 +32,9 @@ const pages = [
     chips: ["Medi არ არის ექიმი", "არ არის გადაუდებელი დახმარება", "ციკლი არ არის კონტრაცეფცია"],
     ctaTitle: "კითხვა წესებზე",
     ctaBody: "წესები, ანგარიში ან სამართლებრივი საკითხი — მოგვწერეთ.",
-    ctaNote: "სრული წესები ხელმისაწვდომია medicard.ge/terms-ზე. აპშიც: პროფილი → წესები და პირობები.",
+    ctaNoteHtml:
+      'სრული წესები ხელმისაწვდომია <a href="/terms">medicard.ge/terms</a>-ზე. აპშიც: პროფილი → წესები და პირობები.',
+    ctaIcon: "shield",
     current: "terms",
   },
 ];
@@ -323,21 +327,23 @@ ${toc}
       </div>
     </section>
 
-    <section class="cta-full band-cta">
-      <div class="wrap cta-grid">
-        <div class="cta-copy">
+    <section class="ask band-cta" id="request">
+      <div class="wrap ask-grid">
+        <div class="ask-copy">
           <h2>${escapeHtml(page.ctaTitle)}</h2>
           <p>${escapeHtml(page.ctaBody)}</p>
-          <a class="btn btn-inverse" href="mailto:support@medicard.ge"><span class="ic ic-chat" aria-hidden="true"></span>support@medicard.ge</a>
+          <a class="ask-mail" href="mailto:support@medicard.ge"><span class="ic ic-chat" aria-hidden="true"></span>support@medicard.ge</a>
         </div>
-        <aside class="cta-aside">
-          <div>
-            <p>${escapeHtml(page.ctaNote)}</p>
-            <div class="store">
-              <span><span class="ic ic-lock" aria-hidden="true"></span><span><small>ძალაშია</small><b>${escapeHtml(meta.effective)}</b></span></span>
-            </div>
-          </div>
-        </aside>
+        <div class="ask-side">
+          <article class="ask-card">
+            <span class="ic ic-lg ic-${page.ctaIcon}" aria-hidden="true"></span>
+            <p>${page.ctaNoteHtml}</p>
+          </article>
+          <article class="ask-date">
+            <span class="ic ic-calendar" aria-hidden="true"></span>
+            <span><small>ძალაშია</small><b>${escapeHtml(meta.effective)}</b></span>
+          </article>
+        </div>
       </div>
     </section>
   </main>

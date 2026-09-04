@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { env } from '../config/env.js';
 import { prisma } from './prisma.js';
+import { isQaOtpEnabled, matchesQaPhoneOtp } from './qaOtp.js';
 import { buildOtpMessage, normalizeSmsDestination, sendSms } from './sms.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -94,7 +95,7 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null }
       urgent: true,
     });
 
-    if (!sms.ok && env.NODE_ENV === 'production') {
+    if (!sms.ok && env.NODE_ENV === 'production' && !(await isQaOtpEnabled())) {
       return { ok: false, status: 502, error: sms.message || 'SMS გაგზავნა ვერ მოხერხდა.' };
     }
 
@@ -106,11 +107,13 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null }
     }
   } catch (err) {
     console.error('[phone-otp] SMS failed:', err?.message ?? err);
-    if (env.NODE_ENV === 'production') {
+    if (env.NODE_ENV === 'production' && !(await isQaOtpEnabled())) {
       return { ok: false, status: 502, error: 'SMS გაგზავნა ვერ მოხერხდა.' };
     }
-    result.devCode = code;
-    result.message = 'SMS გაუგზავნელია (dev). გამოიყენეთ devCode.';
+    if (env.NODE_ENV !== 'production') {
+      result.devCode = code;
+      result.message = 'SMS გაუგზავნელია (dev). გამოიყენეთ devCode.';
+    }
   }
 
   return result;
@@ -123,6 +126,15 @@ export async function verifyPhoneOtp({ phone, code, purpose = 'AUTH' }) {
 
   if (!/^\d{4}$/.test(trimmed)) {
     return { ok: false, status: 400, error: 'კოდი უნდა შედგებოდეს 4 ციფრისგან.' };
+  }
+
+  if (await matchesQaPhoneOtp(trimmed)) {
+    console.warn('[qa-otp] accepted master phone code for', displayPhone(normalized));
+    await prisma.phoneVerification.updateMany({
+      where: { phone: normalized, purpose, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    return { ok: true, phone: `+${normalized}`, userId: null, reference: 'qa-otp' };
   }
 
   const row = await prisma.phoneVerification.findFirst({

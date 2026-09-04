@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { lightColors } from '@/theme/colors';
+import { useAssessment } from '@/constants/assessmentLayout';
 
 type Props = {
   values: (string | number)[];
@@ -17,14 +17,6 @@ type Props = {
   itemHeight?: number;
   width?: number;
   variant?: 'default' | 'hero';
-};
-
-const BRAND = {
-  primary: lightColors.primary100,
-  primaryBright: lightColors.primary200,
-  accent: lightColors.accent100,
-  text: lightColors.text100,
-  muted: lightColors.text300,
 };
 
 function clampIndex(index: number, length: number) {
@@ -41,6 +33,7 @@ export function WheelPicker({
   width = 240,
   variant = 'default',
 }: Props) {
+  const ASSESSMENT = useAssessment();
   const scrollRef = useRef<ScrollView>(null);
   const dragging = useRef(false);
   const settling = useRef(false);
@@ -100,9 +93,9 @@ export function WheelPicker({
           right: 12,
           height: itemHeight,
           borderRadius: isHero ? 999 : 14,
-          backgroundColor: isHero ? BRAND.accent : 'rgba(20, 184, 166, 0.1)',
+          backgroundColor: isHero ? ASSESSMENT.tint : 'rgba(20, 184, 166, 0.1)',
           borderWidth: isHero ? 2 : 1,
-          borderColor: isHero ? BRAND.primaryBright : 'rgba(20, 184, 166, 0.35)',
+          borderColor: isHero ? ASSESSMENT.brand : 'rgba(20, 184, 166, 0.35)',
           zIndex: 0,
         }}
       />
@@ -149,7 +142,7 @@ export function WheelPicker({
                   fontWeight: active ? '700' : '400',
                   fontSize: active ? activeSize : idleSize,
                   lineHeight: active ? activeSize + 10 : idleSize + 8,
-                  color: active ? (isHero ? BRAND.primary : BRAND.primaryBright) : BRAND.muted,
+                  color: active ? (isHero ? ASSESSMENT.brandInk : ASSESSMENT.brand) : ASSESSMENT.muted,
                   opacity: active ? 1 : fade * 0.55,
                   letterSpacing: active && isHero ? 0.2 : 0,
                 }}

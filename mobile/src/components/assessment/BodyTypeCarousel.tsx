@@ -2,20 +2,15 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   Text,
   View,
   type ImageSourcePropType,
 } from 'react-native';
-import Animated, {
-  interpolate,
-  runOnJS,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
 import { ASSESSMENT, useAssessment } from '@/constants/assessmentLayout';
@@ -23,8 +18,6 @@ import { FIGMA_FRAME } from '@/constants/figmaWelcomeLayout';
 import { bodyTypeImage } from '@/constants/illustrationAssets';
 import { ka } from '@/i18n/ka';
 import type { Gender } from '@/lib/api';
-
-const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 const SCREEN_W = Dimensions.get('window').width;
 const SCALE = SCREEN_W / FIGMA_FRAME.width;
@@ -117,52 +110,49 @@ function BodyTypeItem({ index, gender, type, active, onPress }: ItemProps) {
 /** Figma body type — three equal silhouettes, swipe/tap to select. */
 export function BodyTypeCarousel({ gender, value, labelFor, onChange }: Props) {
   const ASSESSMENT = useAssessment();
-  const scrollRef = useRef<Animated.ScrollView>(null);
-  const scrollX = useSharedValue(0);
+  const scrollRef = useRef<ScrollView>(null);
   const initial = Math.max(0, BODY_TYPES.indexOf((value as BodyType) ?? 'ECTOMORPH'));
   const [centerIndex, setCenterIndex] = useState(initial);
   const labelOpacity = useSharedValue(1);
+  const lastType = useRef<string | null>(value);
 
   const syncCenter = useCallback(
     (index: number) => {
       const clamped = Math.max(0, Math.min(BODY_TYPES.length - 1, index));
       setCenterIndex(clamped);
       const type = BODY_TYPES[clamped];
-      if (type && type !== value) {
-        pickerSelectionTick();
-        labelOpacity.value = withTiming(0, { duration: 100 }, () => {
-          labelOpacity.value = withTiming(1, { duration: 220 });
-        });
-        onChange(type);
-      }
+      if (!type || type === lastType.current) return;
+      lastType.current = type;
+      pickerSelectionTick();
+      labelOpacity.value = withTiming(0, { duration: 100 }, () => {
+        labelOpacity.value = withTiming(1, { duration: 220 });
+      });
+      onChange(type);
     },
-    [labelOpacity, onChange, value],
+    [labelOpacity, onChange],
   );
 
   useEffect(() => {
-    const x = initial * CARD_W;
-    scrollX.value = x;
+    lastType.current = (value as BodyType) ?? 'ECTOMORPH';
     requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ x, animated: false });
+      scrollRef.current?.scrollTo({ x: initial * CARD_W, animated: false });
     });
     setCenterIndex(initial);
-  }, [gender, initial, scrollX]);
+    // Snap once per gender — don't reset when the user picks a type.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial is derived from first value
+  }, [gender]);
 
-  const previewIndex = useCallback((offsetX: number) => {
+  const previewFromOffset = (offsetX: number) => {
     const next = Math.max(0, Math.min(BODY_TYPES.length - 1, Math.round(offsetX / CARD_W)));
     setCenterIndex(next);
-  }, []);
+  };
 
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollX.value = event.contentOffset.x;
-      runOnJS(previewIndex)(event.contentOffset.x);
-    },
-  });
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    previewFromOffset(event.nativeEvent.contentOffset.x);
+  };
 
   const scrollToIndex = (index: number, animated = true) => {
     scrollRef.current?.scrollTo({ x: index * CARD_W, animated });
-    if (animated) scrollX.value = withTiming(index * CARD_W, { duration: 320 });
     syncCenter(index);
   };
 
@@ -176,7 +166,7 @@ export function BodyTypeCarousel({ gender, value, labelFor, onChange }: Props) {
   return (
     <View style={{ width: '100%', alignItems: 'center', paddingVertical: 32 }}>
       <View style={{ width: SCREEN_W, height: FIGURE_H, overflow: 'visible' }}>
-        <AnimatedScrollView
+        <ScrollView
           ref={scrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -189,7 +179,7 @@ export function BodyTypeCarousel({ gender, value, labelFor, onChange }: Props) {
             alignItems: 'flex-end',
             minHeight: FIGURE_H,
           }}
-          onScroll={scrollHandler}
+          onScroll={onScroll}
           scrollEventThrottle={16}
           onMomentumScrollEnd={(e) => syncCenter(Math.round(e.nativeEvent.contentOffset.x / CARD_W))}
           onScrollEndDrag={(e) => {
@@ -208,7 +198,7 @@ export function BodyTypeCarousel({ gender, value, labelFor, onChange }: Props) {
               onPress={scrollToIndex}
             />
           ))}
-        </AnimatedScrollView>
+        </ScrollView>
       </View>
 
       <View style={{ marginTop: 16, alignItems: 'center', gap: 12, paddingHorizontal: 16 }}>

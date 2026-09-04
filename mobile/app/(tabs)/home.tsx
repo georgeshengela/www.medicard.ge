@@ -27,6 +27,7 @@ import { useThemeColors, useIsDark } from '@/theme/colors';
 import { OnboardingDevLauncher } from '@/components/dev/OnboardingDevLauncher';
 import { useAuth } from '@/store/AuthContext';
 import { getAccountSetupProgress, type AccountSetupStep } from '@/lib/homeAccountSetup';
+import { useHydration } from '@/hooks/useHydration';
 import { analysisFromProfile } from '@/types/onboardingAnalysis';
 
 export default function Home() {
@@ -97,6 +98,7 @@ export default function Home() {
   const analysis = analysisFromProfile(extra);
   const setupProgress = getAccountSetupProgress(healthProfile, user, stats);
   const avatarId = typeof extra.avatarId === 'string' ? extra.avatarId : null;
+  const { todayMl } = useHydration();
 
   const onSetupStepPress = (step: AccountSetupStep) => {
     if (step.done) return;
@@ -122,7 +124,7 @@ export default function Home() {
           score={analysis?.score ?? null}
           scoreLabel={analysis?.labelKa ?? ka.home.scorePending}
           statusLabel={analysis?.bodyComposition?.physiqueLabelKa ?? ka.home.healthyStatus}
-          waterLiters={healthProfile?.waterIntakeL ?? null}
+          waterLiters={todayMl > 0 ? todayMl / 1000 : null}
           onAvatarPress={() => router.push('/(tabs)/profile' as never)}
           onPackagePress={() => router.push('/package' as never)}
           onStreakPress={() => router.push('/profile/streak' as never)}
