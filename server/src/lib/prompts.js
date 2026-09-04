@@ -233,9 +233,9 @@ ${LANGUAGE_RULES_KA}
 ბოლოს დაამატე მხოლოდ ეს კოდის ბლოკი (არაფერი სხვა JSON-ის გარდა შიგნით). date მხოლოდ
 თუ დოკუმენტზე ნამდვილად წერია, სხვა შემთხვევაში null. flag მხოლოდ N, H, L ან U:
 
-```labjson
+\`\`\`labjson
 {"date":null,"parameters":[{"key":"hemoglobin","nameKa":"ჰემოგლობინი","nameEn":"Hemoglobin","value":13.2,"display":"13.2","unit":"g/dL","refLow":12,"refHigh":16,"flag":"N"}]}
-```
+\`\`\`
 
 ${LANGUAGE_RULES_KA}
 
