@@ -96,6 +96,7 @@ export async function enforceAppAvailability(req, res, next) {
     }
     return next();
   } catch (error) {
-    return next(error);
+    console.error('[availability] settings check failed, allowing traffic', error?.message);
+    return next();
   }
 }

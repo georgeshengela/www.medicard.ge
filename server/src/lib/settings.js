@@ -9,21 +9,48 @@ const DEFAULTS = {
   forceUpdate: false,
   allowRegistrations: true,
   supportEmail: 'support@medicard.ge',
+  qaOtpEnabled: false,
 };
 
-export async function getAppSettings() {
-  let row = await prisma.appSettings.upsert({
+async function ensureQaOtpColumn() {
+  await prisma.$executeRawUnsafe(
+    'ALTER TABLE "AppSettings" ADD COLUMN IF NOT EXISTS "qaOtpEnabled" BOOLEAN NOT NULL DEFAULT false',
+  );
+}
+
+async function readSettingsRow() {
+  return prisma.appSettings.upsert({
     where: { id: 'default' },
     create: DEFAULTS,
     update: {},
   });
+}
+
+export async function getAppSettings() {
+  let row;
+  try {
+    row = await readSettingsRow();
+  } catch (error) {
+    console.error('[settings] AppSettings read failed', error?.code || error?.message);
+    try {
+      await ensureQaOtpColumn();
+      row = await readSettingsRow();
+    } catch (retryError) {
+      console.error('[settings] AppSettings fallback', retryError?.code || retryError?.message);
+      return { ...DEFAULTS, updatedAt: new Date() };
+    }
+  }
 
   const mobileVersion = getMobileAppVersion();
   if (mobileVersion && row.minAppVersion === '1.0.0' && compareSemver(mobileVersion, row.minAppVersion) > 0) {
-    row = await prisma.appSettings.update({
-      where: { id: 'default' },
-      data: { minAppVersion: mobileVersion },
-    });
+    try {
+      row = await prisma.appSettings.update({
+        where: { id: 'default' },
+        data: { minAppVersion: mobileVersion },
+      });
+    } catch {
+      /* keep the row we already loaded */
+    }
   }
 
   return row;
