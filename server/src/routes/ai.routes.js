@@ -11,6 +11,7 @@ import { calculateAge, withPatientAiContext } from '../lib/patient.js';
 import { buildSymptomPrompt, formatSymptomRecordKa, runSymptomCheck } from '../lib/symptomCheck.js';
 import { saveUpload } from '../lib/storage.js';
 import { extractLabFromText } from '../lib/labExtract.js';
+import { alignLabAnalytes } from '../lib/labAlign.js';
 import { requireAuth } from '../middleware/auth.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
 import { getUsage } from '../lib/usage.js';
@@ -537,6 +538,62 @@ aiRouter.post(
     });
   }),
 );
+
+/* ────────────────────────────────────────────────────────────────
+ * POST /api/ai/align-lab — remap French/OCR names onto the catalog
+ * ──────────────────────────────────────────────────────────────── */
+
+const alignLabSchema = z.object({
+  analytes: z
+    .array(
+      z.object({
+        key: z.string().trim().min(1).max(80),
+        nameKa: z.string().trim().max(160).optional().default(''),
+        nameEn: z.string().trim().max(160).optional().default(''),
+        unit: z.string().trim().max(40).optional().default(''),
+      }),
+    )
+    .min(1)
+    .max(200),
+});
+
+aiRouter.post(
+  '/align-lab',
+  enforceAiQuota,
+  asyncHandler(async (req, res) => {
+    const body = alignLabSchema.parse(req.body);
+    const aligned = await runTrackedAi({
+      userId: req.user.id,
+      mode: 'LAB_ALIGN',
+      userPrompt: `align ${body.analytes.length} analytes`,
+      visionProvider: 'openrouter',
+      visionModel: alignedModelHint(),
+      fn: async () => {
+        const result = await alignLabAnalytes(body.analytes);
+        return { content: JSON.stringify({ joined: result.joined, leftover: result.leftover }), model: result.model, usage: result.tokenUsage, extra: result };
+      },
+    });
+
+    const result = aligned.extra;
+    if (!result) {
+      return res.status(500).json({ error: 'სახელების შემოწმება ვერ დასრულდა.' });
+    }
+    const usage = result.engine === 'openrouter' ? await req.consumeAiCredit() : req.usage;
+    return res.json({
+      maps: result.maps,
+      joined: result.joined,
+      already: result.already,
+      leftover: result.leftover,
+      model: result.model,
+      engine: result.engine,
+      usage,
+    });
+  }),
+);
+
+function alignedModelHint() {
+  return process.env.OPENROUTER_MODEL || 'openai/gpt-4o';
+}
 
 /* ────────────────────────────────────────────────────────────────
  * POST /api/ai/skincare — კანის მოვლის რუტინა
