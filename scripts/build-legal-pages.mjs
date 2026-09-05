@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const root = new URL("../", import.meta.url);
-const CSS = "/landing.css?v=36";
+const CSS = "/landing.css?v=38";
 
 const pages = [
   {
@@ -253,6 +253,18 @@ function pageHtml(page, meta, blocks) {
   <meta name="description" content="${escapeHtml(page.description)}" />
   <link rel="canonical" href="https://medicard.ge${page.path}" />
   <meta name="theme-color" content="#f3f5f6" />
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("medicard.landing.theme");
+        if (t !== "light" && t !== "dark") {
+          t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = t;
+        document.documentElement.style.colorScheme = t;
+      } catch (e) {}
+    })();
+  </script>
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="ka_GE" />
   <meta property="og:url" content="https://medicard.ge${page.path}" />
@@ -263,7 +275,7 @@ function pageHtml(page, meta, blocks) {
   <link rel="icon" href="/favicon.png" />
   <link rel="apple-touch-icon" href="/icon.png" />
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="/fonts/davit-guramishvili/DM-Davit-Guramishvili.ttf" as="font" type="font/ttf" crossorigin />
+  <link rel="preload" href="/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="${CSS}" />
 </head>
 <body>
@@ -282,7 +294,7 @@ function pageHtml(page, meta, blocks) {
         <a class="nav-download" href="/#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
       </nav>
       <div class="nav-actions">
-        <button class="theme-btn" id="theme-toggle" type="button" aria-label="თემის შეცვლა">
+        <button class="theme-btn" id="theme-toggle" type="button" aria-pressed="false" aria-label="გადართე მუქ თემაზე">
           <span class="ic ic-moon icon-moon" aria-hidden="true"></span>
           <span class="ic ic-sun icon-sun" aria-hidden="true"></span>
         </button>
@@ -374,7 +386,7 @@ ${toc}
       </div>
     </div>
   </footer>
-  <script src="/landing.js?v=15"></script>
+  <script src="/landing.js?v=16"></script>
 </body>
 </html>
 `;

@@ -1,18 +1,68 @@
 (() => {
   const root = document.documentElement;
+  const THEME_KEY = "medicard.landing.theme";
   const year = document.getElementById("y");
   if (year) year.textContent = String(new Date().getFullYear());
 
-  const stored = localStorage.getItem("medicard.landing.theme");
-  applyTheme(stored === "light" || stored === "dark" ? stored : "light");
+  function readTheme() {
+    try {
+      const stored = localStorage.getItem(THEME_KEY);
+      if (stored === "light" || stored === "dark") return stored;
+    } catch {
+      /* private mode */
+    }
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
 
-  document.getElementById("theme-toggle")?.addEventListener("click", () => {
-    const next = root.dataset.theme === "dark" ? "light" : "dark";
-    localStorage.setItem("medicard.landing.theme", next);
-    applyTheme(next);
+  function applyTheme(theme, persist) {
+    const next = theme === "dark" ? "dark" : "light";
+    root.dataset.theme = next;
+    root.style.colorScheme = next;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", next === "light" ? "#f3f5f6" : "#030712");
+    document.querySelectorAll(".theme-btn").forEach((btn) => {
+      const toLight = next === "dark";
+      btn.setAttribute("aria-pressed", toLight ? "true" : "false");
+      btn.setAttribute("aria-label", toLight ? "გადართე ღია თემაზე" : "გადართე მუქ თემაზე");
+      btn.title = toLight ? "ღია თემა" : "მუქი თემა";
+    });
+    if (persist) {
+      try {
+        localStorage.setItem(THEME_KEY, next);
+      } catch {
+        /* private mode */
+      }
+    }
+  }
+
+  applyTheme(readTheme(), false);
+  requestAnimationFrame(() => root.classList.add("theme-ready"));
+
+  document.querySelectorAll(".theme-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      applyTheme(root.dataset.theme === "dark" ? "light" : "dark", true);
+    });
   });
 
-  const nav = document.querySelector(".nav");
+  window.addEventListener("storage", (event) => {
+    if (event.key === THEME_KEY && (event.newValue === "light" || event.newValue === "dark")) {
+      applyTheme(event.newValue, false);
+    }
+  });
+
+  const scheme = window.matchMedia("(prefers-color-scheme: dark)");
+  const onScheme = () => {
+    try {
+      const stored = localStorage.getItem(THEME_KEY);
+      if (stored === "light" || stored === "dark") return;
+    } catch {
+      return;
+    }
+    applyTheme(scheme.matches ? "dark" : "light", false);
+  };
+  if (typeof scheme.addEventListener === "function") scheme.addEventListener("change", onScheme);
+  else if (typeof scheme.addListener === "function") scheme.addListener(onScheme);
+
   const links = document.querySelector(".nav-links");
   const menuBtn = document.getElementById("menu-toggle");
   menuBtn?.addEventListener("click", () => {
@@ -25,16 +75,6 @@
       menuBtn?.setAttribute("aria-expanded", "false");
     });
   });
-
-  function updateNavTone() {
-    const y = (nav?.getBoundingClientRect().bottom || 72) + 10;
-    const probe = document.elementFromPoint(Math.min(120, window.innerWidth / 2), y);
-    const light = Boolean(probe?.closest(".band-paper, .band-soft, .band-cta, footer"));
-    nav?.classList.toggle("on-light", light);
-  }
-  updateNavTone();
-  window.addEventListener("scroll", updateNavTone, { passive: true });
-  window.addEventListener("resize", updateNavTone);
 
   const io = new IntersectionObserver(
     (entries) => {
@@ -118,13 +158,6 @@
   });
 
   setScreen("home", document.getElementById("hero-phone"));
-
-  function applyTheme(theme) {
-    root.dataset.theme = theme;
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", theme === "light" ? "#f3f5f6" : "#030712");
-    updateNavTone();
-  }
 
   const tocLinks = [...document.querySelectorAll(".legal-toc a[href^='#']")];
   const tocHeads = tocLinks
