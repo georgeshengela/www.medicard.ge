@@ -108,7 +108,10 @@ export default function PhoneAuth() {
             placeholder={ka.auth.smsCodePlaceholder}
             icon={KeyRound}
             value={code}
-            onChangeText={setCode}
+            onChangeText={(next) => {
+              setCode(next);
+              setError(null);
+            }}
             error={error}
             hint={devCode ? `სატესტო კოდი: ${devCode}` : undefined}
             keyboardType="number-pad"

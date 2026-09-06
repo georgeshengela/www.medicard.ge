@@ -8,10 +8,12 @@ import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { extraAnswersPayload, formFromProfile, fullProfilePayload } from '@/lib/assessmentForm';
 import { nextProfileSetupHref } from '@/lib/onboarding';
+import { useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
 
 export default function ProfileSetupAvatarScreen() {
   const router = useRouter();
+  const preview = useOnboardingDevPreview();
   const { user, ready, healthProfile, refreshHealthProfile } = useAuth();
   const gender = user?.gender ?? null;
   const avatarPool = avatarsForGender(gender);
@@ -35,11 +37,11 @@ export default function ProfileSetupAvatarScreen() {
   }
 
   if (!user) return <Redirect href="/(auth)/sign-in" />;
-  if (needsHealthAssessment(healthProfile)) return <Redirect href="/(auth)/assessment" />;
-  if (!needsProfileSetup(healthProfile)) return <Redirect href="/(tabs)/home" />;
+  if (!preview && needsHealthAssessment(healthProfile)) return <Redirect href="/(auth)/assessment" />;
+  if (!preview && !needsProfileSetup(healthProfile)) return <Redirect href="/(tabs)/home" />;
 
   const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
-  if (typeof extra.avatarId === 'string' && extra.avatarId.length > 0 && extra.phoneVerified === true) {
+  if (!preview && typeof extra.avatarId === 'string' && extra.avatarId.length > 0 && extra.phoneVerified === true) {
     const next = nextProfileSetupHref(healthProfile, user);
     if (!next.includes('/avatar')) return <Redirect href={next as never} />;
   }

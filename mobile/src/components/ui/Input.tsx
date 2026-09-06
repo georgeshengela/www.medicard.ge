@@ -15,7 +15,7 @@ type Props = TextInputProps & {
 };
 
 export const Input = forwardRef<TextInput, Props>(function Input(
-  { label, error, hint, icon: Icon, secure = false, figma = false, style, ...rest },
+  { label, error, hint, icon: Icon, secure = false, figma = false, style, onFocus, onBlur, ...rest },
   ref,
 ) {
   const colors = useThemeColors();
@@ -69,8 +69,14 @@ export const Input = forwardRef<TextInput, Props>(function Input(
           ref={ref}
           placeholderTextColor={figma ? auth.placeholder : colors.text300}
           secureTextEntry={secure && !revealed}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
           style={[
             {
               flex: 1,

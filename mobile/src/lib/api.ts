@@ -1,4 +1,6 @@
 import Constants from 'expo-constants';
+import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { getToken } from './storage';
 
@@ -92,6 +94,18 @@ export type CheckInState = {
   today: string;
   pointsPerDay: number;
   week: CheckInDay[];
+};
+
+export type UserLocationSnapshot = {
+  prompted: boolean;
+  enabled: boolean;
+  countryCode: string | null;
+  countryKa: string | null;
+  cityKa: string | null;
+  lat: number | null;
+  lng: number | null;
+  accuracy: number | null;
+  updatedAt: string | null;
 };
 
 export type HealthProfile = {
@@ -805,10 +819,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method,
-      cache: cache ?? (method === 'GET' ? 'default' : 'no-store'),
+      cache: cache ?? 'no-store',
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
+        'X-Medicard-Platform': Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web',
+        'X-Medicard-App-Version': String(Constants.expoConfig?.version || ''),
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
@@ -816,42 +832,90 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     });
 
     const text = await response.text();
-    const payload = text ? safeParse(text) : {};
-
-    if (!response.ok) {
-      const retryRaw = response.headers.get('Retry-After');
-      let retryAfterSeconds: number | undefined;
-      if (retryRaw) {
-        const asNumber = Number(retryRaw);
-        if (Number.isFinite(asNumber) && asNumber >= 0) retryAfterSeconds = Math.floor(asNumber);
-        else {
-          const when = Date.parse(retryRaw);
-          if (!Number.isNaN(when)) {
-            retryAfterSeconds = Math.max(0, Math.ceil((when - Date.now()) / 1000));
-          }
-        }
-      }
-      const serverError =
-        (typeof payload?.error === 'string' && payload.error) ||
-        (typeof payload?.detail === 'string' && payload.detail) ||
-        `${ka.common.error} (${response.status})`;
-      throw new ApiError(
-        serverError,
-        response.status,
-        payload as Record<string, unknown>,
-        retryAfterSeconds,
-      );
-    }
-
-    return payload as T;
+    return parseJsonBody<T>(response.status, text, response.headers.get('Retry-After'));
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if ((error as Error)?.name === 'AbortError') {
       throw new ApiError('მოთხოვნის დრო ამოიწურა. სცადეთ ხელახლა.', 408);
     }
+    console.warn('[api]', method, path, (error as Error)?.message ?? error);
     throw new ApiError(ka.common.networkError, 0);
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+function retryAfterSeconds(retryRaw: string | null | undefined): number | undefined {
+  if (!retryRaw) return undefined;
+  const asNumber = Number(retryRaw);
+  if (Number.isFinite(asNumber) && asNumber >= 0) return Math.floor(asNumber);
+  const when = Date.parse(retryRaw);
+  if (!Number.isNaN(when)) return Math.max(0, Math.ceil((when - Date.now()) / 1000));
+  return undefined;
+}
+
+function headerLookup(headers: Record<string, string> | undefined, name: string): string | null {
+  if (!headers) return null;
+  const want = name.toLowerCase();
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === want) return value;
+  }
+  return null;
+}
+
+function parseJsonBody<T>(status: number, text: string, retryRaw?: string | null): T {
+  const payload = text ? safeParse(text) : {};
+  if (status < 200 || status >= 300) {
+    const serverError =
+      (typeof payload?.error === 'string' && payload.error) ||
+      (typeof payload?.detail === 'string' && payload.detail) ||
+      `${ka.common.error} (${status})`;
+    throw new ApiError(serverError, status, payload as Record<string, unknown>, retryAfterSeconds(retryRaw));
+  }
+  return payload as T;
+}
+
+type UploadFile = { uri: string; name: string; mimeType: string };
+
+async function appendUploadFile(formData: FormData, field: string, file: UploadFile): Promise<void> {
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(file.uri)).blob();
+    formData.append(field, blob, file.name);
+    return;
+  }
+  formData.append(field, {
+    uri: file.uri,
+    name: file.name,
+    type: file.mimeType,
+  } as unknown as Blob);
+}
+
+/** Native file upload — RN fetch FormData often throws a fake "network" error on content:// / ph://. */
+async function uploadNativeMultipart<T>(
+  path: string,
+  file: UploadFile,
+  fieldName: string,
+  parameters: Record<string, string> = {},
+): Promise<T> {
+  const token = await getToken();
+  try {
+    const result = await FileSystem.uploadAsync(`${API_BASE_URL}${path}`, file.uri, {
+      httpMethod: 'POST',
+      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+      fieldName,
+      mimeType: file.mimeType,
+      sessionType: FileSystem.FileSystemSessionType.FOREGROUND,
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      parameters,
+    });
+    return parseJsonBody<T>(result.status, result.body, headerLookup(result.headers, 'Retry-After'));
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    console.warn('[api-upload]', path, (error as Error)?.message ?? error);
+    throw new ApiError(ka.upload.failed, 0);
   }
 }
 
@@ -898,7 +962,7 @@ export const api = {
         method: 'POST',
         body,
         token: null,
-        timeoutMs: 15_000,
+        timeoutMs: 30_000,
       }),
 
     login: (body: { email: string; password: string }) =>
@@ -951,7 +1015,7 @@ export const api = {
         timeoutMs: 20_000,
       }),
 
-    me: () =>
+    me: (token?: string | null) =>
       request<{
         user: User;
         usage: Usage;
@@ -960,7 +1024,7 @@ export const api = {
         checkIn?: CheckInState | null;
         checkInAwarded?: boolean;
         pointsAwarded?: number;
-      }>('/api/auth/me'),
+      }>('/api/auth/me', token !== undefined ? { token } : undefined),
 
     updateProfile: (body: { fullName?: string; gender?: Gender; birthDate?: string }) =>
       request<{ user: User }>('/api/auth/me', { method: 'PATCH', body }),
@@ -1041,6 +1105,102 @@ export const api = {
       request<{ ok: boolean }>('/api/push/register', { method: 'POST', body }),
     unregister: (token: string) =>
       request<{ ok: boolean }>('/api/push/register', { method: 'DELETE', body: { token } }),
+    templates: () =>
+      request<{
+        templates: Array<{
+          key: string;
+          group: string;
+          label: string;
+          title: string;
+          body: string;
+          placeholders: string[];
+        }>;
+      }>('/api/push/templates'),
+    logEvent: (body: { source: 'local' | 'qa' | 'broadcast'; key: string; title: string; body: string }) =>
+      request<{ ok: boolean; id: string | null }>('/api/push/events', { method: 'POST', body }),
+    syncDecisions: (body: {
+      decisions: Array<{
+        id?: string;
+        decisionId?: string;
+        candidate?: string;
+        family?: string;
+        score?: number;
+        result?: string;
+        decision?: string;
+        reason?: string | null;
+        blocked?: string | null;
+        template?: string;
+        templateKey?: string;
+        route?: string;
+        createdAt?: string;
+        scheduledAt?: string | null;
+        fireAt?: string | null;
+        revalidatedAt?: string;
+      }>;
+      fatigue?: {
+        selectedFrequency?: string;
+        baseDailyCap?: number;
+        adaptiveDailyCap?: number;
+        ewma?: number;
+      };
+    }) => request<{ ok: boolean; upserted: number; received: number }>('/api/push/decisions', { method: 'POST', body }),
+    syncOutcomes: (body: {
+      outcomes: Array<{
+        decisionId?: string;
+        outcome?: string;
+        actionKey?: string;
+        action?: string;
+        occurredAt?: string;
+      }>;
+    }) => request<{ ok: boolean; upserted: number; received: number; duplicates?: number }>('/api/push/outcomes', { method: 'POST', body }),
+    syncPermission: (body: { status: 'enabled' | 'disabled' | 'provisional' | 'unknown'; platform?: 'ios' | 'android' | 'web' }) =>
+      request<{ ok: boolean; changed?: boolean; status?: string }>('/api/push/permission', { method: 'POST', body }),
+    syncProductEvents: (body: {
+      events: Array<{
+        kind: string;
+        category?: string;
+        entityId?: string;
+        weekKey?: string;
+        insightId?: string;
+        source?: string;
+        occurredAt?: string;
+      }>;
+    }) => request<{ ok: boolean; upserted: number }>('/api/push/events/product', { method: 'POST', body }),
+    syncDoseEvents: (body: {
+      events: Array<{
+        medicationId: string;
+        date: string;
+        time: string;
+        status: 'taken' | 'skipped';
+        source?: 'app' | 'notification';
+        occurredAt?: string;
+      }>;
+    }) => request<{ ok: boolean; upserted: number }>('/api/push/dose-events', { method: 'POST', body }),
+  },
+
+  activity: {
+    ping: (activityType?: string) =>
+      request<{ ok: boolean }>('/api/check-in/session', {
+        method: 'POST',
+        body: activityType ? { activityType } : {},
+      }),
+  },
+
+  location: {
+    get: () =>
+      request<{ ok: boolean; location: UserLocationSnapshot; profile: HealthProfile | null }>('/api/location'),
+    ping: (body: {
+      lat?: number;
+      lng?: number;
+      accuracy?: number | null;
+      enabled?: boolean;
+      prompted?: boolean;
+      source?: 'grant' | 'skip' | 'heartbeat' | 'watch' | 'revoke';
+    }) =>
+      request<{ ok: boolean; location: UserLocationSnapshot; profile: HealthProfile | null }>('/api/location', {
+        method: 'POST',
+        body,
+      }),
   },
 
   ai: {
@@ -1073,32 +1233,61 @@ export const api = {
         input?: import('@/types/symptoms').SymptomCheckPayload;
       }>(`/api/ai/symptom-result/${recordId}`),
 
-    extractLab: (params: {
+    extractLab: async (params: {
       files: Array<{ uri: string; name: string; mimeType: string }>;
       context?: string;
       recordId?: string;
       append?: boolean;
     }) => {
-      const formData = new FormData();
-      for (const file of params.files) {
-        formData.append('files', {
-          uri: file.uri,
-          name: file.name,
-          type: file.mimeType,
-        } as unknown as Blob);
-      }
-      if (params.context) formData.append('context', params.context);
-      if (params.recordId) formData.append('recordId', params.recordId);
-      if (params.append) formData.append('append', '1');
-
-      return request<{
+      type ExtractLabResponse = {
         record: MedicalRecord;
         notes: string;
         labExtract: import('@/types/lab').LabExtract;
         pipeline: { extractor: { provider: string; model?: string }; reasoning: null };
         usage: Usage;
-      }>('/api/ai/extract-lab', { method: 'POST', formData });
+      };
+      const extra: Record<string, string> = {};
+      if (params.context) extra.context = params.context;
+      if (params.recordId) extra.recordId = params.recordId;
+      if (params.append) extra.append = '1';
+
+      if (Platform.OS !== 'web' && params.files.length === 1) {
+        return uploadNativeMultipart<ExtractLabResponse>('/api/ai/extract-lab', params.files[0], 'files', extra);
+      }
+
+      const formData = new FormData();
+      for (const file of params.files) {
+        await appendUploadFile(formData, 'files', file);
+      }
+      for (const [key, value] of Object.entries(extra)) {
+        formData.append(key, value);
+      }
+      return request<ExtractLabResponse>('/api/ai/extract-lab', { method: 'POST', formData });
     },
+
+    alignLab: (analytes: Array<{ key: string; nameKa: string; nameEn: string; unit: string }>) =>
+      request<{
+        maps: Array<{ from: string; to: string; nameKa: string; nameEn: string }>;
+        joined: number;
+        already: number;
+        leftover: string[];
+        model: string;
+        engine: string;
+        usage: Usage;
+      }>('/api/ai/align-lab', { method: 'POST', body: { analytes }, timeoutMs: 90_000 }),
+
+    weightAdvice: (body: {
+      weightKg: number;
+      heightCm?: number;
+      bmi?: number;
+      category?: 'underweight' | 'normal' | 'overweight' | 'obese';
+      targetKg?: number;
+    }) =>
+      request<{ blurb: string; tips: string[]; model: string; usage: Usage }>('/api/ai/weight-advice', {
+        method: 'POST',
+        body,
+        timeoutMs: 45_000,
+      }),
 
     explainLab: (body: {
       parameters: import('@/types/lab').LabParameter[];
@@ -1112,30 +1301,33 @@ export const api = {
         body,
       }),
 
-    analyzeImage: (params: {
+    analyzeImage: async (params: {
       uri: string;
       name: string;
       mimeType: string;
       kind: 'LAB' | 'IMAGING' | 'SKIN';
       context?: string;
     }) => {
-      const formData = new FormData();
-      // React Native's FormData takes this shape; the DOM typings disagree, hence the cast.
-      formData.append('file', {
-        uri: params.uri,
-        name: params.name,
-        type: params.mimeType,
-      } as unknown as Blob);
-      formData.append('kind', params.kind);
-      if (params.context) formData.append('context', params.context);
-
-      return request<{
+      type AnalyzeImageResponse = {
         record: MedicalRecord;
         analysis: string;
         labExtract?: import('@/types/lab').LabExtract | null;
         pipeline: { extractor: { provider: string; model: string }; reasoning: { provider: string; model: string } };
         usage: Usage;
-      }>('/api/ai/analyze-image', { method: 'POST', formData });
+      };
+      const file = { uri: params.uri, name: params.name, mimeType: params.mimeType };
+      const extra: Record<string, string> = { kind: params.kind };
+      if (params.context) extra.context = params.context;
+
+      if (Platform.OS !== 'web') {
+        return uploadNativeMultipart<AnalyzeImageResponse>('/api/ai/analyze-image', file, 'file', extra);
+      }
+
+      const formData = new FormData();
+      await appendUploadFile(formData, 'file', file);
+      formData.append('kind', params.kind);
+      if (params.context) formData.append('context', params.context);
+      return request<AnalyzeImageResponse>('/api/ai/analyze-image', { method: 'POST', formData });
     },
 
     skincare: (body: { skinType: string; concerns: string[]; age?: number; currentProducts?: string }) =>

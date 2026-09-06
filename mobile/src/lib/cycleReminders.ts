@@ -1,13 +1,13 @@
-import { ka } from '@/i18n/ka';
 import type { CycleBundle } from '@/lib/api';
-import { addDaysToKey, daysBetween, parseDateKey } from '@/lib/cyclePhase';
+import { addDaysToKey, parseDateKey } from '@/lib/cyclePhase';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import {
   cancelCycleReminders,
   scheduleCycleDateNotification,
 } from '@/lib/notifications';
 import type { CycleReminderPrefs } from '@/lib/cycleReminderPrefs';
-import { cycleHonestyFlags, periodSoonBody, ttcReminderCopy } from '@/lib/cycleHonesty';
+import { cycleHonestyFlags } from '@/lib/cycleHonesty';
+import { applyPushCopy } from '@/lib/pushCopy';
 
 const REMINDER_HOUR = 9;
 const REMINDER_MINUTE = 0;
@@ -42,19 +42,20 @@ export async function syncCycleReminders(
   const schedule = async (
     id: string,
     ymd: string,
-    title: string,
-    body: string,
+    templateKey: string,
+    vars: Record<string, string | number | undefined>,
     route: string,
   ) => {
     if (!isFutureYmd(ymd) && ymd !== today) return;
     const date = reminderDate(ymd);
     if (date.getTime() <= Date.now()) return;
+    const copy = applyPushCopy(templateKey, vars);
     const ok = await scheduleCycleDateNotification({
       identifier: `${id}:${ymd}`,
-      title,
-      body,
+      title: copy.title,
+      body: copy.body,
       date,
-      data: { route },
+      data: { route, templateKey },
     });
     if (ok) count += 1;
   };
@@ -66,81 +67,42 @@ export async function syncCycleReminders(
       await schedule(
         'period_soon',
         soon,
-        ka.cycle.remPeriodSoon,
-        periodSoonBody(prefs.periodDaysBefore, flags),
+        'cycle-period-soon',
+        { days: flags.cautious ? `დაახლოებით ${prefs.periodDaysBefore}` : String(prefs.periodDaysBefore) },
         '/cycle',
       );
     }
-    await schedule(
-      'period_start',
-      start,
-      ka.cycle.remPeriodStart,
-      ka.cycle.remPeriodStartBody,
-      '/cycle/log',
-    );
+    await schedule('period_start', start, 'cycle-period-start', {}, '/cycle/log');
   }
 
   const allowFertilityReminders = bundle.contraception?.presentation?.showFertilityMarkers !== false;
 
   if (mode === 'TRY_TO_CONCEIVE' && prefs.ovulation && allowFertilityReminders) {
     if (predictions.ovulationDate) {
-      const ovulation = ttcReminderCopy('ovulation', flags);
-      await schedule(
-        'ovulation',
-        predictions.ovulationDate,
-        ovulation.title,
-        ovulation.body,
-        '/cycle/log?tab=more',
-      );
+      await schedule('ovulation', predictions.ovulationDate, 'cycle-ovulation', {}, '/cycle/log?tab=more');
     }
     if (predictions.fertileWindow?.start) {
-      const fertile = ttcReminderCopy('fertile', flags);
-      await schedule(
-        'fertile',
-        predictions.fertileWindow.start,
-        fertile.title,
-        fertile.body,
-        '/cycle',
-      );
+      await schedule('fertile', predictions.fertileWindow.start, 'cycle-fertile', {}, '/cycle');
     }
   }
 
   if (prefs.pms && allowFertilityReminders && mode !== 'PREGNANCY' && profile.lastPeriodStart && predictions.ovulationDate) {
-    const pmsStart = addDaysToKey(predictions.ovulationDate, 2);
-    await schedule(
-      'pms',
-      pmsStart,
-      ka.cycle.remPms,
-      ka.cycle.remPmsBody,
-      '/cycle',
-    );
+    await schedule('pms', addDaysToKey(predictions.ovulationDate, 2), 'cycle-pms', {}, '/cycle');
   }
 
   if (mode === 'TRY_TO_CONCEIVE' && prefs.opk && allowFertilityReminders && predictions.fertileWindow?.start) {
-    await schedule(
-      'opk',
-      predictions.fertileWindow.start,
-      ka.cycle.remOpkTitle,
-      ka.cycle.remOpkBody,
-      '/cycle/log?tab=more',
-    );
+    await schedule('opk', predictions.fertileWindow.start, 'cycle-opk', {}, '/cycle/log?tab=more');
   }
 
   if (mode === 'TRY_TO_CONCEIVE' && prefs.bbt && allowFertilityReminders) {
     const hasBbtToday = logs.some((l) => l.date === today && l.bbt != null);
     if (!hasBbtToday) {
-      await schedule('bbt', today, ka.cycle.remBbtTitle, ka.cycle.remBbtBody, '/cycle/log?tab=more');
+      await schedule('bbt', today, 'cycle-bbt', {}, '/cycle/log?tab=more');
     }
   }
 
   if (prefs.dailyLog && !hasLogToday) {
-    await schedule(
-      'log_nudge',
-      today,
-      ka.cycle.remLog,
-      ka.cycle.remLogBody,
-      '/cycle/log',
-    );
+    await schedule('log_nudge', today, 'cycle-log', {}, '/cycle/log');
   }
 
   return count;

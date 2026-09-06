@@ -135,19 +135,6 @@ export default function SignIn() {
           </View>
 
           <SignInSwitchLink />
-
-          <Pressable accessibilityRole="button" onPress={() => router.push('/(auth)/phone')} style={{ alignItems: 'center', paddingVertical: 8 }}>
-            <Text
-              style={{
-                fontFamily: 'NotoSansGeorgian_600SemiBold',
-                fontSize: 14,
-                lineHeight: 20,
-                color: auth.linkColor,
-              }}
-            >
-              {ka.auth.continueWithPhone}
-            </Text>
-          </Pressable>
         </View>
       </AuthShell>
 

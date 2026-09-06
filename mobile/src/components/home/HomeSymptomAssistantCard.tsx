@@ -88,7 +88,7 @@ export function HomeSymptomAssistantCard({ firstName, onPress }: Props) {
         >
           <VideoView
             player={player}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             contentFit="cover"
             nativeControls={false}
             fullscreenOptions={{ enable: false }}
@@ -97,14 +97,14 @@ export function HomeSymptomAssistantCard({ firstName, onPress }: Props) {
           />
           <View
             pointerEvents="none"
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(20,184,166,0.14)' }]}
+            style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20,184,166,0.14)' }]}
           />
           <LinearGradient
             colors={[...fade]}
             locations={[0, 0.38, 0.64, 1]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
 

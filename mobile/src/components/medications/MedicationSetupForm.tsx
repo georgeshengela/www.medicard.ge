@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -33,13 +33,15 @@ import {
 import { FIGMA_MEDS, useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_HEIGHT } from '@/components/navigation/FloatingTabBar';
 import {
   DAY_LETTERS,
   addYearsToIso,
   daysSummaryKa,
   defaultTimesForCount,
   formatFrequencyTimes,
-  formatTime12h,
+  formatTime24h,
   todayYmd,
 } from '@/lib/medications.shared';
 import type { MedicationForm, PillShape } from '@/types/medications';
@@ -68,12 +70,15 @@ export function MedicationSetupForm({
   onSaved,
 }: Props) {
   const FIGMA_MEDS = useFigmaMeds();
+  const insets = useSafeAreaInsets();
+  const tabClearance = TAB_BAR_HEIGHT + Math.max(insets.bottom, 8);
+  const ctaHeight = FIGMA_MEDS.inputHeight + 32;
   const [medName] = useState(initialName);
   const [form, setForm] = useState<MedicationForm>('pills');
-  const [amount, setAmount] = useState(3);
+  const [amount, setAmount] = useState(1);
   const [timesPerDay, setTimesPerDay] = useState(1);
   const [times, setTimes] = useState<string[]>(['10:30']);
-  const [days, setDays] = useState<number[]>([0, 5, 6]);
+  const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [startDate, setStartDate] = useState(todayYmd());
   const [endDate, setEndDate] = useState(addYearsToIso(todayYmd(), 1));
   const [refillReminder, setRefillReminder] = useState(true);
@@ -87,6 +92,18 @@ export function MedicationSetupForm({
   const [timeSheet, setTimeSheet] = useState(false);
   const [timeEditIndex, setTimeEditIndex] = useState(0);
   const [shapeSheet, setShapeSheet] = useState(false);
+
+  useEffect(() => {
+    if (medName.trim().length < 2) return;
+    void import('@/lib/mediEngagePrefs').then(({ saveUnfinishedDraft }) =>
+      saveUnfinishedDraft({
+        kind: 'medication_add',
+        route: `/medications/add/setup?name=${encodeURIComponent(medName.trim())}`,
+        name: medName.trim(),
+        updatedAt: Date.now(),
+      }),
+    );
+  }, [medName]);
 
   const dosageLabel = useMemo(() => `${amount} ${ka.meds.formLabels[form]}`, [amount, form]);
   const genericLine =
@@ -151,6 +168,7 @@ export function MedicationSetupForm({
           strength,
         },
       });
+      await import('@/lib/mediEngagePrefs').then(({ clearUnfinishedDraft }) => clearUnfinishedDraft('medication_add'));
       onSaved();
     } catch (err) {
       Alert.alert(ka.common.error, err instanceof ApiError ? err.message : ka.common.error);
@@ -160,8 +178,11 @@ export function MedicationSetupForm({
   };
 
   return (
-    <>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: tabClearance + ctaHeight + 24 }}
+      >
         <View style={{ alignItems: 'center', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8, gap: 24 }}>
           <View
             style={{
@@ -236,7 +257,7 @@ export function MedicationSetupForm({
               <MedFieldLabel>{timesPerDay > 1 ? `${ka.meds.timesLabel} ${index + 1}` : ka.meds.timesLabel}</MedFieldLabel>
               <MedInputShell onPress={() => openTimePicker(index)} style={fieldShellStyle}>
                 <Clock size={18} color={FIGMA_MEDS.textMuted} strokeWidth={2} />
-                <Text style={{ flex: 1, fontSize: 16, color: FIGMA_MEDS.textSecondary }}>{formatTime12h(time)}</Text>
+                <Text style={{ flex: 1, fontSize: 16, color: FIGMA_MEDS.textSecondary }}>{formatTime24h(time)}</Text>
                 <ChevronDown size={18} color={FIGMA_MEDS.textMuted} />
               </MedInputShell>
             </View>
@@ -392,7 +413,7 @@ export function MedicationSetupForm({
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: 0,
+          bottom: tabClearance,
           padding: 16,
           backgroundColor: FIGMA_MEDS.white,
           borderTopWidth: 1,
@@ -454,6 +475,6 @@ export function MedicationSetupForm({
         onClose={() => setShapeSheet(false)}
         onApply={setPillShape}
       />
-    </>
+    </View>
   );
 }

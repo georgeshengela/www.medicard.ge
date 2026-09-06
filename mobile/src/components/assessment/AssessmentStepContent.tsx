@@ -13,7 +13,7 @@ import { BloodTypeSelector } from '@/components/assessment/BloodTypeSelector';
 import { BodyTypeCarousel } from '@/components/assessment/BodyTypeCarousel';
 import { FitnessLevelSlider } from '@/components/assessment/FitnessLevelSlider';
 import { GenderSelector } from '@/components/assessment/GenderSelector';
-import { LabelWheelPicker } from '@/components/assessment/LabelWheelPicker';
+import { CheckupFrequencyList } from '@/components/assessment/CheckupFrequencyList';
 import { MoodCarousel } from '@/components/assessment/MoodCarousel';
 import { DietChoiceGrid } from '@/components/assessment/DietChoiceGrid';
 import { SegmentScale } from '@/components/assessment/SegmentScale';
@@ -507,17 +507,13 @@ export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: P
         />
       );
 
-    case 'checkup-frequency': {
-      const values = Object.keys(ka.assessment.options.checkupFrequency);
+    case 'checkup-frequency':
       return (
-        <LabelWheelPicker
-          values={values}
-          selected={form.checkupFrequency ?? values[2] ?? 'MONTHLY'}
+        <CheckupFrequencyList
+          value={form.checkupFrequency}
           onSelect={(checkupFrequency) => onChange({ checkupFrequency })}
-          formatLabel={(v) => optionLabel('checkupFrequency', v)}
         />
       );
-    }
 
     case 'complete':
       return null;

@@ -29,6 +29,7 @@ import {
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
 import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
+import { HEALTH_SCORE_BANDS, displayConfidencePercent, healthScoreLabelKa } from '@/lib/healthScore';
 import { finishOnboarding } from '@/lib/profileSetupFlow';
 import { useAuth } from '@/store/AuthContext';
 import { analysisFromProfile, type OnboardingScoreRange } from '@/types/onboardingAnalysis';
@@ -212,7 +213,7 @@ export default function ProfileSetupResultsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_RESULT.pageBg, paddingTop: welcomeTopInset(insets.top) }}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 16 }}
+        contentContainerStyle={{ paddingBottom: 220 + insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
         {/* Title — Figma py 24 px 16 */}
@@ -231,11 +232,13 @@ export default function ProfileSetupResultsScreen() {
           </Text>
         </View>
 
-        <HealthScoreGauge score={analysis.score} labelKa={analysis.labelKa} />
+        <HealthScoreGauge score={analysis.score} labelKa={healthScoreLabelKa(analysis.score)} />
 
         {/* Confidence badge + summary — Figma 8845:313570 */}
         <View style={{ padding: 16, gap: 16, alignItems: 'center' }}>
-          <HealthScoreConfidenceBadge confidence={analysis.confidence} />
+          {displayConfidencePercent(analysis.confidence) != null ? (
+            <HealthScoreConfidenceBadge confidence={displayConfidencePercent(analysis.confidence)!} />
+          ) : null}
           {deltaLabel ? (
             <Text
               style={{
@@ -280,7 +283,7 @@ export default function ProfileSetupResultsScreen() {
         <View style={{ paddingVertical: 8 }}>
           <SectionHeader title={ka.profileSetup.scoreRange} />
           <View style={{ paddingHorizontal: 16, paddingTop: 4, gap: 8 }}>
-            {analysis.scoreRanges.map((range, idx) => {
+            {HEALTH_SCORE_BANDS.map((range, idx) => {
               const dotColor = SCORE_RANGE_DOT_COLORS[idx] ?? range.color;
               const open = expandedRange === idx;
 

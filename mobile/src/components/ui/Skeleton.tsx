@@ -66,7 +66,7 @@ export function Bone({ width = '100%', height = 14, radius = 10, style }: BonePr
     <View style={[{ width, height, borderRadius: radius, overflow: 'hidden' }, style]}>
       <Animated.View
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           { backgroundColor: fill, borderRadius: radius, opacity },
         ]}
       />

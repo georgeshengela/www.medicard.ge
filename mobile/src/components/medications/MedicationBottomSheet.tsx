@@ -66,7 +66,7 @@ function createMedSheetStyles(t: ReturnType<typeof useFigmaMeds>) {
     justifyContent: 'flex-end',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: OVERLAY,
   },
   sheet: {

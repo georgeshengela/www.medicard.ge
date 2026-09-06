@@ -13,6 +13,7 @@ import { normalizeSmsDestination } from '../lib/sms.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 import { claimDailyCheckIn } from '../lib/checkIn.js';
+import { recordAppActivityFromRequest } from '../lib/appActivity.js';
 import { deleteUserAccount } from '../lib/deleteUser.js';
 
 export const authRouter = Router();
@@ -87,32 +88,68 @@ authRouter.post(
     }
 
     const packageId = await ensureFreePackageId();
-    let created;
+    const passwordHash = await bcrypt.hash(data.password, 12);
+    let user;
     try {
-      created = await prisma.user.create({
-        data: {
-          email: data.email,
-          fullName: data.fullName,
-          phone: data.phone ?? null,
-          gender: data.gender ?? null,
-          birthDate: data.birthDate ?? null,
-          passwordHash: await bcrypt.hash(data.password, 12),
-          packageId,
-          status: 'ACTIVE',
-        },
+      user = await prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({
+          data: {
+            email: data.email,
+            fullName: data.fullName,
+            phone: data.phone ?? null,
+            gender: data.gender ?? null,
+            birthDate: data.birthDate ?? null,
+            passwordHash,
+            packageId,
+            status: 'ACTIVE',
+          },
+        });
+        const bundled = await tx.user.findUnique({
+          where: { id: created.id },
+          include: { package: true },
+        });
+        if (!bundled?.id) {
+          throw Object.assign(new Error('REGISTER_UNCONFIRMED'), { code: 'REGISTER_UNCONFIRMED' });
+        }
+        return bundled;
       });
     } catch (err) {
-      if (err?.code === 'P2002' && err?.meta?.target?.includes?.('phone')) {
+      const target = err?.meta?.target;
+      const fields = Array.isArray(target) ? target : target ? [target] : [];
+      const hit = (name) => fields.some((field) => String(field).includes(name));
+      if (err?.code === 'P2002' && hit('phone')) {
         return res.status(409).json(phoneTakenPayload());
+      }
+      if (err?.code === 'P2002' && hit('email')) {
+        return res.status(409).json({ error: 'ამ ელ-ფოსტით მომხმარებელი უკვე რეგისტრირებულია.' });
+      }
+      if (err?.code === 'REGISTER_UNCONFIRMED') {
+        return res.status(500).json({
+          error: 'ანგარიში ვერ შეიქმნა. სცადეთ ხელახლა.',
+          code: 'REGISTER_UNCONFIRMED',
+        });
       }
       throw err;
     }
-    const user = await loadUserBundle(created.id);
+
+    // Fresh connection (Neon pooler) — do not hand out a JWT the next request cannot resolve.
+    let confirmed = null;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      confirmed = await loadUserBundle(user.id);
+      if (confirmed?.id) break;
+      await new Promise((resolve) => setTimeout(resolve, 120 * (attempt + 1)));
+    }
+    if (!confirmed?.id) {
+      return res.status(500).json({
+        error: 'ანგარიში ვერ შეიქმნა. სცადეთ ხელახლა.',
+        code: 'REGISTER_UNCONFIRMED',
+      });
+    }
 
     return res.status(201).json({
-      token: signToken(user),
-      user: publicUser(user),
-      usage: await getUsage(user.id),
+      token: signToken(confirmed),
+      user: publicUser(confirmed),
+      usage: await getUsage(confirmed.id),
     });
   }),
 );
@@ -345,6 +382,7 @@ authRouter.get(
     } catch (error) {
       console.warn('[check-in] claim on /me failed', error?.code || error?.message);
     }
+    void recordAppActivityFromRequest(req);
 
     const [usage, counts, healthProfile] = await Promise.all([
       getUsage(req.user.id),

@@ -18,6 +18,7 @@ import {
   Footprints,
   Image as ImageIcon,
   Lock,
+  MapPin,
   RotateCcw,
   ScanFace,
   ShieldCheck,
@@ -35,10 +36,12 @@ import {
   connectHealthConnection,
   disableBiometricLock,
   disableCyclePrivacyLock,
+  disableLocationConnection,
   disablePushConnection,
   disconnectHealthConnection,
   enableBiometricLock,
   enableCyclePrivacyLock,
+  enableLocationConnection,
   enablePushConnection,
   loadAppPermissions,
   openAppSystemSettings,
@@ -51,6 +54,8 @@ import {
   type AppPermissionsSnapshot,
 } from '@/lib/appPermissions';
 import type { HealthConnectResult } from '@/lib/healthSync';
+import { livingPlaceLine } from '@/lib/userLocation';
+import { useAuth } from '@/store/AuthContext';
 
 function explainHealthFailure(result: Extract<HealthConnectResult, { ok: false }>): string {
   switch (result.reason) {
@@ -78,6 +83,8 @@ export default function PermissionsScreen() {
   const FIGMA_HEALTH_METRICS = useFigmaHealthMetrics();
   const colors = useThemeColors();
   const router = useRouter();
+  const { user, healthProfile, refreshHealthProfile } = useAuth();
+  const cycleUnlocked = user?.gender === 'FEMALE';
   const insets = useSafeAreaInsets();
   const [snapshot, setSnapshot] = useState<AppPermissionsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,13 +105,13 @@ export default function PermissionsScreen() {
 
   const reload = useCallback(async () => {
     try {
-      const data = await loadAppPermissions();
+      const data = await loadAppPermissions(healthProfile);
       setSnapshot(data);
       return data;
     } catch {
       return null;
     }
-  }, []);
+  }, [healthProfile]);
 
   useFocusEffect(
     useCallback(() => {
@@ -162,8 +169,14 @@ export default function PermissionsScreen() {
           throw new Error('notif');
         }
         const registered = await enablePushConnection();
-        if (!registered) {
-          showToast(ka.meds.notificationsDenied);
+        if (!registered.ok) {
+          showToast(
+            registered.reason === 'expo_go'
+              ? ka.permissions.pushRegisterExpoGo
+              : registered.reason === 'permission'
+                ? ka.meds.notificationsDenied
+                : ka.permissions.pushRegisterToken,
+          );
           throw new Error('push');
         }
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
@@ -185,6 +198,27 @@ export default function PermissionsScreen() {
           }),
       },
     ]);
+  };
+
+  const toggleLocation = async (next: boolean) => {
+    if (next) {
+      await withBusy('location', async () => {
+        const result = await enableLocationConnection();
+        if (!result.granted) {
+          openSettingsAlert(ka.permissions.locationDeniedHint, openAppSystemSettings);
+          throw new Error('location');
+        }
+        await refreshHealthProfile();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+        showToast(ka.permissions.locationEnabledToast);
+      }).catch(() => undefined);
+      return;
+    }
+    await withBusy('location-off', async () => {
+      await disableLocationConnection();
+      await refreshHealthProfile();
+      showToast(ka.permissions.locationDisabledToast);
+    });
   };
 
   const toggleCamera = async (next: boolean) => {
@@ -262,7 +296,7 @@ export default function PermissionsScreen() {
     ]);
   };
 
-  const notificationsOn = snapshot?.push.permission === 'granted';
+  const notificationsOn = snapshot?.push.enabled === true;
 
   return (
     <View style={{ flex: 1, backgroundColor: FIGMA_HEALTH_METRICS.pageBg }}>
@@ -384,8 +418,17 @@ export default function PermissionsScreen() {
                 value={notificationsOn}
                 disabled={!snapshot?.push.device}
                 loading={busyId === 'notifications' || busyId === 'notifications-off'}
-                isLast
                 onValueChange={(next) => void toggleNotifications(next)}
+              />
+              <PermissionToggleRow
+                icon={MapPin}
+                iconColor="#14B8A6"
+                label={ka.permissions.locationTitle}
+                hint={livingPlaceLine(healthProfile) || undefined}
+                value={snapshot?.location.enabled === true}
+                loading={busyId === 'location' || busyId === 'location-off'}
+                isLast
+                onValueChange={(next) => void toggleLocation(next)}
               />
             </PermissionGroup>
           </View>
@@ -422,6 +465,7 @@ export default function PermissionsScreen() {
             </PermissionGroup>
           </View>
 
+          {cycleUnlocked ? (
           <View style={{ gap: 8 }}>
             <PermissionSectionLabel title={ka.permissions.sectionPrivacy} />
             <PermissionGroup>
@@ -436,6 +480,7 @@ export default function PermissionsScreen() {
               />
             </PermissionGroup>
           </View>
+          ) : null}
 
           <View style={{ gap: 8, marginTop: 4 }}>
             <PermissionSectionLabel title={ka.permissions.sectionDanger} />

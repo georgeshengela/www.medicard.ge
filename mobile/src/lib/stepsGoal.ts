@@ -2,8 +2,16 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { ka } from '@/i18n/ka';
 import { api, type User } from '@/lib/api';
-import { cancelNotificationsByPrefix, NOTIF_PREFIX, requestNotificationPermission } from '@/lib/notifications';
+import {
+  cancelNotificationsByPrefix,
+  NOTIF_PREFIX,
+  STEPS_CHANNEL_ID,
+  requestNotificationPermission,
+} from '@/lib/notifications';
+import { expoWeekdayFromMonday } from '@/lib/notificationPlan';
 import { getPreference, setPreference } from '@/lib/storage';
+import { applyPushCopy } from '@/lib/pushCopy';
+import { getCachedTodaySteps } from '@/lib/healthDataSync';
 import { archiveReachedStepsGoal } from '@/lib/stepsGoalHistory';
 import type { StepsGoal, StepsGoalProgress } from '@/types/stepsGoal';
 
@@ -170,11 +178,6 @@ export function createStepsGoalDraft(): StepsGoal {
   };
 }
 
-/** Expo weekday: 1 = Sunday … 7 = Saturday. Our days: 0 = Monday. */
-function expoWeekday(mondayIndex: number): number {
-  return mondayIndex === 6 ? 1 : mondayIndex + 2;
-}
-
 export async function syncStepsGoalReminders(goal: StepsGoal): Promise<void> {
   await cancelNotificationsByPrefix(NOTIF_PREFIX.steps);
   if (!goal.reminderEnabled || goal.reminderDays.length === 0) return;
@@ -183,21 +186,26 @@ export async function syncStepsGoalReminders(goal: StepsGoal): Promise<void> {
   const granted = await requestNotificationPermission();
   if (!granted) return;
 
+  const todaySteps = await getCachedTodaySteps();
+  const copy = applyPushCopy('steps', {
+    steps: todaySteps != null ? todaySteps.toLocaleString('ka-GE') : '',
+  });
   for (const day of goal.reminderDays) {
     const identifier = `${NOTIF_PREFIX.steps}${goal.id}:${day}`;
     await Notifications.scheduleNotificationAsync({
       identifier,
       content: {
-        title: ka.stepsGoal.reminderTitle,
-        body: ka.stepsGoal.reminderBody(goal.targetSteps),
+        title: copy.title,
+        body: copy.body,
         sound: 'default',
-        data: { type: 'steps-goal', goalId: goal.id },
+        data: { type: 'steps-goal', templateKey: 'steps', goalId: goal.id, route: '/health-metrics/steps' },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-        weekday: expoWeekday(day),
+        weekday: expoWeekdayFromMonday(day),
         hour: goal.reminderHour,
         minute: goal.reminderMinute,
+        ...(Platform.OS === 'android' ? { channelId: STEPS_CHANNEL_ID } : {}),
       },
     });
   }

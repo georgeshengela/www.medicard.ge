@@ -46,4 +46,3 @@ export default function Index() {
 
   return <Redirect href={href as never} />;
 }
-

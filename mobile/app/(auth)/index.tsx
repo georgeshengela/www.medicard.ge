@@ -3,75 +3,48 @@ import { Animated, Text, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BrandLogo } from '@/components/ui/BrandLogo';
+import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 
-const MIN_BRAND_MS = 1200;
-const MIN_LOADING_MS = 1000;
+const FILL_MS = 1600;
 
-/** Figma Splash & Loading — teal brand mark, then water-fill progress. */
+/** Water-fill progress, then welcome. */
 export default function AuthSplash() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height: screenH } = useWindowDimensions();
-  const scale = useRef(new Animated.Value(0.92)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
   const fillHeight = useRef(new Animated.Value(0)).current;
-  const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: 1, friction: 8, tension: 70, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 1, duration: 450, useNativeDriver: true }),
-    ]).start();
-
     let cancelled = false;
     const started = Date.now();
 
-    void (async () => {
-      await wait(Math.max(0, MIN_BRAND_MS - (Date.now() - started)));
-      if (cancelled) return;
-      setLoading(true);
+    const tick = setInterval(() => {
+      const next = Math.min(100, Math.round(((Date.now() - started) / FILL_MS) * 100));
+      setProgress(next);
+      Animated.timing(fillHeight, {
+        toValue: next,
+        duration: 120,
+        useNativeDriver: false,
+      }).start();
+    }, 80);
 
-      const loadStart = Date.now();
-      const tick = setInterval(() => {
-        const elapsed = Date.now() - loadStart;
-        const next = Math.min(100, Math.round((elapsed / MIN_LOADING_MS) * 100));
-        setProgress(next);
-        Animated.timing(fillHeight, {
-          toValue: next,
-          duration: 120,
-          useNativeDriver: false,
-        }).start();
-      }, 80);
-
-      await wait(MIN_LOADING_MS);
+    const done = setTimeout(() => {
       clearInterval(tick);
-      if (cancelled) return;
-
-      router.replace('/(auth)/welcome');
-    })();
+      if (!cancelled) router.replace('/(auth)/welcome');
+    }, FILL_MS);
 
     return () => {
       cancelled = true;
+      clearInterval(tick);
+      clearTimeout(done);
     };
-  }, [router, opacity, scale, fillHeight]);
-
-  if (!loading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-primary-200">
-        <Animated.View style={{ opacity, transform: [{ scale }] }}>
-          <BrandLogo size={96} variant="plain" inverse />
-        </Animated.View>
-      </View>
-    );
-  }
+  }, [router, fillHeight]);
 
   const fillPx = fillHeight.interpolate({
     inputRange: [0, 100],
     outputRange: [0, screenH],
   });
-
   const onWater = progress >= 42;
 
   return (
@@ -123,12 +96,8 @@ export default function AuthSplash() {
         className="absolute left-0 right-0 items-center"
         style={{ bottom: insets.bottom + 32, zIndex: 2 }}
       >
-        <BrandLogo size={52} variant="plain" inverse={progress >= 78} />
+        <MedicardLogoMark size={52} tone={progress >= 78 ? 'inverse' : 'brand'} />
       </View>
     </View>
   );
-}
-
-function wait(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
 }

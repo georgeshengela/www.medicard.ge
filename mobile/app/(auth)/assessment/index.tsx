@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AssessmentCompleteContent } from '@/components/assessment/AssessmentCompleteContent';
 import { AssessmentShell } from '@/components/assessment/AssessmentShell';
 import { AssessmentStepContent, stepCanContinue } from '@/components/assessment/AssessmentStepContent';
@@ -19,6 +19,7 @@ import {
   type AssessmentFormState,
 } from '@/lib/assessmentForm';
 import { nextProfileSetupHref } from '@/lib/onboarding';
+import { findAssessmentQaStepIndex, onboardingDevHref, useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { needsProfileSetup, useAuth } from '@/store/AuthContext';
 
 function resolveNextIndex(from: number, form: AssessmentFormState): number {
@@ -55,9 +56,10 @@ function resolvePrevIndex(from: number, form: AssessmentFormState): number {
   return Math.max(prev, 0);
 }
 
-const PICKER_STEPS = new Set(['birthdate', 'weight', 'height', 'checkup-frequency']);
+const PICKER_STEPS = new Set(['birthdate', 'weight', 'height']);
 const CENTER_STEPS = new Set([
   ...PICKER_STEPS,
+  'checkup-frequency',
   'fitness-level',
   'sleep-level',
   'smoking',
@@ -88,7 +90,9 @@ function hidePrimaryCta(step: AssessmentStep): boolean {
 
 export default function AssessmentScreen() {
   const router = useRouter();
-  const { user, healthProfile, refreshHealthProfile, setHealthProfile, setUser, ready } = useAuth();
+  const params = useLocalSearchParams<{ preview?: string; step?: string }>();
+  const preview = useOnboardingDevPreview();
+  const { user, healthProfile, refreshHealthProfile, setHealthProfile, setUser, ready, signOut } = useAuth();
 
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState<AssessmentFormState | null>(null);
@@ -97,6 +101,9 @@ export default function AssessmentScreen() {
   const [error, setError] = useState<string | null>(null);
   const [allowUnauthedRedirect, setAllowUnauthedRedirect] = useState(false);
   const initialized = useRef(false);
+  const sessionDead = useRef(false);
+  const formRef = useRef<AssessmentFormState | null>(null);
+  const stepIndexRef = useRef(0);
 
   // Sign-up navigates here in the same tick that setUser is scheduled. Wait one
   // frame so we do not bounce a brand-new session back to sign-in.
@@ -113,7 +120,16 @@ export default function AssessmentScreen() {
     let cancelled = false;
     (async () => {
       try {
+        if (!preview) {
+          await api.auth.me();
+        }
         await refreshHealthProfile();
+      } catch (e) {
+        if (!cancelled && e instanceof ApiError && e.isUnauthorized) {
+          sessionDead.current = true;
+          initialized.current = false;
+          setError(e.message);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -121,16 +137,57 @@ export default function AssessmentScreen() {
     return () => {
       cancelled = true;
     };
-  }, [refreshHealthProfile]);
+  }, [preview, refreshHealthProfile]);
 
   useEffect(() => {
-    if (!user || loading || initialized.current) return;
-    const resume = healthProfile?.currentStepIndex ?? 0;
+    if (!user || loading || initialized.current || sessionDead.current) return;
+    let resume = healthProfile?.currentStepIndex ?? 0;
+    if (preview) {
+      const qa = findAssessmentQaStepIndex(params.step);
+      resume = qa >= 0 ? qa : 0;
+    }
     const clamped = Math.min(Math.max(0, resume), ACTIVE_ASSESSMENT_STEPS.length - 1);
     setStepIndex(clamped);
     setForm(formFromProfile(healthProfile, user));
     initialized.current = true;
-  }, [user, healthProfile, loading]);
+  }, [user, healthProfile, loading, preview, params.step]);
+
+  useEffect(() => {
+    if (!preview || !initialized.current) return;
+    const qa = findAssessmentQaStepIndex(params.step);
+    if (qa >= 0) setStepIndex(qa);
+  }, [preview, params.step]);
+
+  formRef.current = form;
+  stepIndexRef.current = stepIndex;
+
+  const persistDraft = useCallback(
+    async (currentForm: AssessmentFormState, index: number) => {
+      if (preview) return;
+      try {
+        const result = await api.healthProfile.update(patchPayloadForStep(currentForm, index));
+        setHealthProfile(result.profile);
+        if (result.user) setUser(result.user);
+      } catch (error) {
+        if (error instanceof ApiError && error.isUnauthorized) {
+          sessionDead.current = true;
+          setError(error.message);
+        }
+      }
+    },
+    [preview, setHealthProfile, setUser, setError],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        const current = formRef.current;
+        if (current && initialized.current) {
+          void persistDraft(current, stepIndexRef.current);
+        }
+      };
+    }, [persistDraft]),
+  );
 
   const step = ACTIVE_ASSESSMENT_STEPS[stepIndex];
   const progress = useMemo(() => assessmentProgressState(stepIndex), [stepIndex]);
@@ -139,21 +196,45 @@ export default function AssessmentScreen() {
   const body = step?.bodyKey ? (ka.assessment.steps as Record<string, string>)[step.bodyKey] : undefined;
 
   const patchForm = useCallback((patch: Partial<AssessmentFormState>) => {
-    setForm((current) => (current ? { ...current, ...patch } : current));
-  }, []);
+    setForm((current) => {
+      if (!current) return current;
+      const next = { ...current, ...patch };
+      formRef.current = next;
+      const shouldPersist =
+        'gender' in patch ||
+        'genderOther' in patch ||
+        'weightUnit' in patch ||
+        'heightUnit' in patch;
+      if (shouldPersist) {
+        void persistDraft(next, stepIndexRef.current);
+      }
+      return next;
+    });
+  }, [persistDraft]);
+
+  const markSessionDead = (e: unknown) => {
+    if (e instanceof ApiError && e.isUnauthorized) {
+      sessionDead.current = true;
+    }
+  };
 
   const persistStep = useCallback(
     async (nextIndex: number, currentForm: AssessmentFormState) => {
+      if (preview) return;
       const payload = patchPayloadForStep(currentForm, nextIndex);
       const result = await api.healthProfile.update(payload);
       setHealthProfile(result.profile);
       if (result.user) setUser(result.user);
     },
-    [setHealthProfile, setUser],
+    [preview, setHealthProfile, setUser],
   );
 
   const finishAssessmentPhase = useCallback(
     async (currentForm: AssessmentFormState) => {
+      if (preview) {
+        router.replace(onboardingDevHref('/(auth)/profile-setup/avatar') as never);
+        return;
+      }
       const result = await api.healthProfile.update({
         ...fullProfilePayload(currentForm, stepIndex),
         extraAnswers: {
@@ -165,7 +246,7 @@ export default function AssessmentScreen() {
       if (result.user) setUser(result.user);
       router.replace('/(auth)/profile-setup/avatar');
     },
-    [router, setHealthProfile, setUser, stepIndex],
+    [preview, router, setHealthProfile, setUser, stepIndex],
   );
 
   const advanceWithPatch = async (patch: Partial<AssessmentFormState>) => {
@@ -182,6 +263,7 @@ export default function AssessmentScreen() {
     try {
       await persistStep(nextIndex, nextForm);
     } catch (e) {
+      markSessionDead(e);
       setStepIndex(prevIndex);
       setForm(form);
       setError(e instanceof ApiError ? e.message : ka.common.error);
@@ -199,6 +281,7 @@ export default function AssessmentScreen() {
       try {
         await finishAssessmentPhase(form);
       } catch (e) {
+        markSessionDead(e);
         setError(e instanceof ApiError ? e.message : ka.common.error);
       } finally {
         setBusy(false);
@@ -214,6 +297,7 @@ export default function AssessmentScreen() {
     try {
       await persistStep(nextIndex, form);
     } catch (e) {
+      markSessionDead(e);
       setStepIndex(prevIndex);
       setError(e instanceof ApiError ? e.message : ka.common.error);
     } finally {
@@ -237,6 +321,7 @@ export default function AssessmentScreen() {
     try {
       await persistStep(nextIndex, form);
     } catch (e) {
+      markSessionDead(e);
       setStepIndex(prevIndex);
       setError(e instanceof ApiError ? e.message : ka.common.error);
     } finally {
@@ -252,6 +337,25 @@ export default function AssessmentScreen() {
     );
   }
 
+  if (!loading && sessionDead.current) {
+    return (
+      <View className="flex-1 items-center justify-center bg-bg-100 px-6">
+        <Text className="text-center font-sans text-base text-state-danger">
+          {error ?? ka.auth.registerNotConfirmed}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            void signOut().then(() => router.replace('/(auth)/sign-in'));
+          }}
+          style={{ marginTop: 20, paddingVertical: 12, paddingHorizontal: 20 }}
+        >
+          <Text className="font-sans-semibold text-base text-primary-200">{ka.auth.signIn}</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (!user) {
     if (!allowUnauthedRedirect) {
       return (
@@ -263,7 +367,7 @@ export default function AssessmentScreen() {
     return <Redirect href="/(auth)/sign-in" />;
   }
 
-  if (needsProfileSetup(healthProfile)) {
+  if (!preview && needsProfileSetup(healthProfile)) {
     return <Redirect href={nextProfileSetupHref(healthProfile, user) as never} />;
   }
 
@@ -302,6 +406,7 @@ export default function AssessmentScreen() {
       scrollContent={stepNeedsScroll(step)}
       centerContent={stepCenterContent(step)}
       fillBody={stepFillBody(step)}
+      ctaInline={step.type === 'checkup-frequency'}
       largeTitle={
         step.type === 'health-goals' ||
         step.type === 'birthdate' ||
@@ -315,7 +420,8 @@ export default function AssessmentScreen() {
         step.type === 'smoking' ||
         step.type === 'diet-habits' ||
         step.type === 'medications-list' ||
-        step.type === 'allergies'
+        step.type === 'allergies' ||
+        step.type === 'checkup-frequency'
       }
       footerBelow={
         step.type === 'allergies' ? (
@@ -333,6 +439,23 @@ export default function AssessmentScreen() {
               }}
             >
               {ka.assessment.noAllergies}
+            </Text>
+          </Pressable>
+        ) : step.type === 'checkup-frequency' ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void advanceWithPatch({ checkupFrequency: 'NEVER' })}
+            style={{ alignItems: 'center', justifyContent: 'center', height: 22 }}
+          >
+            <Text
+              style={{
+                fontFamily: 'NotoSansGeorgian_600SemiBold',
+                fontSize: 16,
+                lineHeight: 22,
+                color: '#14B8A6',
+              }}
+            >
+              {ka.assessment.neverCheckup}
             </Text>
           </Pressable>
         ) : null

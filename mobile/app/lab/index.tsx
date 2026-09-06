@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlaskConical, Plus } from 'lucide-react-native';
+import { LabAlignCard } from '@/components/lab/LabAlignCard';
 import { LabFilterBar } from '@/components/lab/LabFilterBar';
 import { LabBackChevron, LabChevronRight } from '@/components/lab/LabIcons';
 import { LabLogRow } from '@/components/lab/LabLogRow';
@@ -18,7 +19,7 @@ export default function LabHubScreen() {
   const T = useFigmaLab();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { dates, byDate, panels, loading } = useLab();
+  const { dates, byDate, panels, loading, replaceAll } = useLab();
   const [mode, setMode] = useState<'days' | 'watch'>('days');
   const [query, setQuery] = useState('');
   const [flag, setFlag] = useState<LabFlagFilter>('watch');
@@ -75,6 +76,7 @@ export default function LabHubScreen() {
         </Text>
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32, gap: 16 }} showsVerticalScrollIndicator={false}>
+        {dates.length ? <LabAlignCard panels={panels} onApplied={replaceAll} /> : null}
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <StatCard
             label={ka.lab.testsCount}

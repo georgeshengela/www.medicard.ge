@@ -21,10 +21,22 @@ import {
   cancelCycleReminders,
   getNotificationPermissionStatus,
   getScheduledReminderCounts,
+  isPushOptedIn,
   registerPushTokenWithServer,
   requestNotificationPermission,
+  setPushOptedIn,
   unregisterPushFromServer,
+  type PushRegisterResult,
 } from '@/lib/notifications';
+import { resolvePushToggleOn } from '@/lib/pushOptIn';
+import type { HealthProfile } from '@/lib/api';
+import {
+  getLocationPermissionState,
+  grantUserLocation,
+  locationFromProfile,
+  revokeUserLocation,
+  type LocationPermissionState,
+} from '@/lib/userLocation';
 
 export type ExpoPermissionState = 'granted' | 'denied' | 'undetermined';
 
@@ -37,6 +49,7 @@ export type AppPermissionsSnapshot = {
   };
   push: {
     permission: ExpoPermissionState;
+    enabled: boolean;
     device: boolean;
   };
   localReminders: {
@@ -58,6 +71,10 @@ export type AppPermissionsSnapshot = {
     enabledInApp: boolean;
   };
   cyclePrivacyLock: boolean;
+  location: {
+    permission: LocationPermissionState;
+    enabled: boolean;
+  };
 };
 
 function mapPermissionStatus(status: Notifications.PermissionStatus | ImagePicker.PermissionStatus): ExpoPermissionState {
@@ -70,10 +87,11 @@ function isExpoGo(): boolean {
   return Constants.appOwnership === 'expo';
 }
 
-export async function loadAppPermissions(): Promise<AppPermissionsSnapshot> {
+export async function loadAppPermissions(profile?: HealthProfile | null): Promise<AppPermissionsSnapshot> {
   const [
     healthConnected,
     pushPermission,
+    pushOptedIn,
     reminderCounts,
     cameraPermission,
     photosPermission,
@@ -81,9 +99,11 @@ export async function loadAppPermissions(): Promise<AppPermissionsSnapshot> {
     isEnrolled,
     biometricEnabled,
     cycleLock,
+    locationPermission,
   ] = await Promise.all([
     isHealthSyncEnabled().catch(() => false),
     getNotificationPermissionStatus().catch(() => 'undetermined' as const),
+    isPushOptedIn().catch(() => false),
     getScheduledReminderCounts(),
     ImagePicker.getCameraPermissionsAsync().catch(() => ({ status: ImagePicker.PermissionStatus.UNDETERMINED })),
     ImagePicker.getMediaLibraryPermissionsAsync().catch(() => ({ status: ImagePicker.PermissionStatus.UNDETERMINED })),
@@ -91,6 +111,7 @@ export async function loadAppPermissions(): Promise<AppPermissionsSnapshot> {
     LocalAuthentication.isEnrolledAsync().catch(() => false),
     isBiometricEnabled().catch(() => false),
     isCyclePrivacyLockEnabled().catch(() => false),
+    getLocationPermissionState().catch(() => 'undetermined' as const),
   ]);
 
   return {
@@ -102,6 +123,7 @@ export async function loadAppPermissions(): Promise<AppPermissionsSnapshot> {
     },
     push: {
       permission: pushPermission,
+      enabled: resolvePushToggleOn(pushPermission === 'granted', pushOptedIn),
       device: Device.isDevice,
     },
     localReminders: {
@@ -123,6 +145,10 @@ export async function loadAppPermissions(): Promise<AppPermissionsSnapshot> {
       enabledInApp: biometricEnabled,
     },
     cyclePrivacyLock: cycleLock,
+    location: {
+      permission: locationPermission,
+      enabled: locationPermission === 'granted' && locationFromProfile(profile)?.enabled === true,
+    },
   };
 }
 
@@ -131,7 +157,8 @@ export function countActivePermissions(snapshot: AppPermissionsSnapshot): { conn
   let permissions = 0;
 
   if (snapshot.health.connected) connections += 1;
-  if (snapshot.push.permission === 'granted') connections += 1;
+  if (snapshot.push.enabled) connections += 1;
+  if (snapshot.location.enabled) connections += 1;
 
   if (snapshot.camera.permission === 'granted') permissions += 1;
   if (snapshot.photos.permission === 'granted') permissions += 1;
@@ -150,7 +177,8 @@ export function computePrivacyScore(snapshot: AppPermissionsSnapshot): {
 } {
   const checks = [
     snapshot.health.supported ? snapshot.health.connected : null,
-    snapshot.push.permission === 'granted',
+    snapshot.push.enabled,
+    snapshot.location.enabled,
     snapshot.localReminders.total > 0,
     snapshot.camera.permission === 'granted',
     snapshot.photos.permission === 'granted',
@@ -193,11 +221,15 @@ export async function openHealthConnectionSettings(): Promise<void> {
   await Linking.openSettings();
 }
 
-export async function enablePushConnection(): Promise<boolean> {
-  return registerPushTokenWithServer();
+export async function enablePushConnection(): Promise<PushRegisterResult> {
+  await setPushOptedIn(true);
+  const result = await registerPushTokenWithServer();
+  if (!result.ok) await setPushOptedIn(false);
+  return result;
 }
 
 export async function disablePushConnection(): Promise<void> {
+  await setPushOptedIn(false);
   await unregisterPushFromServer();
 }
 
@@ -250,11 +282,22 @@ export async function resetCycleRemindersOnly(): Promise<void> {
 export async function resetAllConnectionsAndPermissions(): Promise<void> {
   await Promise.all([
     disconnectHealthApp(),
+    setPushOptedIn(false),
     unregisterPushFromServer(),
     setBiometricEnabled(false),
     setCyclePrivacyLockEnabled(false),
     cancelAllReminders(),
+    revokeUserLocation(),
   ]);
+}
+
+export async function enableLocationConnection(): Promise<{ granted: boolean }> {
+  const result = await grantUserLocation();
+  return { granted: result.granted };
+}
+
+export async function disableLocationConnection(): Promise<void> {
+  await revokeUserLocation();
 }
 
 export async function requestNotificationAccess(): Promise<boolean> {

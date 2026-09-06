@@ -107,9 +107,13 @@ export function useFigmaMeds() {
   return dark ? { ...FIGMA_MEDS, ...FIGMA_MEDS_DARK } : FIGMA_MEDS;
 }
 
-export const MED_POPULAR_CHIPS = ['ibuprofen', 'amoxicillin', 'atorvastatin'] as const;
+export const MED_POPULAR_CHIPS = [
+  { query: 'ibuprofen', labelKa: 'იბუპროფენი' },
+  { query: 'amoxicillin', labelKa: 'ამოქსიცილინი' },
+  { query: 'atorvastatin', labelKa: 'ატორვასტატინი' },
+] as const;
 
-export const MED_DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
+export const MED_DAY_LETTERS = ['ო', 'ს', 'ო', 'ხ', 'პ', 'შ', 'კ'] as const;
 
 export const ALL_PILL_SHAPES = [
   'long',

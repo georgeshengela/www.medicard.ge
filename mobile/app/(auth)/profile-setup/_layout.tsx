@@ -11,6 +11,7 @@ export default function ProfileSetupLayout() {
       <Stack.Screen name="face-id" />
       <Stack.Screen name="privacy" />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="location" />
       <Stack.Screen name="analyzing" />
       <Stack.Screen name="results" />
       <Stack.Screen name="dev-launcher" />

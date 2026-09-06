@@ -101,7 +101,7 @@ export function GoalDeadlineCalendar({ visible, value, onClose, onSelect }: Prop
           accessibilityRole="button"
           accessibilityLabel={ka.common.close}
           onPress={onClose}
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: APP_MODAL_OVERLAY }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]}
         />
         <View
           style={{

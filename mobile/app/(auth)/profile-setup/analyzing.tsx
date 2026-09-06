@@ -9,6 +9,7 @@ import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constant
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
 import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
+import { useAnimatedProgress } from '@/hooks/useAnimatedProgress';
 import { finishOnboarding } from '@/lib/profileSetupFlow';
 import { useAuth } from '@/store/AuthContext';
 
@@ -104,10 +105,8 @@ export default function ProfileSetupAnalyzingScreen() {
     [user, extra],
   );
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
-  const dashOffset = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [RING_C, 0],
-  });
+  const fill = useAnimatedProgress(progress, 0);
+  const dashOffset = RING_C * (1 - fill);
 
   if (!ready) {
     return (
@@ -136,7 +135,7 @@ export default function ProfileSetupAnalyzingScreen() {
                 strokeWidth={RING_STROKE}
                 fill="none"
               />
-              <AnimatedCircle
+              <Circle
                 cx={RING / 2}
                 cy={RING / 2}
                 r={RING_R}
@@ -184,5 +183,3 @@ export default function ProfileSetupAnalyzingScreen() {
     </View>
   );
 }
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);

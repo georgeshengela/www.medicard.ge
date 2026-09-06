@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 import { awardStepsGoalPoints, claimDailyCheckIn, getCheckInState } from '../lib/checkIn.js';
+import { recordAppActivityFromRequest } from '../lib/appActivity.js';
 
 export const checkInRouter = Router();
 
@@ -13,6 +14,22 @@ checkInRouter.get(
     const checkIn = await getCheckInState(req.user.id);
     if (!checkIn) return res.status(404).json({ error: 'მომხმარებელი ვერ მოიძებნა.' });
     res.json({ checkIn });
+  }),
+);
+
+checkInRouter.post(
+  '/session',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        activityType: z.string().trim().min(1).max(24).optional(),
+      })
+      .passthrough()
+      .parse(req.body ?? {});
+    req.body = { ...req.body, activityType: body.activityType };
+    const row = await recordAppActivityFromRequest(req);
+    res.json({ ok: true, activity: row });
   }),
 );
 

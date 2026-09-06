@@ -1,4 +1,5 @@
 import { api, type HealthProfile } from '@/lib/api';
+import { cacheLocalHealthSync } from '@/lib/healthDataSync';
 import type { HealthMetricsSyncPayload } from '@/lib/healthMetricsStorage';
 import type { HealthMetricKey } from '@/types/healthMetrics';
 
@@ -50,13 +51,10 @@ function profilePatchForKey(
   key: LoggableMetricKey,
   value: number,
   valueSecondary: number | undefined,
-  profile: HealthProfile | null | undefined,
+  _profile: HealthProfile | null | undefined,
 ): Record<string, unknown> {
-  const extra = {
-    ...((profile?.extraAnswers ?? {}) as Record<string, unknown>),
-    firstHealthMetricLogged: true,
-  };
-  const patch: Record<string, unknown> = { extraAnswers: extra };
+  // Server merges extraAnswers — do not resend the whole blob (it can fail Zod / size).
+  const patch: Record<string, unknown> = { extraAnswers: { firstHealthMetricLogged: true } };
 
   switch (key) {
     case 'weight':
@@ -94,6 +92,18 @@ export async function logManualHealthMetric(
       ? [{ at: new Date().toISOString(), count: Math.round(value) }]
       : [];
 
-  await api.healthMetrics.sync({ daily: [daily], stepLogs });
-  await api.healthProfile.update(profilePatchForKey(key, value, valueSecondary, profile));
+  const payload = { daily: [daily], stepLogs };
+  await cacheLocalHealthSync(payload);
+
+  try {
+    await api.healthMetrics.sync(payload);
+  } catch (error) {
+    console.warn('[health-metric] sync failed', error);
+  }
+
+  try {
+    await api.healthProfile.update(profilePatchForKey(key, value, valueSecondary, profile));
+  } catch (error) {
+    console.warn('[health-metric] profile update failed', error);
+  }
 }

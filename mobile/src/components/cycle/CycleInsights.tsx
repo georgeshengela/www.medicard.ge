@@ -261,10 +261,10 @@ export function CycleInsightsPanel({
               colors={[hexAlpha(heroTone.accent, dark ? 0.22 : 0.12), fadeTo]}
               start={{ x: 1, y: 0 }}
               end={{ x: 0.15, y: 1 }}
-              style={[StyleSheet.absoluteFillObject, { borderRadius: cardRadius }]}
+              style={[StyleSheet.absoluteFill, { borderRadius: cardRadius }]}
             />
 
-            <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
               <View
                 style={{
                   position: 'absolute',

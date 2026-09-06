@@ -2,100 +2,233 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { ka } from '@/i18n/ka';
-import { api } from './api';
-import type { ScheduledDose } from './api';
+import { ApiError, api } from './api';
+import type { Medication, ScheduledDose } from './api';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { maskCycleNotificationContent } from '@/lib/cycleNotificationMask';
+import { parseMedicationConfig } from '@/lib/medications.shared';
+import {
+  planMedicationReminderSlots,
+  prefixForNotificationId,
+} from '@/lib/notificationPlan';
+import { applyPushCopy, logPushEvent } from '@/lib/pushCopy';
+import { resolvePushOptedIn, resolvePushToggleOn } from '@/lib/pushOptIn';
+import { getPreference, setPreference } from '@/lib/storage';
 
 export const MED_CHANNEL_ID = 'medication-reminders';
 export const CYCLE_CHANNEL_ID = 'cycle-reminders';
 export const CYCLE_DISCREET_CHANNEL_ID = 'medicard-discreet';
 export const PUSH_CHANNEL_ID = 'medicard-push';
+export const STEPS_CHANNEL_ID = 'steps-reminders';
+export const WEIGHT_CHANNEL_ID = 'weight-reminders';
+export const VISIT_CHANNEL_ID = 'doctor-visit-reminders';
+export const ENGAGE_CHANNEL_ID = 'medi-engage';
+export const QA_PREFIX = 'qa:';
 
 export const NOTIF_PREFIX = {
   med: 'med:',
   cycle: 'cycle:',
   visit: 'visit:',
   steps: 'steps:',
+  weight: 'weight:',
+  engage: 'engage:',
 } as const;
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (notification) => {
+    const data = (notification.request.content.data ?? {}) as Record<string, unknown>;
+    try {
+      const { shouldDeliverNotification } = await import('@/lib/mediNotificationBrain');
+      const { patchEngageDecision } = await import('@/lib/mediEngagePrefs');
+      const check = await shouldDeliverNotification(data);
+      if (!check.ok) {
+        const id = typeof data.decisionId === 'string' ? data.decisionId : '';
+        if (id) {
+          void patchEngageDecision(id, {
+            decision: 'BLOCKED',
+            blocked: check.reason,
+            reason: check.reason,
+            revalidatedAt: new Date().toISOString(),
+          });
+          void import('@/lib/productObservability').then(({ syncNotificationOutcome }) =>
+            syncNotificationOutcome({ decisionId: id, outcome: 'cancelled_by_revalidation' }),
+          );
+        }
+        return { shouldShowBanner: false, shouldShowList: false, shouldPlaySound: false, shouldSetBadge: false };
+      }
+    } catch {
+      /* deliver if revalidation cannot run */
+    }
+    return { shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false };
+  },
 });
 
-export async function requestNotificationPermission(): Promise<boolean> {
-  if (!Device.isDevice) return false;
+export async function getNotificationPermissionGranted(): Promise<boolean> {
+  try {
+    const existing = await Notifications.getPermissionsAsync();
+    return existing.status === 'granted';
+  } catch {
+    return false;
+  }
+}
 
+async function ensureAndroidChannels(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(MED_CHANNEL_ID, {
+    name: 'მედიკამენტების შეხსენებები',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#14B8A6',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync(CYCLE_CHANNEL_ID, {
+    name: 'ციკლის შეხსენებები',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    vibrationPattern: [0, 180, 120, 180],
+    lightColor: '#E91E63',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync(CYCLE_DISCREET_CHANNEL_ID, {
+    name: 'Medicard',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    vibrationPattern: [0, 160, 100, 160],
+    lightColor: '#14B8A6',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync(PUSH_CHANNEL_ID, {
+    name: 'Medicard შეტყობინებები',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 220, 120, 220],
+    lightColor: '#14B8A6',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync(STEPS_CHANNEL_ID, {
+    name: 'ნაბიჯების შეხსენებები',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    vibrationPattern: [0, 180, 120, 180],
+    lightColor: '#14B8A6',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync(WEIGHT_CHANNEL_ID, {
+    name: 'წონის შეხსენებები',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    vibrationPattern: [0, 180, 120, 180],
+    lightColor: '#14B8A6',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync(VISIT_CHANNEL_ID, {
+    name: 'ექიმთან ვიზიტის შეხსენებები',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 220, 120, 220],
+    lightColor: '#14B8A6',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync(ENGAGE_CHANNEL_ID, {
+    name: 'Medi',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    vibrationPattern: [0, 160, 100, 160],
+    lightColor: '#14B8A6',
+    sound: 'default',
+  });
+}
+
+export async function requestNotificationPermission(): Promise<boolean> {
+  await ensureAndroidChannels();
+  void import('@/lib/mediNotificationActions').then((mod) => mod.registerNotificationCategories());
   const existing = await Notifications.getPermissionsAsync();
   const status =
     existing.status === 'granted' ? existing.status : (await Notifications.requestPermissionsAsync()).status;
 
-  if (status !== 'granted') return false;
+  return status === 'granted';
+}
 
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync(MED_CHANNEL_ID, {
-      name: 'მედიკამენტების შეხსენებები',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#14B8A6',
-      sound: 'default',
-    });
-    await Notifications.setNotificationChannelAsync(CYCLE_CHANNEL_ID, {
-      name: 'ციკლის შეხსენებები',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      vibrationPattern: [0, 180, 120, 180],
-      lightColor: '#E91E63',
-      sound: 'default',
-    });
-    await Notifications.setNotificationChannelAsync(CYCLE_DISCREET_CHANNEL_ID, {
-      name: 'Medicard',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      vibrationPattern: [0, 160, 100, 160],
-      lightColor: '#14B8A6',
-      sound: 'default',
-    });
-    await Notifications.setNotificationChannelAsync(PUSH_CHANNEL_ID, {
-      name: 'Medicard შეტყობინებები',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 220, 120, 220],
-      lightColor: '#14B8A6',
-      sound: 'default',
-    });
-  }
+export type PushRegisterReason = 'permission' | 'simulator' | 'expo_go' | 'token' | 'auth' | 'network';
 
-  return true;
+export type PushRegisterResult = { ok: true } | { ok: false; reason: PushRegisterReason };
+
+const PUSH_OPTED_IN_KEY = 'medicard.push.optedIn';
+const PUSH_LAST_TOKEN_KEY = 'medicard.push.lastToken';
+
+function pushProjectId(): string | undefined {
+  return (
+    Constants.easConfig?.projectId ??
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    undefined
+  );
+}
+
+function isExpoPushToken(token: string): boolean {
+  return /^ExponentPushToken\[.+\]$/.test(token) || /^ExpoPushToken\[.+\]$/.test(token);
+}
+
+export async function isPushOptedIn(): Promise<boolean> {
+  const stored = await getPreference(PUSH_OPTED_IN_KEY);
+  return resolvePushOptedIn(stored, await getNotificationPermissionGranted());
+}
+
+export async function setPushOptedIn(on: boolean): Promise<void> {
+  await setPreference(PUSH_OPTED_IN_KEY, on ? '1' : '0');
+}
+
+export async function isNotificationsEnabled(): Promise<boolean> {
+  const granted = await getNotificationPermissionGranted();
+  return resolvePushToggleOn(granted, await isPushOptedIn());
+}
+
+/** Registers only when the user has not opted out. Used on login / resume. */
+export async function syncPushRegistration(): Promise<void> {
+  if (!(await isPushOptedIn())) return;
+  await registerPushTokenWithServer();
+}
+
+async function saveLastPushToken(token: string): Promise<void> {
+  await setPreference(PUSH_LAST_TOKEN_KEY, token);
+}
+
+async function readLastPushToken(): Promise<string | null> {
+  return getPreference(PUSH_LAST_TOKEN_KEY);
+}
+
+async function fetchExpoPushToken(): Promise<string | null> {
+  const projectId = pushProjectId();
+  const tokenResult = await Notifications.getExpoPushTokenAsync(
+    projectId ? { projectId } : undefined,
+  );
+  const token = tokenResult.data;
+  return isExpoPushToken(token) ? token : null;
 }
 
 /** Registers the device for admin broadcast push via Expo Push Service. */
-export async function registerPushTokenWithServer(): Promise<boolean> {
+export async function registerPushTokenWithServer(): Promise<PushRegisterResult> {
+  if (!Device.isDevice) return { ok: false, reason: 'simulator' };
+
   const granted = await requestNotificationPermission();
-  if (!granted || !Device.isDevice) return false;
+  if (!granted) return { ok: false, reason: 'permission' };
 
   try {
-    const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId ??
-      undefined;
-    const tokenResult = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined,
-    );
-    const token = tokenResult.data;
-    if (!/^ExponentPushToken\[.+\]$/.test(token) && !/^ExpoPushToken\[.+\]$/.test(token)) {
-      return false;
+    const token = await fetchExpoPushToken();
+    if (!token) {
+      console.warn('[medicard-push] unexpected token shape');
+      return { ok: false, reason: 'token' };
     }
 
     const platform =
       Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
     await api.push.register({ token, platform });
-    return true;
-  } catch {
-    return false;
+    await saveLastPushToken(token);
+
+    if (!(await isPushOptedIn())) {
+      await api.push.unregister(token).catch(() => undefined);
+      return { ok: false, reason: 'permission' };
+    }
+    return { ok: true };
+  } catch (error) {
+    console.warn('[medicard-push] register failed', error);
+    const message = error instanceof Error ? error.message : String(error);
+    if (/Expo Go/i.test(message)) return { ok: false, reason: 'expo_go' };
+    if (error instanceof ApiError && error.isUnauthorized) return { ok: false, reason: 'auth' };
+    if (error instanceof ApiError) return { ok: false, reason: 'network' };
+    return { ok: false, reason: 'token' };
   }
 }
 
@@ -118,36 +251,66 @@ export async function cancelNotificationsByPrefix(prefix: string): Promise<void>
 }
 
 /**
- * Rewrites medication daily reminders without touching cycle:* notifications.
+ * Rewrites medication reminders without touching cycle:* notifications.
+ * Honors daysOfWeek from the medication config (daily if every day / unset).
  */
-export async function syncMedicationReminders(schedule: ScheduledDose[]): Promise<number> {
+export async function syncMedicationReminders(
+  schedule: ScheduledDose[],
+  medications: Medication[] = [],
+): Promise<number> {
   const granted = await requestNotificationPermission();
   if (!granted) return 0;
 
   await cancelNotificationsByPrefix(NOTIF_PREFIX.med);
 
+  const byId = new Map(medications.map((med) => [med.id, med]));
   let scheduled = 0;
-  for (const dose of schedule) {
-    const [hour, minute] = dose.time.split(':').map(Number);
-    if (Number.isNaN(hour) || Number.isNaN(minute)) continue;
 
-    const identifier = `${NOTIF_PREFIX.med}${dose.medicationId}:${dose.time}`;
-    await Notifications.scheduleNotificationAsync({
-      identifier,
-      content: {
-        title: `${ka.meds.reminderTitle}: ${dose.medName}`,
-        body: dose.notes ? `${dose.dosage} · ${dose.notes}` : dose.dosage,
-        sound: 'default',
-        data: { type: 'medication', medicationId: dose.medicationId, time: dose.time },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour,
-        minute,
-        ...(Platform.OS === 'android' ? { channelId: MED_CHANNEL_ID } : {}),
-      },
+  for (const dose of schedule) {
+    const med = byId.get(dose.medicationId);
+    const days = parseMedicationConfig(med?.config).daysOfWeek;
+    const slots = planMedicationReminderSlots(dose.medicationId, dose.time, days);
+    const copy = applyPushCopy('medication', {
+      name: dose.medName,
+      dosage: [dose.dosage, dose.notes].map((part) => String(part ?? '').trim()).filter(Boolean).join(' · '),
     });
-    scheduled += 1;
+    const title = copy.title;
+    const body = copy.body;
+
+    for (const slot of slots) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${NOTIF_PREFIX.med}${slot.identifier}`,
+        content: {
+          title,
+          body,
+          sound: 'default',
+          categoryIdentifier: 'medi-med',
+          data: {
+            type: 'medication',
+            templateKey: 'medication',
+            medicationId: dose.medicationId,
+            time: dose.time,
+            route: `/medications/${dose.medicationId}`,
+          },
+        },
+        trigger:
+          slot.weekday == null
+            ? {
+                type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                hour: slot.hour,
+                minute: slot.minute,
+                ...(Platform.OS === 'android' ? { channelId: MED_CHANNEL_ID } : {}),
+              }
+            : {
+                type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+                weekday: slot.weekday,
+                hour: slot.hour,
+                minute: slot.minute,
+                ...(Platform.OS === 'android' ? { channelId: MED_CHANNEL_ID } : {}),
+              },
+      });
+      scheduled += 1;
+    }
   }
 
   return scheduled;
@@ -164,51 +327,163 @@ export async function getNotificationPermissionStatus(): Promise<'granted' | 'de
   }
 }
 
-export async function getScheduledReminderCounts(): Promise<{
+export type ScheduledReminderCounts = {
   med: number;
   cycle: number;
   visit: number;
+  steps: number;
+  weight: number;
+  engage: number;
+  qa: number;
+  other: number;
   total: number;
-}> {
-  const empty = { med: 0, cycle: 0, visit: 0, total: 0 };
+};
+
+export async function getScheduledReminderCounts(): Promise<ScheduledReminderCounts> {
+  const empty: ScheduledReminderCounts = {
+    med: 0,
+    cycle: 0,
+    visit: 0,
+    steps: 0,
+    weight: 0,
+    engage: 0,
+    qa: 0,
+    other: 0,
+    total: 0,
+  };
   if (!canScheduleNotifications()) return empty;
   try {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    let med = 0;
-    let cycle = 0;
-    let visit = 0;
-
+    const counts = { ...empty };
     for (const item of scheduled) {
-      const id = item.identifier ?? '';
-      if (id.startsWith(NOTIF_PREFIX.med)) med += 1;
-      else if (id.startsWith(NOTIF_PREFIX.cycle)) cycle += 1;
-      else if (id.startsWith(NOTIF_PREFIX.visit)) visit += 1;
+      const key = prefixForNotificationId(item.identifier ?? '');
+      counts[key] += 1;
+      counts.total += 1;
     }
-
-    return { med, cycle, visit, total: med + cycle + visit };
+    return counts;
   } catch {
     return empty;
   }
 }
 
+export type ScheduledReminderRow = {
+  id: string;
+  group: ReturnType<typeof prefixForNotificationId>;
+  title: string;
+  body: string;
+  trigger: string;
+};
+
+function describeTrigger(trigger: Notifications.NotificationTrigger | null): string {
+  if (!trigger || typeof trigger !== 'object') return 'none';
+  const row = trigger as Record<string, unknown>;
+  if (row.type === 'daily' || row.hour != null && row.weekday == null && row.seconds == null && !row.date) {
+    return `daily ${String(row.hour).padStart(2, '0')}:${String(row.minute ?? 0).toString().padStart(2, '0')}`;
+  }
+  if (row.weekday != null) {
+    return `weekly d${row.weekday} ${String(row.hour ?? 0).toString().padStart(2, '0')}:${String(row.minute ?? 0).toString().padStart(2, '0')}`;
+  }
+  if (row.date) {
+    const date = row.date instanceof Date ? row.date : new Date(String(row.date));
+    return Number.isNaN(date.getTime()) ? 'date' : `date ${date.toLocaleString('ka-GE')}`;
+  }
+  if (row.seconds != null) return `in ${row.seconds}s`;
+  return String(row.type ?? 'unknown');
+}
+
+export async function listScheduledReminders(): Promise<ScheduledReminderRow[]> {
+  if (!canScheduleNotifications()) return [];
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    return scheduled.map((item) => ({
+      id: item.identifier ?? '',
+      group: prefixForNotificationId(item.identifier ?? ''),
+      title: item.content.title ?? '',
+      body: item.content.body ?? '',
+      trigger: describeTrigger(item.trigger),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function getNotificationDebugStatus(): Promise<{
+  permission: 'granted' | 'denied' | 'undetermined';
+  optedIn: boolean;
+  enabled: boolean;
+  tokenPreview: string | null;
+  counts: ScheduledReminderCounts;
+}> {
+  const [permission, optedIn, enabled, token, counts] = await Promise.all([
+    getNotificationPermissionStatus(),
+    isPushOptedIn(),
+    isNotificationsEnabled(),
+    readLastPushToken(),
+    getScheduledReminderCounts(),
+  ]);
+  return {
+    permission,
+    optedIn,
+    enabled,
+    tokenPreview: token ? `${token.slice(0, 22)}…${token.slice(-4)}` : null,
+    counts,
+  };
+}
+
+/** One-shot local banner — used by the DEV tester, does not replace real schedules. */
+export async function presentNotificationNow(opts: {
+  identifier?: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+  channelId?: string;
+  secondsFromNow?: number;
+  categoryIdentifier?: string;
+}): Promise<boolean> {
+  const granted = await requestNotificationPermission();
+  if (!granted || !canScheduleNotifications()) return false;
+
+  const seconds = Math.max(1, opts.secondsFromNow ?? 2);
+  const data = opts.data ?? {};
+  await Notifications.scheduleNotificationAsync({
+    identifier: opts.identifier ?? `${QA_PREFIX}${Date.now()}`,
+    content: {
+      title: opts.title,
+      body: opts.body,
+      sound: 'default',
+      data,
+      ...(opts.categoryIdentifier ? { categoryIdentifier: opts.categoryIdentifier } : {}),
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds,
+      ...(Platform.OS === 'android' && opts.channelId ? { channelId: opts.channelId } : {}),
+    },
+  });
+  void logPushEvent({
+    source: data.qa ? 'qa' : 'local',
+    key: String(data.templateKey || data.type || 'qa'),
+    title: opts.title,
+    body: opts.body,
+  });
+  return true;
+}
+
 /** Removes this device from admin push broadcasts. */
 export async function unregisterPushFromServer(): Promise<void> {
-  if (!Device.isDevice) return;
-
-  try {
-    const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId ??
-      undefined;
-    const tokenResult = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined,
-    );
-    const token = tokenResult.data;
-    if (token && (/^ExponentPushToken\[.+\]$/.test(token) || /^ExpoPushToken\[.+\]$/.test(token))) {
-      await api.push.unregister(token);
+  let token = await readLastPushToken();
+  if (!token && Device.isDevice) {
+    try {
+      token = await fetchExpoPushToken();
+    } catch {
+      token = null;
     }
+  }
+  if (!token) return;
+  try {
+    await api.push.unregister(token);
   } catch {
-    // Token may be unavailable if permission was revoked.
+    // Auth or network should not block the local opt-out.
   }
 }
 
@@ -235,18 +510,18 @@ type ScheduleCycleOpts = {
 
 async function resolveCycleNotificationContent(title: string, body: string) {
   const prefs = await getCycleReminderPrefs();
-  const masked = maskCycleNotificationContent(
-    { title, body },
-    prefs.maskNotifications,
-    prefs.maskStyle,
-  );
-  const channelId =
-    Platform.OS === 'android'
-      ? masked.masked
-        ? CYCLE_DISCREET_CHANNEL_ID
-        : CYCLE_CHANNEL_ID
-      : undefined;
-  return { title: masked.title, body: masked.body, channelId, masked: masked.masked };
+  if (prefs.maskNotifications) {
+    const discreet = applyPushCopy('cycle-masked');
+    return {
+      title: discreet.title,
+      body: discreet.body,
+      channelId: Platform.OS === 'android' ? CYCLE_DISCREET_CHANNEL_ID : undefined,
+      masked: true,
+    };
+  }
+  const masked = maskCycleNotificationContent({ title, body }, false, prefs.maskStyle);
+  const channelId = Platform.OS === 'android' ? CYCLE_CHANNEL_ID : undefined;
+  return { title: masked.title, body: masked.body, channelId, masked: false };
 }
 
 /** Schedule a one-time cycle notification at a specific local date/time. */
@@ -267,6 +542,7 @@ export async function scheduleCycleDateNotification(opts: ScheduleCycleOpts): Pr
       sound: 'default',
       data: {
         type: 'cycle_reminder',
+        templateKey: String(opts.data?.templateKey || 'cycle-log'),
         masked: content.masked,
         ...(opts.data ?? {}),
       },
@@ -300,7 +576,7 @@ export async function scheduleCycleReminder(opts: {
       title: content.title,
       body: content.body,
       sound: 'default',
-      data: { type: 'cycle_tip', masked: content.masked },
+      data: { type: 'cycle_tip', templateKey: 'cycle-tip', masked: content.masked, route: '/cycle' },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,

@@ -1,12 +1,12 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { ka } from '@/i18n/ka';
 import type { DoctorVisit } from '@/lib/api';
 import { buildVisitReminderDates, doctorDisplayName } from '@/lib/visitReminders';
 import { doctorTypeLabel, normalizeReminderConfig } from '@/constants/visits';
-import { NOTIF_PREFIX, requestNotificationPermission } from '@/lib/notifications';
+import { NOTIF_PREFIX, VISIT_CHANNEL_ID, requestNotificationPermission } from '@/lib/notifications';
+import { applyPushCopy } from '@/lib/pushCopy';
 
-export const VISIT_CHANNEL_ID = 'doctor-visit-reminders';
+export { VISIT_CHANNEL_ID };
 
 async function ensureVisitChannel() {
   if (Platform.OS !== 'android') return;
@@ -39,20 +39,24 @@ export async function syncVisitReminders(visits: DoctorVisit[]): Promise<number>
     for (let index = 0; index < dates.length; index += 1) {
       const date = dates[index];
       const id = `${NOTIF_PREFIX.visit}${visit.id}:${index}`;
-      const body = place
-        ? `${visit.visitTime} · ${place}`
-        : `${visit.visitDate} ${visit.visitTime}`;
+      const copy = applyPushCopy('visit', {
+        doctor,
+        time: visit.visitTime,
+        place: place ? ` — ${place}` : '',
+      });
 
       await Notifications.scheduleNotificationAsync({
         identifier: id,
         content: {
-          title: `${ka.visits.reminderTitle}: ${doctor}`,
-          body,
+          title: copy.title,
+          body: copy.body,
           sound: 'default',
+          categoryIdentifier: 'medi-visit',
           data: {
             type: 'visit_reminder',
+            templateKey: 'visit',
             visitId: visit.id,
-            route: '/visits',
+            route: `/visits/editor?id=${encodeURIComponent(visit.id)}`,
           },
         },
         trigger: {

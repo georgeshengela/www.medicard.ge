@@ -8,6 +8,7 @@ type Props = {
   icon: LucideIcon;
   iconColor?: string;
   label: string;
+  hint?: string;
   value: boolean;
   disabled?: boolean;
   loading?: boolean;
@@ -19,6 +20,7 @@ export function PermissionToggleRow({
   icon: Icon,
   iconColor = FIGMA_HEALTH_METRICS.brand,
   label,
+  hint,
   value,
   disabled,
   loading,
@@ -53,19 +55,32 @@ export function PermissionToggleRow({
           <Icon size={18} color={iconColor} strokeWidth={2.1} />
         </View>
 
-        <Text
-          numberOfLines={1}
-          style={{
-            flex: 1,
-            marginLeft: 12,
-            marginRight: 8,
-            fontFamily: 'NotoSansGeorgian_600SemiBold',
-            fontSize: 15,
-            color: disabled ? FIGMA_HEALTH_METRICS.textSecondary : FIGMA_HEALTH_METRICS.textPrimary,
-          }}
-        >
-          {label}
-        </Text>
+        <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+          <Text
+            numberOfLines={1}
+            style={{
+              fontFamily: 'NotoSansGeorgian_600SemiBold',
+              fontSize: 15,
+              color: disabled ? FIGMA_HEALTH_METRICS.textSecondary : FIGMA_HEALTH_METRICS.textPrimary,
+            }}
+          >
+            {label}
+          </Text>
+          {hint ? (
+            <Text
+              numberOfLines={1}
+              style={{
+                fontFamily: 'NotoSansGeorgian_400Regular',
+                fontSize: 12,
+                lineHeight: 16,
+                marginTop: 1,
+                color: FIGMA_HEALTH_METRICS.textSecondary,
+              }}
+            >
+              {hint}
+            </Text>
+          ) : null}
+        </View>
 
         {loading ? (
           <View style={{ width: 51, alignItems: 'center' }}>

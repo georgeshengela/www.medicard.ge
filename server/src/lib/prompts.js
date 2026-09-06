@@ -419,13 +419,17 @@ export const VISION_PROMPTS = {
   LAB: `You are an OCR and medical-document structuring engine.
 
 Extract EVERY laboratory value visible in this document. The source may be in Georgian,
-Russian or English. Return a clean, structured plain-text listing using this exact format,
+Russian, English or French (hospital sheets often print Hémoglobine, Leucocytes, VGM).
+Return a clean, structured plain-text listing using this exact format,
 one analyte per line:
 
 ANALYTE | RESULT | UNIT | REFERENCE_RANGE | FLAG(H/L/N)
 
 Rules:
-- Preserve the original spelling of analyte names, then add the standard English name in brackets.
+- Preserve the printed spelling in the table, then add the standard English name in brackets.
+- In labjson: key MUST be the English canonical slug (hemoglobin, hct, rbc, wbc, plt, mcv, mch,
+  glucose, creatinine, …). Never use French keys (hemoglobine, leucocytes, vgm).
+- nameKa MUST be Georgian. Put the printed French/Latin name in nameEn only.
 - If a value is illegible or ambiguous, write "UNREADABLE" in the RESULT column. Never guess a number.
 - After the table, add a short "DOCUMENT META" section with the lab name, collection date and
   patient sex/age if they are printed on the document.

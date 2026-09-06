@@ -87,6 +87,7 @@ export function MedicationDoseScreen() {
   };
 
   if (!med) {
+    if (!loading) router.replace('/(tabs)/medications');
     return (
       <>
         <Stack.Screen options={{ title: ka.meds.scheduleScreenTitle }} />

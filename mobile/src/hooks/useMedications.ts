@@ -19,7 +19,7 @@ export function useMedications() {
       setMedications(response.medications);
       setSchedule(response.schedule);
       setDoseLogs(logs);
-      const scheduled = await syncMedicationReminders(response.schedule);
+      const scheduled = await syncMedicationReminders(response.schedule, response.medications);
       setReminderCount(scheduled);
     } catch {
       /* pull-to-refresh is retry */

@@ -193,6 +193,52 @@ export function mergeStepSamples(native: StepSample[], stored: StepSample[]): St
   return [...map.values()].sort((a, b) => b.at.localeCompare(a.at));
 }
 
+export function emptyStoredDaily(date: string, syncedAt = new Date().toISOString()): StoredHealthDaily {
+  return {
+    date,
+    steps: null,
+    weightKg: null,
+    bloodPressureSystolic: null,
+    bloodPressureDiastolic: null,
+    heartRate: null,
+    sleepHours: null,
+    nutritionKcal: null,
+    hydrationMl: null,
+    activeMinutes: null,
+    distanceKm: null,
+    source: 'manual',
+    syncedAt,
+  };
+}
+
+export function mergeHealthDailyRows(
+  existing: StoredHealthDaily[],
+  incoming: HealthMetricsSyncPayload['daily'],
+  syncedAt = new Date().toISOString(),
+): StoredHealthDaily[] {
+  const byDate = new Map(existing.map((row) => [row.date, row]));
+  for (const patch of incoming) {
+    if (!patch?.date) continue;
+    const prev = byDate.get(patch.date) ?? emptyStoredDaily(patch.date, syncedAt);
+    byDate.set(patch.date, {
+      ...prev,
+      steps: patch.steps ?? prev.steps,
+      weightKg: patch.weightKg ?? prev.weightKg,
+      bloodPressureSystolic: patch.bloodPressureSystolic ?? prev.bloodPressureSystolic,
+      bloodPressureDiastolic: patch.bloodPressureDiastolic ?? prev.bloodPressureDiastolic,
+      heartRate: patch.heartRate ?? prev.heartRate,
+      sleepHours: patch.sleepHours ?? prev.sleepHours,
+      nutritionKcal: patch.nutritionKcal ?? prev.nutritionKcal,
+      hydrationMl: patch.hydrationMl ?? prev.hydrationMl,
+      activeMinutes: patch.activeMinutes ?? prev.activeMinutes,
+      distanceKm: patch.distanceKm ?? prev.distanceKm,
+      source: prev.source || 'manual',
+      syncedAt,
+    });
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export function defaultSyncFromDate(): string {
   return daysAgo(90);
 }

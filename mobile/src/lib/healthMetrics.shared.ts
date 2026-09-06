@@ -121,9 +121,13 @@ export function buildMetricSnapshot(
       value,
       unit: 'kg',
       statusKa: value != null ? weightStatusKg(value, profile?.heightCm) : ka.healthMetrics.noData,
-      updatedLabel: updatedLabelFromDate(latest?.date ?? null),
-      weekValues: value != null && !latest ? [value, ...weekValues.slice(1)] : weekValues,
-      source: latest ? source : profile?.weightKg != null ? 'profile' : 'none',
+      updatedLabel: latest?.date
+        ? updatedLabelFromDate(latest.date)
+        : value != null
+          ? ka.healthMetrics.today
+          : ka.healthMetrics.noData,
+      weekValues,
+      source: latest ? source : value != null ? 'profile' : 'none',
     };
   }
 

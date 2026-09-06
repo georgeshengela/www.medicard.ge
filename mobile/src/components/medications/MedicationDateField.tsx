@@ -183,7 +183,7 @@ function MedicationCalendarModal({
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
-          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.52)' }}
+          style={{ ...StyleSheet.absoluteFill, backgroundColor: 'rgba(15, 23, 42, 0.52)' }}
           onPress={onClose}
         />
         <View

@@ -359,7 +359,7 @@ export function CycleLogHubModal({ visible, date, onClose, onSaved }: Props) {
     <>
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <View style={styles.root}>
-        <Pressable style={[StyleSheet.absoluteFillObject, { backgroundColor: APP_MODAL_OVERLAY }]} onPress={onClose} />
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} onPress={onClose} />
 
         <View style={{ paddingHorizontal: 16, paddingBottom: Math.max(insets.bottom, 16) }}>
           <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>

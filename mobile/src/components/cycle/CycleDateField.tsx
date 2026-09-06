@@ -599,7 +599,7 @@ function CycleCalendarModal({
           accessibilityRole="button"
           accessibilityLabel={ka.common.close}
           onPress={onClose}
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: c.overlay }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]}
         />
         {sheet}
       </View>

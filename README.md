@@ -33,7 +33,7 @@ npm run mobile:web      # browser
 ```
 
 `npm run mobile` prints a QR code — scan it with Expo Go (Android) or the Camera app (iOS)
-with the phone on the same Wi-Fi. The project targets **Expo SDK 54**, which matches the
+with the phone on the same Wi-Fi. The project targets **Expo SDK 57**, which matches the
 Expo Go build on the App Store and Play Store. It starts in `--lan` mode so the device can
 reach both Metro and the API; on a network that blocks peer traffic use `npm run mobile -- --tunnel`.
 

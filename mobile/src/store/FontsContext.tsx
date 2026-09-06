@@ -7,7 +7,6 @@ import {
   NotoSansGeorgian_700Bold,
   useFonts,
 } from '@expo-google-fonts/noto-sans-georgian';
-import { BrandLogo } from '@/components/ui/BrandLogo';
 
 type FontsState = {
   ready: boolean;
@@ -47,11 +46,7 @@ export function FontsProvider({ children }: { children: React.ReactNode }) {
   );
 
   if (!loaded) {
-    return (
-      <View className="flex-1 items-center justify-center bg-primary-200">
-        <BrandLogo size={96} variant="brand" />
-      </View>
-    );
+    return <View className="flex-1 bg-bg-100" />;
   }
 
   return <FontsContext.Provider value={value}>{children}</FontsContext.Provider>;

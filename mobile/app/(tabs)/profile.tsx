@@ -34,12 +34,21 @@ import { resolveConditionLabel } from '@/constants/conditionCatalog';
 import { ka } from '@/i18n/ka';
 import { ApiError, type Gender } from '@/lib/api';
 import { isoToDisplay, parseBirthDate } from '@/lib/birthdate';
+import { displayWeightForUnit } from '@/lib/assessmentForm';
+import { cmToInches, formatHeightInches } from '@/components/assessment/HeightWheelPicker';
 import { bmiCategory, bmiFromWeight } from '@/lib/bmi';
 import { formatDate } from '@/lib/format';
-import { requestNotificationPermission, registerPushTokenWithServer } from '@/lib/notifications';
+import { openAppSystemSettings } from '@/lib/appPermissions';
+import {
+  isNotificationsEnabled,
+  requestNotificationPermission,
+  registerPushTokenWithServer,
+  setPushOptedIn,
+} from '@/lib/notifications';
 import { getCyclePromptSeen } from '@/lib/homeScreenPrefs';
 import { usePlanUsage } from '@/lib/planUsage';
 import { useThemeColors } from '@/theme/colors';
+import { livingPlaceLine } from '@/lib/userLocation';
 import { useAuth } from '@/store/AuthContext';
 
 const GENDER_LABELS: Record<Gender, string> = {
@@ -48,7 +57,7 @@ const GENDER_LABELS: Record<Gender, string> = {
   OTHER: ka.auth.genderOther,
 };
 
-const APP_VERSION = Constants.expoConfig?.version ?? '3.4.0';
+const APP_VERSION = Constants.expoConfig?.version ?? '25.0.2';
 
 function optionLabel(group: 'smokingStatus' | 'chronicConditions', key: string): string {
   if (group === 'chronicConditions') return resolveConditionLabel(key);
@@ -76,6 +85,7 @@ export default function Profile() {
         const { flushStepsGoalAwards } = await import('@/lib/stepsGoal');
         await flushStepsGoalAwards(setUser);
         await refresh();
+        setNotificationsOn(await isNotificationsEnabled());
       })();
     }, [refresh, setUser]),
   );
@@ -88,11 +98,27 @@ export default function Profile() {
     setRefreshing(false);
   }, [refresh, setUser]);
 
-  const enableNotifications = async () => {
+  const openNotificationSettings = async () => {
+    const alreadyOn = await isNotificationsEnabled();
+    if (alreadyOn) {
+      router.push('/profile/permissions');
+      return;
+    }
+
     const granted = await requestNotificationPermission();
-    if (granted) await registerPushTokenWithServer();
-    setNotificationsOn(granted);
-    if (!granted) Alert.alert(ka.profile.notifications, ka.meds.notificationsDenied);
+    if (granted) {
+      await setPushOptedIn(true);
+      await registerPushTokenWithServer().catch(() => undefined);
+      setNotificationsOn(await isNotificationsEnabled());
+      router.push('/profile/permissions');
+      return;
+    }
+
+    setNotificationsOn(await isNotificationsEnabled());
+    Alert.alert(ka.profile.notifications, ka.meds.notificationsDenied, [
+      { text: ka.common.cancel, style: 'cancel' },
+      { text: ka.permissions.openSettingsAction, onPress: () => void openAppSystemSettings() },
+    ]);
   };
 
   const confirmSignOut = () => {
@@ -195,6 +221,19 @@ export default function Profile() {
             >
               {user?.fullName}
             </Text>
+            {livingPlaceLine(healthProfile) ? (
+              <Text
+                style={{
+                  marginTop: 4,
+                  fontFamily: 'NotoSansGeorgian_500Medium',
+                  fontSize: 13,
+                  lineHeight: 18,
+                  color: colors.text200,
+                }}
+              >
+                {livingPlaceLine(healthProfile)}
+              </Text>
+            ) : null}
             <View className="mt-2 flex-row flex-wrap items-center" style={{ gap: 8 }}>
               <View
                 style={{
@@ -259,10 +298,26 @@ export default function Profile() {
             <FactRow label={ka.profile.age} value={`${user.age ?? '—'} ${ka.profile.years}`} />
             <FactRow label={ka.auth.birthDate} value={isoToDisplay(user.birthDate)} />
             {healthProfile?.heightCm != null ? (
-              <FactRow label={ka.profile.height} value={`${Math.round(healthProfile.heightCm)} ${ka.profile.cm}`} />
+              <FactRow
+                label={ka.profile.height}
+                value={
+                  extra.heightUnit === 'ft'
+                    ? formatHeightInches(cmToInches(healthProfile.heightCm))
+                    : `${Math.round(healthProfile.heightCm)} ${ka.profile.cm}`
+                }
+              />
             ) : null}
             {healthProfile?.weightKg != null ? (
-              <FactRow label={ka.profile.weight} value={`${healthProfile.weightKg} ${ka.profile.kg}`} />
+              <FactRow
+                label={ka.profile.weight}
+                value={(() => {
+                  const shown = displayWeightForUnit(
+                    healthProfile.weightKg,
+                    extra.weightUnit === 'lbs' ? 'lbs' : 'kg',
+                  );
+                  return `${shown.value} ${shown.unitLabel === 'lbs' ? ka.assessment.lbs : ka.profile.kg}`;
+                })()}
+              />
             ) : null}
             {bmi != null ? (
               <FactRow
@@ -332,9 +387,9 @@ export default function Profile() {
                 ? undefined
                 : notificationsOn
                   ? ka.meds.notificationsEnabled
-                  : ka.meds.notificationsDenied
+                  : ka.profile.notificationsOff
             }
-            onPress={enableNotifications}
+            onPress={() => router.push('/profile/notifications')}
             isLast
           />
         </Card>

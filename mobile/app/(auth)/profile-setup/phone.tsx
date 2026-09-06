@@ -6,12 +6,14 @@ import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { useFigmaProfileSetup } from '@/constants/figmaProfileSetupLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
 
 /** Profile setup — phone entry (Figma 8845:310502). */
 export default function ProfileSetupPhoneScreen() {
   const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const router = useRouter();
+  const preview = useOnboardingDevPreview();
   const { user, ready, healthProfile } = useAuth();
   const [local, setLocal] = useState('');
   const [busy, setBusy] = useState(false);
@@ -31,8 +33,8 @@ export default function ProfileSetupPhoneScreen() {
   }
 
   if (!user) return <Redirect href="/(auth)/sign-in" />;
-  if (needsHealthAssessment(healthProfile)) return <Redirect href="/(auth)/assessment" />;
-  if (!needsProfileSetup(healthProfile)) return <Redirect href="/(tabs)/home" />;
+  if (!preview && needsHealthAssessment(healthProfile)) return <Redirect href="/(auth)/assessment" />;
+  if (!preview && !needsProfileSetup(healthProfile)) return <Redirect href="/(tabs)/home" />;
 
   const continuePhone = async () => {
     if (!normalised || !/^\+9955\d{8}$/.test(normalised)) {

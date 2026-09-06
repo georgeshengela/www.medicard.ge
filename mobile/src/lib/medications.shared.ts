@@ -79,7 +79,7 @@ export async function loadDoseLogs(): Promise<MedicationDoseLog[]> {
   }
 }
 
-export async function saveDoseLog(entry: MedicationDoseLog): Promise<void> {
+export async function saveDoseLog(entry: MedicationDoseLog, source: 'app' | 'notification' = 'app'): Promise<void> {
   const { setScopedPreference } = await import('@/lib/localAccount');
   const existing = await loadDoseLogs();
   const key = `${entry.medicationId}|${entry.date}|${entry.time}`;
@@ -91,6 +91,19 @@ export async function saveDoseLog(entry: MedicationDoseLog): Promise<void> {
     { ...entry, updatedAt: new Date().toISOString() },
   ];
   await setScopedPreference(DOSE_LOG_KEY, JSON.stringify(next));
+  void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
+  if (entry.status === 'taken' || entry.status === 'skipped') {
+    void import('@/lib/productObservability').then(({ syncDoseEvent }) =>
+      syncDoseEvent({
+        medicationId: entry.medicationId,
+        date: entry.date,
+        time: entry.time,
+        status: entry.status,
+        source,
+        occurredAt: entry.updatedAt,
+      }),
+    );
+  }
 }
 
 export function doseLogKey(medicationId: string, date: string, time: string): string {
@@ -106,13 +119,17 @@ export function findDoseLog(
   return logs.find((l) => l.medicationId === medicationId && l.date === date && l.time === time);
 }
 
-export function formatTime12h(time24: string): string {
+export function formatTime24h(time24: string): string {
   const [hStr, mStr] = time24.split(':');
   const h = Number(hStr);
-  const m = mStr ?? '00';
-  const ampm = h >= 12 ? 'pm' : 'am';
-  const h12 = h % 12 || 12;
-  return `${h12}:${m} ${ampm}`;
+  const m = (mStr ?? '00').slice(0, 2);
+  const hour = Number.isFinite(h) ? Math.max(0, Math.min(23, h)) : 0;
+  return `${String(hour).padStart(2, '0')}:${m.padStart(2, '0')}`;
+}
+
+/** Georgian UI uses 24h. Kept as an alias so older imports stay honest. */
+export function formatTime12h(time24: string): string {
+  return formatTime24h(time24);
 }
 
 export function defaultTimesForCount(count: number): string[] {
@@ -136,7 +153,7 @@ export function formatDateDisplay(iso: string): string {
   return `${d}  /  ${mo}  /  ${y}`;
 }
 
-export const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
+export const DAY_LETTERS = ['ო', 'ს', 'ო', 'ხ', 'პ', 'შ', 'კ'] as const;
 
 export function todayYmd(): string {
   const d = new Date();
@@ -162,7 +179,8 @@ export function adherenceStats(logs: MedicationDoseLog[]): { onTime: number; lat
     if (log.status === 'skipped') skipped += 1;
   }
   const total = onTime + skipped;
-  const onTimePct = total ? Math.round((onTime / total) * 100) : 0;
-  const skippedPct = total ? Math.round((skipped / total) * 100) : 0;
+  if (total === 0) return { onTime: 0, late: 0, skipped: 0 };
+  const onTimePct = Math.round((onTime / total) * 100);
+  const skippedPct = Math.round((skipped / total) * 100);
   return { onTime: onTimePct, late: Math.max(0, 100 - onTimePct - skippedPct), skipped: skippedPct };
 }

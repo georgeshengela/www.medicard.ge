@@ -37,6 +37,7 @@ model User {
   medications      MedicationSchedule[]
   periodUsages     PeriodUsage[]
   pushTokens       PushToken[]
+  pushEvents       PushEvent[]
   cycleProfile     CycleProfile?
   cycleLogs        CycleLog[]
   cycleCustomTags  CycleCustomTag[]
@@ -49,9 +50,17 @@ model User {
   healthProfile    HealthProfile?
   healthMetricDaily HealthMetricDaily[]
   stepLogs         StepLog[]
+  notificationDecisions NotificationDecision[]
+  appActivities         AppActivity[]
+  notificationOutcomes  NotificationOutcome[]
+  productEvents         ProductEvent[]
+  medicationDoseEvents  MedicationDoseEvent[]
+  notificationPermission NotificationPermission?
 
   @@index([status])
   @@index([packageId])
+  @@index([createdAt])
+  @@index([lastCheckInDate])
   passwordResets    PasswordReset[]
 }
 
@@ -66,6 +75,7 @@ model DailyCheckIn {
 
   @@unique([userId, date])
   @@index([userId])
+  @@index([date])
 }
 
 /// Idempotent bonus ledger — steps goal, future rewards.
@@ -288,6 +298,7 @@ model CycleLog {
 
   @@unique([userId, date])
   @@index([userId, date])
+  @@index([date])
 }
 
 /// User-owned Cycle labels. Archive instead of hard-delete.
@@ -496,6 +507,30 @@ model AiEvalResult {
   @@index([score])
 }
 
+/// Admin-editable Medi copy. Missing row = code default.
+model PushTemplate {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  title     String
+  body      String
+  updatedAt DateTime @updatedAt
+}
+
+/// Local / QA / device-received notifications. Broadcasts stay on PushCampaign.
+model PushEvent {
+  id        String   @id @default(uuid())
+  source    String
+  key       String
+  title     String
+  body      String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([key])
+}
+
 model PushCampaign {
   id          String    @id @default(uuid())
   title       String
@@ -701,4 +736,127 @@ model SyncRun {
   finishedAt   DateTime?
 
   @@index([source, startedAt])
+}
+
+/// One authenticated app-open per Tbilisi day. DAU/WAU/MAU source. Not a login bonus.
+model AppActivity {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date         DateTime @db.Date
+  firstAt      DateTime
+  lastAt       DateTime
+  platform     String?
+  appVersion   String?
+  activityType String   @default("open")
+
+  @@unique([userId, date])
+  @@index([date])
+  @@index([lastAt])
+  @@index([appVersion])
+}
+
+/// Sanitized Brain outcomes. No titles, bodies, health values, or chat.
+model NotificationOutcome {
+  id         String   @id @default(uuid())
+  decisionId String
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outcome    String
+  actionKey  String   @default("")
+  occurredAt DateTime
+  appVersion String?
+  platform   String?
+  implied    Boolean  @default(false)
+  syncedAt   DateTime @default(now())
+
+  @@unique([decisionId, outcome, actionKey])
+  @@index([occurredAt])
+  @@index([userId, occurredAt])
+  @@index([outcome, occurredAt])
+}
+
+model ProductEvent {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String
+  category   String?
+  entityId   String?
+  source     String?
+  occurredAt DateTime
+  appVersion String?
+  platform   String?
+
+  @@unique([userId, kind, entityId])
+  @@index([kind, occurredAt])
+}
+
+model MedicationDoseEvent {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medicationId String
+  date         String
+  time         String
+  status       String
+  source       String
+  occurredAt   DateTime
+
+  @@unique([userId, medicationId, date, time])
+  @@index([date])
+}
+
+model NotificationPermission {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    String
+  platform  String?
+  updatedAt DateTime
+}
+
+/// Sanitized Notification Brain decisions synced from devices. No health values, no chat text.
+model NotificationDecision {
+  id                String    @id
+  decisionId        String    @unique
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  candidate         String
+  family            String
+  score             Int       @default(0)
+  /// SEND | BLOCKED | CANCELLED | REVALIDATED
+  result            String
+  reason            String?
+  templateKey       String?
+  route             String?
+  selectedFrequency String?
+  baseDailyCap      Int?
+  adaptiveDailyCap  Int?
+  ewma              Float?
+  createdAt         DateTime
+  scheduledAt       DateTime?
+  revalidatedAt     DateTime?
+  syncedAt          DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([result, createdAt])
+  @@index([family, createdAt])
+  @@index([userId, createdAt])
+}
+
+/// Admin actions — template edits, settings, user status. Never store secrets.
+model AdminAuditLog {
+  id            String   @id @default(uuid())
+  adminId       String?
+  adminEmail    String
+  action        String
+  targetType    String
+  targetId      String?
+  previousValue Json?
+  newValue      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
 }

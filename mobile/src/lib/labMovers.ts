@@ -1,3 +1,4 @@
+import { resolveCanonicalLabKey } from '@/lib/labNames';
 import type { LabFlag, LabPanel } from '@/types/lab';
 
 export type LabMover = {
@@ -22,11 +23,12 @@ export function summarizeLabMovers(panels: LabPanel[], limit = 3): LabMover[] {
   const ordered = [...panels].sort((a, b) => a.date.localeCompare(b.date));
   for (const panel of ordered) {
     for (const row of panel.parameters) {
-      const cur = byKey.get(row.key) ?? { name: row.nameKa || row.nameEn, unit: row.unit, rows: [] };
+      const key = resolveCanonicalLabKey(row);
+      const cur = byKey.get(key) ?? { name: row.nameKa || row.nameEn, unit: row.unit, rows: [] };
       cur.unit = row.unit || cur.unit;
       cur.name = row.nameKa || row.nameEn || cur.name;
       cur.rows.push({ value: row.value, display: row.display || String(row.value), flag: row.flag, date: panel.date });
-      byKey.set(row.key, cur);
+      byKey.set(key, cur);
     }
   }
   return [...byKey.entries()]

@@ -14,7 +14,7 @@ import { pickerScrollTick, pickerSelectionTick } from '@/components/assessment/p
 import { ASSESSMENT, useAssessment } from '@/constants/assessmentLayout';
 
 const SCREEN_W = Dimensions.get('window').width;
-const TICK_W = 10;
+const DEFAULT_TICK_W = 10;
 const TICK_MINOR = ASSESSMENT.weightTickMinor;
 const TICK_MAJOR = ASSESSMENT.weightTickMajor;
 const RULER_H = ASSESSMENT.weightRulerH;
@@ -32,6 +32,8 @@ type Props = {
   onSelect: (value: number) => void;
   labelEvery?: number;
   labelOrigin?: number;
+  tickWidth?: number;
+  labelFontSize?: number;
 };
 
 function clampIndex(index: number, length: number) {
@@ -54,11 +56,12 @@ function nearestIndex(values: number[], target: number) {
 }
 
 function shouldLabel(value: number, labelEvery: number, labelOrigin: number) {
-  return (value - labelOrigin) % labelEvery === 0;
+  const step = (value - labelOrigin) / labelEvery;
+  return Math.abs(step - Math.round(step)) < 1e-6;
 }
 
-function offsetForIndex(index: number) {
-  return index * TICK_W;
+function formatTickLabel(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
 }
 
 function tickTop(height: number) {
@@ -81,25 +84,28 @@ export function WeightRulerPicker({
   onSelect,
   labelEvery = 5,
   labelOrigin = 0,
+  tickWidth = DEFAULT_TICK_W,
+  labelFontSize = 12,
 }: Props) {
   const ASSESSMENT = useAssessment();
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const dragging = useRef(false);
   const settling = useRef(false);
   const lastHapticIndex = useRef(-1);
-  const sidePad = SCREEN_W / 2 - TICK_W / 2;
+  const labelWidth = tickWidth === DEFAULT_TICK_W ? LABEL_W : Math.max(LABEL_W, tickWidth * 2);
+  const sidePad = SCREEN_W / 2 - tickWidth / 2;
 
   const selectedIndex = nearestIndex(values, selected);
   const [centerIndex, setCenterIndex] = useState(selectedIndex);
 
   const snapOffsets = useMemo(
-    () => values.map((_, index) => offsetForIndex(index)),
-    [values],
+    () => values.map((_, index) => index * tickWidth),
+    [tickWidth, values],
   );
 
   const scrollToIndex = useCallback((index: number, animated: boolean) => {
-    scrollRef.current?.scrollTo({ x: offsetForIndex(index), animated });
-  }, []);
+    scrollRef.current?.scrollTo({ x: index * tickWidth, animated });
+  }, [tickWidth]);
 
   useEffect(() => {
     if (dragging.current || settling.current) return;
@@ -123,7 +129,7 @@ export function WeightRulerPicker({
       settling.current = true;
       dragging.current = false;
 
-      const index = clampIndex(Math.round(offsetX / TICK_W), values.length);
+      const index = clampIndex(Math.round(offsetX / tickWidth), values.length);
       scrollToIndex(index, true);
       setCenterIndex(index);
       fireHaptic(index);
@@ -135,11 +141,11 @@ export function WeightRulerPicker({
         settling.current = false;
       }, 280);
     },
-    [fireHaptic, onSelect, scrollToIndex, selected, values],
+    [fireHaptic, onSelect, scrollToIndex, selected, tickWidth, values],
   );
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const index = clampIndex(Math.round(e.nativeEvent.contentOffset.x / TICK_W), values.length);
+    const index = clampIndex(Math.round(e.nativeEvent.contentOffset.x / tickWidth), values.length);
     if (index !== centerIndex) setCenterIndex(index);
     if (dragging.current) fireHaptic(index);
   };
@@ -214,7 +220,7 @@ export function WeightRulerPicker({
             <View
               key={`${value}-${index}`}
               style={{
-                width: TICK_W,
+                width: tickWidth,
                 height: RULER_H,
                 alignItems: 'center',
               }}
@@ -234,27 +240,28 @@ export function WeightRulerPicker({
 
               {labeled && !active ? (
                 <View
+                  pointerEvents="none"
                   style={{
                     position: 'absolute',
                     top: LABEL_TOP,
-                    left: (TICK_W - LABEL_W) / 2,
-                    width: LABEL_W,
+                    left: (tickWidth - labelWidth) / 2,
+                    width: labelWidth,
                     height: LABEL_H,
                     alignItems: 'center',
-                    justifyContent: 'flex-end',
+                    justifyContent: 'center',
                   }}
                 >
                   <Text
                     numberOfLines={1}
                     style={{
                       fontFamily: 'NotoSansGeorgian_400Regular',
-                      fontSize: 12,
+                      fontSize: labelFontSize,
                       lineHeight: 16,
-                      color: ASSESSMENT.textSecondary,
+                      color: ASSESSMENT.textPrimary,
                       textAlign: 'center',
                     }}
                   >
-                    {value}
+                    {formatTickLabel(value)}
                   </Text>
                 </View>
               ) : null}

@@ -20,9 +20,9 @@ export function GoalSetSuccessModal({ visible, onClose }: Props) {
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <View style={{ flex: 1 }}>
         {Platform.OS !== 'web' ? (
-          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
         ) : null}
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
         <View style={{ flex: 1, justifyContent: 'center', padding: 16 }}>
           <View

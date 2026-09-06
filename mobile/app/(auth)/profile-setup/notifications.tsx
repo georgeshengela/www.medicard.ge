@@ -9,7 +9,7 @@ import {
 } from '@/components/profile/ProfileSetupButtons';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { ka } from '@/i18n/ka';
-import { registerPushTokenWithServer } from '@/lib/notifications';
+import { registerPushTokenWithServer, setPushOptedIn } from '@/lib/notifications';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
@@ -36,17 +36,22 @@ export default function ProfileSetupNotificationsScreen() {
   if (blocked === 'assessment') return <Redirect href="/(auth)/assessment" />;
   if (blocked === 'home') return <Redirect href="/(tabs)/home" />;
 
-  const goAnalyzing = () => router.replace(onboardingStepHref('/(auth)/profile-setup/analyzing', preview) as never);
+  const goLocation = () => router.replace(onboardingStepHref('/(auth)/profile-setup/location', preview) as never);
 
   const continueFlow = async (granted: boolean) => {
     setBusy(true);
     try {
-      if (granted) await registerPushTokenWithServer();
+      if (granted) {
+        await setPushOptedIn(true);
+        await registerPushTokenWithServer().catch(() => undefined);
+      } else {
+        await setPushOptedIn(false);
+      }
       const updated = await patchProfileExtra(healthProfile, user, {
         notificationsEnabled: granted,
       });
       setHealthProfile(updated);
-      goAnalyzing();
+      goLocation();
     } finally {
       setBusy(false);
     }

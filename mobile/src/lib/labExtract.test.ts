@@ -46,11 +46,35 @@ describe('labExtract', () => {
     const hgb = extracted.parameters.find((row) => row.key === 'hemoglobin');
     const crp = extracted.parameters.find((row) => row.key === 'crp');
     assert.ok(hgb);
+    assert.equal(hgb.nameKa, 'ჰემოგლობინი');
     assert.equal(hgb.flag, 'L');
     assert.equal(hgb.unit, 'g/dL');
     assert.ok(crp);
     assert.equal(crp.flag, 'H');
     assert.equal(crp.refHigh, 5);
+    const mcvText = parseLabExtract('Volume globulaire moyen (MCV). -. 79. fL. 83 - 98');
+    assert.equal(mcvText.parameters[0]?.key, 'mcv');
+    assert.equal(mcvText.parameters[0]?.nameKa, 'საშუალო ერითროციტული მოცულობა');
+  });
+
+  it('maps French vision keys onto Georgian titles and the same chart key', () => {
+    const french = parseLabExtract(
+      '```labjson\n{"date":"2026-09-05","parameters":[{"key":"hemoglobine","nameKa":"Hémoglobine","nameEn":"Hémoglobine","value":12.6,"display":"12.6","unit":"g/dL","refLow":13,"refHigh":16.5,"flag":"L"}]}\n```',
+    );
+    const english = parseLabExtract('Hemoglobin | 13.4 | g/dL | 12-16 | N');
+    const merged = mergeLabExtracts([french, english]);
+    assert.equal(french.parameters[0]?.key, 'hemoglobin');
+    assert.equal(french.parameters[0]?.nameKa, 'ჰემოგლობინი');
+    assert.equal(slugLabKey('Leucocytes'), 'wbc');
+    assert.equal(slugLabKey('Volume globulaire moyen'), 'mcv');
+    assert.equal(merged.parameters.length, 1);
+    assert.equal(merged.parameters[0].key, 'hemoglobin');
+    assert.equal(slugLabKey('GB'), 'wbc');
+    assert.equal(slugLabKey('GR'), 'rbc');
+    assert.equal(slugLabKey('PNN'), 'neutrophils_pct');
+    assert.equal(slugLabKey('Coefficient de saturation de la transferrine'), 'tsat');
+    assert.equal(slugLabKey('Lymphocytes', '%'), 'lymphocytes_pct');
+    assert.equal(slugLabKey('Lymphocytes abs', 'G/L'), 'lymphocytes');
   });
 
   it('normalizes EU and ISO dates and strips the machine block', () => {

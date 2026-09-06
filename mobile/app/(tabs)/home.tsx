@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/Card';
 import { Disclaimer } from '@/components/Disclaimer';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeDashboardTop } from '@/components/home/HomeDashboardTop';
-import { HomeAccountSetupCard } from '@/components/home/HomeAccountSetupCard';
 import { HomeBmiWeightSection } from '@/components/home/HomeBmiWeightSection';
 import { HomeNextDoseSection } from '@/components/home/HomeNextDoseSection';
 import { HomeHealthMetricsSection } from '@/components/home/HomeHealthMetricsSection';
@@ -25,13 +24,14 @@ import { getCyclePromptSeen, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { useThemeColors, useIsDark } from '@/theme/colors';
 import { OnboardingDevLauncher } from '@/components/dev/OnboardingDevLauncher';
+import { NotificationsDevLauncher } from '@/components/dev/NotificationsDevLauncher';
 import { useAuth } from '@/store/AuthContext';
-import { getAccountSetupProgress, type AccountSetupStep } from '@/lib/homeAccountSetup';
 import { useHydration } from '@/hooks/useHydration';
+import { healthScoreLabelKa } from '@/lib/healthScore';
 import { analysisFromProfile } from '@/types/onboardingAnalysis';
 
 export default function Home() {
-  const { user, healthProfile, stats, refresh } = useAuth();
+  const { user, healthProfile, refresh } = useAuth();
   const router = useRouter();
   const colors = useThemeColors();
   const tabInset = useTabBarInset();
@@ -96,20 +96,14 @@ export default function Home() {
 
   const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
   const analysis = analysisFromProfile(extra);
-  const setupProgress = getAccountSetupProgress(healthProfile, user, stats);
   const avatarId = typeof extra.avatarId === 'string' ? extra.avatarId : null;
   const { todayMl } = useHydration();
-
-  const onSetupStepPress = (step: AccountSetupStep) => {
-    if (step.done) return;
-    router.push(step.href as never);
-  };
 
   return (
     <>
       <ScrollView
         className="flex-1 bg-bg-100"
-        contentContainerStyle={{ paddingBottom: tabInset }}
+        contentContainerStyle={{ paddingBottom: tabInset + 24 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />
         }
@@ -122,7 +116,9 @@ export default function Home() {
           avatarId={avatarId}
           streak={user?.currentStreak ?? 0}
           score={analysis?.score ?? null}
-          scoreLabel={analysis?.labelKa ?? ka.home.scorePending}
+          scoreLabel={
+            analysis?.score != null ? healthScoreLabelKa(analysis.score) : ka.home.scorePending
+          }
           statusLabel={analysis?.bodyComposition?.physiqueLabelKa ?? ka.home.healthyStatus}
           waterLiters={todayMl > 0 ? todayMl / 1000 : null}
           onAvatarPress={() => router.push('/(tabs)/profile' as never)}
@@ -136,12 +132,6 @@ export default function Home() {
         <HomeNextDoseSection refreshing={refreshing} />
 
         <HomeBmiWeightSection profile={healthProfile} />
-
-        {setupProgress.visible ? (
-          <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-            <HomeAccountSetupCard progress={setupProgress} onStepPress={onSetupStepPress} />
-          </View>
-        ) : null}
 
         <HomeHealthMetricsSection profile={healthProfile} />
 
@@ -217,6 +207,7 @@ export default function Home() {
 
       <DefaultHomePrompt visible={showCyclePrompt} onClose={onPromptClose} />
       <OnboardingDevLauncher variant="fab" />
+      <NotificationsDevLauncher />
     </>
   );
 }

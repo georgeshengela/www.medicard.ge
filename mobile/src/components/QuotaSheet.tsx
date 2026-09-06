@@ -50,13 +50,13 @@ export function QuotaSheet({
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
       <View style={{ flex: 1 }}>
         {Platform.OS !== 'web' ? (
-          <BlurView intensity={24} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={24} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
         ) : null}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={ka.common.close}
           onPress={onClose}
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: APP_MODAL_OVERLAY }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]}
         />
 
         <View style={{ flex: 1, justifyContent: 'center', padding: 16 }} pointerEvents="box-none">

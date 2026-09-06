@@ -45,7 +45,7 @@ export function SetStepGoalSheet({ visible, value, onClose, onApply }: Props) {
           accessibilityRole="button"
           accessibilityLabel={ka.common.close}
           onPress={onClose}
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: APP_MODAL_OVERLAY }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]}
         />
 
         <View style={{ width: '100%' }}>

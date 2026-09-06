@@ -1,11 +1,17 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { loadLabPanels, removeLabPanel, removeLabParameter, setLabPanelAnalysis, upsertLabPanel } from '@/lib/labStore';
+import { resolveCanonicalLabKey, titledLabName, titledLabPanel } from '@/lib/labNames';
+import { loadCanonicalLabPanels, mergeImportedLabPanels, removeLabPanel, removeLabParameter, replaceLabPanels, setLabPanelAnalysis, upsertLabPanel } from '@/lib/labStore';
 import { useAuth } from '@/store/AuthContext';
 import type { LabPanel, LabParameter } from '@/types/lab';
 
+function panelsFromProfile(extra: Record<string, unknown> | undefined): LabPanel[] {
+  const raw = extra?.labPanels;
+  return Array.isArray(raw) ? (raw as LabPanel[]) : [];
+}
+
 export function useLab() {
-  const { user } = useAuth();
+  const { user, healthProfile } = useAuth();
   const [panels, setPanels] = useState<LabPanel[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,9 +21,12 @@ export function useLab() {
       setLoading(false);
       return;
     }
-    setPanels(await loadLabPanels());
+    const seeded = panelsFromProfile((healthProfile?.extraAnswers ?? {}) as Record<string, unknown>);
+    const raw = seeded.length ? await mergeImportedLabPanels(seeded) : await loadCanonicalLabPanels();
+    const next = raw.map(titledLabPanel);
+    setPanels(next);
     setLoading(false);
-  }, [user?.id]);
+  }, [user?.id, healthProfile?.extraAnswers]);
 
   useFocusEffect(
     useCallback(() => {
@@ -43,31 +52,36 @@ export function useLab() {
       [...panels]
         .sort((a, b) => a.date.localeCompare(b.date))
         .flatMap((panel) => {
-          const hit = panel.parameters.find((row) => row.key === key);
+          const want = resolveCanonicalLabKey({ key, nameEn: key, nameKa: key });
+          const hit = panel.parameters.find((row) => resolveCanonicalLabKey(row) === want);
           return hit ? [{ date: panel.date, panelId: panel.id, param: hit }] : [];
         }),
     [panels],
   );
 
   const save = useCallback(async (panel: LabPanel) => {
-    setPanels(await upsertLabPanel(panel));
+    setPanels((await upsertLabPanel(panel)).map(titledLabPanel));
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    setPanels(await removeLabPanel(id));
+    setPanels((await removeLabPanel(id)).map(titledLabPanel));
   }, []);
 
   const removeParam = useCallback(async (panelId: string, key: string) => {
-    setPanels(await removeLabParameter(panelId, key));
+    setPanels((await removeLabParameter(panelId, key)).map(titledLabPanel));
   }, []);
 
   const setAnalysis = useCallback(async (date: string, analysis: string) => {
-    setPanels(await setLabPanelAnalysis(date, analysis));
+    setPanels((await setLabPanelAnalysis(date, analysis)).map(titledLabPanel));
   }, []);
 
-  return { panels, dates, byDate, loading, refresh, seriesFor, save, remove, removeParam, setAnalysis };
+  const replaceAll = useCallback(async (next: LabPanel[]) => {
+    setPanels((await replaceLabPanels(next)).map(titledLabPanel));
+  }, []);
+
+  return { panels, dates, byDate, loading, refresh, seriesFor, save, remove, removeParam, setAnalysis, replaceAll };
 }
 
 export function latestParamName(param: LabParameter): string {
-  return param.nameKa || param.nameEn;
+  return titledLabName(param);
 }

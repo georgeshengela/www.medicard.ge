@@ -1,85 +1,8 @@
 import type { LabExtract, LabFlag, LabParameter } from '@/types/lab';
+import { slugLabKey } from './labKeys.ts';
+import { titledLabParam } from './labNames.ts';
 
-const ALIASES: Record<string, string> = {
-  hemoglobin: 'hemoglobin',
-  hgb: 'hemoglobin',
-  hb: 'hemoglobin',
-  wbc: 'wbc',
-  leukocytes: 'wbc',
-  rbc: 'rbc',
-  erythrocytes: 'rbc',
-  hct: 'hct',
-  hematocrit: 'hct',
-  plt: 'plt',
-  platelets: 'plt',
-  glucose: 'glucose',
-  creatinine: 'creatinine',
-  urea: 'urea',
-  alt: 'alt',
-  alat: 'alt',
-  ast: 'ast',
-  asat: 'ast',
-  tsh: 'tsh',
-  cholesterol: 'cholesterol',
-  'total cholesterol': 'cholesterol',
-  'cholesterol total': 'cholesterol',
-  totalcholesterol: 'cholesterol',
-  chol: 'cholesterol',
-  tc: 'cholesterol',
-  ldl: 'ldl',
-  'ldl c': 'ldl',
-  'ldl cholesterol': 'ldl',
-  ldlc: 'ldl',
-  hdl: 'hdl',
-  'hdl c': 'hdl',
-  'hdl cholesterol': 'hdl',
-  hdlc: 'hdl',
-  triglycerides: 'triglycerides',
-  triglyceride: 'triglycerides',
-  trigly: 'triglycerides',
-  tg: 'triglycerides',
-  ferritin: 'ferritin',
-  vitamin_d: 'vitamin_d',
-  'vitamin d': 'vitamin_d',
-  '25-oh': 'vitamin_d',
-  '\u10f0\u10d4\u10db\u10dd\u10d2\u10da\u10dd\u10d1\u10d8\u10dc\u10d8': 'hemoglobin',
-  '\u10da\u10d4\u10d8\u10d9\u10dd\u10ea\u10d8\u10e2\u10d4\u10d1\u10d8': 'wbc',
-  '\u10d4\u10e0\u10d8\u10d7\u10e0\u10dd\u10ea\u10d8\u10e2\u10d4\u10d1\u10d8': 'rbc',
-  '\u10f0\u10d4\u10db\u10d0\u10e2\u10dd\u10d9\u10e0\u10d8\u10e2\u10d8': 'hct',
-  '\u10d7\u10e0\u10dd\u10db\u10d1\u10dd\u10ea\u10d8\u10e2\u10d4\u10d1\u10d8': 'plt',
-  '\u10d2\u10da\u10e3\u10d9\u10dd\u10d6\u10d0': 'glucose',
-  '\u10d9\u10e0\u10d4\u10d0\u10e2\u10d8\u10dc\u10d8\u10dc\u10d8': 'creatinine',
-  '\u10e8\u10d0\u10e0\u10d3\u10d8': 'urea',
-  '\u10e5\u10dd\u10da\u10d4\u10e1\u10e2\u10d4\u10e0\u10d8\u10dc\u10d8': 'cholesterol',
-  '\u10e1\u10d0\u10d4\u10e0\u10d7\u10dd \u10e5\u10dd\u10da\u10d4\u10e1\u10e2\u10d4\u10e0\u10d8\u10dc\u10d8': 'cholesterol',
-  '\u10e5\u10dd\u10da\u10d4\u10e1\u10e2\u10d4\u10e0\u10d8\u10dc\u10d8 \u10e1\u10d0\u10d4\u10e0\u10d7\u10dd': 'cholesterol',
-  '\u10e2\u10e0\u10d8\u10d2\u10da\u10d8\u10ea\u10d4\u10e0\u10d8\u10d3\u10d4\u10d1\u10d8': 'triglycerides',
-  '\u10e4\u10d4\u10e0\u10d8\u10e2\u10d8\u10dc\u10d8': 'ferritin',
-  hemoglobine: 'hemoglobin',
-  hematocrite: 'hct',
-  'globules rouges': 'rbc',
-  'globules blancs': 'wbc',
-  plaquettes: 'plt',
-  creatinine: 'creatinine',
-  uree: 'urea',
-  tgp: 'alt',
-  crp: 'crp',
-  'gamma gt': 'ggt',
-};
-
-
-export function slugLabKey(raw: string): string {
-  const compact = raw
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\[.*?\]/g, ' ')
-    .replace(/[^a-z0-9\u10A0-\u10FF\u0400-\u04FF]+/gi, ' ')
-    .trim();
-  const first = compact.split(/\s+/)[0] ?? compact;
-  const aliased = ALIASES[compact] ?? (compact.includes(' ') ? undefined : ALIASES[first]);
-  return aliased || compact.replace(/\s+/g, '_').slice(0, 48) || 'analyte';
-}
+export { slugLabKey } from './labKeys.ts';
 
 function parseNumber(raw: string): number | null {
   const cleaned = raw.replace(',', '.').replace(/[^\d.-]/g, '');
@@ -137,8 +60,8 @@ function toParam(input: {
   if (value == null) return null;
   const { low, high } = parseRange(input.range);
   const names = splitName(input.name);
-  return {
-    key: slugLabKey(names.nameEn || names.nameKa),
+  return titledLabParam({
+    key: slugLabKey(names.nameEn || names.nameKa, input.unit),
     nameKa: names.nameKa || names.nameEn,
     nameEn: names.nameEn || names.nameKa,
     value,
@@ -147,7 +70,7 @@ function toParam(input: {
     refLow: low,
     refHigh: high,
     flag: flagFrom(input.flagRaw, value, low, high),
-  };
+  });
 }
 
 function tidyUnit(unit: string): string {
@@ -235,7 +158,7 @@ function parseLabJson(text: string): LabExtract | null {
         const refLow = typeof row.refLow === 'number' ? row.refLow : parseNumber(String(row.refLow ?? ''));
         const refHigh = typeof row.refHigh === 'number' ? row.refHigh : parseNumber(String(row.refHigh ?? ''));
         return {
-          key: slugLabKey(String(row.key ?? nameEn ?? nameKa)),
+          key: slugLabKey(String(row.key ?? nameEn ?? nameKa), String(row.unit ?? '')),
           nameKa: nameKa || nameEn,
           nameEn: nameEn || nameKa,
           value,
@@ -246,7 +169,8 @@ function parseLabJson(text: string): LabExtract | null {
           flag: flagFrom(String(row.flag ?? ''), value, refLow, refHigh),
         } satisfies LabParameter;
       })
-      .filter((row): row is LabParameter => Boolean(row));
+      .filter((row): row is LabParameter => Boolean(row))
+      .map(titledLabParam);
     return { date: normalizeLooseDate(parsed.date) ?? null, parameters };
   } catch {
     return null;
@@ -285,7 +209,8 @@ export function parseLabExtract(text: string): LabExtract {
   const fromDots = parseDotSeparatedLab(text);
   const merged = new Map<string, LabParameter>();
   for (const row of [...(fromJson?.parameters ?? []), ...fromTable, ...fromDots]) {
-    merged.set(row.key, row);
+    const canon = titledLabParam(row);
+    merged.set(canon.key, canon);
   }
   return {
     date: fromJson?.date ?? parseDocumentDate(text),
@@ -298,7 +223,10 @@ export function mergeLabExtracts(parts: LabExtract[]): LabExtract {
   let date: string | null = null;
   for (const part of parts) {
     if (!date && part.date) date = part.date;
-    for (const row of part.parameters) merged.set(row.key, row);
+    for (const row of part.parameters) {
+      const canon = titledLabParam(row);
+      merged.set(canon.key, canon);
+    }
   }
   return { date, parameters: [...merged.values()] };
 }

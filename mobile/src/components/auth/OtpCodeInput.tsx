@@ -12,6 +12,8 @@ type Props = {
   length?: 4 | 6;
   /** Figma profile-setup uses larger 80px boxes. */
   variant?: 'compact' | 'hero';
+  /** Remount the hidden field after a failed attempt so Android does not keep the old digits. */
+  resetKey?: number;
 };
 
 /** Single-digit OTP boxes — compact (48px) or hero (80px) per Figma. */
@@ -22,6 +24,7 @@ export function OtpCodeInput({
   autoFocus = true,
   length = 4,
   variant = 'compact',
+  resetKey = 0,
 }: Props) {
   const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const inputRef = useRef<TextInput>(null);
@@ -73,6 +76,7 @@ export function OtpCodeInput({
       </Pressable>
 
       <TextInput
+        key={resetKey}
         ref={inputRef}
         value={value}
         onChangeText={(text) => {

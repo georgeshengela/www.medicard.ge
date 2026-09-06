@@ -1,5 +1,7 @@
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import { ka } from '@/i18n/ka';
 
 /** iPhone Camera Roll defaults to HEIC — the API and vision models want JPEG. */
 const HEIC = /heic|heif/i;
@@ -34,6 +36,28 @@ function jpegName(name: string): string {
   return `${stem}.jpg`;
 }
 
+function sanitizeFileName(name: string): string {
+  return name.replace(/[^\w.-]+/g, '_') || `medicard-${Date.now()}`;
+}
+
+/** RN fetch FormData cannot upload content:// or ph:// — copy into the app cache first. */
+export async function asCachedFile(uri: string, destName: string): Promise<string> {
+  if (uri.startsWith('file://')) return uri;
+  const cache = FileSystem.cacheDirectory;
+  if (!cache) return uri;
+  const dest = `${cache}upload-${Date.now()}-${sanitizeFileName(destName)}`;
+  await FileSystem.copyAsync({ from: uri, to: dest });
+  return dest;
+}
+
+async function mustCache(uri: string, destName: string): Promise<string> {
+  try {
+    return await asCachedFile(uri, destName);
+  } catch {
+    throw new Error(ka.upload.prepareFailed);
+  }
+}
+
 export async function toUploadableImage(asset: {
   uri: string;
   name?: string | null;
@@ -46,7 +70,7 @@ export async function toUploadableImage(asset: {
   const mime = normalizeUploadMime(asset.mimeType, name);
   const size = asset.size ?? asset.fileSize ?? undefined;
   if (mime === 'application/pdf') {
-    return { uri: asset.uri, name, mimeType: mime, size };
+    return { uri: await mustCache(asset.uri, name), name, mimeType: mime, size };
   }
 
   if (needsJpegTranscode(mime, name)) {
@@ -57,11 +81,11 @@ export async function toUploadableImage(asset: {
       });
       return { uri: out.uri, name: jpegName(name), mimeType: 'image/jpeg' };
     } catch {
-      return { uri: asset.uri, name: jpegName(name), mimeType: 'image/jpeg', size };
+      return { uri: await mustCache(asset.uri, jpegName(name)), name: jpegName(name), mimeType: 'image/jpeg', size };
     }
   }
 
-  return { uri: asset.uri, name, mimeType: mime, size };
+  return { uri: await mustCache(asset.uri, name), name, mimeType: mime, size };
 }
 
 /** Shrink lab sheets so OpenRouter can read the printed range without a huge upload. */
@@ -82,6 +106,15 @@ export async function prepareLabImage(asset: {
     });
     return { uri: out.uri, name: jpegName(file.name), mimeType: 'image/jpeg' };
   } catch {
-    return file;
+    try {
+      const copied = await asCachedFile(file.uri, jpegName(file.name));
+      const out = await ImageManipulator.manipulateAsync(copied, [{ resize: { width: 1600 } }], {
+        compress: 0.72,
+        format: ImageManipulator.SaveFormat.JPEG,
+      });
+      return { uri: out.uri, name: jpegName(file.name), mimeType: 'image/jpeg' };
+    } catch {
+      return { uri: await mustCache(file.uri, jpegName(file.name)), name: jpegName(file.name), mimeType: 'image/jpeg' };
+    }
   }
 }

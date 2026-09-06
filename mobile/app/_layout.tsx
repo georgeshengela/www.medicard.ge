@@ -3,7 +3,7 @@ import '../global.css';
 import React, { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useGlobalSearchParams, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
@@ -13,8 +13,10 @@ import Constants from 'expo-constants';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
+import { LocationAskHost } from '@/components/location/LocationAskHost';
 import { useThemeColors } from '@/theme/colors';
 import { AuthProvider, useAuth, needsHealthAssessment, needsProfileSetup } from '@/store/AuthContext';
+import { routeFromNotificationData } from '@/lib/notificationPlan';
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import { FontsProvider } from '@/store/FontsContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
@@ -26,7 +28,7 @@ enableScreens(false);
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-const APP_VERSION = Constants.expoConfig?.version ?? '3.0.0';
+const APP_VERSION = Constants.expoConfig?.version ?? '25.0.2';
 
 /** Redirects between the auth stack and the app shell as the session changes. */
 function AuthGate({ children }: { children: React.ReactNode }) {
@@ -37,6 +39,11 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   const segments = useSegments();
   const router = useRouter();
+  const params = useGlobalSearchParams<{ preview?: string | string[] }>();
+  const qaPreview =
+    typeof __DEV__ !== 'undefined' &&
+    __DEV__ &&
+    (Array.isArray(params.preview) ? params.preview[0] : params.preview) === '1';
   const splashHidden = useRef(false);
   const [gate, setGate] = useState<{ kind: 'ok' } | { kind: 'maintenance' | 'update'; message: string }>({
     kind: 'ok',
@@ -86,6 +93,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     if (user && inAuthGroup) {
+      // Dev QA — stay on any auth/onboarding screen when preview=1.
+      if (qaPreview) return;
+
       void (async () => {
         const profile = healthProfile ?? (await refreshHealthProfile());
 
@@ -106,7 +116,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         if (onPrivacy || onResults || onAnalyzing) return;
 
         // Dev QA — allow profile-setup preview even when onboarding is complete.
-        if (typeof __DEV__ !== 'undefined' && __DEV__ && onProfileSetup) {
+        if (typeof __DEV__ !== 'undefined' && __DEV__ && (onProfileSetup || onAssessment)) {
           return;
         }
 
@@ -119,7 +129,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         router.replace(resolveInitialRoute(landing, user.gender) as never);
       })();
     }
-  }, [ready, user, segments, router, gate.kind, healthProfile, refreshHealthProfile]);
+  }, [ready, user, segments, router, gate.kind, healthProfile, refreshHealthProfile, qaPreview]);
 
   if (gate.kind !== 'ok') {
     return (
@@ -132,48 +142,98 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!ready) return <View className="flex-1" style={{ backgroundColor: colors.bg100 }} />;
+  if (!ready) return <View className="flex-1 bg-bg-100" />;
   return <>{children}</>;
 }
 
 function AppShell() {
   const colors = useThemeColors();
   const { scheme } = useTheme();
-  const { user } = useAuth();
+  const { user, healthProfile, setHealthProfile } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const showTabBar = Boolean(user) && segments[0] === '(tabs)';
 
   useEffect(() => {
-    const openRoute = (route: unknown) => {
-      if (typeof route === 'string' && route.startsWith('/')) {
-        router.push(route as never);
-      }
+    if (!user) {
+      void import('@/lib/livePresence').then(({ stopLivePresence }) => stopLivePresence());
+      void import('@/lib/userLocation').then(({ setLocationProfileListener, stopLiveLocationWatch }) => {
+        setLocationProfileListener(null);
+        stopLiveLocationWatch();
+      });
+      return;
+    }
+    void import('@/lib/livePresence').then(({ startLivePresence, setLivePresenceScreen }) => {
+      startLivePresence();
+      setLivePresenceScreen(segments.filter(Boolean).join('/') || 'home');
+    });
+  }, [user, segments]);
+
+  useEffect(() => {
+    if (!user) return;
+    void import('@/lib/userLocation').then(({ setLocationProfileListener, startLiveLocationIfEnabled }) => {
+      setLocationProfileListener(setHealthProfile);
+      void startLiveLocationIfEnabled(healthProfile);
+    });
+  }, [user, Boolean(healthProfile), setHealthProfile]);
+
+  useEffect(() => {
+    const openFromData = (raw: unknown) => {
+      const data = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
+      const route = routeFromNotificationData(data);
+      if (route) router.push(route as never);
     };
 
     Notifications.getLastNotificationResponseAsync()
       .then((last) => {
-        const data = last?.notification.request.content.data;
-        if (data?.type === 'cycle_reminder' && data?.route) {
-          openRoute(data.route);
-        }
-        if (data?.type === 'visit_reminder' && data?.route) {
-          openRoute(data.route);
-        }
+        openFromData(last?.notification.request.content.data);
       })
       .catch(() => undefined);
 
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      if (data?.type === 'cycle_reminder' && data?.route) {
-        openRoute(data.route);
-      }
-      if (data?.type === 'visit_reminder' && data?.route) {
-        openRoute(data.route);
+    const received = Notifications.addNotificationReceivedListener((notification) => {
+      const content = notification.request.content;
+      const data = (content.data ?? {}) as Record<string, unknown>;
+      if (data.qa) return;
+      void import('@/lib/pushCopy').then(({ logPushEvent }) =>
+        logPushEvent({
+          source: typeof data.campaignId === 'string' ? 'broadcast' : 'local',
+          key: String(data.templateKey || data.type || 'unknown'),
+          title: content.title ?? '',
+          body: content.body ?? '',
+        }),
+      );
+      if (data.type === 'medi_engage') {
+        const now = new Date();
+        const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const key = String(data.templateKey || 'engage');
+        const family = String(data.family || 'checkin');
+        void import('@/lib/mediEngagePrefs').then(({ recordEngageSent, recordEngageOutcome }) => {
+          void recordEngageSent({ key, family, at: Date.now(), ymd });
+          void recordEngageOutcome({ key, family, sentAt: Date.now() });
+        });
+        const decisionId = typeof data.decisionId === 'string' ? data.decisionId : '';
+        if (decisionId.startsWith('notif_dec_')) {
+          void import('@/lib/productObservability').then(({ syncNotificationOutcome }) =>
+            syncNotificationOutcome({ decisionId, outcome: 'delivered' }),
+          );
+        }
       }
     });
 
-    return () => sub.remove();
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      void import('@/lib/mediNotificationActions').then(({ handleNotificationAction }) =>
+        handleNotificationAction(response).then((result) => {
+          if (!result.navigate) return;
+          if (result.route) router.push(result.route as never);
+          else openFromData(response.notification.request.content.data);
+        }),
+      );
+    });
+
+    return () => {
+      received.remove();
+      sub.remove();
+    };
   }, [router]);
 
   return (
@@ -211,6 +271,7 @@ function AppShell() {
           </View>
           {showTabBar ? <FloatingTabBar /> : null}
           <DailyCheckInHost />
+          <LocationAskHost />
         </View>
       </AuthGate>
     </>

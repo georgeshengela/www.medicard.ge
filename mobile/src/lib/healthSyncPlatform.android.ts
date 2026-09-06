@@ -1,3 +1,4 @@
+import { Linking } from 'react-native';
 import {
   dateToYmd,
   eighteenMonthsAgo,
@@ -8,6 +9,10 @@ import {
 import { weekStart } from '@/lib/healthMetrics.shared';
 import type { HealthMetricKey, HealthMetricPoint } from '@/types/healthMetrics';
 import type { StepSample } from '@/types/stepsMetrics';
+
+const HEALTH_CONNECT_PLAY =
+  'https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata';
+const HEALTH_CONNECT_MARKET = 'market://details?id=com.google.android.apps.healthdata';
 
 const PERMISSIONS = [
   { accessType: 'read' as const, recordType: 'MenstruationFlow' as const },
@@ -29,6 +34,11 @@ const PERMISSIONS = [
   { accessType: 'read' as const, recordType: 'Hydration' as const },
   { accessType: 'read' as const, recordType: 'Steps' as const },
 ];
+
+const HISTORY_PERMISSION = {
+  accessType: 'read' as const,
+  recordType: 'ReadHealthDataHistory' as const,
+};
 
 async function loadHealthConnect() {
   return import('react-native-health-connect');
@@ -76,6 +86,21 @@ function mapMucus(
   }
 }
 
+async function openHealthConnectStore(): Promise<void> {
+  try {
+    const canOpen = await Linking.canOpenURL(HEALTH_CONNECT_MARKET);
+    await Linking.openURL(canOpen ? HEALTH_CONNECT_MARKET : HEALTH_CONNECT_PLAY);
+  } catch {
+    await Linking.openURL(HEALTH_CONNECT_PLAY).catch(() => undefined);
+  }
+}
+
+function hasGrantedAccess(
+  granted: Array<{ accessType?: string; recordType?: string }>,
+): boolean {
+  return granted.some((item) => typeof item.recordType === 'string' && item.recordType.length > 0);
+}
+
 async function ensureReady(): Promise<HealthConnectResult> {
   const HC = await loadHealthConnect();
   const status = await HC.getSdkStatus();
@@ -93,12 +118,30 @@ async function ensureReady(): Promise<HealthConnectResult> {
 export async function connectHealthNative(): Promise<HealthConnectResult> {
   try {
     const ready = await ensureReady();
-    if (!ready.ok) return ready;
+    if (!ready.ok) {
+      if (ready.reason === 'not_installed') {
+        await openHealthConnectStore();
+      }
+      return ready;
+    }
 
     const HC = await loadHealthConnect();
-    const granted = await HC.requestPermission(PERMISSIONS);
-    if (!granted.length) return { ok: false, reason: 'denied' };
-    return { ok: true };
+    const already = await HC.getGrantedPermissions().catch(() => []);
+    const requested = await HC.requestPermission(PERMISSIONS);
+    const granted = requested.length ? requested : already;
+    if (hasGrantedAccess(granted)) {
+      await HC.requestPermission([HISTORY_PERMISSION]).catch(() => []);
+      return { ok: true };
+    }
+
+    const after = await HC.getGrantedPermissions().catch(() => []);
+    if (hasGrantedAccess(after)) {
+      await HC.requestPermission([HISTORY_PERMISSION]).catch(() => []);
+      return { ok: true };
+    }
+
+    HC.openHealthConnectSettings();
+    return { ok: false, reason: 'denied' };
   } catch (err) {
     return {
       ok: false,
@@ -109,8 +152,12 @@ export async function connectHealthNative(): Promise<HealthConnectResult> {
 }
 
 export async function openHealthSettingsNative(): Promise<void> {
-  const HC = await loadHealthConnect();
-  HC.openHealthConnectSettings();
+  try {
+    const HC = await loadHealthConnect();
+    HC.openHealthConnectSettings();
+  } catch {
+    await openHealthConnectStore();
+  }
 }
 
 export async function importLatestPeriodStartNative(): Promise<string | null> {

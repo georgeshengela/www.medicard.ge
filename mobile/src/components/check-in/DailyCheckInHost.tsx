@@ -39,6 +39,11 @@ export function DailyCheckInHost() {
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'active') {
         void refresh();
+        void import('@/lib/notifications').then(async ({ getNotificationPermissionGranted }) => {
+          const granted = await getNotificationPermissionGranted();
+          const { syncNotificationPermission } = await import('@/lib/productObservability');
+          await syncNotificationPermission(granted ? 'enabled' : 'disabled');
+        });
         if (user.id) {
           void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
             flushCycleQueue(user.id).catch(() => undefined),

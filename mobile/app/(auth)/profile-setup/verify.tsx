@@ -7,6 +7,7 @@ import { useFigmaProfileSetup } from '@/constants/figmaProfileSetupLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { markPhoneVerified } from '@/lib/profileSetupFlow';
+import { useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
 
 const RESEND_SEC = 60;
@@ -21,11 +22,13 @@ function maskPhoneLast4(phone: string) {
 export default function ProfileSetupVerifyScreen() {
   const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const router = useRouter();
+  const preview = useOnboardingDevPreview();
   const params = useLocalSearchParams<{ phone?: string }>();
   const phone = typeof params.phone === 'string' ? params.phone : '';
   const { user, ready, healthProfile, setHealthProfile, setUser } = useAuth();
 
   const [code, setCode] = useState('');
+  const [otpKey, setOtpKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(RESEND_SEC);
@@ -60,9 +63,11 @@ export default function ProfileSetupVerifyScreen() {
   }
 
   if (!user) return <Redirect href="/(auth)/sign-in" />;
-  if (!phone || !/^\+9955\d{8}$/.test(phone)) return <Redirect href="/(auth)/profile-setup/phone" />;
-  if (needsHealthAssessment(healthProfile)) return <Redirect href="/(auth)/assessment" />;
-  if (!needsProfileSetup(healthProfile)) return <Redirect href="/(tabs)/home" />;
+  if (!phone || !/^\+9955\d{8}$/.test(phone)) {
+    if (!preview) return <Redirect href="/(auth)/profile-setup/phone" />;
+  }
+  if (!preview && needsHealthAssessment(healthProfile)) return <Redirect href="/(auth)/assessment" />;
+  if (!preview && !needsProfileSetup(healthProfile)) return <Redirect href="/(tabs)/home" />;
 
   const verify = async () => {
     if (code.length !== 4) {
@@ -86,6 +91,7 @@ export default function ProfileSetupVerifyScreen() {
       setError(msg);
       setToast(taken ? null : msg);
       setCode('');
+      setOtpKey((k) => k + 1);
       if (taken) {
         Alert.alert(ka.auth.phoneTakenTitle, ka.auth.phoneTakenBody, [
           { text: ka.common.close, onPress: () => router.replace('/(auth)/profile-setup/phone') },
@@ -128,7 +134,18 @@ export default function ProfileSetupVerifyScreen() {
       showStepper={false}
     >
       <View style={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 16, gap: 24, alignItems: 'center' }}>
-        <OtpCodeInput value={code} onChange={setCode} error={error} variant="hero" length={4} />
+        <OtpCodeInput
+          resetKey={otpKey}
+          value={code}
+          onChange={(next) => {
+            setCode(next);
+            setError(null);
+            setToast(null);
+          }}
+          error={error}
+          variant="hero"
+          length={4}
+        />
 
         <Text
           style={{

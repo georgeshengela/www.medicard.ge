@@ -70,6 +70,15 @@ export function birthDateFromForm(form: AssessmentFormState): string {
   return birthDateIso(form.birthMonth, form.birthDay, form.birthYear);
 }
 
+export const LBS_PER_KG = 2.2046226218;
+
+export function displayWeightForUnit(weightKg: number, unit: 'kg' | 'lbs'): { value: string; unitLabel: string } {
+  if (unit === 'lbs') {
+    return { value: String(Math.round(weightKg * LBS_PER_KG)), unitLabel: 'lbs' };
+  }
+  return { value: String(Math.round(weightKg * 10) / 10), unitLabel: 'კგ' };
+}
+
 export function computeBmi(heightCm: number, weightKg: number): number | null {
   if (!heightCm || !weightKg) return null;
   const m = heightCm / 100;

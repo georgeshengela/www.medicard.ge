@@ -12,6 +12,7 @@ import { buildSymptomPrompt, formatSymptomRecordKa, runSymptomCheck } from '../l
 import { saveUpload } from '../lib/storage.js';
 import { extractLabFromText } from '../lib/labExtract.js';
 import { alignLabAnalytes } from '../lib/labAlign.js';
+import { adviseWeight } from '../lib/weightAdvice.js';
 import { requireAuth } from '../middleware/auth.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
 import { getUsage } from '../lib/usage.js';
@@ -594,6 +595,55 @@ aiRouter.post(
 function alignedModelHint() {
   return process.env.OPENROUTER_MODEL || 'openai/gpt-4o';
 }
+
+/* ────────────────────────────────────────────────────────────────
+ * POST /api/ai/weight-advice — Medi wellness tips for logged weight
+ * ──────────────────────────────────────────────────────────────── */
+
+const weightAdviceSchema = z.object({
+  weightKg: z.coerce.number().min(30).max(250),
+  heightCm: z.coerce.number().min(80).max(250).optional(),
+  bmi: z.coerce.number().min(8).max(80).optional(),
+  category: z.enum(['underweight', 'normal', 'overweight', 'obese']).optional(),
+  targetKg: z.coerce.number().min(30).max(250).optional(),
+});
+
+aiRouter.post(
+  '/weight-advice',
+  enforceAiQuota,
+  asyncHandler(async (req, res) => {
+    const body = weightAdviceSchema.parse(req.body);
+    const patientAiContext = await withPatientAiContext(req.user);
+    const advice = await runTrackedAi({
+      userId: req.user.id,
+      mode: 'WEIGHT_ADVICE',
+      userPrompt: `weight ${body.weightKg} kg`,
+      visionProvider: 'openrouter',
+      visionModel: alignedModelHint(),
+      fn: async () => {
+        const result = await adviseWeight({ ...body, patientContext: patientAiContext });
+        return {
+          content: JSON.stringify({ blurb: result.blurb, tips: result.tips }),
+          model: result.model,
+          usage: result.usage,
+          extra: result,
+        };
+      },
+    });
+
+    const result = advice.extra;
+    if (!result) {
+      return res.status(500).json({ error: 'წონის რჩევა ვერ დასრულდა.' });
+    }
+    const usage = await req.consumeAiCredit();
+    return res.json({
+      blurb: result.blurb,
+      tips: result.tips,
+      model: result.model,
+      usage,
+    });
+  }),
+);
 
 /* ────────────────────────────────────────────────────────────────
  * POST /api/ai/skincare — კანის მოვლის რუტინა

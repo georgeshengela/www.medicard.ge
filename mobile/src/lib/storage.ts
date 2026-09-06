@@ -15,12 +15,20 @@ const webStorage = {
   deleteItem: (key: string) => localStorage?.removeItem(key),
 };
 
+let memoryToken: string | null = null;
+
 export async function getToken(): Promise<string | null> {
-  if (Platform.OS === 'web') return webStorage.getItem(TOKEN_KEY);
-  return SecureStore.getItemAsync(TOKEN_KEY);
+  if (memoryToken) return memoryToken;
+  if (Platform.OS === 'web') {
+    memoryToken = webStorage.getItem(TOKEN_KEY);
+    return memoryToken;
+  }
+  memoryToken = await SecureStore.getItemAsync(TOKEN_KEY);
+  return memoryToken;
 }
 
 export async function setToken(token: string): Promise<void> {
+  memoryToken = token;
   if (Platform.OS === 'web') {
     webStorage.setItem(TOKEN_KEY, token);
     return;
@@ -31,6 +39,7 @@ export async function setToken(token: string): Promise<void> {
 }
 
 export async function clearToken(): Promise<void> {
+  memoryToken = null;
   if (Platform.OS === 'web') {
     webStorage.deleteItem(TOKEN_KEY);
     return;

@@ -3,10 +3,12 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { ka } from '@/i18n/ka';
+import { useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
 
 export default function ProfileSetupIntroScreen() {
   const router = useRouter();
+  const preview = useOnboardingDevPreview();
   const { user, ready, healthProfile } = useAuth();
   const [busy, setBusy] = useState(false);
 
@@ -20,9 +22,9 @@ export default function ProfileSetupIntroScreen() {
 
   if (!user) return <Redirect href="/(auth)/sign-in" />;
 
-  if (needsHealthAssessment(healthProfile)) return <Redirect href="/(auth)/assessment" />;
+  if (!preview && needsHealthAssessment(healthProfile)) return <Redirect href="/(auth)/assessment" />;
 
-  if (!needsProfileSetup(healthProfile)) return <Redirect href="/(tabs)/home" />;
+  if (!preview && !needsProfileSetup(healthProfile)) return <Redirect href="/(tabs)/home" />;
 
   return (
     <ProfileSetupShell

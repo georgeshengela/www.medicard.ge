@@ -19,7 +19,7 @@ const SCORE_BANDS = [
   { min: 0, max: 20, label: 'Critical', labelKa: 'კრიტიკული', color: '#22C55E', detailKa: 'საჭიროა დაუყოვნებლივი სამედიცინო კონსულტაცია და გეგმის შედგენა.' },
   { min: 21, max: 50, label: 'Suboptimal', labelKa: 'არაოპტიმალური', color: '#F43F5E', detailKa: 'რამდენიმე მაჩვენებელი საშუალო ნორმის ქვემოთაა — რეკომენდებულია ცვლილებები ყოველდღიურ ჩვევებში.' },
   { min: 51, max: 70, label: 'Mild Risk', labelKa: 'მსუბუქი რისკი', color: '#F97316', detailKa: 'მსუბუქი გადახრები ოპტიმალური ჯანმრთელობისგან — პრევენცია და მონიტორინგი დაგეხმარებათ.' },
-  { min: 71, max: 100, label: 'Very Healthy', labelKa: 'ძალიან ჯანმრთელი', color: '#14B8A6', detailKa: 'ძირითადი მაჩვენებლები კარგ დიაპაზონშია — გააგრძელეთ ჯანსაღი ჩვევები.' },
+  { min: 71, max: 100, label: 'Normal', labelKa: 'ნორმალური', color: '#14B8A6', detailKa: 'ძირითადი მაჩვენებლები ნორმალურ დიაპაზონშია — გააგრძელეთ ჯანსაღი ჩვევები.' },
 ];
 
 function bandForScore(score) {
@@ -418,7 +418,7 @@ export async function generateOnboardingAnalysis({
     return {
       score,
       label: resolvedBand.label,
-      labelKa: parsed.labelKa ?? resolvedBand.labelKa,
+      labelKa: resolvedBand.labelKa,
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 96.2,
       summaryTitleKa: parsed.summaryTitleKa ?? fallback.summaryTitleKa,
       summaryBodyKa: parsed.summaryBodyKa ?? fallback.summaryBodyKa,
@@ -426,7 +426,7 @@ export async function generateOnboardingAnalysis({
         min: b.min,
         max: b.max,
         label: b.label,
-        labelKa: parsed.scoreRanges?.[i]?.labelKa ?? b.labelKa,
+        labelKa: b.labelKa,
         color: b.color,
         detailKa: parsed.scoreRanges?.[i]?.detailKa ?? b.detailKa,
       })),

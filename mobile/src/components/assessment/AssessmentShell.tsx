@@ -4,7 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ChevronLeft } from 'lucide-react-native';
+import { FigmaAssessmentChevronLeft } from '@/components/assessment/figmaAssessmentIcons';
 
 import { AssessmentContinueButton } from '@/components/assessment/AssessmentContinueButton';
 
@@ -75,6 +75,9 @@ type Props = {
 
   largeTitle?: boolean;
 
+  /** Figma 9217:164946 — title + picker + Continue stacked in the vertical center. */
+  ctaInline?: boolean;
+
 };
 
 
@@ -124,6 +127,8 @@ export function AssessmentShell({
   showPrimary = true,
 
   largeTitle = false,
+
+  ctaInline = false,
 
 }: Props) {
   const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
@@ -465,6 +470,55 @@ export function AssessmentShell({
 
 
 
+  if (ctaInline) {
+    return (
+      <View style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_INTRO.pageBg }}>
+        <View style={{ paddingTop: topInset, paddingHorizontal: 16 }}>
+          <StepHeader
+            canBack={canBack}
+            onBack={onBack}
+            skippable={skippable}
+            onSkip={onSkip}
+            fraction={progress.visible ? progress.fraction : 0}
+          />
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <View style={{ padding: 16 }}>
+            <Text
+              style={{
+                fontFamily: 'NotoSansGeorgian_700Bold',
+                fontSize: 30,
+                lineHeight: 38,
+                letterSpacing: -0.25,
+                color: FIGMA_ASSESSMENT_INTRO.titleColor,
+                textAlign: 'center',
+              }}
+            >
+              {title}
+            </Text>
+          </View>
+
+          {children}
+
+          <View style={{ padding: 16, gap: 24 }}>
+            {showPrimary ? (
+              <AssessmentContinueButton
+                label={primaryLabel}
+                onPress={onPrimary}
+                loading={loading}
+                disabled={primaryDisabled}
+                variant={primaryVariant}
+                figmaArrow
+              />
+            ) : null}
+            {footerBelow}
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
 
     <View style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_INTRO.pageBg }}>
@@ -613,7 +667,7 @@ function StepHeader({
 
   return (
 
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 40 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, maxHeight: 56, paddingVertical: 8 }}>
 
       {canBack && onBack ? (
 
@@ -631,7 +685,9 @@ function StepHeader({
 
         >
 
-          <ChevronLeft size={24} color={FIGMA_ASSESSMENT_INTRO.bodyColor} strokeWidth={2.2} />
+          <View style={{ width: 24, height: 24 }}>
+            <FigmaAssessmentChevronLeft color={FIGMA_ASSESSMENT_INTRO.bodyColor} />
+          </View>
 
         </Pressable>
 
@@ -669,7 +725,7 @@ function StepHeader({
 
         <Pressable accessibilityRole="button" onPress={onSkip} hitSlop={8} style={{ paddingHorizontal: 4 }}>
 
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: FIGMA_ASSESSMENT_INTRO.brandTeal }}>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, lineHeight: 22, color: FIGMA_ASSESSMENT_INTRO.brandTeal }}>
 
             {ka.assessment.skipStep}
 

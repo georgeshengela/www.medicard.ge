@@ -51,7 +51,7 @@ export function CyclePregnancyTransitionSheet({ visible, lastPeriod, onClose, on
           accessibilityRole="button"
           accessibilityLabel={ka.common.close}
           onPress={onClose}
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: c.overlay }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]}
         />
         <View
           style={{

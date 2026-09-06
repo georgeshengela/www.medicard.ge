@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
+import { ka } from '@/i18n/ka';
 import { ApiError, api, type CheckInState, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
 import { setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAccount';
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
@@ -99,8 +100,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
         flushCycleQueue(me.user.id).catch(() => undefined),
       );
-      void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
-        registerPushTokenWithServer(),
+      void import('@/lib/notifications').then(({ syncPushRegistration }) =>
+        syncPushRegistration(),
+      );
+      void import('@/lib/pushCopy').then(({ loadPushTemplates }) => loadPushTemplates());
+      void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
+        runMediNotificationBrain(me.user, me.healthProfile ?? null),
       );
     } catch (error) {
       if (error instanceof ApiError && error.isUnauthorized) {
@@ -118,34 +123,87 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return;
-      void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
-        registerPushTokenWithServer(),
+      void import('@/lib/notifications').then(({ syncPushRegistration }) =>
+        syncPushRegistration(),
+      );
+      void import('@/lib/pushCopy').then(({ loadPushTemplates }) => loadPushTemplates());
+      void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
+        runMediNotificationBrain(user, healthProfile),
       );
     });
     return () => sub.remove();
-  }, []);
+  }, [user, healthProfile]);
 
   const adopt = useCallback(
     async (result: { token: string; user: User; usage: Usage }) => {
+      if (!result?.token || !result.user?.id) {
+        throw new ApiError(ka.auth.registerNotConfirmed, 0);
+      }
+
+      await clearSessionSnapshot();
       setLocalAccountId(result.user.id);
       await wipeLegacyUnscopedHealthCaches();
       await setToken(result.token);
-      setUser(result.user);
-      setUsage(result.usage);
-      setStats(null);
-      setHealthProfile(null);
-      void import('@/lib/notifications').then(({ registerPushTokenWithServer }) =>
-        registerPushTokenWithServer(),
-      );
-      await hydrate();
+
+      try {
+        const me = await api.auth.me(result.token);
+        if (!me.user?.id || me.user.id !== result.user.id) {
+          throw new ApiError(ka.auth.registerNotConfirmed, 401);
+        }
+        // Second read on a new request — Neon pooler can briefly "see" a row that
+        // the next connection cannot. Fail signup here instead of after assessment.
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        const confirmed = await api.auth.me(result.token);
+        if (!confirmed.user?.id || confirmed.user.id !== result.user.id) {
+          throw new ApiError(ka.auth.registerNotConfirmed, 401);
+        }
+        setLocalAccountId(confirmed.user.id);
+        setUser(confirmed.user);
+        setUsage(confirmed.usage);
+        setStats(confirmed.stats);
+        setHealthProfile(confirmed.healthProfile ?? null);
+        await saveSessionSnapshot({
+          user: confirmed.user,
+          usage: confirmed.usage,
+          stats: confirmed.stats,
+          healthProfile: confirmed.healthProfile ?? null,
+        });
+        try {
+          const { flushStepsGoalAwards } = await import('@/lib/stepsGoal');
+          await flushStepsGoalAwards(setUser);
+        } catch {
+          /* pending +3 retries on profile focus */
+        }
+        void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
+          flushCycleQueue(confirmed.user.id).catch(() => undefined),
+        );
+        void import('@/lib/notifications').then(({ syncPushRegistration }) =>
+          syncPushRegistration(),
+        );
+        void import('@/lib/pushCopy').then(({ loadPushTemplates }) => loadPushTemplates());
+        void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
+          runMediNotificationBrain(confirmed.user, confirmed.healthProfile ?? null),
+        );
+      } catch (error) {
+        await clearToken();
+        await clearSessionSnapshot();
+        resetSession();
+        throw error instanceof ApiError
+          ? error
+          : new ApiError(ka.auth.registerNotConfirmed, 0);
+      }
     },
-    [hydrate],
+    [resetSession],
   );
 
   const refreshHealthProfile = useCallback(async () => {
     try {
       const { profile } = await api.healthProfile.get();
       setHealthProfile(profile);
+      const snapshot = await loadSessionSnapshot();
+      if (snapshot) {
+        await saveSessionSnapshot({ ...snapshot, healthProfile: profile });
+      }
       return profile;
     } catch {
       return null;
@@ -164,7 +222,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       pendingDailyBonus,
       consumeDailyBonus,
       signIn: async (email, password) => adopt(await api.auth.login({ email, password })),
-      signUp: async (input) => adopt(await api.auth.register(input)),
+      signUp: async (input) => {
+        try {
+          await adopt(await api.auth.register(input));
+        } catch (error) {
+          if (
+            error instanceof ApiError &&
+            (error.isUnauthorized || error.code === 'REGISTER_UNCONFIRMED')
+          ) {
+            throw new ApiError(ka.auth.registerNotConfirmed, error.status || 401, {
+              code: 'REGISTER_UNCONFIRMED',
+            });
+          }
+          throw error;
+        }
+      },
       signInWithPhone: async (phone, code, fullName) => adopt(await api.auth.phoneVerify({ phone, code, fullName })),
       signOut: async () => {
         await clearToken();

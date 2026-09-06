@@ -111,7 +111,7 @@ function createMedModalStyles(t: ReturnType<typeof useFigmaMeds>) {
     justifyContent: 'flex-end',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: OVERLAY,
   },
   stackWrap: {

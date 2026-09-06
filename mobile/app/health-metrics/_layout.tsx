@@ -7,6 +7,8 @@ export default function HealthMetricsLayout() {
         headerShown: false,
         animation: 'slide_from_right',
       }}
-    />
+    >
+      <Stack.Screen name="weight/goal/pace" options={{ gestureEnabled: false, fullScreenGestureEnabled: false }} />
+    </Stack>
   );
 }

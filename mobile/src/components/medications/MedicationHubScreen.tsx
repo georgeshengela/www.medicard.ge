@@ -247,7 +247,11 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
               <Text style={{ fontSize: 14, fontWeight: '500', color: FIGMA_MEDS.textSecondary }}>{ka.meds.mostCommon}</Text>
               {MED_POPULAR_CHIPS.map((chip) => (
-                <MedChip key={chip} label={chip} onPress={() => router.push({ pathname: '/medications/add/search', params: { q: chip } })} />
+                <MedChip
+                  key={chip.query}
+                  label={chip.labelKa}
+                  onPress={() => router.push({ pathname: '/medications/add/search', params: { q: chip.query } })}
+                />
               ))}
             </View>
           </View>

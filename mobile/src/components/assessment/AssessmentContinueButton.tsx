@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { ArrowRight } from 'lucide-react-native';
+import { FigmaAssessmentArrowRight } from '@/components/assessment/figmaAssessmentIcons';
 import { FIGMA_ASSESSMENT_SHADOW } from '@/constants/figmaAssessmentIntro';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
@@ -12,6 +13,8 @@ type Props = {
   variant?: 'primary' | 'recording';
   /** Intro screen CTA — no arrow, 48px height (Figma 9217:164409). */
   tone?: 'step' | 'intro';
+  /** Figma 9217:164946 Continue — 48px + 20×20 arrow-right. */
+  figmaArrow?: boolean;
 };
 
 /** Figma assessment CTA — background on inner View for reliable paint. */
@@ -22,11 +25,12 @@ export function AssessmentContinueButton({
   disabled = false,
   variant = 'primary',
   tone = 'step',
+  figmaArrow = false,
 }: Props) {
   const colors = useThemeColors();
   const dark = useIsDark();
   const inactive = loading || disabled;
-  const isIntro = tone === 'intro';
+  const isIntro = tone === 'intro' || figmaArrow;
   const mint = dark ? '#115E59' : '#99F6E4';
 
   const bg = variant === 'recording' ? mint : colors.primary200;
@@ -44,6 +48,7 @@ export function AssessmentContinueButton({
       <View
         pointerEvents="none"
         style={{
+          height: figmaArrow ? 48 : undefined,
           minHeight: isIntro ? 48 : 52,
           borderRadius: 16,
           backgroundColor: inactive && variant === 'primary' ? mint : bg,
@@ -71,7 +76,13 @@ export function AssessmentContinueButton({
             >
               {label}
             </Text>
-            {!isIntro ? <ArrowRight size={20} color={labelColor} strokeWidth={2.4} /> : null}
+            {figmaArrow ? (
+              <View style={{ width: 20, height: 20 }}>
+                <FigmaAssessmentArrowRight color={labelColor} />
+              </View>
+            ) : !isIntro ? (
+              <ArrowRight size={20} color={labelColor} strokeWidth={2.4} />
+            ) : null}
           </>
         )}
       </View>

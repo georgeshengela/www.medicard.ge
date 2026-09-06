@@ -260,7 +260,9 @@ export default function HealthMetricsScreen() {
                 onPress={
                   metric.key === 'hydration'
                     ? () => router.push('/health-metrics/hydration' as never)
-                    : undefined
+                    : metric.key === 'weight'
+                      ? () => router.push('/health-metrics/weight' as never)
+                      : undefined
                 }
               />
             ))}

@@ -55,7 +55,7 @@ export const ASSESSMENT_STEPS: AssessmentStep[] = [
   { key: '19-allergies', figmaId: '9217:164840', type: 'allergies', titleKey: 'allergiesTitle', bodyKey: 'allergiesBody', skippable: true },
   { key: '20-conditions-gate', figmaId: '9217:164822', type: 'conditions-gate', titleKey: 'conditionsGateTitle', bodyKey: 'conditionsGateBody', skippable: true },
   { key: '21-conditions-list', figmaId: '9217:164855', type: 'conditions-list', titleKey: 'conditionsListTitle', bodyKey: 'conditionsListBody', skippable: true },
-  { key: '22-checkup', figmaId: '9217:164958', type: 'checkup-frequency', titleKey: 'checkupTitle', bodyKey: 'checkupBody', skippable: true },
+  { key: '22-checkup', figmaId: '9217:164946', type: 'checkup-frequency', titleKey: 'checkupTitle', bodyKey: 'checkupBody', skippable: true },
   { key: '27-complete', figmaId: '9217:165096', type: 'complete', titleKey: 'completeTitle', bodyKey: 'completeBody' },
 ];
 

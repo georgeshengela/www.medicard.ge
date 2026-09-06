@@ -149,7 +149,7 @@ export async function resolveSegmentTokens(segment) {
 
 export async function getPushStats() {
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const [devices, users, campaigns, sentAgg, sent24h, deviceRows] = await Promise.all([
+  const [devices, users, campaigns, sentAgg, sent24h, deviceRows, platformRows] = await Promise.all([
     prisma.pushToken.count({ where: { active: true } }),
     prisma.pushToken.groupBy({
       by: ['userId'],
@@ -191,7 +191,18 @@ export async function getPushStats() {
         user: { select: { fullName: true, email: true } },
       },
     }),
+    prisma.pushToken.groupBy({
+      by: ['platform'],
+      where: { active: true },
+      _count: true,
+    }),
   ]);
+
+  const platforms = { ios: 0, android: 0, web: 0 };
+  for (const row of platformRows) {
+    const key = String(row.platform || '').toLowerCase();
+    if (key in platforms) platforms[key] = Number(row._count?._all ?? row._count ?? 0);
+  }
 
   return {
     activeDevices: devices,
@@ -203,5 +214,6 @@ export async function getPushStats() {
     campaignCount: sentAgg._count,
     sentLast24h: sent24h._sum.sentCount ?? 0,
     devices: deviceRows,
+    platforms,
   };
 }

@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { ChevronRight, Scale } from 'lucide-react-native';
 import { HomeBmiZoneBar } from '@/components/home/HomeBmiGauge';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
-import { HomeWeightLogSheet } from '@/components/home/HomeWeightLogSheet';
+import { HomeWeightGoalStrip } from '@/components/home/HomeWeightGoalStrip';
 import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
 import { useHealthMetrics } from '@/hooks/useHealthMetrics';
@@ -17,8 +17,9 @@ import {
   kgFromHealthyRange,
   weightDeltaKg,
 } from '@/lib/bmi';
-import { useAuth } from '@/store/AuthContext';
+import { buildWeightProgress, loadWeightGoal, loadWeightLogs, resolveCurrentWeightKg } from '@/lib/weightGoal';
 import type { HealthProfile } from '@/lib/api';
+import type { WeightGoal, WeightGoalProgress, WeightLog } from '@/types/weightGoal';
 
 type Props = {
   profile: HealthProfile | null | undefined;
@@ -26,24 +27,38 @@ type Props = {
 
 export function HomeBmiWeightSection({ profile }: Props) {
   const tokens = useFigmaHealthMetrics();
-  const { refreshHealthProfile } = useAuth();
+  const router = useRouter();
   const { bundle, loading, refresh } = useHealthMetrics(profile);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [goalProgress, setGoalProgress] = useState<WeightGoalProgress | null>(null);
+  const [logs, setLogs] = useState<WeightLog[]>([]);
+  const [goal, setGoal] = useState<WeightGoal | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       void refresh();
+      void Promise.all([loadWeightGoal(), loadWeightLogs()]).then(([nextGoal, nextLogs]) => {
+        setGoal(nextGoal);
+        setLogs(nextLogs);
+      });
     }, [refresh]),
   );
 
   const weight = bundle?.metrics.find((metric) => metric.key === 'weight');
-  const value = weight?.value ?? profile?.weightKg ?? null;
+  const logged = weight?.source != null && weight.source !== 'none';
+  const value = resolveCurrentWeightKg(logs, logged ? weight?.value : null, profile?.weightKg);
+
+  useEffect(() => {
+    if (!goal || value == null) {
+      setGoalProgress(null);
+      return;
+    }
+    setGoalProgress(buildWeightProgress(goal, value));
+  }, [goal, value]);
   const heightCm = profile?.heightCm ?? null;
-  const bmi = bmiFromWeight(value, heightCm) ?? profile?.bmi ?? null;
+  const bmi = value != null ? bmiFromWeight(value, heightCm) : null;
   const category = bmi != null ? bmiCategory(bmi) : null;
   const accent = category ? BMI_ZONE_COLORS[category] : tokens.brand;
-  const weekValues = weight?.weekValues ?? [];
-  const initialKg = value ?? 70;
+  const weekValues = logged ? (weight?.weekValues ?? []) : [];
   const range = heightCm != null ? healthyWeightRangeKg(heightCm) : null;
   const delta = value != null ? weightDeltaKg(weekValues, value) : null;
 
@@ -69,13 +84,9 @@ export function HomeBmiWeightSection({ profile }: Props) {
     return [label, band, trend].filter(Boolean).join(' · ');
   }, [bmi, category, delta, heightCm, range, value]);
 
-  const onSaved = useCallback(async () => {
-    await Promise.all([refreshHealthProfile(), refresh()]);
-  }, [refresh, refreshHealthProfile]);
-
-  const openSheet = useCallback(() => {
-    setTimeout(() => setSheetOpen(true), 0);
-  }, []);
+  const openHub = useCallback(() => {
+    router.push('/health-metrics/weight' as never);
+  }, [router]);
 
   return (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
@@ -86,7 +97,7 @@ export function HomeBmiWeightSection({ profile }: Props) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${ka.healthMetrics.metrics.weight} ${value != null ? `${value.toFixed(1)} ${ka.home.bmi.kg}` : ka.home.bmi.emptyTitle}${bmi != null ? `, BMI ${bmi.toFixed(1)}` : ''}`}
-          onPress={openSheet}
+          onPress={openHub}
           style={{
             backgroundColor: tokens.cardBg,
             borderRadius: tokens.cardRadius,
@@ -119,7 +130,7 @@ export function HomeBmiWeightSection({ profile }: Props) {
                   color: tokens.textSecondary,
                 }}
               >
-                {weight?.updatedLabel ?? ka.healthMetrics.today}
+                {logged ? (weight?.updatedLabel ?? ka.healthMetrics.today) : ka.healthMetrics.noData}
               </Text>
               <ChevronRight size={20} color={tokens.textSecondary} strokeWidth={2} />
             </View>
@@ -192,16 +203,11 @@ export function HomeBmiWeightSection({ profile }: Props) {
               <HomeBmiZoneBar bmi={bmi} category={category} width={108} />
             </View>
           </View>
+
+          {goalProgress ? <HomeWeightGoalStrip progress={goalProgress} /> : null}
         </Pressable>
       )}
 
-      <HomeWeightLogSheet
-        visible={sheetOpen}
-        profile={profile}
-        initialKg={initialKg}
-        onClose={() => setSheetOpen(false)}
-        onSaved={() => void onSaved()}
-      />
     </View>
   );
 }

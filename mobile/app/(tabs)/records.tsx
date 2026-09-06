@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronRight, FileText, FolderHeart, MessageSquareText, Trash2 } from 'lucide-react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { ChevronRight, FileText, FolderHeart, MessageSquareText, Plus, Trash2 } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { RecordsPageSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
@@ -61,10 +62,34 @@ export default function Records() {
 
   const isEmpty = records.length === 0 && chats.length === 0;
 
+  const startUpload = useCallback(() => {
+    Alert.alert(ka.records.addCta, ka.records.emptyHint, [
+      { text: ka.common.cancel, style: 'cancel' },
+      { text: ka.records.addLab, onPress: () => router.push('/module/lab' as never) },
+      { text: ka.records.addImaging, onPress: () => router.push('/module/imaging' as never) },
+    ]);
+  }, [router]);
+
   return (
+    <>
+    <Stack.Screen
+      options={{
+        headerRight: () => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={ka.records.addCta}
+            hitSlop={10}
+            onPress={startUpload}
+            style={{ paddingHorizontal: 4, paddingVertical: 4 }}
+          >
+            <Plus size={22} color={colors.primary200} strokeWidth={2.3} />
+          </Pressable>
+        ),
+      }}
+    />
     <ScrollView
       className="flex-1 bg-bg-100"
-      contentContainerStyle={{ paddingBottom: tabInset }}
+      contentContainerStyle={{ paddingBottom: tabInset + 24 }}
       contentContainerClassName="px-4 pt-3"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
       showsVerticalScrollIndicator={false}
@@ -72,7 +97,9 @@ export default function Records() {
       {!ready ? (
         <RecordsPageSkeleton />
       ) : isEmpty ? (
-        <EmptyState icon={FolderHeart} title={ka.records.empty} body={ka.records.emptyHint} />
+        <EmptyState icon={FolderHeart} title={ka.records.empty} body={ka.records.emptyHint}>
+          <Button label={ka.records.addCta} icon={Plus} size="lg" onPress={startUpload} />
+        </EmptyState>
       ) : (
         <>
           {records.length > 0 ? (
@@ -174,6 +201,28 @@ export default function Records() {
         </>
       )}
     </ScrollView>
+    {!isEmpty ? (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={ka.records.addCta}
+        onPress={startUpload}
+        style={{
+          position: 'absolute',
+          right: 16,
+          bottom: tabInset - 40,
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: colors.primary200,
+          alignItems: 'center',
+          justifyContent: 'center',
+          elevation: 3,
+        }}
+      >
+        <Plus size={24} color="#FFFFFF" strokeWidth={2.4} />
+      </Pressable>
+    ) : null}
+    </>
   );
 }
 

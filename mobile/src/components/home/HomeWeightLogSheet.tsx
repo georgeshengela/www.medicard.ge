@@ -11,6 +11,7 @@ import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
 import { ka } from '@/i18n/ka';
 import { BMI_ZONE_COLORS, bmiCategory, bmiFromWeight } from '@/lib/bmi';
 import { logManualHealthMetric } from '@/lib/logManualHealthMetric';
+import { addWeightLog } from '@/lib/weightGoal';
 import type { HealthProfile } from '@/lib/api';
 
 const WEIGHT_KG = Array.from({ length: 171 }, (_, i) => 30 + i);
@@ -63,12 +64,14 @@ export function HomeWeightLogSheet({ visible, profile, initialKg, onClose, onSav
     setSaving(true);
     setError(null);
     try {
+      await addWeightLog(kg);
       await logManualHealthMetric('weight', kg, undefined, profile);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       onSaved();
       onClose();
-    } catch {
-      setError(ka.common.error);
+    } catch (err) {
+      const message = err instanceof Error && err.message.trim() ? err.message : ka.common.error;
+      setError(message);
     } finally {
       setSaving(false);
     }

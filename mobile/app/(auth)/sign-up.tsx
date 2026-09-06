@@ -31,28 +31,50 @@ export default function SignUp() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
+  const submittingRef = useRef(false);
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
 
   const strength = useMemo(() => scorePassword(password), [password]);
-  const canSubmit =
-    fullName.trim().length >= 2 &&
-    /^\S+@\S+\.\S+$/.test(email.trim()) &&
-    isPasswordStrongEnough(password) &&
-    password === confirmPassword;
+  const validateField = (field: keyof Errors, value?: string): string | undefined => {
+    if (field === 'fullName') {
+      const name = (value ?? fullName).trim();
+      if (!name) return ka.auth.shortName;
+      if (name.length < 2) return ka.auth.shortName;
+    }
+    if (field === 'email') {
+      const nextEmail = (value ?? email).trim();
+      if (!nextEmail || !/^\S+@\S+\.\S+$/.test(nextEmail)) return ka.auth.invalidEmail;
+    }
+    if (field === 'password') {
+      const nextPassword = value ?? password;
+      if (!isPasswordStrongEnough(nextPassword)) return ka.auth.shortPassword;
+    }
+    if (field === 'confirmPassword') {
+      const nextConfirm = value ?? confirmPassword;
+      if (nextConfirm !== password) return ka.auth.passwordMismatch;
+    }
+    return undefined;
+  };
 
   const submit = async () => {
     Keyboard.dismiss();
     const next: Errors = {};
-    if (fullName.trim().length < 2) next.fullName = ka.auth.shortName;
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) next.email = ka.auth.invalidEmail;
-    if (!isPasswordStrongEnough(password)) next.password = ka.auth.shortPassword;
-    if (password !== confirmPassword) next.confirmPassword = ka.auth.passwordMismatch;
+    const fullNameError = validateField('fullName');
+    const emailError = validateField('email');
+    const passwordError = validateField('password');
+    const confirmError = validateField('confirmPassword');
+    if (fullNameError) next.fullName = fullNameError;
+    if (emailError) next.email = emailError;
+    if (passwordError) next.password = passwordError;
+    if (confirmError) next.confirmPassword = confirmError;
 
     setErrors(next);
     if (Object.keys(next).length > 0) return;
+    if (submittingRef.current) return;
 
+    submittingRef.current = true;
     setBusy(true);
     try {
       await signUp({
@@ -82,6 +104,7 @@ export default function SignUp() {
       } else {
         setErrors({ form: error instanceof ApiError ? error.message : ka.common.error });
       }
+      submittingRef.current = false;
       setBusy(false);
     }
   };
@@ -97,7 +120,14 @@ export default function SignUp() {
           placeholder={ka.auth.fullNamePlaceholder}
           icon={User}
           value={fullName}
-          onChangeText={setFullName}
+          onChangeText={(text) => {
+            setFullName(text);
+            if (errors.fullName) setErrors((current) => ({ ...current, fullName: undefined }));
+          }}
+          onBlur={() => {
+            const message = validateField('fullName');
+            setErrors((current) => ({ ...current, fullName: message }));
+          }}
           error={errors.fullName}
           autoComplete="name"
           returnKeyType="next"
@@ -112,7 +142,14 @@ export default function SignUp() {
           placeholder={ka.auth.emailPlaceholder}
           icon={Mail}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            if (errors.email) setErrors((current) => ({ ...current, email: undefined }));
+          }}
+          onBlur={() => {
+            const message = validateField('email');
+            setErrors((current) => ({ ...current, email: message }));
+          }}
           error={errors.email}
           autoCapitalize="none"
           autoComplete="email"
@@ -130,7 +167,14 @@ export default function SignUp() {
             placeholder={ka.auth.passwordPlaceholder}
             icon={Lock}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (errors.password) setErrors((current) => ({ ...current, password: undefined }));
+            }}
+            onBlur={() => {
+              const message = validateField('password');
+              setErrors((current) => ({ ...current, password: message }));
+            }}
             error={errors.password}
             secure
             autoCapitalize="none"
@@ -149,7 +193,14 @@ export default function SignUp() {
           placeholder={ka.auth.confirmPasswordPlaceholder}
           icon={Lock}
           value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          onChangeText={(text) => {
+            setConfirmPassword(text);
+            if (errors.confirmPassword) setErrors((current) => ({ ...current, confirmPassword: undefined }));
+          }}
+          onBlur={() => {
+            const message = validateField('confirmPassword');
+            setErrors((current) => ({ ...current, confirmPassword: message }));
+          }}
           error={errors.confirmPassword}
           secure
           autoCapitalize="none"
@@ -167,7 +218,7 @@ export default function SignUp() {
       ) : null}
 
       <View className="mt-6">
-        <AuthPrimaryButton label={ka.auth.signUp} loading={busy} disabled={!canSubmit} onPress={submit} />
+        <AuthPrimaryButton label={ka.auth.signUp} loading={busy} onPress={submit} />
       </View>
 
       <Text className="mt-4 text-center font-sans text-xs leading-5 text-text-300">{ka.auth.terms}</Text>

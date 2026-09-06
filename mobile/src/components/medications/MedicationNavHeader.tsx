@@ -2,11 +2,18 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Plus } from 'lucide-react-native';
-import type { NativeStackHeaderProps } from '@react-navigation/native-stack';
 import { DoseChevronLeft } from '@/components/medications/MedicationDoseIcons';
 import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 
-export function MedicationNavHeader({ navigation, options }: NativeStackHeaderProps) {
+type StackHeaderProps = {
+  navigation: { goBack: () => void; canGoBack: () => boolean };
+  options: {
+    title?: string;
+    headerRight?: (props: { tintColor?: string; canGoBack?: boolean }) => React.ReactNode;
+  };
+};
+
+export function MedicationNavHeader({ navigation, options }: StackHeaderProps) {
   const FIGMA_MEDS = useFigmaMeds();
   const insets = useSafeAreaInsets();
   const title = typeof options.title === 'string' ? options.title : '';

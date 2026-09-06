@@ -70,6 +70,7 @@ export default function VisitsScreen() {
         style: 'destructive',
         onPress: async () => {
           await api.visits.remove(visit.id).catch(() => undefined);
+          void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
           load();
         },
       },

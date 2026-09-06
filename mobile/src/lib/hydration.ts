@@ -124,6 +124,7 @@ export async function addHydrationLog(input: Omit<HydrationLog, 'id' | 'at'> & {
   const updated = [next, ...logs];
   await saveHydrationLogs(updated);
   await syncHydrationDelta(next.date, next.ml);
+  void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
   return updated;
 }
 

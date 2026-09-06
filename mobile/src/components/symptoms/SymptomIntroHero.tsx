@@ -31,10 +31,10 @@ export function SymptomIntroHero() {
 
   return (
     <View style={{ flex: 1, minHeight: 320, overflow: 'hidden', backgroundColor: '#030712' }}>
-      <Image source={SYMPTOM_INTRO_POSTER} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <Image source={SYMPTOM_INTRO_POSTER} style={StyleSheet.absoluteFill} resizeMode="cover" />
       <VideoView
         player={player}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         contentFit="cover"
         nativeControls={false}
         fullscreenOptions={{ enable: false }}
@@ -44,7 +44,7 @@ export function SymptomIntroHero() {
       <LinearGradient
         colors={['#030712', 'transparent', 'transparent', '#030712']}
         locations={[0, 0.14, 0.76, 1]}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
     </View>

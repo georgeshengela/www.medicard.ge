@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Medicard Control</title>
+  <title>Medicard კონსოლი</title>
   <script>
     (function () {
       var token = localStorage.getItem('medicard.admin.token');
@@ -17,7 +17,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./admin.css?v=push8" />
+  <link rel="stylesheet" href="./admin.css?v=ops8" />
+  <link rel="stylesheet" href="./admin-v24.css?v=ops10" />
+  <link rel="stylesheet" href="./admin-v25.css?v=ops22" />
 </head>
 <body>
   <div id="login-view" class="login-shell">
@@ -26,7 +28,7 @@
         <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
       </a>
       <p class="rail-kicker">Medicard.GE</p>
-      <h1>Control</h1>
+      <h1>კონსოლი</h1>
       <p class="rail-copy">ოპერაციული კონსოლი — მომხმარებლები, პაკეტები, ფარმაცია და აპის რეჟიმი.</p>
       <ul class="rail-list">
         <li data-icon="users">ცოცხალი ცხრილები და ფილტრები</li>
@@ -35,8 +37,11 @@
       </ul>
     </aside>
     <form id="login-form" class="login-card" autocomplete="on">
-      <p class="kicker">შესვლა</p>
-      <h2>ადმინისტრატორი</h2>
+      <a class="logo-mark login-mark" href="#" aria-hidden="true" onclick="return false">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </a>
+      <p class="kicker">MediCard</p>
+      <h2>ადმინ კონსოლი</h2>
       <label class="field">
         <span>ელ-ფოსტა</span>
         <input id="login-email" type="email" required value="admin@medicard.ge" />
@@ -53,21 +58,33 @@
   <div id="app-view" class="app">
     <div id="sidebar-scrim" class="sidebar-scrim" aria-hidden="true"></div>
     <aside class="sidebar ng-sidebar" id="sidebar">
-      <div class="sidebar-logo">
-        <a class="logo-mark" href="#" aria-label="Medicard Control" onclick="return false">
+      <div class="sidebar-brand">
+        <a class="logo-mark" href="#/overview" aria-label="Medicard კონსოლი">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
         </a>
+        <div class="sidebar-brand-copy">
+          <strong>Medicard</strong>
+          <span>კონსოლი</span>
+        </div>
       </div>
       <nav class="sidebar-nav" aria-label="მთავარი მენიუ">
-        <button data-tab="overview" class="nav active" data-icon="layout" title="მიმოხილვა"><span class="nav-label">მიმოხილვა</span></button>
+        <span class="nav-group">ოპერაციები</span>
+        <button data-tab="overview" class="nav active" data-icon="layout" title="ოპერაციები"><span class="nav-label">ოპერაციები</span></button>
+        <span class="nav-group">მომხმარებლები</span>
         <button data-tab="users" class="nav" data-icon="users" title="მომხმარებლები"><span class="nav-label">მომხმარებლები</span></button>
+        <span class="nav-group">Medi</span>
+        <button data-tab="ai" class="nav" data-icon="spark" title="Medi"><span class="nav-label">Medi</span></button>
+        <span class="nav-group">ჯანმრთელობა</span>
+        <button data-tab="health" class="nav" data-icon="activity" title="ჯანმრთელობა"><span class="nav-label">ჯანმრთელობა</span></button>
+        <span class="nav-group">შეტყობინებები</span>
+        <button data-tab="push" class="nav" data-icon="bell" title="Push და Brain"><span class="nav-label">Push და Brain</span></button>
+        <span class="nav-group">სისტემა</span>
+        <button data-tab="orders" class="nav" data-icon="calendar" title="შეკვეთები"><span class="nav-label">შეკვეთები</span></button>
         <button data-tab="packages" class="nav" data-icon="layers" title="პაკეტები"><span class="nav-label">პაკეტები</span></button>
-        <button data-tab="push" class="nav" data-icon="bell" title="Push"><span class="nav-label">Push</span></button>
         <button data-tab="sms" class="nav" data-icon="send" title="SMS"><span class="nav-label">SMS</span></button>
-        <span class="nav-spacer" aria-hidden="true"></span>
         <button data-tab="pharmacy" class="nav" data-icon="pill" title="ფარმაცია"><span class="nav-label">ფარმაცია</span></button>
-        <span class="nav-spacer" aria-hidden="true"></span>
-        <button data-tab="ai" class="nav" data-icon="spark" title="AI ხარისხი"><span class="nav-label">AI</span></button>
+        <button data-tab="quality" class="nav" data-icon="activity" title="ხარისხი"><span class="nav-label">ხარისხი</span></button>
+        <button data-tab="audit" class="nav" data-icon="file" title="აუდიტი"><span class="nav-label">აუდიტი</span></button>
         <button data-tab="settings" class="nav" data-icon="settings" title="აპის რეჟიმი"><span class="nav-label">რეჟიმი</span></button>
       </nav>
       <div class="sidebar-foot">
@@ -93,13 +110,25 @@
       </header>
 
       <section id="tab-overview" class="panel"><div class="empty">იტვირთება…</div></section>
+      <section id="tab-orders" class="panel hidden"></section>
       <section id="tab-users" class="panel hidden"></section>
       <section id="tab-packages" class="panel hidden"></section>
       <section id="tab-push" class="panel hidden"></section>
       <section id="tab-sms" class="panel hidden"></section>
       <section id="tab-pharmacy" class="panel hidden"></section>
       <section id="tab-ai" class="panel hidden"></section>
+      <section id="tab-health" class="panel hidden"></section>
+      <section id="tab-quality" class="panel hidden"></section>
+      <section id="tab-audit" class="panel hidden"></section>
       <section id="tab-settings" class="panel hidden"></section>
+      <section id="tab-missing" class="panel hidden">
+        <div class="v25-missing">
+          <p class="kicker">კონსოლი</p>
+          <h3>გვერდი ვერ მოიძებნა</h3>
+          <p>ეს მისამართი ადმინ კონსოლში არ არსებობს.</p>
+          <a class="btn primary" href="#/overview">ოპერაციებზე დაბრუნება</a>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -109,6 +138,7 @@
   </div>
 
   <div id="toasts" class="toasts"></div>
-  <script src="./admin.js?v=push8"></script>
+  <script src="./ops-center.js?v=ops22"></script>
+  <script src="./admin.js?v=ops22"></script>
 </body>
 </html>

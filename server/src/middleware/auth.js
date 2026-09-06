@@ -6,7 +6,11 @@ import { getAppSettings } from '../lib/settings.js';
 import { toDateOnly, calculateAge } from '../lib/patient.js';
 
 export function signToken(user) {
-  return jwt.sign({ sub: user.id, email: user.email }, env.JWT_SECRET, {
+  const id = typeof user?.id === 'string' ? user.id.trim() : '';
+  if (!id) {
+    throw new Error('signToken: user id missing');
+  }
+  return jwt.sign({ sub: id, email: user.email }, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRES_IN,
   });
 }
@@ -46,10 +50,23 @@ export async function requireAuth(req, res, next) {
       return res.status(403).json({ error: 'ადმინისტრატორის ტოკენი ამ ენდპოინტზე არ მოქმედებს.' });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
+    const userId = typeof payload.sub === 'string' ? payload.sub : String(payload.sub ?? '');
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      return res.status(401).json({ error: 'მომხმარებელი ვერ მოიძებნა. გთხოვთ, ხელახლა შეხვიდეთ.' });
+    }
+
+    let user = await prisma.user.findUnique({
+      where: { id: userId },
       include: { package: true },
     });
+    // Neon + PgBouncer can miss a just-committed row on the first pooled read.
+    if (!user) {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { package: true },
+      });
+    }
 
     if (!user) {
       return res.status(401).json({ error: 'მომხმარებელი ვერ მოიძებნა. გთხოვთ, ხელახლა შეხვიდეთ.' });

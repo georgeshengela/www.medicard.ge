@@ -111,12 +111,16 @@ export function AnalysisModule({
     async (assets: Array<{ uri: string; name?: string; fileName?: string; mimeType?: string | null; size?: number | null; fileSize?: number | null }>) => {
       const next: Picked[] = [];
       for (const asset of assets) {
-        const file = isLab ? await prepareLabImage(asset) : await toUploadableImage(asset);
-        if (file.size && file.size > MAX_BYTES) {
-          setError(ka.upload.fileTooLarge);
-          continue;
+        try {
+          const file = isLab ? await prepareLabImage(asset) : await toUploadableImage(asset);
+          if (file.size && file.size > MAX_BYTES) {
+            setError(ka.upload.fileTooLarge);
+            continue;
+          }
+          next.push({ uri: file.uri, name: file.name, mimeType: file.mimeType, isPdf: file.mimeType === 'application/pdf' });
+        } catch (err) {
+          setError(err instanceof Error ? err.message : ka.upload.prepareFailed);
         }
-        next.push({ uri: file.uri, name: file.name, mimeType: file.mimeType, isPdf: file.mimeType === 'application/pdf' });
       }
       if (!next.length) return;
       setFiles((prev) => {

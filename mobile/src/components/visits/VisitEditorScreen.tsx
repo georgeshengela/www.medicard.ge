@@ -109,7 +109,7 @@ export function VisitEditorScreen({ visitId }: Props) {
         if (!alive) return;
         const initial = visits.find((v) => v.id === visitId);
         if (!initial) {
-          setError(ka.common.error);
+          router.replace('/visits');
           return;
         }
         hydrate(initial);
@@ -123,6 +123,20 @@ export function VisitEditorScreen({ visitId }: Props) {
       alive = false;
     };
   }, [visitId]);
+
+  useEffect(() => {
+    if (visitId) return;
+    const name = [doctorFirstName, doctorLastName].map((part) => part.trim()).filter(Boolean).join(' ');
+    if (!name && !addressText.trim() && !notes.trim()) return;
+    void import('@/lib/mediEngagePrefs').then(({ saveUnfinishedDraft }) =>
+      saveUnfinishedDraft({
+        kind: 'visit_draft',
+        route: '/visits/editor',
+        name: name || addressText.trim() || 'ვიზიტი',
+        updatedAt: Date.now(),
+      }),
+    );
+  }, [visitId, doctorFirstName, doctorLastName, addressText, notes]);
 
   const hydrate = (initial: DoctorVisit) => {
     setDoctorType(initial.doctorType);
@@ -221,6 +235,7 @@ export function VisitEditorScreen({ visitId }: Props) {
       } else {
         await api.visits.create(body);
       }
+      await import('@/lib/mediEngagePrefs').then(({ clearUnfinishedDraft }) => clearUnfinishedDraft('visit_draft'));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       router.back();
     } catch (err) {

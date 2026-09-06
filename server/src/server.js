@@ -30,6 +30,7 @@ import { applyPrivateCache } from './lib/cycleShare.js';
 import { pushRouter } from './routes/push.routes.js';
 import { pharmacyRouter } from './routes/pharmacy.routes.js';
 import { checkInRouter } from './routes/check-in.routes.js';
+import { locationRouter } from './routes/location.routes.js';
 import { PRIVACY_HTML, TERMS_HTML } from './lib/legalPages.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -173,6 +174,7 @@ app.use('/api/usage', usageRouter);
 app.use('/api/push', pushRouter);
 app.use('/api/pharmacy', pharmacyRouter);
 app.use('/api/check-in', checkInRouter);
+app.use('/api/location', locationRouter);
 app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 
@@ -204,7 +206,10 @@ if (serveLanding) {
       setHeaders(res, filePath) {
         if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
         else if (filePath.endsWith('.css')) res.setHeader('Cache-Control', 'public, max-age=3600');
-        else res.setHeader('Cache-Control', 'public, max-age=86400');
+        else if (/\.(woff2|woff|ttf|otf)$/i.test(filePath)) {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else res.setHeader('Cache-Control', 'public, max-age=86400');
       },
     }),
   );

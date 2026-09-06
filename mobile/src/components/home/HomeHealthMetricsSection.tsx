@@ -124,6 +124,7 @@ export function HomeHealthMetricsSection({ profile: _profile }: Props) {
             borderColor: FIGMA_HEALTH_METRICS.border,
             paddingHorizontal: 12,
             paddingVertical: 10,
+            marginBottom: 12,
             flexDirection: 'row',
             alignItems: 'center',
             gap: 10,
