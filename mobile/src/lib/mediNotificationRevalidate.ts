@@ -18,6 +18,10 @@ export type EngageLiveSignals = {
   prevWeekSteps: number;
   sent: EngageSentLike[];
   doseTaken?: boolean;
+  stepsGoalReached?: boolean;
+  weatherWindowGone?: boolean;
+  weatherRainChanged?: boolean;
+  weatherCandidate?: string | null;
 };
 
 export type EngagePayload = {
@@ -59,6 +63,8 @@ export function engageSignalHash(
       return `weekly:${live.seenWeekly ? 1 : 0}`;
     case 'achievement':
       return `achieve:${extra?.key ?? ''}`;
+    case 'weatherWellness':
+      return `weather:${extra?.key ?? ''}:pain:${live.loggedPain ? 1 : 0}`;
     default:
       return `${family}:${extra?.key ?? ''}`;
   }
@@ -92,6 +98,23 @@ export function revalidateEngageCandidate(payload: EngagePayload, live: EngageLi
     if (live.hydrationGoal > 0 && live.hydrationMl >= live.hydrationGoal * 0.7) {
       return { ok: false, reason: 'hydration_target_reached_after_scheduling' };
     }
+  }
+
+  if (family === 'weatherWellness') {
+    if (live.lastOpenAt && now - live.lastOpenAt < 90 * 60_000) {
+      return { ok: false, reason: 'user_recently_active' };
+    }
+    if (key === 'engage-weather-walk' && live.loggedPain) {
+      return { ok: false, reason: 'pain_logged_after_scheduling' };
+    }
+    if (key === 'engage-weather-walk' && live.stepsGoalReached) {
+      return { ok: false, reason: 'steps_goal_reached_after_scheduling' };
+    }
+    if (key === 'engage-weather-hot' && live.hydrationGoal > 0 && live.hydrationMl >= live.hydrationGoal * 0.7) {
+      return { ok: false, reason: 'hydration_target_reached_after_scheduling' };
+    }
+    if (live.weatherWindowGone) return { ok: false, reason: 'weather_window_no_longer_good' };
+    if (live.weatherRainChanged) return { ok: false, reason: 'rain_forecast_changed' };
   }
 
   if (family === 'stepsQuiet') {

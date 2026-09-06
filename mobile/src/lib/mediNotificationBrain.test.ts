@@ -241,6 +241,7 @@ describe('mediNotificationBrain', () => {
     assert.equal(routeFromNotificationData({ type: 'visit_reminder', visitId: 'v1' }), '/visits/editor?id=v1');
     assert.equal(routeFromNotificationData({ type: 'medi_engage', family: 'hydration' }), '/health-metrics/hydration');
     assert.equal(routeFromNotificationData({ type: 'medi_engage', family: 'checkin' }), '/chat/DOCTOR');
+    assert.equal(routeFromNotificationData({ type: 'medi_engage', family: 'weatherWellness' }), '/weather?from=push');
   });
 
   it('records why Medi sent or skipped a candidate', () => {
@@ -384,6 +385,81 @@ describe('mediNotificationBrain', () => {
     assert.equal(revalidateEngageCandidate({ family: 'question' }, live).reason, 'profile_question_answered');
     assert.equal(revalidateEngageCandidate({ family: 'weekly' }, { ...live, seenWeekly: true }).reason, 'weekly_already_opened');
     assert.equal(revalidateEngageCandidate({ type: 'medication', time: '09:00' }, { ...live, doseTaken: true }).reason, 'dose_already_taken');
+  });
+
+  it('schedules a weather walk companion only when the app was not just opened', () => {
+    const weather = {
+      candidate: 'weather_good_walk' as const,
+      category: 'excellent_outdoor',
+      windowStartIso: '2026-09-06T16:00',
+      stale: false,
+    };
+    const quiet = evaluateEngageCandidates(
+      snap({
+        now: new Date('2026-09-06T14:00:00'),
+        lastOpenAt: new Date('2026-09-06T10:00:00').getTime() - 4 * 60 * 60_000,
+        weather,
+        hydrationMl: 2000,
+        weekSteps: 8000,
+        prevWeekSteps: 8000,
+      }),
+    );
+    assert.equal(quiet.some((row) => row.family === 'weatherWellness' && row.key === 'engage-weather-walk'), true);
+    const recent = evaluateEngageCandidates(
+      snap({
+        now: new Date('2026-09-06T14:00:00'),
+        lastOpenAt: new Date('2026-09-06T14:00:00').getTime(),
+        weather,
+      }),
+    );
+    assert.equal(recent.some((row) => row.family === 'weatherWellness'), false);
+  });
+
+  it('revalidates weather companions when the window or rain forecast changes', () => {
+    const live: EngageLiveSignals = {
+      now: new Date('2026-09-06T15:10:00'),
+      hydrationMl: 400,
+      hydrationGoal: 2000,
+      loggedPain: false,
+      seenWeekly: false,
+      unfinished: null,
+      lastOpenAt: Date.now() - 4 * 3_600_000,
+      missingProfileField: null,
+      recentVisitId: null,
+      medMissedWeek: 0,
+      todaySteps: 400,
+      prevWeekSteps: 11000,
+      sent: [],
+    };
+    assert.equal(
+      revalidateEngageCandidate({ family: 'weatherWellness', templateKey: 'engage-weather-walk' }, { ...live, weatherWindowGone: true }).reason,
+      'weather_window_no_longer_good',
+    );
+    assert.equal(
+      revalidateEngageCandidate({ family: 'weatherWellness', templateKey: 'engage-weather-rain-soon' }, { ...live, weatherRainChanged: true }).reason,
+      'rain_forecast_changed',
+    );
+    assert.equal(
+      revalidateEngageCandidate({ family: 'weatherWellness', templateKey: 'engage-weather-walk' }, { ...live, loggedPain: true }).reason,
+      'pain_logged_after_scheduling',
+    );
+    assert.equal(
+      revalidateEngageCandidate({ family: 'weatherWellness', templateKey: 'engage-weather-walk' }, { ...live, stepsGoalReached: true }).reason,
+      'steps_goal_reached_after_scheduling',
+    );
+    assert.equal(
+      revalidateEngageCandidate({ family: 'weatherWellness', templateKey: 'engage-weather-hot' }, { ...live, hydrationMl: 1800 }).reason,
+      'hydration_target_reached_after_scheduling',
+    );
+  });
+
+  it('keeps weather lock-screen copy free of exact steps or ml', () => {
+    for (const key of ['engage-weather-walk', 'engage-weather-rain-soon', 'engage-weather-hot', 'engage-weather-uv']) {
+      const copy = ENGAGE_FALLBACKS[key];
+      assert.ok(copy);
+      assert.equal(/\d{3,}|ნაბიჯი|მლ/.test(`${copy.title} ${copy.body}`), false);
+    }
+    assert.equal(engageDestination('weatherWellness'), '/weather?from=push');
   });
 
   it('falls back to a list hub when the target entity is gone', () => {

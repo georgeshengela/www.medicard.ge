@@ -84,6 +84,133 @@ const CITY_KA = {
   ambrolauri: 'ამბროლაური',
   oni: 'ონი',
   tianeti: 'თიანეთი',
+  liege: 'ლიეჟი',
+  luik: 'ლიეჟი',
+  brussels: 'ბრიუსელი',
+  bruxelles: 'ბრიუსელი',
+  brussel: 'ბრიუსელი',
+  antwerp: 'ანტვერპენი',
+  antwerpen: 'ანტვერპენი',
+  anvers: 'ანტვერპენი',
+  ghent: 'გენტი',
+  gent: 'გენტი',
+  gand: 'გენტი',
+  bruges: 'ბრიუგე',
+  brugge: 'ბრიუგე',
+  charleroi: 'შარლრუა',
+  namur: 'ნამიური',
+  namen: 'ნამიური',
+  leuven: 'ლევენი',
+  louvain: 'ლევენი',
+  mons: 'მონსი',
+  oostende: 'ოსტენდე',
+  ostend: 'ოსტენდე',
+  ostende: 'ოსტენდე',
+  mechelen: 'მეხელენი',
+  malines: 'მეხელენი',
+  kortrijk: 'კორტრეიკი',
+  courtrai: 'კორტრეიკი',
+  hasselt: 'ჰასელტი',
+  waterloo: 'ვატერლოო',
+  seraing: 'სერენი',
+  verviers: 'ვერვიე',
+  herstal: 'ჰერსტალი',
+  spa: 'სპა',
+  paris: 'პარიზი',
+  lyon: 'ლიონი',
+  marseille: 'მარსელი',
+  nice: 'ნიცა',
+  toulouse: 'ტულუზა',
+  bordeaux: 'ბორდო',
+  strasbourg: 'სტრასბურგი',
+  lille: 'ლილი',
+  nantes: 'ნანტი',
+  montpellier: 'მონპელიე',
+  rennes: 'რენი',
+  reims: 'რეიმსი',
+  grenoble: 'გრენობლი',
+  amsterdam: 'ამსტერდამი',
+  rotterdam: 'როტერდამი',
+  'den haag': 'ჰააგა',
+  'the hague': 'ჰააგა',
+  hague: 'ჰააგა',
+  utrecht: 'უტრეხტი',
+  berlin: 'ბერლინი',
+  munich: 'მიუნხენი',
+  munchen: 'მიუნხენი',
+  muenchen: 'მიუნხენი',
+  hamburg: 'ჰამბურგი',
+  frankfurt: 'ფრანკფურტი',
+  cologne: 'კელნი',
+  koln: 'კელნი',
+  koeln: 'კელნი',
+  stuttgart: 'შტუტგარტი',
+  dusseldorf: 'დიუსელდორფი',
+  duesseldorf: 'დიუსელდორფი',
+  london: 'ლონდონი',
+  manchester: 'მანჩესტერი',
+  birmingham: 'ბირმინგემი',
+  edinburgh: 'ედინბურგი',
+  glasgow: 'გლაზგო',
+  liverpool: 'ლივერპული',
+  rome: 'რომი',
+  roma: 'რომი',
+  milan: 'მილანი',
+  milano: 'მილანი',
+  naples: 'ნეაპოლი',
+  napoli: 'ნეაპოლი',
+  florence: 'ფლორენცია',
+  firenze: 'ფლორენცია',
+  venice: 'ვენეცია',
+  venezia: 'ვენეცია',
+  madrid: 'მადრიდი',
+  barcelona: 'ბარსელონა',
+  valencia: 'ვალენსია',
+  lisbon: 'ლისაბონი',
+  lisboa: 'ლისაბონი',
+  vienna: 'ვენა',
+  wien: 'ვენა',
+  zurich: 'ციურიხი',
+  geneva: 'ჟენევა',
+  geneve: 'ჟენევა',
+  basel: 'ბაზელი',
+  prague: 'პრაღა',
+  praha: 'პრაღა',
+  warsaw: 'ვარშავა',
+  warszawa: 'ვარშავა',
+  budapest: 'ბუდაპეშტი',
+  athens: 'ათენი',
+  athina: 'ათენი',
+  stockholm: 'სტოკჰოლმი',
+  oslo: 'ოსლო',
+  copenhagen: 'კოპენჰაგენი',
+  kobenhavn: 'კოპენჰაგენი',
+  helsinki: 'ჰელსინკი',
+  dublin: 'დუბლინი',
+  moscow: 'მოსკოვი',
+  moskva: 'მოსკოვი',
+  kyiv: 'კიევი',
+  kiev: 'კიევი',
+  minsk: 'მინსკი',
+  istanbul: 'სტამბოლი',
+  ankara: 'ანკარა',
+  yerevan: 'ერევანი',
+  baku: 'ბაქო',
+  'new york': 'ნიუ-იორკი',
+  'los angeles': 'ლოს-ანჯელესი',
+  chicago: 'ჩიკაგო',
+  washington: 'ვაშინგტონი',
+  toronto: 'ტორონტო',
+  montreal: 'მონრეალი',
+  vancouver: 'ვანკუვერი',
+  sydney: 'სიდნეი',
+  melbourne: 'მელბურნი',
+  tokyo: 'ტოკიო',
+  beijing: 'პეკინი',
+  peking: 'პეკინი',
+  dubai: 'დუბაი',
+  'tel aviv': 'თელ-ავივი',
+  jerusalem: 'იერუსალიმი',
 };
 
 function normKey(value) {
@@ -92,6 +219,22 @@ function normKey(value) {
     .toLowerCase()
     .replace(/[-_]/g, ' ')
     .replace(/\s+/g, ' ');
+}
+
+function foldKey(value) {
+  return normKey(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’']/g, '');
+}
+
+function cleanCityLabel(value) {
+  return String(value || '')
+    .replace(
+      /^(arrondissement|province|region|région|city|commune|municipality|district|gemeente|stad|ville)\s+(de\s+|d['’]|of\s+|di\s+|van\s+)?/i,
+      '',
+    )
+    .trim();
 }
 
 function looksGeorgian(value) {
@@ -114,9 +257,9 @@ export function countryNameKa(code, fallback) {
 }
 
 export function cityNameKa(raw) {
-  const text = String(raw || '').trim();
+  const text = cleanCityLabel(String(raw || '').trim());
   if (!text) return null;
-  return CITY_KA[normKey(text)] || (looksGeorgian(text) ? text : text);
+  return CITY_KA[normKey(text)] || CITY_KA[foldKey(text)] || text;
 }
 
 export function resolveNominatimAddress(address = {}) {

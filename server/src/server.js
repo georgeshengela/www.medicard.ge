@@ -32,6 +32,7 @@ import { pharmacyRouter } from './routes/pharmacy.routes.js';
 import { checkInRouter } from './routes/check-in.routes.js';
 import { locationRouter } from './routes/location.routes.js';
 import { PRIVACY_HTML, TERMS_HTML } from './lib/legalPages.js';
+import { attachAdminRealtime } from './lib/adminRealtime.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -78,7 +79,7 @@ app.use(
               scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
               styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
               imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-              connectSrc: ["'self'", 'https:', 'wss:'],
+              connectSrc: ["'self'", 'https:', 'ws:', 'wss:'],
               fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
               mediaSrc: ["'self'", 'blob:'],
               objectSrc: ["'none'"],
@@ -253,6 +254,7 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
     console.log(`  ✓ vision via OpenRouter (${env.OPENROUTER_MODEL || 'fallback'})\n`);
   }
 });
+attachAdminRealtime(server);
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, async () => {

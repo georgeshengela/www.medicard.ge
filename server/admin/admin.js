@@ -183,6 +183,7 @@ function rememberAdmin(admin, token) {
 }
 
 function logout(reason) {
+  disconnectAdminRealtime();
   state.token = '';
   state.admin = null;
   localStorage.removeItem(TOKEN_KEY);
@@ -702,7 +703,7 @@ function setLivePill(settings) {
     pill.innerHTML = `${icon('zap')} იძულებითი განახლება`;
   } else {
     pill.className = 'status-pill ok';
-    pill.innerHTML = `${icon('check')} ცოცხალი · 8წმ`;
+    pill.innerHTML = `${icon('check')} ცოცხალი`;
   }
 }
 
@@ -757,6 +758,7 @@ async function boot() {
   }
 
   show('app');
+  connectAdminRealtime();
   try {
     const me = await apiRetry('/me');
     rememberAdmin(me.admin);
@@ -869,6 +871,7 @@ async function onLogin(e) {
     });
     rememberAdmin(data.admin, data.token);
     show('app');
+    connectAdminRealtime();
     await switchTab('overview');
   } catch (err) {
     $('login-error').textContent = err.message;
@@ -942,12 +945,43 @@ function startAdminLive() {
   }, ADMIN_LIVE_MS);
 }
 
-async function refreshAdminLive() {
-  const tab = state.tab;
-  if (tab === 'overview' && typeof renderCommandCenter === 'function') {
-    await renderCommandCenter();
+let adminSocket = null;
+
+function connectAdminRealtime() {
+  if (!state.token || typeof io !== 'function') return;
+  if (adminSocket) {
+    adminSocket.auth = { token: state.token };
+    if (!adminSocket.connected) adminSocket.connect();
     return;
   }
+  adminSocket = io({
+    path: '/socket.io',
+    auth: { token: state.token },
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionDelay: 1200,
+  });
+  adminSocket.on('connect', () => {
+    const pill = $('live-pill');
+    if (pill && !pill.classList.contains('bad') && !pill.classList.contains('warn')) {
+      pill.className = 'status-pill ok';
+      pill.innerHTML = `${icon('check')} ცოცხალი`;
+    }
+  });
+  adminSocket.on('ops:live', (snap) => {
+    if (typeof window.patchOpsLive === 'function') window.patchOpsLive(snap);
+  });
+}
+
+function disconnectAdminRealtime() {
+  if (!adminSocket) return;
+  adminSocket.disconnect();
+  adminSocket = null;
+}
+
+async function refreshAdminLive() {
+  const tab = state.tab;
+  if (tab === 'overview') return;
   if (tab === 'users' && typeof window.__reloadUsers === 'function') {
     await window.__reloadUsers();
     return;

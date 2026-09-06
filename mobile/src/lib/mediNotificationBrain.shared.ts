@@ -33,6 +33,7 @@ export const ENGAGE_FAMILIES = {
   sleep: { priority: 28, topic: 'sleep' as EngageTopic },
   question: { priority: 25, topic: 'question' as EngageTopic },
   feature: { priority: 10, topic: 'feature' as EngageTopic },
+  weatherWellness: { priority: 42, topic: 'weather' as EngageTopic },
 } as const;
 
 export type EngageFamily = keyof typeof ENGAGE_FAMILIES;
@@ -85,6 +86,12 @@ export type EngageSnapshot = {
   outcomes: EngageOutcome[];
   sent: EngageSentRow[];
   prefs: MediEngagePrefs;
+  weather?: {
+    candidate: 'weather_good_walk' | 'weather_rain_soon' | 'weather_hot_hydration' | 'weather_high_uv';
+    category: string;
+    windowStartIso: string | null;
+    stale: boolean;
+  } | null;
 };
 
 export type EngageDecision = {
@@ -237,7 +244,8 @@ function laterKeep(family: EngageFamily): boolean {
     family === 'unfinished' ||
     family === 'visitFollowup' ||
     family === 'chat' ||
-    family === 'feature'
+    family === 'feature' ||
+    family === 'weatherWellness'
   );
 }
 
@@ -571,6 +579,42 @@ export function evaluateEngageBrain(snap: EngageSnapshot): { accepted: EngageCan
       route: engageDestination('visitFollowup', { visitId: snap.recentVisit.id }),
       reasons: [`appointment ended ${Math.round(snap.recentVisit.hoursAgo)}h ago`, 'ask how the visit went'],
     });
+  }
+
+  if (snap.weather?.candidate && !snap.weather.stale) {
+    const weatherKey =
+      snap.weather.candidate === 'weather_good_walk'
+        ? 'engage-weather-walk'
+        : snap.weather.candidate === 'weather_rain_soon'
+          ? 'engage-weather-rain-soon'
+          : snap.weather.candidate === 'weather_hot_hydration'
+            ? 'engage-weather-hot'
+            : 'engage-weather-uv';
+    if (openedRecently) {
+      skip('weatherWellness', weatherKey, 'user recently active', engageDestination('weatherWellness'), [
+        `${snap.weather.candidate}`,
+      ]);
+    } else if (snap.loggedPain && snap.weather.candidate === 'weather_good_walk') {
+      skip('weatherWellness', weatherKey, 'pain logged today', engageDestination('weatherWellness'));
+    } else {
+      let fireAt = scheduleAt(now, prefs, Math.max(hour + 1, 11), 20, 0);
+      if (snap.weather.candidate === 'weather_good_walk' && snap.weather.windowStartIso) {
+        const windowHour = Number(String(snap.weather.windowStartIso).slice(11, 13));
+        if (Number.isFinite(windowHour)) {
+          fireAt = scheduleAt(now, prefs, Math.max(0, windowHour), 0, 0);
+          fireAt = new Date(fireAt.getTime() - 30 * 60_000);
+        }
+        if (fireAt.getTime() <= now.getTime() + 60_000) fireAt = new Date(now.getTime() + 20 * 60_000);
+      }
+      attempts.push({
+        key: weatherKey,
+        family: 'weatherWellness',
+        fireAt,
+        vars: {},
+        route: engageDestination('weatherWellness'),
+        reasons: [`weather ${snap.weather.category}`, snap.weather.candidate, 'max 1 weather companion / day'],
+      });
+    }
   }
 
   for (const days of [2, 5, 14, 30]) {

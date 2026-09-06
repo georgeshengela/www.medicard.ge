@@ -10,6 +10,7 @@ import { HomeBmiWeightSection } from '@/components/home/HomeBmiWeightSection';
 import { HomeNextDoseSection } from '@/components/home/HomeNextDoseSection';
 import { HomeHealthMetricsSection } from '@/components/home/HomeHealthMetricsSection';
 import { HomeHydrationSection } from '@/components/home/HomeHydrationSection';
+import { HomeWeatherSection } from '@/components/weather/HomeWeatherSection';
 import { HomeLabSection } from '@/components/home/HomeLabSection';
 import { HomeStartSection } from '@/components/home/HomeStartSection';
 import { HomeAnalysisSection } from '@/components/home/HomeAnalysisSection';
@@ -130,6 +131,8 @@ export default function Home() {
         />
 
         <HomeNextDoseSection refreshing={refreshing} />
+
+        <HomeWeatherSection />
 
         <HomeBmiWeightSection profile={healthProfile} />
 

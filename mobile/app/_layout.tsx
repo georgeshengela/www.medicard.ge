@@ -28,7 +28,7 @@ enableScreens(false);
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-const APP_VERSION = Constants.expoConfig?.version ?? '25.0.2';
+const APP_VERSION = Constants.expoConfig?.version ?? '26.0.2';
 
 /** Redirects between the auth stack and the app shell as the session changes. */
 function AuthGate({ children }: { children: React.ReactNode }) {
@@ -256,6 +256,7 @@ function AppShell() {
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="package" options={{ headerShown: false }} />
               <Stack.Screen name="health-metrics" options={{ headerShown: false }} />
+              <Stack.Screen name="weather" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="chat" options={{ headerShown: false }} />
               <Stack.Screen name="module" options={{ headerShown: false }} />

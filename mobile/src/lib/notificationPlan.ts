@@ -81,6 +81,8 @@ export function engageDestination(
       return '/cycle';
     case 'birthday':
       return '/(tabs)/home';
+    case 'weatherWellness':
+      return '/weather?from=push';
     default:
       return '/(tabs)/home';
   }

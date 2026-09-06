@@ -25,6 +25,18 @@ describe('geoPlace', () => {
     assert.equal(flagEmoji('GE'), '🇬🇪');
   });
 
+  it('translates Liège and other Latin city names into Georgian', () => {
+    assert.equal(cityNameKa('Liege'), 'ლიეჟი');
+    assert.equal(cityNameKa('Liège'), 'ლიეჟი');
+    assert.equal(cityNameKa('Arrondissement de Liège'), 'ლიეჟი');
+    assert.equal(cityNameKa('Bruxelles'), 'ბრიუსელი');
+    assert.equal(cityNameKa('Paris'), 'პარიზი');
+    assert.equal(
+      formatPlaceLine({ countryCode: 'BE', countryKa: 'ბელგია', cityKa: 'Liège' }),
+      '🇧🇪 ლიეჟი, ბელგია',
+    );
+  });
+
   it('translates common Georgian cities from Latin or Mkhedruli', () => {
     assert.equal(cityNameKa('Tbilisi'), KA.tbilisi);
     assert.equal(cityNameKa('batumi'), KA.batumi);

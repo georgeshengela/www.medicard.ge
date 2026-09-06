@@ -148,6 +148,18 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
       : !user?.phone
         ? 'phone'
         : null;
+  const loggedPain = await detectLoggedPain(user, today);
+  let weather: EngageSnapshot['weather'] = null;
+  try {
+    const { loadWeatherEngageSignal } = await import('@/lib/weather/engage');
+    weather = await loadWeatherEngageSignal({
+      profile: health,
+      userKey: user?.id ?? null,
+      loggedPain,
+    });
+  } catch {
+    weather = null;
+  }
   return {
     now,
     lastOpenAt,
@@ -159,7 +171,7 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
     prevWeekSteps: stepsOn(prevWeek),
     hydrationMl: dayTotalMl(logs, today),
     hydrationGoal: goalMl,
-    loggedPain: await detectLoggedPain(user, today),
+    loggedPain,
     streak: user?.currentStreak ?? 0,
     loggedHealthDays,
     medTakenWeek,
@@ -176,6 +188,7 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
     outcomes,
     sent,
     prefs,
+    weather,
   };
 }
 
@@ -298,6 +311,25 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
   const today = todayYmd();
   const time = typeof data.time === 'string' ? data.time : '';
   const medicationId = typeof data.medicationId === 'string' ? data.medicationId : '';
+  let weatherWindowGone = false;
+  let weatherRainChanged = false;
+  let stepsGoalReached = false;
+  if (String(data.family || '') === 'weatherWellness') {
+    try {
+      const { recheckWeatherForDelivery, weatherKeyToCandidate } = await import('@/lib/weather/engage');
+      const check = await recheckWeatherForDelivery({
+        profile: lastActor.health,
+        userKey: lastActor.user?.id ?? null,
+        loggedPain: cached?.loggedPain ?? false,
+        expected: weatherKeyToCandidate(String(data.templateKey || data.key || '')),
+      });
+      weatherWindowGone = check.windowGone;
+      weatherRainChanged = check.rainChanged;
+      stepsGoalReached = check.stepsGoalReached;
+    } catch {
+      weatherWindowGone = true;
+    }
+  }
   const live = {
     now: new Date(),
     hydrationMl: dayTotalMl(hydro, today),
@@ -313,6 +345,9 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
     prevWeekSteps: cached?.prevWeekSteps ?? 0,
     sent,
     doseTaken: Boolean(medicationId && time && findDoseLog(doses, medicationId, today, time)?.status === 'taken'),
+    stepsGoalReached,
+    weatherWindowGone,
+    weatherRainChanged,
   };
   void prefs;
   return revalidateEngageCandidate(

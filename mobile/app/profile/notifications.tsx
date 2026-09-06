@@ -14,6 +14,7 @@ import {
   Moon,
   Scale,
   Sparkles,
+  CloudSun,
   Sun,
 } from 'lucide-react-native';
 import {
@@ -53,6 +54,7 @@ const TOPIC_ROWS: Array<{ topic: EngageTopic; label: string; icon: typeof Bell; 
   { topic: 'question', label: ka.notifSettings.question, icon: MessageCircle, section: 'medi' },
   { topic: 'unfinished', label: ka.notifSettings.unfinished, icon: Bell, section: 'medi' },
   { topic: 'visitFollowup', label: ka.notifSettings.visitFollowup, icon: CalendarHeart, section: 'health' },
+  { topic: 'weather', label: ka.notifSettings.weather, icon: CloudSun, section: 'health' },
   { topic: 'feature', label: ka.notifSettings.feature, icon: Bell, section: 'news' },
 ];
 

@@ -256,6 +256,15 @@ export function notificationCatalog(): NotificationCatalogItem[] {
       data: { type: 'medi_engage', family: 'insight', route: '/medications/reminders' },
     }),
     item({
+      id: 'engage-weather-walk',
+      group: 'engage',
+      send: 'local',
+      label: 'ამინდი',
+      how: 'Brain · weather_wellness. მაქს. 1/დღე, 22სთ cooldown, revalidate forecast.',
+      channelId: ENGAGE_CHANNEL_ID,
+      data: { type: 'medi_engage', family: 'weatherWellness', route: '/weather?from=push' },
+    }),
+    item({
       id: 'admin-push',
       group: 'admin',
       send: 'remote',

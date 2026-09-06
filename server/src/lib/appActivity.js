@@ -64,7 +64,9 @@ export async function recordAppActivity(userId, meta = {}, now = new Date()) {
       where: { userId, active: true },
       data: { lastSeenAt: now },
     }).catch(() => undefined);
-    return { userId, date: ymd, platform, appVersion, activityType };
+    const row = { userId, date: ymd, platform, appVersion, activityType };
+    import('./adminRealtime.js').then((mod) => mod.notifyOpsActivity(row)).catch(() => undefined);
+    return row;
   } catch (error) {
     if (isMissingTable(error)) {
       tableReady = false;

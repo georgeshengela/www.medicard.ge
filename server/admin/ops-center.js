@@ -333,8 +333,8 @@ async function renderCommandCenter() {
   }
 
   const meta = overview;
-  $('ops-meta').textContent = [
-    `ბოლო განახლება ${new Date(meta.refreshedAt).toLocaleString('ka-GE')}`,
+  $('ops-meta').innerHTML = [
+    `<span id="ops-live-clock">ბოლო განახლება <time id="ops-live-at">${opsEscape(new Date(meta.refreshedAt).toLocaleString('ka-GE'))}</time></span>`,
     meta.environment,
     meta.appVersion ? `აპი ${meta.appVersion}` : null,
     `${meta.range?.label || ''} · ${meta.range?.timezone}`,
@@ -359,7 +359,7 @@ async function renderCommandCenter() {
 
   const k = overview.kpis || {};
   const kpi = (key, label, row, spark, go, ico) => `
-    <article class="ops-kpi${row.tone ? ` is-${row.tone}` : ''}" data-go="${go || ''}" title="${opsEscape(row.definition || label)}">
+    <article class="ops-kpi${row.tone ? ` is-${row.tone}` : ''}" data-ops-kpi="${key}" data-go="${go || ''}" title="${opsEscape(row.definition || label)}">
       <div class="ops-kpi-top"><span class="ops-kpi-ico">${opsIco(ico)}</span><span>${label}</span>${opsTip(row.definition || label)}</div>
       <strong>${opsFmt(row.value)}</strong>
       <div class="ops-kpi-foot">${opsDelta(row.delta)}${spark && spark.some((d) => d.count > 0) ? opsSpark(spark) : ''}</div>
@@ -1393,6 +1393,25 @@ function renderCommandPalette() {
   });
 }
 
+function patchOpsLive(snap) {
+  if (!snap || !$('ops-kpis')) return;
+  const setKpi = (key, value) => {
+    if (value == null) return;
+    const el = document.querySelector(`[data-ops-kpi="${key}"] strong`);
+    if (!el) return;
+    const next = opsFmt(value);
+    if (el.textContent === next) return;
+    el.textContent = next;
+    el.classList.add('is-live-tick');
+    setTimeout(() => el.classList.remove('is-live-tick'), 700);
+  };
+  setKpi('activeToday', snap.activeToday);
+  if (opsState.range === 'today') setKpi('newUsers', snap.newUsersToday);
+  const at = $('ops-live-at');
+  if (at && snap.refreshedAt) at.textContent = new Date(snap.refreshedAt).toLocaleString('ka-GE');
+}
+
+window.patchOpsLive = patchOpsLive;
 window.renderCommandCenter = renderCommandCenter;
 window.renderHealthOps = renderHealthOps;
 window.renderAuditLog = renderAuditLog;
