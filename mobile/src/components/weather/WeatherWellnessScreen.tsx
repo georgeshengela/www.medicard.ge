@@ -3,7 +3,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
-import { weatherAccent, weatherIconFor } from '@/components/weather/weatherIcons';
+import { airQualityIconFor, weatherAccent, weatherIconFor } from '@/components/weather/weatherIcons';
+import { airBandColor } from '@/components/weather/weatherMood';
 import { useWeather } from '@/hooks/useWeather';
 import { ka } from '@/i18n/ka';
 import {
@@ -13,6 +14,7 @@ import {
   weatherCopyText,
   weekdayShort,
   zonedParts,
+  type AirQualitySnapshot,
 } from '@/lib/weather';
 import { localHourFromIso as hourOf } from '@/lib/weather/time';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -101,6 +103,8 @@ export function WeatherWellnessScreen() {
                 </Text>
               ) : null}
             </View>
+
+            {snapshot.airQuality ? <AirQualityBlock air={snapshot.airQuality} /> : null}
 
             <StatsRow snapshot={snapshot} />
 
@@ -207,6 +211,79 @@ function CurrentBlock({ snapshot }: { snapshot: NonNullable<ReturnType<typeof us
       <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>
         {ui.feelsLike(snapshot.current.feelsLikeC)} · {weatherConditionLabel(snapshot.current.condition, 'ka')}
       </Text>
+    </View>
+  );
+}
+
+function formatUg(value: number | null): string {
+  if (value == null) return '—';
+  return value >= 10 ? String(Math.round(value)) : value.toFixed(1);
+}
+
+function AirQualityBlock({ air }: { air: AirQualitySnapshot }) {
+  const colors = useThemeColors();
+  const isDark = useIsDark();
+  const tint = airBandColor(air.band, isDark);
+  const AirIcon = airQualityIconFor(air.band);
+  const pollutants = [
+    { label: ui.pm25, value: formatUg(air.pm25) },
+    { label: ui.pm10, value: formatUg(air.pm10) },
+    { label: ui.o3, value: formatUg(air.o3) },
+    { label: ui.no2, value: formatUg(air.no2) },
+  ];
+  return (
+    <View
+      style={{
+        backgroundColor: isDark ? '#111827' : '#FFFFFF',
+        borderWidth: 1,
+        borderColor: isDark ? '#374151' : '#E5E7EB',
+        borderRadius: 24,
+        padding: 16,
+        gap: 12,
+      }}
+    >
+      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: colors.text100 }}>{ui.airQuality}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: isDark ? '#042F2E' : '#F0FDFA',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <AirIcon size={18} color={tint} strokeWidth={2.2} />
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, color: tint, marginTop: 2 }}>{air.europeanAqi}</Text>
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: tint }}>{ui.air(air.band)}</Text>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 19, color: colors.text200 }}>
+            {ui.airHint(air.band)}
+          </Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {pollutants.map((item) => (
+          <View
+            key={item.label}
+            style={{
+              minWidth: 72,
+              flexGrow: 1,
+              borderRadius: 14,
+              backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+            }}
+          >
+            <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, color: colors.text300 }}>{item.label}</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, color: colors.text100, marginTop: 2 }}>
+              {item.value}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }

@@ -1,18 +1,22 @@
 import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
-import { env } from '../config/env.js';
 import { prisma } from './prisma.js';
 import { tbilisiYmd } from './checkIn.js';
 import { loadAppActivityRows } from './appActivity.js';
 import { clearAdminAnalyticsCache } from './adminAnalytics.js';
+import { ADMIN_SOCKET_ROOM, authorizeSocketHandshake, userSocketRoom } from './socketAuth.js';
+import { registerQuestRealtimeEmitter } from './questRealtime.js';
 
-const ROOM = 'ops';
+const ROOM = ADMIN_SOCKET_ROOM;
 const LIVE_MS = 90_000;
 const DEBOUNCE_MS = 300;
 
 let io = null;
 let flushTimer = null;
 const seen = new Map();
+
+export function getRealtimeIo() {
+  return io;
+}
 
 export function attachAdminRealtime(httpServer) {
   io = new Server(httpServer, {
@@ -21,24 +25,37 @@ export function attachAdminRealtime(httpServer) {
     transports: ['websocket', 'polling'],
   });
 
-  io.use((socket, next) => {
-    const token = String(socket.handshake.auth?.token || '').trim();
-    if (!token) return next(new Error('unauthorized'));
+  io.use(async (socket, next) => {
     try {
-      const payload = jwt.verify(token, env.JWT_SECRET);
-      if (payload.role !== 'admin' || !payload.sub) return next(new Error('forbidden'));
-      socket.data.adminId = payload.sub;
+      const identity = await authorizeSocketHandshake(socket.handshake.auth?.token);
+      socket.data.identity = identity;
+      if (identity.kind === 'admin') socket.data.adminId = identity.adminId;
+      if (identity.kind === 'user') socket.data.userId = identity.userId;
       return next();
-    } catch {
-      return next(new Error('unauthorized'));
+    } catch (error) {
+      return next(new Error(error?.message === 'forbidden' ? 'forbidden' : 'unauthorized'));
     }
   });
 
   io.on('connection', (socket) => {
-    socket.join(ROOM);
-    getOpsLiveSnapshot()
-      .then((snap) => socket.emit('ops:live', snap))
-      .catch(() => undefined);
+    const identity = socket.data.identity;
+    if (identity?.kind === 'admin') {
+      socket.join(ROOM);
+      getOpsLiveSnapshot()
+        .then((snap) => socket.emit('ops:live', snap))
+        .catch(() => undefined);
+      return;
+    }
+    if (identity?.kind === 'user') {
+      socket.join(userSocketRoom(identity.userId));
+    }
+  });
+
+  registerQuestRealtimeEmitter((userId, payload) => {
+    if (!io || !userId) return;
+    const event = payload?.event || 'quest:update';
+    const { event: _ignored, userId: _uid, ...rest } = payload || {};
+    io.to(userSocketRoom(userId)).emit(event, rest);
   });
 
   return io;

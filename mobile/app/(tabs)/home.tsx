@@ -10,6 +10,7 @@ import { HomeBmiWeightSection } from '@/components/home/HomeBmiWeightSection';
 import { HomeNextDoseSection } from '@/components/home/HomeNextDoseSection';
 import { HomeHealthMetricsSection } from '@/components/home/HomeHealthMetricsSection';
 import { HomeHydrationSection } from '@/components/home/HomeHydrationSection';
+import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { HomeWeatherSection } from '@/components/weather/HomeWeatherSection';
 import { HomeLabSection } from '@/components/home/HomeLabSection';
 import { HomeStartSection } from '@/components/home/HomeStartSection';
@@ -26,8 +27,10 @@ import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { useThemeColors, useIsDark } from '@/theme/colors';
 import { OnboardingDevLauncher } from '@/components/dev/OnboardingDevLauncher';
 import { NotificationsDevLauncher } from '@/components/dev/NotificationsDevLauncher';
+import { QuestDevLauncher } from '@/components/dev/QuestDevLauncher';
 import { useAuth } from '@/store/AuthContext';
 import { useHydration } from '@/hooks/useHydration';
+import { requestQuestRefresh } from '@/lib/quest/cache';
 import { healthScoreLabelKa } from '@/lib/healthScore';
 import { analysisFromProfile } from '@/types/onboardingAnalysis';
 
@@ -67,7 +70,7 @@ export default function Home() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([load(), refresh()]);
+    await Promise.all([load(), refresh(), Promise.resolve(requestQuestRefresh())]);
     setRefreshing(false);
   }, [load, refresh]);
 
@@ -140,6 +143,8 @@ export default function Home() {
 
         <HomeHydrationSection />
 
+        <HomeMediQuestSection />
+
         <HomeLabSection />
 
         <View className="px-4">
@@ -211,6 +216,7 @@ export default function Home() {
       <DefaultHomePrompt visible={showCyclePrompt} onClose={onPromptClose} />
       <OnboardingDevLauncher variant="fab" />
       <NotificationsDevLauncher />
+      <QuestDevLauncher />
     </>
   );
 }

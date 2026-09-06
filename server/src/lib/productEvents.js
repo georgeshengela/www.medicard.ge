@@ -10,6 +10,19 @@ export const PRODUCT_EVENT_KINDS = new Set([
   'insight_actioned',
   'insight_dismissed',
   'notification_permission',
+  'quest_hub_opened',
+  'quest_claim_tapped',
+  'quest_history_opened',
+  'quest_wallet_opened',
+  'step_setup_opened',
+  'hydration_setup_opened',
+]);
+
+/** Server-authored only — never accepted from the client upsert path. */
+export const SERVER_QUEST_EVENT_KINDS = Object.freeze([
+  'quest_assigned',
+  'quest_completed',
+  'quest_claimed',
 ]);
 
 let tableReady = false;
@@ -91,6 +104,26 @@ export async function upsertProductEvents(userId, rows, meta = {}) {
     }
   }
   return { upserted, received: sanitized.length };
+}
+
+export async function recordServerProductEvent({ userId, kind, category, entityId, source = 'quest' }) {
+  if (!SERVER_QUEST_EVENT_KINDS.includes(kind) || !userId) return null;
+  await ensureProductEventTable();
+  const id = crypto.randomUUID();
+  try {
+    await prisma.$executeRaw`
+      INSERT INTO "ProductEvent" (
+        "id", "userId", "kind", "category", "entityId", "source", "occurredAt"
+      ) VALUES (
+        ${id}, ${userId}, ${kind}, ${category || null}, ${entityId || kind}, ${source}, NOW()
+      )
+      ON CONFLICT ("userId", "kind", "entityId") DO NOTHING
+    `;
+    return id;
+  } catch (error) {
+    console.warn('[product-event] server quest event failed', error?.message);
+    return null;
+  }
 }
 
 export async function loadProductEvents(fromDt, toExclusiveDt, kinds = null) {

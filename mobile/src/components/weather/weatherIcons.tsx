@@ -8,12 +8,15 @@ import {
   CloudSnow,
   CloudSun,
   Moon,
+  ShieldAlert,
+  Sparkles,
   Sun,
+  TriangleAlert,
   Umbrella,
   Wind,
   type LucideIcon,
 } from 'lucide-react-native';
-import type { WeatherCondition, WeatherRecommendation } from '@/lib/weather';
+import type { AirQualityBand, WeatherCondition, WeatherRecommendation } from '@/lib/weather';
 
 export function weatherIconFor(
   condition: WeatherCondition | WeatherRecommendation['icon'],
@@ -46,6 +49,14 @@ export function weatherIconFor(
     default:
       return CloudSun;
   }
+}
+
+export function airQualityIconFor(band: AirQualityBand): LucideIcon {
+  if (band === 'good') return Wind;
+  if (band === 'fair') return Sparkles;
+  if (band === 'moderate') return CloudFog;
+  if (band === 'poor') return TriangleAlert;
+  return ShieldAlert;
 }
 
 export function weatherAccent(condition: WeatherCondition | WeatherRecommendation['icon']): string {

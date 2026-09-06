@@ -41,6 +41,27 @@ export type WeatherSeverity = 'calm' | 'caution' | 'avoid';
 
 export type WeatherLang = 'ka' | 'en' | 'fr' | 'ru';
 
+export const AIR_QUALITY_BANDS = [
+  'good',
+  'fair',
+  'moderate',
+  'poor',
+  'very_poor',
+  'extremely_poor',
+] as const;
+
+export type AirQualityBand = (typeof AIR_QUALITY_BANDS)[number];
+
+export type AirQualitySnapshot = {
+  europeanAqi: number;
+  band: AirQualityBand;
+  pm25: number | null;
+  pm10: number | null;
+  no2: number | null;
+  o3: number | null;
+  so2: number | null;
+};
+
 export type WeatherHour = {
   time: string;
   temperatureC: number;
@@ -51,6 +72,7 @@ export type WeatherHour = {
   windKmh: number;
   uvIndex: number | null;
   visibilityM: number | null;
+  europeanAqi?: number | null;
 };
 
 export type WeatherDay = {
@@ -92,6 +114,7 @@ export type WeatherSnapshot = {
   };
   daily: WeatherDay[];
   hourly: WeatherHour[];
+  airQuality: AirQualitySnapshot | null;
   updatedAt: string;
 };
 

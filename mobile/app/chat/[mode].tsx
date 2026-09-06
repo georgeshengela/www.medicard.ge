@@ -93,6 +93,7 @@ export default function ChatScreen() {
           },
         ]);
         applyUsage(response.usage);
+        void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
       } catch (err) {
         setMessages((prev) => prev.slice(0, -1));
         setDraft(message);

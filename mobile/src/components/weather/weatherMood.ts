@@ -1,4 +1,17 @@
-import type { WeatherCondition, WeatherRecommendation } from '@/lib/weather';
+import type { AirQualityBand, WeatherCondition, WeatherRecommendation } from '@/lib/weather';
+
+export const AIR_BAND_TINT: Record<AirQualityBand, { light: string; dark: string }> = {
+  good: { light: '#0F766E', dark: '#5EEAD4' },
+  fair: { light: '#0D9488', dark: '#99F6E4' },
+  moderate: { light: '#B45309', dark: '#FCD34D' },
+  poor: { light: '#C2410C', dark: '#FDBA74' },
+  very_poor: { light: '#B91C1C', dark: '#FCA5A5' },
+  extremely_poor: { light: '#7F1D1D', dark: '#F87171' },
+};
+
+export function airBandColor(band: AirQualityBand, isDark: boolean): string {
+  return AIR_BAND_TINT[band][isDark ? 'dark' : 'light'];
+}
 
 export type WeatherMood = {
   accent: string;

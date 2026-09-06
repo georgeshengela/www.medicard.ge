@@ -90,6 +90,7 @@ function snap(over: Partial<WeatherSnapshot> = {}): WeatherSnapshot {
       },
     ],
     hourly: springHours(),
+    airQuality: null,
     updatedAt: '2026-09-06T10:00:00.000Z',
     ...over,
   };
@@ -312,5 +313,24 @@ describe('recommendation priority', () => {
     assert.equal(stepsAreLow({ todaySteps: 900, stepsDailyTarget: 5000 }), true);
     assert.equal(stepsGoalReached({ todaySteps: 5000, stepsDailyTarget: 5000 }), true);
     assert.equal(stepsGoalReached({ todaySteps: 900 }), false);
+  });
+
+  it('does not push a walk when European AQI is poor', () => {
+    const heavy = getWeatherWellnessRecommendation(
+      snap({
+        airQuality: {
+          europeanAqi: 72,
+          band: 'poor',
+          pm25: 55,
+          pm10: 80,
+          no2: 30,
+          o3: 40,
+          so2: 4,
+        },
+      }),
+      { ...noon, todaySteps: 400, stepsDailyTarget: 5000 },
+    );
+    assert.ok(heavy.reasonCodes.includes('poor_air'));
+    assert.notEqual(heavy.pushCandidate, 'weather_good_walk');
   });
 });

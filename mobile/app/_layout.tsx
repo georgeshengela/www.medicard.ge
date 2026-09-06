@@ -7,13 +7,14 @@ import { Stack, useGlobalSearchParams, useRouter, useSegments } from 'expo-route
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Notifications from 'expo-notifications';
+import { Notifications } from '@/lib/expoNotifications';
 import { enableScreens } from 'react-native-screens';
 import Constants from 'expo-constants';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { LocationAskHost } from '@/components/location/LocationAskHost';
+import { QuestHost } from '@/components/quest/QuestHost';
 import { useThemeColors } from '@/theme/colors';
 import { AuthProvider, useAuth, needsHealthAssessment, needsProfileSetup } from '@/store/AuthContext';
 import { routeFromNotificationData } from '@/lib/notificationPlan';
@@ -28,7 +29,7 @@ enableScreens(false);
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-const APP_VERSION = Constants.expoConfig?.version ?? '26.0.2';
+const APP_VERSION = Constants.expoConfig?.version ?? '27.0.2';
 
 /** Redirects between the auth stack and the app shell as the session changes. */
 function AuthGate({ children }: { children: React.ReactNode }) {
@@ -257,6 +258,7 @@ function AppShell() {
               <Stack.Screen name="package" options={{ headerShown: false }} />
               <Stack.Screen name="health-metrics" options={{ headerShown: false }} />
               <Stack.Screen name="weather" options={{ headerShown: false }} />
+              <Stack.Screen name="medi-quest" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="chat" options={{ headerShown: false }} />
               <Stack.Screen name="module" options={{ headerShown: false }} />
@@ -273,6 +275,7 @@ function AppShell() {
           {showTabBar ? <FloatingTabBar /> : null}
           <DailyCheckInHost />
           <LocationAskHost />
+          <QuestHost />
         </View>
       </AuthGate>
     </>

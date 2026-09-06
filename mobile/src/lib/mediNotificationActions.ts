@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import { Notifications } from '@/lib/expoNotifications';
 import { addHydrationLog, todayYmd } from '@/lib/hydration';
 import { saveDoseLog } from '@/lib/medications.shared';
 import { markEngageOpened } from '@/lib/mediEngagePrefs';

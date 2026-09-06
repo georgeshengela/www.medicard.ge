@@ -123,8 +123,9 @@ export async function addHydrationLog(input: Omit<HydrationLog, 'id' | 'at'> & {
   };
   const updated = [next, ...logs];
   await saveHydrationLogs(updated);
-  await syncHydrationDelta(next.date, next.ml);
+  await syncHydrationEvent(next.id, next.date, next.ml);
   void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
+  void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
   return updated;
 }
 
@@ -133,17 +134,19 @@ export async function removeHydrationLog(id: string): Promise<HydrationLog[]> {
   const found = logs.find((row) => row.id === id);
   const updated = logs.filter((row) => row.id !== id);
   await saveHydrationLogs(updated);
-  if (found) await syncHydrationDelta(found.date, -found.ml);
+  if (found) await syncHydrationEvent(`del-${found.id}`, found.date, -found.ml);
+  void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
   return updated;
 }
 
-/** Server merge is additive — send the change, not the day total. */
-async function syncHydrationDelta(date: string, deltaMl: number): Promise<void> {
+/** Unique clientEventId makes retries idempotent. Daily total is recomputed server-side. */
+async function syncHydrationEvent(clientEventId: string, date: string, deltaMl: number): Promise<void> {
   if (!deltaMl) return;
   try {
     await api.healthMetrics.sync({
-      daily: [{ date, hydrationMl: deltaMl }],
+      daily: [],
       stepLogs: [],
+      hydrationEvents: [{ clientEventId, date, deltaMl }],
     });
   } catch {
     /* local log still stands */

@@ -82,6 +82,8 @@ export function useHydration() {
   const setGoal = useCallback(async (ml: number) => {
     await saveHydrationGoalMl(ml);
     setGoalMl(ml);
+    void import('@/lib/quest/api').then(({ questApi }) => questApi.hydrationGoalPut(ml).catch(() => undefined));
+    void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
   }, []);
 
   return { ...snapshot, loading, refresh, addLog, deleteLog, setGoal, lastWeekTotals };

@@ -1,3 +1,4 @@
+import { attachAirQuality, fetchOpenMeteoAirQuality } from './airQuality.ts';
 import { conditionFromWeatherCode } from './conditions.ts';
 import type { WeatherDay, WeatherHour, WeatherSnapshot } from './types.ts';
 
@@ -170,6 +171,7 @@ export function normalizeOpenMeteo(
     },
     daily: days,
     hourly: hours,
+    airQuality: null,
     updatedAt,
   };
 }
@@ -180,10 +182,14 @@ export async function fetchOpenMeteoSnapshot(
   city?: string | null,
   signal?: AbortSignal,
 ): Promise<WeatherSnapshot> {
-  const response = await fetch(buildOpenMeteoUrl(lat, lng), { signal });
-  if (!response.ok) {
-    throw new Error(`open_meteo_${response.status}`);
-  }
-  const raw = (await response.json()) as OpenMeteoResponse;
-  return normalizeOpenMeteo(raw, { latitude: lat, longitude: lng, city });
+  const [weatherRes, aqRes] = await Promise.allSettled([
+    fetch(buildOpenMeteoUrl(lat, lng), { signal }),
+    fetchOpenMeteoAirQuality(lat, lng, signal),
+  ]);
+  if (weatherRes.status !== 'fulfilled') throw weatherRes.reason;
+  if (!weatherRes.value.ok) throw new Error(`open_meteo_${weatherRes.value.status}`);
+  const raw = (await weatherRes.value.json()) as OpenMeteoResponse;
+  const snapshot = normalizeOpenMeteo(raw, { latitude: lat, longitude: lng, city });
+  if (aqRes.status !== 'fulfilled') return snapshot;
+  return attachAirQuality(snapshot, aqRes.value);
 }

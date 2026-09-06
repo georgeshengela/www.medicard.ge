@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
+import { QuestSignal, refreshQuestProgressForUser, validateHydrationGoalMl } from '../lib/quest.js';
+import { applyHydrationEvents, mergeHydrationSnapshot } from '../lib/hydrationSync.js';
+import { normalizeStepCapability } from '../lib/stepCapability.js';
 
 export const healthMetricsRouter = Router();
 
@@ -29,9 +32,16 @@ const stepLogSchema = z.object({
   count: z.number().int().min(0).max(100_000),
 });
 
+const hydrationEventSchema = z.object({
+  clientEventId: z.string().trim().min(1).max(80),
+  date: dateKey,
+  deltaMl: z.number().int().min(-20_000).max(20_000),
+});
+
 const syncSchema = z.object({
   daily: z.array(dailyRowSchema).max(400).default([]),
   stepLogs: z.array(stepLogSchema).max(2_000).default([]),
+  hydrationEvents: z.array(hydrationEventSchema).max(400).default([]),
 });
 
 function mergeDaily(existing, incoming) {
@@ -60,10 +70,7 @@ function mergeDaily(existing, incoming) {
           ? existing.nutritionKcal + incoming.nutritionKcal
           : incoming.nutritionKcal
         : (existing?.nutritionKcal ?? null),
-    hydrationMl:
-      incoming.hydrationMl != null
-        ? Math.max(0, Math.min(20_000, (existing?.hydrationMl ?? 0) + incoming.hydrationMl))
-        : (existing?.hydrationMl ?? null),
+    hydrationMl: mergeHydrationSnapshot(existing?.hydrationMl, incoming.hydrationMl),
     activeMinutes: maxInt(incoming.activeMinutes, existing?.activeMinutes),
     distanceKm: pick(incoming.distanceKm, existing?.distanceKm),
     source: 'merged',
@@ -92,7 +99,7 @@ function publicDaily(row) {
 healthMetricsRouter.post(
   '/sync',
   asyncHandler(async (req, res) => {
-    const { daily, stepLogs } = syncSchema.parse(req.body);
+    const { daily, stepLogs, hydrationEvents } = syncSchema.parse(req.body);
     const userId = req.user.id;
     const now = new Date();
 
@@ -155,6 +162,30 @@ healthMetricsRouter.post(
           update: { steps: mergedSteps, syncedAt: now },
         });
       }
+    }
+
+    if (hydrationEvents.length) {
+      const applied = await applyHydrationEvents(prisma, userId, hydrationEvents);
+      for (const [date, total] of applied.totals) {
+        const existing = await prisma.healthMetricDaily.findUnique({
+          where: { userId_date: { userId, date } },
+        });
+        await prisma.healthMetricDaily.upsert({
+          where: { userId_date: { userId, date } },
+          create: { userId, date, hydrationMl: total, syncedAt: now, source: 'merged' },
+          update: { hydrationMl: total, syncedAt: now, source: existing?.source || 'merged' },
+        });
+        dailyUpserted += existing ? 0 : 1;
+      }
+    }
+
+    const touchedSteps = daily.some((row) => row.steps != null) || stepLogs.length > 0;
+    const touchedHydration = daily.some((row) => row.hydrationMl != null) || hydrationEvents.length > 0;
+    if (touchedSteps) {
+      await refreshQuestProgressForUser(userId, QuestSignal.STEPS_CHANGED);
+    }
+    if (touchedHydration) {
+      await refreshQuestProgressForUser(userId, QuestSignal.HYDRATION_CHANGED);
     }
 
     return res.json({
@@ -226,6 +257,73 @@ healthMetricsRouter.get(
         at: l.recordedAt.toISOString(),
         count: l.stepCount,
       })),
+    });
+  }),
+);
+
+const hydrationGoalSchema = z.object({
+  goalMl: z.number().int(),
+});
+
+healthMetricsRouter.put(
+  '/hydration/goal',
+  asyncHandler(async (req, res) => {
+    const { goalMl } = hydrationGoalSchema.parse(req.body ?? {});
+    const goal = validateHydrationGoalMl(goalMl);
+    const row = await prisma.hydrationPreference.upsert({
+      where: { userId: req.user.id },
+      create: { userId: req.user.id, goalMl: goal },
+      update: { goalMl: goal },
+    });
+    return res.json({
+      goalMl: row.goalMl,
+      updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt,
+    });
+  }),
+);
+
+const stepCapabilitySchema = z.object({
+  status: z.enum(['AVAILABLE', 'UNAVAILABLE', 'PERMISSION_DENIED', 'NOT_CONFIGURED', 'UNKNOWN']),
+  source: z.enum(['APPLE_HEALTH', 'HEALTH_CONNECT', 'OTHER', 'UNKNOWN']).optional(),
+});
+
+healthMetricsRouter.put(
+  '/steps/capability',
+  asyncHandler(async (req, res) => {
+    const parsed = stepCapabilitySchema.parse(req.body ?? {});
+    const next = normalizeStepCapability({ status: parsed.status, source: parsed.source || 'UNKNOWN' });
+    const row = await prisma.stepTrackingCapability.upsert({
+      where: { userId: req.user.id },
+      create: { userId: req.user.id, ...next },
+      update: next,
+    });
+    return res.json({
+      status: row.status,
+      source: row.source,
+      updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt,
+    });
+  }),
+);
+
+healthMetricsRouter.get(
+  '/steps/capability',
+  asyncHandler(async (req, res) => {
+    const row = await prisma.stepTrackingCapability.findUnique({ where: { userId: req.user.id } });
+    return res.json({
+      status: row?.status || 'UNKNOWN',
+      source: row?.source || 'UNKNOWN',
+      updatedAt: row?.updatedAt instanceof Date ? row.updatedAt.toISOString() : row?.updatedAt ?? null,
+    });
+  }),
+);
+
+healthMetricsRouter.get(
+  '/hydration/goal',
+  asyncHandler(async (req, res) => {
+    const row = await prisma.hydrationPreference.findUnique({ where: { userId: req.user.id } });
+    return res.json({
+      goalMl: row?.goalMl ?? null,
+      updatedAt: row?.updatedAt instanceof Date ? row.updatedAt.toISOString() : row?.updatedAt ?? null,
     });
   }),
 );

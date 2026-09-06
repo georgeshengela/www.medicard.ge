@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import { Notifications } from '@/lib/expoNotifications';
 import type { DoctorVisit } from '@/lib/api';
 import { buildVisitReminderDates, doctorDisplayName } from '@/lib/visitReminders';
 import { doctorTypeLabel, normalizeReminderConfig } from '@/constants/visits';

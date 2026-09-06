@@ -1,4 +1,4 @@
-import type { WeatherCategory, WeatherCondition, WeatherLang } from './types.ts';
+import type { AirQualityBand, WeatherCategory, WeatherCondition, WeatherLang } from './types.ts';
 
 type Flavor = 'default' | 'pain' | 'steps_low' | 'steps_done' | 'hydration';
 
@@ -462,6 +462,76 @@ export function weatherConditionLabel(condition: WeatherCondition, locale: Weath
   return CONDITION[locale][condition] ?? CONDITION.ka[condition];
 }
 
+const AIR_BAND: Record<WeatherLang, Record<AirQualityBand, string>> = {
+  ka: {
+    good: 'კარგი',
+    fair: 'ნორმალური',
+    moderate: 'საშუალო',
+    poor: 'ცუდი',
+    very_poor: 'ძალიან ცუდი',
+    extremely_poor: 'უკიდურესად ცუდი',
+  },
+  en: {
+    good: 'Good',
+    fair: 'Fair',
+    moderate: 'Moderate',
+    poor: 'Poor',
+    very_poor: 'Very poor',
+    extremely_poor: 'Extremely poor',
+  },
+  fr: {
+    good: 'Bon',
+    fair: 'Correct',
+    moderate: 'Modéré',
+    poor: 'Mauvais',
+    very_poor: 'Très mauvais',
+    extremely_poor: 'Extrêmement mauvais',
+  },
+  ru: {
+    good: 'Хороший',
+    fair: 'Нормальный',
+    moderate: 'Средний',
+    poor: 'Плохой',
+    very_poor: 'Очень плохой',
+    extremely_poor: 'Крайне плохой',
+  },
+};
+
+const AIR_HINT: Record<WeatherLang, Record<AirQualityBand, string>> = {
+  ka: {
+    good: 'ჰაერი დღეს სუფთაა.',
+    fair: 'ჰაერი ნორმალურია — გარეთ ყოფნა კომფორტულია.',
+    moderate: 'ჰაერი საშუალოა. თუ გინდა გარეთ, ნელა და მოკლედ.',
+    poor: 'ჰაერი დღეს მძიმეა. გარეთ მოკლე გასეირნება უკეთესია.',
+    very_poor: 'ჰაერი ძალიან მძიმეა. გარეთ დიდხანს ყოფნა დღეს არ ღირს.',
+    extremely_poor: 'ჰაერი უკიდურესად მძიმეა. გარეთ დღეს უკეთესია არ დარჩე.',
+  },
+  en: {
+    good: 'The air is clean today.',
+    fair: 'The air is fine — being outside is comfortable.',
+    moderate: 'The air is moderate. If you go out, keep it short and easy.',
+    poor: 'The air is heavy today. A short outdoor stretch is better than a long one.',
+    very_poor: 'The air is very heavy. A long time outside is not a good idea today.',
+    extremely_poor: 'The air is extremely heavy. Better not stay outside today.',
+  },
+  fr: {
+    good: 'L’air est propre aujourd’hui.',
+    fair: 'L’air est correct — sortir est confortable.',
+    moderate: 'L’air est moyen. Si tu sors, reste court et calme.',
+    poor: 'L’air est lourd aujourd’hui. Une sortie courte vaut mieux qu’une longue.',
+    very_poor: 'L’air est très lourd. Rester longtemps dehors n’est pas une bonne idée.',
+    extremely_poor: 'L’air est extrêmement lourd. Mieux vaut ne pas rester dehors aujourd’hui.',
+  },
+  ru: {
+    good: 'Воздух сегодня чистый.',
+    fair: 'Воздух нормальный — на улице комфортно.',
+    moderate: 'Воздух средний. Если выходить, лучше коротко и спокойно.',
+    poor: 'Воздух сегодня тяжёлый. Короткая прогулка лучше длинной.',
+    very_poor: 'Воздух очень тяжёлый. Долго быть на улице сегодня не стоит.',
+    extremely_poor: 'Воздух крайне тяжёлый. Сегодня лучше не задерживаться на улице.',
+  },
+};
+
 export const WEATHER_UI: Record<WeatherLang, {
   section: string;
   feelsLike: (n: number) => string;
@@ -476,12 +546,21 @@ export const WEATHER_UI: Record<WeatherLang, {
   high: string;
   low: string;
   updated: string;
+  loading: string;
   unavailable: string;
   recommendation: string;
   nextHours: string;
   nextDays: string;
   today: string;
   detailTitle: string;
+  airQuality: string;
+  air: (band: AirQualityBand) => string;
+  airHint: (band: AirQualityBand) => string;
+  airIndex: string;
+  pm25: string;
+  pm10: string;
+  no2: string;
+  o3: string;
 }> = {
   ka: {
     section: 'ამინდი და Medi',
@@ -497,12 +576,21 @@ export const WEATHER_UI: Record<WeatherLang, {
     high: 'მაქს.',
     low: 'მინ.',
     updated: 'განახლებულია ცოტა ხნის წინ',
+    loading: 'ამინდი იტვირთება…',
     unavailable: 'ამინდის მონაცემები დროებით მიუწვდომელია.',
     recommendation: 'Medi გირჩევს',
     nextHours: 'შემდეგი საათები',
     nextDays: 'შემდეგი დღეები',
     today: 'დღეს',
     detailTitle: 'ამინდი და Medi',
+    airQuality: 'ჰაერის ხარისხი',
+    air: (band) => `ჰაერი ${AIR_BAND.ka[band]}`,
+    airHint: (band) => AIR_HINT.ka[band],
+    airIndex: 'EAQI',
+    pm25: 'PM2.5',
+    pm10: 'PM10',
+    no2: 'NO₂',
+    o3: 'O₃',
   },
   en: {
     section: 'Weather & Medi',
@@ -518,12 +606,21 @@ export const WEATHER_UI: Record<WeatherLang, {
     high: 'High',
     low: 'Low',
     updated: 'Updated a little while ago',
+    loading: 'Getting the weather…',
     unavailable: 'Weather is temporarily unavailable.',
     recommendation: 'Medi suggests',
     nextHours: 'Next hours',
     nextDays: 'Next days',
     today: 'Today',
     detailTitle: 'Weather & Medi',
+    airQuality: 'Air quality',
+    air: (band) => `Air ${AIR_BAND.en[band].toLowerCase()}`,
+    airHint: (band) => AIR_HINT.en[band],
+    airIndex: 'EAQI',
+    pm25: 'PM2.5',
+    pm10: 'PM10',
+    no2: 'NO₂',
+    o3: 'O₃',
   },
   fr: {
     section: 'Météo & Medi',
@@ -539,12 +636,21 @@ export const WEATHER_UI: Record<WeatherLang, {
     high: 'Max.',
     low: 'Min.',
     updated: 'Mis à jour il y a un moment',
+    loading: 'Météo en cours…',
     unavailable: 'La météo est temporairement indisponible.',
     recommendation: 'Medi suggère',
     nextHours: 'Prochaines heures',
     nextDays: 'Prochains jours',
     today: 'Aujourd’hui',
     detailTitle: 'Météo & Medi',
+    airQuality: 'Qualité de l’air',
+    air: (band) => `Air ${AIR_BAND.fr[band].toLowerCase()}`,
+    airHint: (band) => AIR_HINT.fr[band],
+    airIndex: 'EAQI',
+    pm25: 'PM2.5',
+    pm10: 'PM10',
+    no2: 'NO₂',
+    o3: 'O₃',
   },
   ru: {
     section: 'Погода и Medi',
@@ -560,12 +666,21 @@ export const WEATHER_UI: Record<WeatherLang, {
     high: 'Макс.',
     low: 'Мин.',
     updated: 'Обновлено недавно',
+    loading: 'Загружаем погоду…',
     unavailable: 'Данные о погоде временно недоступны.',
     recommendation: 'Medi советует',
     nextHours: 'Ближайшие часы',
     nextDays: 'Ближайшие дни',
     today: 'Сегодня',
     detailTitle: 'Погода и Medi',
+    airQuality: 'Качество воздуха',
+    air: (band) => `Воздух ${AIR_BAND.ru[band].toLowerCase()}`,
+    airHint: (band) => AIR_HINT.ru[band],
+    airIndex: 'EAQI',
+    pm25: 'PM2.5',
+    pm10: 'PM10',
+    no2: 'NO₂',
+    o3: 'O₃',
   },
 };
 

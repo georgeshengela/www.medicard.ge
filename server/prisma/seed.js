@@ -2,6 +2,7 @@ import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import { ensureDrugCategories, ensurePharmacySources } from '../src/lib/pharmacy/categories.js';
+import { ensureQuestTemplates } from '../src/lib/questTemplates.js';
 
 const prisma = new PrismaClient();
 
@@ -123,6 +124,9 @@ async function main() {
   await ensurePharmacySources();
   await ensureDrugCategories();
   console.log('Pharmacy sources and drug categories seeded.');
+
+  const quests = await ensureQuestTemplates(prisma);
+  console.log(`Medi Quest templates seeded: ${quests.upserted} (daily_steps, daily_hydration, daily_medi, weekly_steps).`);
 }
 
 main()

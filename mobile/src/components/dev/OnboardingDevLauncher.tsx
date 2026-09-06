@@ -12,6 +12,7 @@ import {
   type OnboardingQaStep,
 } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
+import { startQuestVisualSession } from '@/lib/quest/devFixture';
 import { useThemeColors } from '@/theme/colors';
 
 type Props = {
@@ -105,6 +106,21 @@ export function OnboardingDevLauncher({ variant = 'fab' }: Props) {
   if (variant === 'inline') {
     return (
       <View style={{ paddingHorizontal: 20, paddingBottom: 24, gap: 8 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="DEV Quest UI"
+          onPress={() => startQuestVisualSession()}
+          style={{
+            paddingVertical: 12,
+            borderRadius: 12,
+            backgroundColor: '#0D9488',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: '#FFFFFF' }}>
+            DEV: Quest UI
+          </Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           onPress={goLauncher}

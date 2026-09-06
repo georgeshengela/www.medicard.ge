@@ -57,7 +57,7 @@ const GENDER_LABELS: Record<Gender, string> = {
   OTHER: ka.auth.genderOther,
 };
 
-const APP_VERSION = Constants.expoConfig?.version ?? '26.0.2';
+const APP_VERSION = Constants.expoConfig?.version ?? '27.0.2';
 
 function optionLabel(group: 'smokingStatus' | 'chronicConditions', key: string): string {
   if (group === 'chronicConditions') return resolveConditionLabel(key);

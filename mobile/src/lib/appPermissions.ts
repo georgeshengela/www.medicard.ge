@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
-import * as Notifications from 'expo-notifications';
+import { Notifications } from '@/lib/expoNotifications';
 import * as Device from 'expo-device';
 import { Linking, Platform } from 'react-native';
 import {

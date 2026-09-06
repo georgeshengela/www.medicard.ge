@@ -26,6 +26,8 @@ server/generated/
 mobile/screenshots/
 mobile/.expo-export-check/
 mobile/.expo-tmp-check/
+mobile/store/_qa-*/
+server/scripts/_v25-shots/
 
 # Scraping / debug probes (local only)
 tmp-*.js

@@ -1088,6 +1088,20 @@ export const api = {
         '/api/health-metrics/sync',
         { method: 'POST', body, timeoutMs: 30_000 },
       ),
+    hydrationGoalGet: () =>
+      request<{ goalMl: number | null; updatedAt: string | null }>('/api/health-metrics/hydration/goal'),
+    hydrationGoalPut: (goalMl: number) =>
+      request<{ goalMl: number; updatedAt: string }>('/api/health-metrics/hydration/goal', {
+        method: 'PUT',
+        body: { goalMl },
+      }),
+    stepCapabilityGet: () =>
+      request<{ status: string; source: string; updatedAt: string | null }>('/api/health-metrics/steps/capability'),
+    stepCapabilityPut: (body: { status: string; source?: string }) =>
+      request<{ status: string; source: string; updatedAt: string }>('/api/health-metrics/steps/capability', {
+        method: 'PUT',
+        body,
+      }),
     get: (params?: { from?: string; to?: string }) => {
       const qs = new URLSearchParams();
       if (params?.from) qs.set('from', params.from);
@@ -1575,6 +1589,40 @@ export const api = {
         engine?: string;
         usage?: Usage;
       }>('/api/cycle/insights', { method: 'POST', body: { refresh } }),
+  },
+
+  quests: {
+    dashboard: (timezone?: string) => {
+      const qs = timezone ? `?timezone=${encodeURIComponent(timezone)}` : '';
+      return request<import('@/lib/quest/api').QuestDashboard>(`/api/quests${qs}`);
+    },
+    history: (params?: { take?: number; cursor?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.take) qs.set('take', String(params.take));
+      if (params?.cursor) qs.set('cursor', params.cursor);
+      const q = qs.toString();
+      return request<{ items: import('@/lib/quest/api').QuestItem[]; nextCursor: string | null }>(
+        `/api/quests/history${q ? `?${q}` : ''}`,
+      );
+    },
+    rewards: () =>
+      request<{
+        balance: { coins: number; xp: number };
+        totalEarned: { coins: number; xp: number };
+        totalSpent: { coins: number; xp: number };
+        transactions: Array<{
+          id: string;
+          currency: string;
+          amount: number;
+          transactionType: string;
+          sourceType: string;
+          sourceId: string;
+          createdAt: string;
+        }>;
+      }>('/api/quests/rewards'),
+    claim: (id: string) => request<import('@/lib/quest/api').QuestClaimResult>(`/api/quests/${id}/claim`, { method: 'POST' }),
+    timezone: (timezone: string) =>
+      request<{ ok: boolean; timezone: string }>('/api/quests/timezone', { method: 'PUT', body: { timezone } }),
   },
 };
 

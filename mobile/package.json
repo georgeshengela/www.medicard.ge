@@ -42,6 +42,7 @@
     "react-native-web": "^0.21.0",
     "react-native-webview": "13.16.1",
     "react-native-worklets": "0.10.1",
+    "socket.io-client": "^4.8.3",
     "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
@@ -65,7 +66,8 @@
     "test:offline": "node --test src/lib/cycleOffline.test.js",
     "test:lab": "node --experimental-strip-types --test src/lib/labExtract.test.ts src/lib/labChartScale.test.ts src/lib/labFilter.test.ts src/lib/labExplain.test.ts src/lib/labNames.test.ts",
     "test:geo": "node --experimental-strip-types --test src/lib/geoPlace.test.ts",
-    "test:weather": "node --experimental-strip-types --test src/lib/weather/recommendation.test.ts",
+    "test:weather": "node --experimental-strip-types --test src/lib/weather/*.test.ts",
+    "test:quest": "node --test src/lib/quest/logic.test.js",
     "icons:generate": "node scripts/generate-app-icons.mjs"
   },
   "private": true

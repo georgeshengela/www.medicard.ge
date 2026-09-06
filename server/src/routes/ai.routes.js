@@ -17,6 +17,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
 import { getUsage } from '../lib/usage.js';
 import { asyncHandler } from '../middleware/error.js';
+import { QuestSignal, refreshQuestProgressForUser } from '../lib/quest.js';
 
 export const aiRouter = Router();
 
@@ -167,6 +168,7 @@ aiRouter.post(
         });
 
     const usage = await req.consumeAiCredit();
+    await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
 
     return res.json({
       sessionId: saved.id,

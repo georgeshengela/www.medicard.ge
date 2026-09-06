@@ -44,12 +44,20 @@ export async function connectHealthApp(): Promise<HealthConnectResult> {
   const result = await impl.connectHealthNative();
   if (result.ok) {
     await setHealthSyncEnabled(true);
+    void import('@/lib/quest/sync').then(({ syncStepCapability }) => syncStepCapability(true));
+    void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
+  } else if (result.reason === 'denied') {
+    void import('@/lib/quest/api').then(({ questApi }) =>
+      questApi.stepCapabilityPut({ status: 'PERMISSION_DENIED', source: getHealthPlatform() === 'apple' ? 'APPLE_HEALTH' : getHealthPlatform() === 'google' ? 'HEALTH_CONNECT' : 'UNKNOWN' }).catch(() => undefined),
+    );
   }
   return result;
 }
 
 export async function disconnectHealthApp(): Promise<void> {
   await setHealthSyncEnabled(false);
+  void import('@/lib/quest/sync').then(({ syncStepCapability }) => syncStepCapability(true));
+  void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
 }
 
 export async function openHealthAppSettings(): Promise<void> {

@@ -6,6 +6,13 @@ import { setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAc
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
 import { clearSessionSnapshot, loadSessionSnapshot, saveSessionSnapshot } from '@/lib/sessionSnapshot';
 import { clearToken, getToken, setToken } from '@/lib/storage';
+import {
+  isQuestDevEnabled,
+  isQuestVisualSession,
+  questVisualAuthSnapshot,
+  setQuestVisualSession,
+  subscribeQuestVisualSession,
+} from '@/lib/quest/devFixture';
 
 type Stats = { records: number; chats: number; activeMedications: number };
 
@@ -59,7 +66,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPendingDailyBonus(null);
   }, []);
 
+  const applyVisualSession = useCallback(() => {
+    const snap = questVisualAuthSnapshot();
+    setLocalAccountId(snap.user.id);
+    setUser(snap.user);
+    setUsage(snap.usage);
+    setStats(snap.stats);
+    setHealthProfile(snap.healthProfile);
+    setPendingDailyBonus(null);
+  }, []);
+
   const hydrate = useCallback(async () => {
+    if (isQuestVisualSession()) {
+      applyVisualSession();
+      return;
+    }
+
     const token = await getToken();
     if (!token) {
       await clearSessionSnapshot();
@@ -114,11 +136,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resetSession();
       }
     }
-  }, [resetSession]);
+  }, [applyVisualSession, resetSession]);
 
   useEffect(() => {
     hydrate().finally(() => setReady(true));
   }, [hydrate]);
+
+  useEffect(() => {
+    if (!isQuestDevEnabled()) return undefined;
+    return subscribeQuestVisualSession((on) => {
+      if (on) applyVisualSession();
+    });
+  }, [applyVisualSession]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
@@ -136,6 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const adopt = useCallback(
     async (result: { token: string; user: User; usage: Usage }) => {
+      setQuestVisualSession(false);
       if (!result?.token || !result.user?.id) {
         throw new ApiError(ka.auth.registerNotConfirmed, 0);
       }
@@ -197,6 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const refreshHealthProfile = useCallback(async () => {
+    if (isQuestVisualSession()) return healthProfile;
     try {
       const { profile } = await api.healthProfile.get();
       setHealthProfile(profile);
@@ -208,7 +239,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       return null;
     }
-  }, []);
+  }, [healthProfile]);
 
   const consumeDailyBonus = useCallback(() => setPendingDailyBonus(null), []);
 
@@ -239,6 +270,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       signInWithPhone: async (phone, code, fullName) => adopt(await api.auth.phoneVerify({ phone, code, fullName })),
       signOut: async () => {
+        setQuestVisualSession(false);
         await clearToken();
         await clearSessionSnapshot();
         resetSession();

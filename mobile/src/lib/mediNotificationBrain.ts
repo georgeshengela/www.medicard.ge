@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import { Notifications } from '@/lib/expoNotifications';
 import type { HealthProfile, User } from '@/lib/api';
 import { api } from '@/lib/api';
 import { loadHydrationGoalMl, loadHydrationLogs, dayTotalMl, todayYmd as hydrationToday, addDaysYmd } from '@/lib/hydration';

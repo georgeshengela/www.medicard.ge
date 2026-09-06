@@ -8,7 +8,7 @@ import {
   type WeatherSnapshot,
 } from './types.ts';
 
-const CACHE_KEY = 'medicard.weather.cache.v1';
+const CACHE_KEY = 'medicard.weather.cache.v2';
 
 let memory: WeatherCacheRecord | null = null;
 

@@ -38,6 +38,7 @@ export type HealthMetricsSyncPayload = {
     distanceKm?: number;
   }>;
   stepLogs: Array<{ at: string; count: number }>;
+  hydrationEvents?: Array<{ clientEventId: string; date: string; deltaMl: number }>;
 };
 
 function ymd(d: Date): string {

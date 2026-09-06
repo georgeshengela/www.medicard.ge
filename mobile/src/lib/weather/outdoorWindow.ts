@@ -6,6 +6,7 @@
  *   rain ≤10 +30 · ≤30 +15 · ≥60 −20 · ≥80 −40
  *   wind <15 +15 · 15–30 0 · >30 −20 · >50 −40
  *   UV ≤2 +5 · 3–5 0 · 6–7 −10 · ≥8 −20
+ *   EAQI <20 +5 · 40–59 −8 · 60–79 −20 · 80–100 −40 · >100 disqualify
  * Storm / heavy precip: disqualify.
  * Night (before sunrise / after sunset): disqualify for walk windows.
  * Window = best contiguous 2h (fallback 1h). Valid if average ≥ WEATHER_WINDOW_MIN_SCORE.
@@ -42,6 +43,7 @@ function dayForYmd(weather: WeatherSnapshot, ymd: string) {
 export function scoreOutdoorHour(
   hour: WeatherHour,
   bounds: { sunriseH: number; sunsetH: number },
+  fallbackAqi?: number | null,
 ): HourScore {
   const reasons: string[] = [];
   if (isStormCondition(hour.condition) || isHeavyPrecipCondition(hour.condition)) {
@@ -116,6 +118,26 @@ export function scoreOutdoorHour(
     } else if (uv >= 6) {
       score -= 10;
       reasons.push('high_uv');
+    }
+  }
+
+  const aqi = hour.europeanAqi ?? fallbackAqi;
+  if (aqi != null) {
+    if (aqi > 100) {
+      return { hour, score: -90, reasons: ['extremely_poor_air'], disqualified: true };
+    }
+    if (aqi >= 80) {
+      score -= 40;
+      reasons.push('very_poor_air');
+    } else if (aqi >= 60) {
+      score -= 20;
+      reasons.push('poor_air');
+    } else if (aqi >= 40) {
+      score -= 8;
+      reasons.push('moderate_air');
+    } else if (aqi < 20) {
+      score += 5;
+      reasons.push('good_air');
     }
   }
 
@@ -197,15 +219,16 @@ export function findBestOutdoorWindow(
     return ymd === tomorrowYmd;
   });
 
+  const fallbackAqi = weather.airQuality?.europeanAqi ?? null;
   const todayScored = upcoming
     .filter((hour) => localYmdFromIso(hour.time) === parts.ymd)
-    .map((hour) => scoreOutdoorHour(hour, todayBounds));
+    .map((hour) => scoreOutdoorHour(hour, todayBounds, fallbackAqi));
   const todayWindow = pickWindow(todayScored, parts.ymd, 'today');
   if (todayWindow) return todayWindow;
 
   const tomorrowScored = upcoming
     .filter((hour) => localYmdFromIso(hour.time) === tomorrowYmd)
-    .map((hour) => scoreOutdoorHour(hour, tomorrowBounds));
+    .map((hour) => scoreOutdoorHour(hour, tomorrowBounds, fallbackAqi));
   return pickWindow(tomorrowScored, tomorrowYmd, 'tomorrow');
 }
 

@@ -109,3 +109,25 @@ export async function syncNotificationPermission(status: 'enabled' | 'disabled' 
 export async function pingAppActivity(activityType?: string): Promise<void> {
   await api.activity.ping(activityType).catch(() => undefined);
 }
+
+export async function trackQuestEvent(
+  kind:
+    | 'quest_hub_opened'
+    | 'quest_claim_tapped'
+    | 'quest_history_opened'
+    | 'quest_wallet_opened'
+    | 'step_setup_opened'
+    | 'hydration_setup_opened',
+  entityId?: string,
+): Promise<void> {
+  await api.push.syncProductEvents({
+    events: [
+      {
+        kind,
+        entityId: entityId || kind,
+        source: 'app',
+        occurredAt: new Date().toISOString(),
+      },
+    ],
+  }).catch(() => undefined);
+}

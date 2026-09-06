@@ -1,3 +1,4 @@
+export { attachAirQuality, bandFromEuropeanAqi } from './airQuality.ts';
 export { conditionFromWeatherCode } from './conditions.ts';
 export { weatherCopyText, weatherConditionLabel, WEATHER_UI, weekdayShort } from './copy.ts';
 export { loadWeatherSnapshot, locationChangedMeaningfully, readWeatherCache } from './cache.ts';
@@ -14,6 +15,8 @@ export {
 } from './recommendation.ts';
 export { weatherAgeMs, zonedParts } from './time.ts';
 export type {
+  AirQualityBand,
+  AirQualitySnapshot,
   OutdoorWindow,
   WeatherCategory,
   WeatherCondition,

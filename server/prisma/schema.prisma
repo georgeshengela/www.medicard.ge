@@ -56,6 +56,13 @@ model User {
   productEvents         ProductEvent[]
   medicationDoseEvents  MedicationDoseEvent[]
   notificationPermission NotificationPermission?
+  userQuests            UserQuest[]
+  questCompletions      QuestCompletion[]
+  rewardLedger          RewardLedger[]
+  questProfile          UserQuestProfile?
+  hydrationPreference   HydrationPreference?
+  hydrationIntakeEvents HydrationIntakeEvent[]
+  stepTrackingCapability StepTrackingCapability?
 
   @@index([status])
   @@index([packageId])
@@ -185,6 +192,40 @@ model HealthProfile {
   completedAt            DateTime?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
+}
+
+/// Idempotent in-app hydration intake. Daily total is the sum of these events.
+model HydrationIntakeEvent {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientEventId String
+  /// YYYY-MM-DD
+  date          String
+  deltaMl       Int
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, clientEventId])
+  @@index([userId, date])
+}
+
+/// Privacy-safe step-tracking capability. No device hardware identifiers.
+model StepTrackingCapability {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// AVAILABLE | UNAVAILABLE | PERMISSION_DENIED | NOT_CONFIGURED | UNKNOWN
+  status    String
+  /// APPLE_HEALTH | HEALTH_CONNECT | OTHER | UNKNOWN
+  source    String   @default("UNKNOWN")
+  updatedAt DateTime @updatedAt
+}
+
+/// User-chosen hydration goal for the app. Not a medical prescription.
+model HydrationPreference {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalMl    Int
+  updatedAt DateTime @updatedAt
 }
 
 /// Daily health aggregates synced from device (Apple Health / Health Connect).
@@ -842,6 +883,117 @@ model NotificationDecision {
   @@index([result, createdAt])
   @@index([family, createdAt])
   @@index([userId, createdAt])
+}
+
+/// Reusable Medi Quest definition. Config must never contain health notes or PII.
+model QuestTemplate {
+  id             String    @id @default(uuid())
+  key            String    @unique
+  /// MOVEMENT | HYDRATION | MEDI | WEATHER | WELLNESS
+  category       String
+  /// DAILY | WEEKLY | EVENT
+  cadence        String
+  titleKey       String
+  descriptionKey String
+  /// STEPS | HYDRATION_GOAL_PERCENT | MEDI_DAILY_USE | COUNT
+  progressType   String
+  defaultTarget  Int
+  rewardCoins    Int       @default(0)
+  rewardXp       Int       @default(0)
+  priority       Int       @default(0)
+  isActive       Boolean   @default(true)
+  startAt        DateTime?
+  endAt          DateTime?
+  /// Non-sensitive quest configuration only (metric key, window). Never health notes.
+  config         Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  assignments    UserQuest[]
+
+  @@index([isActive, cadence, priority])
+}
+
+/// Concrete quest assignment for one user and one local period.
+model UserQuest {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateId  String
+  template    QuestTemplate @relation(fields: [templateId], references: [id])
+  /// Local calendar day `YYYY-MM-DD` or ISO week `YYYY-Www`.
+  periodKey   String
+  target      Int
+  progress    Int       @default(0)
+  /// ACTIVE | COMPLETED | CLAIMED | EXPIRED | CANCELLED
+  status      String    @default("ACTIVE")
+  assignedAt  DateTime  @default(now())
+  completedAt DateTime?
+  claimedAt   DateTime?
+  expiresAt   DateTime
+  /// Safe operational values only — never health notes, med names, symptoms, chat.
+  metadata    Json      @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completions QuestCompletion[]
+
+  @@unique([userId, templateId, periodKey])
+  @@index([userId, status])
+  @@index([userId, periodKey])
+  @@index([expiresAt])
+}
+
+/// Immutable quest completion. Unique on userQuestId — never complete twice.
+model QuestCompletion {
+  id                   String   @id @default(uuid())
+  userQuestId          String   @unique
+  userQuest            UserQuest @relation(fields: [userQuestId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completedAt          DateTime @default(now())
+  progressAtCompletion Int
+  /// sync | claim | system
+  source               String
+  createdAt            DateTime @default(now())
+
+  @@index([userId, completedAt])
+}
+
+/// Immutable reward ledger. Authoritative for XP and coins. Unique per payee/currency/source.
+model RewardLedger {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// XP | COIN
+  currency        String
+  amount          Int
+  /// EARN | ADJUST
+  transactionType String
+  /// QUEST | SYSTEM
+  sourceType      String
+  sourceId        String
+  createdAt       DateTime @default(now())
+  metadata        Json?
+
+  @@unique([userId, currency, sourceType, sourceId])
+  @@index([userId, createdAt])
+  @@index([userId, currency])
+}
+
+/// Cached quest profile. Ledger remains authoritative for XP and coins.
+model UserQuestProfile {
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentLevel        Int      @default(1)
+  totalXp             Int      @default(0)
+  cachedCoinBalance   Int      @default(0)
+  currentStreak       Int      @default(0)
+  longestStreak       Int      @default(0)
+  lastActiveQuestDate String?
+  /// IANA timezone, e.g. Europe/Brussels. Legacy fallback is Asia/Tbilisi.
+  timezone            String?
+  lastDailyAssignPeriodKey String?
+  lastDailyAssignAt   DateTime?
+  updatedAt           DateTime @updatedAt
 }
 
 /// Admin actions — template edits, settings, user status. Never store secrets.

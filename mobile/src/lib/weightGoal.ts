@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import { Notifications } from '@/lib/expoNotifications';
 import { ka } from '@/i18n/ka';
 import { applyPushCopy } from '@/lib/pushCopy';
 import {

@@ -93,11 +93,12 @@ export async function pullStoredHealth(from?: string, to?: string): Promise<Stor
 export async function pushHealthToServer(payload: HealthMetricsSyncPayload): Promise<void> {
   const token = await getToken();
   if (!token) return;
-  if (!payload.daily.length && !payload.stepLogs.length) return;
+  if (!payload.daily.length && !payload.stepLogs.length && !payload.hydrationEvents?.length) return;
 
   try {
     await api.healthMetrics.sync(payload);
     await cacheLocalHealthSync(payload);
+    void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
   } catch {
     // Best-effort — device read should still work offline.
   }

@@ -1,3 +1,4 @@
+import { airQualityIsHeavy } from './airQuality.ts';
 import { isStormCondition, isWetCondition } from './conditions.ts';
 import { pickWeatherCopyKeys } from './copy.ts';
 import { findBestOutdoorWindow, rainArrivingSoon } from './outdoorWindow.ts';
@@ -218,6 +219,10 @@ export function getWeatherWellnessRecommendation(
   let push = pickPushCandidate(category, context, window, now, stale, weather.location.timezone || 'UTC');
   if (flavor === 'pain' && push === 'weather_good_walk') push = null;
   if (flavor === 'steps_done' && push === 'weather_good_walk') push = null;
+  if (airQualityIsHeavy(weather.airQuality?.europeanAqi)) {
+    if (!reasons.includes('poor_air')) reasons.push('poor_air');
+    if (push === 'weather_good_walk') push = null;
+  }
   if (stale) push = null;
 
   return {
