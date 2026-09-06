@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, Text, View } from 'react-native';
+import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { useRouter, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/store/AuthContext';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -10,6 +12,7 @@ import { syncQuestBridges } from '@/lib/quest/sync';
 import { readQuestCache, requestQuestRefresh, subscribeQuestLevelUp, type QuestLevelUpShow } from '@/lib/quest/cache';
 import { QuestLevelUpSheet } from '@/components/quest/QuestLevelUpSheet';
 import { q } from '@/lib/quest/copy';
+import { QUEST } from '@/theme/questTokens';
 import { useThemeColors } from '@/theme/colors';
 
 const STALE_MS = 2 * 60 * 1000;
@@ -65,7 +68,11 @@ export function QuestHost() {
   return (
     <>
       {toast ? (
-        <View className="absolute left-4 right-4 z-50 items-center" style={{ top: insets.top + 10 }}>
+        <Animated.View
+          entering={reduce ? undefined : FadeInUp.duration(QUEST.motion.base).springify().damping(16)}
+          exiting={reduce ? undefined : FadeOutUp.duration(QUEST.motion.fast)}
+          style={{ position: 'absolute', left: 16, right: 16, top: insets.top + 10, zIndex: 50, alignItems: 'center' }}
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${toast}. ${q('ka').view}`}
@@ -73,13 +80,43 @@ export function QuestHost() {
               setToast(null);
               router.push('/medi-quest' as never);
             }}
-            className="flex-row items-center rounded-2xl bg-surface px-4 py-2.5"
-            style={{ borderWidth: 1, borderColor: colors.bg300, gap: 12 }}
+            className="active:opacity-80"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              paddingLeft: 10,
+              paddingRight: 14,
+              paddingVertical: 8,
+              borderRadius: 999,
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.bg300,
+              shadowColor: '#000',
+              shadowOpacity: 0.1,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 4,
+            }}
           >
-            <Text className="font-sans-semibold text-sm text-text-100">{toast}</Text>
-            <Text className="font-sans-semibold text-sm text-primary-200">{q('ka').view}</Text>
+            <View
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.success,
+              }}
+            >
+              <Check size={15} color="#FFFFFF" strokeWidth={3} />
+            </View>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: colors.text100 }}>{toast}</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: colors.primary200 }}>
+              {q('ka').view}
+            </Text>
           </Pressable>
-        </View>
+        </Animated.View>
       ) : null}
       <QuestLevelUpSheet
         visible={Boolean(levelUp)}

@@ -24,24 +24,27 @@ export type QuestItem = {
   claimable: boolean;
 };
 
-export type QuestDashboard = {
-  profile: {
+export type QuestProfile = {
+  level: number;
+  rankKey: string;
+  totalXp: number;
+  coinBalance: number;
+  currentStreak: number;
+  longestStreak: number;
+  levelProgress: {
     level: number;
-    rankKey: string;
-    totalXp: number;
-    coinBalance: number;
-    currentStreak: number;
-    longestStreak: number;
-    levelProgress: {
-      level: number;
-      levelStartXp?: number;
-      nextLevelXp?: number | null;
-      xpIntoLevel?: number;
-      xpNeededForNextLevel?: number | null;
-      progressPercent?: number;
-    };
-    timezone?: string;
+    levelStartXp?: number;
+    nextLevelXp?: number | null;
+    xpIntoLevel?: number;
+    xpNeededForNextLevel?: number | null;
+    progressPercent?: number;
   };
+  timezone?: string;
+};
+
+export type QuestDashboard = {
+  /** `null` when the server answers with `unavailable: true` (quest tables missing / profile not created yet). */
+  profile: QuestProfile | null;
   daily: { periodKey: string; timezone: string; quests: QuestItem[] };
   weekly: { periodKey: string; quests: QuestItem[] };
   summary: {
@@ -66,7 +69,7 @@ export type QuestClaimResult = {
     previousLevel: number;
     currentLevel: number;
     leveledUp: boolean;
-    levelProgress: QuestDashboard['profile']['levelProgress'];
+    levelProgress: QuestProfile['levelProgress'];
     currentStreak: number;
     longestStreak: number;
   };

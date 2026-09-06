@@ -144,6 +144,17 @@ describe('quest logic', () => {
     assert.equal(cached.streak, 6);
   });
 
+  it('treats an unavailable dashboard (profile: null) as empty instead of crashing', () => {
+    const unavailable = dashboard({
+      profile: null,
+      unavailable: true,
+      daily: { periodKey: 'd', timezone: 'X', quests: [] },
+      summary: { dailyCompleted: 0, dailyTotal: 0, dailyClaimable: 0 },
+    });
+    assert.equal(homeModuleView({ dashboard: unavailable }).kind, 'empty');
+    assert.equal(homeModuleView({ dashboard: dashboard({ profile: null }) }).kind, 'empty');
+  });
+
   it('picks weekly and hydration kinds', () => {
     assert.equal(questKind(quest()), 'movement');
     assert.equal(questKind(quest({ progressType: 'HYDRATION_GOAL_PERCENT', key: 'daily_hydration' })), 'hydration');
@@ -309,5 +320,45 @@ describe('quest logic', () => {
     assert.equal(questCopy('fr').back, 'Retour');
     assert.equal(questCopy('ru').back, 'Назад');
     assert.equal(questCopy('ka').levelUp, 'ახალი დონე');
+  });
+
+  it('maps daily quests to ring segments in display order', () => {
+    const { dailySegments } = require('./logic.js');
+    assert.deepEqual(
+      dailySegments([
+        quest({ status: 'CLAIMED' }),
+        quest({ status: 'COMPLETED', claimable: true }),
+        quest({ status: 'ACTIVE' }),
+        quest({ status: 'EXPIRED' }),
+      ]),
+      ['done', 'ready', 'active'],
+    );
+    assert.deepEqual(dailySegments(null), []);
+  });
+
+  it('derives level ring percent and XP remaining, and handles max level', () => {
+    const { levelRingProgress } = require('./logic.js');
+    const mid = levelRingProgress({ totalXp: 1950, levelProgress: { nextLevelXp: 2450, progressPercent: 64.4 } });
+    assert.deepEqual(mid, { percent: 64, remaining: 500, maxed: false });
+    const maxed = levelRingProgress({ totalXp: 99999, levelProgress: { nextLevelXp: null, progressPercent: 0 } });
+    assert.deepEqual(maxed, { percent: 100, remaining: null, maxed: true });
+    assert.deepEqual(levelRingProgress(null), { percent: 0, remaining: null, maxed: false });
+  });
+
+  it('clamps the daily counter', () => {
+    const { dailyCounter } = require('./logic.js');
+    assert.deepEqual(dailyCounter({ dailyTotal: 3, dailyCompleted: 5 }), { done: 3, total: 3, allDone: true });
+    assert.deepEqual(dailyCounter({ dailyTotal: 3, dailyCompleted: 1 }), { done: 1, total: 3, allDone: false });
+    assert.deepEqual(dailyCounter(null), { done: 0, total: 0, allDone: false });
+  });
+
+  it('ships the new hero copy in every locale', () => {
+    for (const loc of ['ka', 'en', 'fr', 'ru']) {
+      const c = questCopy(loc);
+      assert.ok(c.dailyMissions.length > 0);
+      assert.ok(c.xpToNext(500).includes('500'));
+      assert.ok(c.xpLeft(500).includes('500'));
+      assert.ok(c.missionsDone(1, 3).includes('1 / 3'));
+    }
   });
 });

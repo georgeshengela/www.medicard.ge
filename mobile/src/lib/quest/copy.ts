@@ -62,5 +62,5 @@ export function progressLabel(quest: QuestItem, locale = 'ka') {
 }
 
 export function levelRank(dashboard: QuestDashboard, locale = 'ka') {
-  return rankLabel(dashboard.profile.rankKey, locale);
+  return rankLabel(dashboard.profile?.rankKey, locale);
 }

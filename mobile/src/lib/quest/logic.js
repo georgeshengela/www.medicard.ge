@@ -156,6 +156,9 @@ function homeModuleView(input) {
   if (input?.loading && !input?.dashboard) return { kind: 'loading' };
   if (input?.error && !input?.dashboard) return { kind: 'error' };
   if (!input?.dashboard) return { kind: 'empty' };
+  // Server sends `profile: null` + `unavailable: true` when quest tables are not
+  // provisioned yet; there is nothing to render, so treat it like no dashboard.
+  if (!input.dashboard.profile || input.dashboard.unavailable) return { kind: 'empty' };
   const priority = pickPriorityQuest(input.dashboard);
   const mood = homeQuestMood({
     dailyTotal: input.dashboard.summary?.dailyTotal,
@@ -212,6 +215,44 @@ function stepsQuestEligible(status) {
   return status === 'AVAILABLE';
 }
 
+/**
+ * One entry per daily quest, in display order, so the Home ring / segmented
+ * bar can show "which" missions are done rather than only how many.
+ * 'done' = claimed, 'ready' = completed but unclaimed, 'active' = in progress.
+ */
+function dailySegments(quests) {
+  const list = Array.isArray(quests) ? quests : [];
+  return list
+    .filter((row) => row && row.status !== 'CANCELLED' && row.status !== 'EXPIRED')
+    .map((row) => {
+      if (row.status === 'CLAIMED') return 'done';
+      if (isClaimableStatus(row)) return 'ready';
+      return 'active';
+    });
+}
+
+/** Level ring inputs: percent into the current level and XP left to the next. */
+function levelRingProgress(profile) {
+  if (!profile) return { percent: 0, remaining: null, maxed: false };
+  const lp = profile.levelProgress || {};
+  const percent = formatQuestPercent(lp.progressPercent);
+  const next = lp.nextLevelXp == null ? null : Math.max(0, Number(lp.nextLevelXp) || 0);
+  const total = Math.max(0, Number(profile && profile.totalXp) || 0);
+  const remaining = next == null ? null : Math.max(0, next - total);
+  return {
+    percent: next == null ? 100 : percent,
+    remaining,
+    maxed: next == null,
+  };
+}
+
+/** Hub "today" header pill and Home summary share this. */
+function dailyCounter(summary) {
+  const total = Math.max(0, Number(summary && summary.dailyTotal) || 0);
+  const done = Math.min(total, Math.max(0, Number(summary && summary.dailyCompleted) || 0));
+  return { done, total, allDone: total > 0 && done >= total };
+}
+
 function privacySafeQuestBlob(value) {
   const blob = JSON.stringify(value ?? {});
   return !/"prompt"|"assistantReply"|"hydrationMl"|"diagnosis"|"medicationName"/i.test(blob);
@@ -243,4 +284,7 @@ module.exports = {
   capabilityFromHealth,
   stepsQuestEligible,
   privacySafeQuestBlob,
+  dailySegments,
+  levelRingProgress,
+  dailyCounter,
 };

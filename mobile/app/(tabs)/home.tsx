@@ -133,6 +133,8 @@ export default function Home() {
           }}
         />
 
+        <HomeMediQuestSection />
+
         <HomeNextDoseSection refreshing={refreshing} />
 
         <HomeWeatherSection />
@@ -142,8 +144,6 @@ export default function Home() {
         <HomeHealthMetricsSection profile={healthProfile} />
 
         <HomeHydrationSection />
-
-        <HomeMediQuestSection />
 
         <HomeLabSection />
 

@@ -1,98 +1,118 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Flame } from 'lucide-react-native';
+import { ChevronRight, Flame } from 'lucide-react-native';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { Bone } from '@/components/ui/Skeleton';
+import { QuestClaimButton } from '@/components/quest/QuestClaimButton';
+import { QuestCoinMark, QuestIcon } from '@/components/quest/QuestIcon';
+import { QuestLevelRing } from '@/components/quest/QuestLevelRing';
 import { QuestMediLine } from '@/components/quest/QuestMediLine';
-import { QuestProgressBar } from '@/components/quest/QuestProgressBar';
 import { QuestReward } from '@/components/quest/QuestReward';
+import { QuestRewardFloat } from '@/components/quest/QuestRewardFloat';
+import { QuestSegmentedProgress } from '@/components/quest/QuestSegmentedProgress';
+import { QuestStatChip } from '@/components/quest/QuestStatChip';
 import { useQuestDashboard } from '@/hooks/useQuestDashboard';
 import { useOffline } from '@/hooks/useOffline';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { presentQuestLevelUp } from '@/lib/quest/cache';
-import { homeClaimLayout, homeModuleView, rankKeyFromLevel } from '@/lib/quest/logic.js';
+import {
+  dailyCounter,
+  dailySegments,
+  formatQuestNumber,
+  homeModuleView,
+  levelRingProgress,
+  questKind,
+  rankKeyFromLevel,
+  rankLabel,
+} from '@/lib/quest/logic.js';
 import { moodLine, progressLabel, q, questTitles } from '@/lib/quest/copy';
 import { QUEST } from '@/theme/questTokens';
-import { useThemeColors } from '@/theme/colors';
+import { useIsDark, useThemeColors } from '@/theme/colors';
+
+const LOCALE = 'ka';
 
 export function HomeMediQuestSection() {
   const router = useRouter();
   const colors = useThemeColors();
-  const copy = q('ka');
+  const dark = useIsDark();
+  const reduce = usePrefersReducedMotion();
+  const copy = q(LOCALE);
   const offline = useOffline();
   const { dashboard, loading, error, stale, claim, mood, refresh, fixtureOffline } = useQuestDashboard();
   const view = homeModuleView({ dashboard, loading, error, stale });
-  const seed = `${dashboard?.daily.periodKey || 'day'}:${dashboard?.profile.level || 0}`;
-  const line = useMemo(() => moodLine(mood, seed, 'ka'), [mood, seed]);
+  const seed = `${dashboard?.daily.periodKey || 'day'}:${dashboard?.profile?.level || 0}`;
+  const line = useMemo(() => moodLine(mood, seed, LOCALE), [mood, seed]);
   const [claiming, setClaiming] = useState(false);
+  const [floatReward, setFloatReward] = useState<string | null>(null);
   const claimBlocked = offline || fixtureOffline;
 
   const openHub = () => router.push('/medi-quest' as never);
 
   if (view.kind === 'loading') {
     return (
-      <View style={{ paddingVertical: 4, gap: 8, minHeight: QUEST.homeMinHeight }}>
-        <HomeSectionTitle title={copy.section} style={{ marginHorizontal: 16, marginBottom: 0 }} />
-        <View style={{ marginHorizontal: 16 }}>
-          <Card>
-            <View className="flex-row justify-between">
-              <Bone height={16} width="28%" />
-              <Bone height={16} width="22%" />
+      <Section title={copy.section}>
+        <Shell>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <Bone width={QUEST.ringHome} height={QUEST.ringHome} radius={999} />
+            <View style={{ flex: 1, gap: 8 }}>
+              <Bone width="52%" height={18} radius={8} />
+              <Bone width="70%" height={12} />
             </View>
-            <View style={{ height: 14 }} />
-            <Bone height={8} />
-            <View style={{ height: 16 }} />
-            <Bone height={14} width="70%" />
-            <View style={{ height: 14 }} />
-            <Bone height={14} width="40%" />
-          </Card>
-        </View>
-      </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+            <Bone height={56} width="48%" radius={16} />
+            <Bone height={56} width="48%" radius={16} />
+          </View>
+          <Bone width="38%" height={12} style={{ marginTop: 16 }} />
+          <Bone height={8} radius={999} style={{ marginTop: 8 }} />
+        </Shell>
+      </Section>
     );
   }
 
   if (view.kind === 'error') {
     return (
-      <View style={{ paddingVertical: 4, gap: 8, minHeight: QUEST.homeMinHeight }}>
-        <HomeSectionTitle title={copy.section} style={{ marginHorizontal: 16, marginBottom: 0 }} />
-        <View style={{ marginHorizontal: 16 }}>
-          <Card>
-            <Text className="font-sans text-sm leading-5 text-text-200">{copy.loadError}</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={copy.retry}
-              onPress={() => void refresh()}
-              className="mt-3 min-h-[44px] justify-center"
-            >
-              <Text className="font-sans-semibold text-sm text-primary-200">{copy.retry}</Text>
-            </Pressable>
-          </Card>
-        </View>
-      </View>
+      <Section title={copy.section}>
+        <Shell>
+          <QuestMediLine text={copy.loadError} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={copy.retry}
+            onPress={() => void refresh()}
+            style={{ marginTop: 10, minHeight: 44, justifyContent: 'center' }}
+          >
+            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>
+              {copy.retry}
+            </Text>
+          </Pressable>
+        </Shell>
+      </Section>
     );
   }
 
-  if (view.kind === 'empty' || view.priority?.mode === 'empty') {
+  if (view.kind === 'empty' || view.priority?.mode === 'empty' || !dashboard?.profile) {
     return (
-      <View style={{ paddingVertical: 4, gap: 8, minHeight: QUEST.homeMinHeight }}>
-        <HomeSectionTitle title={copy.section} style={{ marginHorizontal: 16, marginBottom: 0 }} />
-        <View style={{ marginHorizontal: 16 }}>
-          <Card>
-            <QuestMediLine text={copy.empty} />
-          </Card>
-        </View>
-      </View>
+      <Section title={copy.section}>
+        <Shell onPress={openHub}>
+          <QuestMediLine text={copy.empty} />
+        </Shell>
+      </Section>
     );
   }
 
+  const profile = dashboard.profile;
+  const ring = levelRingProgress(profile);
+  const counter = dailyCounter(dashboard.summary);
+  const segments = dailySegments(dashboard.daily.quests);
   const claimable = view.priority?.mode === 'claimable';
-  const layout = homeClaimLayout(view.priority?.mode);
   const quest = view.priority?.quest;
-  const titles = quest ? questTitles(quest, 'ka') : null;
+  const titles = quest ? questTitles(quest, LOCALE) : null;
   const allDone = view.priority?.mode === 'done' || mood === 'all_daily_complete';
+  const rank = rankLabel(profile.rankKey, LOCALE);
+  const claimCount = view.priority?.claimCount || 0;
 
   const onClaim = async () => {
     if (!quest || claiming || claimBlocked) return;
@@ -101,6 +121,8 @@ export function HomeMediQuestSection() {
     setClaiming(false);
     if (!result) return;
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    setFloatReward(`+${result.reward.coinsAwarded} · +${result.reward.xpAwarded} ${copy.xp}`);
+    setTimeout(() => setFloatReward(null), reduce ? 500 : 1400);
     if (result.profile.leveledUp) {
       presentQuestLevelUp({
         level: result.profile.currentLevel,
@@ -112,88 +134,228 @@ export function HomeMediQuestSection() {
     }
   };
 
+  const a11y = [
+    `${copy.level} ${profile.level}`,
+    rank,
+    copy.missionsDone(counter.done, counter.total),
+    `${formatQuestNumber(profile.coinBalance, LOCALE)} ${copy.coinsName}`,
+    profile.currentStreak > 0 ? copy.streakDays(profile.currentStreak) : copy.streakStart,
+  ].join('. ');
+
   return (
-    <View style={{ paddingVertical: 4, gap: 8, minHeight: QUEST.homeMinHeight }}>
-      <HomeSectionTitle title={copy.section} style={{ marginHorizontal: 16, marginBottom: 0 }} />
-      <View style={{ marginHorizontal: 16 }}>
-        <Card>
-          <View className="flex-row items-center justify-between" style={{ gap: 8 }}>
-            <Text className="min-w-0 shrink font-sans-semibold text-sm text-text-200">
-              {copy.level} {view.level}
-            </Text>
-            {view.streak > 0 ? (
-              <View className="min-w-0 shrink flex-row items-center" style={{ gap: 4 }}>
-                <Flame size={14} color={colors.warning} strokeWidth={2.2} />
-                <Text className="font-sans-semibold text-sm text-text-100" numberOfLines={2}>
-                  {copy.streakDays(view.streak)}
-                </Text>
-              </View>
-            ) : (
-              <Text className="min-w-0 shrink text-right font-sans text-sm text-text-300">{copy.streakStart}</Text>
-            )}
+    <Section title={copy.section}>
+      <Animated.View entering={reduce ? undefined : FadeInDown.duration(QUEST.motion.base).springify().damping(18)}>
+        <Shell onPress={openHub} accessibilityLabel={a11y}>
+          <Wash />
+
+          {/* Level + rank */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <QuestLevelRing percent={ring.percent} label={String(profile.level)} size={QUEST.ringHome} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontFamily: 'NotoSansGeorgian_700Bold',
+                  fontSize: 18,
+                  lineHeight: 24,
+                  letterSpacing: -0.3,
+                  color: colors.text100,
+                }}
+              >
+                {rank}
+              </Text>
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontFamily: 'NotoSansGeorgian_500Medium',
+                  fontSize: 13,
+                  lineHeight: 18,
+                  color: colors.text300,
+                  marginTop: 2,
+                }}
+              >
+                {copy.level} {profile.level}
+                {ring.maxed ? `  ·  ${copy.maxLevel}` : ring.remaining != null ? `  ·  ${copy.xpLeft(formatQuestNumber(ring.remaining, LOCALE))}` : ''}
+              </Text>
+            </View>
+            <ChevronRight size={20} color={colors.primary200} strokeWidth={2.3} />
           </View>
 
-          {layout.showDailyProgress && view.dailyTotal > 0 ? (
-            <>
-              <Text className="mt-3 font-sans-bold text-base text-text-100">
-                {copy.progressOf(view.dailyCompleted, view.dailyTotal)}
-              </Text>
-              <View className="mt-2">
-                <QuestProgressBar
-                  percent={(view.dailyCompleted / view.dailyTotal) * 100}
-                  height={QUEST.barDaily}
-                  near={view.dailyCompleted + 1 >= view.dailyTotal && view.dailyCompleted < view.dailyTotal}
+          {/* Stats */}
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+            <QuestStatChip
+              icon={<QuestCoinMark size={18} color={dark ? QUEST.pill.coinInkDark : QUEST.pill.coinInkLight} />}
+              wellColor={dark ? QUEST.pill.coinDark : QUEST.pill.coinLight}
+              value={formatQuestNumber(profile.coinBalance, LOCALE)}
+              label={copy.coinsName}
+            />
+            <QuestStatChip
+              icon={
+                <Flame
+                  size={18}
+                  color={profile.currentStreak > 0 ? colors.warning : colors.text300}
+                  fill={profile.currentStreak > 0 ? colors.warning : 'transparent'}
+                  strokeWidth={2.2}
                 />
+              }
+              wellColor={profile.currentStreak > 0 ? colors.warningBg : dark ? colors.bg200 : colors.bg200}
+              value={profile.currentStreak > 0 ? copy.streakDays(profile.currentStreak) : '—'}
+              label={copy.streakLabel}
+            />
+          </View>
+
+          {/* Daily missions */}
+          {counter.total > 0 ? (
+            <View style={{ marginTop: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18, color: colors.text200 }}>
+                  {copy.dailyMissions}
+                </Text>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 18, color: counter.allDone ? colors.success : colors.text100 }}>
+                  {counter.done} / {counter.total}
+                </Text>
               </View>
-            </>
+              <View style={{ marginTop: 8 }}>
+                <QuestSegmentedProgress segments={segments} accessibilityLabel={copy.missionsDone(counter.done, counter.total)} />
+              </View>
+            </View>
           ) : null}
 
-          <View className="mt-3">
-            {claimable && quest ? (
-              <View className="rounded-xl px-3 py-2.5" style={{ backgroundColor: colors.accent100 }}>
-                <Text className="font-sans-semibold text-sm text-text-100">{copy.rewardReady}</Text>
-                <View className="mt-1">
-                  <QuestReward xp={quest.rewardXp} coins={quest.rewardCoins} locale="ka" />
+          {/* Claim strip or Medi line */}
+          <Animated.View layout={reduce ? undefined : LinearTransition.duration(QUEST.motion.base)} style={{ marginTop: 14 }}>
+            {claimable && quest && titles ? (
+              <Animated.View
+                key="claim"
+                entering={reduce ? undefined : FadeIn.duration(QUEST.motion.fast)}
+                exiting={reduce ? undefined : FadeOut.duration(QUEST.motion.fast)}
+                style={{
+                  borderRadius: QUEST.rowRadius,
+                  padding: 12,
+                  backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.lightSoft,
+                  borderWidth: 1,
+                  borderColor: dark ? colors.accent200 : colors.accent200,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <QuestIcon kind={questKind(quest) === 'weekly' ? 'weekly' : questKind(quest)} ready size={36} />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, color: colors.text100 }}>
+                      {titles.title}
+                    </Text>
+                    <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: colors.text300 }}>
+                      {claimCount > 1 ? copy.rewardWaiting(claimCount) : copy.rewardReady}
+                    </Text>
+                  </View>
                 </View>
-                <View className="mt-3">
-                  <Button
+                <View style={{ marginTop: 10, marginLeft: 46 }}>
+                  <QuestReward xp={quest.rewardXp} coins={quest.rewardCoins} locale={LOCALE} />
+                </View>
+                <View style={{ marginTop: 10 }}>
+                  <QuestClaimButton
                     label={copy.claim}
-                    size="md"
                     loading={claiming}
-                    disabled={claimBlocked || claiming}
+                    disabled={claimBlocked}
                     onPress={() => void onClaim()}
                   />
                   {claimBlocked ? (
-                    <Text className="mt-2 font-sans text-xs text-text-300">{copy.connectToClaim}</Text>
+                    <Text style={{ marginTop: 6, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11, color: colors.text300 }}>
+                      {copy.connectToClaim}
+                    </Text>
                   ) : null}
                 </View>
-              </View>
+              </Animated.View>
             ) : (
-              <>
+              <Animated.View key="line" entering={reduce ? undefined : FadeIn.duration(QUEST.motion.fast)}>
                 <QuestMediLine text={line} />
                 {quest && titles && !allDone ? (
-                  <Text className="mt-2 font-sans text-sm leading-5 text-text-300">
-                    {titles.title}
-                    {'  ·  '}
-                    {progressLabel(quest, 'ka')}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
+                    <QuestIcon kind={questKind(quest) === 'weekly' ? 'weekly' : questKind(quest)} size={28} />
+                    <Text numberOfLines={1} style={{ flex: 1, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18, color: colors.text200 }}>
+                      {titles.title}
+                    </Text>
+                    <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 18, color: colors.text100 }}>
+                      {progressLabel(quest, LOCALE)}
+                    </Text>
+                  </View>
                 ) : null}
-              </>
+              </Animated.View>
             )}
-          </View>
+          </Animated.View>
 
-          {stale ? <Text className="mt-2 font-sans text-xs text-text-300">{copy.stale}</Text> : null}
+          {stale ? (
+            <Text style={{ marginTop: 10, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11, color: colors.text300 }}>
+              {copy.stale}
+            </Text>
+          ) : null}
+        </Shell>
+      </Animated.View>
+      {/* Sits on the empty right half of the section title row, clear of the card title. */}
+      <QuestRewardFloat text={floatReward} top={-6} align="end" inset={QUEST.pad} />
+    </Section>
+  );
+}
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={copy.open}
-            onPress={openHub}
-            className="mt-2 min-h-[44px] justify-center active:opacity-70"
-          >
-            <Text className="font-sans-semibold text-sm text-primary-200">{copy.open}</Text>
-          </Pressable>
-        </Card>
-      </View>
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View style={{ paddingVertical: 4, gap: 8, minHeight: QUEST.homeMinHeight, position: 'relative' }}>
+      <HomeSectionTitle title={title} style={{ marginHorizontal: 16, marginBottom: 0 }} />
+      <View style={{ marginHorizontal: 16 }}>{children}</View>
     </View>
+  );
+}
+
+/** 24px hero card, hairline border, brand wash — same chrome as weather / hydration. */
+function Shell({
+  children,
+  onPress,
+  accessibilityLabel,
+}: {
+  children: React.ReactNode;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+}) {
+  const colors = useThemeColors();
+  const dark = useIsDark();
+  const style = {
+    backgroundColor: dark ? colors.surface : '#FFFFFF',
+    borderWidth: 1,
+    borderColor: colors.bg300,
+    borderRadius: QUEST.radius,
+    padding: QUEST.pad,
+    overflow: 'hidden' as const,
+  };
+  if (onPress) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        onPress={onPress}
+        className="active:opacity-90"
+        style={style}
+      >
+        {children}
+      </Pressable>
+    );
+  }
+  return <View style={style}>{children}</View>;
+}
+
+/** Soft brand disc bleeding off the top-right corner — same trick as the weather card. */
+function Wash() {
+  const dark = useIsDark();
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        right: -36,
+        top: -44,
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
+        opacity: dark ? 0.9 : 0.55,
+      }}
+    />
   );
 }

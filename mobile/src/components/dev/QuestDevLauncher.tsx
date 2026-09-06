@@ -114,7 +114,7 @@ export function QuestDevLauncher({ variant = 'fab' }: { variant?: 'fab' | 'chip'
                   }}
                 >
                   <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: '#14B8A6' }}>
-                    {QUEST_DEV_LABELS[key]}
+                    {(QUEST_DEV_LABELS as Record<string, string>)[key]}
                   </Text>
                 </Pressable>
               ))}

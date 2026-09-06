@@ -48,7 +48,10 @@ export function useQuestDashboard() {
 
   useEffect(() => {
     if (!isQuestDevEnabled()) return;
-    return subscribeQuestDevScenario(setDevScenario);
+    const off = subscribeQuestDevScenario(setDevScenario);
+    return () => {
+      off();
+    };
   }, []);
 
   useEffect(() => {
@@ -57,9 +60,13 @@ export function useQuestDashboard() {
       if (alive && cached) apply(cached.dashboard, true, cached.savedAt);
     });
     void refresh(true);
-    return subscribeQuestRefresh(() => {
+    const off = subscribeQuestRefresh(() => {
       void refresh(true);
     });
+    return () => {
+      alive = false;
+      off();
+    };
   }, [apply, refresh]);
 
   const presented = applyQuestDevView({
@@ -74,7 +81,7 @@ export function useQuestDashboard() {
     if (!beginClaimLock(claimLocks, id)) return null;
     try {
       if (isQuestDevEnabled() && getQuestDevScenario() !== 'LIVE') {
-        const fake = claimQuestDevFixture(null, id);
+        const fake = claimQuestDevFixture(null, id) as QuestClaimResult | null;
         if (fake) {
           markQuestCelebration('claimed-http', id, fake.quest.claimedAt || '');
           return fake;
@@ -95,7 +102,9 @@ export function useQuestDashboard() {
     dailyTotal: presented.dashboard?.summary.dailyTotal,
     dailyCompleted: presented.dashboard?.summary.dailyCompleted,
     dailyClaimable: presented.dashboard?.summary.dailyClaimable,
-    nearCompletion: presented.dashboard?.daily.quests.some((quest) => quest.status === 'ACTIVE' && quest.progressPercent >= 80),
+    nearCompletion: (presented.dashboard as QuestDashboard | null)?.daily.quests.some(
+      (quest) => quest.status === 'ACTIVE' && quest.progressPercent >= 80,
+    ),
   });
 
   return {

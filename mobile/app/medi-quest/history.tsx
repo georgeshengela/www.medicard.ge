@@ -1,47 +1,42 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Clock3 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
+import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { QuestIcon } from '@/components/quest/QuestIcon';
 import { QuestMediLine } from '@/components/quest/QuestMediLine';
 import { QuestReward } from '@/components/quest/QuestReward';
-import { useThemeColors } from '@/theme/colors';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useIsDark, useThemeColors } from '@/theme/colors';
 import { questApi, type QuestItem } from '@/lib/quest/api';
 import { historyGroupKey, questKind } from '@/lib/quest/logic.js';
 import { q, questTitles } from '@/lib/quest/copy';
 import { buildQuestDevHistory, getQuestDevScenario, isQuestDevEnabled } from '@/lib/quest/devFixture';
+import { QUEST } from '@/theme/questTokens';
 
-function dayKey(quest: QuestItem, today: string) {
-  return historyGroupKey(quest, today);
+function ymd(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-function todayYmd() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
-
-function formatHistoryDay(ymd: string) {
-  const [year, month, day] = ymd.split('-').map(Number);
-  if (!year || !month || !day) return ymd;
+function formatHistoryDay(key: string) {
+  const [year, month, day] = key.split('-').map(Number);
+  if (!year || !month || !day) return key;
   return new Date(year, month - 1, day).toLocaleDateString('ka-GE', {
+    weekday: 'short',
     day: 'numeric',
     month: 'short',
-    year: 'numeric',
   });
-}
-
-function yesterdayYmd() {
-  const now = new Date();
-  now.setDate(now.getDate() - 1);
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
 export default function QuestHistoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const dark = useIsDark();
+  const reduce = usePrefersReducedMotion();
   const copy = q('ka');
   const [items, setItems] = useState<QuestItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -71,13 +66,14 @@ export default function QuestHistoryScreen() {
   }, [load]);
 
   const groups = useMemo(() => {
-    const today = todayYmd();
-    const yesterday = yesterdayYmd();
+    const today = ymd(new Date());
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const yesterday = ymd(y);
     const map = new Map<string, QuestItem[]>();
     for (const quest of items) {
-      const key = dayKey(quest, today) || today;
-      const label =
-        key === today ? copy.today : key === yesterday ? copy.yesterday : formatHistoryDay(key);
+      const key = historyGroupKey(quest, today) || today;
+      const label = key === today ? copy.today : key === yesterday ? copy.yesterday : formatHistoryDay(key);
       const list = map.get(label) || [];
       list.push(quest);
       map.set(label, list);
@@ -92,59 +88,112 @@ export default function QuestHistoryScreen() {
     return status;
   };
 
+  let rowIndex = 0;
+
   return (
     <View className="flex-1 bg-bg-100" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-center px-4 py-2">
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={copy.back}
-          hitSlop={12}
+          hitSlop={8}
           onPress={() => router.back()}
-          className="min-h-[44px] min-w-[44px] justify-center"
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
         >
           <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
         </Pressable>
-        <Text className="font-sans-bold text-lg text-text-100">{copy.history}</Text>
+        <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, lineHeight: 24, letterSpacing: -0.2, color: colors.text100 }}>
+          {copy.history}
+        </Text>
       </View>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 28, gap: 16 }}>
-        {!items.length && !loading ? (
-          <QuestMediLine text={copy.historyEmpty} />
+
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 32, gap: 20 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {loading && !items.length ? (
+          <ListRowsSkeleton rows={5} padded={false} />
+        ) : !items.length ? (
+          <View
+            style={{
+              backgroundColor: dark ? colors.surface : '#FFFFFF',
+              borderWidth: 1,
+              borderColor: colors.bg300,
+              borderRadius: QUEST.radius,
+              padding: QUEST.pad,
+            }}
+          >
+            <QuestMediLine text={copy.historyEmpty} />
+          </View>
         ) : (
           groups.map(([label, rows]) => (
             <View key={label} style={{ gap: 8 }}>
-              <Text className="font-sans-semibold text-sm text-text-300">{label}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 2 }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 18, color: colors.text300 }}>{label}</Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.bg300 }} />
+              </View>
               {rows.map((quest) => {
                 const titles = questTitles(quest, 'ka');
-                const muted = quest.status === 'EXPIRED';
+                const expired = quest.status === 'EXPIRED';
+                const claimed = quest.status === 'CLAIMED';
+                const kind = questKind(quest) === 'weekly' ? 'weekly' : questKind(quest);
+                const i = rowIndex++;
                 return (
-                  <View
+                  <Animated.View
                     key={quest.id}
-                    className="flex-row items-center rounded-2xl bg-surface px-3 py-3"
-                    style={{ borderWidth: 1, borderColor: colors.bg300 }}
+                    entering={reduce ? undefined : FadeInDown.duration(QUEST.motion.base).delay(Math.min(i, 8) * 45)}
                   >
-                    <QuestIcon kind={questKind(quest) === 'weekly' ? 'weekly' : questKind(quest)} done={quest.status === 'CLAIMED'} />
-                    <View className="ml-3 min-w-0 flex-1">
-                      <Text className={`font-sans-semibold text-[15px] ${muted ? 'text-text-200' : 'text-text-100'}`}>
-                        {titles.title}
-                      </Text>
-                      <Text className={`mt-0.5 font-sans text-xs ${muted ? 'text-text-200' : 'text-text-300'}`}>
-                        {statusLabel(quest.status)}
-                      </Text>
-                      {quest.status !== 'EXPIRED' ? (
-                        <View className="mt-1">
-                          <QuestReward xp={quest.rewardXp} coins={quest.rewardCoins} locale="ka" muted={muted} />
+                    {/* Static opacity on an inner View so the entering animation never fights it. */}
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        borderRadius: QUEST.rowRadius,
+                        backgroundColor: dark ? colors.surface : '#FFFFFF',
+                        borderWidth: 1,
+                        borderColor: colors.bg300,
+                        paddingHorizontal: 12,
+                        paddingVertical: 12,
+                        opacity: expired ? 0.7 : 1,
+                      }}
+                    >
+                      <QuestIcon kind={kind} done={claimed} ready={quest.status === 'COMPLETED'} />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text
+                          numberOfLines={1}
+                          style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 20, color: colors.text100 }}
+                        >
+                          {titles.title}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          {expired ? <Clock3 size={11} color={colors.text300} strokeWidth={2.3} /> : null}
+                          <Text
+                            numberOfLines={1}
+                            style={{
+                              fontFamily: 'NotoSansGeorgian_500Medium',
+                              fontSize: 12,
+                              lineHeight: 16,
+                              color: claimed ? colors.success : colors.text300,
+                            }}
+                          >
+                            {statusLabel(quest.status)}
+                          </Text>
                         </View>
-                      ) : null}
+                        {!expired ? (
+                          <View style={{ marginTop: 8 }}>
+                            <QuestReward xp={quest.rewardXp} coins={quest.rewardCoins} locale="ka" muted={!claimed} size="sm" />
+                          </View>
+                        ) : null}
+                      </View>
                     </View>
-                  </View>
+                  </Animated.View>
                 );
               })}
             </View>
           ))
         )}
-        {cursor ? (
-          <Button label={copy.loadMore} size="sm" loading={loading} onPress={() => void load(cursor)} />
-        ) : null}
+        {cursor ? <Button label={copy.loadMore} size="sm" variant="secondary" loading={loading} onPress={() => void load(cursor)} /> : null}
       </ScrollView>
     </View>
   );

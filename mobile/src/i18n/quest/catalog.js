@@ -101,6 +101,12 @@ const TEXT = {
     unlockHydro: 'გახსენი წყლის მისიები',
     mission: 'მისია',
     back: 'უკან',
+    dailyMissions: 'დღის მისიები',
+    maxLevel: 'მაქსიმალური დონე',
+    streakLabel: 'სერია',
+    balanceLabel: 'ბალანსი',
+    allDoneToday: 'დღეს ყველაფერი შესრულებულია',
+    tapToOpen: 'ყველა მისია',
     mood: {
       fresh_day: ['დღეს მშვიდად დავიწყოთ 💚', 'ერთი პატარა ნაბიჯიც კარგი დღეა.'],
       progress_started: ['ნელა ვაგრძელებთ.', 'დღეს ჯერ კიდევ არის დრო.'],
@@ -165,6 +171,12 @@ const TEXT = {
     weatherBest: (start, end) => `Best time: ${start}–${end}`,
     days: 'Mon–Sun',
     coinsName: 'Medi Coins',
+    dailyMissions: 'Daily missions',
+    maxLevel: 'Max level',
+    streakLabel: 'Streak',
+    balanceLabel: 'Balance',
+    allDoneToday: 'Everything is done for today',
+    tapToOpen: 'All missions',
     mood: {
       fresh_day: ['Let’s start the day gently 💚', 'Even one small step is a good day.', 'Today can stay unhurried.'],
       progress_started: ['We keep going, steadily.', 'There is still time today.', 'Small progress still counts.'],
@@ -229,6 +241,12 @@ const TEXT = {
     weatherBest: (start, end) => `Meilleur moment : ${start}–${end}`,
     days: 'Lun–Dim',
     coinsName: 'Medi Coins',
+    dailyMissions: 'Missions du jour',
+    maxLevel: 'Niveau max',
+    streakLabel: 'Série',
+    balanceLabel: 'Solde',
+    allDoneToday: 'Tout est fait pour aujourd’hui',
+    tapToOpen: 'Toutes les missions',
     mood: {
       fresh_day: ['On commence doucement aujourd’hui 💚', 'Un petit pas suffit pour bien commencer.', 'Aujourd’hui, sans se presser.'],
       progress_started: ['On avance, sans se presser.', 'Il reste encore du temps aujourd’hui.', 'Chaque petit pas compte.'],
@@ -293,6 +311,12 @@ const TEXT = {
     weatherBest: (start, end) => `Лучшее время: ${start}–${end}`,
     days: 'Пн–Вс',
     coinsName: 'Medi Coins',
+    dailyMissions: 'Миссии дня',
+    maxLevel: 'Максимальный уровень',
+    streakLabel: 'Серия',
+    balanceLabel: 'Баланс',
+    allDoneToday: 'На сегодня всё выполнено',
+    tapToOpen: 'Все миссии',
     mood: {
       fresh_day: ['Сегодня начинаем спокойно 💚', 'Даже один шаг — уже хороший день.', 'Сегодня без спешки.'],
       progress_started: ['Продолжаем постепенно.', 'Сегодня ещё есть время.', 'Маленький прогресс тоже считается.'],
@@ -329,6 +353,31 @@ function questCopy(locale = 'ka') {
           : loc === 'ru'
             ? `${n} награда ждёт тебя`
             : `${n} reward${n > 1 ? 's' : ''} waiting`,
+    xpToNext: (n) =>
+      loc === 'ka'
+        ? `${n} XP შემდეგ დონემდე`
+        : loc === 'fr'
+          ? `${n} XP avant le prochain niveau`
+          : loc === 'ru'
+            ? `${n} XP до следующего уровня`
+            : `${n} XP to next level`,
+    // Compact form for tight one-line captions (Home card).
+    xpLeft: (n) =>
+      loc === 'ka'
+        ? `${n} XP დარჩა`
+        : loc === 'fr'
+          ? `${n} XP restants`
+          : loc === 'ru'
+            ? `осталось ${n} XP`
+            : `${n} XP to go`,
+    missionsDone: (done, total) =>
+      loc === 'ka'
+        ? `${done} / ${total} შესრულებულია`
+        : loc === 'fr'
+          ? `${done} / ${total} accomplies`
+          : loc === 'ru'
+            ? `${done} / ${total} выполнено`
+            : `${done} / ${total} done`,
     streakDays: (n) =>
       loc === 'ka'
         ? `${n} დღე`
