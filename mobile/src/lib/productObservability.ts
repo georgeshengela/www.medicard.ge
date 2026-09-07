@@ -127,7 +127,12 @@ export async function trackQuestEvent(
     | 'reward_redeem_started'
     | 'reward_redeemed'
     | 'reward_redeem_failed'
-    | 'my_rewards_opened',
+    | 'my_rewards_opened'
+    | 'medi_companion_opened'
+    | 'medi_journey_opened'
+    | 'medi_journey_milestone_viewed'
+    | 'medi_cosmetic_equipped'
+    | 'medi_talk_tapped',
   entityId?: string,
 ): Promise<void> {
   await api.push.syncProductEvents({

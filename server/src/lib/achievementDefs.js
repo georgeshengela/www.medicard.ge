@@ -74,8 +74,8 @@ export const ACHIEVEMENT_DEFINITIONS = Object.freeze([
     [10, 'COMMON', 60, 30],
     [25, 'UNCOMMON', 120, 60],
     [50, 'RARE', 250, 125],
-    [100, 'RARE', 500, 250],
-    [250, 'EPIC', 1000, 500],
+    [100, 'EPIC', 500, 250],
+    [250, 'LEGENDARY', 1000, 500],
   ], 30),
 
   // Hydration quest completions
@@ -98,10 +98,10 @@ export const ACHIEVEMENT_DEFINITIONS = Object.freeze([
 
   // Weekly quest completions
   ...series('WEEKLY', 'WEEKLY', [
-    [3, 'COMMON', 100, 50],
-    [10, 'UNCOMMON', 250, 125],
-    [25, 'RARE', 600, 300],
-    [52, 'EPIC', 1000, 500],
+    [3, 'UNCOMMON', 100, 50],
+    [10, 'RARE', 250, 125],
+    [25, 'EPIC', 600, 300],
+    [52, 'LEGENDARY', 1000, 500],
   ], 60),
 
   // Level milestones

@@ -227,38 +227,48 @@ export async function listPartners(query = {}, options = {}) {
   }));
 }
 
+function pickPartnerField(input, previous, field, fallback = null) {
+  if (input[field] !== undefined) return input[field];
+  if (previous && previous[field] !== undefined) return previous[field];
+  return fallback;
+}
+
 export async function upsertPartner(input, { admin } = {}, options = {}) {
   const db = dbOf(options);
-  const key = String(input.key || '')
+  let previous = null;
+  if (input.id) {
+    previous = await db.rewardPartner.findUnique({ where: { id: input.id } });
+    if (!previous) throw httpError('partner not found', 404);
+  }
+  const key = String(input.key || previous?.key || '')
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9_]/g, '_');
   if (!key || key.length < 3) throw httpError('partner key invalid', 400);
-  if (input.category && !PARTNER_CATEGORIES.includes(input.category)) {
+  const category = pickPartnerField(input, previous, 'category', null);
+  if (category && !PARTNER_CATEGORIES.includes(category)) {
     throw httpError('invalid category', 400);
   }
-  const status = input.status || PARTNER_STATUSES.DRAFT;
+  const status = input.status || previous?.status || PARTNER_STATUSES.DRAFT;
   if (!Object.values(PARTNER_STATUSES).includes(status)) {
     throw httpError('invalid partner status', 400);
   }
   const data = {
     key,
-    displayName: String(input.displayName || '').trim() || key,
-    legalName: input.legalName || null,
-    category: input.category || null,
-    logoAssetKey: input.logoAssetKey || null,
-    website: input.website || null,
-    contactName: input.contactName || null,
-    contactEmail: input.contactEmail || null,
-    countryCode: input.countryCode || null,
-    notes: input.notes || null,
-    lowStockThreshold: input.lowStockThreshold ?? null,
+    displayName: String(pickPartnerField(input, previous, 'displayName', '') || '').trim() || key,
+    legalName: pickPartnerField(input, previous, 'legalName', null) || null,
+    category,
+    logoAssetKey: pickPartnerField(input, previous, 'logoAssetKey', null) || null,
+    website: pickPartnerField(input, previous, 'website', null) || null,
+    contactName: pickPartnerField(input, previous, 'contactName', null) || null,
+    contactEmail: pickPartnerField(input, previous, 'contactEmail', null) || null,
+    countryCode: pickPartnerField(input, previous, 'countryCode', null) || null,
+    notes: pickPartnerField(input, previous, 'notes', null) || null,
+    lowStockThreshold: pickPartnerField(input, previous, 'lowStockThreshold', null) ?? null,
     status,
   };
-  let previous = null;
   let row;
   if (input.id) {
-    previous = await db.rewardPartner.findUnique({ where: { id: input.id } });
     row = await db.rewardPartner.update({ where: { id: input.id }, data });
   } else {
     row = await db.rewardPartner.upsert({

@@ -108,3 +108,15 @@ export function emitQuestRewardClaimed(userId, payload) {
   });
   return true;
 }
+
+/** Phase 9 — Journey milestone unlocked. No health / GPS / chat. */
+export function emitMediJourneyMilestoneUnlocked(userId, payload = {}) {
+  if (!userId || typeof emitFn !== 'function') return false;
+  emitFn(userId, {
+    event: 'medi_journey:milestone_unlocked',
+    milestoneKey: payload.milestoneKey,
+    chapterKey: payload.chapterKey,
+    unlockedAt: payload.unlockedAt,
+  });
+  return true;
+}

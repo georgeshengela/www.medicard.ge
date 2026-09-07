@@ -93,8 +93,19 @@ adminRewardsRouter.patch(
   mutateLimiter,
   requireAdminCapability('PARTNERS_MANAGE'),
   asyncHandler(async (req, res) => {
+    const existing = await prisma.rewardPartner.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'not found' });
     const body = z.object({}).passthrough().parse(req.body || {});
-    const row = await upsertPartner({ ...body, id: req.params.id }, { admin: req.admin });
+    const row = await upsertPartner(
+      {
+        ...existing,
+        ...body,
+        id: existing.id,
+        key: body.key || existing.key,
+        displayName: body.displayName || existing.displayName,
+      },
+      { admin: req.admin },
+    );
     res.json({ ok: true, partner: row });
   }),
 );

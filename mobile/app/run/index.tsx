@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowLeft, Flame, Footprints, MapPin, Play, Route, Target, Timer } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Flame, Footprints, MapPin, Play, Route, Target, Timer } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { BetaPill } from '@/components/run/HomeRunSection';
@@ -129,8 +129,11 @@ export default function RunHubScreen() {
             <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: colors.text100, marginBottom: 8 }}>{ka.run.history}</Text>
             <View style={{ gap: 8 }}>
               {history.slice(0, 10).map((r) => (
-                <View
+                <Pressable
                   key={r.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${formatKm(r.distanceM)} ${ka.run.km}`}
+                  onPress={() => router.push(`/run/${r.id}` as never)}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -176,10 +179,13 @@ export default function RunHubScreen() {
                       </View>
                     </View>
                   </View>
-                  <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, color: colors.text300 }}>
-                    {new Date(r.startedAt).toLocaleDateString('ka-GE', { day: 'numeric', month: 'short' })}
-                  </Text>
-                </View>
+                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                    <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, color: colors.text300 }}>
+                      {new Date(r.startedAt).toLocaleDateString('ka-GE', { day: 'numeric', month: 'short' })}
+                    </Text>
+                    <ChevronRight size={16} color={colors.text300} strokeWidth={2.2} />
+                  </View>
+                </Pressable>
               ))}
             </View>
           </View>

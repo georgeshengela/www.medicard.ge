@@ -75,6 +75,18 @@ export async function connectQuestSocket() {
     requestAchievementsRefresh();
     requestQuestRefresh();
   });
+  socket.on(
+    'medi_journey:milestone_unlocked',
+    (payload: { milestoneKey?: string; unlockedAt?: string; chapterKey?: string }) => {
+      if (!payload?.milestoneKey) return;
+      void import('@/lib/companion/journeyCelebration').then(({ presentJourneyUnlocks }) => {
+        presentJourneyUnlocks([payload.milestoneKey!], payload.unlockedAt);
+      });
+      void import('@/lib/companion/cache').then(({ requestCompanionRefresh }) => {
+        requestCompanionRefresh();
+      });
+    },
+  );
 }
 
 export function disconnectQuestSocket() {

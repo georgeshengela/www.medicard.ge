@@ -68,6 +68,9 @@ model User {
   rewardRedemptions     RewardRedemption[]
   rewardEntitlements    UserRewardEntitlement[]
   rewardAuditLogs       RewardRedemptionAudit[]
+  /// Phase 9 — Medi Companion
+  mediCompanionProfile  MediCompanionProfile?
+  mediJourneyUnlocks    MediJourneyUnlock[]
 
   @@index([status])
   @@index([packageId])
@@ -1286,3 +1289,29 @@ model RewardRedemptionAudit {
   @@index([redemptionId, createdAt])
   @@index([userId, createdAt])
 }
+
+/// Phase 9 — Medi Companion cosmetic loadout (derived progress is not stored).
+model MediCompanionProfile {
+  id                      String   @id @default(uuid())
+  userId                  String   @unique
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Slot map: accent / accessory / background / decoration → cosmetic catalog keys
+  selectedCosmetics       Json     @default("{}")
+  selectedEnvironmentKey  String   @default("env.day")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+/// Phase 9 — idempotent Journey milestone unlock rows (progress still derived from QuestCompletion).
+model MediJourneyUnlock {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestoneKey String
+  unlockedAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, milestoneKey])
+  @@index([userId, unlockedAt])
+}
+

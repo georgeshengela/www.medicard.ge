@@ -792,12 +792,22 @@ async function evaluateAchievementsAfterQuest(userId, options) {
   }
 }
 
+async function reconcileCompanionAfterQuest(userId, options) {
+  try {
+    const { reconcileMediJourneyAfterQuestSafe } = await import('./mediCompanion/service.js');
+    await reconcileMediJourneyAfterQuestSafe(userId, options);
+  } catch (error) {
+    console.warn('[quest] medi companion journey hook failed', error?.message);
+  }
+}
+
 export async function completeQuest(userId, userQuestId, options = {}) {
   try {
     const result = await withQuestTx(options, (tx) => completeQuestInTx(tx, userId, userQuestId, options));
     if (result.completed) {
       notifyQuestCompleted(userId, result.quest, options);
       await evaluateAchievementsAfterQuest(userId, options);
+      await reconcileCompanionAfterQuest(userId, options);
     }
     return result;
   } catch (error) {
@@ -937,7 +947,10 @@ async function claimQuestInTx(tx, userId, userQuestId, options = {}) {
 export async function claimQuest(userId, userQuestId, options = {}) {
   try {
     const result = await withQuestTx(options, (tx) => claimQuestInTx(tx, userId, userQuestId, options));
-    if (result.justCompleted) notifyQuestCompleted(userId, result.quest, options);
+    if (result.justCompleted) {
+      notifyQuestCompleted(userId, result.quest, options);
+      await reconcileCompanionAfterQuest(userId, options);
+    }
     if (result.claimed) {
       emitQuestAnalytics(userId, 'quest_claimed', result.quest, options);
       emitQuestRewardClaimed(userId, {

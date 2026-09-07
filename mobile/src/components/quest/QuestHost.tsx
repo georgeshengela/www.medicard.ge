@@ -18,6 +18,8 @@ import {
   type QuestLevelUpShow,
 } from '@/lib/quest/cache';
 import { QuestLevelUpSheet } from '@/components/quest/QuestLevelUpSheet';
+import { MediJourneyUnlockToast } from '@/components/companion/MediJourneyUnlockToast';
+import { subscribeJourneyUnlockCelebration } from '@/lib/companion/journeyCelebration';
 import { rarityColors } from '@/components/quest/QuestAchievementBadge';
 import { q } from '@/lib/quest/copy';
 import { achievementCopy } from '@/i18n/quest/achievements.js';
@@ -37,8 +39,10 @@ export function QuestHost() {
   const [toast, setToast] = useState<string | null>(null);
   const [achievementToast, setAchievementToast] = useState<AchievementUnlockShow | null>(null);
   const [levelUp, setLevelUp] = useState<QuestLevelUpShow | null>(null);
+  const [journeyUnlock, setJourneyUnlock] = useState<{ count: number; keys: string[] } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const achievementTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const journeyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onHubRef = useRef(segments[0] === 'medi-quest');
   onHubRef.current = segments[0] === 'medi-quest';
 
@@ -67,6 +71,12 @@ export function QuestHost() {
       if (achievementTimer.current) clearTimeout(achievementTimer.current);
       achievementTimer.current = setTimeout(() => setAchievementToast(null), reduce ? 1200 : 3200);
     });
+    const offJourney = subscribeJourneyUnlockCelebration((payload) => {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      setJourneyUnlock(payload);
+      if (journeyTimer.current) clearTimeout(journeyTimer.current);
+      journeyTimer.current = setTimeout(() => setJourneyUnlock(null), reduce ? 1600 : 4200);
+    });
     const app = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return;
       void (async () => {
@@ -79,9 +89,11 @@ export function QuestHost() {
       offCompleted();
       offLevel();
       offAchievement();
+      offJourney();
       app.remove();
       if (toastTimer.current) clearTimeout(toastTimer.current);
       if (achievementTimer.current) clearTimeout(achievementTimer.current);
+      if (journeyTimer.current) clearTimeout(journeyTimer.current);
     };
   }, [user, reduce]);
 
@@ -169,6 +181,11 @@ export function QuestHost() {
         coins={levelUp?.coins}
         xp={levelUp?.xp}
         onClose={() => setLevelUp(null)}
+      />
+      <MediJourneyUnlockToast
+        celebration={journeyUnlock}
+        onDismiss={() => setJourneyUnlock(null)}
+        locale="ka"
       />
     </>
   );

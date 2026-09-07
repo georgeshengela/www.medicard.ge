@@ -4,6 +4,35 @@
    zero gradients, calm motion only.
    ============================================================ */
 
+@font-face {
+  font-family: "FiraGO";
+  src: url("/fonts/firago/FiraGO-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "FiraGO";
+  src: url("/fonts/firago/FiraGO-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "FiraGO";
+  src: url("/fonts/firago/FiraGO-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "FiraGO";
+  src: url("/fonts/firago/FiraGO-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ——— 1. Tokens ——— */
 :root,
 [data-theme="light"] {
@@ -196,6 +225,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   background: var(--surface);
   box-shadow: none;
   border-right: 1px solid var(--line);
+  font-family: "FiraGO", "Noto Sans Georgian", "Noto Sans", sans-serif;
 }
 [data-theme="dark"] .ng-sidebar {
   background: var(--surface);
@@ -216,8 +246,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 }
 .sidebar-brand .logo-mark svg { width: 16px; height: 16px; }
 .sidebar-brand-copy strong,
-.sidebar-brand-copy span {
+.sidebar-brand-copy span,
+.nav-group,
+.ng-sidebar .nav .nav-label {
+  font-family: "FiraGO", "Noto Sans Georgian", sans-serif;
   text-transform: uppercase;
+  -webkit-font-feature-settings: "case" 1;
+  font-feature-settings: "case";
 }
 .sidebar-brand-copy strong {
   font-size: 12px;
@@ -259,7 +294,6 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
   line-height: 1.2;
 }
 .ng-sidebar .nav:hover { background: var(--bg-raise); color: var(--text); }
@@ -1126,6 +1160,95 @@ tr.selected td { background: var(--teal-soft); }
   font-size: 10px;
   color: var(--muted);
 }
+.drawer.is-modal:has(.rw-partner-modal) {
+  align-items: center;
+  justify-items: center;
+}
+.drawer.is-modal .drawer-panel:has(.rw-partner-modal) {
+  width: min(560px, calc(100vw - 40px));
+  height: fit-content;
+  max-height: min(86vh, 720px);
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.rw-partner-modal.umodal {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: auto;
+  flex: none;
+  max-height: none;
+}
+.rw-partner-modal .umodal-hero {
+  align-items: flex-start;
+  padding: 18px 20px 14px;
+}
+.rw-partner-modal .umodal-hero-copy { padding-right: 32px; }
+.rw-partner-modal .umodal-hero-copy h3 { margin: 2px 0 4px; font-size: 18px; }
+.rw-partner-modal .umodal-hero-copy .muted {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.rw-partner-modal .umodal-body {
+  padding: 4px 20px 12px;
+  flex: 0 1 auto;
+}
+.rw-partner-form {
+  display: grid;
+  gap: 12px;
+}
+.rw-partner-form h4 {
+  margin: 4px 0 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rw-partner-form h4:first-child { margin-top: 0; }
+.rw-partner-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+.rw-partner-grid .span-2,
+.rw-partner-form > .field { grid-column: 1 / -1; }
+.rw-partner-form .field { display: grid; gap: 5px; margin: 0; }
+.rw-partner-form .field > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.rw-partner-form input,
+.rw-partner-form select,
+.rw-partner-form textarea {
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+}
+.rw-partner-form textarea { min-height: 68px; resize: vertical; }
+@media (max-width: 560px) {
+  .rw-partner-grid { grid-template-columns: 1fr; }
+}
+.rw-partner-modal .umodal-foot {
+  padding: 12px 20px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.rw-partner-modal .badge.neutral {
+  background: var(--bg-raise);
+  color: var(--muted);
+  border-color: transparent;
+}
+@media (max-width: 560px) {
+  .rw-partner-grid { grid-template-columns: 1fr; }
+}
+
 #tab-rewards .badge.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
 #tab-rewards .badge.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
 #tab-rewards .badge.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }

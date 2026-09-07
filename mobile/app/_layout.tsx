@@ -272,6 +272,7 @@ function AppShell() {
               <Stack.Screen name="health-metrics" options={{ headerShown: false }} />
               <Stack.Screen name="weather" options={{ headerShown: false }} />
               <Stack.Screen name="medi-quest" options={{ headerShown: false }} />
+              <Stack.Screen name="medi-companion" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="chat" options={{ headerShown: false }} />
               <Stack.Screen name="module" options={{ headerShown: false }} />

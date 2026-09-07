@@ -64,30 +64,14 @@
     return `<span class="badge ${statusTone(s)}">${esc(statusKa(s))}</span>`;
   }
   function whenKa(iso) {
-    if (!iso) return '—';
-    try {
-      return new Date(iso).toLocaleString('ka-GE', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return String(iso).slice(0, 16);
-    }
+    return typeof fmtDate === 'function' ? fmtDate(iso) : iso || '—';
   }
   function dayKa(isoDay) {
     if (!isoDay) return '—';
-    try {
-      return new Date(`${isoDay}T12:00:00Z`).toLocaleDateString('ka-GE', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch {
-      return isoDay;
-    }
+    if (typeof adminDateParts !== 'function') return isoDay;
+    const p = adminDateParts(`${isoDay}T12:00:00Z`);
+    if (!p) return isoDay;
+    return `${WEEKDAYS_KA_SHORT[p.weekday]}, ${p.day} ${MONTHS_KA[p.month]}`;
   }
 
   async function apiRewards(path, options = {}) {
@@ -230,6 +214,134 @@
     $('rw-refresh')?.addEventListener('click', () => void renderRewards());
   }
 
+  function categoryOptions(selected) {
+    return Object.entries(CATEGORY_KA)
+      .map(([k, label]) => `<option value="${k}"${k === selected ? ' selected' : ''}>${esc(label)}</option>`)
+      .join('');
+  }
+
+  function openPartnerCreate() {
+    if (typeof openDrawer !== 'function') {
+      toast('ფორმა ვერ გაიხსნა', 'bad');
+      return;
+    }
+    openDrawer(
+      `
+      <div class="umodal rw-partner-modal">
+        <header class="umodal-hero">
+          <div class="umodal-hero-copy">
+            <p class="kicker">ჯილდოები</p>
+            <h3>ახალი პარტნიორი</h3>
+            <p class="muted">ინახება მონახაზად. მობილურ აპში არ გამოჩნდება გააქტიურებამდე.</p>
+          </div>
+          <button type="button" class="btn icon-only ghost umodal-close" id="drawer-cancel">${ico('x')}</button>
+        </header>
+        <div class="umodal-body">
+          <form id="rw-partner-form" class="rw-partner-form">
+            <h4>იდენტობა</h4>
+            <div class="rw-partner-grid">
+              <label class="field"><span>გასაღები</span>
+                <input id="rw-p-key" required minlength="3" maxlength="64" placeholder="MEDI_PHARMACY_DEMO" autocomplete="off" />
+              </label>
+              <label class="field"><span>საჩვენებელი სახელი</span>
+                <input id="rw-p-name" required maxlength="160" placeholder="მაგ. Aversi" />
+              </label>
+              <label class="field"><span>კატეგორია</span>
+                <select id="rw-p-cat">${categoryOptions('OTHER')}</select>
+              </label>
+              <label class="field"><span>ქვეყანა</span>
+                <input id="rw-p-country" maxlength="2" placeholder="GE" value="GE" />
+              </label>
+            </div>
+            <h4>კონტაქტი</h4>
+            <div class="rw-partner-grid">
+              <label class="field span-2"><span>ვებსაიტი</span>
+                <input id="rw-p-web" maxlength="300" placeholder="https://" />
+              </label>
+              <label class="field"><span>სახელი</span>
+                <input id="rw-p-contact" maxlength="120" />
+              </label>
+              <label class="field"><span>ელ-ფოსტა</span>
+                <input id="rw-p-email" type="email" maxlength="160" />
+              </label>
+            </div>
+            <h4>შენიშვნა</h4>
+            <label class="field"><span>მხოლოდ ადმინი — აპში არ ჩანს</span>
+              <textarea id="rw-p-notes" rows="2" maxlength="2000"></textarea>
+            </label>
+            <p id="rw-p-err" class="error hidden"></p>
+          </form>
+        </div>
+        <footer class="umodal-foot">
+          <span class="badge neutral">მონახაზი</span>
+          <div class="umodal-foot-right">
+            <button class="btn ghost" id="rw-p-cancel" type="button">გაუქმება</button>
+            <button class="btn primary" id="drawer-save" type="button">შექმნა</button>
+          </div>
+        </footer>
+      </div>
+    `,
+      { modal: true },
+    );
+    const keyEl = $('rw-p-key');
+    const nameEl = $('rw-p-name');
+    const errEl = $('rw-p-err');
+    keyEl?.addEventListener('input', () => {
+      keyEl.value = keyEl.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+    });
+    $('drawer-cancel').onclick = closeDrawer;
+    $('rw-p-cancel').onclick = closeDrawer;
+    const save = async () => {
+      const key = (keyEl?.value || '').trim();
+      const displayName = (nameEl?.value || '').trim();
+      if (errEl) {
+        errEl.textContent = '';
+        errEl.classList.add('hidden');
+      }
+      if (key.length < 3) {
+        toast('გასაღები მინიმუმ 3 სიმბოლო', 'bad');
+        return;
+      }
+      if (!displayName) {
+        toast('სახელი სავალდებულოა', 'bad');
+        return;
+      }
+      try {
+        $('drawer-save').disabled = true;
+        await apiRewards('/partners', {
+          method: 'POST',
+          body: {
+            key,
+            displayName,
+            status: 'DRAFT',
+            category: $('rw-p-cat')?.value || 'OTHER',
+            countryCode: ($('rw-p-country')?.value || '').trim().toUpperCase() || null,
+            website: ($('rw-p-web')?.value || '').trim() || null,
+            contactName: ($('rw-p-contact')?.value || '').trim() || null,
+            contactEmail: ($('rw-p-email')?.value || '').trim() || null,
+            notes: ($('rw-p-notes')?.value || '').trim() || null,
+          },
+        });
+        closeDrawer();
+        toast('პარტნიორი შეიქმნა', 'ok');
+        void renderRewards();
+      } catch (e) {
+        if (errEl) {
+          errEl.textContent = e.message || 'შეცდომა';
+          errEl.classList.remove('hidden');
+        }
+        toast(e.message || 'შეცდომა', 'bad');
+        $('drawer-save').disabled = false;
+      }
+    };
+    $('drawer-save').onclick = save;
+    $('rw-partner-form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      void save();
+    });
+    keyEl?.focus();
+  }
+
   async function renderPartners(root) {
     const data = await apiRewards('/partners');
     const items = data.items || [];
@@ -240,7 +352,7 @@
         <div>
           <p class="muted">კომერციული პარტნიორები — კონტაქტები და შენიშვნები მობილურზე არ ჩანს.</p>
         </div>
-        <button type="button" class="btn primary sm" id="rw-partner-create">${ico('zap')} ახალი პარტნიორი</button>
+        <button type="button" class="btn primary sm" id="rw-partner-create">${ico('zap')} ახალი პარტნიორის შექმნა</button>
       </header>
       <section class="card ops-card rw-table-card">
         ${
@@ -248,7 +360,7 @@
             ? emptyState(
                 'პარტნიორი ჯერ არ არის',
                 'შექმენით პარტნიორი, შემდეგ კამპანია. წარმოებაში ფიქტიური აფთიაქები/ლაბები ნუ გაააქტიურებთ.',
-                `<button type="button" class="btn primary sm" id="rw-partner-create-empty">პარტნიორის შექმნა</button>`,
+                `<button type="button" class="btn primary sm" id="rw-partner-create-empty">ახალი პარტნიორის შექმნა</button>`,
               )
             : `<div class="rw-table-wrap"><table class="table dense rw-table">
               <thead><tr><th>პარტნიორი</th><th>სტატუსი</th><th>კატეგორია</th><th>ქვეყანა</th><th></th></tr></thead>
@@ -275,23 +387,8 @@
     `,
     );
     bindSubnav(root);
-    const create = async () => {
-      const key = prompt('პარტნიორის გასაღები (მაგ. MEDI_PHARMACY_DEMO)');
-      if (!key) return;
-      const displayName = prompt('საჩვენებელი სახელი', key) || key;
-      try {
-        await apiRewards('/partners', {
-          method: 'POST',
-          body: { key, displayName, status: 'DRAFT', category: 'OTHER' },
-        });
-        toast('პარტნიორი შეიქმნა', 'ok');
-        void renderRewards();
-      } catch (e) {
-        toast(e.message || 'შეცდომა', 'bad');
-      }
-    };
-    $('rw-partner-create')?.addEventListener('click', create);
-    $('rw-partner-create-empty')?.addEventListener('click', create);
+    $('rw-partner-create')?.addEventListener('click', openPartnerCreate);
+    $('rw-partner-create-empty')?.addEventListener('click', openPartnerCreate);
     root.querySelectorAll('[data-pause-partner]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-pause-partner');

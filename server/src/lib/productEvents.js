@@ -22,6 +22,12 @@ export const PRODUCT_EVENT_KINDS = new Set([
   'achievement_claim_tapped',
   // Phase 5 smart quest ("why this goal?" sheet)
   'quest_why_target_opened',
+  // Phase 9 — Medi Companion (no health quantities)
+  'medi_companion_opened',
+  'medi_journey_opened',
+  'medi_journey_milestone_viewed',
+  'medi_cosmetic_equipped',
+  'medi_talk_tapped',
 ]);
 
 /** Server-authored only — never accepted from the client upsert path. */
@@ -32,6 +38,7 @@ export const SERVER_QUEST_EVENT_KINDS = Object.freeze([
   // Phase 5 — category carries buckets only (targetSource:difficulty:vN:cb0/1),
   // never the exact personalized target.
   'smart_quest_assigned',
+  'medi_journey_milestone_unlocked',
 ]);
 
 let tableReady = false;

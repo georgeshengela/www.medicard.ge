@@ -44,6 +44,12 @@ export async function saveRunSummary(summary: RunSummary): Promise<void> {
   await setScopedPreference(KEY, JSON.stringify(next));
 }
 
+export async function getRunById(id: string): Promise<RunSummary | null> {
+  if (!id) return null;
+  const list = await loadRunHistory();
+  return list.find((r) => r.id === id) ?? null;
+}
+
 export type RunTotals = { runs: number; distanceM: number; calories: number; pins: number; best: RunSummary | null };
 
 export function runTotals(list: RunSummary[]): RunTotals {

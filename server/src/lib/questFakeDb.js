@@ -68,6 +68,13 @@ function withInclude(row, include, state) {
   if (include.template) {
     out.template = clone(state.questTemplate.get(row.templateId) || null);
   }
+  if (include.userQuest) {
+    const uq = clone(state.userQuest.get(row.userQuestId) || null);
+    if (uq && include.userQuest.include?.template) {
+      uq.template = clone(state.questTemplate.get(uq.templateId) || null);
+    }
+    out.userQuest = uq;
+  }
   if (include.completions) {
     out.completions = [...state.questCompletion.values()].filter((item) => item.userQuestId === row.id).map(clone);
   }
@@ -222,6 +229,8 @@ export function createQuestFakeDb(seed = {}) {
     rewardInventoryAdjustment: new Map(),
     userRewardEntitlement: new Map(),
     rewardRedemptionAudit: new Map(),
+    mediCompanionProfile: new Map(),
+    mediJourneyUnlock: new Map(),
     queryCount: 0,
     queryByModel: {},
   };
@@ -328,6 +337,16 @@ export function createQuestFakeDb(seed = {}) {
     rewardRedemptionAudit: modelApi(state, 'rewardRedemptionAudit', {
       uniques: [],
     }),
+    mediCompanionProfile: modelApi(state, 'mediCompanionProfile', {
+      uniques: [{ name: 'userId', fields: ['userId'] }],
+      defaults: () => ({
+        selectedCosmetics: {},
+        selectedEnvironmentKey: 'env.day',
+      }),
+    }),
+    mediJourneyUnlock: modelApi(state, 'mediJourneyUnlock', {
+      uniques: [{ name: 'userId_milestoneKey', fields: ['userId', 'milestoneKey'] }],
+    }),
     _txTail: Promise.resolve(),
     async $transaction(fn, _opts) {
       if (Array.isArray(fn)) return Promise.all(fn);
@@ -354,6 +373,8 @@ export function createQuestFakeDb(seed = {}) {
         rewardInventoryAdjustment: clone([...state.rewardInventoryAdjustment.entries()]),
         userRewardEntitlement: clone([...state.userRewardEntitlement.entries()]),
         rewardRedemptionAudit: clone([...state.rewardRedemptionAudit.entries()]),
+        mediCompanionProfile: clone([...state.mediCompanionProfile.entries()]),
+        mediJourneyUnlock: clone([...state.mediJourneyUnlock.entries()]),
       };
       try {
         return await fn(db);
@@ -379,6 +400,8 @@ export function createQuestFakeDb(seed = {}) {
         state.rewardInventoryAdjustment = new Map(snap.rewardInventoryAdjustment);
         state.userRewardEntitlement = new Map(snap.userRewardEntitlement);
         state.rewardRedemptionAudit = new Map(snap.rewardRedemptionAudit);
+        state.mediCompanionProfile = new Map(snap.mediCompanionProfile);
+        state.mediJourneyUnlock = new Map(snap.mediJourneyUnlock);
         throw error;
       }
       });

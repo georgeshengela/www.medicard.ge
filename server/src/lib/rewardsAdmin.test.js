@@ -13,6 +13,7 @@ import {
   inventoryStockState,
   maskedUserRef,
   serializeCampaignForPartner,
+  upsertPartner,
   validateCampaignActivation,
   validateRewardActivation,
 } from './rewardsAdmin.js';
@@ -120,6 +121,50 @@ describe('phase 8 campaign lifecycle helpers', () => {
       entitlementKey: null,
     });
     assert.ok(errors.length > 0);
+  });
+});
+
+describe('phase 8 partner upsert', () => {
+  it('status-only activate keeps existing key and contact fields', async () => {
+    const existing = {
+      id: 'p1',
+      key: 'MEDI_PHARMACY_DEMO',
+      displayName: 'Aversi',
+      legalName: 'Aversi Ltd',
+      category: 'PHARMACY',
+      logoAssetKey: 'logo',
+      website: 'https://aversi.ge',
+      contactName: 'Nino',
+      contactEmail: 'nino@aversi.ge',
+      countryCode: 'GE',
+      notes: 'demo',
+      lowStockThreshold: 5,
+      status: 'DRAFT',
+    };
+    let updated = null;
+    const db = {
+      rewardPartner: {
+        findUnique: async ({ where }) => (where.id === existing.id ? { ...existing } : null),
+        update: async ({ data }) => {
+          updated = { ...existing, ...data };
+          return updated;
+        },
+      },
+    };
+    const row = await upsertPartner({ id: existing.id, status: 'ACTIVE' }, { admin: { email: 'qa@test' } }, { db });
+    assert.equal(row.status, 'ACTIVE');
+    assert.equal(row.key, 'MEDI_PHARMACY_DEMO');
+    assert.equal(row.displayName, 'Aversi');
+    assert.equal(row.contactEmail, 'nino@aversi.ge');
+    assert.equal(row.website, 'https://aversi.ge');
+    assert.equal(updated.notes, 'demo');
+  });
+
+  it('create still rejects a missing partner key', async () => {
+    await assert.rejects(
+      () => upsertPartner({ displayName: 'X', status: 'ACTIVE' }, {}, { db: { rewardPartner: {} } }),
+      /partner key invalid/,
+    );
   });
 });
 

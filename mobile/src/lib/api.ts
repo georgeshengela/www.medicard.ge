@@ -1655,6 +1655,41 @@ export const api = {
         '/api/rewards/entitlements',
       ),
   },
+
+  mediCompanion: {
+    overview: (query?: {
+      weatherKey?: string | null;
+      isComeback?: boolean;
+      recentEventKey?: string | null;
+      reducedMotion?: boolean;
+    }) => {
+      const qs = new URLSearchParams();
+      if (query?.weatherKey) qs.set('weatherKey', query.weatherKey);
+      if (query?.isComeback) qs.set('comeback', '1');
+      if (query?.recentEventKey) qs.set('recentEventKey', query.recentEventKey);
+      if (query?.reducedMotion) qs.set('reducedMotion', '1');
+      const q = qs.toString();
+      return request<import('@/lib/companion/api').CompanionOverview>(
+        `/api/medi-companion${q ? `?${q}` : ''}`,
+      );
+    },
+    journey: () =>
+      request<import('@/lib/companion/api').CompanionJourneyResponse>('/api/medi-companion/journey'),
+    collection: () =>
+      request<import('@/lib/companion/api').CompanionCollectionResponse>('/api/medi-companion/collection'),
+    putEquipment: (patch: Partial<import('@/lib/companion/api').CompanionEquipment>) =>
+      request<{ ok: boolean; equipment: import('@/lib/companion/api').CompanionEquipment }>(
+        '/api/medi-companion/equipment',
+        { method: 'PUT', body: patch },
+      ),
+    reconcile: () =>
+      request<{
+        ok: boolean;
+        units: number;
+        newlyUnlockedKeys: string[];
+        aggregateUnlockCount: number;
+      }>('/api/medi-companion/reconcile', { method: 'POST' }),
+  },
 };
 
 export function absoluteUrl(path: string | null): string | null {

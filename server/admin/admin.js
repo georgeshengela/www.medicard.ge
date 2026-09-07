@@ -212,14 +212,58 @@ function openDrawer(html, opts = {}) {
   document.body.classList.toggle('modal-open', Boolean(opts.modal));
 }
 
+const MONTHS_KA = [
+  'იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი',
+  'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი',
+];
+const MONTHS_KA_SHORT = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
+const WEEKDAYS_KA = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
+const WEEKDAYS_KA_SHORT = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
+
+function adminDateParts(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const map = {};
+  for (const part of new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tbilisi',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    weekday: 'short',
+    hour12: false,
+  }).formatToParts(date)) {
+    if (part.type !== 'literal') map[part.type] = part.value;
+  }
+  const weekdayKey = String(map.weekday || '').slice(0, 2).toLowerCase();
+  const weekday = { su: 0, mo: 1, tu: 2, we: 3, th: 4, fr: 5, sa: 6 }[weekdayKey];
+  return {
+    year: Number(map.year),
+    month: Number(map.month) - 1,
+    day: Number(map.day),
+    hour: String(map.hour || '00').padStart(2, '0'),
+    minute: String(map.minute || '00').padStart(2, '0'),
+    weekday: weekday ?? 0,
+  };
+}
+
 function fmtDate(value) {
-  if (!value) return '—';
-  return new Date(value).toLocaleString('ka-GE', { dateStyle: 'medium', timeStyle: 'short' });
+  const p = adminDateParts(value);
+  if (!p) return '—';
+  return `${p.day} ${MONTHS_KA[p.month]}, ${p.year}, ${p.hour}:${p.minute}`;
 }
 
 function fmtDateShort(value) {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('ka-GE', { day: '2-digit', month: 'short', year: 'numeric' });
+  const p = adminDateParts(value);
+  if (!p) return '—';
+  return `${p.day} ${MONTHS_KA[p.month]}, ${p.year}`;
+}
+
+function fmtDateCompact(value) {
+  const p = adminDateParts(value);
+  if (!p) return '—';
+  return `${p.day} ${MONTHS_KA_SHORT[p.month]}`;
 }
 
 function timelineDayKa(value) {
@@ -230,7 +274,7 @@ function timelineDayKa(value) {
   const diff = Math.round((start(new Date()) - start(date)) / 86400000);
   if (diff === 0) return 'დღეს';
   if (diff === 1) return 'გუშინ';
-  return date.toLocaleDateString('ka-GE', { dateStyle: 'medium' });
+  return fmtDateShort(value);
 }
 
 function toDateInput(value) {
@@ -480,7 +524,7 @@ function usersTrendHtml(trend) {
   const max = Math.max(1, ...rows.map((d) => d.count));
   return `<div class="users-trend">${rows.map((d) => {
     const date = new Date(`${d.day}T00:00:00.000Z`);
-    const short = date.toLocaleDateString('ka-GE', { day: 'numeric', month: 'short' });
+    const short = fmtDateCompact(date);
     const h = Math.max(8, Math.round((d.count / max) * 100));
     return `<div class="users-trend-col" title="${escapeAttr(short)}: ${d.count}">
       <span class="users-trend-val">${d.count || ''}</span>
@@ -2651,20 +2695,10 @@ function pushPreviewCopy(text, vars = {}) {
 }
 
 function pushNowParts() {
-  const now = new Date();
+  const p = adminDateParts(new Date());
   return {
-    time: now.toLocaleTimeString('ka-GE', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: 'Asia/Tbilisi',
-    }),
-    date: now.toLocaleDateString('ka-GE', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      timeZone: 'Asia/Tbilisi',
-    }),
+    time: `${p.hour}:${p.minute}`,
+    date: `${WEEKDAYS_KA[p.weekday]}, ${p.day} ${MONTHS_KA[p.month]}`,
   };
 }
 
@@ -4129,9 +4163,9 @@ async function renderPharmacy() {
 }
 
 function fmtSmsDate(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleString('ka-GE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const p = adminDateParts(iso);
+  if (!p) return '—';
+  return `${p.day} ${MONTHS_KA_SHORT[p.month]}, ${p.hour}:${p.minute}`;
 }
 
 function smsStatusTone(status) {

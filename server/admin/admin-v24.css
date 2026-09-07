@@ -1135,7 +1135,9 @@ td.mono { font-family: var(--mono); font-size: 12px; }
   display: grid;
   gap: 16px;
   padding-bottom: 28px;
-  max-width: 1120px;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
 }
 .user-page-loading {
   display: flex;
@@ -1280,10 +1282,11 @@ td.mono { font-family: var(--mono); font-size: 12px; }
 .user-pane.is-on { display: block; }
 .user-overview {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
-  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  gap: 28px 40px;
   align-items: start;
 }
+.user-overview-facts { min-width: 0; }
 .user-overview-edit {
   margin: 0;
   padding: 18px 18px 16px;

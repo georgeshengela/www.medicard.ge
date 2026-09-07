@@ -38,7 +38,66 @@ const EXPECTED_KEYS = [
 ];
 
 /**
+ * Hand-authored Phase 4 rarity catalog (NOT derived from achievementDefs.js).
+ * Source of truth for the integrity audit — regenerating this from defs would
+ * only snapshot implementation drift.
+ */
+const CANONICAL_RARITY_BY_KEY = Object.freeze({
+  FIRST_QUEST: 'COMMON',
+  FIRST_CLAIM: 'COMMON',
+  FIRST_WEEKLY: 'UNCOMMON',
+  QUESTS_5: 'COMMON',
+  QUESTS_10: 'COMMON',
+  QUESTS_25: 'UNCOMMON',
+  QUESTS_50: 'UNCOMMON',
+  QUESTS_100: 'RARE',
+  QUESTS_250: 'EPIC',
+  QUESTS_500: 'LEGENDARY',
+  STREAK_3: 'COMMON',
+  STREAK_7: 'UNCOMMON',
+  STREAK_14: 'UNCOMMON',
+  STREAK_30: 'RARE',
+  STREAK_60: 'RARE',
+  STREAK_100: 'EPIC',
+  STREAK_365: 'LEGENDARY',
+  MOVE_3: 'COMMON',
+  MOVE_10: 'COMMON',
+  MOVE_25: 'UNCOMMON',
+  MOVE_50: 'RARE',
+  MOVE_100: 'EPIC',
+  MOVE_250: 'LEGENDARY',
+  HYDRATE_3: 'COMMON',
+  HYDRATE_10: 'COMMON',
+  HYDRATE_25: 'UNCOMMON',
+  HYDRATE_50: 'RARE',
+  HYDRATE_100: 'EPIC',
+  MEDI_3: 'COMMON',
+  MEDI_10: 'COMMON',
+  MEDI_25: 'UNCOMMON',
+  MEDI_50: 'RARE',
+  MEDI_100: 'EPIC',
+  WEEKLY_3: 'UNCOMMON',
+  WEEKLY_10: 'RARE',
+  WEEKLY_25: 'EPIC',
+  WEEKLY_52: 'LEGENDARY',
+  LEVEL_5: 'COMMON',
+  LEVEL_10: 'UNCOMMON',
+  LEVEL_20: 'RARE',
+  LEVEL_30: 'RARE',
+  LEVEL_40: 'EPIC',
+  LEVEL_50: 'LEGENDARY',
+  COINS_EARNED_500: 'COMMON',
+  COINS_EARNED_2500: 'UNCOMMON',
+  COINS_EARNED_10000: 'RARE',
+  COINS_EARNED_25000: 'EPIC',
+  COMEBACK: 'UNCOMMON',
+  EARLY_BIRD: 'UNCOMMON',
+  NIGHT_OWL: 'UNCOMMON',
+});
+
+/**
  * Locked Phase 4 economy snapshot: [rarity, threshold, rewardXp, rewardCoins, isSecret].
+ * Hand-authored from the Phase 4 specification — NOT generated from achievementDefs.js.
  * Rewards are explicit per definition — rarity NEVER derives them.
  * Any accidental change to threshold / rarity / rewards / secrecy fails here.
  */
@@ -64,8 +123,8 @@ const EXPECTED_ECONOMY = {
   MOVE_10: ['COMMON', 10, 60, 30, false],
   MOVE_25: ['UNCOMMON', 25, 120, 60, false],
   MOVE_50: ['RARE', 50, 250, 125, false],
-  MOVE_100: ['RARE', 100, 500, 250, false],
-  MOVE_250: ['EPIC', 250, 1000, 500, false],
+  MOVE_100: ['EPIC', 100, 500, 250, false],
+  MOVE_250: ['LEGENDARY', 250, 1000, 500, false],
   HYDRATE_3: ['COMMON', 3, 30, 15, false],
   HYDRATE_10: ['COMMON', 10, 60, 30, false],
   HYDRATE_25: ['UNCOMMON', 25, 120, 60, false],
@@ -76,10 +135,10 @@ const EXPECTED_ECONOMY = {
   MEDI_25: ['UNCOMMON', 25, 120, 60, false],
   MEDI_50: ['RARE', 50, 250, 125, false],
   MEDI_100: ['EPIC', 100, 500, 250, false],
-  WEEKLY_3: ['COMMON', 3, 100, 50, false],
-  WEEKLY_10: ['UNCOMMON', 10, 250, 125, false],
-  WEEKLY_25: ['RARE', 25, 600, 300, false],
-  WEEKLY_52: ['EPIC', 52, 1000, 500, false],
+  WEEKLY_3: ['UNCOMMON', 3, 100, 50, false],
+  WEEKLY_10: ['RARE', 10, 250, 125, false],
+  WEEKLY_25: ['EPIC', 25, 600, 300, false],
+  WEEKLY_52: ['LEGENDARY', 52, 1000, 500, false],
   LEVEL_5: ['COMMON', 5, 50, 25, false],
   LEVEL_10: ['UNCOMMON', 10, 100, 50, false],
   LEVEL_20: ['RARE', 20, 250, 125, false],
@@ -182,9 +241,35 @@ describe('phase 4 catalog', () => {
   it('rewards are per-definition, not uniform per rarity', () => {
     // Same rarity, different rewards — proves rarity does not derive the economy.
     const byKey = new Map(ACHIEVEMENT_DEFINITIONS.map((d) => [d.key, d]));
-    assert.notEqual(byKey.get('QUESTS_5').rewardXp, byKey.get('WEEKLY_3').rewardXp); // both COMMON
-    assert.notEqual(byKey.get('STREAK_7').rewardXp, byKey.get('WEEKLY_10').rewardXp); // both UNCOMMON
+    assert.notEqual(byKey.get('QUESTS_5').rewardXp, byKey.get('STREAK_3').rewardXp); // both COMMON
+    assert.notEqual(byKey.get('FIRST_WEEKLY').rewardXp, byKey.get('WEEKLY_3').rewardXp); // both UNCOMMON
     assert.notEqual(byKey.get('QUESTS_500').rewardXp, byKey.get('STREAK_365').rewardXp); // both LEGENDARY
+  });
+
+  it('hand-authored canonical rarity map has 50 unique keys and exact per-key match', () => {
+    const canonicalKeys = Object.keys(CANONICAL_RARITY_BY_KEY);
+    assert.equal(canonicalKeys.length, 50);
+    assert.equal(new Set(canonicalKeys).size, 50);
+    assert.deepEqual([...canonicalKeys].sort(), [...EXPECTED_KEYS].sort());
+
+    const dist = Object.fromEntries(ACHIEVEMENT_RARITIES.map((r) => [r, 0]));
+    for (const rarity of Object.values(CANONICAL_RARITY_BY_KEY)) dist[rarity] += 1;
+    assert.deepEqual(dist, {
+      COMMON: 13,
+      UNCOMMON: 14,
+      RARE: 10,
+      EPIC: 8,
+      LEGENDARY: 5,
+    });
+
+    for (const def of ACHIEVEMENT_DEFINITIONS) {
+      assert.equal(def.rarity, CANONICAL_RARITY_BY_KEY[def.key], def.key);
+      assert.equal(EXPECTED_ECONOMY[def.key][0], CANONICAL_RARITY_BY_KEY[def.key], def.key);
+    }
+    assert.equal(CANONICAL_RARITY_BY_KEY.FIRST_WEEKLY, 'UNCOMMON');
+    assert.equal(CANONICAL_RARITY_BY_KEY.COMEBACK, 'UNCOMMON');
+    assert.equal(CANONICAL_RARITY_BY_KEY.EARLY_BIRD, 'UNCOMMON');
+    assert.equal(CANONICAL_RARITY_BY_KEY.NIGHT_OWL, 'UNCOMMON');
   });
 
   it('Phase 8.1: FIRST_WEEKLY and COMEBACK are UNCOMMON (presentation only)', () => {
@@ -201,14 +286,13 @@ describe('phase 4 catalog', () => {
     assert.equal(ACHIEVEMENT_DEFINITIONS.length, 50);
     const counts = Object.fromEntries(ACHIEVEMENT_RARITIES.map((r) => [r, 0]));
     for (const def of ACHIEVEMENT_DEFINITIONS) counts[def.rarity] += 1;
-    // After Phase 8.1 rarity corrections (FIRST_WEEKLY + COMEBACK → UNCOMMON).
-    // Original Phase 4 marketing table (13/14/10/8/5) differs; do not force-rewrite.
+    // Derived from the explicit Phase 4 per-key rarity list (not a marketing summary).
     assert.deepEqual(counts, {
-      COMMON: 14,
+      COMMON: 13,
       UNCOMMON: 14,
-      RARE: 11,
+      RARE: 10,
       EPIC: 8,
-      LEGENDARY: 3,
+      LEGENDARY: 5,
     });
   });
 
@@ -248,6 +332,57 @@ describe('phase 4 catalog', () => {
     assert.equal(second.upserted, 50);
     const rows = await db.achievementDefinition.findMany({});
     assert.equal(rows.length, 50);
+  });
+
+  it('rarity-only seed resync creates no RewardLedger rows and preserves claim state', async () => {
+    const { db } = await setup();
+    await ensureAchievementDefinitions(db);
+
+    // Poison rarities to the pre-correction values (presentation drift only).
+    const poison = {
+      MOVE_100: 'RARE',
+      MOVE_250: 'EPIC',
+      WEEKLY_3: 'COMMON',
+      WEEKLY_10: 'UNCOMMON',
+      WEEKLY_25: 'RARE',
+      WEEKLY_52: 'EPIC',
+    };
+    for (const [key, rarity] of Object.entries(poison)) {
+      await db.achievementDefinition.update({ where: { key }, data: { rarity } });
+    }
+
+    const move100 = await db.achievementDefinition.findUnique({ where: { key: 'MOVE_100' } });
+    await db.userAchievement.create({
+      data: {
+        userId: USER,
+        achievementId: move100.id,
+        progressAtUnlock: 100,
+        status: 'CLAIMED',
+        claimedAt: NOW,
+      },
+    });
+
+    const ledgerBefore = await db.rewardLedger.findMany({});
+    const unlocksBefore = await db.userAchievement.findMany({ where: { userId: USER } });
+    assert.equal(ledgerBefore.length, 0);
+
+    await ensureAchievementDefinitions(db);
+
+    const ledgerAfter = await db.rewardLedger.findMany({});
+    const unlocksAfter = await db.userAchievement.findMany({ where: { userId: USER } });
+    assert.equal(ledgerAfter.length, 0);
+    assert.equal(unlocksAfter.length, unlocksBefore.length);
+    assert.equal(unlocksAfter[0].status, 'CLAIMED');
+    assert.equal(unlocksAfter[0].claimedAt?.toISOString?.() || unlocksAfter[0].claimedAt, unlocksBefore[0].claimedAt?.toISOString?.() || unlocksBefore[0].claimedAt);
+
+    for (const [key, rarity] of Object.entries(CANONICAL_RARITY_BY_KEY)) {
+      if (!(key in poison) && !['MOVE_100', 'MOVE_250', 'WEEKLY_3', 'WEEKLY_10', 'WEEKLY_25', 'WEEKLY_52'].includes(key)) continue;
+      const row = await db.achievementDefinition.findUnique({ where: { key } });
+      assert.equal(row.rarity, rarity, key);
+      assert.equal(row.rewardXp, EXPECTED_ECONOMY[key][2], key);
+      assert.equal(row.rewardCoins, EXPECTED_ECONOMY[key][3], key);
+      assert.equal(row.threshold, EXPECTED_ECONOMY[key][1], key);
+    }
   });
 });
 

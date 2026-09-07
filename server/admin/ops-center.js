@@ -334,7 +334,7 @@ async function renderCommandCenter() {
 
   const meta = overview;
   $('ops-meta').innerHTML = [
-    `<span id="ops-live-clock">ბოლო განახლება <time id="ops-live-at">${opsEscape(new Date(meta.refreshedAt).toLocaleString('ka-GE'))}</time></span>`,
+    `<span id="ops-live-clock">ბოლო განახლება <time id="ops-live-at">${opsEscape(fmtDate(meta.refreshedAt))}</time></span>`,
     meta.environment,
     meta.appVersion ? `აპი ${meta.appVersion}` : null,
     `${meta.range?.label || ''} · ${meta.range?.timezone}`,
@@ -375,7 +375,7 @@ async function renderCommandCenter() {
 
   const sys = system || {};
   $('ops-system').innerHTML = `
-    <div class="card-head">${opsTile('activity')}<div><h3>სისტემა</h3><p class="muted">ბოლო შემოწმება ${sys.refreshedAt ? new Date(sys.refreshedAt).toLocaleString('ka-GE') : '—'}</p></div>
+    <div class="card-head">${opsTile('activity')}<div><h3>სისტემა</h3><p class="muted">ბოლო შემოწმება ${sys.refreshedAt ? fmtDate(sys.refreshedAt) : '—'}</p></div>
     <button class="btn tiny ghost" data-go="quality">ხარისხი</button></div>
     <div class="ops-sys">
       ${[
@@ -1451,7 +1451,7 @@ function patchOpsLive(snap) {
   setKpi('activeToday', snap.activeToday);
   if (opsState.range === 'today') setKpi('newUsers', snap.newUsersToday);
   const at = $('ops-live-at');
-  if (at && snap.refreshedAt) at.textContent = new Date(snap.refreshedAt).toLocaleString('ka-GE');
+  if (at && snap.refreshedAt) at.textContent = fmtDate(snap.refreshedAt);
 }
 
 window.patchOpsLive = patchOpsLive;
