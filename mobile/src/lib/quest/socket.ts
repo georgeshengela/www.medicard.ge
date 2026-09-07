@@ -1,7 +1,12 @@
 import { io, type Socket } from 'socket.io-client';
 import { getToken } from '@/lib/storage';
 import { QUEST_SOCKET_URL } from './api';
-import { requestQuestRefresh } from './cache';
+import {
+  presentAchievementUnlock,
+  requestAchievementsRefresh,
+  requestQuestRefresh,
+  type AchievementUnlockShow,
+} from './cache';
 import { celebrationKey, shouldCelebrate } from './logic.js';
 
 type CompletedPayload = {
@@ -56,6 +61,18 @@ export async function connectQuestSocket() {
   socket.on('quest:reward_claimed', (payload: ClaimedPayload) => {
     if (!payload?.questId) return;
     markQuestCelebration('claimed-socket', payload.questId);
+    requestQuestRefresh();
+  });
+  socket.on('achievement:unlocked', (payload: AchievementUnlockShow & { unlockedAt?: string }) => {
+    if (!payload?.achievementId) return;
+    requestAchievementsRefresh();
+    if (!markQuestCelebration('achievement-unlocked', payload.achievementId, payload.unlockedAt || '')) return;
+    presentAchievementUnlock(payload);
+  });
+  socket.on('achievement:claimed', (payload: { achievementId?: string }) => {
+    if (!payload?.achievementId) return;
+    markQuestCelebration('achievement-claimed', payload.achievementId);
+    requestAchievementsRefresh();
     requestQuestRefresh();
   });
 }

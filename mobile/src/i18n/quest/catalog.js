@@ -59,6 +59,9 @@ const TEXT = {
     untilSunday: 'კვირამდე',
     history: 'ისტორია',
     wallet: 'ბალანსი',
+    rewardsStore: 'ჯილდოები',
+    useMediCoins: 'გამოიყენე Medi Coins',
+    ledgerRedeem: 'Medi ჯილდო',
     retry: 'ხელახლა',
     completed: 'მისია შესრულდა',
     claimed: 'ჯილდო მიღებულია',
@@ -100,6 +103,11 @@ const TEXT = {
     unlockSteps: 'გახსენი მოძრაობის მისიები',
     unlockHydro: 'გახსენი წყლის მისიები',
     mission: 'მისია',
+    ledgerAchievement: 'მიღწევა',
+    ledgerSystem: 'სისტემური კორექტირება',
+    ledgerAdmin: 'ადმინისტრაციული კორექტირება',
+    ledgerUnknown: 'ბალანსის კორექტირება',
+    ledgerRedeem: 'Medi ჯილდო',
     back: 'უკან',
     dailyMissions: 'დღის მისიები',
     maxLevel: 'მაქსიმალური დონე',
@@ -107,6 +115,79 @@ const TEXT = {
     balanceLabel: 'ბალანსი',
     allDoneToday: 'დღეს ყველაფერი შესრულებულია',
     tapToOpen: 'ყველა მისია',
+    // Phase 5 — Smart Quest contextual lines (one per movement card, rotated deterministically).
+    smart: {
+      PERSONAL_BASELINE: [
+        'შენს ჩვეულ რიტმს მოვარგე.',
+        'ეს მიზანი შენს ბოლო დღეებს ეყრდნობა — ოდნავ მეტი, ზეწოლის გარეშე.',
+        'დღევანდელი მიზანი შენს ტემპზეა მორგებული.',
+        'შენი რიტმიდან გამოვედი — ოდნავ წინ, მშვიდად.',
+      ],
+      DEFAULT_TARGET: [
+        'ჯერ შენს ჩვეულ რიტმს ვეცნობი.',
+        'რამდენიმე დღეში მიზანი უფრო პერსონალური გახდება.',
+        'ვიწყებთ მშვიდი, სტანდარტული მიზნით.',
+      ],
+      COMEBACK_EASY: [
+        'დავიწყოთ მარტივად.',
+        'დღეს მთავარი დაბრუნებაა, არა რეკორდი.',
+        'პატარა ნაბიჯიც პროგრესია.',
+        'დღეს რეკორდები არ გვჭირდება — უბრალოდ დავუბრუნდეთ რიტმს.',
+      ],
+      STRUGGLING_ADJUSTED: [
+        'დღეს ოდნავ მსუბუქი მიზანია — მთავარია რიტმი.',
+        'პატარა მიზანი დღეს უფრო რეალურია. ეს კარგია.',
+        'დღეს მიზანი შეგნებულად მსუბუქია — შენს ტემპში.',
+      ],
+      EVENING_GENTLE: [
+        'რაც დღეს მოასწარი, ისიც პროგრესია.',
+        'საღამო მშვიდად ჩაივლის — ზეწოლის გარეშე.',
+        'დღეს რაც გამოვიდა, ისიც ითვლება.',
+      ],
+      NEAR_COMPLETION: [
+        'ცოტა დაგვრჩა.',
+        'ცოტაც — და მისია მზადაა.',
+        'თუ მოგინდება, პატარა გასეირნებაც საკმარისია.',
+      ],
+      RAIN_INDOOR: [
+        'დღეს წვიმაა — მოძრაობა სახლშიც ითვლება.',
+        'გარეთ წვიმს. არაუშავს — სახლში მოძრაობაც ითვლება 😄',
+        'წვიმიან დღესაც ითვლება ყველა ნაბიჯი.',
+      ],
+      HIGH_UV: [
+        'თუ გარეთ გახვალ, უფრო კომფორტული დრო მოგვიანებით შეიძლება იყოს.',
+        'მზე ძლიერია — ჩრდილი ან მოგვიანებით გასვლა უფრო კომფორტულია.',
+      ],
+      WINDY: [
+        'გარეთ ქარია — დღევანდელი მოძრაობა შენს ტემპში გააგრძელე.',
+        'ქარიან დღეს სახლის ნაბიჯებიც ითვლება.',
+      ],
+      SEVERE_INDOOR: [
+        'დღეს ამინდი მკაცრია — მოძრაობა სახლშიც ითვლება.',
+        'გარეთ გასვლა არ არის საჭირო — ყველა ნაბიჯი ითვლება.',
+      ],
+      PAIN_NEUTRAL: [
+        'დღევანდელი მოძრაობა შენს ტემპში ითვლება.',
+        'დღეს შენს ტემპზე ვმოძრაობთ — ზეწოლის გარეშე.',
+      ],
+      MORNING_CALM: [
+        'დღე წინ არის — შეგიძლია მშვიდად გადაანაწილო.',
+        'დილიდანვე ჩქარობა არ გვჭირდება.',
+        'ნელა დავიწყოთ — დრო საკმარისია.',
+      ],
+    },
+    smartWindow: (start, end) => [
+      `დღეს სასეირნოდ კარგი დროა ${start}–${end}.`,
+      `კარგი ამინდია — ${start}–${end} სასიამოვნო დროა გასეირნებისთვის.`,
+      `თუ გასეირნება მოგინდება, ${start}–${end} კარგი მონაკვეთია.`,
+    ],
+    whyTarget: {
+      button: 'რატომ ეს მიზანი?',
+      title: 'რატომ ეს მიზანი?',
+      personalized: 'ეს მიზანი შენს ბოლო დღეების აქტივობას ეყრდნობა — ოდნავ მეტი მოძრაობა, ზედმეტი ზეწოლის გარეშე.',
+      comeback: 'დღეს უფრო მსუბუქი მიზანია — მთავარია მშვიდად დაბრუნდე რიტმში.',
+      default: 'ჯერ შენს ჩვეულ რიტმს ვეცნობი. რამდენიმე დღის შემდეგ მიზანი უფრო პერსონალური გახდება.',
+    },
     mood: {
       fresh_day: ['დღეს მშვიდად დავიწყოთ 💚', 'ერთი პატარა ნაბიჯიც კარგი დღეა.'],
       progress_started: ['ნელა ვაგრძელებთ.', 'დღეს ჯერ კიდევ არის დრო.'],
@@ -129,6 +210,9 @@ const TEXT = {
     untilSunday: 'Until Sunday',
     history: 'History',
     wallet: 'Balance',
+    rewardsStore: 'Rewards',
+    useMediCoins: 'Use Medi Coins',
+    ledgerRedeem: 'Medi reward',
     retry: 'Try again',
     completed: 'Mission complete',
     claimed: 'Reward claimed',
@@ -167,6 +251,11 @@ const TEXT = {
     unlockSteps: 'Unlock movement missions',
     unlockHydro: 'Unlock hydration missions',
     mission: 'Mission',
+    ledgerAchievement: 'Achievement',
+    ledgerSystem: 'System adjustment',
+    ledgerAdmin: 'Admin adjustment',
+    ledgerUnknown: 'Balance adjustment',
+    ledgerRedeem: 'Medi reward',
     back: 'Back',
     weatherBest: (start, end) => `Best time: ${start}–${end}`,
     days: 'Mon–Sun',
@@ -177,6 +266,78 @@ const TEXT = {
     balanceLabel: 'Balance',
     allDoneToday: 'Everything is done for today',
     tapToOpen: 'All missions',
+    smart: {
+      PERSONAL_BASELINE: [
+        'Fitted to your usual rhythm.',
+        'This goal follows your recent days — a little more, no pressure.',
+        'Today’s goal matches your own pace.',
+        'Built from your rhythm — a gentle step ahead.',
+      ],
+      DEFAULT_TARGET: [
+        'Still getting to know your rhythm.',
+        'In a few days the goal becomes more personal.',
+        'Starting with a calm, standard goal.',
+      ],
+      COMEBACK_EASY: [
+        'Let’s start easy.',
+        'Today is about coming back, not records.',
+        'Even a small step is progress.',
+        'No records needed today — just back into rhythm.',
+      ],
+      STRUGGLING_ADJUSTED: [
+        'A slightly lighter goal today — rhythm matters most.',
+        'A smaller goal is more real today. That’s good.',
+        'Today’s goal is intentionally lighter — at your pace.',
+      ],
+      EVENING_GENTLE: [
+        'Whatever you managed today still counts.',
+        'The evening can stay calm — no pressure.',
+        'What you did today is progress too.',
+      ],
+      NEAR_COMPLETION: [
+        'Almost there.',
+        'A little more and the mission is done.',
+        'If you feel like it, a short walk is enough.',
+      ],
+      RAIN_INDOOR: [
+        'It’s raining today — indoor movement counts too.',
+        'Rain outside. No worries — steps at home count 😄',
+        'Every step counts, even on a rainy day.',
+      ],
+      HIGH_UV: [
+        'If you go out, later might be more comfortable.',
+        'Strong sun — shade or a later walk is more comfortable.',
+      ],
+      WINDY: [
+        'Windy outside — keep today’s movement at your own pace.',
+        'On a windy day, steps at home count too.',
+      ],
+      SEVERE_INDOOR: [
+        'Rough weather today — movement counts indoors too.',
+        'No need to go outside — every step counts.',
+      ],
+      PAIN_NEUTRAL: [
+        'Today’s movement counts at your own pace.',
+        'We move at your pace today — no pressure.',
+      ],
+      MORNING_CALM: [
+        'The day is ahead — you can spread it out calmly.',
+        'No need to rush the morning.',
+        'Let’s start slow — there is time.',
+      ],
+    },
+    smartWindow: (start, end) => [
+      `A good time for a walk today: ${start}–${end}.`,
+      `Nice weather — ${start}–${end} is a pleasant window for a walk.`,
+      `If you feel like a walk, ${start}–${end} is a good window.`,
+    ],
+    whyTarget: {
+      button: 'Why this goal?',
+      title: 'Why this goal?',
+      personalized: 'This goal is based on your recent days of activity — a little more movement, without extra pressure.',
+      comeback: 'Today’s goal is lighter — what matters is easing back into rhythm.',
+      default: 'I’m still getting to know your usual rhythm. In a few days the goal becomes more personal.',
+    },
     mood: {
       fresh_day: ['Let’s start the day gently 💚', 'Even one small step is a good day.', 'Today can stay unhurried.'],
       progress_started: ['We keep going, steadily.', 'There is still time today.', 'Small progress still counts.'],
@@ -199,6 +360,9 @@ const TEXT = {
     untilSunday: 'Jusqu’à dimanche',
     history: 'Historique',
     wallet: 'Solde',
+    rewardsStore: 'Récompenses',
+    useMediCoins: 'Utiliser Medi Coins',
+    ledgerRedeem: 'Récompense Medi',
     retry: 'Réessayer',
     completed: 'Mission accomplie',
     claimed: 'Récompense reçue',
@@ -237,6 +401,11 @@ const TEXT = {
     unlockSteps: 'Ouvrir les missions de mouvement',
     unlockHydro: 'Ouvrir les missions d’hydratation',
     mission: 'Mission',
+    ledgerAchievement: 'Succès',
+    ledgerSystem: 'Ajustement système',
+    ledgerAdmin: 'Ajustement admin',
+    ledgerUnknown: 'Ajustement du solde',
+    ledgerRedeem: 'Récompense Medi',
     back: 'Retour',
     weatherBest: (start, end) => `Meilleur moment : ${start}–${end}`,
     days: 'Lun–Dim',
@@ -247,6 +416,78 @@ const TEXT = {
     balanceLabel: 'Solde',
     allDoneToday: 'Tout est fait pour aujourd’hui',
     tapToOpen: 'Toutes les missions',
+    smart: {
+      PERSONAL_BASELINE: [
+        'Ajusté à ton rythme habituel.',
+        'Cet objectif suit tes derniers jours — un peu plus, sans pression.',
+        'L’objectif du jour est calé sur ton propre rythme.',
+        'Construit sur ton rythme — un pas doux en avant.',
+      ],
+      DEFAULT_TARGET: [
+        'J’apprends encore ton rythme.',
+        'Dans quelques jours, l’objectif deviendra plus personnel.',
+        'On commence avec un objectif calme et standard.',
+      ],
+      COMEBACK_EASY: [
+        'Commençons en douceur.',
+        'Aujourd’hui, on revient — pas de records.',
+        'Même un petit pas est un progrès.',
+        'Pas besoin de record aujourd’hui — on retrouve juste le rythme.',
+      ],
+      STRUGGLING_ADJUSTED: [
+        'Un objectif un peu plus léger aujourd’hui — le rythme compte avant tout.',
+        'Un objectif plus petit est plus réaliste aujourd’hui. C’est très bien.',
+        'L’objectif du jour est volontairement plus léger — à ton rythme.',
+      ],
+      EVENING_GENTLE: [
+        'Ce que tu as fait aujourd’hui compte déjà.',
+        'La soirée peut rester tranquille — sans pression.',
+        'Ce qui est fait aujourd’hui est déjà un progrès.',
+      ],
+      NEAR_COMPLETION: [
+        'Plus que très peu.',
+        'Encore un peu et la mission est faite.',
+        'Si tu en as envie, une petite marche suffit.',
+      ],
+      RAIN_INDOOR: [
+        'Il pleut aujourd’hui — bouger à la maison compte aussi.',
+        'Pluie dehors. Pas grave — les pas à la maison comptent 😄',
+        'Chaque pas compte, même un jour de pluie.',
+      ],
+      HIGH_UV: [
+        'Si tu sors, plus tard sera peut-être plus agréable.',
+        'Soleil fort — l’ombre ou une sortie plus tardive sera plus confortable.',
+      ],
+      WINDY: [
+        'Il y a du vent — continue le mouvement du jour à ton rythme.',
+        'Un jour venteux, les pas à la maison comptent aussi.',
+      ],
+      SEVERE_INDOOR: [
+        'Météo difficile aujourd’hui — bouger à l’intérieur compte aussi.',
+        'Pas besoin de sortir — chaque pas compte.',
+      ],
+      PAIN_NEUTRAL: [
+        'Le mouvement du jour compte à ton propre rythme.',
+        'Aujourd’hui, on avance à ton rythme — sans pression.',
+      ],
+      MORNING_CALM: [
+        'La journée est devant toi — tu peux répartir calmement.',
+        'Pas besoin de se presser le matin.',
+        'Commençons doucement — il y a le temps.',
+      ],
+    },
+    smartWindow: (start, end) => [
+      `Un bon moment pour marcher aujourd’hui : ${start}–${end}.`,
+      `Beau temps — ${start}–${end} est un créneau agréable pour marcher.`,
+      `Si tu veux marcher, ${start}–${end} est un bon créneau.`,
+    ],
+    whyTarget: {
+      button: 'Pourquoi cet objectif ?',
+      title: 'Pourquoi cet objectif ?',
+      personalized: 'Cet objectif s’appuie sur ton activité des derniers jours — un peu plus de mouvement, sans pression inutile.',
+      comeback: 'L’objectif du jour est plus léger — l’essentiel est de retrouver ton rythme en douceur.',
+      default: 'J’apprends encore ton rythme habituel. Dans quelques jours, l’objectif deviendra plus personnel.',
+    },
     mood: {
       fresh_day: ['On commence doucement aujourd’hui 💚', 'Un petit pas suffit pour bien commencer.', 'Aujourd’hui, sans se presser.'],
       progress_started: ['On avance, sans se presser.', 'Il reste encore du temps aujourd’hui.', 'Chaque petit pas compte.'],
@@ -269,6 +510,9 @@ const TEXT = {
     untilSunday: 'До воскресенья',
     history: 'История',
     wallet: 'Баланс',
+    rewardsStore: 'Награды',
+    useMediCoins: 'Использовать Medi Coins',
+    ledgerRedeem: 'Награда Medi',
     retry: 'Повторить',
     completed: 'Миссия выполнена',
     claimed: 'Награда получена',
@@ -307,6 +551,11 @@ const TEXT = {
     unlockSteps: 'Открой миссии движения',
     unlockHydro: 'Открой водные миссии',
     mission: 'Миссия',
+    ledgerAchievement: 'Достижение',
+    ledgerSystem: 'Системная корректировка',
+    ledgerAdmin: 'Админ-корректировка',
+    ledgerUnknown: 'Корректировка баланса',
+    ledgerRedeem: 'Награда Medi',
     back: 'Назад',
     weatherBest: (start, end) => `Лучшее время: ${start}–${end}`,
     days: 'Пн–Вс',
@@ -317,6 +566,78 @@ const TEXT = {
     balanceLabel: 'Баланс',
     allDoneToday: 'На сегодня всё выполнено',
     tapToOpen: 'Все миссии',
+    smart: {
+      PERSONAL_BASELINE: [
+        'Подстроено под твой обычный ритм.',
+        'Эта цель опирается на твои последние дни — чуть больше, без давления.',
+        'Сегодняшняя цель подобрана под твой темп.',
+        'Исходя из твоего ритма — мягкий шаг вперёд.',
+      ],
+      DEFAULT_TARGET: [
+        'Пока знакомлюсь с твоим ритмом.',
+        'Через несколько дней цель станет более персональной.',
+        'Начинаем со спокойной, стандартной цели.',
+      ],
+      COMEBACK_EASY: [
+        'Начнём с простого.',
+        'Сегодня главное — вернуться, а не рекорд.',
+        'Даже маленький шаг — это прогресс.',
+        'Сегодня рекорды не нужны — просто вернёмся в ритм.',
+      ],
+      STRUGGLING_ADJUSTED: [
+        'Сегодня цель чуть легче — главное ритм.',
+        'Маленькая цель сегодня реальнее. И это хорошо.',
+        'Сегодняшняя цель намеренно легче — в твоём темпе.',
+      ],
+      EVENING_GENTLE: [
+        'Всё, что ты успел сегодня, уже считается.',
+        'Вечер может пройти спокойно — без давления.',
+        'То, что получилось сегодня, — тоже прогресс.',
+      ],
+      NEAR_COMPLETION: [
+        'Осталось совсем немного.',
+        'Ещё чуть-чуть — и миссия готова.',
+        'Если захочется, короткой прогулки достаточно.',
+      ],
+      RAIN_INDOOR: [
+        'Сегодня дождь — движение дома тоже считается.',
+        'На улице дождь. Ничего — шаги дома тоже считаются 😄',
+        'Каждый шаг считается, даже в дождливый день.',
+      ],
+      HIGH_UV: [
+        'Если выйдешь на улицу, позже может быть комфортнее.',
+        'Солнце сильное — тень или прогулка позже будут комфортнее.',
+      ],
+      WINDY: [
+        'На улице ветер — продолжай сегодняшнее движение в своём темпе.',
+        'В ветреный день шаги дома тоже считаются.',
+      ],
+      SEVERE_INDOOR: [
+        'Сегодня погода суровая — движение дома тоже считается.',
+        'Выходить не обязательно — каждый шаг считается.',
+      ],
+      PAIN_NEUTRAL: [
+        'Сегодняшнее движение считается в твоём темпе.',
+        'Сегодня двигаемся в твоём темпе — без давления.',
+      ],
+      MORNING_CALM: [
+        'День впереди — можно спокойно распределить.',
+        'С утра спешить не нужно.',
+        'Начнём не спеша — время есть.',
+      ],
+    },
+    smartWindow: (start, end) => [
+      `Хорошее время для прогулки сегодня: ${start}–${end}.`,
+      `Хорошая погода — ${start}–${end} приятное время для прогулки.`,
+      `Если захочется пройтись, ${start}–${end} — удачное окно.`,
+    ],
+    whyTarget: {
+      button: 'Почему такая цель?',
+      title: 'Почему такая цель?',
+      personalized: 'Эта цель основана на твоей активности за последние дни — чуть больше движения, без лишнего давления.',
+      comeback: 'Сегодня цель легче — главное спокойно вернуться в ритм.',
+      default: 'Пока я знакомлюсь с твоим обычным ритмом. Через несколько дней цель станет более персональной.',
+    },
     mood: {
       fresh_day: ['Сегодня начинаем спокойно 💚', 'Даже один шаг — уже хороший день.', 'Сегодня без спешки.'],
       progress_started: ['Продолжаем постепенно.', 'Сегодня ещё есть время.', 'Маленький прогресс тоже считается.'],
@@ -390,6 +711,14 @@ function questCopy(locale = 'ka') {
       loc === 'ka'
         ? `${title}, ${progress} / ${target}, ${percent} პროცენტი, ჯილდო ${coins} Medi Coins და ${xp} XP`
         : `${title}, ${progress} of ${target}, ${percent} percent complete, reward ${coins} Medi Coins and ${xp} XP`,
+    levelUpBody: (n) =>
+      loc === 'ka'
+        ? `გილოცავ — ახლა ${n} დონე გაქვს.`
+        : loc === 'fr'
+          ? `Bravo — tu es maintenant niveau ${n}.`
+          : loc === 'ru'
+            ? `Поздравляем — теперь у тебя ${n} уровень.`
+            : `Congratulations — you’re now level ${n}.`,
     levelsUp: (n) =>
       loc === 'ka'
         ? n === 2

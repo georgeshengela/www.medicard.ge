@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -17,7 +17,7 @@ import { QuestStatChip } from '@/components/quest/QuestStatChip';
 import { useQuestDashboard } from '@/hooks/useQuestDashboard';
 import { useOffline } from '@/hooks/useOffline';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { presentQuestLevelUp } from '@/lib/quest/cache';
+import { presentQuestLevelUp, subscribeMediCoinBalance, getMediCoinBalanceHint } from '@/lib/quest/cache';
 import {
   dailyCounter,
   dailySegments,
@@ -28,7 +28,7 @@ import {
   rankKeyFromLevel,
   rankLabel,
 } from '@/lib/quest/logic.js';
-import { moodLine, progressLabel, q, questTitles } from '@/lib/quest/copy';
+import { moodLine, movementContextLine, progressLabel, q, questTitles } from '@/lib/quest/copy';
 import { QUEST } from '@/theme/questTokens';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
@@ -44,10 +44,35 @@ export function HomeMediQuestSection() {
   const { dashboard, loading, error, stale, claim, mood, refresh, fixtureOffline } = useQuestDashboard();
   const view = homeModuleView({ dashboard, loading, error, stale });
   const seed = `${dashboard?.daily.periodKey || 'day'}:${dashboard?.profile?.level || 0}`;
-  const line = useMemo(() => moodLine(mood, seed, LOCALE), [mood, seed]);
+  // Phase 5 §48 — when the priority mission is an active movement quest, the one
+  // Medi line becomes the smart contextual line (reason/time based; weather
+  // context lives in the hub). No extra card, no extra rows.
+  const noMissions = view.priority?.mode === 'empty';
+  const priorityQuest = view.priority?.mode === 'preview' ? view.priority.quest : null;
+  const line = useMemo(() => {
+    if (noMissions) return copy.empty;
+    if (priorityQuest) {
+      const smart = movementContextLine(priorityQuest, {}, LOCALE);
+      if (smart) return smart;
+    }
+    return moodLine(mood, seed, LOCALE);
+  }, [mood, seed, priorityQuest, noMissions, copy.empty]);
   const [claiming, setClaiming] = useState(false);
   const [floatReward, setFloatReward] = useState<string | null>(null);
+  const [displayCoins, setDisplayCoins] = useState<number | null>(null);
   const claimBlocked = offline || fixtureOffline;
+
+  useEffect(() => {
+    const hint = getMediCoinBalanceHint();
+    if (hint != null) setDisplayCoins(hint);
+    else if (dashboard?.profile) setDisplayCoins(dashboard.profile.coinBalance);
+  }, [dashboard?.profile?.coinBalance]);
+
+  useEffect(() => {
+    return subscribeMediCoinBalance((coins) => {
+      if (coins != null) setDisplayCoins(coins);
+    });
+  }, []);
 
   const openHub = () => router.push('/medi-quest' as never);
 
@@ -93,7 +118,10 @@ export function HomeMediQuestSection() {
     );
   }
 
-  if (view.kind === 'empty' || view.priority?.mode === 'empty' || !dashboard?.profile) {
+  // Only hide the identity card when there is no profile to show.
+  // No missions today still shows level / coins / streak; the empty
+  // sentence is the Medi line under those stats, same as the hub.
+  if (view.kind === 'empty' || !dashboard?.profile) {
     return (
       <Section title={copy.section}>
         <Shell onPress={openHub}>
@@ -138,7 +166,7 @@ export function HomeMediQuestSection() {
     `${copy.level} ${profile.level}`,
     rank,
     copy.missionsDone(counter.done, counter.total),
-    `${formatQuestNumber(profile.coinBalance, LOCALE)} ${copy.coinsName}`,
+    `${formatQuestNumber(displayCoins ?? profile.coinBalance, LOCALE)} ${copy.coinsName}`,
     profile.currentStreak > 0 ? copy.streakDays(profile.currentStreak) : copy.streakStart,
   ].join('. ');
 
@@ -186,7 +214,7 @@ export function HomeMediQuestSection() {
             <QuestStatChip
               icon={<QuestCoinMark size={18} color={dark ? QUEST.pill.coinInkDark : QUEST.pill.coinInkLight} />}
               wellColor={dark ? QUEST.pill.coinDark : QUEST.pill.coinLight}
-              value={formatQuestNumber(profile.coinBalance, LOCALE)}
+              value={formatQuestNumber(displayCoins ?? profile.coinBalance, LOCALE)}
               label={copy.coinsName}
             />
             <QuestStatChip

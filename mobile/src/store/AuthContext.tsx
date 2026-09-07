@@ -69,10 +69,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const applyVisualSession = useCallback(() => {
     const snap = questVisualAuthSnapshot();
     setLocalAccountId(snap.user.id);
-    setUser(snap.user);
+    setUser(snap.user as unknown as User);
     setUsage(snap.usage);
     setStats(snap.stats);
-    setHealthProfile(snap.healthProfile);
+    setHealthProfile(snap.healthProfile as unknown as HealthProfile);
     setPendingDailyBonus(null);
   }, []);
 
@@ -113,12 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         stats: me.stats,
         healthProfile: me.healthProfile ?? null,
       });
-      try {
-        const { flushStepsGoalAwards } = await import('@/lib/stepsGoal');
-        await flushStepsGoalAwards(setUser);
-      } catch {
-        /* pending +3 retries on profile focus */
-      }
       void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
         flushCycleQueue(me.user.id).catch(() => undefined),
       );
@@ -144,9 +138,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isQuestDevEnabled()) return undefined;
-    return subscribeQuestVisualSession((on) => {
+    const off = subscribeQuestVisualSession((on: boolean) => {
       if (on) applyVisualSession();
     });
+    return () => {
+      off();
+    };
   }, [applyVisualSession]);
 
   useEffect(() => {
@@ -198,12 +195,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           stats: confirmed.stats,
           healthProfile: confirmed.healthProfile ?? null,
         });
-        try {
-          const { flushStepsGoalAwards } = await import('@/lib/stepsGoal');
-          await flushStepsGoalAwards(setUser);
-        } catch {
-          /* pending +3 retries on profile focus */
-        }
         void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
           flushCycleQueue(confirmed.user.id).catch(() => undefined),
         );

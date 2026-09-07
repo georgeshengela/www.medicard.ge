@@ -32,6 +32,8 @@ import { pharmacyRouter } from './routes/pharmacy.routes.js';
 import { checkInRouter } from './routes/check-in.routes.js';
 import { locationRouter } from './routes/location.routes.js';
 import { questsRouter } from './routes/quests.routes.js';
+import { achievementsRouter } from './routes/achievements.routes.js';
+import { rewardsRouter } from './routes/rewards.routes.js';
 import { PRIVACY_HTML, TERMS_HTML } from './lib/legalPages.js';
 import { attachAdminRealtime } from './lib/adminRealtime.js';
 
@@ -178,6 +180,8 @@ app.use('/api/pharmacy', pharmacyRouter);
 app.use('/api/check-in', checkInRouter);
 app.use('/api/location', locationRouter);
 app.use('/api/quests', questsRouter);
+app.use('/api/achievements', achievementsRouter);
+app.use('/api/rewards', rewardsRouter);
 app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 

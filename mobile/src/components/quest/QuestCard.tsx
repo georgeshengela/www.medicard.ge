@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
-import { Check, Clock3, MessageCircle } from 'lucide-react-native';
+import { Check, Clock3, MessageCircle, Sparkles } from 'lucide-react-native';
 import { QuestClaimButton } from '@/components/quest/QuestClaimButton';
 import { QuestIcon } from '@/components/quest/QuestIcon';
 import { QuestMediLine } from '@/components/quest/QuestMediLine';
@@ -22,7 +22,10 @@ import { progressLabel, q, questHelper, questTitles } from '@/lib/quest/copy';
 export function QuestCard({
   quest,
   locale = 'ka',
-  weatherHint,
+  contextHint,
+  contextIsWindow,
+  whyTargetLabel,
+  onWhyTarget,
   weekly,
   offline,
   claiming,
@@ -32,7 +35,13 @@ export function QuestCard({
 }: {
   quest: QuestItem;
   locale?: string;
-  weatherHint?: string | null;
+  /** Phase 5 — the ONE contextual Medi line for movement quests (smart context). */
+  contextHint?: string | null;
+  /** True when the hint is a best-outdoor-window suggestion (clock icon). */
+  contextIsWindow?: boolean;
+  /** Phase 5 — optional "why this goal?" affordance (movement, bottom sheet). */
+  whyTargetLabel?: string | null;
+  onWhyTarget?: () => void;
   weekly?: boolean;
   offline?: boolean;
   claiming?: boolean;
@@ -142,13 +151,35 @@ export function QuestCard({
         </View>
       ) : null}
 
-      {weatherHint && kind === 'movement' && active ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
-          <Clock3 size={12} color={colors.primary200} strokeWidth={2.3} />
-          <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: colors.text300 }}>
-            {weatherHint}
+      {contextHint && kind === 'movement' && active ? (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 10 }}>
+          {contextIsWindow ? (
+            <Clock3 size={12} color={colors.primary200} strokeWidth={2.3} style={{ marginTop: 2 }} />
+          ) : (
+            <Sparkles size={12} color={colors.primary200} strokeWidth={2.3} style={{ marginTop: 2 }} />
+          )}
+          <Text
+            numberOfLines={2}
+            style={{ flex: 1, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 17, color: colors.text300 }}
+          >
+            {contextHint}
           </Text>
         </View>
+      ) : null}
+
+      {whyTargetLabel && onWhyTarget && kind === 'movement' && active ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={whyTargetLabel}
+          hitSlop={8}
+          onPress={onWhyTarget}
+          className="active:opacity-70"
+          style={{ marginTop: 8, alignSelf: 'flex-start' }}
+        >
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, lineHeight: 16, color: colors.primary200 }}>
+            {whyTargetLabel}
+          </Text>
+        </Pressable>
       ) : null}
 
       {/* Reward + helper */}
@@ -174,8 +205,9 @@ export function QuestCard({
         ) : null}
       </View>
 
-      {/* Medi's one-line nudge for in-progress quests — own row so Georgian never truncates. */}
-      {!claimed && !claimable && !conversational && helper ? (
+      {/* Medi's one-line nudge for in-progress quests — own row so Georgian never truncates.
+          Suppressed when the smart context line already speaks for the movement card (§44: one line). */}
+      {!claimed && !claimable && !conversational && helper && !(contextHint && kind === 'movement' && active) ? (
         <Text
           numberOfLines={2}
           style={{
@@ -192,7 +224,7 @@ export function QuestCard({
 
       {claimable ? (
         <Animated.View entering={reduce ? undefined : FadeIn.duration(QUEST.motion.fast)} style={{ marginTop: 14 }}>
-          <QuestClaimButton label={copy.claimReward} loading={claiming} disabled={offline} onPress={onClaim} />
+          <QuestClaimButton label={copy.claim} loading={claiming} disabled={offline} onPress={onClaim} />
           {offline ? (
             <Text style={{ marginTop: 8, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 16, color: colors.text300 }}>
               {copy.connectToClaim}

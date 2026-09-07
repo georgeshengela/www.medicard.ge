@@ -24,7 +24,7 @@ import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeLandingSelect } from '@/components/home/HomeLandingSelect';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { PlanDetailCard } from '@/components/PlanUsageCard';
-import { ProfilePointsCard } from '@/components/check-in/ProfilePointsCard';
+import { ProfileStreakCard } from '@/components/check-in/ProfilePointsCard';
 import { DeleteAccountModal } from '@/components/profile/DeleteAccountModal';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
@@ -50,6 +50,8 @@ import { usePlanUsage } from '@/lib/planUsage';
 import { useThemeColors } from '@/theme/colors';
 import { livingPlaceLine } from '@/lib/userLocation';
 import { useAuth } from '@/store/AuthContext';
+import { rewardsApi } from '@/lib/quest/rewardsApi';
+import { rewardsCopy } from '@/i18n/quest/rewards.js';
 
 const GENDER_LABELS: Record<Gender, string> = {
   MALE: ka.auth.genderMale,
@@ -78,25 +80,29 @@ export default function Profile() {
   const [editingMedical, setEditingMedical] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [profileAccent, setProfileAccent] = useState(false);
+  const rewards = rewardsCopy('ka');
 
   useFocusEffect(
     useCallback(() => {
       void (async () => {
-        const { flushStepsGoalAwards } = await import('@/lib/stepsGoal');
-        await flushStepsGoalAwards(setUser);
         await refresh();
         setNotificationsOn(await isNotificationsEnabled());
+        try {
+          const ents = await rewardsApi.entitlements();
+          setProfileAccent(ents.items.some((item) => item.entitlementKey === 'quest.style.profile'));
+        } catch {
+          setProfileAccent(false);
+        }
       })();
-    }, [refresh, setUser]),
+    }, [refresh]),
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    const { flushStepsGoalAwards } = await import('@/lib/stepsGoal');
-    await flushStepsGoalAwards(setUser);
     await refresh();
     setRefreshing(false);
-  }, [refresh, setUser]);
+  }, [refresh]);
 
   const openNotificationSettings = async () => {
     const alreadyOn = await isNotificationsEnabled();
@@ -186,8 +192,11 @@ export default function Profile() {
               height: 76,
               borderRadius: 38,
               padding: 3,
-              backgroundColor: `${colors.primary200}33`,
+              backgroundColor: profileAccent ? '#F59E0B' : `${colors.primary200}33`,
+              borderWidth: profileAccent ? 2 : 0,
+              borderColor: profileAccent ? '#B45309' : 'transparent',
             }}
+            accessibilityLabel={profileAccent ? rewards.title + ' accent' : undefined}
           >
             <View
               style={{
@@ -268,8 +277,7 @@ export default function Profile() {
         </View>
       </Card>
 
-      <ProfilePointsCard
-        points={user?.points ?? 0}
+      <ProfileStreakCard
         currentStreak={user?.currentStreak ?? 0}
         onPress={() => router.push('/profile/streak')}
       />

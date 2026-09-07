@@ -118,15 +118,15 @@ describe('quest logic', () => {
   it('renders home module states for loading, error, cache, claimable, empty', () => {
     assert.equal(homeModuleView({ loading: true }).kind, 'loading');
     assert.equal(homeModuleView({ error: true }).kind, 'error');
-    assert.equal(
-      homeModuleView({
-        dashboard: dashboard({
-          daily: { periodKey: 'd', timezone: 'X', quests: [] },
-          summary: { dailyCompleted: 0, dailyTotal: 0, dailyClaimable: 0 },
-        }),
-      }).priority.mode,
-      'empty',
-    );
+    const noMissions = homeModuleView({
+      dashboard: dashboard({
+        daily: { periodKey: 'd', timezone: 'X', quests: [] },
+        summary: { dailyCompleted: 0, dailyTotal: 0, dailyClaimable: 0 },
+      }),
+    });
+    assert.equal(noMissions.kind, 'ready');
+    assert.equal(noMissions.priority.mode, 'empty');
+    assert.equal(noMissions.level, 7);
     const claimDash = dashboard({
       daily: {
         periodKey: 'd',
@@ -153,6 +153,16 @@ describe('quest logic', () => {
     });
     assert.equal(homeModuleView({ dashboard: unavailable }).kind, 'empty');
     assert.equal(homeModuleView({ dashboard: dashboard({ profile: null }) }).kind, 'empty');
+    const unavailableWithProfile = homeModuleView({
+      dashboard: dashboard({
+        unavailable: true,
+        daily: { periodKey: 'd', timezone: 'X', quests: [] },
+        summary: { dailyCompleted: 0, dailyTotal: 0, dailyClaimable: 0 },
+      }),
+    });
+    assert.equal(unavailableWithProfile.kind, 'ready');
+    assert.equal(unavailableWithProfile.priority.mode, 'empty');
+    assert.equal(unavailableWithProfile.level, 7);
   });
 
   it('picks weekly and hydration kinds', () => {
@@ -275,9 +285,13 @@ describe('quest logic', () => {
     assert.equal(float.pointerEvents, 'none');
   });
 
-  it('hides wallet source types and period keys from history grouping', () => {
+  it('labels wallet activity without Mission fallback for unknown types', () => {
     assert.equal(walletActivityLabel('QUEST', 'მისია'), 'მისია');
-    assert.equal(walletActivityLabel('ADJUSTMENT', 'მისია'), 'მისია');
+    assert.equal(walletActivityLabel('ADJUSTMENT', 'მისია'), 'Balance adjustment');
+    assert.equal(walletActivityLabel('SYSTEM', 'მისია'), 'System adjustment');
+  });
+
+  it('hides wallet source types and period keys from history grouping', () => {
     assert.equal(
       historyGroupKey({ completedAt: '2026-09-06T11:00:00.000Z', periodKey: '2026-W36' }, '2026-09-06'),
       '2026-09-06',
@@ -358,7 +372,151 @@ describe('quest logic', () => {
       assert.ok(c.dailyMissions.length > 0);
       assert.ok(c.xpToNext(500).includes('500'));
       assert.ok(c.xpLeft(500).includes('500'));
+      assert.ok(c.levelUpBody(8).includes('8'));
       assert.ok(c.missionsDone(1, 3).includes('1 / 3'));
     }
+  });
+});
+
+describe('phase 4 achievements — pure helpers', () => {
+  const {
+    ACHIEVEMENT_RARITY_ORDER,
+    achievementRarityRank,
+    achievementsCounter,
+    achievementsPreview,
+    groupAchievements,
+    sortAchievements,
+  } = require('./logic.js');
+
+  function ach(overrides) {
+    return {
+      id: overrides.id || overrides.key || 'x',
+      key: overrides.key ?? null,
+      category: overrides.category || 'PROGRESSION',
+      rarity: overrides.rarity || 'COMMON',
+      secret: Boolean(overrides.secret),
+      unlocked: Boolean(overrides.unlocked),
+      claimed: Boolean(overrides.claimed),
+      claimable: Boolean(overrides.unlocked) && !overrides.claimed,
+      unlockedAt: overrides.unlockedAt || null,
+      progressPercent: overrides.progressPercent ?? 0,
+      sortOrder: overrides.sortOrder ?? 0,
+      ...overrides,
+    };
+  }
+
+  it('orders rarities from COMMON to LEGENDARY', () => {
+    assert.deepEqual(ACHIEVEMENT_RARITY_ORDER, ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY']);
+    assert.equal(achievementRarityRank('LEGENDARY'), 4);
+    assert.equal(achievementRarityRank('nonsense'), 0);
+  });
+
+  it('sorts claimable first, then unlocked, in-progress by closeness, secrets last', () => {
+    const rows = sortAchievements([
+      ach({ id: 'secret', secret: true, sortOrder: 9 }),
+      ach({ id: 'far', progressPercent: 10, sortOrder: 1 }),
+      ach({ id: 'near', progressPercent: 90, sortOrder: 2 }),
+      ach({ id: 'done', unlocked: true, claimed: true, sortOrder: 3 }),
+      ach({ id: 'ready', unlocked: true, sortOrder: 4 }),
+    ]);
+    assert.deepEqual(rows.map((row) => row.id), ['ready', 'done', 'near', 'far', 'secret']);
+  });
+
+  it('groups by category in a stable section order', () => {
+    const groups = groupAchievements([
+      ach({ id: 'a', category: 'LEVEL' }),
+      ach({ id: 'b', category: 'STREAK' }),
+      ach({ id: 'c', category: 'PROGRESSION' }),
+      ach({ id: 'd', category: 'UNKNOWN_THING' }),
+    ]);
+    assert.deepEqual(groups.map((group) => group.category), ['PROGRESSION', 'STREAK', 'LEVEL', 'SPECIAL']);
+  });
+
+  it('previews claimable → fresh unlocks → nearest locked, capped at the limit', () => {
+    const preview = achievementsPreview(
+      [
+        ach({ id: 'locked-near', progressPercent: 80 }),
+        ach({ id: 'locked-far', progressPercent: 5 }),
+        ach({ id: 'unlocked-old', unlocked: true, claimed: true, unlockedAt: '2026-09-01T00:00:00Z' }),
+        ach({ id: 'unlocked-new', unlocked: true, claimed: true, unlockedAt: '2026-09-06T00:00:00Z' }),
+        ach({ id: 'claimable', unlocked: true }),
+        ach({ id: 'secret-locked', secret: true }),
+      ],
+      4,
+    );
+    assert.deepEqual(preview.map((row) => row.id), ['claimable', 'unlocked-new', 'unlocked-old', 'locked-near']);
+  });
+
+  it('clamps the achievements counter', () => {
+    assert.deepEqual(achievementsCounter({ total: 50, unlocked: 12, claimable: 3 }), {
+      total: 50,
+      unlocked: 12,
+      claimable: 3,
+      percent: 24,
+    });
+    assert.deepEqual(achievementsCounter(null), { total: 0, unlocked: 0, claimable: 0, percent: 0 });
+  });
+});
+
+describe('phase 4 achievements — copy + fixtures', () => {
+  const { achievementCopy } = require('../../i18n/quest/achievements.js');
+  const { buildQuestDevAchievements, claimAchievementDevFixture } = require('./devFixture.js');
+
+  const ALL_KEYS = [
+    'FIRST_QUEST', 'FIRST_CLAIM', 'FIRST_WEEKLY',
+    'QUESTS_5', 'QUESTS_10', 'QUESTS_25', 'QUESTS_50', 'QUESTS_100', 'QUESTS_250', 'QUESTS_500',
+    'STREAK_3', 'STREAK_7', 'STREAK_14', 'STREAK_30', 'STREAK_60', 'STREAK_100', 'STREAK_365',
+    'MOVE_3', 'MOVE_10', 'MOVE_25', 'MOVE_50', 'MOVE_100', 'MOVE_250',
+    'HYDRATE_3', 'HYDRATE_10', 'HYDRATE_25', 'HYDRATE_50', 'HYDRATE_100',
+    'MEDI_3', 'MEDI_10', 'MEDI_25', 'MEDI_50', 'MEDI_100',
+    'WEEKLY_3', 'WEEKLY_10', 'WEEKLY_25', 'WEEKLY_52',
+    'LEVEL_5', 'LEVEL_10', 'LEVEL_20', 'LEVEL_30', 'LEVEL_40', 'LEVEL_50',
+    'COINS_EARNED_500', 'COINS_EARNED_2500', 'COINS_EARNED_10000', 'COINS_EARNED_25000',
+    'COMEBACK', 'EARLY_BIRD', 'NIGHT_OWL',
+  ];
+
+  it('generates a title and description for all 50 achievements in all four locales', () => {
+    for (const loc of ['ka', 'en', 'fr', 'ru']) {
+      const copy = achievementCopy(loc);
+      for (const key of ALL_KEYS) {
+        const threshold = Number((key.match(/_(\d+)$/) || [])[1]) || 1;
+        const item = { key, threshold, secret: false, unlocked: true };
+        const title = copy.title(item);
+        const description = copy.description(item);
+        assert.ok(title && title.length > 0, `${loc} ${key} title`);
+        assert.ok(description && description.length > 0, `${loc} ${key} description`);
+        assert.notEqual(title, key, `${loc} ${key} should be humanized`);
+      }
+      for (const rarity of ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY']) {
+        assert.ok(copy.rarity[rarity].length > 0, `${loc} rarity ${rarity}`);
+      }
+    }
+  });
+
+  it('masks secret achievements until unlocked', () => {
+    const copy = achievementCopy('ka');
+    assert.equal(copy.title({ key: null, secret: true, unlocked: false }), copy.secretTitle);
+    assert.equal(copy.description({ key: null, secret: true, unlocked: false }), copy.secretBody);
+    assert.notEqual(copy.title({ key: 'EARLY_BIRD', secret: true, unlocked: true }), copy.secretTitle);
+  });
+
+  it('serves a rich DEV achievements overview and claims through the fixture', () => {
+    const { setQuestDevScenario } = require('./devFixture.js');
+    setQuestDevScenario('CLAIMABLE');
+    const overview = buildQuestDevAchievements();
+    assert.ok(overview.items.length > 10);
+    assert.equal(overview.summary.total, 50);
+    const claimable = overview.items.find((row) => row.claimable);
+    assert.ok(claimable);
+    const result = claimAchievementDevFixture(claimable.id);
+    assert.equal(result.claimed, true);
+    assert.ok(result.reward.coinsAwarded >= 0);
+    const after = buildQuestDevAchievements();
+    const row = after.items.find((item) => item.id === claimable.id);
+    assert.equal(row.claimed, true);
+    assert.equal(row.claimable, false);
+    const again = claimAchievementDevFixture(claimable.id);
+    assert.equal(again, null);
+    setQuestDevScenario('LIVE');
   });
 });

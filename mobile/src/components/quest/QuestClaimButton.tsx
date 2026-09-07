@@ -20,13 +20,22 @@ type Props = {
   loading?: boolean;
   disabled?: boolean;
   size?: 'sm' | 'md';
+  /** Stretch to parent width (quest cards / home claim strip). */
+  fullWidth?: boolean;
 };
 
 /**
  * The one "reward" CTA in Quest. Filled brand, press-scale spring, and a slow
  * sheen sweep while idle so a waiting reward catches the eye without shouting.
  */
-export function QuestClaimButton({ label, onPress, loading, disabled, size = 'md' }: Props) {
+export function QuestClaimButton({
+  label,
+  onPress,
+  loading,
+  disabled,
+  size = 'md',
+  fullWidth = true,
+}: Props) {
   const colors = useThemeColors();
   const dark = useIsDark();
   const reduce = usePrefersReducedMotion();
@@ -57,11 +66,14 @@ export function QuestClaimButton({ label, onPress, loading, disabled, size = 'md
     transform: [{ translateX: sheen.value * 260 }, { rotate: '22deg' }],
   }));
 
-  const height = size === 'md' ? 48 : 40;
+  const compact = size === 'sm';
+  const height = compact ? 40 : 48;
   const fill = dark ? '#0D9488' : colors.primary200;
+  const fontSize = compact ? 13 : 14;
+  const iconSize = compact ? 15 : 17;
 
   return (
-    <Animated.View style={pressStyle}>
+    <Animated.View style={[pressStyle, fullWidth ? { alignSelf: 'stretch' } : { alignSelf: 'flex-start', flexShrink: 0 }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
@@ -76,7 +88,9 @@ export function QuestClaimButton({ label, onPress, loading, disabled, size = 'md
         }}
         style={{
           height,
-          borderRadius: 16,
+          minHeight: height,
+          paddingHorizontal: compact ? 14 : 18,
+          borderRadius: 14,
           backgroundColor: fill,
           opacity: inactive && !loading ? 0.45 : 1,
           alignItems: 'center',
@@ -103,14 +117,19 @@ export function QuestClaimButton({ label, onPress, loading, disabled, size = 'md
         {loading ? (
           <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Gift size={size === 'md' ? 18 : 16} color="#FFFFFF" strokeWidth={2.3} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+            <Gift size={iconSize} color="#FFFFFF" strokeWidth={2.25} />
             <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
               style={{
                 fontFamily: 'NotoSansGeorgian_700Bold',
-                fontSize: size === 'md' ? 15 : 14,
-                lineHeight: size === 'md' ? 20 : 18,
+                fontSize,
+                lineHeight: fontSize + 4,
+                letterSpacing: -0.2,
                 color: '#FFFFFF',
+                flexShrink: 1,
               }}
             >
               {label}

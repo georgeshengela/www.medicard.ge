@@ -23,12 +23,15 @@ export function QuestHubHeader({
   displayCoins,
   onCoinsPress,
   onStreakPress,
+  questStyle = false,
 }: {
   profile: QuestProfile;
   locale?: string;
   displayCoins?: number;
   onCoinsPress?: () => void;
   onStreakPress?: () => void;
+  /** Phase 7.1 — MEDI_THEME_7D: gold Quest hub accent (not a full MediCard theme). */
+  questStyle?: boolean;
 }) {
   const colors = useThemeColors();
   const dark = useIsDark();
@@ -38,13 +41,21 @@ export function QuestHubHeader({
   const coins = displayCoins ?? profile.coinBalance;
   const streak = profile.currentStreak;
   const rank = rankLabel(profile.rankKey, locale);
+  const wash = questStyle
+    ? dark
+      ? 'rgba(251, 191, 36, 0.16)'
+      : 'rgba(251, 191, 36, 0.22)'
+    : dark
+      ? QUEST.wash.dark
+      : QUEST.wash.light;
+  const borderColor = questStyle ? (dark ? '#F59E0B' : '#D97706') : colors.bg300;
 
   return (
     <View
       style={{
         backgroundColor: dark ? colors.surface : '#FFFFFF',
-        borderWidth: 1,
-        borderColor: colors.bg300,
+        borderWidth: questStyle ? 2 : 1,
+        borderColor,
         borderRadius: QUEST.radius,
         padding: QUEST.pad,
         overflow: 'hidden',
@@ -59,10 +70,35 @@ export function QuestHubHeader({
           width: 220,
           height: 220,
           borderRadius: 110,
-          backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
-          opacity: dark ? 0.85 : 0.5,
+          backgroundColor: wash,
+          opacity: dark ? 0.9 : 0.55,
         }}
       />
+
+      {questStyle ? (
+        <View
+          style={{
+            alignSelf: 'flex-start',
+            marginBottom: 10,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 999,
+            backgroundColor: dark ? 'rgba(245, 158, 11, 0.22)' : 'rgba(217, 119, 6, 0.14)',
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: 'NotoSansGeorgian_700Bold',
+              fontSize: 11,
+              lineHeight: 14,
+              letterSpacing: 0.4,
+              color: dark ? '#FBBF24' : '#B45309',
+            }}
+          >
+            Quest სტილი
+          </Text>
+        </View>
+      ) : null}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
         <QuestLevelRing

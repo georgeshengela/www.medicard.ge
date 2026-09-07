@@ -11,8 +11,13 @@ export const QUEST_ECONOMY = Object.freeze({
   maxStandardWeeklyCoins: 1000,
   maxSingleQuestCoins: 250,
   maxSingleAchievementCoins: 500,
+  /** Must stay ≥ 1500 — STREAK_365 awards 1500 XP by spec. Invalid defs are rejected, never clamped. */
+  maxSingleAchievementXp: 2000,
   maxSingleDailyQuestXp: 250,
   maxSingleWeeklyQuestXp: 1000,
+  /** Phase 7 — Rewards Store coin cost guards (reject, never clamp). */
+  minRewardCoinCost: 100,
+  maxRewardCoinCost: 100000,
   /** Distinct daily periodKeys cannot be assigned faster than this unless they are last+1. */
   dailyHopGuardMs: 20 * 60 * 60 * 1000,
   /** Natural next local day (or one-day eastbound travel) needs this gap. */
@@ -59,6 +64,24 @@ export function validateQuestRewardAmounts({ cadence, rewardXp, rewardCoins } = 
   return { xp, coins };
 }
 
+/** Achievement rewards must respect the achievement-specific ceilings. */
+export function validateAchievementRewardAmounts({ rewardXp, rewardCoins } = {}) {
+  const xp = Math.floor(Number(rewardXp) || 0);
+  const coins = Math.floor(Number(rewardCoins) || 0);
+  if (xp < 0 || coins < 0) {
+    const error = new Error('Achievement rewards cannot be negative.');
+    error.status = 400;
+    throw error;
+  }
+  if (xp > QUEST_ECONOMY.maxSingleAchievementXp || coins > QUEST_ECONOMY.maxSingleAchievementCoins) {
+    const error = new Error('Achievement reward exceeds safety ceiling.');
+    error.status = 400;
+    error.code = 'ACHIEVEMENT_REWARD_CEILING';
+    throw error;
+  }
+  return { xp, coins };
+}
+
 export function validateHydrationGoalMl(goalMl) {
   const goal = Math.floor(Number(goalMl));
   if (!Number.isFinite(goal) || goal < QUEST_ECONOMY.hydrationGoalMlMin || goal > QUEST_ECONOMY.hydrationGoalMlMax) {
@@ -68,6 +91,24 @@ export function validateHydrationGoalMl(goalMl) {
     throw error;
   }
   return goal;
+}
+
+/** Phase 7 — store reward costs are explicit; reject invalid values, never clamp. */
+export function validateRewardCoinCost(coinCost) {
+  const cost = Math.floor(Number(coinCost));
+  if (!Number.isFinite(cost) || cost <= 0) {
+    const error = new Error('Reward coin cost must be positive.');
+    error.status = 400;
+    error.code = 'REWARD_INVALID_COST';
+    throw error;
+  }
+  if (cost < QUEST_ECONOMY.minRewardCoinCost || cost > QUEST_ECONOMY.maxRewardCoinCost) {
+    const error = new Error('Reward coin cost outside allowed range.');
+    error.status = 400;
+    error.code = 'REWARD_INVALID_COST';
+    throw error;
+  }
+  return cost;
 }
 
 /** Safety ceilings reject — they never silently mutate a configured reward. */

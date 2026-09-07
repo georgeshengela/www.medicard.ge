@@ -37,7 +37,7 @@ describe('normalizeAwardRef', () => {
 });
 
 describe('STEPS_GOAL_POINTS', () => {
-  it('awards 3 points per completed goal', () => {
-    assert.equal(STEPS_GOAL_POINTS, 3);
+  it('is retired (0) — Medi Coins come from Quest, not User.points', () => {
+    assert.equal(STEPS_GOAL_POINTS, 0);
   });
 });

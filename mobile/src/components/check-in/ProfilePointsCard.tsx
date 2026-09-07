@@ -6,18 +6,22 @@ import { useFigmaStreak } from '@/constants/figmaStreakLayout';
 import { ka } from '@/i18n/ka';
 
 type Props = {
-  points: number;
   currentStreak: number;
   onPress: () => void;
 };
 
-export function ProfilePointsCard({ points, currentStreak, onPress }: Props) {
+/** Daily-login streak entry on Profile — no legacy "ქულა" balance (Medi Coins replaced that). */
+export function ProfileStreakCard({ currentStreak, onPress }: Props) {
   const FIGMA = useFigmaStreak();
+  const title =
+    currentStreak > 0
+      ? ka.checkIn.profileStreakTitle(currentStreak)
+      : ka.checkIn.profileStreakEmpty;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={ka.checkIn.pointsLabel}
+      accessibilityLabel={ka.checkIn.streakLabel}
       onPress={onPress}
       className="active:opacity-80"
       style={{
@@ -43,7 +47,7 @@ export function ProfilePointsCard({ points, currentStreak, onPress }: Props) {
             color: FIGMA.textPrimary,
           }}
         >
-          {points} {ka.checkIn.pointsUnit}
+          {title}
         </Text>
         <Text
           style={{
@@ -61,3 +65,4 @@ export function ProfilePointsCard({ points, currentStreak, onPress }: Props) {
     </Pressable>
   );
 }
+

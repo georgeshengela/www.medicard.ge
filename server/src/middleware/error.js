@@ -21,7 +21,10 @@ export function errorHandler(error, req, res, next) {
   }
 
   if (typeof error?.status === 'number' && error.status >= 400 && error.status < 600) {
-    return res.status(error.status).json({ error: error.message || 'მოთხოვნა უარყოფილია.' });
+    return res.status(error.status).json({
+      error: error.message || 'მოთხოვნა უარყოფილია.',
+      ...(error.code ? { code: error.code } : {}),
+    });
   }
 
   if (error instanceof multer.MulterError) {

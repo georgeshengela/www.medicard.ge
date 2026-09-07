@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import { ensureDrugCategories, ensurePharmacySources } from '../src/lib/pharmacy/categories.js';
 import { ensureQuestTemplates } from '../src/lib/questTemplates.js';
+import { ensureRewardDefinitions } from '../src/lib/rewards.js';
 
 const prisma = new PrismaClient();
 
@@ -127,6 +128,9 @@ async function main() {
 
   const quests = await ensureQuestTemplates(prisma);
   console.log(`Medi Quest templates seeded: ${quests.upserted} (daily_steps, daily_hydration, daily_medi, weekly_steps).`);
+
+  const rewards = await ensureRewardDefinitions(prisma);
+  console.log(`Medi Rewards Store catalog seeded: ${rewards.length} definitions.`);
 }
 
 main()

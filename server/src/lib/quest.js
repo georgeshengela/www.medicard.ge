@@ -31,6 +31,18 @@ import {
 } from './questTime.js';
 import { countsForDailyStreak, ensureQuestTemplates } from './questTemplates.js';
 import { isUsableStepCapability, loadStepCapabilityStatus } from './stepCapability.js';
+import {
+  SMART_QUEST_ENGINE_VERSION,
+  logSmartQuestDecision,
+  resolveSmartQuestAssignment,
+  smartQuestAnalyticsCategory,
+} from './smartQuestEngine.js';
+
+export {
+  SMART_QUEST_ENGINE_VERSION,
+  resolveSmartQuestAssignment,
+  serializeSmartQuestDecisionForAdmin,
+} from './smartQuestEngine.js';
 
 export { getLevelForXp, getLevelProgress, getXpThresholdForLevel, getLevelRankKey } from './questLevels.js';
 export { QUEST_TIMEZONE, QUEST_TIMEZONE_FALLBACK, getEffectiveQuestTimezone, resolveQuestClock } from './questTime.js';
@@ -317,18 +329,45 @@ async function loadAssignableTemplates(db, cadence, now) {
   return rows.filter((template) => templateIsAssignable(template, now));
 }
 
-async function createAssignment(tx, { userId, template, periodKey, now, timezone }) {
+async function createAssignment(tx, { userId, template, periodKey, now, timezone, today }) {
   const existing = await tx.userQuest.findUnique({
     where: { userId_templateId_periodKey: { userId, templateId: template.id, periodKey } },
     include: { template: true },
   });
+  // Target freeze: an existing assignment is returned untouched — later
+  // baseline/weather/capability/timezone changes never rewrite its target.
   if (existing) return { quest: existing, created: false };
 
-  const target = template.defaultTarget;
+  let target = template.defaultTarget;
+  let smartTrace = null;
+  let smart = null;
+  if (template.progressType === 'STEPS') {
+    // Phase 5 — Smart Quest Engine personalizes movement targets. Assignment
+    // must never fail because of personalization: fall back to the default.
+    try {
+      const resolved = await resolveSmartQuestAssignment({ db: tx, userId, template, periodKey, today });
+      if (resolved && Number.isFinite(resolved.target) && resolved.target > 0) {
+        target = resolved.target;
+        smart = resolved.metadata;
+        smartTrace = resolved.trace;
+      }
+    } catch (error) {
+      console.warn('[smart-quest] resolution failed, using default target', template.key, error?.message);
+      smart = {
+        engineVersion: SMART_QUEST_ENGINE_VERSION,
+        targetSource: 'DEFAULT',
+        difficulty: 'NORMAL',
+        reasonKey: 'DEFAULT_TARGET',
+        fallbackUsed: true,
+      };
+    }
+  }
+
   const metadata = sanitizeQuestJson({
     source: template.config?.source || template.config?.metric || template.progressType,
     cadence: template.cadence,
     assignedTimezone: timezone,
+    ...(smart ? { smart } : {}),
   });
   if (template.progressType === 'HYDRATION_GOAL_PERCENT') {
     const goal = await loadHydrationGoalMl(tx, userId);
@@ -352,7 +391,7 @@ async function createAssignment(tx, { userId, template, periodKey, now, timezone
       },
       include: { template: true },
     });
-    return { quest, created: true };
+    return { quest, created: true, smartTrace };
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
     const quest = await tx.userQuest.findUnique({
@@ -361,6 +400,81 @@ async function createAssignment(tx, { userId, template, periodKey, now, timezone
     });
     return { quest, created: false };
   }
+}
+
+/**
+ * Phase 5 capability-loss lifecycle.
+ *
+ * If step capability becomes unusable (or the hydration goal is removed) AFTER
+ * a quest was assigned for the current period:
+ *   - COMPLETED / CLAIMED / EXPIRED quests are never touched.
+ *   - ACTIVE impossible quests become CANCELLED (excluded from the daily
+ *     denominator; claim already rejects CANCELLED; streak is untouched
+ *     because streak only advances on completion).
+ *   - If the capability/goal returns within the same period, the CANCELLED
+ *     quest is restored to ACTIVE with its original frozen target (and the
+ *     original frozen hydration goalBasisMl).
+ */
+export async function reconcileQuestEligibility(userId, options = {}) {
+  const db = dbOf(options);
+  const clock = await resolveClock(userId, options);
+  let rows;
+  try {
+    rows = await db.userQuest.findMany({
+      where: {
+        userId,
+        periodKey: { in: [clock.today, clock.week] },
+        status: { in: [ACTIVE, 'CANCELLED'] },
+      },
+      include: { template: true },
+    });
+  } catch (error) {
+    if (isPrismaMissing(error)) return { cancelled: 0, restored: 0 };
+    throw error;
+  }
+  if (!rows.length) return { cancelled: 0, restored: 0 };
+
+  const stepQuests = rows.filter((row) => row.template?.progressType === 'STEPS');
+  const hydroQuests = rows.filter((row) => row.template?.progressType === 'HYDRATION_GOAL_PERCENT');
+  const stepsUsable = stepQuests.length
+    ? isUsableStepCapability(await loadStepCapabilityStatus(db, userId))
+    : true;
+  const hydrationGoal = hydroQuests.length ? await loadHydrationGoalMl(db, userId) : null;
+
+  let cancelled = 0;
+  let restored = 0;
+  for (const row of rows) {
+    const type = row.template?.progressType;
+    const possible = type === 'STEPS' ? stepsUsable : type === 'HYDRATION_GOAL_PERCENT' ? hydrationGoal != null : true;
+    const cancelReason = type === 'STEPS' ? 'CAPABILITY_LOST' : 'HYDRATION_GOAL_REMOVED';
+
+    if (row.status === ACTIVE && !possible && (type === 'STEPS' || type === 'HYDRATION_GOAL_PERCENT')) {
+      await db.userQuest.update({
+        where: { id: row.id },
+        data: {
+          status: 'CANCELLED',
+          metadata: sanitizeQuestJson({ ...(row.metadata || {}), cancelReason, cancelledAtPeriod: row.periodKey }),
+        },
+      });
+      cancelled += 1;
+      continue;
+    }
+
+    if (
+      row.status === 'CANCELLED' &&
+      possible &&
+      row.metadata?.cancelReason === cancelReason &&
+      isWithinReconciliation(row, clock.now)
+    ) {
+      const { cancelReason: _drop, cancelledAtPeriod: _drop2, ...rest } = row.metadata || {};
+      await db.userQuest.update({
+        where: { id: row.id },
+        data: { status: ACTIVE, metadata: sanitizeQuestJson(rest) },
+      });
+      restored += 1;
+    }
+  }
+  return { cancelled, restored };
 }
 
 export async function expireStaleQuests(userId, options = {}) {
@@ -423,23 +537,42 @@ export async function assignDailyQuests(userId, date, options = {}) {
     let createdAny = false;
     for (const template of templates) {
       if (!(await isTemplateEligible(tx, userId, template))) continue;
-      const { quest, created } = await createAssignment(tx, {
+      const { quest, created, smartTrace } = await createAssignment(tx, {
         userId,
         template,
         periodKey,
         now: clock.now,
         timezone: clock.timezone,
+        today: periodKey,
       });
       if (created) createdAny = true;
-      if (quest) assigned.push({ ...quest, created });
+      if (quest) assigned.push({ ...quest, created, smartTrace });
     }
     await markDailyAssign(tx, userId, periodKey, clock.now, clock.timezone, createdAny || !profile.lastDailyAssignPeriodKey);
     return assigned;
   }).then((assigned) => {
     for (const row of assigned.filter((item) => item.created)) {
       emitQuestAnalytics(userId, 'quest_assigned', row, options);
+      emitSmartQuestAssigned(userId, row, options);
     }
     return assigned;
+  });
+}
+
+/** Phase 5 observability: bucket-only smart_quest_assigned event + decision trace log. */
+function emitSmartQuestAssigned(userId, row, options = {}) {
+  const smart = row?.metadata?.smart;
+  if (!smart) return;
+  if (options.db && options.db !== prisma) return; // fake db → tests, keep output clean
+  if (row.smartTrace) logSmartQuestDecision(userId, row.smartTrace);
+  recordServerProductEvent({
+    userId,
+    kind: 'smart_quest_assigned',
+    category: smartQuestAnalyticsCategory(smart),
+    entityId: row.id,
+    source: 'quest',
+  }).catch((error) => {
+    console.warn('[smart-quest] analytics event failed', error?.message);
   });
 }
 
@@ -454,19 +587,21 @@ export async function assignWeeklyQuests(userId, week, options = {}) {
     const assigned = [];
     for (const template of templates) {
       if (!(await isTemplateEligible(tx, userId, template))) continue;
-      const { quest, created } = await createAssignment(tx, {
+      const { quest, created, smartTrace } = await createAssignment(tx, {
         userId,
         template,
         periodKey,
         now: clock.now,
         timezone: clock.timezone,
+        today: clock.today,
       });
-      if (quest) assigned.push({ ...quest, created });
+      if (quest) assigned.push({ ...quest, created, smartTrace });
     }
     return assigned;
   }).then((assigned) => {
     for (const row of assigned.filter((item) => item.created)) {
       emitQuestAnalytics(userId, 'quest_assigned', row, options);
+      emitSmartQuestAssigned(userId, row, options);
     }
     return assigned;
   });
@@ -648,10 +783,22 @@ async function completeQuestInTx(tx, userId, userQuestId, options = {}) {
   return { completed: true, alreadyCompleted: false, quest: updated };
 }
 
+async function evaluateAchievementsAfterQuest(userId, options) {
+  try {
+    const { evaluateAchievementsSafe } = await import('./achievements.js');
+    await evaluateAchievementsSafe(userId, options);
+  } catch (error) {
+    console.warn('[quest] achievement evaluation hook failed', error?.message);
+  }
+}
+
 export async function completeQuest(userId, userQuestId, options = {}) {
   try {
     const result = await withQuestTx(options, (tx) => completeQuestInTx(tx, userId, userQuestId, options));
-    if (result.completed) notifyQuestCompleted(userId, result.quest, options);
+    if (result.completed) {
+      notifyQuestCompleted(userId, result.quest, options);
+      await evaluateAchievementsAfterQuest(userId, options);
+    }
     return result;
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
@@ -661,20 +808,28 @@ export async function completeQuest(userId, userQuestId, options = {}) {
 }
 
 async function writeReward(tx, { userId, currency, amount, sourceId, now }) {
-  if (!amount) return { created: false, amount: 0 };
+  const value = Number(amount) || 0;
+  // Quest earn path must never invent spends — redemptions use REWARD_REDEMPTION elsewhere.
+  if (value < 0) {
+    const error = new Error('Quest ledger earn cannot be negative.');
+    error.status = 400;
+    error.code = 'QUEST_REWARD_NEGATIVE';
+    throw error;
+  }
+  if (!value) return { created: false, amount: 0 };
   try {
     await tx.rewardLedger.create({
       data: {
         userId,
         currency,
-        amount,
+        amount: value,
         transactionType: 'EARN',
         sourceType: 'QUEST',
         sourceId,
         createdAt: now,
       },
     });
-    return { created: true, amount };
+    return { created: true, amount: value };
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
     return { created: false, amount: 0 };
@@ -798,6 +953,7 @@ export async function claimQuest(userId, userQuestId, options = {}) {
         currentStreak: result.profile.currentStreak,
         longestStreak: result.profile.longestStreak,
       });
+      await evaluateAchievementsAfterQuest(userId, options);
     }
     return result;
   } catch (error) {
@@ -922,6 +1078,7 @@ export async function getUserQuestDashboard(userId, options = {}) {
     await expireStaleQuests(userId, { ...options, db });
     await assignDailyQuests(userId, clock.today, options);
     await assignWeeklyQuests(userId, clock.week, options);
+    await reconcileQuestEligibility(userId, options);
     await updateQuestProgress(userId, {}, { ...options, source: 'sync' });
   } catch (error) {
     if (!isPrismaMissing(error)) throw error;
@@ -938,10 +1095,14 @@ export async function getUserQuestDashboard(userId, options = {}) {
     orderBy: [{ assignedAt: 'asc' }],
   });
 
-  const claimedSourceIds = await loadClaimedQuestIds(db, userId, quests.map((row) => row.id));
+  // CANCELLED quests (capability lost / hydration goal removed) leave the
+  // dashboard entirely — the segmented-bar denominator reconciles with the
+  // missions that actually count. Completion is never faked.
+  const counting = quests.filter((row) => row.status !== 'CANCELLED');
+  const claimedSourceIds = await loadClaimedQuestIds(db, userId, counting.map((row) => row.id));
   const extras = { claimedSourceIds };
-  const daily = quests.filter((row) => row.template?.cadence === 'DAILY').map((row) => publicQuest(row, extras));
-  const weekly = quests.filter((row) => row.template?.cadence === 'WEEKLY').map((row) => publicQuest(row, extras));
+  const daily = counting.filter((row) => row.template?.cadence === 'DAILY').map((row) => publicQuest(row, extras));
+  const weekly = counting.filter((row) => row.template?.cadence === 'WEEKLY').map((row) => publicQuest(row, extras));
   daily.forEach(assertQuestRecordIsPrivate);
   weekly.forEach(assertQuestRecordIsPrivate);
 
@@ -1085,6 +1246,7 @@ export async function syncUserQuestProgress(userId, options = {}) {
     const clock = await resolveClock(userId, options);
     await assignDailyQuests(userId, clock.today, options);
     await assignWeeklyQuests(userId, clock.week, options);
+    await reconcileQuestEligibility(userId, options);
     return await updateQuestProgress(userId, {}, { ...options, source: 'sync' });
   } catch (error) {
     if (isPrismaMissing(error)) return [];

@@ -28,6 +28,10 @@ function matchWhere(row, where = {}) {
         if (!expected.in.includes(actual)) return false;
         continue;
       }
+      if ('not' in expected) {
+        if (actual === expected.not) return false;
+        continue;
+      }
       if ('gte' in expected && actual < expected.gte) return false;
       if ('gt' in expected && actual <= expected.gt) return false;
       if ('lte' in expected && actual > expected.lte) return false;
@@ -48,6 +52,8 @@ function applyData(row, data) {
   for (const [key, value] of Object.entries(data || {})) {
     if (value && typeof value === 'object' && 'increment' in value) {
       next[key] = (next[key] || 0) + value.increment;
+    } else if (value && typeof value === 'object' && 'decrement' in value) {
+      next[key] = (next[key] || 0) - value.decrement;
     } else {
       next[key] = value;
     }
@@ -64,6 +70,24 @@ function withInclude(row, include, state) {
   }
   if (include.completions) {
     out.completions = [...state.questCompletion.values()].filter((item) => item.userQuestId === row.id).map(clone);
+  }
+  if (include.partner) {
+    out.partner = row.partnerId ? clone(state.rewardPartner.get(row.partnerId) || null) : null;
+  }
+  if (include.reward) {
+    const reward = clone(state.rewardDefinition.get(row.rewardId) || null);
+    if (reward && include.reward.include?.partner) {
+      reward.partner = reward.partnerId ? clone(state.rewardPartner.get(reward.partnerId) || null) : null;
+    }
+    out.reward = reward;
+  }
+  if (include.code) {
+    out.code = row.codeId ? clone(state.rewardCode.get(row.codeId) || null) : null;
+  }
+  if (include.entitlements) {
+    out.entitlements = [...state.userRewardEntitlement.values()]
+      .filter((item) => item.rewardRedemptionId === row.id)
+      .map(clone);
   }
   return out;
 }
@@ -103,6 +127,7 @@ function modelApi(state, name, { uniques, idField = 'id', defaults }) {
 
   function assertUnique(row, ignoreId) {
     for (const unique of uniques) {
+      if (unique.fields.some((field) => row[field] == null)) continue;
       const clash = [...table().values()].find(
         (existing) =>
           existing[idField] !== ignoreId && unique.fields.every((field) => existing[field] === row[field]),
@@ -125,6 +150,10 @@ function modelApi(state, name, { uniques, idField = 'id', defaults }) {
       if (skip) rows = rows.slice(skip);
       if (take) rows = rows.slice(0, take);
       return rows.map((row) => withInclude(row, include, state));
+    },
+    async findFirst({ where, include, orderBy } = {}) {
+      const rows = await this.findMany({ where, include, orderBy, take: 1 });
+      return rows[0] || null;
     },
     async count({ where } = {}) {
       return [...table().values()].filter((row) => matchWhere(row, where)).length;
@@ -184,6 +213,15 @@ export function createQuestFakeDb(seed = {}) {
     aiInteraction: new Map(),
     medicationDoseEvent: new Map(),
     medicationSchedule: new Map(),
+    achievementDefinition: new Map(),
+    userAchievement: new Map(),
+    rewardPartner: new Map(),
+    rewardDefinition: new Map(),
+    rewardRedemption: new Map(),
+    rewardCode: new Map(),
+    rewardInventoryAdjustment: new Map(),
+    userRewardEntitlement: new Map(),
+    rewardRedemptionAudit: new Map(),
     queryCount: 0,
     queryByModel: {},
   };
@@ -249,8 +287,49 @@ export function createQuestFakeDb(seed = {}) {
     medicationSchedule: modelApi(state, 'medicationSchedule', {
       uniques: [],
     }),
+    achievementDefinition: modelApi(state, 'achievementDefinition', {
+      uniques: [{ name: 'key', fields: ['key'] }],
+    }),
+    userAchievement: modelApi(state, 'userAchievement', {
+      uniques: [{ name: 'userId_achievementId', fields: ['userId', 'achievementId'] }],
+      defaults: () => ({ status: 'UNLOCKED', claimedAt: null, progressAtUnlock: 0 }),
+    }),
+    rewardPartner: modelApi(state, 'rewardPartner', {
+      uniques: [{ name: 'key', fields: ['key'] }],
+    }),
+    rewardDefinition: modelApi(state, 'rewardDefinition', {
+      uniques: [{ name: 'key', fields: ['key'] }],
+      defaults: () => ({
+        status: 'DRAFT',
+        inventoryMode: 'UNLIMITED',
+        featured: false,
+        sortOrder: 0,
+        metadata: {},
+      }),
+    }),
+    rewardRedemption: modelApi(state, 'rewardRedemption', {
+      uniques: [
+        { name: 'userId_idempotencyKey', fields: ['userId', 'idempotencyKey'] },
+        { name: 'codeId', fields: ['codeId'] },
+      ],
+      defaults: () => ({ status: 'ISSUED' }),
+    }),
+    rewardCode: modelApi(state, 'rewardCode', {
+      uniques: [{ name: 'rewardId_code', fields: ['rewardId', 'code'] }],
+      defaults: () => ({ status: 'AVAILABLE' }),
+    }),
+    rewardInventoryAdjustment: modelApi(state, 'rewardInventoryAdjustment', {
+      uniques: [],
+    }),
+    userRewardEntitlement: modelApi(state, 'userRewardEntitlement', {
+      uniques: [],
+      defaults: () => ({ status: 'ACTIVE' }),
+    }),
+    rewardRedemptionAudit: modelApi(state, 'rewardRedemptionAudit', {
+      uniques: [],
+    }),
     _txTail: Promise.resolve(),
-    async $transaction(fn) {
+    async $transaction(fn, _opts) {
       if (Array.isArray(fn)) return Promise.all(fn);
       const run = this._txTail.then(async () => {
       const snap = {
@@ -266,6 +345,15 @@ export function createQuestFakeDb(seed = {}) {
         aiInteraction: clone([...state.aiInteraction.entries()]),
         medicationDoseEvent: clone([...state.medicationDoseEvent.entries()]),
         medicationSchedule: clone([...state.medicationSchedule.entries()]),
+        achievementDefinition: clone([...state.achievementDefinition.entries()]),
+        userAchievement: clone([...state.userAchievement.entries()]),
+        rewardPartner: clone([...state.rewardPartner.entries()]),
+        rewardDefinition: clone([...state.rewardDefinition.entries()]),
+        rewardRedemption: clone([...state.rewardRedemption.entries()]),
+        rewardCode: clone([...state.rewardCode.entries()]),
+        rewardInventoryAdjustment: clone([...state.rewardInventoryAdjustment.entries()]),
+        userRewardEntitlement: clone([...state.userRewardEntitlement.entries()]),
+        rewardRedemptionAudit: clone([...state.rewardRedemptionAudit.entries()]),
       };
       try {
         return await fn(db);
@@ -282,6 +370,15 @@ export function createQuestFakeDb(seed = {}) {
         state.aiInteraction = new Map(snap.aiInteraction);
         state.medicationDoseEvent = new Map(snap.medicationDoseEvent);
         state.medicationSchedule = new Map(snap.medicationSchedule);
+        state.achievementDefinition = new Map(snap.achievementDefinition);
+        state.userAchievement = new Map(snap.userAchievement);
+        state.rewardPartner = new Map(snap.rewardPartner);
+        state.rewardDefinition = new Map(snap.rewardDefinition);
+        state.rewardRedemption = new Map(snap.rewardRedemption);
+        state.rewardCode = new Map(snap.rewardCode);
+        state.rewardInventoryAdjustment = new Map(snap.rewardInventoryAdjustment);
+        state.userRewardEntitlement = new Map(snap.userRewardEntitlement);
+        state.rewardRedemptionAudit = new Map(snap.rewardRedemptionAudit);
         throw error;
       }
       });

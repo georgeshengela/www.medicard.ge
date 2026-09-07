@@ -22,6 +22,10 @@ export type QuestItem = {
   rewardCoins: number;
   rewardXp: number;
   claimable: boolean;
+  /** Phase 5 — safe Smart Quest presentation metadata (movement quests only). */
+  targetSource?: 'DEFAULT' | 'PERSONALIZED' | 'COMEBACK' | null;
+  difficulty?: 'EASY' | 'NORMAL' | 'STRETCH' | null;
+  reasonKey?: 'PERSONAL_BASELINE' | 'COMEBACK_EASY' | 'STRUGGLING_ADJUSTED' | 'DEFAULT_TARGET' | null;
 };
 
 export type QuestProfile = {

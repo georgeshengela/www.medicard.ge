@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Target, TrendingUp } from 'lucide-react-native';
+import { ArrowLeft, Gift, Target, TrendingUp } from 'lucide-react-native';
 import { Bone } from '@/components/ui/Skeleton';
 import { QuestAnimatedNumber } from '@/components/quest/QuestAnimatedNumber';
 import { QuestCoinMark } from '@/components/quest/QuestIcon';
@@ -11,9 +11,12 @@ import { QuestMediLine } from '@/components/quest/QuestMediLine';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { questApi } from '@/lib/quest/api';
-import { formatQuestNumber, walletActivityLabel } from '@/lib/quest/logic.js';
+import { formatQuestNumber } from '@/lib/quest/logic.js';
+import { canShowRedeem, coinsShortfall, walletSourceLabel } from '@/lib/quest/rewardsLogic.js';
 import { q } from '@/lib/quest/copy';
 import { buildQuestDevWallet, getQuestDevScenario, isQuestDevEnabled } from '@/lib/quest/devFixture';
+import { rewardsCopy } from '@/i18n/quest/rewards.js';
+import { getMediCoinBalanceHint, subscribeMediCoinBalance } from '@/lib/quest/cache';
 import { QUEST } from '@/theme/questTokens';
 
 type WalletData = Awaited<ReturnType<typeof questApi.rewards>>;
@@ -25,10 +28,12 @@ export default function QuestWalletScreen() {
   const dark = useIsDark();
   const reduce = usePrefersReducedMotion();
   const copy = q('ka');
+  const rewards = rewardsCopy('ka');
   const [data, setData] = useState<WalletData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [liveCoins, setLiveCoins] = useState<number | null>(() => getMediCoinBalanceHint());
 
-  useEffect(() => {
+  const load = () => {
     if (isQuestDevEnabled() && getQuestDevScenario() !== 'LIVE') {
       setData(buildQuestDevWallet() as unknown as WalletData);
       setLoading(false);
@@ -39,11 +44,41 @@ export default function QuestWalletScreen() {
       .then(setData)
       .catch(() => setData(null))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
   }, []);
 
-  const sourceLabel = (sourceType: string) => walletActivityLabel(sourceType, copy.mission);
+  useEffect(() => {
+    return subscribeMediCoinBalance((coins) => {
+      setLiveCoins(coins);
+      if (coins == null) load();
+      else {
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                balance: { ...prev.balance, coins },
+              }
+            : prev,
+        );
+      }
+    });
+  }, []);
+
+  const sourceLabel = (sourceType: string) =>
+    walletSourceLabel(sourceType, {
+      mission: copy.mission,
+      ledgerAchievement: copy.ledgerAchievement,
+      ledgerSystem: copy.ledgerSystem,
+      ledgerAdmin: copy.ledgerAdmin,
+      ledgerUnknown: copy.ledgerUnknown,
+      ledgerRedeem: rewards.ledgerRedeem || copy.ledgerRedeem,
+    });
   const coinInk = dark ? QUEST.pill.coinInkDark : QUEST.pill.coinInkLight;
   const coinBg = dark ? QUEST.pill.coinDark : QUEST.pill.coinLight;
+  const displayBalance = liveCoins ?? data?.balance?.coins ?? 0;
 
   return (
     <View className="flex-1 bg-bg-100" style={{ paddingTop: insets.top }}>
@@ -111,7 +146,7 @@ export default function QuestWalletScreen() {
               <Bone width={140} height={40} radius={10} />
             ) : (
               <QuestAnimatedNumber
-                value={data?.balance.coins || 0}
+                value={displayBalance}
                 locale="ka"
                 duration={900}
                 numberOfLines={1}
@@ -146,6 +181,40 @@ export default function QuestWalletScreen() {
             </View>
           </View>
         </Animated.View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={rewards.useCoins}
+          onPress={() => router.push('/medi-quest/rewards' as never)}
+          className="active:opacity-75"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            backgroundColor: dark ? colors.surface : '#FFFFFF',
+            borderWidth: 1,
+            borderColor: colors.bg300,
+            borderRadius: QUEST.rowRadius,
+            paddingHorizontal: 14,
+            paddingVertical: 14,
+          }}
+        >
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
+            }}
+          >
+            <Gift size={18} color={colors.primary200} strokeWidth={2.2} />
+          </View>
+          <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, color: colors.text100 }}>
+            {rewards.useCoins}
+          </Text>
+        </Pressable>
 
         {/* Activity */}
         <View style={{ gap: 8 }}>

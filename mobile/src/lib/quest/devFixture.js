@@ -19,6 +19,9 @@ const QUEST_DEV_SCENARIOS = Object.freeze([
   'LONG_TEXT',
   'LARGE_BALANCE',
   'LONG_STREAK',
+  'COMEBACK',
+  'STRUGGLING',
+  'DEFAULT_TARGET',
 ]);
 
 const QUEST_DEV_LABELS = Object.freeze({
@@ -35,6 +38,9 @@ const QUEST_DEV_LABELS = Object.freeze({
   LONG_TEXT: 'Long Georgian',
   LARGE_BALANCE: 'Large balance',
   LONG_STREAK: 'Long streak',
+  COMEBACK: 'Smart: comeback',
+  STRUGGLING: 'Smart: struggling',
+  DEFAULT_TARGET: 'Smart: default target',
 });
 
 let current = 'LIVE';
@@ -62,6 +68,7 @@ function setQuestDevScenario(next) {
   current = key;
   if (typeof globalThis !== 'undefined') globalThis[SCENARIO_FLAG] = key;
   overlay = null;
+  achievementOverlay = null;
   listeners.forEach((fn) => {
     try {
       fn(key);
@@ -241,6 +248,135 @@ function buildQuestDevWallet() {
   };
 }
 
+/**
+ * Phase 4 — DEV achievements overview. Mirrors the server AchievementsOverview
+ * shape with a rich mixed state: claimable, claimed, in-progress, secrets.
+ */
+let achievementOverlay = null;
+
+function devAchievement(overrides) {
+  const threshold = overrides.threshold ?? 1;
+  const progress = overrides.unlocked ? threshold : Math.min(threshold, overrides.progress ?? 0);
+  return {
+    id: `dev-ach-${overrides.key || Math.random().toString(36).slice(2)}`,
+    key: overrides.key || null,
+    family: overrides.family || (overrides.key ? overrides.key.replace(/_\d+$/, '') : null),
+    category: overrides.category || 'PROGRESSION',
+    rarity: overrides.rarity || 'COMMON',
+    secret: Boolean(overrides.secret),
+    threshold: overrides.masked ? null : threshold,
+    rewardCoins: overrides.masked ? null : overrides.rewardCoins ?? 25,
+    rewardXp: overrides.masked ? null : overrides.rewardXp ?? 50,
+    unlocked: Boolean(overrides.unlocked),
+    claimed: Boolean(overrides.claimed),
+    claimable: Boolean(overrides.unlocked) && !overrides.claimed,
+    unlockedAt: overrides.unlocked ? isoDaysAgo(overrides.daysAgo ?? 1, 12) : null,
+    claimedAt: overrides.claimed ? isoDaysAgo(overrides.daysAgo ?? 1, 13) : null,
+    progress: overrides.masked ? null : progress,
+    progressPercent: overrides.masked ? null : threshold > 0 ? Math.round((progress / threshold) * 100) : 0,
+    userAchievementId: overrides.unlocked ? `dev-ua-${overrides.key}` : null,
+    sortOrder: overrides.sortOrder ?? 0,
+    ...(overrides.extra || {}),
+  };
+}
+
+function buildQuestDevAchievements() {
+  if (achievementOverlay && achievementOverlay.scenario === current) return achievementOverlay.overview;
+  if (current === 'NO_QUESTS' || current === 'FRESH_DAY') {
+    const items = [
+      devAchievement({ key: 'FIRST_QUEST', rarity: 'COMMON', rewardXp: 20, rewardCoins: 10, sortOrder: 0 }),
+      devAchievement({ key: 'FIRST_CLAIM', rarity: 'COMMON', rewardXp: 20, rewardCoins: 10, sortOrder: 1 }),
+      devAchievement({ key: 'QUESTS_5', threshold: 5, category: 'PROGRESSION', rarity: 'COMMON', rewardXp: 30, rewardCoins: 15, progress: 0, sortOrder: 10 }),
+      devAchievement({ key: 'STREAK_3', threshold: 3, category: 'STREAK', rarity: 'COMMON', rewardXp: 40, rewardCoins: 20, progress: 0, sortOrder: 20 }),
+      devAchievement({ masked: true, secret: true, rarity: 'UNCOMMON', category: 'SPECIAL', sortOrder: 91 }),
+    ];
+    return {
+      items,
+      summary: { total: 50, unlocked: 0, claimable: 0, claimed: 0, secretsLocked: 2, byRarity: {} },
+    };
+  }
+  const items = [
+    devAchievement({ key: 'FIRST_QUEST', rarity: 'COMMON', rewardXp: 20, rewardCoins: 10, unlocked: true, daysAgo: 6, sortOrder: 0 }),
+    devAchievement({ key: 'FIRST_CLAIM', rarity: 'COMMON', rewardXp: 20, rewardCoins: 10, unlocked: true, claimed: true, daysAgo: 6, sortOrder: 1 }),
+    devAchievement({ key: 'FIRST_WEEKLY', rarity: 'COMMON', rewardXp: 50, rewardCoins: 30, unlocked: true, claimed: true, daysAgo: 4, sortOrder: 2 }),
+    devAchievement({ key: 'QUESTS_5', threshold: 5, rarity: 'COMMON', rewardXp: 30, rewardCoins: 15, unlocked: true, daysAgo: 3, sortOrder: 10 }),
+    devAchievement({ key: 'QUESTS_10', threshold: 10, rarity: 'COMMON', rewardXp: 50, rewardCoins: 25, unlocked: true, claimed: true, daysAgo: 2, sortOrder: 11 }),
+    devAchievement({ key: 'QUESTS_25', threshold: 25, rarity: 'UNCOMMON', rewardXp: 100, rewardCoins: 50, progress: 16, sortOrder: 12 }),
+    devAchievement({ key: 'QUESTS_100', threshold: 100, rarity: 'RARE', rewardXp: 250, rewardCoins: 125, progress: 16, sortOrder: 14 }),
+    devAchievement({ key: 'STREAK_3', threshold: 3, category: 'STREAK', rarity: 'COMMON', rewardXp: 40, rewardCoins: 20, unlocked: true, claimed: true, daysAgo: 4, sortOrder: 20 }),
+    devAchievement({ key: 'STREAK_7', threshold: 7, category: 'STREAK', rarity: 'UNCOMMON', rewardCoins: 50, rewardXp: 100, unlocked: true, daysAgo: 0, sortOrder: 21 }),
+    devAchievement({ key: 'STREAK_14', threshold: 14, category: 'STREAK', rarity: 'UNCOMMON', rewardXp: 150, rewardCoins: 75, progress: 6, sortOrder: 22 }),
+    devAchievement({ key: 'STREAK_30', threshold: 30, category: 'STREAK', rarity: 'RARE', rewardCoins: 150, rewardXp: 300, progress: 6, sortOrder: 23 }),
+    devAchievement({ key: 'MOVE_10', threshold: 10, category: 'MOVEMENT', rarity: 'COMMON', rewardXp: 60, rewardCoins: 30, unlocked: true, claimed: true, daysAgo: 1, sortOrder: 31 }),
+    devAchievement({ key: 'MOVE_25', threshold: 25, category: 'MOVEMENT', rarity: 'UNCOMMON', rewardXp: 120, rewardCoins: 60, progress: 14, sortOrder: 32 }),
+    devAchievement({ key: 'HYDRATE_10', threshold: 10, category: 'HYDRATION', rarity: 'COMMON', rewardXp: 60, rewardCoins: 30, progress: 7, sortOrder: 41 }),
+    devAchievement({ key: 'MEDI_10', threshold: 10, category: 'MEDI', rarity: 'COMMON', rewardXp: 60, rewardCoins: 30, progress: 4, sortOrder: 51 }),
+    devAchievement({ key: 'WEEKLY_3', threshold: 3, category: 'WEEKLY', rarity: 'COMMON', rewardXp: 100, rewardCoins: 50, unlocked: true, daysAgo: 1, sortOrder: 60 }),
+    devAchievement({ key: 'LEVEL_5', threshold: 5, category: 'LEVEL', rarity: 'COMMON', rewardXp: 50, rewardCoins: 25, unlocked: true, claimed: true, daysAgo: 5, sortOrder: 70 }),
+    devAchievement({ key: 'LEVEL_10', threshold: 10, category: 'LEVEL', rarity: 'UNCOMMON', rewardCoins: 50, rewardXp: 100, progress: 7, sortOrder: 71 }),
+    devAchievement({ key: 'COINS_EARNED_500', threshold: 500, category: 'COINS', rarity: 'COMMON', rewardXp: 40, rewardCoins: 20, unlocked: true, claimed: true, daysAgo: 3, sortOrder: 80 }),
+    devAchievement({ key: 'COINS_EARNED_2500', threshold: 2500, category: 'COINS', rarity: 'UNCOMMON', rewardCoins: 50, rewardXp: 100, progress: 1240, sortOrder: 81 }),
+    devAchievement({ key: 'QUESTS_500', threshold: 500, rarity: 'LEGENDARY', rewardCoins: 400, rewardXp: 800, progress: 16, sortOrder: 16 }),
+    devAchievement({ key: 'STREAK_365', threshold: 365, category: 'STREAK', rarity: 'LEGENDARY', rewardCoins: 500, rewardXp: 1500, progress: 6, sortOrder: 26 }),
+    devAchievement({ key: 'COMEBACK', category: 'SPECIAL', rarity: 'RARE', rewardCoins: 50, rewardXp: 100, progress: 0, sortOrder: 90 }),
+    devAchievement({ key: 'EARLY_BIRD', category: 'SPECIAL', rarity: 'UNCOMMON', rewardCoins: 40, rewardXp: 75, secret: true, unlocked: true, daysAgo: 2, sortOrder: 91 }),
+    devAchievement({ masked: true, secret: true, rarity: 'UNCOMMON', category: 'SPECIAL', sortOrder: 92 }),
+  ];
+  const unlocked = items.filter((row) => row.unlocked);
+  return {
+    items,
+    summary: {
+      total: 50,
+      unlocked: unlocked.length,
+      claimable: items.filter((row) => row.claimable).length,
+      claimed: items.filter((row) => row.claimed).length,
+      secretsLocked: 1,
+      byRarity: unlocked.reduce((acc, row) => {
+        acc[row.rarity] = (acc[row.rarity] || 0) + 1;
+        return acc;
+      }, {}),
+    },
+  };
+}
+
+function claimAchievementDevFixture(achievementId) {
+  const base = buildQuestDevAchievements();
+  const target = base.items.find((row) => row.id === achievementId);
+  if (!target || !target.claimable) return null;
+  const items = base.items.map((row) =>
+    row.id === achievementId
+      ? { ...row, claimed: true, claimable: false, claimedAt: new Date().toISOString() }
+      : row,
+  );
+  const overview = {
+    items,
+    summary: {
+      ...base.summary,
+      claimable: Math.max(0, base.summary.claimable - 1),
+      claimed: base.summary.claimed + 1,
+    },
+  };
+  achievementOverlay = { scenario: current, overview };
+  notifyQuestDev();
+  const leveledUp = current === 'LEVEL_UP';
+  return {
+    ok: true,
+    claimed: true,
+    alreadyClaimed: false,
+    achievement: items.find((row) => row.id === achievementId),
+    reward: { coinsAwarded: target.rewardCoins || 0, xpAwarded: target.rewardXp || 0 },
+    profile: {
+      coinBalance: 1240 + (target.rewardCoins || 0),
+      totalXp: 1950 + (target.rewardXp || 0),
+      previousLevel: 7,
+      currentLevel: leveledUp ? 8 : 7,
+      leveledUp,
+      levelProgress: { level: leveledUp ? 8 : 7, nextLevelXp: 2450, progressPercent: leveledUp ? 6 : 52 },
+      rankKey: rankKeyFromLevel(leveledUp ? 8 : 7),
+    },
+  };
+}
+
 function notifyQuestDev() {
   listeners.forEach((fn) => {
     try {
@@ -272,8 +408,23 @@ function item(overrides) {
     rewardCoins: 30,
     rewardXp: 50,
     claimable: false,
+    // Phase 5 smart fields — movement rows override these; others stay null.
+    targetSource: null,
+    difficulty: null,
+    reasonKey: null,
     ...overrides,
   };
+}
+
+/** Movement row with Phase 5 smart metadata (server-personalized by default). */
+function moveItem(overrides) {
+  return item({
+    targetSource: 'PERSONALIZED',
+    difficulty: 'NORMAL',
+    reasonKey: 'PERSONAL_BASELINE',
+    target: 4500,
+    ...overrides,
+  });
 }
 
 function profile(overrides) {
@@ -310,11 +461,14 @@ function weeklyRow(overrides) {
     key: 'weekly_steps',
     cadence: 'WEEKLY',
     progressType: 'STEPS',
-    target: 35000,
-    progress: 17500,
+    target: 32000,
+    progress: 16000,
     progressPercent: 50,
     rewardCoins: 150,
     rewardXp: 200,
+    targetSource: 'PERSONALIZED',
+    difficulty: 'NORMAL',
+    reasonKey: 'PERSONAL_BASELINE',
     ...overrides,
   });
 }
@@ -344,7 +498,7 @@ function buildQuestDevDashboard(scenario) {
   switch (scenario) {
     case 'FRESH_DAY':
       return dash(
-        [item(), hydro, medi],
+        [item({ targetSource: 'DEFAULT', difficulty: 'NORMAL', reasonKey: 'DEFAULT_TARGET' }), hydro, medi],
         [weeklyRow({ progress: 0, progressPercent: 0 })],
         { dailyCompleted: 0, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
         profile({ currentStreak: 0, longestStreak: 4, level: 1, totalXp: 40, coinBalance: 0, rankKey: 'LEVEL_1_4', levelProgress: { level: 1, nextLevelXp: 100, progressPercent: 2 } }),
@@ -352,7 +506,7 @@ function buildQuestDevDashboard(scenario) {
     case 'PARTIAL':
       return dash(
         [
-          item({ progress: 1820, progressPercent: 36 }),
+          moveItem({ progress: 1820, progressPercent: 40 }),
           { ...hydro, progress: 50, progressPercent: 50 },
           medi,
         ],
@@ -362,12 +516,44 @@ function buildQuestDevDashboard(scenario) {
     case 'NEAR_COMPLETE':
       return dash(
         [
-          item({ progress: 4950, progressPercent: 99 }),
+          moveItem({ progress: 4460, progressPercent: 99 }),
           { ...hydro, progress: 99, progressPercent: 99 },
           { ...medi, progress: 1, progressPercent: 100, status: 'CLAIMED', claimable: false, claimedAt: '2026-09-06T10:00:00.000Z' },
         ],
         [weeklyRow({ progress: 34950, progressPercent: 99 })],
         { dailyCompleted: 1, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
+      );
+    case 'COMEBACK':
+      return dash(
+        [
+          moveItem({ target: 4000, targetSource: 'COMEBACK', difficulty: 'EASY', reasonKey: 'COMEBACK_EASY', progress: 600, progressPercent: 15 }),
+          { ...hydro, progress: 20, progressPercent: 20 },
+          medi,
+        ],
+        [weeklyRow({ progress: 0, progressPercent: 0 })],
+        { dailyCompleted: 0, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
+        profile({ currentStreak: 0, longestStreak: 12 }),
+      );
+    case 'STRUGGLING':
+      return dash(
+        [
+          moveItem({ target: 3500, difficulty: 'EASY', reasonKey: 'STRUGGLING_ADJUSTED', progress: 800, progressPercent: 23 }),
+          { ...hydro, progress: 35, progressPercent: 35 },
+          medi,
+        ],
+        [weeklyRow({ target: 29000, progress: 4200, progressPercent: 14, reasonKey: 'STRUGGLING_ADJUSTED' })],
+        { dailyCompleted: 0, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
+        profile({ currentStreak: 0, longestStreak: 6 }),
+      );
+    case 'DEFAULT_TARGET':
+      return dash(
+        [
+          item({ targetSource: 'DEFAULT', difficulty: 'NORMAL', reasonKey: 'DEFAULT_TARGET', progress: 2400, progressPercent: 48 }),
+          { ...hydro, progress: 50, progressPercent: 50 },
+          medi,
+        ],
+        [weeklyRow({ target: 35000, targetSource: 'DEFAULT', reasonKey: 'DEFAULT_TARGET' })],
+        { dailyCompleted: 0, dailyTotal: 3, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
       );
     case 'CLAIMABLE':
       return dash(
@@ -404,7 +590,7 @@ function buildQuestDevDashboard(scenario) {
       );
     case 'OFFLINE':
       return dash(
-        [item({ progress: 2200, progressPercent: 44 }), hydro],
+        [moveItem({ progress: 2200, progressPercent: 49 }), hydro],
         [weeklyRow()],
         { dailyCompleted: 0, dailyTotal: 2, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
       );
@@ -428,7 +614,7 @@ function buildQuestDevDashboard(scenario) {
     case 'LONG_TEXT':
       return dash(
         [
-          item({ progress: 3820, progressPercent: 76 }),
+          moveItem({ progress: 3820, progressPercent: 85 }),
           { ...hydro, progress: 65, progressPercent: 65 },
           medi,
         ],
@@ -438,7 +624,7 @@ function buildQuestDevDashboard(scenario) {
       );
     case 'LARGE_BALANCE':
       return dash(
-        [item({ progress: 100, progressPercent: 2 })],
+        [moveItem({ progress: 100, progressPercent: 2 })],
         [weeklyRow({ progress: 1, progressPercent: 1 })],
         { dailyCompleted: 0, dailyTotal: 1, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
         profile({
@@ -453,7 +639,7 @@ function buildQuestDevDashboard(scenario) {
       );
     case 'LONG_STREAK':
       return dash(
-        [item({ progress: 2500, progressPercent: 50 })],
+        [moveItem({ progress: 2500, progressPercent: 56 })],
         [],
         { dailyCompleted: 0, dailyTotal: 1, dailyClaimable: 0, weeklyCompleted: 0, unclaimedRewards: 0 },
         profile({ currentStreak: 1000, longestStreak: 1000, coinBalance: 9 }),
@@ -581,4 +767,6 @@ module.exports = {
   questVisualAuthSnapshot,
   buildQuestDevHistory,
   buildQuestDevWallet,
+  buildQuestDevAchievements,
+  claimAchievementDevFixture,
 };

@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 import { Notifications } from '@/lib/expoNotifications';
 import { ka } from '@/i18n/ka';
-import { api, type User } from '@/lib/api';
 import {
   cancelNotificationsByPrefix,
   NOTIF_PREFIX,
@@ -16,6 +15,7 @@ import { archiveReachedStepsGoal } from '@/lib/stepsGoalHistory';
 import type { StepsGoal, StepsGoalProgress } from '@/types/stepsGoal';
 
 const STORAGE_KEY = 'medicard.steps.goal.v1';
+/** Legacy pending +3 points queue — cleared on flush, no longer awarded. */
 const PENDING_AWARDS_KEY = 'medicard.steps.goal.pendingAwards';
 
 export const STEPS_GOAL_PRESETS = [2000, 3000, 4000, 5000] as const;
@@ -112,43 +112,15 @@ export async function archiveAndClearStepsGoal(goal: StepsGoal, currentSteps: nu
   await clearStepsGoal();
 }
 
-function parsePendingAwardIds(raw: string | null): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return [...new Set(parsed.map((id) => String(id || '').trim()).filter(Boolean))];
-  } catch {
-    return [];
-  }
+/** Legacy queue — no-op. Steps goals no longer award User.points. */
+export async function queueStepsGoalAward(_goalId: string): Promise<void> {
+  /* retired */
 }
 
-export async function queueStepsGoalAward(goalId: string): Promise<void> {
-  const id = goalId.trim();
-  if (!id) return;
-  const list = parsePendingAwardIds(await getPreference(PENDING_AWARDS_KEY));
-  if (list.includes(id)) return;
-  await setPreference(PENDING_AWARDS_KEY, JSON.stringify([...list, id]));
-}
-
-/** Retry queued +3 bonuses. Successful or already-claimed ids are dropped. */
-export async function flushStepsGoalAwards(applyUser?: (user: User) => void): Promise<number> {
-  const list = parsePendingAwardIds(await getPreference(PENDING_AWARDS_KEY));
-  if (list.length === 0) return 0;
-
-  const remaining: string[] = [];
-  let awarded = 0;
-  for (const goalId of list) {
-    try {
-      const result = await api.checkIn.awardStepsGoal(goalId);
-      if (result.user) applyUser?.(result.user);
-      if (result.awarded) awarded += result.pointsAwarded ?? 0;
-    } catch {
-      remaining.push(goalId);
-    }
-  }
-  await setPreference(PENDING_AWARDS_KEY, JSON.stringify(remaining));
-  return awarded;
+/** Clears any leftover legacy award queue. Does not write User.points. */
+export async function flushStepsGoalAwards(_applyUser?: (user: unknown) => void): Promise<number> {
+  await setPreference(PENDING_AWARDS_KEY, JSON.stringify([]));
+  return 0;
 }
 
 export function buildGoalProgress(goal: StepsGoal, current: number): StepsGoalProgress {

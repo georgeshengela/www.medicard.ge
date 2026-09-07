@@ -89,7 +89,13 @@ export function useQuestDashboard() {
       }
       const result = await questApi.claim(id);
       markQuestCelebration('claimed-http', id, result.quest.claimedAt || '');
-      await refresh(true);
+      const coins = result.profile?.coinBalance;
+      if (Number.isFinite(Number(coins))) {
+        const { invalidateMediCoinBalance } = await import('@/lib/quest/cache');
+        invalidateMediCoinBalance({ coins: Number(coins) });
+      } else {
+        await refresh(true);
+      }
       return result;
     } catch {
       return null;

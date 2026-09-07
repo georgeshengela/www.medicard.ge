@@ -98,7 +98,7 @@ export default function StreakScreen() {
             >
               {ka.checkIn.weekStreakTitle}
             </Text>
-            {showBonus ? <StreakBonusChip label={ka.checkIn.bonusChip(state?.pointsPerDay ?? 5)} /> : null}
+            {showBonus ? <StreakBonusChip label={ka.checkIn.bonusChip()} /> : null}
           </View>
 
           <View

@@ -17,22 +17,18 @@ import {
   archiveAndClearStepsGoal,
   buildGoalProgress,
   clearStepsGoal,
-  flushStepsGoalAwards,
   loadStepsGoal,
-  queueStepsGoalAward,
   saveStepsGoal,
   todayYmd,
 } from '@/lib/stepsGoal';
 import { fetchStepsTotalBetween } from '@/lib/stepsMetrics';
 import { formatStepsCount } from '@/lib/stepsMetrics.shared';
-import { useAuth } from '@/store/AuthContext';
 import type { StepsGoalProgress } from '@/types/stepsGoal';
 
 export default function StepsGoalScreen() {
   const FIGMA_STEPS = useFigmaSteps();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { setUser } = useAuth();
   const [progress, setProgress] = useState<StepsGoalProgress | null>(null);
 
   const load = useCallback(async () => {
@@ -44,9 +40,7 @@ export default function StepsGoalScreen() {
     const current = await fetchStepsTotalBetween(goal.startedYmd, todayYmd());
     const next = buildGoalProgress(goal, current);
     if (next.completed) {
-      await queueStepsGoalAward(goal.id);
-      await flushStepsGoalAwards(setUser);
-      if (!goal.completedSeen && !goal.pointsClaimed) {
+      if (!goal.completedSeen) {
         router.replace('/health-metrics/steps/goal/completed' as never);
         return;
       }
@@ -55,7 +49,7 @@ export default function StepsGoalScreen() {
       return;
     }
     setProgress(next);
-  }, [router, setUser]);
+  }, [router]);
 
   useFocusEffect(
     useCallback(() => {

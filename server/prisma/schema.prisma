@@ -60,9 +60,14 @@ model User {
   questCompletions      QuestCompletion[]
   rewardLedger          RewardLedger[]
   questProfile          UserQuestProfile?
+  achievements          UserAchievement[]
   hydrationPreference   HydrationPreference?
   hydrationIntakeEvents HydrationIntakeEvent[]
   stepTrackingCapability StepTrackingCapability?
+  /// Phase 7 — Medi Rewards Store
+  rewardRedemptions     RewardRedemption[]
+  rewardEntitlements    UserRewardEntitlement[]
+  rewardAuditLogs       RewardRedemptionAudit[]
 
   @@index([status])
   @@index([packageId])
@@ -968,7 +973,7 @@ model RewardLedger {
   amount          Int
   /// EARN | ADJUST
   transactionType String
-  /// QUEST | SYSTEM
+  /// QUEST | ACHIEVEMENT | SYSTEM
   sourceType      String
   sourceId        String
   createdAt       DateTime @default(now())
@@ -996,6 +1001,54 @@ model UserQuestProfile {
   updatedAt           DateTime @updatedAt
 }
 
+/// Phase 4 — long-term achievement definition. Config-free, no PII, no health data.
+model AchievementDefinition {
+  id             String   @id @default(uuid())
+  key            String   @unique
+  /// FIRST | QUESTS | STREAK | MOVE | HYDRATE | MEDI | WEEKLY | LEVEL | COINS | COMEBACK | TIME_OF_DAY
+  family         String
+  /// PROGRESSION | STREAK | MOVEMENT | HYDRATION | MEDI | WEEKLY | LEVEL | COINS | SPECIAL
+  category       String
+  /// COMMON | UNCOMMON | RARE | EPIC | LEGENDARY
+  rarity         String
+  threshold      Int
+  rewardCoins    Int      @default(0)
+  rewardXp       Int      @default(0)
+  /// Secret achievements are masked in the API until unlocked.
+  isSecret       Boolean  @default(false)
+  titleKey       String
+  descriptionKey String
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  unlocks        UserAchievement[]
+
+  @@index([isActive, sortOrder])
+  @@index([family])
+}
+
+/// Immutable achievement unlock. Never deleted or downgraded once created.
+model UserAchievement {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId    String
+  achievement      AchievementDefinition @relation(fields: [achievementId], references: [id])
+  unlockedAt       DateTime @default(now())
+  claimedAt        DateTime?
+  /// Counter value observed at unlock time (server-computed).
+  progressAtUnlock Int      @default(0)
+  /// UNLOCKED | CLAIMED
+  status           String   @default("UNLOCKED")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, achievementId])
+  @@index([userId, status])
+  @@index([userId, unlockedAt])
+}
+
 /// Admin actions — template edits, settings, user status. Never store secrets.
 model AdminAuditLog {
   id            String   @id @default(uuid())
@@ -1011,4 +1064,162 @@ model AdminAuditLog {
   @@index([createdAt])
   @@index([action, createdAt])
   @@index([targetType, targetId])
+}
+
+/// Phase 7 — minimal partner display for loyalty vouchers (not Pharmacy CRM).
+model RewardPartner {
+  id            String   @id @default(uuid())
+  key           String   @unique
+  displayName   String
+  logoAssetKey  String?
+  website       String?
+  /// ACTIVE | INACTIVE
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  rewards       RewardDefinition[]
+}
+
+/// Phase 7 — Medi Coins Rewards Store catalog (loyalty points only).
+model RewardDefinition {
+  id                    String   @id @default(uuid())
+  key                   String   @unique
+  /// DIGITAL_PERK | COUPON_CODE | PARTNER_VOUCHER | PREMIUM_ACCESS
+  type                  String
+  /// DRAFT | ACTIVE | PAUSED | ENDED | ARCHIVED
+  status                String   @default("DRAFT")
+  titleKey              String
+  descriptionKey        String
+  termsKey              String?
+  imageKey              String?
+  coinCost              Int
+  partnerId             String?
+  partner               RewardPartner? @relation(fields: [partnerId], references: [id])
+  /// UNLIMITED | FINITE | CODE_POOL
+  inventoryMode         String   @default("UNLIMITED")
+  inventoryQuantity     Int?
+  perUserLimit          Int?
+  /// NONE | DAILY | WEEKLY | MONTHLY | LIFETIME | ROLLING_DAYS
+  periodLimitType       String?
+  periodLimitCount      Int?
+  /// When periodLimitType = ROLLING_DAYS (e.g. 14-day cooldown).
+  periodWindowDays      Int?
+  startsAt              DateTime?
+  endsAt                DateTime?
+  redemptionExpiryDays  Int?
+  /// Entitlement key issued on DIGITAL_PERK / PREMIUM_ACCESS redeem (e.g. quest.theme.premium).
+  entitlementKey        String?
+  entitlementDurationDays Int?
+  sortOrder             Int      @default(0)
+  featured              Boolean  @default(false)
+  metadata              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  redemptions           RewardRedemption[]
+  codes                 RewardCode[]
+  inventoryAdjustments  RewardInventoryAdjustment[]
+
+  @@index([status, sortOrder])
+  @@index([type, status])
+  @@index([featured, status])
+}
+
+/// Phase 7 — one redemption = one spend. coinCost is snapshotted.
+model RewardRedemption {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rewardId           String
+  reward             RewardDefinition @relation(fields: [rewardId], references: [id])
+  /// PENDING | ISSUED | USED | EXPIRED | CANCELLED
+  status             String   @default("ISSUED")
+  coinCost           Int
+  ledgerEntryId      String?
+  codeId             String?  @unique
+  code               RewardCode? @relation(fields: [codeId], references: [id])
+  idempotencyKey     String?
+  redeemedAt         DateTime @default(now())
+  expiresAt          DateTime?
+  usedAt             DateTime?
+  cancelledAt        DateTime?
+  cancellationReason String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  entitlements       UserRewardEntitlement[]
+  auditLogs          RewardRedemptionAudit[]
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, redeemedAt])
+  @@index([userId, status])
+  @@index([rewardId, status])
+}
+
+/// Phase 7 — partner / coupon codes. Never allocate the same code twice.
+model RewardCode {
+  id                     String   @id @default(uuid())
+  rewardId               String
+  reward                 RewardDefinition @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  code                   String
+  /// AVAILABLE | RESERVED | USED | EXPIRED | DISABLED
+  status                 String   @default("AVAILABLE")
+  reservedByRedemptionId String?
+  reservedAt             DateTime?
+  usedAt                 DateTime?
+  expiresAt              DateTime?
+  createdAt              DateTime @default(now())
+  redemption             RewardRedemption?
+
+  @@unique([rewardId, code])
+  @@index([rewardId, status])
+}
+
+/// Phase 7 — finite inventory audit trail (never silent stock mutation).
+model RewardInventoryAdjustment {
+  id        String   @id @default(uuid())
+  rewardId  String
+  reward    RewardDefinition @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  delta     Int
+  reason    String
+  actorType String   @default("SYSTEM")
+  actorId   String?
+  createdAt DateTime @default(now())
+
+  @@index([rewardId, createdAt])
+}
+
+/// Phase 7 — first-party digital perk entitlements (cosmetics / premium).
+model UserRewardEntitlement {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rewardRedemptionId String
+  redemption         RewardRedemption @relation(fields: [rewardRedemptionId], references: [id], onDelete: Cascade)
+  entitlementKey     String
+  startsAt           DateTime
+  endsAt             DateTime
+  /// ACTIVE | EXPIRED | REVOKED
+  status             String   @default("ACTIVE")
+  createdAt          DateTime @default(now())
+
+  @@index([userId, entitlementKey, status])
+  @@index([userId, endsAt])
+  @@index([rewardRedemptionId])
+}
+
+/// Phase 7 — immutable redemption status transitions (no coupon plaintext).
+model RewardRedemptionAudit {
+  id           String   @id @default(uuid())
+  redemptionId String
+  redemption   RewardRedemption @relation(fields: [redemptionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rewardId     String
+  coinCost     Int
+  fromStatus   String?
+  toStatus     String
+  note         String?
+  createdAt    DateTime @default(now())
+
+  @@index([redemptionId, createdAt])
+  @@index([userId, createdAt])
 }

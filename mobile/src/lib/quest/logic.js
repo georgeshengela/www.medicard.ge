@@ -64,7 +64,16 @@ function rewardFloatOverlayStyle() {
 }
 
 function walletActivityLabel(sourceType, missionLabel) {
-  return missionLabel || '';
+  // Legacy shim — Wallet screens should use walletSourceLabel from rewardsLogic.
+  const { walletSourceLabel } = require('./rewardsLogic.js');
+  return walletSourceLabel(sourceType, {
+    mission: missionLabel,
+    ledgerUnknown: 'Balance adjustment',
+    ledgerSystem: 'System adjustment',
+    ledgerAdmin: 'System adjustment',
+    ledgerAchievement: 'Achievement',
+    ledgerRedeem: 'Medi reward',
+  });
 }
 
 function historyGroupKey(quest, todayYmd) {
@@ -156,9 +165,11 @@ function homeModuleView(input) {
   if (input?.loading && !input?.dashboard) return { kind: 'loading' };
   if (input?.error && !input?.dashboard) return { kind: 'error' };
   if (!input?.dashboard) return { kind: 'empty' };
-  // Server sends `profile: null` + `unavailable: true` when quest tables are not
-  // provisioned yet; there is nothing to render, so treat it like no dashboard.
-  if (!input.dashboard.profile || input.dashboard.unavailable) return { kind: 'empty' };
+  // Server sends `profile: null` when quest tables are not provisioned.
+  // A missing profile is the only Home state that cannot show level / coins.
+  // `unavailable` with a profile still has identity to render; no daily
+  // missions is `priority.mode === 'empty'`, not a full-card empty.
+  if (!input.dashboard.profile) return { kind: 'empty' };
   const priority = pickPriorityQuest(input.dashboard);
   const mood = homeQuestMood({
     dailyTotal: input.dashboard.summary?.dailyTotal,
@@ -258,6 +269,70 @@ function privacySafeQuestBlob(value) {
   return !/"prompt"|"assistantReply"|"hydrationMl"|"diagnosis"|"medicationName"/i.test(blob);
 }
 
+/* ── Phase 4: achievements (pure helpers, no UI) ───────────────────── */
+
+const ACHIEVEMENT_RARITY_ORDER = Object.freeze(['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY']);
+
+function achievementRarityRank(rarity) {
+  const index = ACHIEVEMENT_RARITY_ORDER.indexOf(String(rarity || '').toUpperCase());
+  return index < 0 ? 0 : index;
+}
+
+/**
+ * Collection screen ordering inside a section:
+ * claimable first, then unlocked, then in-progress by closeness, secrets last.
+ */
+function sortAchievements(items) {
+  const list = Array.isArray(items) ? [...items] : [];
+  return list.sort((a, b) => {
+    const stateOf = (row) => (row.claimable ? 0 : row.unlocked ? 1 : row.secret && !row.unlocked ? 3 : 2);
+    const sa = stateOf(a);
+    const sb = stateOf(b);
+    if (sa !== sb) return sa - sb;
+    if (sa === 2) {
+      const pa = Number(a.progressPercent) || 0;
+      const pb = Number(b.progressPercent) || 0;
+      if (pa !== pb) return pb - pa;
+    }
+    return (a.sortOrder || 0) - (b.sortOrder || 0);
+  });
+}
+
+/** Category grouping for the Achievements screen sections. */
+function groupAchievements(items) {
+  const order = ['PROGRESSION', 'STREAK', 'MOVEMENT', 'HYDRATION', 'MEDI', 'WEEKLY', 'LEVEL', 'COINS', 'SPECIAL'];
+  const buckets = new Map();
+  for (const item of Array.isArray(items) ? items : []) {
+    const key = order.includes(item.category) ? item.category : 'SPECIAL';
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(item);
+  }
+  return order
+    .filter((key) => buckets.has(key))
+    .map((key) => ({ category: key, items: sortAchievements(buckets.get(key)) }));
+}
+
+/** Hub preview: up to `limit` medallions — claimable → freshly unlocked → nearest locked. */
+function achievementsPreview(items, limit = 4) {
+  const list = Array.isArray(items) ? items : [];
+  const claimable = list.filter((row) => row.claimable);
+  const unlocked = list
+    .filter((row) => row.unlocked && !row.claimable)
+    .sort((a, b) => String(b.unlockedAt || '').localeCompare(String(a.unlockedAt || '')));
+  const nearest = list
+    .filter((row) => !row.unlocked && !row.secret)
+    .sort((a, b) => (Number(b.progressPercent) || 0) - (Number(a.progressPercent) || 0));
+  return [...claimable, ...unlocked, ...nearest].slice(0, Math.max(0, limit));
+}
+
+/** Summary line inputs for hub preview + screen header. */
+function achievementsCounter(summary) {
+  const total = Math.max(0, Number(summary && summary.total) || 0);
+  const unlocked = Math.min(total, Math.max(0, Number(summary && summary.unlocked) || 0));
+  const claimable = Math.max(0, Number(summary && summary.claimable) || 0);
+  return { total, unlocked, claimable, percent: total > 0 ? Math.round((unlocked / total) * 100) : 0 };
+}
+
 module.exports = {
   QUEST_RANKS,
   questLocaleFromTag,
@@ -287,4 +362,10 @@ module.exports = {
   dailySegments,
   levelRingProgress,
   dailyCounter,
+  ACHIEVEMENT_RARITY_ORDER,
+  achievementRarityRank,
+  sortAchievements,
+  groupAchievements,
+  achievementsPreview,
+  achievementsCounter,
 };

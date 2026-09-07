@@ -1624,6 +1624,37 @@ export const api = {
     timezone: (timezone: string) =>
       request<{ ok: boolean; timezone: string }>('/api/quests/timezone', { method: 'PUT', body: { timezone } }),
   },
+
+  achievements: {
+    overview: () => request<import('@/lib/quest/achievements').AchievementsOverview>('/api/achievements'),
+    claim: (id: string) =>
+      request<import('@/lib/quest/achievements').AchievementClaimResult>(`/api/achievements/${id}/claim`, {
+        method: 'POST',
+      }),
+  },
+
+  rewards: {
+    catalog: () => request<import('@/lib/quest/rewardsApi').StoreCatalog>('/api/rewards'),
+    get: (id: string) => request<import('@/lib/quest/rewardsApi').StoreReward>(`/api/rewards/${id}`),
+    redeem: (id: string, idempotencyKey: string) =>
+      request<import('@/lib/quest/rewardsApi').RedeemResult>(`/api/rewards/${id}/redeem`, {
+        method: 'POST',
+        body: { idempotencyKey },
+      }),
+    mine: () =>
+      request<{
+        active: import('@/lib/quest/rewardsApi').RedemptionItem[];
+        used: import('@/lib/quest/rewardsApi').RedemptionItem[];
+        expired: import('@/lib/quest/rewardsApi').RedemptionItem[];
+        items: import('@/lib/quest/rewardsApi').RedemptionItem[];
+      }>('/api/rewards/redemptions'),
+    redemption: (id: string) =>
+      request<import('@/lib/quest/rewardsApi').RedemptionItem>(`/api/rewards/redemptions/${id}`),
+    entitlements: () =>
+      request<{ items: Array<{ entitlementKey: string; startsAt: string; endsAt: string }> }>(
+        '/api/rewards/entitlements',
+      ),
+  },
 };
 
 export function absoluteUrl(path: string | null): string | null {
