@@ -44,7 +44,7 @@ export const ACHIEVEMENT_DEFINITIONS = Object.freeze([
   // Firsts
   def('FIRST_QUEST', 'FIRST', 'PROGRESSION', 'COMMON', 1, 20, 10, { sortOrder: 0 }),
   def('FIRST_CLAIM', 'FIRST', 'PROGRESSION', 'COMMON', 1, 20, 10, { sortOrder: 1 }),
-  def('FIRST_WEEKLY', 'FIRST', 'PROGRESSION', 'COMMON', 1, 50, 30, { sortOrder: 2 }),
+  def('FIRST_WEEKLY', 'FIRST', 'PROGRESSION', 'UNCOMMON', 1, 50, 30, { sortOrder: 2 }),
 
   // Total quest completions
   ...series('QUESTS', 'PROGRESSION', [
@@ -123,7 +123,7 @@ export const ACHIEVEMENT_DEFINITIONS = Object.freeze([
   ], 80),
 
   // Comeback — completed a daily quest after 7+ fully missed days
-  def('COMEBACK', 'COMEBACK', 'SPECIAL', 'RARE', 1, 100, 50, { sortOrder: 90 }),
+  def('COMEBACK', 'COMEBACK', 'SPECIAL', 'UNCOMMON', 1, 100, 50, { sortOrder: 90 }),
 
   // Secret time-of-day achievements
   def('EARLY_BIRD', 'TIME_OF_DAY', 'SPECIAL', 'UNCOMMON', 1, 75, 40, { isSecret: true, sortOrder: 91 }),

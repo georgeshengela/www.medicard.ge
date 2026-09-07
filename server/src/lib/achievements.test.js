@@ -45,7 +45,7 @@ const EXPECTED_KEYS = [
 const EXPECTED_ECONOMY = {
   FIRST_QUEST: ['COMMON', 1, 20, 10, false],
   FIRST_CLAIM: ['COMMON', 1, 20, 10, false],
-  FIRST_WEEKLY: ['COMMON', 1, 50, 30, false],
+  FIRST_WEEKLY: ['UNCOMMON', 1, 50, 30, false],
   QUESTS_5: ['COMMON', 5, 30, 15, false],
   QUESTS_10: ['COMMON', 10, 50, 25, false],
   QUESTS_25: ['UNCOMMON', 25, 100, 50, false],
@@ -90,7 +90,7 @@ const EXPECTED_ECONOMY = {
   COINS_EARNED_2500: ['UNCOMMON', 2500, 100, 50, false],
   COINS_EARNED_10000: ['RARE', 10000, 250, 125, false],
   COINS_EARNED_25000: ['EPIC', 25000, 500, 250, false],
-  COMEBACK: ['RARE', 1, 100, 50, false],
+  COMEBACK: ['UNCOMMON', 1, 100, 50, false],
   EARLY_BIRD: ['UNCOMMON', 1, 75, 40, true],
   NIGHT_OWL: ['UNCOMMON', 1, 75, 40, true],
 };
@@ -185,6 +185,31 @@ describe('phase 4 catalog', () => {
     assert.notEqual(byKey.get('QUESTS_5').rewardXp, byKey.get('WEEKLY_3').rewardXp); // both COMMON
     assert.notEqual(byKey.get('STREAK_7').rewardXp, byKey.get('WEEKLY_10').rewardXp); // both UNCOMMON
     assert.notEqual(byKey.get('QUESTS_500').rewardXp, byKey.get('STREAK_365').rewardXp); // both LEGENDARY
+  });
+
+  it('Phase 8.1: FIRST_WEEKLY and COMEBACK are UNCOMMON (presentation only)', () => {
+    const byKey = new Map(ACHIEVEMENT_DEFINITIONS.map((d) => [d.key, d]));
+    assert.equal(byKey.get('FIRST_WEEKLY').rarity, 'UNCOMMON');
+    assert.equal(byKey.get('FIRST_WEEKLY').rewardXp, 50);
+    assert.equal(byKey.get('FIRST_WEEKLY').rewardCoins, 30);
+    assert.equal(byKey.get('COMEBACK').rarity, 'UNCOMMON');
+    assert.equal(byKey.get('COMEBACK').rewardXp, 100);
+    assert.equal(byKey.get('COMEBACK').rewardCoins, 50);
+  });
+
+  it('reports rarity distribution across 50 definitions', () => {
+    assert.equal(ACHIEVEMENT_DEFINITIONS.length, 50);
+    const counts = Object.fromEntries(ACHIEVEMENT_RARITIES.map((r) => [r, 0]));
+    for (const def of ACHIEVEMENT_DEFINITIONS) counts[def.rarity] += 1;
+    // After Phase 8.1 rarity corrections (FIRST_WEEKLY + COMEBACK → UNCOMMON).
+    // Original Phase 4 marketing table (13/14/10/8/5) differs; do not force-rewrite.
+    assert.deepEqual(counts, {
+      COMMON: 14,
+      UNCOMMON: 14,
+      RARE: 11,
+      EPIC: 8,
+      LEGENDARY: 3,
+    });
   });
 
   it('encodes thresholds from the key and stays inside the economy ceilings', () => {

@@ -36,6 +36,10 @@ describe('phase 8 admin capabilities', () => {
     assert.ok(REWARDS_CAPABILITIES.includes('REWARD_CODES_MANAGE'));
     assert.deepEqual(normalizeCapabilities(['A', 'A', 'B']), ['A', 'B']);
   });
+
+  it('empty capabilities array denies all', () => {
+    assert.equal(adminHasCapability({ capabilities: [] }, 'REWARDS_VIEW'), false);
+  });
 });
 
 describe('phase 8 privacy firewall', () => {

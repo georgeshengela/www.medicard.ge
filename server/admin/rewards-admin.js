@@ -1,36 +1,104 @@
 /**
- * Phase 8 — Rewards Operations admin panel (MediCard Admin V2).
- * Loaded after admin.js; expects api(), toast(), escapeHtml(), state.token.
+ * Phase 8 — Rewards Operations (MediCard Admin V2).
+ * Georgian UI · commercial data only · no health fields.
+ * Depends on admin.js (api, toast, escapeHtml, $, icon, iconTile) and ops-center.js charts.
  */
 (function rewardsAdminPanel(global) {
-  const R = {
-    subtab: 'overview',
-  };
-
-  // admin.js exposes escapeHtml (not esc) as a classic script global.
+  const R = { subtab: 'overview' };
   const esc = typeof escapeHtml === 'function' ? escapeHtml : (v) => String(v ?? '');
+  const fmt = (n) => {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '—';
+    return v.toLocaleString('ka-GE');
+  };
+  const ico = (name) => (typeof icon === 'function' ? icon(name) : '');
+  const tile = (name, tone) =>
+    typeof iconTile === 'function' ? iconTile(name, tone) : `<span class="icon-tile ${tone || ''}">${ico(name)}</span>`;
+
+  const STATUS_KA = {
+    DRAFT: 'მონახაზი',
+    ACTIVE: 'აქტიური',
+    PAUSED: 'შეჩერებული',
+    ARCHIVED: 'დაარქივებული',
+    SCHEDULED: 'დაგეგმილი',
+    ENDED: 'დასრულებული',
+    ISSUED: 'გაცემული',
+    USED: 'გამოყენებული',
+    EXPIRED: 'ვადაგასული',
+    CANCELLED: 'გაუქმებული',
+    PENDING: 'მოლოდინში',
+    OK: 'კარგი',
+    LOW: 'დაბალი',
+    OUT: 'ამოწურული',
+    UNLIMITED: 'ულიმიტო',
+  };
+  const CATEGORY_KA = {
+    PHARMACY: 'აფთიაქი',
+    LAB: 'ლაბორატორია',
+    FITNESS: 'ფიტნესი',
+    WELLNESS: 'ველნესი',
+    FOOD: 'კვება',
+    RETAIL: 'რითეილი',
+    INSURANCE: 'დაზღვევა',
+    CLINIC: 'კლინიკა',
+    OTHER: 'სხვა',
+  };
+  const TABS = [
+    ['overview', 'მიმოხილვა'],
+    ['campaigns', 'კამპანიები'],
+    ['partners', 'პარტნიორები'],
+    ['redemptions', 'გაცვლები'],
+    ['codes', 'კოდების მარაგი'],
+  ];
+
+  function statusKa(s) {
+    return STATUS_KA[s] || s || '—';
+  }
+  function statusTone(s) {
+    if (s === 'ACTIVE' || s === 'ISSUED' || s === 'OK') return 'ok';
+    if (s === 'PAUSED' || s === 'LOW' || s === 'SCHEDULED' || s === 'PENDING') return 'warn';
+    if (s === 'ENDED' || s === 'EXPIRED' || s === 'OUT' || s === 'CANCELLED' || s === 'ARCHIVED') return 'bad';
+    return 'neutral';
+  }
+  function statusPill(s) {
+    return `<span class="badge ${statusTone(s)}">${esc(statusKa(s))}</span>`;
+  }
+  function whenKa(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('ka-GE', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return String(iso).slice(0, 16);
+    }
+  }
+  function dayKa(isoDay) {
+    if (!isoDay) return '—';
+    try {
+      return new Date(`${isoDay}T12:00:00Z`).toLocaleDateString('ka-GE', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return isoDay;
+    }
+  }
 
   async function apiRewards(path, options = {}) {
-    // api() already prefixes `${API}/api/admin`
     return api(`/rewards${path}`, options);
   }
 
   function subnav(active) {
-    const tabs = [
-      ['overview', 'Overview'],
-      ['campaigns', 'Campaigns'],
-      ['partners', 'Partners'],
-      ['redemptions', 'Redemptions'],
-      ['codes', 'Code Inventory'],
-    ];
-    return `<div class="v25-seg" style="margin-bottom:16px;flex-wrap:wrap;gap:8px">
-      ${tabs
-        .map(
-          ([id, label]) =>
-            `<button type="button" class="btn ${active === id ? 'primary' : 'ghost'} sm" data-rewards-sub="${id}">${label}</button>`,
-        )
-        .join('')}
-    </div>`;
+    return `<nav class="rw-seg" aria-label="ჯილდოების სექციები">${TABS.map(
+      ([id, label]) =>
+        `<button type="button" class="rw-seg-btn${active === id ? ' is-active' : ''}" data-rewards-sub="${id}">${label}</button>`,
+    ).join('')}</nav>`;
   }
 
   function bindSubnav(root) {
@@ -42,96 +110,188 @@
     });
   }
 
+  function shell(active, body) {
+    return `<div class="rw-page dash-enter">${subnav(active)}${body}</div>`;
+  }
+
+  function emptyState(title, body, ctaHtml = '') {
+    return `<div class="rw-empty">
+      <span class="rw-empty-ico">${ico('layers')}</span>
+      <strong>${esc(title)}</strong>
+      ${body ? `<p>${esc(body)}</p>` : ''}
+      ${ctaHtml}
+    </div>`;
+  }
+
+  function kpiCell(label, value, hint, tone) {
+    return `<article class="ops-kpi${tone ? ` is-${tone}` : ''}">
+      <div class="ops-kpi-top"><span>${esc(label)}</span></div>
+      <strong>${value}</strong>
+      ${hint != null && hint !== '' ? `<div class="ops-kpi-foot"><span class="muted">${esc(hint)}</span></div>` : ''}
+    </article>`;
+  }
+
+  function trendChart(trend) {
+    const points = (trend || []).map((d) => ({ day: d.day, count: Number(d.redemptions) || 0 }));
+    if (typeof opsLineChart === 'function') {
+      return opsLineChart([{ points, tone: 'teal' }], { label: 'გაცვლების ტრენდი', height: 200 });
+    }
+    const max = Math.max(1, ...points.map((p) => p.count));
+    return `<div class="rw-mini-bars">${points
+      .map(
+        (p) => `<div class="rw-mini-bar" title="${esc(dayKa(p.day))}: ${p.count}">
+        <span style="height:${Math.max(4, Math.round((p.count / max) * 100))}%"></span>
+        <em>${esc(String(p.day).slice(8))}</em>
+      </div>`,
+      )
+      .join('')}</div>`;
+  }
+
   async function renderOverview(root) {
     const data = await apiRewards('/overview');
     const k = data.kpis || {};
-    root.innerHTML = `
-      ${subnav('overview')}
-      <div class="page-head">
-        <div>
-          <p class="kicker">Rewards Operations</p>
-          <h3>Partner & first-party loyalty spend</h3>
-          <p class="muted">Commercial metrics only — no health data.</p>
+    const low = data.needsAttention?.lowStock || [];
+    const ending = data.needsAttention?.endingSoon || [];
+    const recent = data.recentActivity || [];
+    const hasAttention = low.length > 0 || ending.length > 0;
+
+    root.innerHTML = shell(
+      'overview',
+      `
+      <header class="rw-head">
+        <p class="muted">კომერციული მეტრიკები მხოლოდ — ჯანმრთელობის მონაცემები აქ არ ჩანს.</p>
+        <button type="button" class="btn ghost sm" id="rw-refresh">${ico('refresh')} განახლება</button>
+      </header>
+
+      <section class="ops-level" aria-label="ძირითადი მაჩვენებლები">
+        <div class="ops-kpis ops-kpis-6">
+          ${kpiCell('აქტიური კამპანია', fmt(k.activeCampaigns), `${fmt(k.partnersActive)} პარტნიორი`)}
+          ${kpiCell('გაცვლა დღეს', fmt(k.redemptionsToday), 'დღევანდელი')}
+          ${kpiCell('გაცვლა 7 დღე', fmt(k.redemptions7d), 'ბოლო კვირა')}
+          ${kpiCell('ხელმისაწვდომი კოდი', fmt(k.codesAvailable), 'CODE_POOL')}
+          ${kpiCell('დაბალი მარაგი', fmt(k.codesLowStock), 'გაფრთხილება', k.codesLowStock > 0 ? 'warn' : '')}
+          ${kpiCell('დახარჯული Coins 7დ', fmt(k.coinsSpentOnRewards7d), 'Medi Coins')}
         </div>
-      </div>
-      <div class="kpi-strip">
-        <div class="kpi"><span class="muted">Active campaigns</span><strong>${k.activeCampaigns ?? 0}</strong></div>
-        <div class="kpi"><span class="muted">Redeemed today</span><strong>${k.redemptionsToday ?? 0}</strong></div>
-        <div class="kpi"><span class="muted">Redeemed 7d</span><strong>${k.redemptions7d ?? 0}</strong></div>
-        <div class="kpi"><span class="muted">Codes available</span><strong>${k.codesAvailable ?? 0}</strong></div>
-        <div class="kpi"><span class="muted">Low stock</span><strong>${k.codesLowStock ?? 0}</strong></div>
-        <div class="kpi"><span class="muted">Coins spent 7d</span><strong>${k.coinsSpentOnRewards7d ?? 0}</strong></div>
-      </div>
-      <div class="grid-2" style="gap:16px;margin-top:16px">
-        <section class="card">
-          <h4>Redemption trend (7d)</h4>
-          <table class="table dense"><thead><tr><th>Day</th><th>Count</th></tr></thead>
-          <tbody>${(data.trend7d || [])
-            .map((d) => `<tr><td>${esc(d.day)}</td><td>${d.redemptions}</td></tr>`)
-            .join('') || '<tr><td colspan="2" class="muted">No data</td></tr>'}</tbody></table>
+      </section>
+
+      <section class="rw-grid-2">
+        <section class="card ops-card">
+          <div class="card-head">${tile('activity', 'ult')}<div><h3>გაცვლების ტრენდი</h3><p class="muted">ბოლო 7 დღე</p></div></div>
+          <div class="rw-chart">${trendChart(data.trend7d)}</div>
         </section>
-        <section class="card">
-          <h4>Needs attention</h4>
-          <p class="muted sm">Low stock</p>
-          <ul>${(data.needsAttention?.lowStock || [])
-            .map((x) => `<li>${esc(x.rewardKey)} — ${esc(x.stockState)} (${x.available})</li>`)
-            .join('') || '<li class="muted">None</li>'}</ul>
-          <p class="muted sm">Ending soon</p>
-          <ul>${(data.needsAttention?.endingSoon || [])
-            .map((x) => `<li>${esc(x.name)} (${esc(x.partnerKey || '—')})</li>`)
-            .join('') || '<li class="muted">None</li>'}</ul>
+        <section class="card ops-card">
+          <div class="card-head">${tile(hasAttention ? 'alert' : 'shield', hasAttention ? 'warn' : 'ok')}<div><h3>საჭიროებს ყურადღებას</h3><p class="muted">მარაგი და ვადები</p></div></div>
+          ${
+            !hasAttention
+              ? `<p class="rw-healthy">ყველაფერი წესრიგშია. ქმედება არ არის საჭირო.</p>`
+              : `<div class="rw-attention">
+                  ${
+                    low.length
+                      ? `<div class="rw-att-block"><span class="rw-att-label">დაბალი / ამოწურული მარაგი</span>
+                    <ul>${low.map((x) => `<li><code>${esc(x.rewardKey)}</code> · ${statusPill(x.stockState)} · ${fmt(x.available)}</li>`).join('')}</ul></div>`
+                      : ''
+                  }
+                  ${
+                    ending.length
+                      ? `<div class="rw-att-block"><span class="rw-att-label">მალე მთავრდება</span>
+                    <ul>${ending.map((x) => `<li><strong>${esc(x.name)}</strong> · ${esc(x.partnerKey || '—')} · ${esc(whenKa(x.endsAt))}</li>`).join('')}</ul></div>`
+                      : ''
+                  }
+                </div>`
+          }
         </section>
-      </div>
-      <section class="card" style="margin-top:16px">
-        <h4>Recent activity</h4>
-        <table class="table dense"><thead><tr><th>ID</th><th>Reward</th><th>Status</th><th>Coins</th><th>User</th></tr></thead>
-        <tbody>${(data.recentActivity || [])
-          .map(
-            (r) =>
-              `<tr><td class="mono">${esc(String(r.id).slice(0, 8))}…</td><td>${esc(r.rewardKey || '')}</td><td>${esc(r.status)}</td><td>${r.coinCost}</td><td>${esc(r.maskedUserRef || '')}</td></tr>`,
-          )
-          .join('') || '<tr><td colspan="5" class="muted">No partner campaigns yet.</td></tr>'}</tbody></table>
-      </section>`;
+      </section>
+
+      <section class="card ops-card rw-table-card">
+        <div class="card-head">${tile('file', 'ult')}<div><h3>ბოლო ოპერაციები</h3><p class="muted">გაცვლის ჟურნალი — შენიღბული მომხმარებელი</p></div></div>
+        ${
+          recent.length === 0
+            ? emptyState('ჯერ გაცვლა არ არის', 'პირველი გაცვლა აქ გამოჩნდება. წარმოებაში ფიქტიური პარტნიორები ნუ გაააქტიურებთ.')
+            : `<div class="rw-table-wrap"><table class="table dense rw-table">
+              <thead><tr><th>ID</th><th>ჯილდო</th><th>კამპანია</th><th>სტატუსი</th><th>Coins</th><th>მომხმარებელი</th><th>დრო</th></tr></thead>
+              <tbody>${recent
+                .map(
+                  (r) => `<tr>
+                  <td class="mono">${esc(String(r.id).slice(0, 8))}…</td>
+                  <td><code>${esc(r.rewardKey || '—')}</code></td>
+                  <td>${esc(r.campaignKey || '—')}</td>
+                  <td>${statusPill(r.status)}</td>
+                  <td class="num">${fmt(r.coinCost)}</td>
+                  <td class="mono muted">${esc(r.maskedUserRef || '—')}</td>
+                  <td class="muted">${esc(whenKa(r.redeemedAt))}</td>
+                </tr>`,
+                )
+                .join('')}</tbody></table></div>`
+        }
+      </section>
+    `,
+    );
     bindSubnav(root);
+    $('rw-refresh')?.addEventListener('click', () => void renderRewards());
   }
 
   async function renderPartners(root) {
     const data = await apiRewards('/partners');
     const items = data.items || [];
-    root.innerHTML = `
-      ${subnav('partners')}
-      <div class="page-head row-between">
-        <div><p class="kicker">Partners</p><h3>Commercial partners</h3></div>
-        <button type="button" class="btn primary" id="rw-partner-create">Create partner</button>
-      </div>
-      ${
-        items.length === 0
-          ? `<div class="empty card"><p>No partner campaigns yet.</p><p class="muted">Create a partner, then a campaign. Do not seed fake production partners.</p></div>`
-          : `<table class="table dense"><thead><tr><th>Partner</th><th>Status</th><th>Category</th><th>Country</th><th></th></tr></thead>
-        <tbody>${items
-          .map(
-            (p) =>
-              `<tr><td><strong>${esc(p.displayName)}</strong><div class="muted mono sm">${esc(p.key)}</div></td><td>${esc(p.status)}</td><td>${esc(p.category || '—')}</td><td>${esc(p.countryCode || '—')}</td>
-              <td><button type="button" class="btn ghost sm" data-pause-partner="${esc(p.id)}" data-status="${esc(p.status)}">${p.status === 'ACTIVE' ? 'Pause' : 'Activate'}</button></td></tr>`,
-          )
-          .join('')}</tbody></table>`
-      }`;
+    root.innerHTML = shell(
+      'partners',
+      `
+      <header class="rw-head">
+        <div>
+          <p class="muted">კომერციული პარტნიორები — კონტაქტები და შენიშვნები მობილურზე არ ჩანს.</p>
+        </div>
+        <button type="button" class="btn primary sm" id="rw-partner-create">${ico('zap')} ახალი პარტნიორი</button>
+      </header>
+      <section class="card ops-card rw-table-card">
+        ${
+          items.length === 0
+            ? emptyState(
+                'პარტნიორი ჯერ არ არის',
+                'შექმენით პარტნიორი, შემდეგ კამპანია. წარმოებაში ფიქტიური აფთიაქები/ლაბები ნუ გაააქტიურებთ.',
+                `<button type="button" class="btn primary sm" id="rw-partner-create-empty">პარტნიორის შექმნა</button>`,
+              )
+            : `<div class="rw-table-wrap"><table class="table dense rw-table">
+              <thead><tr><th>პარტნიორი</th><th>სტატუსი</th><th>კატეგორია</th><th>ქვეყანა</th><th></th></tr></thead>
+              <tbody>${items
+                .map(
+                  (p) => `<tr>
+                  <td>
+                    <strong>${esc(p.displayName)}</strong>
+                    <div class="muted mono sm">${esc(p.key)}</div>
+                  </td>
+                  <td>${statusPill(p.status)}</td>
+                  <td>${esc(CATEGORY_KA[p.category] || p.category || '—')}</td>
+                  <td>${esc(p.countryCode || '—')}</td>
+                  <td class="rw-actions">
+                    <button type="button" class="btn ghost sm" data-pause-partner="${esc(p.id)}" data-status="${esc(p.status)}">
+                      ${p.status === 'ACTIVE' ? 'შეჩერება' : 'გააქტიურება'}
+                    </button>
+                  </td>
+                </tr>`,
+                )
+                .join('')}</tbody></table></div>`
+        }
+      </section>
+    `,
+    );
     bindSubnav(root);
-    $('rw-partner-create')?.addEventListener('click', async () => {
-      const key = prompt('Partner key (e.g. MEDI_PHARMACY_DEMO)');
+    const create = async () => {
+      const key = prompt('პარტნიორის გასაღები (მაგ. MEDI_PHARMACY_DEMO)');
       if (!key) return;
-      const displayName = prompt('Display name', key) || key;
+      const displayName = prompt('საჩვენებელი სახელი', key) || key;
       try {
         await apiRewards('/partners', {
           method: 'POST',
           body: { key, displayName, status: 'DRAFT', category: 'OTHER' },
         });
-        toast('Partner created', 'ok');
+        toast('პარტნიორი შეიქმნა', 'ok');
         void renderRewards();
       } catch (e) {
-        toast(e.message || 'Failed', 'err');
+        toast(e.message || 'შეცდომა', 'bad');
       }
-    });
+    };
+    $('rw-partner-create')?.addEventListener('click', create);
+    $('rw-partner-create-empty')?.addEventListener('click', create);
     root.querySelectorAll('[data-pause-partner]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-pause-partner');
@@ -139,10 +299,10 @@
         const status = cur === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
         try {
           await apiRewards(`/partners/${id}`, { method: 'PATCH', body: { status } });
-          toast(`Partner ${status}`, 'ok');
+          toast(status === 'ACTIVE' ? 'პარტნიორი აქტიურია' : 'პარტნიორი შეჩერებულია', 'ok');
           void renderRewards();
         } catch (e) {
-          toast(e.message || 'Failed', 'err');
+          toast(e.message || 'შეცდომა', 'bad');
         }
       });
     });
@@ -151,40 +311,56 @@
   async function renderCampaigns(root) {
     const data = await apiRewards('/campaigns');
     const items = data.items || [];
-    root.innerHTML = `
-      ${subnav('campaigns')}
-      <div class="page-head"><p class="kicker">Campaigns</p><h3>Reward campaigns</h3></div>
-      ${
-        items.length === 0
-          ? `<div class="empty card"><p>No partner campaigns yet.</p><p class="muted">Create partner → attach reward definition → activate when inventory is ready.</p></div>`
-          : `<table class="table dense"><thead><tr><th>Campaign</th><th>Partner</th><th>Status</th><th>Reward</th><th>Cost</th><th>Inventory</th><th>Redeemed</th><th></th></tr></thead>
-        <tbody>${items
-          .map(
-            (c) => `<tr>
-            <td><strong>${esc(c.name)}</strong><div class="muted mono sm">${esc(c.key)}</div></td>
-            <td>${esc(c.partner?.displayName || '')}</td>
-            <td>${esc(c.status)}</td>
-            <td>${esc(c.reward?.key || '')}</td>
-            <td>${c.reward?.coinCost ?? '—'}</td>
-            <td>${esc(c.inventory?.stockState || '—')} ${c.inventory?.available != null ? `(${c.inventory.available})` : ''}</td>
-            <td>${c.redemptions ?? 0}</td>
-            <td class="row-actions">
-              ${c.status !== 'ACTIVE' ? `<button type="button" class="btn primary sm" data-act="${esc(c.id)}">Activate</button>` : ''}
-              ${c.status === 'ACTIVE' ? `<button type="button" class="btn ghost sm" data-pause="${esc(c.id)}">Pause</button>` : ''}
-            </td>
-          </tr>`,
-          )
-          .join('')}</tbody></table>`
-      }`;
+    root.innerHTML = shell(
+      'campaigns',
+      `
+      <header class="rw-head">
+        <p class="muted">კამპანია აკონტროლებს ხილვადობას, ლიმიტებს და კომერციულ მეტამონაცემებს.</p>
+      </header>
+      <section class="card ops-card rw-table-card">
+        ${
+          items.length === 0
+            ? emptyState(
+                'კამპანია ჯერ არ არის',
+                'პარტნიორი → ჯილდოს განსაზღვრება → კამპანია → გააქტიურება მარაგის მზადყოფნისას.',
+              )
+            : `<div class="rw-table-wrap"><table class="table dense rw-table">
+              <thead><tr>
+                <th>კამპანია</th><th>პარტნიორი</th><th>სტატუსი</th><th>ჯილდო</th>
+                <th>ღირებულება</th><th>მარაგი</th><th>გაცვლები</th><th></th>
+              </tr></thead>
+              <tbody>${items
+                .map(
+                  (c) => `<tr>
+                  <td><strong>${esc(c.name)}</strong><div class="muted mono sm">${esc(c.key)}</div></td>
+                  <td>${esc(c.partner?.displayName || '—')}</td>
+                  <td>${statusPill(c.status)}</td>
+                  <td><code>${esc(c.reward?.key || '—')}</code></td>
+                  <td class="num">${c.reward?.coinCost != null ? fmt(c.reward.coinCost) : '—'}</td>
+                  <td>${statusPill(c.inventory?.stockState || 'OK')}${
+                    c.inventory?.available != null ? ` <span class="muted">${fmt(c.inventory.available)}</span>` : ''
+                  }</td>
+                  <td class="num">${fmt(c.redemptions ?? 0)}</td>
+                  <td class="rw-actions">
+                    ${c.status !== 'ACTIVE' ? `<button type="button" class="btn primary sm" data-act="${esc(c.id)}">გააქტიურება</button>` : ''}
+                    ${c.status === 'ACTIVE' ? `<button type="button" class="btn ghost sm" data-pause="${esc(c.id)}">შეჩერება</button>` : ''}
+                  </td>
+                </tr>`,
+                )
+                .join('')}</tbody></table></div>`
+        }
+      </section>
+    `,
+    );
     bindSubnav(root);
     root.querySelectorAll('[data-act]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         try {
           await apiRewards(`/campaigns/${btn.getAttribute('data-act')}/activate`, { method: 'POST' });
-          toast('Activated', 'ok');
+          toast('კამპანია გააქტიურდა', 'ok');
           void renderRewards();
         } catch (e) {
-          toast(e.message || 'Activation failed', 'err');
+          toast(e.message || 'გააქტიურება ვერ მოხერხდა', 'bad');
         }
       });
     });
@@ -192,10 +368,10 @@
       btn.addEventListener('click', async () => {
         try {
           await apiRewards(`/campaigns/${btn.getAttribute('data-pause')}/pause`, { method: 'POST' });
-          toast('Paused', 'ok');
+          toast('კამპანია შეჩერდა', 'ok');
           void renderRewards();
         } catch (e) {
-          toast(e.message || 'Failed', 'err');
+          toast(e.message || 'შეცდომა', 'bad');
         }
       });
     });
@@ -204,44 +380,72 @@
   async function renderRedemptions(root) {
     const data = await apiRewards('/redemptions?limit=50');
     const items = data.items || [];
-    root.innerHTML = `
-      ${subnav('redemptions')}
-      <div class="page-head"><p class="kicker">Redemptions</p><h3>Operational ledger</h3></div>
-      <table class="table dense"><thead><tr><th>ID</th><th>Reward</th><th>Partner</th><th>Status</th><th>Coins</th><th>Code</th><th>User</th><th>When</th></tr></thead>
-      <tbody>${items
-        .map(
-          (r) => `<tr>
-          <td class="mono"><button type="button" class="link" data-red="${esc(r.id)}">${esc(String(r.id).slice(0, 8))}…</button></td>
-          <td>${esc(r.reward?.key || '')}</td>
-          <td>${esc(r.partner?.displayName || r.partner?.key || '—')}</td>
-          <td>${esc(r.status)}</td>
-          <td>${r.coinCost}</td>
-          <td>${esc(r.codeMasked || r.codeState || '—')}</td>
-          <td>${esc(r.maskedUserRef || '')}</td>
-          <td>${esc(String(r.redeemedAt || '').slice(0, 19))}</td>
-        </tr>`,
-        )
-        .join('') || '<tr><td colspan="8" class="muted">No redemptions</td></tr>'}</tbody></table>`;
+    root.innerHTML = shell(
+      'redemptions',
+      `
+      <header class="rw-head">
+        <p class="muted">ოპერაციული ჟურნალი — სრული პროფილი და ჯანმრთელობის მონაცემები არ ჩანს.</p>
+      </header>
+      <section class="card ops-card rw-table-card">
+        ${
+          items.length === 0
+            ? emptyState('გაცვლები არ არის', 'როცა მომხმარებელი ჯილდოს გადაცვლის, ჩანაწერი აქ გამოჩნდება.')
+            : `<div class="rw-table-wrap"><table class="table dense rw-table">
+              <thead><tr>
+                <th>ID</th><th>ჯილდო</th><th>პარტნიორი</th><th>სტატუსი</th>
+                <th>Coins</th><th>კოდი</th><th>მომხმარებელი</th><th>დრო</th>
+              </tr></thead>
+              <tbody>${items
+                .map(
+                  (r) => `<tr>
+                  <td class="mono"><button type="button" class="rw-link" data-red="${esc(r.id)}">${esc(String(r.id).slice(0, 8))}…</button></td>
+                  <td><code>${esc(r.reward?.key || '—')}</code></td>
+                  <td>${esc(r.partner?.displayName || r.partner?.key || '—')}</td>
+                  <td>${statusPill(r.status)}</td>
+                  <td class="num">${fmt(r.coinCost)}</td>
+                  <td class="mono">${esc(r.codeMasked || r.codeState || '—')}</td>
+                  <td class="mono muted">${esc(r.maskedUserRef || '—')}</td>
+                  <td class="muted">${esc(whenKa(r.redeemedAt))}</td>
+                </tr>`,
+                )
+                .join('')}</tbody></table></div>`
+        }
+      </section>
+      <div id="rw-redemption-detail" class="rw-detail" hidden></div>
+    `,
+    );
     bindSubnav(root);
     root.querySelectorAll('[data-red]').forEach((btn) => {
       btn.addEventListener('click', async () => {
+        const panel = $('rw-redemption-detail');
+        if (!panel) return;
+        panel.hidden = false;
+        panel.innerHTML = `<div class="card ops-card"><p class="muted">იტვირთება…</p></div>`;
         try {
-          const detail = await apiRewards(`/redemptions/${btn.getAttribute('data-red')}`);
-          alert(
-            JSON.stringify(
-              {
-                id: detail.id,
-                status: detail.status,
-                reward: detail.reward?.key,
-                codeMasked: detail.code?.codeMasked,
-                audit: (detail.audit || []).length,
-              },
-              null,
-              2,
-            ),
-          );
+          const d = await apiRewards(`/redemptions/${btn.getAttribute('data-red')}`);
+          panel.innerHTML = `<section class="card ops-card">
+            <div class="card-head">${tile('file', 'ult')}<div>
+              <h3>გაცვლის დეტალი</h3>
+              <p class="muted mono">${esc(d.id)}</p>
+            </div>
+            <button type="button" class="btn ghost sm" id="rw-detail-close">დახურვა</button>
+            </div>
+            <div class="rw-detail-grid">
+              <div><span class="muted">სტატუსი</span><strong>${statusPill(d.status)}</strong></div>
+              <div><span class="muted">ჯილდო</span><strong><code>${esc(d.reward?.key || '—')}</code></strong></div>
+              <div><span class="muted">Coins</span><strong>${fmt(d.coinCost)}</strong></div>
+              <div><span class="muted">კოდი</span><strong class="mono">${esc(d.code?.codeMasked || '—')}</strong></div>
+              <div><span class="muted">მომხმარებელი</span><strong class="mono">${esc(d.maskedUserRef || '—')}</strong></div>
+              <div><span class="muted">დრო</span><strong>${esc(whenKa(d.redeemedAt))}</strong></div>
+              <div><span class="muted">აუდიტის ჩანაწერი</span><strong>${fmt((d.audit || []).length)}</strong></div>
+            </div>
+          </section>`;
+          $('rw-detail-close')?.addEventListener('click', () => {
+            panel.hidden = true;
+            panel.innerHTML = '';
+          });
         } catch (e) {
-          toast(e.message || 'Failed', 'err');
+          panel.innerHTML = `<div class="card ops-card"><p class="err">${esc(e.message || 'შეცდომა')}</p></div>`;
         }
       });
     });
@@ -250,23 +454,40 @@
   async function renderCodes(root) {
     const defs = await apiRewards('/definitions');
     const pools = (defs.items || []).filter((d) => d.inventoryMode === 'CODE_POOL');
-    root.innerHTML = `
-      ${subnav('codes')}
-      <div class="page-head"><p class="kicker">Code Inventory</p><h3>CODE_POOL rewards</h3>
-      <p class="muted">Import returns counts only — plaintext codes are never listed in bulk.</p></div>
-      <table class="table dense"><thead><tr><th>Reward</th><th>Status</th><th>Partner</th><th></th></tr></thead>
-      <tbody>${pools
-        .map(
-          (d) => `<tr><td class="mono">${esc(d.key)}</td><td>${esc(d.status)}</td><td>${esc(d.partnerKey || '—')}</td>
-        <td><button type="button" class="btn ghost sm" data-import="${esc(d.id)}">Import codes</button>
-        <button type="button" class="btn ghost sm" data-list="${esc(d.id)}">View masked</button></td></tr>`,
-        )
-        .join('') || '<tr><td colspan="4" class="muted">No CODE_POOL rewards</td></tr>'}</tbody></table>
-      <div id="rw-codes-panel"></div>`;
+    root.innerHTML = shell(
+      'codes',
+      `
+      <header class="rw-head">
+        <p class="muted">იმპორტი აბრუნებს მხოლოდ რაოდენობებს — სრული კოდების სია ბრაუზერში არ ჩანს.</p>
+      </header>
+      <section class="card ops-card rw-table-card">
+        ${
+          pools.length === 0
+            ? emptyState('CODE_POOL ჯილდო არ არის', 'როცა კუპონის ტიპის ჯილდოს შექმნით, მარაგი აქ გამოჩნდება.')
+            : `<div class="rw-table-wrap"><table class="table dense rw-table">
+              <thead><tr><th>ჯილდო</th><th>სტატუსი</th><th>პარტნიორი</th><th></th></tr></thead>
+              <tbody>${pools
+                .map(
+                  (d) => `<tr>
+                  <td><code>${esc(d.key)}</code></td>
+                  <td>${statusPill(d.status)}</td>
+                  <td>${esc(d.partnerKey || '—')}</td>
+                  <td class="rw-actions">
+                    <button type="button" class="btn primary sm" data-import="${esc(d.id)}">იმპორტი</button>
+                    <button type="button" class="btn ghost sm" data-list="${esc(d.id)}">შენიღბული სია</button>
+                  </td>
+                </tr>`,
+                )
+                .join('')}</tbody></table></div>`
+        }
+      </section>
+      <div id="rw-codes-panel"></div>
+    `,
+    );
     bindSubnav(root);
     root.querySelectorAll('[data-import]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        const raw = prompt('Paste codes (one per line)');
+        const raw = prompt('ჩასვით კოდები (თითო ხაზზე ერთი)');
         if (!raw) return;
         const codes = raw
           .split(/\r?\n/)
@@ -277,9 +498,13 @@
             method: 'POST',
             body: { codes },
           });
-          toast(`Imported: ${JSON.stringify(res.report)}`, 'ok');
+          const r = res.report || {};
+          toast(
+            `მიღებულია ${r.accepted ?? 0} · დუბლიკატი ${r.duplicates ?? 0} · უარყოფილი ${r.invalid ?? r.rejected ?? 0}`,
+            'ok',
+          );
         } catch (e) {
-          toast(e.message || 'Import failed', 'err');
+          toast(e.message || 'იმპორტი ვერ მოხერხდა', 'bad');
         }
       });
     });
@@ -289,15 +514,23 @@
           const res = await apiRewards(`/rewards/${btn.getAttribute('data-list')}/codes?limit=25`);
           const panel = $('rw-codes-panel');
           if (!panel) return;
-          panel.innerHTML = `<table class="table dense"><thead><tr><th>Masked</th><th>Status</th><th>Expiry</th></tr></thead>
-            <tbody>${(res.items || [])
-              .map(
-                (c) =>
-                  `<tr><td class="mono">${esc(c.codeMasked)}</td><td>${esc(c.status)}</td><td>${esc(String(c.expiresAt || '—').slice(0, 19))}</td></tr>`,
-              )
-              .join('')}</tbody></table>`;
+          panel.innerHTML = `<section class="card ops-card rw-table-card" style="margin-top:14px">
+            <div class="card-head">${tile('lock', 'ult')}<div><h3>შენიღბული კოდები</h3><p class="muted">პირველი 25 ჩანაწერი</p></div></div>
+            <div class="rw-table-wrap"><table class="table dense rw-table">
+              <thead><tr><th>კოდი</th><th>სტატუსი</th><th>ვადა</th></tr></thead>
+              <tbody>${(res.items || [])
+                .map(
+                  (c) => `<tr>
+                  <td class="mono">${esc(c.codeMasked)}</td>
+                  <td>${statusPill(c.status)}</td>
+                  <td class="muted">${esc(whenKa(c.expiresAt))}</td>
+                </tr>`,
+                )
+                .join('') || '<tr><td colspan="3" class="muted">ცარიელია</td></tr>'}</tbody>
+            </table></div>
+          </section>`;
         } catch (e) {
-          toast(e.message || 'Failed', 'err');
+          toast(e.message || 'შეცდომა', 'bad');
         }
       });
     });
@@ -306,7 +539,7 @@
   async function renderRewards() {
     const root = $('tab-rewards');
     if (!root) return;
-    root.innerHTML = '<div class="empty">იტვირთება…</div>';
+    root.innerHTML = `<div class="rw-page"><div class="rw-loading">${ico('refresh')}<span>იტვირთება…</span></div></div>`;
     try {
       if (R.subtab === 'partners') await renderPartners(root);
       else if (R.subtab === 'campaigns') await renderCampaigns(root);
@@ -314,8 +547,13 @@
       else if (R.subtab === 'codes') await renderCodes(root);
       else await renderOverview(root);
     } catch (e) {
-      root.innerHTML = `${subnav(R.subtab)}<div class="empty err">${esc(e.message || 'Failed to load Rewards')}</div>`;
+      root.innerHTML = shell(
+        R.subtab,
+        `<div class="rw-empty rw-empty-err"><strong>ჩატვირთვა ვერ მოხერხდა</strong><p>${esc(e.message || 'უცნობი შეცდომა')}</p>
+        <button type="button" class="btn ghost sm" id="rw-retry">ხელახლა ცდა</button></div>`,
+      );
       bindSubnav(root);
+      $('rw-retry')?.addEventListener('click', () => void renderRewards());
     }
   }
 
