@@ -51,6 +51,45 @@ export function emitQuestCompleted(userId, payload) {
   return true;
 }
 
+/** Phase 4 — achievement unlocked. Safe payload only: keys, rarity, rewards. */
+export function emitAchievementUnlocked(userId, payload) {
+  if (!userId || typeof emitFn !== 'function') return false;
+  emitFn(userId, {
+    event: 'achievement:unlocked',
+    achievementId: payload.achievementId,
+    userAchievementId: payload.userAchievementId,
+    key: payload.key,
+    family: payload.family,
+    rarity: payload.rarity,
+    secret: Boolean(payload.secret),
+    rewardCoins: payload.rewardCoins,
+    rewardXp: payload.rewardXp,
+    unlockedAt: payload.unlockedAt,
+  });
+  return true;
+}
+
+/** Phase 4 — achievement reward claimed. Mirrors quest:reward_claimed shape. */
+export function emitAchievementClaimed(userId, payload) {
+  if (!userId || typeof emitFn !== 'function') return false;
+  emitFn(userId, {
+    event: 'achievement:claimed',
+    achievementId: payload.achievementId,
+    userAchievementId: payload.userAchievementId,
+    key: payload.key,
+    rarity: payload.rarity,
+    coinsAwarded: payload.coinsAwarded,
+    xpAwarded: payload.xpAwarded,
+    coinBalance: payload.coinBalance,
+    totalXp: payload.totalXp,
+    previousLevel: payload.previousLevel,
+    currentLevel: payload.currentLevel,
+    leveledUp: payload.leveledUp,
+    levelProgress: payload.levelProgress,
+  });
+  return true;
+}
+
 export function emitQuestRewardClaimed(userId, payload) {
   if (!userId || typeof emitFn !== 'function') return false;
   emitFn(userId, {
