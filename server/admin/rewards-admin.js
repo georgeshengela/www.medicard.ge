@@ -1,11 +1,14 @@
 /**
  * Phase 8 — Rewards Operations admin panel (MediCard Admin V2).
- * Loaded after admin.js; expects api(), toast(), esc(), state.token.
+ * Loaded after admin.js; expects api(), toast(), escapeHtml(), state.token.
  */
 (function rewardsAdminPanel(global) {
   const R = {
     subtab: 'overview',
   };
+
+  // admin.js exposes escapeHtml (not esc) as a classic script global.
+  const esc = typeof escapeHtml === 'function' ? escapeHtml : (v) => String(v ?? '');
 
   async function apiRewards(path, options = {}) {
     // api() already prefixes `${API}/api/admin`
