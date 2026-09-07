@@ -13,6 +13,7 @@ import Constants from 'expo-constants';
 import { AppChromeOverlay } from '@/components/navigation/AppChromeOverlay';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
 import { useTabChromeHidden } from '@/components/navigation/tabChrome';
+import { ActiveRunBadge, useActiveRunChrome } from '@/components/run/ActiveRunBadge';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { LocationAskHost } from '@/components/location/LocationAskHost';
@@ -163,10 +164,24 @@ function AppShell() {
   const reduceMotion = usePrefersReducedMotion();
   const stackMotion = reduceMotion ? STACK_REDUCED : STACK_PUSH;
   const tabChromeHidden = useTabChromeHidden();
+  const activeRunChrome = useActiveRunChrome();
   const showTabBar =
     Boolean(user) &&
     !tabChromeHidden &&
     (segments[0] === '(tabs)' || (segments[0] === 'run' && (segments.length === 1 || segments[1] === 'index')));
+  const chromeInteractive = showTabBar || activeRunChrome;
+
+  useEffect(() => {
+    if (!user) {
+      void import('@/lib/run/store').then(({ resetRunMemory }) => {
+        resetRunMemory();
+      });
+      return;
+    }
+    void import('@/lib/run/store').then(({ hydrateActiveRun }) => {
+      void hydrateActiveRun();
+    });
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) {
@@ -287,8 +302,9 @@ function AppShell() {
               <Stack.Screen name="record/[id]" options={{ headerBackTitle: 'უკან' }} />
             </Stack>
           </View>
-          <AppChromeOverlay interactive={showTabBar}>
+          <AppChromeOverlay interactive={chromeInteractive}>
             {user ? <FloatingTabBar visible={showTabBar} /> : null}
+            {user ? <ActiveRunBadge /> : null}
           </AppChromeOverlay>
           <DailyCheckInHost />
           <LocationAskHost />

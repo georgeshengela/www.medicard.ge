@@ -70,6 +70,7 @@
     "test:geo": "node --experimental-strip-types --test src/lib/geoPlace.test.ts",
     "test:weather": "node --experimental-strip-types --test src/lib/weather/*.test.ts",
     "test:quest": "node --test src/lib/quest/logic.test.js src/lib/quest/smartContext.test.js src/lib/quest/questSmartEngage.test.js",
+    "test:home": "node --experimental-strip-types --test src/lib/home/homeSectionOrder.test.ts",
     "test:engage": "node --experimental-strip-types --test src/lib/mediNotificationBrain.test.ts",
     "icons:generate": "node scripts/generate-app-icons.mjs"
   },

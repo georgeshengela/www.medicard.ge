@@ -4,6 +4,7 @@ import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { OnboardingQaStepList } from '@/components/dev/OnboardingDevLauncher';
+import { showDevUi } from '@/lib/devUi';
 import { useAuth } from '@/store/AuthContext';
 import { welcomeTopInset } from '@/constants/figmaWelcomeLayout';
 import { useThemeColors } from '@/theme/colors';
@@ -15,7 +16,7 @@ export default function ProfileSetupDevLauncherScreen() {
   const insets = useSafeAreaInsets();
   const { ready, user } = useAuth();
 
-  if (typeof __DEV__ === 'undefined' || !__DEV__) {
+  if (!showDevUi()) {
     return <Redirect href="/(auth)/welcome" />;
   }
 

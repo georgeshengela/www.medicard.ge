@@ -12,6 +12,7 @@ import {
 } from './adminAnalyticsRange.js';
 import { sanitizeDecisionInput } from './notificationDecisions.js';
 import { METRIC_DEFINITIONS } from './adminAnalyticsRange.js';
+import { featureShareOfActive } from './adminCommandCenter.js';
 
 describe('parseAnalyticsRange', () => {
   const now = new Date('2026-09-06T12:00:00+04:00');
@@ -111,5 +112,18 @@ describe('metric definitions', () => {
     assert.match(METRIC_DEFINITIONS.newUsers, /User\.createdAt/);
     assert.match(METRIC_DEFINITIONS.mediConversations, /ChatSession/);
     assert.match(METRIC_DEFINITIONS.notificationsDelivered, /PushEvent/);
+  });
+});
+
+describe('feature share of active users', () => {
+  it('uses the same user grain and cannot exceed 100%', () => {
+    const share = featureShareOfActive(
+      ['feat-only', 'shared', 'shared'],
+      ['shared', 'active-only'],
+    );
+    assert.equal(share.amongActive, 1);
+    assert.equal(share.activeUsers, 2);
+    assert.equal(share.pctOfActive, 50);
+    assert.ok(share.pctOfActive <= 100);
   });
 });

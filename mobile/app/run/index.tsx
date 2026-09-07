@@ -11,7 +11,7 @@ import { RunTargetSheet } from '@/components/run/RunTargetSheet';
 import { ka } from '@/i18n/ka';
 import { formatClock, formatKm, formatThousands, type RunTarget } from '@/lib/run/geo';
 import { loadRunHistory, runTotals, type RunSummary } from '@/lib/run/history';
-import { prepareRun } from '@/lib/run/store';
+import { getRunState, isActiveRunPhase, prepareRun } from '@/lib/run/store';
 import { useAuth } from '@/store/AuthContext';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
@@ -27,12 +27,17 @@ export default function RunHubScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      const phase = getRunState().phase;
+      if (isActiveRunPhase(phase) || phase === 'ready' || phase === 'preparing') {
+        router.replace('/run/active' as never);
+        return;
+      }
       let alive = true;
       void loadRunHistory().then((list) => alive && setHistory(list));
       return () => {
         alive = false;
       };
-    }, []),
+    }, [router]),
   );
 
   const totals = runTotals(history);

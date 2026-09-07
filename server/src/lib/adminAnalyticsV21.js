@@ -406,9 +406,25 @@ export async function getDataQuality() {
     seen.add(row.decisionId);
   }
   const activityUsers = new Set(activity.map((row) => row.userId));
+  const latestByUser = new Map();
+  for (const row of activity) {
+    const prev = latestByUser.get(row.userId);
+    if (!prev || new Date(row.lastAt) > new Date(prev.lastAt)) latestByUser.set(row.userId, row);
+  }
+  let usersMissingAppVersion = 0;
+  let usersMissingPlatform = 0;
+  for (const row of latestByUser.values()) {
+    if (!row.appVersion) usersMissingAppVersion += 1;
+    if (!row.platform) usersMissingPlatform += 1;
+  }
   return {
-    usersMissingPlatform: activity.filter((row) => !row.platform).length,
-    usersMissingAppVersion: activity.filter((row) => !row.appVersion).length,
+    usersMissingPlatform,
+    usersMissingAppVersion,
+    activeUsersSampled: latestByUser.size,
+    versionCoverageRate:
+      latestByUser.size > 0
+        ? Math.round((100 * (latestByUser.size - usersMissingAppVersion)) / latestByUser.size)
+        : null,
     usersWithoutRecentActivity: users.filter((u) => !activityUsers.has(u.id)).length,
     decisionsMissingRevalidation: decisions.filter((d) => d.result === 'SEND' && d.scheduledAt && !d.revalidatedAt).length,
     unknownActionKeys: outcomes.filter((row) => row.actionKey && !ACTION_KEYS.has(row.actionKey)).length,

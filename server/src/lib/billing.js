@@ -44,6 +44,27 @@ export function renewSubscriptionDates(user, from = new Date()) {
 }
 
 /**
+ * Admin package date input → ISO instant preserving Asia/Tbilisi calendar day.
+ * Avoids browser `YYYY-MM-DDT00:00:00.000Z` shifting the business day.
+ */
+export function packageCalendarDateToIso(ymd, { endOfDay = false } = {}) {
+  const raw = String(ymd || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  const suffix = endOfDay ? `T23:59:59.999${TBILISI_OFFSET}` : `T00:00:00.000${TBILISI_OFFSET}`;
+  const dt = new Date(`${raw}${suffix}`);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt.toISOString();
+}
+
+/** Display Instant as YYYY-MM-DD in Asia/Tbilisi for `<input type="date">`. */
+export function toPackageDateInput(value) {
+  if (!value) return '';
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return todayKey(d);
+}
+
+/**
  * @param {import('@prisma/client').User & { package?: import('@prisma/client').Package | null }} user
  * @param {import('@prisma/client').Package | null | undefined} effectivePackage
  */

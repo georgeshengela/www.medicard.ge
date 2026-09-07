@@ -31,6 +31,7 @@ import {
   RATE_DEFINITIONS,
   versionAttention,
 } from './adminAnalyticsV21.js';
+import { featureShareOfActive } from './adminCommandCenter.js';
 
 export { METRIC_DEFINITIONS, RATE_DEFINITIONS };
 export { getVersionAnalytics, getDataQuality, getFeatureRetentionAnalytics, getPermissionAnalytics, getWeeklyInsightMedication };
@@ -360,6 +361,10 @@ export async function getOverviewAnalytics(query) {
       dau: { series: dauSeries, previousActiveUsers: uniqueCount(checkinsPrev), definition: METRIC_DEFINITIONS.dauSeries },
       growth: { newUsers: newSeries, cumulative },
     },
+    todayMetrics: {
+      activeToday,
+      newUsersToday: newSeries.find((row) => row.day === today)?.count ?? 0,
+    },
     attention,
     definitions: METRIC_DEFINITIONS,
   };
@@ -524,7 +529,9 @@ export async function getFeatureAnalytics(query) {
   const cached = cacheGet(key);
   if (cached) return cached;
 
-  const activeUsers = uniqueCount(await loadAppActivityRows(range.fromYmd, range.toYmd));
+  const activityRows = await loadAppActivityRows(range.fromYmd, range.toYmd);
+  const activeIds = activityRows.map((row) => row.userId);
+  const activeUsers = new Set(activeIds.filter(Boolean)).size;
 
   const [
     mediUsers,
@@ -633,6 +640,7 @@ export async function getFeatureAnalytics(query) {
       key: 'medi',
       label: 'Medi',
       action: 'AI მოთხოვნა (AiInteraction)',
+      userIds: mediUsers.map((row) => row.userId),
       users: mediUsers.length,
       events: mediEvents,
       href: '#/ai',
@@ -641,6 +649,7 @@ export async function getFeatureAnalytics(query) {
       key: 'medications',
       label: 'მედიკამენტები',
       action: 'მედიკამენტის გრაფიკი შეიქმნა',
+      userIds: medUsers.map((row) => row.userId),
       users: medUsers.length,
       events: medEvents,
       adoption: activeMedUsers.length,
@@ -651,6 +660,7 @@ export async function getFeatureAnalytics(query) {
       key: 'cycle',
       label: 'ციკლი',
       action: 'ციკლის ჩანაწერი შეიქმნა',
+      userIds: cycleUsers.map((row) => row.userId),
       users: cycleUsers.length,
       events: cycleEvents,
       adoption: cycleProfiles,
@@ -661,6 +671,7 @@ export async function getFeatureAnalytics(query) {
       key: 'hydration',
       label: 'ჰიდრატაცია',
       action: 'დღე, სადაც hydrationMl > 0',
+      userIds: hydration.map((row) => row.userId),
       users: uniqueCount(hydration),
       events: hydration.length,
       href: '#/health',
@@ -669,6 +680,7 @@ export async function getFeatureAnalytics(query) {
       key: 'steps',
       label: 'ნაბიჯები',
       action: 'დღე, სადაც ნაბიჯები > 0',
+      userIds: steps.map((row) => row.userId),
       users: uniqueCount(steps),
       events: steps.length,
       href: '#/health',
@@ -677,6 +689,7 @@ export async function getFeatureAnalytics(query) {
       key: 'weight',
       label: 'წონა',
       action: 'დღე წონის გაზომვით',
+      userIds: weight.map((row) => row.userId),
       users: uniqueCount(weight),
       events: weight.length,
       href: '#/health',
@@ -685,6 +698,7 @@ export async function getFeatureAnalytics(query) {
       key: 'visits',
       label: 'ვიზიტები',
       action: 'ექიმთან ვიზიტი შეიქმნა',
+      userIds: visitUsers.map((row) => row.userId),
       users: visitUsers.length,
       events: visitEvents,
       href: '#/health',
@@ -693,6 +707,7 @@ export async function getFeatureAnalytics(query) {
       key: 'weekly_report',
       label: 'ყოველკვირეული ანგარიში',
       action: 'ანგარიშის ეკრანი გაიხსნა',
+      userIds: weeklyEvents.filter((row) => row.kind === 'weekly_report_opened').map((row) => row.userId),
       users: uniqueCount(weeklyEvents.filter((row) => row.kind === 'weekly_report_opened')),
       events: weeklyEvents.filter((row) => row.kind === 'weekly_report_opened').length,
       href: '#/health?feature=weekly_report',
@@ -708,10 +723,13 @@ export async function getFeatureAnalytics(query) {
                 : row.key === 'weight' ? uniqueCount(prevWeight)
                   : row.key === 'visits' ? prevVisitUsers.length
                     : null);
+    const share = featureShareOfActive(row.userIds || [], activeIds);
+    const { userIds: _ids, ...rest } = row;
     return {
-      ...row,
+      ...rest,
       prevUsers,
-      pctOfActive: row.users == null ? null : rateSafe(row.users, activeUsers),
+      usersAmongActive: share.amongActive,
+      pctOfActive: row.users == null ? null : share.pctOfActive,
       delta: row.users == null ? null : deltaSafe(row.users, prevUsers || 0),
     };
   });

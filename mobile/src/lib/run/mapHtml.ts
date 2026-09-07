@@ -83,10 +83,40 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
   .pin.captured .beam { background: linear-gradient(to top, rgba(52,211,153,.55), rgba(52,211,153,0)); }
   .pin.captured .halo { border-color: rgba(52,211,153,.95); }
   @keyframes pop { 0% { transform: translateX(-50%) scale(1); } 45% { transform: translateX(-50%) scale(1.25); } 100% { transform: translateX(-50%) scale(1); } }
+
+  /* ── 3D Character canvas — tall enough for full stride (legs + head) ───── */
+  #char3d {
+    position: absolute; pointer-events: none; z-index: 20;
+    width: 132px; height: 210px;
+    left: -600px; top: -600px;
+    opacity: 0;
+    transition: opacity 0.55s ease;
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.45));
+  }
+  #char3d.ready { opacity: 1; }
+
+  /* Soft oval under the feet — sits on the map GPS point */
+  #char-shadow {
+    position: absolute; pointer-events: none; z-index: 19;
+    width: 52px; height: 18px; border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(0,0,0,0.45) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    left: -600px; top: -600px;
+    opacity: 0;
+    transition: opacity 0.55s ease;
+  }
+  #char-shadow.ready { opacity: 1; }
 </style>
 </head>
 <body>
 <div id="map"></div>
+
+<!-- 3D character canvas (populated by Three.js module below) -->
+<canvas id="char3d"></canvas>
+<div id="char-shadow"></div>
+
+<!-- Three.js UMD loaded below via sequential <script> tags -->
+
 <script>
 (function () {
   var post = function (m) { try { window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify(m)); } catch (e) {} };
@@ -122,6 +152,9 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
     logoPosition: 'bottom-left',
     config: { basemap: { lightPreset: DARK ? 'night' : 'day', showPointOfInterestLabels: false, showTransitLabels: false, showPlaceLabels: true, showRoadLabels: true } }
   });
+
+  // ── Expose map for the Three.js module (deferred, runs after this IIFE) ─
+  window.__mapbox = map;
 
   var COLORS = {
     laneCasing: DARK ? 'rgba(4,47,46,0.85)' : 'rgba(15,76,72,0.55)',
@@ -168,10 +201,16 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
     map.addLayer(Object.assign({ id: 'trail-line', type: 'line', source: 'trail', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': COLORS.trail, 'line-width': ['interpolate', ['exponential', 1.6], ['zoom'], 13, 2, 16, 3.5, 18.5, 7] } }, slot));
   }
 
+  // ── User marker: puck stays visible until the 3D character canvas is ready ──
+  // Once window.__loadCharacter fires, the puck is hidden via id="user-puck".
   function userEl() {
     var el = document.createElement('div'); el.className = 'user';
-    el.innerHTML = '<div class="ring"></div><div class="puck"></div>' +
-      '<svg class="chev" width="20" height="20" viewBox="0 0 24 24"><path d="M12 3 L20 20 L12 15.6 L4 20 Z" fill="#fff" stroke="rgba(4,47,46,.35)" stroke-width="1"/></svg>';
+    el.innerHTML =
+      '<div class="ring"></div>' +
+      '<div class="puck" id="user-puck"></div>' +
+      '<svg class="chev" id="user-chev" width="20" height="20" viewBox="0 0 24 24">' +
+        '<path d="M12 3 L20 20 L12 15.6 L4 20 Z" fill="#fff" stroke="rgba(4,47,46,.35)" stroke-width="1"/>' +
+      '</svg>';
     return el;
   }
 
@@ -200,6 +239,8 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
     curRot = lerpAngle(anim.fRot, anim.tRot, t);
     userMarker.setLngLat(curPos);
     userMarker.setRotation(curRot);
+    // Also expose the live interpolated position for the 3D canvas
+    window.__curPos = curPos;
     if (t >= 1) { anim = null; rafOn = false; return; }
     requestAnimationFrame(markerTick);
   }
@@ -274,6 +315,7 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
       case 'init': {
         addLayers();
         var o = [msg.origin.lng, msg.origin.lat];
+        window.__curPos = o;
         if (!userMarker) { userMarker = new mapboxgl.Marker({ element: userEl(), rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat(o).addTo(map); }
         snapUser(o[0], o[1]);
         if (msg.pin) {
@@ -292,6 +334,9 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
         var c = [msg.lng, msg.lat];
         if (typeof msg.heading === 'number') lastHeading = msg.heading;
         glideUser(msg.lng, msg.lat, lastHeading, CHASE.durMs);
+        // Update 3D character heading
+        window.__curPos = c;
+        if (window.__setCharHeading) window.__setCharHeading(lastHeading);
         updateAhead(c);
         if (follow) {
           map.easeTo({
@@ -363,6 +408,286 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
   });
 })();
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     THREE.JS 3D CHARACTER — classic <script> only (RN WebView kills type=module).
+     Libs load from URLs injected by RunMap (Metro-served .bin) or CDN fallback
+     three@0.147 (last release that still ships examples/js UMD GLTFLoader).
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  var dbg = function (msg) {
+    try { window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'char_debug', msg: msg })); } catch (e) {}
+    console.log('[char]', msg);
+  };
+  window.__charDbg = dbg;
+
+  window.__charPendingUrl = null;
+  window.__loadCharacter = function (url) { window.__charPendingUrl = url; dbg('queued character (libs not ready)'); };
+  window.__setCharHeading = function () {};
+
+  var c3d = document.getElementById('char3d');
+  var shadowEl = document.getElementById('char-shadow');
+  var W = 132, H = 210;
+  var dpr = Math.min(window.devicePixelRatio || 2, 2);
+  var booted = false;
+
+  function loadScript(src, cb) {
+    dbg('loadScript ' + String(src).slice(0, 90));
+    var s = document.createElement('script');
+    s.src = src;
+    s.async = false;
+    s.onload = function () { dbg('loaded ok: ' + String(src).slice(0, 60)); cb(null); };
+    s.onerror = function () { dbg('load FAIL: ' + String(src).slice(0, 90)); cb(new Error('fail ' + src)); };
+    document.head.appendChild(s);
+  }
+
+  function setupChar() {
+    try {
+      if (typeof THREE === 'undefined') { dbg('ERROR: THREE missing'); return; }
+      if (!THREE.GLTFLoader) { dbg('ERROR: GLTFLoader missing'); return; }
+      dbg('setupChar THREE r' + THREE.REVISION + ' meshopt=' + (typeof MeshoptDecoder !== 'undefined'));
+
+      c3d.width = W * dpr; c3d.height = H * dpr;
+      var renderer = new THREE.WebGLRenderer({ canvas: c3d, alpha: true, antialias: true, powerPreference: 'low-power' });
+      renderer.setSize(W, H, false);
+      renderer.setPixelRatio(dpr);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.25;
+      if (renderer.outputEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
+
+      var scene = new THREE.Scene();
+      var aspect = W / H;
+      var camBottom = -0.32;
+      var camTop = 1.95;
+      var frH = camTop - camBottom;
+      var frW = frH * aspect;
+      /* Ortho: feet on baseline, head fully in frame — no float, no clip */
+      var camera = new THREE.OrthographicCamera(-frW / 2, frW / 2, camTop, camBottom, 0.1, 40);
+      camera.position.set(0, 0.85, 8);
+      camera.lookAt(0, 0.85, 0);
+
+      scene.add(new THREE.HemisphereLight(0xd0e8ff, 0x3d5c3a, 0.55));
+      scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+      var key = new THREE.DirectionalLight(0xfff2d6, 1.45); key.position.set(3, 7, 4); scene.add(key);
+      var brand = new THREE.DirectionalLight(0x2DD4BF, 0.55); brand.position.set(-4, 2, 2); scene.add(brand);
+      var rim = new THREE.DirectionalLight(0xffffff, 0.95); rim.position.set(-1, 4, -5); scene.add(rim);
+
+      var loader = new THREE.GLTFLoader();
+      var pivot = new THREE.Group();
+      scene.add(pivot);
+      var mixer = null, model = null, charReady = false, curHeading = 0;
+      var clock = new THREE.Clock();
+      var basePos = new THREE.Vector3();
+      var runAction = null;
+
+      /**
+       * Remove linear Hip/Root/Pelvis translation drift (baked into GLB already,
+       * but safe to re-apply). Keeps cyclic bob so the run still looks alive.
+       */
+      function makeInPlaceClip(clip) {
+        var c = clip.clone();
+        for (var t = 0; t < c.tracks.length; t++) {
+          var track = c.tracks[t];
+          var name = track.name || '';
+          if (!/\.position$/.test(name)) continue;
+          var bone = name.split('.')[0];
+          if (!/^(hip|hips|pelvis|root|armature)$/i.test(bone)) continue;
+          var v = track.values;
+          var times = track.times;
+          if (!v || !times || times.length < 2) continue;
+          var stride = track.getValueSize ? track.getValueSize() : 3;
+          var nKeys = times.length;
+          var x0 = v[0], y0 = v[1], z0 = v[2];
+          var x1 = v[(nKeys - 1) * stride];
+          var y1 = v[(nKeys - 1) * stride + 1];
+          var z1 = v[(nKeys - 1) * stride + 2];
+          var span = Math.max(1e-6, times[nKeys - 1] - times[0]);
+          var mag = Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + (z1 - z0) * (z1 - z0));
+          if (mag < 0.001) continue;
+          for (var i = 0; i < nKeys; i++) {
+            var u = (times[i] - times[0]) / span;
+            var o = i * stride;
+            v[o] -= x0 + (x1 - x0) * u;
+            v[o + 1] -= y0 + (y1 - y0) * u;
+            v[o + 2] -= z0 + (z1 - z0) * u;
+          }
+          dbg('de-drift ' + bone + ' mag=' + mag.toFixed(3));
+        }
+        return c;
+      }
+
+      function fitCameraToModel() {
+        if (!model) return;
+        model.updateMatrixWorld(true);
+        var box = new THREE.Box3().setFromObject(model);
+        var h = Math.max(0.5, box.max.y - box.min.y);
+        camBottom = -0.32;
+        camTop = h + 0.16;
+        frH = camTop - camBottom;
+        frW = frH * aspect;
+        camera.left = -frW / 2;
+        camera.right = frW / 2;
+        camera.top = camTop;
+        camera.bottom = camBottom;
+        camera.position.set(0.15, h * 0.45, 8);
+        camera.lookAt(0, h * 0.45, 0);
+        camera.updateProjectionMatrix();
+      }
+
+      function groundPixelFromTop() {
+        return H * (1 - (0 - camBottom) / (camTop - camBottom));
+      }
+
+      function plantFeet() {
+        if (!model) return;
+        model.position.set(0, 0, 0);
+        model.updateMatrixWorld(true);
+        var box = new THREE.Box3().setFromObject(model);
+        model.position.x = -((box.min.x + box.max.x) * 0.5);
+        model.position.z = -((box.min.z + box.max.z) * 0.5);
+        model.position.y = -box.min.y;
+        basePos.copy(model.position);
+      }
+
+      function wireMeshopt(next) {
+        var dec = window.MeshoptDecoder;
+        if (!dec || !loader.setMeshoptDecoder) { next(); return; }
+        if (dec.ready && dec.ready.then) {
+          dec.ready.then(function () { loader.setMeshoptDecoder(dec); dbg('meshopt ready'); next(); })
+            .catch(function (e) { dbg('meshopt ready fail ' + e); next(); });
+        } else {
+          loader.setMeshoptDecoder(dec);
+          next();
+        }
+      }
+
+      function actualLoad(url) {
+        dbg('actualLoad ' + String(url).slice(0, 100));
+        loader.load(url, function (gltf) {
+          var names = (gltf.animations || []).map(function (a) { return a.name; });
+          dbg('GLB parsed! anims=' + names.length + ' [' + names.join(', ') + ']');
+
+          while (pivot.children.length) pivot.remove(pivot.children[0]);
+          if (mixer) { mixer.stopAllAction(); mixer = null; }
+          runAction = null;
+
+          model = gltf.scene;
+          model.traverse(function (n) {
+            if (n.isMesh) n.frustumCulled = false;
+          });
+
+          var box0 = new THREE.Box3().setFromObject(model);
+          var s = 1.7 / Math.max(box0.max.y - box0.min.y, 0.01);
+          model.scale.setScalar(s);
+          pivot.add(model);
+          plantFeet();
+          fitCameraToModel();
+
+          if (gltf.animations && gltf.animations.length) {
+            mixer = new THREE.AnimationMixer(model);
+            var clip = null;
+            for (var i = 0; i < gltf.animations.length; i++) {
+              if (/run|jog|sprint/i.test(gltf.animations[i].name)) { clip = gltf.animations[i]; break; }
+            }
+            if (!clip) clip = gltf.animations[0];
+            var inPlace = makeInPlaceClip(clip);
+            runAction = mixer.clipAction(inPlace);
+            runAction.reset();
+            runAction.setLoop(THREE.LoopRepeat, Infinity);
+            runAction.clampWhenFinished = false;
+            runAction.enabled = true;
+            runAction.setEffectiveWeight(1);
+            runAction.setEffectiveTimeScale(1.0);
+            runAction.play();
+            dbg('playing LoopRepeat: ' + clip.name + ' dur=' + inPlace.duration);
+            mixer.update(0);
+            plantFeet();
+            fitCameraToModel();
+          }
+
+          var p = document.getElementById('user-puck');
+          var v = document.getElementById('user-chev');
+          var ring = document.querySelector('.user .ring');
+          if (p) p.style.display = 'none';
+          if (v) v.style.display = 'none';
+          if (ring) ring.style.display = 'none';
+
+          charReady = true;
+          c3d.classList.add('ready');
+          shadowEl.classList.add('ready');
+        }, undefined, function (err) {
+          dbg('GLB ERROR: ' + String(err && err.message ? err.message : err));
+        });
+      }
+
+      wireMeshopt(function () {
+        window.__setCharHeading = function (h) { curHeading = h; };
+        window.__loadCharacter = function (url) { actualLoad(url); };
+        dbg('ready pending=' + (window.__charPendingUrl ? 'YES' : 'none'));
+        if (window.__charPendingUrl) {
+          var u = window.__charPendingUrl;
+          window.__charPendingUrl = null;
+          actualLoad(u);
+        }
+      });
+
+      (function tick() {
+        requestAnimationFrame(tick);
+        var dt = clock.getDelta();
+        if (mixer) mixer.update(dt);
+        if (model) {
+          model.position.x = basePos.x;
+          model.position.y = basePos.y;
+          model.position.z = basePos.z;
+        }
+        if (charReady && window.__curPos && window.__mapbox) {
+          try {
+            var pt = window.__mapbox.project(window.__curPos);
+            c3d.style.left = (pt.x - W * 0.5) + 'px';
+            c3d.style.top = (pt.y - groundPixelFromTop()) + 'px';
+            shadowEl.style.left = pt.x + 'px';
+            shadowEl.style.top = pt.y + 'px';
+            pivot.rotation.y = Math.PI + (curHeading - window.__mapbox.getBearing()) * (Math.PI / 180);
+          } catch (e) {}
+        }
+        renderer.render(scene, camera);
+      })();
+    } catch (err) {
+      dbg('setupChar CRASH: ' + String(err && err.message ? err.message : err));
+    }
+  }
+
+  /** Called from RunMap with Metro-served script URLs (preferred) or falls back to CDN. */
+  window.__bootCharacterLibs = function (urls) {
+    if (booted) {
+      if (urls && urls.character) window.__loadCharacter(urls.character);
+      return;
+    }
+    booted = true;
+    urls = urls || {};
+    var threeUrl = urls.three || 'https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js';
+    var gltfUrl = urls.gltf || 'https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js';
+    var meshUrl = urls.meshopt || 'https://cdn.jsdelivr.net/npm/meshoptimizer@0.22.0/meshopt_decoder.js';
+    if (urls.character) window.__charPendingUrl = urls.character;
+
+    dbg('boot libs…');
+    loadScript(threeUrl, function (e1) {
+      if (e1) { dbg('three failed, abort'); return; }
+      loadScript(gltfUrl, function (e2) {
+        if (e2) { dbg('gltfloader failed, abort'); return; }
+        loadScript(meshUrl, function () {
+          /* meshopt optional — still setup even if it fails */
+          setupChar();
+        });
+      });
+    });
+  };
+
+  dbg('char stubs ready — waiting for __bootCharacterLibs');
+})();
+</script>
+
 </body>
 </html>`;
 }

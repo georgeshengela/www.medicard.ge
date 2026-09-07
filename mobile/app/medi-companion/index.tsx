@@ -26,6 +26,7 @@ import {
 } from '@/lib/companion/devFixtures';
 import { useOffline } from '@/hooks/useOffline';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { showDevUi } from '@/lib/devUi';
 import { trackQuestEvent } from '@/lib/productObservability';
 import { QUEST } from '@/theme/questTokens';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -215,7 +216,7 @@ export default function MediCompanionScreen() {
         )}
       </ScrollView>
 
-      {isCompanionDevEnabled() ? (
+      {showDevUi() && isCompanionDevEnabled() ? (
         <>
           <Pressable
             accessibilityRole="button"

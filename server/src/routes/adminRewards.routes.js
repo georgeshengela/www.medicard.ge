@@ -11,6 +11,7 @@ import {
   activateCampaign,
   adjustFiniteInventory,
   adminImportCodes,
+  createPartnerVoucherDefinition,
   disableAvailableCode,
   getRedemptionAdmin,
   listCampaigns,
@@ -284,6 +285,32 @@ adminRewardsRouter.post(
       ok: true,
       ...(await adjustFiniteInventory(req.params.rewardId, { ...body, admin: req.admin })),
     });
+  }),
+);
+
+adminRewardsRouter.post(
+  '/definitions',
+  mutateLimiter,
+  requireAdminCapability('REWARDS_MANAGE'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        key: z.string().min(3).max(64),
+        partnerId: z.string().min(1),
+        title: z.string().min(1).max(200).optional(),
+        displayName: z.string().min(1).max(200).optional(),
+        description: z.string().max(400).optional(),
+        terms: z.string().max(400).optional(),
+        coinCost: z.number().int().min(1),
+        inventoryMode: z.string().max(20).optional(),
+        inventoryQuantity: z.number().int().nullable().optional(),
+        redemptionExpiryDays: z.number().int().nullable().optional(),
+        lowStockThreshold: z.number().int().nullable().optional(),
+        sortOrder: z.number().int().optional(),
+      })
+      .parse(req.body || {});
+    const row = await createPartnerVoucherDefinition(body, { admin: req.admin });
+    res.json({ ok: true, definition: row });
   }),
 );
 

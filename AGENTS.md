@@ -4,6 +4,21 @@
 
 The in-app AI is **Medi**. Never write Nightingale in user-facing copy (chat titles, CTAs, bubbles, share toggles). Nightingale is only the Figma UI kit name.
 
+## Admin tab shell width (mandatory)
+
+Tab selector and active tab content must share the **same left/right edges** — identical width. Never add horizontal padding only on the pane/body while the tablist stays full-bleed (and never max-width the content narrower than the tabs).
+
+Applies to Push (`#/push` subnav ↔ panels), user investigation (`#/users/:id` `.user-tabs` ↔ `.user-body`), and any future admin subnav.
+
+```css
+/* Pattern */
+.shell { display: flex; flex-direction: column; gap: 14px; width: 100%; }
+.shell > .tabs,
+.shell > .pane { width: 100%; margin-inline: 0; padding-inline: 0; box-sizing: border-box; }
+```
+
+Shared hooks: `.v3-tab-shell`, `.v3-push .push-board`, `.v3-user-page .v3-user-board`. Kill legacy inset like `.user-body { padding: 22px }` inside V3 boards.
+
 ## Home hub sections
 
 A home block is **title, then content**. The section name sits **above** the card — never inside it. Match შემდეგი მიღება / წონის კონტროლი / აქტიურობა.

@@ -10,6 +10,7 @@ import {
 } from './adminCapabilities.js';
 import {
   assertNoHealthFields,
+  createPartnerVoucherDefinition,
   inventoryStockState,
   maskedUserRef,
   serializeCampaignForPartner,
@@ -165,6 +166,32 @@ describe('phase 8 partner upsert', () => {
       () => upsertPartner({ displayName: 'X', status: 'ACTIVE' }, {}, { db: { rewardPartner: {} } }),
       /partner key invalid/,
     );
+  });
+
+  it('creates a DRAFT partner voucher linked to the partner', async () => {
+    let created = null;
+    const db = {
+      rewardPartner: {
+        findUnique: async ({ where }) => (where.id === 'p1' ? { id: 'p1', key: 'AVERSI', status: 'ACTIVE' } : null),
+      },
+      rewardDefinition: {
+        create: async ({ data }) => {
+          created = { ...data };
+          return created;
+        },
+      },
+    };
+    const row = await createPartnerVoucherDefinition(
+      { key: 'aversi-10', partnerId: 'p1', title: 'Aversi 10%', coinCost: 250 },
+      { admin: { email: 'qa@test' } },
+      { db },
+    );
+    assert.equal(row.key, 'AVERSI_10');
+    assert.equal(row.type, 'PARTNER_VOUCHER');
+    assert.equal(row.status, 'DRAFT');
+    assert.equal(row.partnerId, 'p1');
+    assert.equal(row.inventoryMode, 'CODE_POOL');
+    assert.equal(created.coinCost, 250);
   });
 });
 

@@ -3,7 +3,7 @@ import { ActivityIndicator, BackHandler, Linking, Modal, Pressable, Text, View }
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, CarFront, Dices, FlaskConical, MapPin, Moon, Play, Sun, Target, X } from 'lucide-react-native';
+import { ArrowLeft, CarFront, ChevronDown, Dices, MapPin, Moon, Play, Sun, Target } from 'lucide-react-native';
 import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BetaPill } from '@/components/run/HomeRunSection';
@@ -24,7 +24,6 @@ import {
   resumeRun,
   runDerived,
   startRun,
-  toggleSimulation,
   useRunSession,
 } from '@/lib/run/store';
 import { useAuth } from '@/store/AuthContext';
@@ -82,7 +81,6 @@ export default function RunActiveScreen() {
   const [confirm, setConfirm] = useState<'finish' | 'cancel' | null>(null);
   const [rerolling, setRerolling] = useState(false);
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const finishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const trailLen = useRef(0);
 
   // Map theme: follows the clock (dark at night, light at day) until the user
@@ -166,15 +164,9 @@ export default function RunActiveScreen() {
         }
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         if (e === 'pin_reached') {
-          // Checkpoint captured → celebrate for a beat, then close the session
-          // and hand over to the summary screen.
+          // Checkpoint captured — store schedules finish; celebrate on map if open.
           map.current?.send({ type: 'reached' });
           showBanner('pin');
-          if (!finishTimer.current) {
-            finishTimer.current = setTimeout(() => {
-              void finishRun();
-            }, 2000);
-          }
         } else {
           showBanner('target');
         }
@@ -185,15 +177,21 @@ export default function RunActiveScreen() {
   useEffect(
     () => () => {
       if (bannerTimer.current) clearTimeout(bannerTimer.current);
-      if (finishTimer.current) clearTimeout(finishTimer.current);
     },
     [],
   );
 
-  // Android back
+  const minimizeRun = useCallback(() => {
+    void Haptics.selectionAsync();
+    // Never router.back() into /run — the hub auto-replaces to /run/active while a
+    // session is live, so the first tap looked like a no-op and only the 2nd worked.
+    router.replace('/(tabs)/home' as never);
+  }, [router]);
+
+  // Android back — minimize live run (session stays active); cancel only while preparing.
   const onBack = useCallback(() => {
     if (active) {
-      setConfirm('finish');
+      minimizeRun();
       return true;
     }
     if (s.phase === 'ready' || s.phase === 'preparing' || s.error) {
@@ -202,7 +200,7 @@ export default function RunActiveScreen() {
       return true;
     }
     return false;
-  }, [active, s.phase, s.error, router]);
+  }, [active, s.phase, s.error, router, minimizeRun]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
@@ -310,7 +308,12 @@ export default function RunActiveScreen() {
       {s.origin && !s.error ? (
         <View pointerEvents="box-none" style={{ position: 'absolute', top: topPad, left: 14, right: 14, gap: 10 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <HudRoundButton icon={active ? X : ArrowLeft} label={ka.common.back} onPress={() => (active ? setConfirm('finish') : onBack())} size={44} />
+            <HudRoundButton
+              icon={active ? ChevronDown : ArrowLeft}
+              label={active ? ka.run.minimize : ka.common.back}
+              onPress={() => (active ? minimizeRun() : onBack())}
+              size={44}
+            />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <HudChip icon={Target} label={targetLabel(s.target)} />
               <GpsChip accuracyM={s.accuracyM} />
@@ -319,18 +322,6 @@ export default function RunActiveScreen() {
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <BetaPill />
-            {__DEV__ && active ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={toggleSimulation}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: s.simulating ? (s.simMode === 'drive' ? '#B91C1C' : '#7C3AED') : p.chip, borderWidth: 1, borderColor: p.glassBorder }}
-              >
-                <FlaskConical size={12} color={s.simulating ? '#FFFFFF' : p.colors.text200} strokeWidth={2.4} />
-                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 11, color: s.simulating ? '#FFFFFF' : p.colors.text200 }}>
-                  {s.simMode === 'run' ? ka.run.simRun : s.simMode === 'drive' ? ka.run.simDrive : ka.run.simulate}
-                </Text>
-              </Pressable>
-            ) : null}
           </View>
           {s.transportWarning ? (
             <RunBanner tone="warn" title={ka.run.transportWarnTitle} body={ka.run.transportWarnBody} />

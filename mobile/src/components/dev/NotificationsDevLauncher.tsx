@@ -21,6 +21,7 @@ import {
 import { loadEngageTrace } from '@/lib/mediEngagePrefs';
 import { formatEngageTrace, type EngageTrace } from '@/lib/mediNotificationBrain.shared';
 import { useThemeColors } from '@/theme/colors';
+import { showDevUi } from '@/lib/devUi';
 
 type Status = Awaited<ReturnType<typeof getNotificationDebugStatus>>;
 
@@ -50,7 +51,7 @@ export function NotificationsDevLauncher() {
     setTrace(nextTrace);
   }, []);
 
-  if (typeof __DEV__ === 'undefined' || !__DEV__) return null;
+  if (!showDevUi()) return null;
 
   const openSheet = async () => {
     setOpen(true);

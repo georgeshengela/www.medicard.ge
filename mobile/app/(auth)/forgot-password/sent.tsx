@@ -6,6 +6,7 @@ import { Mail } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { ka } from '@/i18n/ka';
+import { showDevUi } from '@/lib/devUi';
 import { useThemeColors } from '@/theme/colors';
 
 export default function ForgotPasswordSent() {
@@ -67,7 +68,7 @@ export default function ForgotPasswordSent() {
           {ka.auth.forgotPasswordSentBody}
         </Text>
 
-        {__DEV__ && devCode ? (
+        {showDevUi() && devCode ? (
           <Text
             style={{
               marginTop: 16,

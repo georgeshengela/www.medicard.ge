@@ -220,6 +220,34 @@
       .join('');
   }
 
+  function sanitizeKey(v) {
+    return String(v || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9_]/g, '_');
+  }
+
+  function intOrNull(v) {
+    const s = String(v ?? '').trim();
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? Math.trunc(n) : null;
+  }
+
+  function toIsoOrNull(v) {
+    const s = String(v || '').trim();
+    if (!s) return null;
+    const d = new Date(s);
+    return Number.isFinite(d.getTime()) ? d.toISOString() : null;
+  }
+
+  const FUNDING_KA = {
+    PER_REDEMPTION: 'თითო გაცვლაზე',
+    PER_USED: 'თითო გამოყენებაზე',
+    SPONSORED_FIXED: 'სპონსორი · ფიქსი',
+    AFFILIATE: 'აფილიატი',
+    INTERNAL: 'შიდა',
+  };
+
   function openPartnerCreate() {
     if (typeof openDrawer !== 'function') {
       toast('ფორმა ვერ გაიხსნა', 'bad');
@@ -342,6 +370,229 @@
     keyEl?.focus();
   }
 
+  async function openCampaignCreate() {
+    if (typeof openDrawer !== 'function') {
+      toast('ფორმა ვერ გაიხსნა', 'bad');
+      return;
+    }
+    let partners = [];
+    let defs = [];
+    try {
+      const [p, d] = await Promise.all([apiRewards('/partners'), apiRewards('/definitions')]);
+      partners = p.items || [];
+      defs = (d.items || []).filter((x) => x.type === 'PARTNER_VOUCHER' || x.type === 'COUPON_CODE' || x.partnerKey);
+    } catch (e) {
+      toast(e.message || 'სია ვერ ჩაიტვირთა', 'bad');
+      return;
+    }
+    if (!partners.length) {
+      toast('ჯერ შექმენით პარტნიორი', 'bad');
+      R.subtab = 'partners';
+      void renderRewards();
+      return;
+    }
+    const partnerOpts = partners
+      .map(
+        (p) =>
+          `<option value="${esc(p.id)}">${esc(p.displayName)} · ${esc(p.key)}${
+            p.status !== 'ACTIVE' ? ' · არააქტიური' : ''
+          }</option>`,
+      )
+      .join('');
+    const defOpts = [`<option value="">ახალი პარტნიორის ვაუჩერი</option>`]
+      .concat(defs.map((x) => `<option value="${esc(x.id)}">${esc(x.key)} · ${fmt(x.coinCost)} coins</option>`))
+      .join('');
+    const fundingOpts = Object.entries(FUNDING_KA)
+      .map(([k, label]) => `<option value="${k}"${k === 'PER_REDEMPTION' ? ' selected' : ''}>${esc(label)}</option>`)
+      .join('');
+    openDrawer(
+      `
+      <div class="umodal rw-partner-modal">
+        <header class="umodal-hero">
+          <div class="umodal-hero-copy">
+            <p class="kicker">ჯილდოები</p>
+            <h3>ახალი კამპანია</h3>
+            <p class="muted">ინახება მონახაზად. აპში გამოჩნდება მხოლოდ გააქტიურების შემდეგ, როცა პარტნიორი აქტიურია და მარაგი მზადაა.</p>
+          </div>
+          <button type="button" class="btn icon-only ghost umodal-close" id="drawer-cancel">${ico('x')}</button>
+        </header>
+        <div class="umodal-body">
+          <form id="rw-campaign-form" class="rw-partner-form">
+            <h4>კავშირი</h4>
+            <div class="rw-partner-grid">
+              <label class="field"><span>პარტნიორი</span>
+                <select id="rw-c-partner" required>${partnerOpts}</select>
+              </label>
+              <label class="field"><span>ჯილდო</span>
+                <select id="rw-c-reward">${defOpts}</select>
+              </label>
+            </div>
+            <div id="rw-c-new-reward">
+              <h4>ახალი ვაუჩერი</h4>
+              <div class="rw-partner-grid">
+                <label class="field"><span>ჯილდოს გასაღები</span>
+                  <input id="rw-c-rkey" maxlength="64" placeholder="AVERSI_10_VOUCHER" autocomplete="off" />
+                </label>
+                <label class="field"><span>Coins</span>
+                  <input id="rw-c-cost" type="number" min="1" step="1" value="100" />
+                </label>
+                <label class="field"><span>მარაგი</span>
+                  <select id="rw-c-inv">
+                    <option value="CODE_POOL" selected>კოდების პული</option>
+                    <option value="FINITE">რაოდენობა</option>
+                    <option value="UNLIMITED">ულიმიტო</option>
+                  </select>
+                </label>
+                <label class="field"><span>საჩვენებელი სახელი</span>
+                  <input id="rw-c-rtitle" maxlength="200" placeholder="Aversi 10%" />
+                </label>
+              </div>
+            </div>
+            <h4>კამპანია</h4>
+            <div class="rw-partner-grid">
+              <label class="field"><span>გასაღები</span>
+                <input id="rw-c-key" required minlength="3" maxlength="64" placeholder="AVERSI_10_CAMP" autocomplete="off" />
+              </label>
+              <label class="field"><span>სახელი</span>
+                <input id="rw-c-name" required maxlength="200" placeholder="Aversi 10% — სექტემბერი" />
+              </label>
+              <label class="field"><span>დაფინანსება</span>
+                <select id="rw-c-fund">${fundingOpts}</select>
+              </label>
+              <label class="field"><span>მაქს. გაცვლა</span>
+                <input id="rw-c-max" type="number" min="1" step="1" placeholder="ცარიელი = ულიმიტო" />
+              </label>
+              <label class="field"><span>ლიმიტი მომხმარებელზე</span>
+                <input id="rw-c-user" type="number" min="1" step="1" placeholder="მაგ. 1" />
+              </label>
+              <label class="field"><span>ღირებულება (თეთრი)</span>
+                <input id="rw-c-value" type="number" min="0" step="1" placeholder="1500 = 15 ₾" />
+              </label>
+              <label class="field"><span>ვალუტა</span>
+                <input id="rw-c-ccy" maxlength="3" value="GEL" />
+              </label>
+              <label class="field"><span>დაბალი მარაგი</span>
+                <input id="rw-c-low" type="number" min="0" step="1" placeholder="10" />
+              </label>
+              <label class="field"><span>დაწყება</span>
+                <input id="rw-c-start" type="datetime-local" />
+              </label>
+              <label class="field"><span>დასრულება</span>
+                <input id="rw-c-end" type="datetime-local" />
+              </label>
+            </div>
+            <p id="rw-c-err" class="error hidden"></p>
+          </form>
+        </div>
+        <footer class="umodal-foot">
+          <span class="badge neutral">მონახაზი</span>
+          <div class="umodal-foot-right">
+            <button class="btn ghost" id="rw-c-cancel" type="button">გაუქმება</button>
+            <button class="btn primary" id="drawer-save" type="button">შექმნა</button>
+          </div>
+        </footer>
+      </div>
+    `,
+      { modal: true },
+    );
+    const keyEl = $('rw-c-key');
+    const rkeyEl = $('rw-c-rkey');
+    const errEl = $('rw-c-err');
+    const newBox = $('rw-c-new-reward');
+    const rewardSel = $('rw-c-reward');
+    const syncNew = () => {
+      if (newBox) newBox.hidden = Boolean(rewardSel?.value);
+    };
+    rewardSel?.addEventListener('change', syncNew);
+    syncNew();
+    keyEl?.addEventListener('input', () => {
+      keyEl.value = sanitizeKey(keyEl.value);
+    });
+    rkeyEl?.addEventListener('input', () => {
+      rkeyEl.value = sanitizeKey(rkeyEl.value);
+    });
+    $('drawer-cancel').onclick = closeDrawer;
+    $('rw-c-cancel').onclick = closeDrawer;
+    const save = async () => {
+      const key = sanitizeKey(keyEl?.value);
+      const name = ($('rw-c-name')?.value || '').trim();
+      const partnerId = $('rw-c-partner')?.value || '';
+      if (errEl) {
+        errEl.textContent = '';
+        errEl.classList.add('hidden');
+      }
+      if (key.length < 3) {
+        toast('გასაღები მინიმუმ 3 სიმბოლო', 'bad');
+        return;
+      }
+      if (!name || !partnerId) {
+        toast('სახელი და პარტნიორი სავალდებულოა', 'bad');
+        return;
+      }
+      try {
+        $('drawer-save').disabled = true;
+        let rewardDefinitionId = rewardSel?.value || '';
+        if (!rewardDefinitionId) {
+          const rkey = sanitizeKey(rkeyEl?.value);
+          const coinCost = intOrNull($('rw-c-cost')?.value);
+          const title = ($('rw-c-rtitle')?.value || '').trim() || name;
+          if (rkey.length < 3 || !coinCost) {
+            toast('ჯილდოს გასაღები და Coins სავალდებულოა', 'bad');
+            $('drawer-save').disabled = false;
+            return;
+          }
+          const created = await apiRewards('/definitions', {
+            method: 'POST',
+            body: {
+              key: rkey,
+              partnerId,
+              title,
+              coinCost,
+              inventoryMode: $('rw-c-inv')?.value || 'CODE_POOL',
+            },
+          });
+          rewardDefinitionId = created.definition?.id;
+          if (!rewardDefinitionId) throw new Error('ჯილდო ვერ შეიქმნა');
+        }
+        const commercialCurrency = ($('rw-c-ccy')?.value || '').trim().toUpperCase() || null;
+        await apiRewards('/campaigns', {
+          method: 'POST',
+          body: {
+            key,
+            name,
+            partnerId,
+            rewardDefinitionId,
+            status: 'DRAFT',
+            fundingModel: $('rw-c-fund')?.value || 'PER_REDEMPTION',
+            maxRedemptions: intOrNull($('rw-c-max')?.value),
+            perUserLimit: intOrNull($('rw-c-user')?.value),
+            commercialValueMinor: intOrNull($('rw-c-value')?.value),
+            commercialCurrency,
+            lowStockThreshold: intOrNull($('rw-c-low')?.value),
+            startsAt: toIsoOrNull($('rw-c-start')?.value),
+            endsAt: toIsoOrNull($('rw-c-end')?.value),
+          },
+        });
+        closeDrawer();
+        toast('კამპანია შეიქმნა · მონახაზი', 'ok');
+        void renderRewards();
+      } catch (e) {
+        if (errEl) {
+          errEl.textContent = e.message || 'შეცდომა';
+          errEl.classList.remove('hidden');
+        }
+        toast(e.message || 'შეცდომა', 'bad');
+        $('drawer-save').disabled = false;
+      }
+    };
+    $('drawer-save').onclick = save;
+    $('rw-campaign-form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      void save();
+    });
+    keyEl?.focus();
+  }
+
   async function renderPartners(root) {
     const data = await apiRewards('/partners');
     const items = data.items || [];
@@ -412,7 +663,10 @@
       'campaigns',
       `
       <header class="rw-head">
-        <p class="muted">კამპანია აკონტროლებს ხილვადობას, ლიმიტებს და კომერციულ მეტამონაცემებს.</p>
+        <div>
+          <p class="muted">კამპანია აკონტროლებს ხილვადობას, ლიმიტებს და კომერციულ მეტამონაცემებს.</p>
+        </div>
+        <button type="button" class="btn primary sm" id="rw-campaign-create">${ico('zap')} ახალი კამპანიის შექმნა</button>
       </header>
       <section class="card ops-card rw-table-card">
         ${
@@ -420,6 +674,7 @@
             ? emptyState(
                 'კამპანია ჯერ არ არის',
                 'პარტნიორი → ჯილდოს განსაზღვრება → კამპანია → გააქტიურება მარაგის მზადყოფნისას.',
+                `<button type="button" class="btn primary sm" id="rw-campaign-create-empty">ახალი კამპანიის შექმნა</button>`,
               )
             : `<div class="rw-table-wrap"><table class="table dense rw-table">
               <thead><tr>
@@ -450,6 +705,8 @@
     `,
     );
     bindSubnav(root);
+    $('rw-campaign-create')?.addEventListener('click', () => void openCampaignCreate());
+    $('rw-campaign-create-empty')?.addEventListener('click', () => void openCampaignCreate());
     root.querySelectorAll('[data-act]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         try {
@@ -583,26 +840,9 @@
     );
     bindSubnav(root);
     root.querySelectorAll('[data-import]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const raw = prompt('ჩასვით კოდები (თითო ხაზზე ერთი)');
-        if (!raw) return;
-        const codes = raw
-          .split(/\r?\n/)
-          .map((l) => l.trim())
-          .filter(Boolean);
-        try {
-          const res = await apiRewards(`/rewards/${btn.getAttribute('data-import')}/codes/import`, {
-            method: 'POST',
-            body: { codes },
-          });
-          const r = res.report || {};
-          toast(
-            `მიღებულია ${r.accepted ?? 0} · დუბლიკატი ${r.duplicates ?? 0} · უარყოფილი ${r.invalid ?? r.rejected ?? 0}`,
-            'ok',
-          );
-        } catch (e) {
-          toast(e.message || 'იმპორტი ვერ მოხერხდა', 'bad');
-        }
+      btn.addEventListener('click', () => {
+        // Legacy path retained only as dead fallback; V3 owns codes import UI.
+        if (typeof toast === 'function') toast('გამოიყენეთ კოდის იმპორტის ფორმა (Admin V3).', 'warn');
       });
     });
     root.querySelectorAll('[data-list]').forEach((btn) => {
@@ -655,4 +895,6 @@
   }
 
   global.renderRewards = renderRewards;
+  global.STATUS_KA = STATUS_KA;
+  global.CATEGORY_KA = CATEGORY_KA;
 })(window);

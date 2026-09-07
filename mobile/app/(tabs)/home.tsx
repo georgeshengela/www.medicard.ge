@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ChevronRight, MessageSquareText, Sparkles } from 'lucide-react-native';
@@ -15,7 +15,8 @@ import { HomeMediCompanionEntry } from '@/components/companion/HomeMediCompanion
 import { HomeWeatherSection } from '@/components/weather/HomeWeatherSection';
 import { HomeRunSection } from '@/components/run/HomeRunSection';
 import { HomeLabSection } from '@/components/home/HomeLabSection';
-import { HomeStartSection } from '@/components/home/HomeStartSection';
+import { HomeCyclePreviewCard } from '@/components/home/HomeCyclePreviewCard';
+import { HomeSymptomAssistantCard } from '@/components/home/HomeSymptomAssistantCard';
 import { HomeAnalysisSection } from '@/components/home/HomeAnalysisSection';
 import { HomeConsiliumCard } from '@/components/home/HomeConsiliumCard';
 import { modulesForGender, POWER_TOOL_MODULE_KEYS, SPOTLIGHT_MODULE_KEYS } from '@/constants/modules';
@@ -25,6 +26,7 @@ import { ka } from '@/i18n/ka';
 import { api, type ChatSummary } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
 import { getCyclePromptSeen, type HomeLanding } from '@/lib/homeScreenPrefs';
+import { buildHomeSectionOrder, type HomeSectionId } from '@/lib/home/homeSectionOrder';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { useThemeColors, useIsDark } from '@/theme/colors';
 import { OnboardingDevLauncher } from '@/components/dev/OnboardingDevLauncher';
@@ -93,7 +95,8 @@ export default function Home() {
     .toUpperCase();
 
   const tiles = modulesForGender(user?.gender);
-  const spotlights = tiles.filter((tile) => SPOTLIGHT_MODULE_KEYS.has(tile.key));
+  const cycleTile = tiles.find((tile) => tile.key === 'cycle');
+  const doctorTile = tiles.find((tile) => tile.key === 'doctor');
   const serviceTiles = tiles.filter(
     (tile) => !SPOTLIGHT_MODULE_KEYS.has(tile.key) && !POWER_TOOL_MODULE_KEYS.has(tile.key),
   );
@@ -105,6 +108,163 @@ export default function Home() {
   const avatarId = typeof extra.avatarId === 'string' ? extra.avatarId : null;
   const { todayMl } = useHydration();
 
+  const sectionOrder = useMemo(
+    () =>
+      buildHomeSectionOrder({
+        mountNextDoseSlot: true,
+        includeConsilium: Boolean(consiliumTile),
+        includeCycle: Boolean(cycleTile),
+      }),
+    [consiliumTile, cycleTile],
+  );
+
+  const renderSection = (id: HomeSectionId) => {
+    switch (id) {
+      case 'dashboard':
+        return (
+          <HomeDashboardTop
+            key={id}
+            firstName={firstName}
+            initials={initials || 'M'}
+            gender={user?.gender}
+            avatarId={avatarId}
+            streak={user?.currentStreak ?? 0}
+            score={analysis?.score ?? null}
+            scoreLabel={
+              analysis?.score != null ? healthScoreLabelKa(analysis.score) : ka.home.scorePending
+            }
+            statusLabel={analysis?.bodyComposition?.physiqueLabelKa ?? ka.home.healthyStatus}
+            waterLiters={todayMl > 0 ? todayMl / 1000 : null}
+            onAvatarPress={() => router.push('/(tabs)/profile' as never)}
+            onPackagePress={() => router.push('/package' as never)}
+            onStreakPress={() => router.push('/profile/streak' as never)}
+            onScorePress={() => {
+              if (analysis) router.push('/(auth)/profile-setup/results?preview=1' as never);
+            }}
+          />
+        );
+      case 'nextDose':
+        return <HomeNextDoseSection key={id} refreshing={refreshing} />;
+      case 'mediQuest':
+        return (
+          <View key={id} style={{ position: 'relative' }}>
+            <HomeMediCompanionEntry />
+            <HomeMediQuestSection />
+          </View>
+        );
+      case 'steps':
+        return <HomeHealthMetricsSection key={id} profile={healthProfile} />;
+      case 'hydration':
+        return <HomeHydrationSection key={id} />;
+      case 'weight':
+        return <HomeBmiWeightSection key={id} profile={healthProfile} />;
+      case 'cycle':
+        return cycleTile ? (
+          <View key={id} className="px-4" style={{ marginTop: S.sectionTop }}>
+            <HomeCyclePreviewCard onPress={() => router.push(cycleTile.href as never)} />
+          </View>
+        ) : null;
+      case 'lab':
+        return <HomeLabSection key={id} />;
+      case 'weather':
+        return <HomeWeatherSection key={id} />;
+      case 'run':
+        return <HomeRunSection key={id} />;
+      case 'symptom':
+        return doctorTile ? (
+          <View key={id} className="px-4" style={{ marginTop: S.sectionTop }}>
+            <HomeSymptomAssistantCard
+              firstName={firstName}
+              onPress={() => router.push(doctorTile.href as never)}
+            />
+          </View>
+        ) : null;
+      case 'analysis':
+        return (
+          <View key={id} className="px-4">
+            <HomeAnalysisSection
+              tiles={analysisTiles}
+              onPress={(tile) => router.push(tile.href as never)}
+            />
+          </View>
+        );
+      case 'consilium':
+        return consiliumTile ? (
+          <View key={id} className="px-4">
+            <HomeConsiliumCard onPress={() => router.push(consiliumTile.href as never)} />
+          </View>
+        ) : null;
+      case 'recentActivity':
+        return (
+          <View key={id} className="px-4">
+            <View
+              className="flex-row items-center justify-between"
+              style={{ marginTop: S.sectionTop, marginBottom: S.sectionLabelBottom }}
+            >
+              <SectionLabel title={ka.home.recentActivity} inline />
+              {chats.length > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() => router.push('/(tabs)/records')}
+                >
+                  <Text className="text-sm font-semibold text-primary-200">{ka.common.seeAll}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+
+            {chats.length === 0 ? (
+              <Card>
+                <View className="items-center py-3">
+                  <View
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 18,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: homeAccentFor('doctor', isDark).soft,
+                      borderWidth: 1,
+                      borderColor: homeAccentFor('doctor', isDark).border,
+                    }}
+                  >
+                    <Sparkles size={24} color={colors.primary200} strokeWidth={2.1} />
+                  </View>
+                  <Text className="mt-3 text-center text-base font-semibold text-text-200">
+                    {ka.home.noActivity}
+                  </Text>
+                  <Text className="mt-1.5 text-center text-sm leading-5 text-text-300">
+                    {ka.home.noActivityHint}
+                  </Text>
+                </View>
+              </Card>
+            ) : (
+              chats.map((chat, index) => (
+                <ActivityRow
+                  key={chat.id}
+                  chat={chat}
+                  accentKey={index === 0 ? 'doctor' : index === 1 ? 'consilium' : 'lab'}
+                  onPress={() =>
+                    router.push(
+                      `/chat/${chat.mode === 'CONSILIUM' ? 'consilium' : 'doctor'}?sessionId=${chat.id}`,
+                    )
+                  }
+                />
+              ))
+            )}
+          </View>
+        );
+      case 'disclaimer':
+        return (
+          <View key={id} className="px-4">
+            <Disclaimer className="mt-4" />
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <>
       <ScrollView
@@ -115,109 +275,7 @@ export default function Home() {
         }
         showsVerticalScrollIndicator={false}
       >
-        <HomeDashboardTop
-          firstName={firstName}
-          initials={initials || 'M'}
-          gender={user?.gender}
-          avatarId={avatarId}
-          streak={user?.currentStreak ?? 0}
-          score={analysis?.score ?? null}
-          scoreLabel={
-            analysis?.score != null ? healthScoreLabelKa(analysis.score) : ka.home.scorePending
-          }
-          statusLabel={analysis?.bodyComposition?.physiqueLabelKa ?? ka.home.healthyStatus}
-          waterLiters={todayMl > 0 ? todayMl / 1000 : null}
-          onAvatarPress={() => router.push('/(tabs)/profile' as never)}
-          onPackagePress={() => router.push('/package' as never)}
-          onStreakPress={() => router.push('/profile/streak' as never)}
-          onScorePress={() => {
-            if (analysis) router.push('/(auth)/profile-setup/results?preview=1' as never);
-          }}
-        />
-
-        <View style={{ position: 'relative' }}>
-          <HomeMediCompanionEntry />
-          <HomeMediQuestSection />
-        </View>
-
-        <HomeNextDoseSection refreshing={refreshing} />
-
-        <HomeWeatherSection />
-
-        <HomeRunSection />
-
-        <HomeBmiWeightSection profile={healthProfile} />
-
-        <HomeHealthMetricsSection profile={healthProfile} />
-
-        <HomeHydrationSection />
-
-        <HomeLabSection />
-
-        <View className="px-4">
-        <HomeStartSection
-          spotlights={spotlights}
-          firstName={firstName}
-          onPress={(tile) => router.push(tile.href as never)}
-        />
-
-        <HomeAnalysisSection
-          tiles={analysisTiles}
-          onPress={(tile) => router.push(tile.href as never)}
-        />
-
-        {consiliumTile ? (
-          <HomeConsiliumCard onPress={() => router.push(consiliumTile.href as never)} />
-        ) : null}
-
-        <View
-          className="flex-row items-center justify-between"
-          style={{ marginTop: S.sectionTop, marginBottom: S.sectionLabelBottom }}
-        >
-          <SectionLabel title={ka.home.recentActivity} inline />
-          {chats.length > 0 ? (
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={() => router.push('/(tabs)/records')}>
-              <Text className="text-sm font-semibold text-primary-200">{ka.common.seeAll}</Text>
-            </Pressable>
-          ) : null}
-        </View>
-
-        {chats.length === 0 ? (
-          <Card>
-            <View className="items-center py-3">
-              <View
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 18,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: homeAccentFor('doctor', isDark).soft,
-                  borderWidth: 1,
-                  borderColor: homeAccentFor('doctor', isDark).border,
-                }}
-              >
-                <Sparkles size={24} color={colors.primary200} strokeWidth={2.1} />
-              </View>
-              <Text className="mt-3 text-center text-base font-semibold text-text-200">{ka.home.noActivity}</Text>
-              <Text className="mt-1.5 text-center text-sm leading-5 text-text-300">{ka.home.noActivityHint}</Text>
-            </View>
-          </Card>
-        ) : (
-          chats.map((chat, index) => (
-            <ActivityRow
-              key={chat.id}
-              chat={chat}
-              accentKey={index === 0 ? 'doctor' : index === 1 ? 'consilium' : 'lab'}
-              onPress={() =>
-                router.push(`/chat/${chat.mode === 'CONSILIUM' ? 'consilium' : 'doctor'}?sessionId=${chat.id}`)
-              }
-            />
-          ))
-        )}
-
-        <Disclaimer className="mt-4" />
-        </View>
+        {sectionOrder.map(renderSection)}
       </ScrollView>
 
       <DefaultHomePrompt visible={showCyclePrompt} onClose={onPromptClose} />

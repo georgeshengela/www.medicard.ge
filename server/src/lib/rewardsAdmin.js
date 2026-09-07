@@ -288,6 +288,54 @@ export async function upsertPartner(input, { admin } = {}, options = {}) {
   return row;
 }
 
+export async function createPartnerVoucherDefinition(input, { admin } = {}, options = {}) {
+  const db = dbOf(options);
+  const key = String(input.key || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]/g, '_');
+  if (!key || key.length < 3) throw httpError('reward key invalid', 400);
+  const partner = await db.rewardPartner.findUnique({ where: { id: input.partnerId } });
+  if (!partner) throw httpError('partner not found', 404);
+  const coinCost = Number(input.coinCost);
+  if (!Number.isFinite(coinCost) || coinCost < 1) throw httpError('coinCost invalid', 400);
+  const inventoryMode = input.inventoryMode || INVENTORY_MODES.CODE_POOL;
+  if (!Object.values(INVENTORY_MODES).includes(inventoryMode)) {
+    throw httpError('invalid inventory mode', 400);
+  }
+  const title = String(input.title || input.displayName || key).trim();
+  if (!title) throw httpError('title required', 400);
+  const row = await db.rewardDefinition.create({
+    data: {
+      id: randomUUID(),
+      key,
+      type: REWARD_TYPES.PARTNER_VOUCHER,
+      status: REWARD_STATUSES.DRAFT,
+      titleKey: title,
+      descriptionKey: String(input.description || title).trim(),
+      termsKey: input.terms ? String(input.terms).trim() : null,
+      coinCost,
+      partnerId: partner.id,
+      inventoryMode,
+      inventoryQuantity:
+        inventoryMode === INVENTORY_MODES.FINITE ? Number(input.inventoryQuantity) || 0 : null,
+      featured: false,
+      sortOrder: Number(input.sortOrder) || 80,
+      redemptionExpiryDays: input.redemptionExpiryDays ?? 30,
+      lowStockThreshold: input.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
+    },
+  });
+  await writeAdminAudit({
+    admin,
+    action: 'REWARD_DEFINITION_CREATED',
+    targetType: 'rewardDefinition',
+    targetId: row.id,
+    previousValue: null,
+    newValue: { id: row.id, key: row.key, type: row.type, partnerId: partner.id },
+  });
+  return row;
+}
+
 export async function listCampaigns(query = {}, options = {}) {
   const db = dbOf(options);
   const where = {};

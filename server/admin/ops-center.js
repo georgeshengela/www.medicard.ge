@@ -4,7 +4,7 @@ const opsState = {
   range: _opsHashRange.get('range') || sessionStorage.getItem('medicard.admin.range') || '7d',
   from: _opsHashRange.get('from') || sessionStorage.getItem('medicard.admin.rangeFrom') || '',
   to: _opsHashRange.get('to') || sessionStorage.getItem('medicard.admin.rangeTo') || '',
-  grain: 'dau',
+  grain: _opsHashRange.get('grain') || sessionStorage.getItem('medicard.admin.grain') || 'dau',
   decisionFilter: null,
 };
 let opsFetchGen = 0;
@@ -42,9 +42,11 @@ function opsPersistRange() {
   sessionStorage.setItem('medicard.admin.range', opsState.range);
   sessionStorage.setItem('medicard.admin.rangeFrom', opsState.from);
   sessionStorage.setItem('medicard.admin.rangeTo', opsState.to);
+  if (opsState.grain) sessionStorage.setItem('medicard.admin.grain', opsState.grain);
   const tab = (location.hash || '#/overview').replace(/^#\/?/, '').split('?')[0] || 'overview';
   const params = new URLSearchParams((location.hash || '').split('?')[1] || '');
   params.set('range', opsState.range);
+  params.set('grain', opsState.grain || 'dau');
   if (opsState.range === 'custom') {
     if (opsState.from) params.set('from', opsState.from);
     if (opsState.to) params.set('to', opsState.to);
@@ -102,90 +104,150 @@ function opsSpark(points) {
   return `<svg class="ops-spark" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${line}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
 
-function opsLineChart(seriesList, { label = 'ტრენდი', height = 220 } = {}) {
+const OPS_CHART_TONES = {
+  teal: '#0D9488',
+  blue: '#2563EB',
+  green: '#059669',
+  amber: '#D97706',
+  rose: '#E11D48',
+  muted: '#6B7280',
+  ink: '#374151',
+};
+
+function opsToneColor(tone, idx = 0) {
+  const fallback = ['teal', 'blue', 'green', 'amber', 'muted'];
+  return OPS_CHART_TONES[tone] || OPS_CHART_TONES[fallback[idx % fallback.length]] || OPS_CHART_TONES.teal;
+}
+
+function opsLineChart(seriesList, { label = 'ტრენდი', height = 152 } = {}) {
   const lists = (seriesList || []).filter((s) => s.points?.length);
-  if (!lists.length) return '<div class="ops-empty"><strong>ამ პერიოდში მონაცემი არ არის.</strong></div>';
-  const w = 720;
+  if (!lists.length) return '<div class="ops-empty v3-chart-empty"><strong>ამ პერიოდში მონაცემი არ არის.</strong></div>';
+  const w = 640;
   const h = height;
-  const padX = 40;
-  const padY = 22;
+  const padL = 36;
+  const padR = 10;
+  const padT = 10;
+  const padB = 22;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
   const n = Math.max(...lists.map((s) => s.points.length));
-  const max = Math.max(1, ...lists.flatMap((s) => s.points.map((d) => d.count)));
-  const step = n > 1 ? (w - padX * 2) / (n - 1) : 0;
-  const grid = [0.25, 0.5, 0.75].map((p) => {
-    const y = h - padY - p * (h - padY * 2);
-    return `<line class="ops-gridline" x1="${padX}" x2="${w - 16}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" />`;
+  const max = Math.max(1, ...lists.flatMap((s) => s.points.map((d) => Number(d.count) || 0)));
+  const step = n > 1 ? plotW / (n - 1) : 0;
+  const yAt = (count) => padT + plotH - (Number(count) / max) * plotH;
+  const xAt = (i) => padL + i * step;
+
+  const grid = [0, 0.5, 1].map((p) => {
+    const y = padT + plotH - p * plotH;
+    const val = Math.round(max * p);
+    return `<line class="ops-gridline" x1="${padL}" x2="${w - padR}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" />`
+      + `<text x="${padL - 6}" y="${(y + 3).toFixed(1)}" class="ops-axis ops-axis-y" text-anchor="end">${opsFmt(val)}</text>`;
   }).join('');
+
+  const areas = lists.slice(0, 1).map((s, idx) => {
+    const color = opsToneColor(s.tone, idx);
+    const pts = s.points.map((d, i) => `${xAt(i).toFixed(1)},${yAt(d.count).toFixed(1)}`).join(' ');
+    const base = `${xAt(s.points.length - 1).toFixed(1)},${(padT + plotH).toFixed(1)} ${xAt(0).toFixed(1)},${(padT + plotH).toFixed(1)}`;
+    return `<polygon class="v3-chart-area" points="${pts} ${base}" fill="${color}" fill-opacity="0.12" stroke="none"/>`;
+  }).join('');
+
   const paths = lists.map((s, idx) => {
-    const line = s.points.map((d, i) => {
-      const x = padX + i * step;
-      const y = h - padY - (d.count / max) * (h - padY * 2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-    const tone = s.tone || (idx === 0 ? 'teal' : 'ink');
-    return `<polyline class="ops-line tone-${tone}" points="${line}" fill="none" stroke="currentColor" stroke-width="${idx === 0 ? 1.7 : 1.2}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const color = opsToneColor(s.tone, idx);
+    const line = s.points.map((d, i) => `${xAt(i).toFixed(1)},${yAt(d.count).toFixed(1)}`).join(' ');
+    return `<polyline class="ops-line" points="${line}" fill="none" stroke="${color}" stroke-width="${idx === 0 ? 2.2 : 1.7}" stroke-linejoin="round" stroke-linecap="round"/>`;
   }).join('');
-  const ticks = lists[0].points.filter((_, i) => i === 0 || i === n - 1 || i === Math.floor(n / 2));
-  const labels = ticks.map((d) => {
-    const i = lists[0].points.indexOf(d);
-    const x = padX + i * step;
-    return `<text x="${x.toFixed(1)}" y="${h - 4}" class="ops-axis">${opsEscape(String(d.day).slice(5))}</text>`;
+
+  const tickIdx = n <= 5
+    ? Array.from({ length: n }, (_, i) => i)
+    : [0, Math.floor((n - 1) / 2), n - 1];
+  const labels = tickIdx.map((i) => {
+    const d = lists[0].points[i];
+    if (!d) return '';
+    return `<text x="${xAt(i).toFixed(1)}" y="${h - 4}" class="ops-axis" text-anchor="middle">${opsEscape(String(d.day).slice(5))}</text>`;
   }).join('');
+
   const hits = lists[0].points.map((d, i) => {
-    const x = padX + i * step;
-    const y = h - padY - (d.count / max) * (h - padY * 2);
-    const prev = lists[1]?.points?.[i];
-    const tip = prev
-      ? `${d.day}: ${d.count} · წინა ${prev.count}`
-      : `${d.day}: ${d.count}`;
-    return `<circle class="ops-hit" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7"><title>${opsEscape(tip)}</title></circle>`;
+    const tipParts = lists.map((s) => {
+      const pt = s.points[i];
+      const name = s.label || s.tone || 'სერია';
+      return `${name}: ${opsFmt(pt?.count)}`;
+    });
+    return `<circle class="ops-hit" cx="${xAt(i).toFixed(1)}" cy="${yAt(d.count).toFixed(1)}" r="8"><title>${opsEscape(`${d.day} · ${tipParts.join(' · ')}`)}</title></circle>`;
   }).join('');
-  return `<svg class="ops-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${opsEscape(label)}">${grid}${paths}${hits}${labels}<text x="${padX}" y="12" class="ops-axis">${opsFmt(max)}</text></svg>`;
+
+  const legend = lists.map((s, idx) => {
+    const color = opsToneColor(s.tone, idx);
+    const name = opsEscape(s.label || s.tone || `სერია ${idx + 1}`);
+    const last = s.points[s.points.length - 1];
+    return `<span class="v3-chart-leg"><i style="background:${color}"></i>${name}<em>${opsFmt(last?.count)}</em></span>`;
+  }).join('');
+
+  return `<figure class="v3-chart">
+    <figcaption class="v3-chart-cap"><strong>${opsEscape(label)}</strong><div class="v3-chart-legend">${legend}</div></figcaption>
+    <svg class="ops-chart v3-chart-svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="${opsEscape(label)}">${grid}${areas}${paths}${hits}${labels}</svg>
+  </figure>`;
 }
 
 function opsBarChart(items, { valueKey = 'count', labelKey = 'label' } = {}) {
-  const rows = (items || []).filter((row) => !row.unavailable && Number(row[valueKey]) > 0);
-  if (!rows.length) return '<div class="ops-empty">ამ პერიოდში აქტივობა არ არის.</div>';
+  const rows = (items || []).filter((row) => !row.unavailable && Number(row[valueKey]) > 0)
+    .sort((a, b) => (Number(b[valueKey]) || 0) - (Number(a[valueKey]) || 0));
+  if (!rows.length) return '<div class="ops-empty v3-chart-empty">ამ პერიოდში აქტივობა არ არის.</div>';
   const max = Math.max(1, ...rows.map((row) => Number(row[valueKey]) || 0));
-  return `<div class="ops-bars">${rows.map((row) => {
+  const total = rows.reduce((sum, row) => sum + (Number(row[valueKey]) || 0), 0) || 1;
+  return `<div class="ops-bars v3-bars">${rows.map((row) => {
     const value = Number(row[valueKey]) || 0;
+    const pct = Math.round((value / max) * 100);
+    const share = Math.round((value / total) * 100);
     const href = row.href
       ? ` data-go="${opsEscape(row.href.replace(/^#\/?/, '').split('?')[0])}" data-href="${opsEscape(row.href)}"`
       : '';
-    const tag = row.href ? 'button type="button"' : 'div';
-    const close = row.href ? 'button' : 'div';
-    return `<${tag} class="ops-bar-row"${href}>
-      <span class="ops-bar-label">${row.htmlLabel || opsEscape(row[labelKey] || row.key)}</span>
-      <span class="ops-bar-track"><span style="width:${Math.max(4, Math.round((value / max) * 100))}%"></span></span>
-      <strong>${opsFmt(value)}</strong>
+    const tag = row.href ? 'button type="button"' : 'button type="button"';
+    const close = 'button';
+    return `<${tag} class="ops-bar-row v3-bar-row"${href}>
+      <span class="ops-bar-label v3-bar-label">${row.htmlLabel || opsEscape(row[labelKey] || row.key)}</span>
+      <span class="ops-bar-track v3-bar-track"><span style="width:${Math.max(4, pct)}%"></span></span>
+      <strong class="v3-bar-val">${opsFmt(value)}<em>${share}%</em></strong>
     </${close}>`;
   }).join('')}</div>`;
 }
 
 function opsFunnel(steps) {
   const rows = (steps || []).filter((s) => s.value != null);
-  if (!rows.length) return '<div class="ops-empty"><strong>ამ პერიოდში ძაბრის მდგომარეობა არ არის.</strong></div>';
+  if (!rows.length) return '<div class="ops-empty v3-chart-empty"><strong>ამ პერიოდში ძაბრის მდგომარეობა არ არის.</strong></div>';
   const max = Math.max(1, ...rows.map((s) => Number(s.value) || 0));
-  return `<ol class="ops-funnel v25-funnel">${rows.map((s) => `
-    <li class="${s.branch ? 'is-branch' : 'is-main'}">
-      <div class="ops-funnel-meta"><span>${opsEscape(s.label)}</span><strong>${opsFmt(s.value)}</strong></div>
-      <div class="ops-funnel-track"><span style="width:${Math.max(6, Math.round((Number(s.value) / max) * 100))}%"></span></div>
-      ${s.note ? `<p class="muted">${opsEscape(s.note)}</p>` : ''}
-    </li>
-  `).join('')}</ol>`;
+  let prevMain = null;
+  return `<ol class="ops-funnel v25-funnel v3-brain-funnel">${rows.map((s, idx) => {
+    const value = Number(s.value) || 0;
+    const width = Math.max(6, Math.round((value / max) * 100));
+    let conv = '';
+    if (!s.branch && prevMain != null && prevMain > 0) {
+      conv = `<em class="v3-funnel-conv">${Math.round((value / prevMain) * 100)}%</em>`;
+    }
+    if (!s.branch) prevMain = value;
+    const stepNo = s.branch ? '↳' : String(idx + 1);
+    return `<li class="${s.branch ? 'is-branch' : 'is-main'}">
+      <span class="v3-funnel-idx" aria-hidden="true">${stepNo}</span>
+      <div class="v3-funnel-body">
+        <div class="ops-funnel-meta"><span>${opsEscape(s.label)}</span><strong>${opsFmt(value)}${conv}</strong></div>
+        <div class="ops-funnel-track"><span style="width:${width}%"></span></div>
+        ${s.note ? `<p class="muted">${opsEscape(s.note)}</p>` : ''}
+      </div>
+    </li>`;
+  }).join('')}</ol>`;
 }
 
 function opsHeatmap(grid) {
-  if (!grid?.length) return '<div class="ops-empty">ამ პერიოდში აპის გახსნის დრო არ არის.</div>';
+  if (!grid?.length) return '<div class="ops-empty v3-chart-empty">ამ პერიოდში აპის გახსნის დრო არ არის.</div>';
   const flat = grid.flat();
   const max = Math.max(1, ...flat);
   const days = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
-  return `<div class="ops-heat">
-    <div class="ops-heat-hours">${Array.from({ length: 24 }, (_, h) => `<span>${h}</span>`).join('')}</div>
+  return `<div class="ops-heat v3-heat">
+    <div class="v3-heat-legend"><span>დაბალი</span><i class="lv-0"></i><i class="lv-1"></i><i class="lv-2"></i><i class="lv-3"></i><span>მაღალი</span></div>
+    <div class="ops-heat-hours"><span></span>${Array.from({ length: 24 }, (_, h) =>
+      `<span class="${h % 3 === 0 ? 'is-mark' : 'is-dot'}">${h % 3 === 0 ? h : ''}</span>`).join('')}</div>
     ${grid.map((row, d) => `<div class="ops-heat-row"><span>${days[d]}</span>${row.map((n, h) => {
       const t = n / max;
       const level = n === 0 ? 0 : t > 0.66 ? 3 : t > 0.33 ? 2 : 1;
-      return `<i class="lv-${level}" title="${days[d]} ${h}:00 · ${n}"></i>`;
+      return `<i class="lv-${level}" title="${days[d]} ${String(h).padStart(2, '0')}:00 · ${n}"></i>`;
     }).join('')}</div>`).join('')}
   </div>`;
 }
@@ -236,12 +298,15 @@ function opsSkeleton(rows = 4) {
   return `<div class="ops-skel">${Array.from({ length: rows }, () => '<span></span>').join('')}</div>`;
 }
 
+window.SUPPRESS_KA = SUPPRESS_KA;
+
 function opsRangeBar() {
+  if (window.AdminV3?.filterBar) return window.AdminV3.filterBar();
   const presets = [
     ['today', 'დღეს'],
-    ['7d', '7 დღე'],
-    ['30d', '30 დღე'],
-    ['90d', '90 დღე'],
+    ['7d', '7დ'],
+    ['30d', '30დ'],
+    ['90d', '90დ'],
     ['custom', 'მითითებული'],
   ];
   return `
@@ -271,6 +336,13 @@ function bindOpsRange(onChange) {
     opsState.from = $('ops-from').value;
     opsState.to = $('ops-to').value;
     opsState.range = 'custom';
+    opsPersistRange();
+    onChange();
+  });
+  $('ops-range-clear')?.addEventListener('click', () => {
+    opsState.range = '7d';
+    opsState.from = '';
+    opsState.to = '';
     opsPersistRange();
     onChange();
   });
@@ -582,18 +654,15 @@ function healthFeatIco(key) {
 
 async function renderHealthOps() {
   const root = $('tab-health');
-  root.innerHTML = [
-    '<div class="ops-page v25-health-page">',
-    '<header class="ops-head"><div>',
-    '<p class="kicker">ჯანმრთელობა</p>',
-    '  <h3>ფუნქციების აქტივობა</h3>',
-    '<p class="muted">მხოლოდ ჯამები. გაზომვები, ციკლის დეტალები და ჩანაწერები აქ არ ჩანს.</p>',
-    '</div>',
-    opsRangeBar(),
-    '</header>',
-    '<div id="health-body">' + opsSkeleton(6) + '</div>',
-    '</div>',
-  ].join('');
+  const helpBtn = (key) => (typeof window.AdminV3?.infoButton === 'function' ? window.AdminV3.infoButton(key) : '');
+  root.innerHTML = '<div class="ops-page v25-health-page v3-workspace-wide v3-module v3-health">'
+    + '<div class="v3-health-toolbar">'
+    + '<div class="v3-health-toolbar-copy"><strong>ფუნქციების ობსერვატორია</strong>'
+    + '<span>მხოლოდ ჯამები · გაზომვები და ციკლის დეტალები აქ არ ჩანს · თბილისი</span></div>'
+    + opsRangeBar()
+    + '</div>'
+    + '<div id="health-body">' + opsSkeleton(6) + '</div>'
+    + '</div>';
   bindOpsRange(renderHealthOps);
   try {
     const [data, retention] = await Promise.all([
@@ -606,53 +675,103 @@ async function renderHealthOps() {
     const selected = (explicit ? usable.find((f) => f.key === feature) : usable[0]) || null;
     const live = usable.filter((f) => (f.users || 0) > 0).length;
     const maxUsers = Math.max(1, ...usable.map((f) => Number(f.users) || 0));
+    const totalEvents = usable.reduce((sum, f) => sum + (Number(f.events) || 0), 0);
+    const top = usable[0] || null;
+
+    const kpi = (tone, ico, label, value, hint) =>
+      '<article class="v3-health-kpi' + (tone || '') + '">'
+      + '<span class="v3-health-kpi-ico" aria-hidden="true">' + opsIco(ico) + '</span>'
+      + '<div class="v3-health-kpi-copy"><span>' + label + '</span><strong>' + value + '</strong>'
+      + (hint ? '<em>' + hint + '</em>' : '')
+      + '</div></article>';
+
+    const kpis = '<div class="v3-health-kpis" role="group" aria-label="ჯანმრთელობის მეტრიკები">'
+      + kpi('', 'users', 'აქტიური ანგარიში', opsFmt(data.activeUsers), 'აპის აქტივობა პერიოდში')
+      + kpi(' is-ok', 'activity', 'ცოცხალი ფუნქცია', opsFmt(live), opsFmt(usable.length) + ' გაზომვადი')
+      + kpi(' is-soft', healthFeatIco(top?.key), 'წამყვანი', top ? opsEscape(top.label) : '—', top ? opsFmt(top.users) + ' მომხმარებელი' : 'აქტივობა არ არის')
+      + kpi('', 'zap', 'ქმედებები', opsFmt(totalEvents), 'ყველა ფუნქცია ერთად')
+      + kpi(top?.pctOfActive != null ? ' is-amber' : '', 'layers', 'აქტიურებიდან', top?.pctOfActive != null ? Math.min(100, Number(top.pctOfActive)) + '%' : '—', top ? opsEscape(top.label) : '')
+      + '</div>';
 
     const chips = usable.map((f) => {
       const users = Number(f.users) || 0;
       const hint = users === 0
         ? 'ამ პერიოდში არა'
-        : (f.pctOfActive == null ? opsFmt(f.events) + ' ქმედება' : f.pctOfActive + '% აქტიურებიდან');
+        : (f.pctOfActive == null ? opsFmt(f.events) + ' ქმედება' : Math.min(100, Number(f.pctOfActive)) + '% აქტიურებიდან');
       const href = healthHref(explicit && f.key === feature ? '' : f.key);
-      return '<button type="button" class="v25-health-chip' + (explicit && f.key === feature ? ' is-active' : '') + '" data-href="' + opsEscape(href) + '">'
-        + '<span class="v25-health-chip-top"><span class="v25-health-ico">' + opsIco(healthFeatIco(f.key)) + '</span><span>' + opsEscape(f.label) + '</span></span>'
+      const on = explicit && f.key === feature;
+      return '<button type="button" class="v3-health-chip' + (on ? ' is-active' : '') + (users === 0 ? ' is-zero' : '') + '" data-href="' + opsEscape(href) + '">'
+        + '<span class="v3-health-chip-ico">' + opsIco(healthFeatIco(f.key)) + '</span>'
+        + '<span class="v3-health-chip-copy"><span>' + opsEscape(f.label) + '</span>'
         + '<strong>' + opsFmt(users) + '</strong>'
-        + '<em>' + opsEscape(hint) + '</em>'
+        + '<em>' + opsEscape(hint) + '</em></span>'
         + '</button>';
     }).join('');
 
-    const rank = usable.length
-      ? '<div class="v25-health-bars">' + usable.map((f) => {
+    const chipBlock = '<section class="v3-health-panel" data-v3-health="usage">'
+      + '<div class="v3-health-head"><div class="v3-health-head-copy">'
+      + '<div class="v3-title-row"><h3>გამოყენება</h3>' + helpBtn('health.usage') + '</div>'
+      + '<p class="muted">აირჩიე ფუნქცია ფოკუსისთვის. ხელახალი დაჭერა აშორებს ფილტრს.</p>'
+      + '</div></div>'
+      + '<div class="v3-health-chips">' + (chips || opsEmpty('ფუნქცია არ არის', 'გაზომვადი ფუნქციები აქ გამოჩნდება.')) + '</div>'
+      + '</section>';
+
+    const rankBars = usable.length
+      ? '<div class="v3-health-bars">' + usable.map((f, idx) => {
         const value = Number(f.users) || 0;
-        const width = value ? Math.max(8, Math.round((value / maxUsers) * 100)) : 0;
+        const width = value ? Math.max(6, Math.min(100, Math.round((value / maxUsers) * 100))) : 0;
+        const share = data.activeUsers ? Math.min(100, Math.round((value / Math.max(1, data.activeUsers)) * 100)) : null;
         const on = selected && f.key === selected.key;
         const href = healthHref(explicit && f.key === feature ? '' : f.key);
-        return '<button type="button" class="v25-health-bar' + (on ? ' is-active' : '') + (value === 0 ? ' is-zero' : '') + '" data-href="' + opsEscape(href) + '">'
-          + '<span class="v25-health-bar-ico">' + opsIco(healthFeatIco(f.key)) + '</span>'
-          + '<span class="v25-health-bar-label">' + opsEscape(f.label) + '</span>'
-          + '<span class="v25-health-bar-track"><i style="width:' + width + '%"></i></span>'
-          + '<strong>' + opsFmt(value) + '</strong>'
+        return '<button type="button" class="v3-health-bar' + (on ? ' is-active' : '') + (value === 0 ? ' is-zero' : '') + '" data-href="' + opsEscape(href) + '">'
+          + '<span class="v3-health-bar-rank">' + (idx + 1) + '</span>'
+          + '<span class="v3-health-bar-ico">' + opsIco(healthFeatIco(f.key)) + '</span>'
+          + '<span class="v3-health-bar-main">'
+          + '<span class="v3-health-bar-label">' + opsEscape(f.label)
+          + (share != null ? '<em>' + share + '% აქტიურებიდან</em>' : '')
+          + '</span>'
+          + '<span class="v3-health-bar-track"><i style="width:' + width + '%"></i></span>'
+          + '</span>'
+          + '<strong class="v3-health-bar-val">' + opsFmt(value)
+          + '<em>' + opsFmt(f.events) + ' ქმედ.</em></strong>'
           + '</button>';
       }).join('') + '</div>'
       : opsEmpty('ამ პერიოდში აქტივობა არ არის', 'ფუნქციის გამოყენება აქ გამოჩნდება.');
 
-    let focus;
+    const rankCard = '<section class="v3-health-panel" data-v3-health="rank">'
+      + '<div class="v3-health-head"><div class="v3-health-head-copy">'
+      + '<div class="v3-title-row"><h3>შედარება</h3>' + helpBtn('health.usage') + '</div>'
+      + '<p class="muted">მომხმარებლები ამ პერიოდში — ყველა გაზომვადი ფუნქცია.</p>'
+      + '</div></div>'
+      + rankBars
+      + '</section>';
+
+    let focusCard;
     if (!selected) {
-      focus = opsEmpty('ფუნქცია არ არის', 'გაზომვადი ფუნქციები აქ გამოჩნდება.');
+      focusCard = '<section class="v3-health-panel" data-v3-health="focus">'
+        + opsEmpty('ფუნქცია არ არის', 'გაზომვადი ფუნქციები აქ გამოჩნდება.')
+        + '</section>';
     } else {
       const title = explicit ? opsEscape(selected.label) : ('წამყვანი · ' + opsEscape(selected.label));
-      focus = '<section class="v25-panel v25-health-focus">'
-        + '<div class="card-head">' + opsTile(healthFeatIco(selected.key), selected.users ? 'teal' : '') + '<div>'
-        + '<h3>' + title + '</h3>'
+      const pct = selected.pctOfActive == null ? null : Math.min(100, Number(selected.pctOfActive) || 0);
+      focusCard = '<section class="v3-health-panel v3-health-focus" data-v3-health="focus">'
+        + '<div class="v3-health-head"><div class="v3-health-head-copy">'
+        + '<div class="v3-title-row"><h3>' + title + '</h3>' + helpBtn('health.usage') + '</div>'
         + '<p class="muted">' + opsEscape(selected.action || '') + '</p>'
-        + '</div></div>'
-        + '<div class="v25-health-focus-stats">'
+        + '</div>'
+        + '<span class="v3-health-focus-mark">' + opsIco(healthFeatIco(selected.key)) + '</span>'
+        + '</div>'
+        + '<div class="v3-health-focus-stats">'
         + '<div><span>მომხმარებლები</span><strong>' + opsFmt(selected.users) + '</strong></div>'
         + '<div><span>ქმედებები</span><strong>' + opsFmt(selected.events) + '</strong></div>'
-        + '<div><span>აქტიურებიდან</span><strong>' + (selected.pctOfActive == null ? '—' : selected.pctOfActive + '%') + '</strong></div>'
-        + '<div><span>წინა პერიოდი</span>' + opsDelta(selected.delta) + '</div>'
+        + '<div><span>აქტიურებიდან</span><strong>' + (pct == null ? '—' : pct + '%') + '</strong></div>'
+        + '<div><span>წინა პერიოდი</span><strong class="v3-health-delta">' + opsDelta(selected.delta) + '</strong></div>'
         + '</div>'
-        + (selected.adoption != null ? '<p class="muted">დაყენებული: ' + opsFmt(selected.adoption) + '</p>' : '')
-        + (selected.note ? '<p class="muted">' + opsEscape(selected.note) + '</p>' : '')
+        + (pct != null
+          ? '<div class="v3-health-focus-meter" aria-hidden="true"><span>აქტიურებიდან</span><div class="v3-health-bar-track"><i style="width:' + pct + '%"></i></div><em>' + pct + '%</em></div>'
+          : '')
+        + (selected.adoption != null ? '<p class="v3-health-foot muted">დაყენებული: ' + opsFmt(selected.adoption) + '</p>' : '')
+        + (selected.note ? '<p class="v3-health-foot muted">' + opsEscape(selected.note) + '</p>' : '')
         + '</section>';
     }
 
@@ -665,39 +784,33 @@ async function renderHealthOps() {
       const row = retMap[key];
       const r7 = opsRate(row.return7Rate);
       const r30 = opsRate(row.return30Rate);
-      const bar7 = row.return7Rate && !row.return7Rate.hidden && row.return7Rate.value != null ? row.return7Rate.value : 0;
-      const bar30 = row.return30Rate && !row.return30Rate.hidden && row.return30Rate.value != null ? row.return30Rate.value : 0;
-      return '<tr>'
-        + '<td><span class="v25-health-ret-feat">' + opsIco(healthFeatIco(key)) + '<span>' + opsEscape(row.label) + '</span></span></td>'
+      const bar7 = row.return7Rate && !row.return7Rate.hidden && row.return7Rate.value != null
+        ? Math.min(100, Number(row.return7Rate.value) || 0) : 0;
+      const bar30 = row.return30Rate && !row.return30Rate.hidden && row.return30Rate.value != null
+        ? Math.min(100, Number(row.return30Rate.value) || 0) : 0;
+      return '<tr data-href="' + opsEscape(healthHref(key)) + '">'
+        + '<td><span class="v3-health-ret-feat">' + opsIco(healthFeatIco(key)) + '<span>' + opsEscape(row.label) + '</span></span></td>'
         + '<td>' + opsFmt(row.once) + '</td>'
-        + '<td><span class="v25-health-rate">' + r7 + (bar7 ? '<i style="width:' + bar7 + '%"></i>' : '') + '</span></td>'
-        + '<td><span class="v25-health-rate">' + r30 + (bar30 ? '<i style="width:' + bar30 + '%"></i>' : '') + '</span></td>'
+        + '<td><span class="v3-health-rate">' + r7 + (bar7 ? '<i style="width:' + bar7 + '%"></i>' : '') + '</span></td>'
+        + '<td><span class="v3-health-rate">' + r30 + (bar30 ? '<i style="width:' + bar30 + '%"></i>' : '') + '</span></td>'
         + '</tr>';
     }).join('');
 
     const retBlock = retKeys.length
-      ? '<section class="v25-panel v25-health-return">'
-        + '<div class="card-head">' + opsTile('refresh') + '<div>'
-        + '  <h3>დაბრუნება</h3>'
-        + '<p class="muted">ერთხელ გამოიყენა, შემდეგ 7 და 30 დღეში დაბრუნდა. 7დ / 30დ ჩანს მხოლოდ საკმარის ნიმუშზე.</p>'
+      ? '<section class="v3-health-panel" data-v3-health="retention">'
+        + '<div class="v3-health-head"><div class="v3-health-head-copy">'
+        + '<div class="v3-title-row"><h3>დაბრუნება</h3>' + helpBtn('health.retention') + '</div>'
+        + '<p class="muted">ერთხელ გამოიყენა, შემდეგ 7 და 30 დღეში დაბრუნდა. პროცენტები ჩანს მხოლოდ საკმარის ნიმუშზე.</p>'
         + '</div></div>'
-        + '<table class="v25-health-ret"><thead><tr><th>ფუნქცია</th><th>ერთხელ</th><th>7დ</th><th>30დ</th></tr></thead>'
-        + '<tbody>' + retRows + '</tbody></table></section>'
+        + '<div class="v3-health-table-wrap"><table class="v3-health-table">'
+        + '<thead><tr><th>ფუნქცია</th><th>ერთხელ</th><th>7დ</th><th>30დ</th></tr></thead>'
+        + '<tbody>' + retRows + '</tbody></table></div></section>'
       : '';
 
-    const healthMeta = data.activeUsers
-      ? opsFmt(data.activeUsers) + ' აქტიური ანგარიში · ' + opsFmt(live) + ' ფუნქცია ამ პერიოდში'
-      : opsFmt(live) + ' ფუნქცია ამ პერიოდში';
-    $('health-body').innerHTML = '<div class="v25-health">'
-      + '<p class="v25-health-meta">' + healthMeta + '</p>'
-      + '<div class="v25-health-adopt">' + chips + '</div>'
-      + '<div class="v25-health-main">'
-      + '<section class="v25-panel v25-health-rank">'
-      + '<div class="card-head">' + opsTile('activity') + '<div><h3>შედარება</h3><p class="muted">მომხმარებლები ამ პერიოდში, ყველა გაზომვადი ფუნქცია.</p></div></div>'
-      + rank
-      + '</section>'
-      + focus
-      + '</div>'
+    $('health-body').innerHTML = '<div class="v3-health-body">'
+      + kpis
+      + chipBlock
+      + '<div class="v3-health-split">' + rankCard + focusCard + '</div>'
       + retBlock
       + '</div>';
 
@@ -823,7 +936,7 @@ function openAuditDrawer(row) {
 
 async function renderPushBrainPanel(host) {
   if (!host) return;
-  host.innerHTML = opsSkeleton();
+  host.innerHTML = opsSkeleton(6);
   try {
     const [data, list] = await Promise.all([
       api('/analytics/notifications?' + opsQs()),
@@ -832,150 +945,185 @@ async function renderPushBrainPanel(host) {
     const noDec = !data.syncedDecisions;
     const noOut = !data.syncedOutcomes;
     const f = data.funnel || {};
-    const cell = (label, value, extra) =>
-      '<div class="v25-dec-cell' + (extra || '') + '"><span>' + label + '</span><strong>' + opsFmt(value) + '</strong></div>';
-    const strip = '<div class="v25-dec-strip">'
-      + cell("შეფასებული", f.evaluated)
-      + cell("დაგეგმილი", f.scheduled)
-      + cell("მიწოდება", f.delivered)
-      + cell("გახსნილი", f.opened)
-      + cell("ქმედება", f.actioned)
-      + cell("დაბლოკილი", f.suppressed, ' is-warn')
-      + cell("გაუქმებული", f.cancelled, ' is-muted')
+    const helpBtn = (key) => (typeof window.AdminV3?.infoButton === 'function' ? window.AdminV3.infoButton(key) : '');
+
+    const kpi = (label, value, tone, ico) =>
+      `<article class="v3-brain-kpi v25-dec-cell${tone || ''}">`
+      + `<span class="v3-brain-kpi-ico" aria-hidden="true">${opsIco(ico)}</span>`
+      + `<div class="v3-brain-kpi-copy"><span>${label}</span><strong>${opsFmt(value)}</strong></div>`
+      + `</article>`;
+
+    const strip = '<div class="v3-brain-kpis v25-dec-strip" role="group" aria-label="Brain ძაბრის მეტრიკები">'
+      + kpi('შეფასებული', f.evaluated, '', 'activity')
+      + kpi('დაგეგმილი', f.scheduled, '', 'calendar')
+      + kpi('მიწოდება', f.delivered, '', 'bell')
+      + kpi('გახსნილი', f.opened, '', 'eye')
+      + kpi('ქმედება', f.actioned, ' is-ok', 'check')
+      + kpi('დაბლოკილი', f.suppressed, ' is-warn', 'shield')
+      + kpi('გაუქმებული', f.cancelled, ' is-muted', 'x')
       + '</div>';
+
     const note = (!noDec && noOut)
-      ? '<div class="v25-dec-note">' + opsEmpty("ჯერ შედეგები არ არის", "შედეგების ტელემეტრია ხელმისაწვდომია აპის 24.0.0+ ვერსიიდან.") + '</div>'
+      ? '<div class="v3-brain-note v25-dec-note">' + opsEmpty('ჯერ შედეგები არ არის', 'შედეგების ტელემეტრია ხელმისაწვდომია აპის 24.0.0+ ვერსიიდან.') + '</div>'
       : '';
-    const log = '<section class="v25-panel v25-dec-log">'
-      + '<div class="card-head">' + opsTile('file') + '<div>'
-      + '<h3>' + "გადაწყვეტილებები" + '</h3>'
-      + '<p class="muted">' + "გასუფთავებული კვალი. სათაურები, ტექსტები და ჯანმრთელობის მნიშვნელობები არ არის." + '</p>'
-      + '</div>'
-      + '<label class="orders-search"><input id="dec-q" placeholder="' + "გადაწყვეტილების ID, ოჯახი, მიზეზი…" + '" /></label>'
-      + '<button type="button" class="btn tiny ghost" id="dec-export">CSV</button>'
-      + '</div>'
-      + '<div class="table-wrap"><table class="admin-table v25-dec-table">'
+
+    const toolbar = '<div class="v3-brain-toolbar">'
+      + '<div class="v3-brain-toolbar-copy"><strong>Brain ობსერვატორია</strong><span>პერიოდი · Asia/Tbilisi</span></div>'
+      + opsRangeBar()
+      + '</div>';
+
+    const log = '<section class="v3-brain-panel v25-panel v25-dec-log" data-v3-brain="decisions">'
+      + '<div class="v3-brain-head">'
+      + '<div class="v3-brain-head-copy"><div class="v3-title-row"><h3>გადაწყვეტილებები</h3>' + helpBtn('brain.decisions') + '</div>'
+      + '<p class="muted">გასუფთავებული კვალი — სათაურები, ტექსტები და ჯანმრთელობის მნიშვნელობები არ არის.</p></div>'
+      + '<div class="v3-brain-head-actions">'
+      + '<label class="v3-brain-search"><span class="sr-only">ძიება</span><input id="dec-q" placeholder="Decision ID, ოჯახი, მიზეზი…" /></label>'
+      + '<button type="button" class="btn compact ghost" id="dec-export">CSV</button>'
+      + '</div></div>'
+      + '<div class="v3-brain-table-wrap table-wrap"><table class="admin-table v25-dec-table v3-brain-table">'
       + '<thead><tr>'
-      + '<th>' + "Decision ID" + '</th>'
-      + '<th>' + "მომხმარებელი" + '</th>'
-      + '<th>' + "ოჯახი" + '</th>'
-      + '<th>' + "ქულა" + '</th>'
-      + '<th>' + "შედეგი" + '</th>'
-      + '<th>' + "მიზეზი" + '</th>'
-      + '<th>' + "დრო" + '</th>'
+      + '<th>Decision ID</th><th>მომხმარებელი</th><th>ოჯახი</th><th>ქულა</th><th>შედეგი</th><th>მიზეზი</th><th>დრო</th>'
       + '</tr></thead>'
       + '<tbody id="dec-body">' + decisionRows(list.decisions) + '</tbody>'
       + '</table></div></section>';
-    const rates = '<div class="v25-dec-rates">'
-      + '<div title="' + opsEscape(data.rateDefinitions?.delivery || '') + '"><span>' + "მიწოდება" + '</span><strong>' + opsRate(f.rates?.delivery) + '</strong></div>'
-      + '<div title="' + opsEscape(data.rateDefinitions?.open || '') + '"><span>' + "გახსნა" + '</span><strong>' + opsRate(f.rates?.open) + '</strong></div>'
-      + '<div title="' + opsEscape(data.rateDefinitions?.action || '') + '"><span>' + "ქმედება" + '</span><strong>' + opsRate(f.rates?.action) + '</strong></div>'
-      + '<div title="' + opsEscape(data.rateDefinitions?.directAction || '') + '"><span>' + "პირდაპირი" + '</span><strong>' + opsRate(f.rates?.directAction) + '</strong></div>'
-      + '<div title="' + opsEscape(data.rateDefinitions?.suppression || '') + '"><span>' + "დაბლოკვა" + '</span><strong>' + opsRate(f.rates?.suppression) + '</strong></div>'
+
+    const rates = '<div class="v3-brain-rates v25-dec-rates">'
+      + '<div title="' + opsEscape(data.rateDefinitions?.delivery || '') + '"><span>მიწოდება</span><strong>' + opsRate(f.rates?.delivery) + '</strong></div>'
+      + '<div title="' + opsEscape(data.rateDefinitions?.open || '') + '"><span>გახსნა</span><strong>' + opsRate(f.rates?.open) + '</strong></div>'
+      + '<div title="' + opsEscape(data.rateDefinitions?.action || '') + '"><span>ქმედება</span><strong>' + opsRate(f.rates?.action) + '</strong></div>'
+      + '<div title="' + opsEscape(data.rateDefinitions?.directAction || '') + '"><span>პირდაპირი</span><strong>' + opsRate(f.rates?.directAction) + '</strong></div>'
+      + '<div title="' + opsEscape(data.rateDefinitions?.suppression || '') + '"><span>დაბლოკვა</span><strong>' + opsRate(f.rates?.suppression) + '</strong></div>'
       + '</div>';
-    const funnelCard = '<section class="v25-panel v25-dec-funnel-card">'
-      + '<div class="card-head">' + opsTile('activity') + '<div>'
-      + '<h3>' + "წარმატების ძაბრი" + '</h3>'
-      + '<p class="muted">' + opsEscape(data.funnelNote || '') + '</p>'
+
+    const funnelCard = '<section class="v3-brain-panel v25-panel v25-dec-funnel-card" data-v3-brain="funnel">'
+      + '<div class="v3-brain-head"><div class="v3-brain-head-copy">'
+      + '<div class="v3-title-row"><h3>წარმატების ძაბრი</h3>' + helpBtn('brain.funnel') + '</div>'
+      + '<p class="muted">' + opsEscape(data.funnelNote || 'შეფასებიდან ქმედებამდე — დაბლოკვა/გაუქმება გვერდითაა.') + '</p>'
       + '</div></div>'
       + opsFunnel([
-        { label: "შეფასებული", value: f.evaluated },
-        { label: "შესაფერისი", value: f.eligible },
-        { label: "დაგეგმილი", value: f.scheduled },
-        { label: "დაკვირვებული მიწოდება", value: f.delivered },
-        { label: "გახსნილი", value: f.opened },
-        { label: "ქმედება", value: f.actioned },
-        { label: "დაბლოკილი", value: f.suppressed, branch: true },
-        { label: "გაუქმებული", value: f.cancelled, branch: true },
+        { label: 'შეფასებული', value: f.evaluated },
+        { label: 'შესაფერისი', value: f.eligible },
+        { label: 'დაგეგმილი', value: f.scheduled },
+        { label: 'დაკვირვებული მიწოდება', value: f.delivered },
+        { label: 'გახსნილი', value: f.opened },
+        { label: 'ქმედება', value: f.actioned },
+        { label: 'დაბლოკილი', value: f.suppressed, branch: true },
+        { label: 'გაუქმებული', value: f.cancelled, branch: true },
       ])
-      + '<p class="muted">' + "დაბლოკილი და გაუქმებული ძირითად გზას გარეთაა. პირდაპირი ქმედება შეიძლება გახსნის გარეშე." + '</p>'
       + rates
-      + '<p class="muted">' + "მედიანა მიწოდება→გახსნა" + ' ' + opsMs(data.latency?.deliveredToOpenedMedianMs) + ' ' + "· მიწოდება→ქმედება" + ' ' + opsMs(data.latency?.deliveredToActionedMedianMs) + '</p>'
+      + '<p class="v3-brain-foot muted">მედიანა მიწოდება→გახსნა ' + opsMs(data.latency?.deliveredToOpenedMedianMs)
+      + ' · მიწოდება→ქმედება ' + opsMs(data.latency?.deliveredToActionedMedianMs) + '</p>'
       + '</section>';
-    const suppressCard = '<section class="v25-panel">'
-      + '<div class="card-head">' + opsTile('bell') + '<div>'
-      + '<h3>' + "რატომ არ გაგზავნა Medi-მ" + '</h3>'
-      + '<p class="muted">' + "დაბლოკვა წარმატებაა, თუ სიგნალი მოძველდა ან მომხმარებელმა უკვე იმოქმედა." + '</p>'
+
+    const suppressCard = '<section class="v3-brain-panel v25-panel" data-v3-brain="suppress">'
+      + '<div class="v3-brain-head"><div class="v3-brain-head-copy">'
+      + '<div class="v3-title-row"><h3>რატომ არ გაგზავნა Medi-მ</h3>' + helpBtn('brain.suppression') + '</div>'
+      + '<p class="muted">დაბლოკვა წარმატებაა, თუ სიგნალი მოძველდა ან მომხმარებელმა უკვე იმოქმედა.</p>'
       + '</div></div>'
       + opsBarChart((data.suppressions || []).map((row) => ({ htmlLabel: suppressLabel(row.reason), count: row.count })))
       + '</section>';
-    const fatigue = '<section class="v25-panel">'
-      + '<div class="card-head">' + opsTile('users') + '<div>'
-      + '<h3>' + "დაღლილობა და არჩევანი" + '</h3>'
-      + '<p class="muted">' + opsEscape(data.fatigue?.note || '') + (data.fatigue?.sampleUsers != null ? " ნიმუში: " + opsFmt(data.fatigue.sampleUsers) + " მომხმარებელი სინქრონიზებული გადაწყვეტილებით." : '') + '</p>'
-      + '</div></div>'
+
+    const fatigueSample = Math.max(1, Number(data.fatigue?.sampleUsers) || 0);
+    const fatDist = data.fatigue?.distribution || {};
+    const fatRow = (cls, label, count) => {
+      const n = Number(count) || 0;
+      const pct = Math.round((n / fatigueSample) * 100);
+      return `<div class="v3-fatigue-row ${cls}"><div class="v3-fatigue-meta"><span>${label}</span><strong>${opsFmt(n)}<em>${pct}%</em></strong></div>`
+        + `<div class="v3-fatigue-track"><i style="width:${Math.max(n ? 4 : 0, pct)}%"></i></div></div>`;
+    };
+    const fatigue = '<section class="v3-brain-panel v25-panel" data-v3-brain="fatigue">'
+      + '<div class="v3-brain-head"><div class="v3-brain-head-copy">'
+      + '<div class="v3-title-row"><h3>დაღლილობა და არჩევანი</h3></div>'
+      + '<p class="muted">' + opsEscape(data.fatigue?.note || '')
+      + (data.fatigue?.sampleUsers != null ? ' ნიმუში: ' + opsFmt(data.fatigue.sampleUsers) + ' მომხმარებელი.' : '')
+      + '</p></div></div>'
       + (data.fatigue?.sampleUsers
-        ? '<div class="v25-fatigue">'
-          + '<div class="v25-fatigue-col"><span>' + "ჩვეულებრივი" + '</span><strong>' + opsFmt(data.fatigue.distribution.normal) + '</strong><i style="height:' + (8 + Math.round((data.fatigue.distribution.normal / Math.max(1, data.fatigue.sampleUsers)) * 88)) + 'px"></i></div>'
-          + '<div class="v25-fatigue-col is-mid"><span>' + "შემცირებული" + '</span><strong>' + opsFmt(data.fatigue.distribution.reduced) + '</strong><i style="height:' + (8 + Math.round((data.fatigue.distribution.reduced / Math.max(1, data.fatigue.sampleUsers)) * 88)) + 'px"></i></div>'
-          + '<div class="v25-fatigue-col is-hi"><span>' + "ძლიერ შემცირებული" + '</span><strong>' + opsFmt(data.fatigue.distribution.highlyReduced) + '</strong><i style="height:' + (8 + Math.round((data.fatigue.distribution.highlyReduced / Math.max(1, data.fatigue.sampleUsers)) * 88)) + 'px"></i></div>'
-          + '</div><p class="muted">' + "არჩეული სიხშირე მომხმარებლის არჩევანია. ადაპტაციური ლიმიტი Medi-ს დროებითი კორექტირებაა." + '</p>'
-        : opsEmpty("დაღლილობის სურათი ჯერ არ არის", "ლიმიტები მოდის სინქრონიზებულ გადაწყვეტილებებთან."))
+        ? '<div class="v3-fatigue v25-fatigue">'
+          + fatRow('is-ok', 'ჩვეულებრივი', fatDist.normal)
+          + fatRow('is-mid', 'შემცირებული', fatDist.reduced)
+          + fatRow('is-hi', 'ძლიერ შემცირებული', fatDist.highlyReduced)
+          + '</div><p class="v3-brain-foot muted">არჩეული სიხშირე მომხმარებლის არჩევანია. ადაპტაციური ლიმიტი Medi-ს დროებითი კორექტირებაა.</p>'
+        : opsEmpty('დაღლილობის სურათი ჯერ არ არის', 'ლიმიტები მოდის სინქრონიზებულ გადაწყვეტილებებთან.'))
       + '</section>';
-    const heat = '<section class="v25-panel v25-heat">'
-      + '<div class="card-head">' + opsTile('calendar') + '<div>'
-      + '<h3>' + "მომხმარებლის აქტივობა კვირის დღით და საათით" + '</h3>'
-      + '<p class="muted">' + opsEscape(data.engagement?.source || '') + (data.engagement?.bestHour != null ? " ყველაზე ხშირი აპის გახსნა: " + data.engagement.bestHour + ":00 თბილისი." : '') + '</p>'
-      + '</div></div>'
+
+    const heat = '<section class="v3-brain-panel v25-panel v25-heat" data-v3-brain="heat">'
+      + '<div class="v3-brain-head"><div class="v3-brain-head-copy">'
+      + '<div class="v3-title-row"><h3>აქტივობა კვირის დღით და საათით</h3></div>'
+      + '<p class="muted">' + opsEscape(data.engagement?.source || '')
+      + (data.engagement?.bestHour != null ? ' პიკი: ' + data.engagement.bestHour + ':00 თბილისი.' : '')
+      + '</p></div></div>'
       + opsHeatmap(data.engagement?.heatmap)
       + '</section>';
+
     const outcomeSeries = [
-      { points: data.charts?.observedDelivery || [], tone: 'teal' },
-      { points: data.charts?.opened || [], tone: 'ink' },
-      { points: data.charts?.actioned || [], tone: 'ink' },
+      { points: data.charts?.observedDelivery || [], tone: 'teal', label: 'მიწოდება' },
+      { points: data.charts?.opened || [], tone: 'blue', label: 'გახსნა' },
+      { points: data.charts?.actioned || [], tone: 'green', label: 'ქმედება' },
     ].filter((s) => s.points.some((d) => d.count > 0));
     const blockSeries = [
-      { points: data.charts?.suppressed || [], tone: 'ink' },
-      { points: data.charts?.cancelled || [], tone: 'teal' },
+      { points: data.charts?.suppressed || [], tone: 'amber', label: 'დაბლოკვა' },
+      { points: data.charts?.cancelled || [], tone: 'muted', label: 'გაუქმება' },
     ].filter((s) => s.points.some((d) => d.count > 0));
+
     const charts = (outcomeSeries.length || blockSeries.length)
-      ? '<section class="v25-panel v25-dec-charts">'
-        + '<div class="card-head">' + opsTile('activity') + '<div><h3>' + "დროითი წარმადობა" + '</h3><p class="muted">' + "დაკვირვებული მიწოდება, გახსნა, ქმედება. დაბლოკვა და გაუქმება ცალკეა — წარმატების ძაბრში არ შედის." + '</p></div></div>'
-        + (outcomeSeries.length ? opsLineChart(outcomeSeries, { label: "Brain შედეგები დროში" }) : '')
-        + (blockSeries.length ? opsLineChart(blockSeries, { label: "დაბლოკვა და გაუქმება" }) : '')
-        + '</section>'
+      ? '<section class="v3-brain-panel v25-panel v25-dec-charts" data-v3-brain="charts">'
+        + '<div class="v3-brain-head"><div class="v3-brain-head-copy">'
+        + '<div class="v3-title-row"><h3>დროითი წარმადობა</h3></div>'
+        + '<p class="muted">მიწოდება · გახსნა · ქმედება. დაბლოკვა/გაუქმება ცალკე — წარმატების ძაბრში არ შედის.</p>'
+        + '</div></div>'
+        + '<div class="v3-brain-charts">'
+        + (outcomeSeries.length ? opsLineChart(outcomeSeries, { label: 'შედეგები დროში', height: 148 }) : '')
+        + (blockSeries.length ? opsLineChart(blockSeries, { label: 'დაბლოკვა და გაუქმება', height: 148 }) : '')
+        + '</div></section>'
       : '';
+
     const familyRows = (data.types || []).length
       ? data.types.map((row) => '<tr data-family="' + opsEscape(row.family) + '" class="users-row">'
-        + '<td>' + opsEscape(row.family) + '</td>'
+        + '<td><strong class="v3-brain-family">' + opsEscape(row.family) + '</strong></td>'
         + '<td>' + opsFmt(row.evaluated) + '</td>'
         + '<td>' + opsFmt(row.delivered) + '</td>'
         + '<td>' + opsFmt(row.opened) + '</td>'
         + '<td>' + opsFmt(row.actioned) + '</td>'
         + '<td>' + opsFmt(row.suppressed) + '</td>'
-        + '<td><span class="v25-inlinebar"><i style="width:' + Math.max(0, Math.min(100, Number(row.openRate?.value) || 0)) + '%"></i></span> ' + opsRate(row.openRate) + '</td>'
-        + '<td><span class="v25-inlinebar"><i style="width:' + Math.max(0, Math.min(100, Number(row.actionRate?.value) || 0)) + '%"></i></span> ' + opsRate(row.actionRate) + '</td>'
+        + '<td><span class="v25-inlinebar v3-inlinebar"><i style="width:' + Math.max(0, Math.min(100, Number(row.openRate?.value) || 0)) + '%"></i></span> ' + opsRate(row.openRate) + '</td>'
+        + '<td><span class="v25-inlinebar v3-inlinebar"><i style="width:' + Math.max(0, Math.min(100, Number(row.actionRate?.value) || 0)) + '%"></i></span> ' + opsRate(row.actionRate) + '</td>'
         + '<td>' + opsRate(row.directActionRate) + '</td>'
         + '</tr>').join('')
-      : '<tr><td colspan="9">' + opsEmpty("ამ პერიოდში ოჯახი არ არის", "კლიენტები 23.0.3-ზე დაბლა Brain-ის გადაწყვეტილებებს არ ასინქრონებენ.") + '</td></tr>';
-    const families = '<section class="v25-panel v25-dec-families">'
-      + '<div class="card-head">' + opsTile('layers') + '<div><h3>' + "ოჯახები" + '</h3></div></div>'
-      + '<div class="table-wrap ops-sticky"><table class="admin-table v25-dec-table">'
+      : '<tr><td colspan="9">' + opsEmpty('ამ პერიოდში ოჯახი არ არის', 'კლიენტები 23.0.3-ზე დაბლა Brain-ის გადაწყვეტილებებს არ ასინქრონებენ.') + '</td></tr>';
+
+    const families = '<section class="v3-brain-panel v25-panel v25-dec-families" data-v3-brain="families">'
+      + '<div class="v3-brain-head"><div class="v3-brain-head-copy"><div class="v3-title-row"><h3>ოჯახები</h3></div>'
+      + '<p class="muted">შეტყობინების ტიპების შედარება — დააწკაპუნე ფილტრზე ლოგში.</p></div></div>'
+      + '<div class="v3-brain-table-wrap table-wrap ops-sticky"><table class="admin-table v25-dec-table v3-brain-table">'
       + '<thead><tr>'
-      + '<th>' + "ოჯახი" + '</th>'
-      + '<th>' + "შეფასებული" + '</th>'
-      + '<th>' + "მიწოდებული" + '</th>'
-      + '<th>' + "გახსნილი" + '</th>'
-      + '<th>' + "ქმედება" + '</th>'
-      + '<th>' + "დაბლოკილი" + '</th>'
-      + '<th>' + "გახსნა" + '</th>'
-      + '<th>' + "ქმედება %" + '</th>'
-      + '<th>' + "პირდაპირი" + '</th>'
-      + '</tr></thead>'
-      + '<tbody>' + familyRows + '</tbody></table></div></section>';
-    const side = (data.fatigue?.sampleUsers || data.engagement?.heatmap?.length)
-      ? '<div class="v25-dec-side">' + (data.fatigue?.sampleUsers ? fatigue : '') + (data.engagement?.heatmap?.length ? heat : '') + '</div>'
-      : '';
-    const familyBlock = (data.types || []).length ? families : '';
+      + '<th>ოჯახი</th><th>შეფასებული</th><th>მიწოდებული</th><th>გახსნილი</th><th>ქმედება</th><th>დაბლოკილი</th>'
+      + '<th>გახსნა %</th><th>ქმედება %</th><th>პირდაპირი</th>'
+      + '</tr></thead><tbody>' + familyRows + '</tbody></table></div></section>';
+
     const observatory = noDec
-      ? ''
-      : '<div class="v25-dec-main">' + funnelCard + suppressCard + '</div>' + side + charts + familyBlock;
-    host.innerHTML = '<div class="ops-brain v25-brain v25-decisions">'
+      ? '<div class="v3-brain-empty">' + opsEmpty('Brain გადაწყვეტილებები ჯერ არ სინქრონდება', 'კლიენტები 23.0.3+ აქ აგზავნიან კვალს.') + '</div>'
+      : '<div class="v3-brain-split v25-dec-main">' + funnelCard + suppressCard + '</div>'
+        + ((data.fatigue?.sampleUsers || data.engagement?.heatmap?.length)
+          ? '<div class="v3-brain-split v25-dec-side">'
+            + (data.fatigue?.sampleUsers ? fatigue : '')
+            + (data.engagement?.heatmap?.length ? heat : '')
+            + '</div>'
+          : '')
+        + charts
+        + ((data.types || []).length ? families : '');
+
+    host.innerHTML = '<div class="ops-brain v25-brain v25-decisions v3-brain">'
+      + toolbar
       + strip
       + note
       + log
       + observatory
       + '</div>';
+
+    if (typeof bindOpsRange === 'function') {
+      bindOpsRange(() => renderPushBrainPanel(host));
+    }
+
     host.querySelectorAll('#dec-body tr[data-id]').forEach((tr) => {
       tr.onclick = () => openDecisionDrawer(tr.dataset.id);
     });
@@ -1022,23 +1170,23 @@ async function renderPushBrainPanel(host) {
    Called from admin.js on the `brain:sync` socket event. */
 async function patchPushBrainLive() {
   const host = document.getElementById('push-brain-host');
-  if (!host || !host.querySelector('.v25-dec-strip')) return;
+  if (!host || !host.querySelector('.v25-dec-strip, .v3-brain-kpis')) return;
   try {
     const [data, list] = await Promise.all([
       api('/analytics/notifications?' + opsQs()),
       api('/notifications/decisions?' + opsQs() + opsDecisionFilterQs() + '&limit=40'),
     ]);
     const f = data.funnel || {};
-    const strip = host.querySelector('.v25-dec-strip');
+    const strip = host.querySelector('.v25-dec-strip, .v3-brain-kpis');
     if (strip) {
       const vals = [f.evaluated, f.scheduled, f.delivered, f.opened, f.actioned, f.suppressed, f.cancelled];
-      strip.querySelectorAll('.v25-dec-cell strong').forEach((el, i) => {
+      strip.querySelectorAll('.v25-dec-cell strong, .v3-brain-kpi strong').forEach((el, i) => {
         if (i >= vals.length) return;
         const next = opsFmt(vals[i]);
         if (el.textContent !== next) el.textContent = next;
       });
     }
-    const rates = host.querySelector('.v25-dec-rates');
+    const rates = host.querySelector('.v25-dec-rates, .v3-brain-rates');
     if (rates) {
       const rvals = [f.rates?.delivery, f.rates?.open, f.rates?.action, f.rates?.directAction, f.rates?.suppression];
       rates.querySelectorAll('strong').forEach((el, i) => {
@@ -1309,7 +1457,7 @@ async function renderQualityOps() {
         ${opsStripCell('layers', "ვერსიის დაფარვა", versions.activeUsers ? Math.round(100 * ((versions.activeUsers - (versions.missingVersion || 0)) / versions.activeUsers)) + '%' : '\u2014', '')}
         ${opsStripCell('activity', "ტელემეტრიის დაფარვა", versions.belowOutcomeSync?.rate?.hidden ? '\u2014' : (versions.belowOutcomeSync?.rate?.value == null ? '\u2014' : Math.max(0, 100 - versions.belowOutcomeSync.rate.value) + '%'), '')}
         ${opsStripCell('bell', "ნებართვის დაფარვა", permissions.enabledRate?.hidden ? '\u2014' : (permissions.enabledRate?.value == null ? '\u2014' : permissions.enabledRate.value + '%'), '')}
-        ${opsStripCell('shield', "ანალიტიკის მთლიანობა", versions.activeUsers ? Math.round(100 - (100 * (quality.usersMissingAppVersion || 0) / Math.max(1, versions.activeUsers))) + '%' : '\u2014', '')}
+        ${opsStripCell('shield', "ვერსიის დაფარვა", quality.versionCoverageRate != null ? `${quality.versionCoverageRate}%` : (quality.activeUsersSampled ? Math.round(100 - (100 * (quality.usersMissingAppVersion || 0) / Math.max(1, quality.activeUsersSampled))) + '%' : '\u2014'), quality.usersMissingAppVersion ? `${quality.usersMissingAppVersion} აკლია ვერსია` : '')}
       </div>
       <section class="v25-policy">
         <div><span>${"რეკომენდებული"}</span><strong class="mono">${opsEscape(versions.policy?.currentRecommendedVersion || '—')}</strong></div>
@@ -1390,32 +1538,55 @@ function renderCommandPalette() {
     { tab: 'push', label: 'Brain' },
     { tab: 'audit', label: 'აუდიტი' },
     { tab: 'orders', label: 'შეკვეთები' },
+    { tab: 'rewards', label: 'ჯილდოები' },
     { tab: 'packages', label: 'პაკეტები' },
     { tab: 'sms', label: 'SMS' },
     { tab: 'pharmacy', label: 'ფარმაცია' },
     { tab: 'settings', label: 'აპის რეჟიმი' },
   ];
   document.body.insertAdjacentHTML('beforeend', `
-    <div id="ops-palette" class="ops-palette" role="dialog" aria-label="გადასვლა">
+    <div id="ops-palette" class="ops-palette" role="dialog" aria-modal="true" aria-label="გადასვლა">
       <div class="ops-palette-scrim" id="ops-palette-scrim"></div>
       <div class="ops-palette-panel">
         <input id="ops-palette-q" type="search" placeholder="მომხმარებელი, შაბლონი, გადაწყვეტილება, სექცია…" autocomplete="off" />
         <div id="ops-palette-list" class="ops-palette-list">
-          ${sections.map((s) => `<button type="button" data-tab="${s.tab}">${opsEscape(s.label)}</button>`).join('')}
+          ${window.AdminV3?.renderPaletteList ? window.AdminV3.renderPaletteList('') : sections.map((s) => `<button type="button" data-tab="${s.tab}">${opsEscape(s.label)}</button>`).join('')}
         </div>
       </div>
     </div>
   `);
+  const bindPaletteNav = (root) => {
+    root.querySelectorAll('button[data-v3-help]').forEach((btn) => {
+      btn.onclick = () => {
+        close();
+        window.AdminV3?.openHelp?.(btn.getAttribute('data-v3-help'), btn);
+      };
+    });
+    root.querySelectorAll('button[data-hash]').forEach((btn) => {
+      btn.onclick = () => {
+        close();
+        location.hash = btn.getAttribute('data-hash');
+      };
+    });
+    root.querySelectorAll('button[data-tab]:not([data-hash]):not([data-v3-help])').forEach((btn) => {
+      btn.onclick = () => { close(); switchTab(btn.dataset.tab); };
+    });
+    root.querySelectorAll('[data-user]').forEach((btn) => { btn.onclick = () => { close(); editUser(btn.dataset.user); }; });
+    root.querySelectorAll('[data-decision]').forEach((btn) => {
+      btn.onclick = () => { close(); location.hash = '#/push?tab=brain'; openDecisionDrawer(btn.dataset.decision); };
+    });
+  };
   const close = () => $('ops-palette')?.remove();
   $('ops-palette-scrim').onclick = close;
   $('ops-palette-q').focus();
-  $('ops-palette-list').querySelectorAll('[data-tab]').forEach((btn) => {
-    btn.onclick = () => { close(); switchTab(btn.dataset.tab); };
-  });
+  bindPaletteNav($('ops-palette-list'));
   $('ops-palette-q').oninput = async () => {
     const q = $('ops-palette-q').value.trim();
     const list = $('ops-palette-list');
-    const nav = sections.filter((s) => s.label.toLowerCase().includes(q.toLowerCase()));
+    const navHtml = window.AdminV3?.renderPaletteList
+      ? window.AdminV3.renderPaletteList(q)
+      : sections.filter((s) => `${s.label} ${s.group || ''}`.toLowerCase().includes(q.toLowerCase()))
+        .map((s) => `<button type="button" data-tab="${s.tab}">${opsEscape(s.label)}</button>`).join('');
     let extra = '';
     if (q.startsWith('notif_dec_')) {
       extra += `<button type="button" data-decision="${opsEscape(q)}">გადაწყვეტილება ${opsEscape(q)}</button>`;
@@ -1426,10 +1597,8 @@ function renderCommandPalette() {
         extra += (data.users || []).map((u) => `<button type="button" data-user="${u.id}">${opsEscape(u.fullName)} · ${opsEscape(u.email)}</button>`).join('');
       } catch { /* keep nav */ }
     }
-    list.innerHTML = `${nav.map((s) => `<button type="button" data-tab="${s.tab}">${opsEscape(s.label)}</button>`).join('')}${extra}` || '<p class="muted">არაფერი მოიძებნა.</p>';
-    list.querySelectorAll('[data-tab]').forEach((btn) => { btn.onclick = () => { close(); switchTab(btn.dataset.tab); }; });
-    list.querySelectorAll('[data-user]').forEach((btn) => { btn.onclick = () => { close(); editUser(btn.dataset.user); }; });
-    list.querySelectorAll('[data-decision]').forEach((btn) => { btn.onclick = () => { close(); switchTab('push'); openDecisionDrawer(btn.dataset.decision); }; });
+    list.innerHTML = `${navHtml}${extra}` || '<p class="muted">არაფერი მოიძებნა.</p>';
+    bindPaletteNav(list);
   };
   document.addEventListener('keydown', function esc(e) {
     if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
@@ -1437,21 +1606,36 @@ function renderCommandPalette() {
 }
 
 function patchOpsLive(snap) {
-  if (!snap || !$('ops-kpis')) return;
+  if (!snap) return;
+  window.__opsLiveSnap = snap;
   const setKpi = (key, value) => {
     if (value == null) return;
-    const el = document.querySelector(`[data-ops-kpi="${key}"] strong`);
-    if (!el) return;
-    const next = opsFmt(value);
-    if (el.textContent === next) return;
-    el.textContent = next;
-    el.classList.add('is-live-tick');
-    setTimeout(() => el.classList.remove('is-live-tick'), 700);
+    document.querySelectorAll(`[data-ops-kpi="${key}"]`).forEach((card) => {
+      const el = card.matches('strong') ? card : card.querySelector('strong');
+      if (!el) return;
+      const next = opsFmt(value);
+      if (el.textContent === next) return;
+      el.textContent = next;
+      el.classList.add('is-live-tick');
+      card.classList?.add('is-live-tick');
+      setTimeout(() => {
+        el.classList.remove('is-live-tick');
+        card.classList?.remove('is-live-tick');
+      }, 700);
+    });
   };
+  setKpi('onlineNow', snap.onlineNow);
   setKpi('activeToday', snap.activeToday);
+  setKpi('newUsersToday', snap.newUsersToday);
   if (opsState.range === 'today') setKpi('newUsers', snap.newUsersToday);
   const at = $('ops-live-at');
-  if (at && snap.refreshedAt) at.textContent = fmtDate(snap.refreshedAt);
+  if (at && snap.refreshedAt) {
+    at.textContent = typeof fmtDate === 'function' ? fmtDate(snap.refreshedAt) : snap.refreshedAt;
+  }
+  const onlineCard = document.querySelector('[data-ops-kpi="onlineNow"]');
+  if (onlineCard) {
+    onlineCard.classList.toggle('is-empty', !(Number(snap.onlineNow) > 0));
+  }
 }
 
 window.patchOpsLive = patchOpsLive;

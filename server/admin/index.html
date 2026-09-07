@@ -22,15 +22,19 @@
   <link rel="stylesheet" href="./admin-v24.css?v=ops11" />
   <link rel="stylesheet" href="./admin-v25.css?v=ops23" />
   <link rel="stylesheet" href="./admin-v26.css?v=v26.9" />
+  <link rel="stylesheet" href="./admin-v3.css?v=v3.83" />
+  <link rel="stylesheet" href="./command-center-v3.css?v=v3.83" />
+  <link rel="stylesheet" href="./v3/modules.css?v=v3.83" />
+  <link rel="stylesheet" href="./v3/unify.css?v=v3.83" />
 </head>
 <body>
   <div id="login-view" class="login-shell">
     <aside class="login-rail">
-      <a class="logo-mark" href="#" aria-hidden="true" onclick="return false">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-      </a>
-      <p class="rail-kicker">Medicard.GE</p>
-      <h1>კონსოლი</h1>
+      <span class="v3-brand-mark" aria-hidden="true">
+        <svg viewBox="66.375 30.375 72.75 72.75" fill="none" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z" fill="currentColor"/></svg>
+      </span>
+      <p class="rail-kicker v3-brand-name">მედიქარდი</p>
+      <h1>ადმინი</h1>
       <p class="rail-copy">ოპერაციული კონსოლი — მომხმარებლები, პაკეტები, ფარმაცია და აპის რეჟიმი.</p>
       <ul class="rail-list">
         <li data-icon="users">ცოცხალი ცხრილები და ფილტრები</li>
@@ -39,11 +43,11 @@
       </ul>
     </aside>
     <form id="login-form" class="login-card" autocomplete="on">
-      <a class="logo-mark login-mark" href="#" aria-hidden="true" onclick="return false">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-      </a>
-      <p class="kicker">MediCard</p>
-      <h2>ადმინ კონსოლი</h2>
+      <span class="v3-brand-mark login-mark" aria-hidden="true">
+        <svg viewBox="66.375 30.375 72.75 72.75" fill="none" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z" fill="currentColor"/></svg>
+      </span>
+      <p class="kicker v3-brand-name">მედიქარდი</p>
+      <h2>ადმინი</h2>
       <label class="field">
         <span>ელ-ფოსტა</span>
         <input id="login-email" type="email" required value="admin@medicard.ge" />
@@ -59,51 +63,90 @@
 
   <div id="app-view" class="app">
     <div id="sidebar-scrim" class="sidebar-scrim" aria-hidden="true"></div>
-    <aside class="sidebar ng-sidebar" id="sidebar">
-      <div class="sidebar-brand">
-        <a class="logo-mark" href="#/overview" aria-label="Medicard კონსოლი">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-        </a>
-        <div class="sidebar-brand-copy">
-          <strong>Medicard</strong>
-          <span>კონსოლი</span>
-        </div>
-      </div>
+    <aside class="sidebar ng-sidebar v3-sidebar" id="sidebar">
+      <a class="v3-brand" href="#/overview" aria-label="მედიქარდი ადმინი — ოპერაციები">
+        <span class="v3-brand-mark" aria-hidden="true">
+          <svg viewBox="66.375 30.375 72.75 72.75" fill="none" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z" fill="currentColor"/></svg>
+        </span>
+        <span class="v3-brand-copy">
+          <strong class="v3-brand-name">მედიქარდი</strong>
+          <span>ადმინი</span>
+        </span>
+      </a>
       <nav class="sidebar-nav" aria-label="მთავარი მენიუ">
-        <span class="nav-group">მთავარი</span>
-        <button data-tab="overview" class="nav active" data-icon="layout" title="ოპერაციები"><span class="nav-label">ოპერაციები</span></button>
-        <button data-tab="users" class="nav" data-icon="users" title="მომხმარებლები"><span class="nav-label">მომხმარებლები</span></button>
-        <span class="nav-group">პროდუქტი</span>
-        <button data-tab="ai" class="nav" data-icon="spark" title="Medi"><span class="nav-label">Medi</span></button>
-        <button data-tab="health" class="nav" data-icon="activity" title="ჯანმრთელობა"><span class="nav-label">ჯანმრთელობა</span></button>
-        <button data-tab="push" class="nav" data-icon="bell" title="Push და Brain"><span class="nav-label">Push · Brain</span></button>
-        <span class="nav-group">სისტემა</span>
-        <button data-tab="orders" class="nav" data-icon="calendar" title="შეკვეთები"><span class="nav-label">შეკვეთები</span></button>
-        <button data-tab="packages" class="nav" data-icon="layers" title="პაკეტები"><span class="nav-label">პაკეტები</span></button>
-        <button data-tab="sms" class="nav" data-icon="send" title="SMS"><span class="nav-label">SMS</span></button>
-        <button data-tab="pharmacy" class="nav" data-icon="pill" title="ფარმაცია"><span class="nav-label">ფარმაცია</span></button>
-        <button data-tab="rewards" class="nav" data-icon="layers" title="ჯილდოები"><span class="nav-label">ჯილდოები</span></button>
-        <button data-tab="quality" class="nav" data-icon="activity" title="ხარისხი"><span class="nav-label">ხარისხი</span></button>
-        <button data-tab="audit" class="nav" data-icon="file" title="აუდიტი"><span class="nav-label">აუდიტი</span></button>
-        <button data-tab="settings" class="nav" data-icon="settings" title="აპის რეჟიმი"><span class="nav-label">რეჟიმი</span></button>
+        <div class="v3-nav-group" data-nav-group="overview">
+          <button type="button" class="v3-nav-group-toggle">მიმოხილვა <svg class="v3-nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+          <div class="v3-nav-group-items">
+            <button data-tab="overview" class="nav active" data-icon="layout" title="ოპერაციები"><span class="nav-label">ოპერაციები</span></button>
+          </div>
+        </div>
+        <div class="v3-nav-group" data-nav-group="people">
+          <button type="button" class="v3-nav-group-toggle">ადამიანები <svg class="v3-nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+          <div class="v3-nav-group-items">
+            <button data-tab="users" class="nav" data-icon="users" title="მომხმარებლები"><span class="nav-label">მომხმარებლები</span></button>
+          </div>
+        </div>
+        <div class="v3-nav-group" data-nav-group="engagement">
+          <button type="button" class="v3-nav-group-toggle">ჩართულობა <svg class="v3-nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+          <div class="v3-nav-group-items">
+            <button data-tab="push" class="nav" data-icon="bell" title="Push &amp; Brain"><span class="nav-label">Push &amp; Brain</span></button>
+          </div>
+        </div>
+        <div class="v3-nav-group" data-nav-group="health">
+          <button type="button" class="v3-nav-group-toggle">ჯანმრთელობა <svg class="v3-nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+          <div class="v3-nav-group-items">
+            <button data-tab="health" class="nav" data-icon="activity" title="ჯანმრთელობა"><span class="nav-label">ჯანმრთელობა</span></button>
+            <button data-tab="ai" class="nav" data-icon="spark" title="Medi"><span class="nav-label">Medi</span></button>
+          </div>
+        </div>
+        <div class="v3-nav-group" data-nav-group="commerce">
+          <button type="button" class="v3-nav-group-toggle">კომერცია <svg class="v3-nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+          <div class="v3-nav-group-items">
+            <button data-tab="rewards" class="nav" data-icon="gift" title="ჯილდოები"><span class="nav-label">ჯილდოები</span></button>
+            <button data-tab="packages" class="nav" data-icon="layers" title="პაკეტები"><span class="nav-label">პაკეტები</span></button>
+          </div>
+        </div>
+        <div class="v3-nav-group" data-nav-group="operations">
+          <button type="button" class="v3-nav-group-toggle">ოპერაციები <svg class="v3-nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+          <div class="v3-nav-group-items">
+            <button data-tab="orders" class="nav" data-icon="calendar" title="შეკვეთები"><span class="nav-label">შეკვეთები</span></button>
+            <button data-tab="sms" class="nav" data-icon="send" title="SMS"><span class="nav-label">SMS</span></button>
+            <button data-tab="pharmacy" class="nav" data-icon="pill" title="ფარმაცია"><span class="nav-label">ფარმაცია</span></button>
+          </div>
+        </div>
+        <div class="v3-nav-group" data-nav-group="production">
+          <button type="button" class="v3-nav-group-toggle">სისტემა <svg class="v3-nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+          <div class="v3-nav-group-items">
+            <button data-tab="quality" class="nav" data-icon="shield" title="ხარისხი"><span class="nav-label">ხარისხი</span></button>
+            <button data-tab="audit" class="nav" data-icon="file" title="აუდიტი"><span class="nav-label">აუდიტი</span></button>
+            <button data-tab="settings" class="nav" data-icon="settings" title="რეჟიმი"><span class="nav-label">რეჟიმი</span></button>
+          </div>
+        </div>
       </nav>
       <div class="sidebar-foot">
         <div class="sidebar-avatar" id="sidebar-avatar" title="ადმინისტრატორი">M</div>
-        <button id="theme-toggle" class="foot-icon" type="button" data-icon="sun" title="თემა"></button>
-        <button id="logout" class="foot-icon" type="button" data-icon="logout" title="გასვლა"></button>
+        <button id="admin-help-global" class="foot-icon" type="button" data-icon="info" data-v3-help="global.howAdminWorks" aria-label="როგორ მუშაობს Admin" title="როგორ მუშაობს Admin"></button>
+        <button id="sidebar-compact" class="foot-icon" type="button" data-icon="layout" aria-label="კომპაქტური მენიუ" title="კომპაქტური მენიუ"></button>
+        <button id="theme-toggle" class="foot-icon" type="button" data-icon="sun" aria-label="თემა" title="თემა"></button>
+        <button id="logout" class="foot-icon" type="button" data-icon="logout" aria-label="გასვლა" title="გასვლა"></button>
       </div>
     </aside>
 
     <div class="workspace">
-      <header class="topbar ng-topbar">
-        <div class="topbar-left">
+      <header class="topbar ng-topbar v3-page-header">
+        <div class="topbar-left v3-page-header-main">
           <button id="sidebar-toggle" class="btn icon-only ghost mobile-only" type="button" data-icon="layout" aria-label="მენიუ"></button>
+          <span class="v3-page-mark" id="page-mark" aria-hidden="true"></span>
           <div class="topbar-copy">
-            <h2 id="page-greeting">მიმოხილვა</h2>
-            <p id="page-subtitle" class="topbar-sub muted">ოპერაციული მიმოხილვა</p>
+            <div class="v3-page-title-row">
+              <h2 id="page-greeting">ოპერაციები</h2>
+            </div>
+            <p class="v3-page-kicker" id="page-kicker">Overview</p>
+            <p id="page-subtitle" class="topbar-sub muted">მიმდინარე მდგომარეობა, პროდუქტის მოძრაობა და გამოკვლევა.</p>
           </div>
         </div>
-        <div class="topbar-right">
+        <div class="v3-page-header-actions" id="page-header-actions"></div>
+        <div class="topbar-right v3-page-header-status">
           <div id="live-pill" class="status-pill ok">სისტემა აქტიურია</div>
           <div id="admin-chip" class="who"></div>
         </div>
@@ -139,9 +182,26 @@
   </div>
 
   <div id="toasts" class="toasts"></div>
+  <div id="v3-confirm-root"></div>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="./ops-center.js?v=v26.4"></script>
-  <script src="./admin.js?v=v26.6"></script>
-  <script src="./rewards-admin.js?v=v35.7"></script>
+  <script src="./ops-center.js?v=v26.13"></script>
+  <script src="./admin.js?v=v27.11"></script>
+  <script src="./rewards-admin.js?v=v35.10"></script>
+  <script src="./admin-help-content.js?v=v3.83"></script>
+  <script src="./admin-v3.js?v=v3.83"></script>
+  <script src="./admin-users-v3.js?v=v3.83"></script>
+  <script src="./command-center-v3.js?v=v3.83"></script>
+  <script src="./v3/shell.js?v=v3.83"></script>
+  <script src="./v3/modules/push.js?v=v3.83"></script>
+  <script src="./v3/modules/medi.js?v=v3.83"></script>
+  <script src="./v3/modules/health.js?v=v3.83"></script>
+  <script src="./v3/modules/orders.js?v=v3.83"></script>
+  <script src="./v3/modules/packages.js?v=v3.83"></script>
+  <script src="./v3/modules/sms.js?v=v3.83"></script>
+  <script src="./v3/modules/pharmacy.js?v=v3.83"></script>
+  <script src="./v3/modules/rewards.js?v=v3.83"></script>
+  <script src="./v3/modules/quality.js?v=v3.83"></script>
+  <script src="./v3/modules/audit.js?v=v3.83"></script>
+  <script src="./v3/modules/settings.js?v=v3.83"></script>
 </body>
 </html>

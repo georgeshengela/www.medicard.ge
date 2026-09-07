@@ -1,6 +1,8 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { Asset } from 'expo-asset';
+import Constants from 'expo-constants';
 import { ka } from '@/i18n/ka';
 import type { LatLng } from '@/lib/run/geo';
 import { buildRunMapHtml } from '@/lib/run/mapHtml';
@@ -24,13 +26,37 @@ type Props = {
   onFollowChange?: (following: boolean) => void;
   onError?: (message: string) => void;
   style?: object;
-  /** Override the map light/dark preset (e.g. time-of-day auto theme). Defaults to the app theme. */
   mapDark?: boolean;
 };
 
+const _mariaAsset = Asset.fromModule(require('../../../assets/characters/maria.glb'));
+
+/** Classic UMD builds — three@0.148+ removed examples/js; 0.147 is the last with GLTFLoader UMD. */
+const THREE_CDN = {
+  three: 'https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js',
+  gltf: 'https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js',
+  meshopt: 'https://cdn.jsdelivr.net/npm/meshoptimizer@0.22.0/meshopt_decoder.js',
+};
+
+function metroBaseUrl(): string {
+  const host =
+    Constants.expoConfig?.hostUri ??
+    Constants.expoGoConfig?.debuggerHost ??
+    'localhost:8081';
+  const bare = String(host).replace(/^https?:\/\//, '').split('/')[0];
+  return `http://${bare}/`;
+}
+
+async function assetHttpUrl(asset: Asset): Promise<string> {
+  await asset.downloadAsync();
+  const url = asset.uri;
+  if (!url) throw new Error('asset.uri empty');
+  return url;
+}
+
 /**
- * Mapbox GL JS 3D map inside a WebView — Expo Go friendly (no native Mapbox SDK).
- * The HTML is built once from the initial center + theme; everything after goes through `send`.
+ * Mapbox GL JS map in a WebView. Maria GLB is rendered with Three.js (classic UMD
+ * scripts served by Metro — RN WebView does not run <script type="module">).
  */
 export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
   { center, onReady, onFollowChange, onError, style, mapDark },
@@ -44,6 +70,7 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
   const [failed, setFailed] = useState<string | null>(null);
   const initialDark = useRef(dark);
   const initialCenter = useRef(center);
+  const baseUrl = useMemo(() => metroBaseUrl(), []);
 
   const html = useMemo(
     () => buildRunMapHtml({ token: MAPBOX_TOKEN, center: initialCenter.current, dark: initialDark.current }),
@@ -61,9 +88,40 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
     if (ready) send({ type: 'theme', dark });
   }, [dark, ready, send]);
 
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+
+    async function bootCharacter() {
+      try {
+        const character = await assetHttpUrl(_mariaAsset);
+        if (cancelled) return;
+
+        // Cache-bust so Metro doesn't keep serving a pre-fix GLB after bake.
+        const characterUrl = character.includes('?') ? `${character}&v=4` : `${character}?v=4`;
+
+        console.log('[RunMap] boot character', characterUrl.slice(0, 120));
+
+        web.current?.injectJavaScript(
+          `window.__bootCharacterLibs && window.__bootCharacterLibs(${JSON.stringify({
+            ...THREE_CDN,
+            character: characterUrl,
+          })}); true;`,
+        );
+      } catch (e) {
+        if (!cancelled) console.warn('[RunMap] character boot failed:', e);
+      }
+    }
+
+    void bootCharacter();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready]);
+
   const onMessage = useCallback(
     (e: WebViewMessageEvent) => {
-      let data: { type?: string; value?: boolean; message?: string } = {};
+      let data: { type?: string; value?: boolean; message?: string; msg?: string } = {};
       try {
         data = JSON.parse(e.nativeEvent.data);
       } catch {
@@ -78,6 +136,8 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
         const msg = data.message ?? 'map-error';
         setFailed(msg);
         onError?.(msg);
+      } else if (data.type === 'char_debug') {
+        console.log('[RunMap WebView]', data.msg);
       }
     },
     [onError, onFollowChange, onReady],
@@ -91,7 +151,7 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
         <WebView
           ref={web}
           originWhitelist={['*']}
-          source={{ html, baseUrl: 'https://medicard.ge' }}
+          source={{ html, baseUrl }}
           style={[styles.fill, { backgroundColor: 'transparent' }]}
           onMessage={onMessage}
           javaScriptEnabled
@@ -103,6 +163,9 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
           bounces={false}
           setSupportMultipleWindows={false}
           scrollEnabled={false}
+          allowFileAccess
+          allowFileAccessFromFileURLs
+          allowUniversalAccessFromFileURLs
         />
       ) : null}
       {(!ready || tokenMissing) && !failed ? (

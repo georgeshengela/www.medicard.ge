@@ -13,6 +13,7 @@ import {
 } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
 import { startQuestVisualSession } from '@/lib/quest/devFixture';
+import { showDevUi } from '@/lib/devUi';
 import { useThemeColors } from '@/theme/colors';
 
 type Props = {
@@ -99,7 +100,7 @@ export function OnboardingDevLauncher({ variant = 'fab' }: Props) {
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
 
-  if (typeof __DEV__ === 'undefined' || !__DEV__) return null;
+  if (!showDevUi()) return null;
 
   const goLauncher = () => router.push('/(auth)/profile-setup/dev-launcher' as never);
 

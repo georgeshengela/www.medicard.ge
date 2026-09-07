@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import * as Location from 'expo-location';
 import {
   bearingDeg,
@@ -10,6 +11,12 @@ import {
   type LatLng,
   type RunTarget,
 } from '@/lib/run/geo';
+import {
+  clearActiveRun,
+  loadActiveRun,
+  saveActiveRun,
+  type PersistedActiveRun,
+} from '@/lib/run/activePersist';
 import { downsamplePath, saveRunSummary, type RunSummary } from '@/lib/run/history';
 import { generateTargetPin, type RunRoute } from '@/lib/run/mapbox';
 import { requestLocationPermission } from '@/lib/userLocation';
@@ -105,6 +112,14 @@ let simTimer: ReturnType<typeof setInterval> | null = null;
 let movingAccumMs = 0;
 let segmentStartedAt: number | null = null;
 let prepareAbort: AbortController | null = null;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let hydratePromise: Promise<boolean> | null = null;
+let appStateSub: { remove: () => void } | null = null;
+
+/** Live session the user has started — badge + persistence apply. */
+export function isActiveRunPhase(phase: RunPhase): boolean {
+  return phase === 'running' || phase === 'paused';
+}
 
 /** One-shot event hooks for haptics / banners in the UI layer. */
 type RunEvent = 'pin_reached' | 'target_completed' | 'transport_warning' | 'transport_cancelled';
@@ -120,6 +135,85 @@ function emit(e: RunEvent) {
 function set(patch: Partial<RunState>) {
   state = { ...state, ...patch };
   listeners.forEach((fn) => fn());
+  if (isActiveRunPhase(state.phase)) schedulePersist();
+}
+
+function currentMovingAccum(): number {
+  if (state.phase === 'running' && segmentStartedAt != null) {
+    return movingAccumMs + (Date.now() - segmentStartedAt);
+  }
+  return movingAccumMs;
+}
+
+function buildPersistSnapshot(): PersistedActiveRun | null {
+  if (!isActiveRunPhase(state.phase) || !state.target || !state.origin || !state.startedAt) return null;
+  return {
+    v: 1,
+    phase: state.phase,
+    target: state.target,
+    targetMeters: state.targetMeters,
+    origin: state.origin,
+    pin: state.pin,
+    route: state.route,
+    routed: state.routed,
+    expectedDistanceM: state.expectedDistanceM,
+    path: state.path,
+    current: state.current,
+    headingDeg: state.headingDeg,
+    accuracyM: state.accuracyM,
+    distanceM: state.distanceM,
+    movingAccumMs: currentMovingAccum(),
+    startedAt: state.startedAt,
+    reachedPin: state.reachedPin,
+    reachedAt: state.reachedAt,
+    completedTarget: state.completedTarget,
+    weightKg: state.weightKg,
+    heightCm: state.heightCm,
+    savedAt: Date.now(),
+  };
+}
+
+function schedulePersist() {
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    void flushPersist();
+  }, 900);
+}
+
+async function flushPersist() {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  const snap = buildPersistSnapshot();
+  if (!snap) return;
+  try {
+    await saveActiveRun(snap);
+  } catch {
+    /* disk full / scoped key missing — keep going in memory */
+  }
+}
+
+function wipePersist() {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  void clearActiveRun();
+}
+
+function ensureAppStatePersist() {
+  if (appStateSub) return;
+  appStateSub = AppState.addEventListener('change', (next: AppStateStatus) => {
+    if (next === 'background' || next === 'inactive') {
+      if (isActiveRunPhase(state.phase)) void flushPersist();
+    } else if (next === 'active' && state.phase === 'running') {
+      // Re-arm GPS after OS may have paused the watch while backgrounded.
+      void startWatch();
+      startTimer();
+    }
+  });
 }
 
 function subscribe(fn: () => void) {
@@ -171,6 +265,7 @@ export async function prepareRun(
   body: { weightKg?: number | null; heightCm?: number | null } = {},
 ): Promise<boolean> {
   stopEverything();
+  wipePersist();
   prepareAbort?.abort();
   prepareAbort = new AbortController();
   isReachedEmitted = false;
@@ -245,7 +340,9 @@ export async function startRun(): Promise<void> {
   }
   segmentStartedAt = now;
   startTimer();
+  ensureAppStatePersist();
   await startWatch();
+  void flushPersist();
 }
 
 export function pauseRun(): void {
@@ -253,6 +350,7 @@ export function pauseRun(): void {
   if (segmentStartedAt != null) movingAccumMs += Date.now() - segmentStartedAt;
   segmentStartedAt = null;
   set({ phase: 'paused', movingMs: movingAccumMs });
+  void flushPersist();
 }
 
 export async function resumeRun(): Promise<void> {
@@ -287,6 +385,7 @@ export async function finishRun(): Promise<RunSummary | null> {
     path: downsamplePath(state.path),
   };
   stopEverything();
+  wipePersist();
   set({ phase: 'finished', movingMs, elapsedMs, summary });
   if (summary.distanceM >= 50 || summary.movingMs >= 60_000) {
     void saveRunSummary(summary);
@@ -297,12 +396,94 @@ export async function finishRun(): Promise<RunSummary | null> {
 export function cancelRun(): void {
   prepareAbort?.abort();
   stopEverything();
+  wipePersist();
+  hydratePromise = null;
+  state = initial;
+  listeners.forEach((fn) => fn());
+}
+
+/** Drop in-memory session without clearing the disk snapshot (logout / account switch). */
+export function resetRunMemory(): void {
+  prepareAbort?.abort();
+  stopEverything();
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  hydratePromise = null;
+  movingAccumMs = 0;
+  segmentStartedAt = null;
   state = initial;
   listeners.forEach((fn) => fn());
 }
 
 export function clearRunError(): void {
   if (state.error) set({ error: null });
+}
+
+/**
+ * Restore a live run after cold start / reload. Safe to call multiple times —
+ * only restores while phase is still idle; failed loads can retry.
+ */
+export function hydrateActiveRun(): Promise<boolean> {
+  if (state.phase !== 'idle') return Promise.resolve(false);
+  if (hydratePromise) return hydratePromise;
+  hydratePromise = (async () => {
+    if (state.phase !== 'idle') return false;
+    const snap = await loadActiveRun();
+    if (!snap || state.phase !== 'idle') return false;
+
+    movingAccumMs = Math.max(0, snap.movingAccumMs);
+    segmentStartedAt = null;
+    isReachedEmitted = snap.reachedPin;
+    isCompletedEmitted = snap.completedTarget;
+    lastFixAt = 0;
+    fastMs = 0;
+    emaSpeedMps = 0;
+
+    const now = Date.now();
+    state = {
+      ...initial,
+      phase: snap.phase,
+      target: snap.target,
+      targetMeters: snap.targetMeters,
+      origin: snap.origin,
+      pin: snap.pin,
+      route: snap.route,
+      routed: snap.routed,
+      expectedDistanceM: snap.expectedDistanceM,
+      path: snap.path,
+      current: snap.current ?? snap.origin,
+      headingDeg: snap.headingDeg,
+      accuracyM: snap.accuracyM,
+      distanceM: snap.distanceM,
+      movingMs: movingAccumMs,
+      elapsedMs: Math.max(0, now - snap.startedAt),
+      startedAt: snap.startedAt,
+      reachedPin: snap.reachedPin,
+      reachedAt: snap.reachedAt,
+      completedTarget: snap.completedTarget,
+      weightKg: snap.weightKg,
+      heightCm: snap.heightCm,
+    };
+    listeners.forEach((fn) => fn());
+
+    ensureAppStatePersist();
+    startTimer();
+    if (snap.phase === 'running') {
+      segmentStartedAt = now;
+      await startWatch();
+    }
+    void flushPersist();
+    return true;
+  })()
+    .catch(() => false)
+    .then((ok) => {
+      if (!ok) hydratePromise = null;
+      return ok;
+    });
+
+  return hydratePromise;
 }
 
 function stopEverything() {
@@ -312,6 +493,10 @@ function stopEverything() {
   timer = null;
   if (simTimer) clearInterval(simTimer);
   simTimer = null;
+  if (pinFinishTimer) {
+    clearTimeout(pinFinishTimer);
+    pinFinishTimer = null;
+  }
   segmentStartedAt = null;
 }
 
@@ -355,6 +540,7 @@ let emaSpeedMps = 0;
 /** Runner appears to be in a vehicle — stop tracking, keep the screen state for the explainer modal. */
 function cancelForTransport() {
   stopEverything();
+  wipePersist();
   set({
     phase: 'idle',
     transportCancelled: true,
@@ -431,6 +617,7 @@ function ingestFix(fix: Fix) {
       if (reachedPin && !isReachedEmitted) {
         isReachedEmitted = true;
         emit('pin_reached');
+        schedulePinFinish();
       }
       if (completedTarget && !isCompletedEmitted) {
         isCompletedEmitted = true;
@@ -448,6 +635,17 @@ function ingestFix(fix: Fix) {
 
 let isReachedEmitted = false;
 let isCompletedEmitted = false;
+let pinFinishTimer: ReturnType<typeof setTimeout> | null = null;
+
+function schedulePinFinish() {
+  if (pinFinishTimer) return;
+  pinFinishTimer = setTimeout(() => {
+    pinFinishTimer = null;
+    if (state.phase === 'running' || state.phase === 'paused') {
+      void finishRun();
+    }
+  }, 2000);
+}
 
 // ---------------------------------------------------------------------------
 // DEV simulation — glide along the route so the feature can be demoed on an emulator.

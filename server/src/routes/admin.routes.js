@@ -77,6 +77,79 @@ function bucketByDay(startToday, rows) {
   return [...map.entries()].map(([day, count]) => ({ day, count }));
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Shared Users list + CSV export filter (same semantics). */
+async function buildAdminUsersWhere(query = {}) {
+  const q = String(query.q ?? '').trim();
+  const status = String(query.status ?? '').trim().toUpperCase();
+  const packageCode = String(query.package ?? '').trim().toUpperCase();
+  const activity = String(query.activity ?? '').trim();
+  const appVersion = String(query.appVersion ?? '').trim();
+  const today = tbilisiYmd();
+  const none = ['__none__'];
+
+  const orIdentity = q
+    ? [
+        { email: { contains: q, mode: 'insensitive' } },
+        { fullName: { contains: q, mode: 'insensitive' } },
+        { phone: { contains: q } },
+        ...(UUID_RE.test(q) ? [{ id: q }] : []),
+        ...(!UUID_RE.test(q) && q.length >= 8 ? [{ id: { startsWith: q } }] : []),
+      ]
+    : null;
+
+  const where = {
+    AND: [
+      orIdentity ? { OR: orIdentity } : {},
+      status === 'ACTIVE' || status === 'BLOCKED' ? { status } : {},
+      packageCode ? { package: { code: packageCode } } : {},
+      activity === 'medi' ? { chats: { some: {} } } : {},
+      activity === 'meds' ? { medications: { some: {} } } : {},
+      activity === 'cycle' ? { cycleProfile: { is: {} } } : {},
+      activity === 'ios' || activity === 'android'
+        ? { pushTokens: { some: { active: true, platform: activity } } }
+        : {},
+    ],
+  };
+
+  if (activity === 'today') {
+    const ids = await loadActiveUserIds(today, today);
+    where.AND.push({ id: { in: ids.length ? ids : none } });
+  } else if (activity === 'inactive7') {
+    const ids = await loadActiveUserIds(addDaysYmd(today, -6), today);
+    where.AND.push({ id: { notIn: ids } });
+  } else if (activity === 'inactive30') {
+    const ids = await loadActiveUserIds(addDaysYmd(today, -29), today);
+    where.AND.push({ id: { notIn: ids } });
+  } else if (activity === 'notif_disabled') {
+    const perms = await loadPermissionRows();
+    const ids = perms.filter((row) => row.status === 'disabled').map((row) => row.userId);
+    where.AND.push({ id: { in: ids.length ? ids : none } });
+  } else if (activity === 'outdated') {
+    const policy = await getAppVersionPolicy();
+    const rows = await loadAppActivityRows(addDaysYmd(today, -90), today);
+    const latest = new Map();
+    for (const row of rows) {
+      const prev = latest.get(row.userId);
+      if (!prev || new Date(row.lastAt) > new Date(prev.lastAt)) latest.set(row.userId, row);
+    }
+    const ids = [...latest.values()]
+      .filter((row) => row.appVersion && policy.currentRecommendedVersion && isAppVersionBelow(row.appVersion, policy.currentRecommendedVersion))
+      .map((row) => row.userId);
+    where.AND.push({ id: { in: ids.length ? ids : none } });
+  }
+
+  if (appVersion) {
+    const rows = await loadAppActivityRows(addDaysYmd(today, -90), today);
+    const ids = [...new Set(rows.filter((row) => row.appVersion === appVersion).map((row) => row.userId))];
+    where.AND.push({ id: { in: ids.length ? ids : none } });
+  }
+
+  return where;
+}
+
+
 export const adminRouter = Router();
 
 function signAdminToken(admin) {
@@ -292,72 +365,9 @@ adminRouter.get(
   '/users',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const q = String(req.query.q ?? '').trim();
-    const status = String(req.query.status ?? '').trim().toUpperCase();
-    const packageCode = String(req.query.package ?? '').trim().toUpperCase();
-    const activity = String(req.query.activity ?? '').trim();
-    const appVersion = String(req.query.appVersion ?? '').trim();
     const take = Math.min(Number(req.query.limit) || 50, 200);
     const skip = Math.max(Number(req.query.offset) || 0, 0);
-    const today = tbilisiYmd();
-    const none = ['__none__'];
-
-    const where = {
-      AND: [
-        q
-          ? {
-              OR: [
-                { email: { contains: q, mode: 'insensitive' } },
-                { fullName: { contains: q, mode: 'insensitive' } },
-                { phone: { contains: q } },
-              ],
-            }
-          : {},
-        status === 'ACTIVE' || status === 'BLOCKED' ? { status } : {},
-        packageCode
-          ? { package: { code: packageCode } }
-          : {},
-        activity === 'medi' ? { chats: { some: {} } } : {},
-        activity === 'meds' ? { medications: { some: {} } } : {},
-        activity === 'cycle' ? { cycleProfile: { is: {} } } : {},
-        activity === 'ios' || activity === 'android'
-          ? { pushTokens: { some: { active: true, platform: activity } } }
-          : {},
-      ],
-    };
-
-    if (activity === 'today') {
-      const ids = await loadActiveUserIds(today, today);
-      where.AND.push({ id: { in: ids.length ? ids : none } });
-    } else if (activity === 'inactive7') {
-      const ids = await loadActiveUserIds(addDaysYmd(today, -6), today);
-      where.AND.push({ id: { notIn: ids } });
-    } else if (activity === 'inactive30') {
-      const ids = await loadActiveUserIds(addDaysYmd(today, -29), today);
-      where.AND.push({ id: { notIn: ids } });
-    } else if (activity === 'notif_disabled') {
-      const perms = await loadPermissionRows();
-      const ids = perms.filter((row) => row.status === 'disabled').map((row) => row.userId);
-      where.AND.push({ id: { in: ids.length ? ids : none } });
-    } else if (activity === 'outdated') {
-      const policy = await getAppVersionPolicy();
-      const rows = await loadAppActivityRows(addDaysYmd(today, -90), today);
-      const latest = new Map();
-      for (const row of rows) {
-        const prev = latest.get(row.userId);
-        if (!prev || new Date(row.lastAt) > new Date(prev.lastAt)) latest.set(row.userId, row);
-      }
-      const ids = [...latest.values()]
-        .filter((row) => row.appVersion && policy.currentRecommendedVersion && isAppVersionBelow(row.appVersion, policy.currentRecommendedVersion))
-        .map((row) => row.userId);
-      where.AND.push({ id: { in: ids.length ? ids : none } });
-    }
-
-    if (appVersion) {
-      const rows = await loadAppActivityRows(addDaysYmd(today, -90), today);
-      const ids = [...new Set(rows.filter((row) => row.appVersion === appVersion).map((row) => row.userId))];
-      where.AND.push({ id: { in: ids.length ? ids : none } });
-    }
+    const where = await buildAdminUsersWhere(req.query);
 
     const [total, users] = await Promise.all([
       prisma.user.count({ where }),
@@ -1456,26 +1466,9 @@ adminRouter.get(
   '/export/users',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const q = String(req.query.q ?? '').trim();
-    const appVersion = String(req.query.appVersion ?? '').trim();
-    const exportWhere = { AND: [] };
-    if (q) {
-      exportWhere.AND.push({
-        OR: [
-          { email: { contains: q, mode: 'insensitive' } },
-          { fullName: { contains: q, mode: 'insensitive' } },
-          { phone: { contains: q } },
-        ],
-      });
-    }
-    if (appVersion) {
-      const today = tbilisiYmd();
-      const rows = await loadAppActivityRows(addDaysYmd(today, -90), today);
-      const ids = [...new Set(rows.filter((row) => row.appVersion === appVersion).map((row) => row.userId))];
-      exportWhere.AND.push({ id: { in: ids.length ? ids : ['__none__'] } });
-    }
+    const where = await buildAdminUsersWhere(req.query);
     const users = await prisma.user.findMany({
-      where: exportWhere.AND.length ? exportWhere : {},
+      where,
       include: { package: true },
       orderBy: { createdAt: 'desc' },
       take: 2000,

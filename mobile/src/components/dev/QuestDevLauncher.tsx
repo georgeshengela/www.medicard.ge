@@ -16,13 +16,14 @@ import {
   setDevWeatherScenario,
 } from '@/lib/weather/devFixture';
 import { useThemeColors } from '@/theme/colors';
+import { showDevUi } from '@/lib/devUi';
 
 /** __DEV__ only — inject Quest UI states for visual QA. Hidden in production. */
 export function QuestDevLauncher({ variant = 'fab' }: { variant?: 'fab' | 'chip' }) {
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
 
-  if (!isQuestDevEnabled()) return null;
+  if (!showDevUi() || !isQuestDevEnabled()) return null;
 
   const pick = (key: string) => {
     setQuestDevScenario(key);
