@@ -13,6 +13,7 @@ import {
 } from './mediEngageModel.ts';
 import { engageDestination } from './notificationPlan.ts';
 import { engageSignalHash, newDecisionId } from './mediNotificationRevalidate.ts';
+import { pickBestQuestSmartCandidate } from './quest/questSmartEngage.js';
 
 export type EngageSentRow = { key: string; family: string; at: number; ymd: string };
 
@@ -24,6 +25,8 @@ export const ENGAGE_FAMILIES = {
   weekly: { priority: 60, topic: 'weekly' as EngageTopic },
   reengage: { priority: 55, topic: 'reengage' as EngageTopic },
   unfinished: { priority: 52, topic: 'unfinished' as EngageTopic },
+  /** Phase 6 — Smart Quest companion family. Per-candidate scores override this base. */
+  questSmart: { priority: 65, topic: 'questSmart' as EngageTopic },
   hydration: { priority: 45, topic: 'hydration' as EngageTopic },
   stepsQuiet: { priority: 40, topic: 'stepsSmart' as EngageTopic },
   streak: { priority: 35, topic: 'checkin' as EngageTopic },
@@ -49,6 +52,7 @@ export type EngageCandidate = {
   signalHash: string;
   entityId?: string;
   validUntil?: number;
+  candidateType?: string;
 };
 
 export type UnfinishedDraft = {
@@ -91,6 +95,48 @@ export type EngageSnapshot = {
     category: string;
     windowStartIso: string | null;
     stale: boolean;
+  } | null;
+  /** Phase 6 — safe Quest Smart snapshot (no baseline / medical). */
+  quest?: {
+    daily: Array<{
+      id: string;
+      key: string | null;
+      progressType: string | null;
+      cadence?: string | null;
+      status: string;
+      progress: number;
+      target: number;
+      progressPercent: number;
+      targetSource?: string | null;
+      difficulty?: string | null;
+      reasonKey?: string | null;
+      periodKey: string;
+    }>;
+    weekly: Array<{
+      id: string;
+      key: string | null;
+      progressType: string | null;
+      cadence?: string | null;
+      status: string;
+      progress: number;
+      target: number;
+      progressPercent: number;
+      targetSource?: string | null;
+      difficulty?: string | null;
+      periodKey: string;
+    }>;
+    hasQuestHistory: boolean;
+    weather?: {
+      category: string;
+      severity?: string | null;
+      stale: boolean;
+      bestOutdoorWindow?: {
+        start?: string;
+        end?: string;
+        startIso?: string;
+        endIso?: string;
+      } | null;
+    } | null;
   } | null;
 };
 
@@ -136,6 +182,12 @@ type Attempt = {
   vars: Record<string, string | number>;
   route: string;
   reasons: string[];
+  /** Optional per-candidate score (Quest Smart). Defaults to family priority. */
+  score?: number;
+  /** Safe candidate type label for trace (e.g. QUEST_NEAR_COMPLETE). */
+  candidateType?: string;
+  /** Extra safe metadata for DEV trace / analytics (no exact steps). */
+  meta?: Record<string, string | number | boolean | null>;
 };
 
 function ymd(date: Date): string {
@@ -186,7 +238,8 @@ function rareAllows(family: EngageFamily): boolean {
     family === 'achievement' ||
     family === 'reengage' ||
     family === 'birthday' ||
-    family === 'visitFollowup'
+    family === 'visitFollowup' ||
+    family === 'questSmart'
   );
 }
 
@@ -245,7 +298,8 @@ function laterKeep(family: EngageFamily): boolean {
     family === 'visitFollowup' ||
     family === 'chat' ||
     family === 'feature' ||
-    family === 'weatherWellness'
+    family === 'weatherWellness' ||
+    family === 'questSmart'
   );
 }
 
@@ -617,6 +671,47 @@ export function evaluateEngageBrain(snap: EngageSnapshot): { accepted: EngageCan
     }
   }
 
+  // Phase 6 — Smart Quest (at most one QUEST_SMART candidate per evaluation)
+  if (snap.quest) {
+    const questWeather = snap.quest.weather ?? null;
+    const best = pickBestQuestSmartCandidate({
+      now,
+      daily: snap.quest.daily,
+      weekly: snap.quest.weekly,
+      weather: questWeather,
+      openedRecently,
+      loggedPain: snap.loggedPain,
+      frequency: prefs.frequency,
+      preferredHour,
+      hasQuestHistory: snap.quest.hasQuestHistory,
+      historicallyOpensQuest: snap.outcomes.some((row) => row.family === 'questSmart' && row.openedAt),
+    });
+    if (best) {
+      attempts.push({
+        key: best.key,
+        family: 'questSmart',
+        fireAt: best.fireAt,
+        vars: best.vars,
+        route: engageDestination('questSmart'),
+        reasons: [
+          `candidate ${best.type}`,
+          `score ${best.score}`,
+          ...(best.reasons || []),
+          'max 1 Smart Quest push / local day',
+        ],
+        score: best.score,
+        candidateType: best.type,
+        meta: {
+          progressBucket: best.progressBucket,
+          targetSource: best.targetSource,
+          difficulty: best.difficulty,
+          weatherContext: best.weatherContext,
+          comebackMode: best.comebackMode,
+        },
+      });
+    }
+  }
+
   for (const days of [2, 5, 14, 30]) {
     attempts.push({
       key: pickReengageKey(days),
@@ -656,11 +751,12 @@ export function evaluateEngageBrain(snap: EngageSnapshot): { accepted: EngageCan
     suppressions.push('quiet hours passed');
     const id = newDecisionId(now.getTime());
     const entityId = row.family === 'visitFollowup' ? snap.recentVisit?.id : undefined;
+    const score = typeof row.score === 'number' ? row.score : ENGAGE_FAMILIES[row.family].priority;
     const decision: EngageDecision = {
       id,
-      candidate: row.family,
+      candidate: row.candidateType || row.family,
       family: row.family,
-      score: ENGAGE_FAMILIES[row.family].priority,
+      score,
       reasons: row.reasons,
       suppressions,
       blocked,
@@ -672,19 +768,25 @@ export function evaluateEngageBrain(snap: EngageSnapshot): { accepted: EngageCan
       scheduledAt: blocked ? null : fireAt.toISOString(),
       reason: blocked,
     };
+    if (row.meta) {
+      for (const [k, v] of Object.entries(row.meta)) {
+        if (v != null) decision.reasons.push(`${k}=${String(v)}`);
+      }
+    }
     decisions.push(decision);
     if (!blocked) {
       pool.push({
         key: row.key,
         family: row.family,
-        priority: ENGAGE_FAMILIES[row.family].priority,
+        priority: score,
         fireAt,
         vars: row.vars,
         route: row.route,
         decisionId: id,
-        signalHash: engageSignalHash(row.family, live, { key: row.key, entityId }),
+        signalHash: engageSignalHash(row.family, live, { key: row.key, entityId, candidateType: row.candidateType }),
         entityId,
         validUntil: fireAt.getTime() + 18 * 3_600_000,
+        candidateType: row.candidateType,
       });
     }
   }

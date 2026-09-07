@@ -74,6 +74,26 @@ export function notifyOpsActivity(row) {
   }, DEBOUNCE_MS);
 }
 
+let brainFlushTimer = null;
+let brainPending = { decisions: 0, outcomes: 0 };
+
+export function notifyBrainSync(kind, count = 0) {
+  if (kind === 'decisions') brainPending.decisions += count;
+  if (kind === 'outcomes') brainPending.outcomes += count;
+  if (!io || brainFlushTimer) return;
+  brainFlushTimer = setTimeout(() => {
+    brainFlushTimer = null;
+    const payload = {
+      refreshedAt: new Date().toISOString(),
+      decisions: brainPending.decisions,
+      outcomes: brainPending.outcomes,
+    };
+    brainPending = { decisions: 0, outcomes: 0 };
+    clearAdminAnalyticsCache();
+    io.to(ROOM).emit('brain:sync', payload);
+  }, 1500);
+}
+
 export async function getOpsLiveSnapshot() {
   const now = Date.now();
   const today = tbilisiYmd(new Date());

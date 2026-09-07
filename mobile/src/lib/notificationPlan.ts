@@ -83,6 +83,8 @@ export function engageDestination(
       return '/(tabs)/home';
     case 'weatherWellness':
       return '/weather?from=push';
+    case 'questSmart':
+      return '/medi-quest?from=push';
     default:
       return '/(tabs)/home';
   }

@@ -6,6 +6,7 @@ import { CycleLoading } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import { requireCycleUnlock } from '@/lib/cyclePrivacy';
 import { useCycleColors } from '@/theme/cycle';
+import { STACK_PUSH } from '@/theme/stackMotion';
 
 function CyclePrivacyGate({ children }: { children: React.ReactNode }) {
   const c = useCycleColors();
@@ -81,7 +82,7 @@ function CyclePrivacyGate({ children }: { children: React.ReactNode }) {
 export default function CycleLayout() {
   return (
     <CyclePrivacyGate>
-      <Stack screenOptions={{ headerBackTitle: ka.common.back }} />
+      <Stack screenOptions={{ headerBackTitle: ka.common.back, ...STACK_PUSH }} />
     </CyclePrivacyGate>
   );
 }

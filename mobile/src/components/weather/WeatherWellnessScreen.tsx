@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft } from 'lucide-react-native';
-import { airQualityIconFor, weatherAccent, weatherIconFor } from '@/components/weather/weatherIcons';
-import { airBandColor } from '@/components/weather/weatherMood';
+import { ChevronLeft, Sparkles } from 'lucide-react-native';
+import { Meteocon, airMeteoconSlug, meteoconSlugFor, type MeteoconSlug } from '@/components/weather/Meteocon';
+import { airBandColor, weatherMood } from '@/components/weather/weatherMood';
 import { useWeather } from '@/hooks/useWeather';
 import { ka } from '@/i18n/ka';
 import {
@@ -50,167 +51,245 @@ export function WeatherWellnessScreen() {
   }, [snapshot]);
 
   const days = snapshot?.daily.slice(0, 7) ?? [];
+  const mood = snapshot && recommendation ? weatherMood(recommendation.icon, snapshot.current.isDay) : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg100, paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, minHeight: 56 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={ka.common.back} onPress={() => router.back()} hitSlop={12} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-          <ChevronLeft size={24} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <Text style={{ flex: 1, textAlign: 'center', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: colors.text100 }}>
-          {ui.detailTitle}
-        </Text>
-        <View style={{ width: 44 }} />
-      </View>
+    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 36 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <LinearGradient
+          colors={
+            isDark
+              ? [mood?.washDark ?? '#042F2E', colors.bg100]
+              : [mood?.wash ?? '#CCFBF1', colors.bg100]
+          }
+          start={{ x: 0.1, y: 0 }}
+          end={{ x: 0.9, y: 1 }}
+          style={{ paddingTop: insets.top, paddingBottom: 8 }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, minHeight: 52 }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={ka.common.back}
+              onPress={() => router.back()}
+              hitSlop={12}
+              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ChevronLeft size={24} color={colors.text100} strokeWidth={2.2} />
+            </Pressable>
+            <Text style={{ flex: 1, textAlign: 'center', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: colors.text100 }}>
+              {ka.home.weatherTitle}
+            </Text>
+            <View style={{ width: 44 }} />
+          </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32, gap: 16 }} showsVerticalScrollIndicator={false}>
-        {snapshot && recommendation ? (
-          <>
-            <CurrentBlock snapshot={snapshot} />
+          {snapshot && recommendation && mood ? (
+            <Hero snapshot={snapshot} />
+          ) : (
+            <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300, textAlign: 'center', paddingVertical: 40 }}>
+              {loading ? ka.common.loading : ui.unavailable}
+            </Text>
+          )}
+        </LinearGradient>
+
+        {snapshot && recommendation && mood ? (
+          <View style={{ paddingHorizontal: 16, gap: 14, marginTop: 4 }}>
             <View
               style={{
-                backgroundColor: isDark ? '#111827' : '#F9FAFB',
-                borderWidth: 1,
-                borderColor: isDark ? '#374151' : '#E5E7EB',
+                backgroundColor: isDark ? '#042F2E' : colors.accent100,
                 borderRadius: 24,
                 padding: 16,
                 gap: 8,
+                borderWidth: 1,
+                borderColor: isDark ? '#115E59' : '#99F6E4',
               }}
             >
-              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
-                {ui.recommendation}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Sparkles size={16} color={isDark ? '#5EEAD4' : colors.primary100} strokeWidth={2.3} />
+                <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, color: isDark ? '#99F6E4' : colors.primary100 }}>
+                  {ui.recommendation}
+                </Text>
+              </View>
               <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, lineHeight: 26, color: colors.text100 }}>
                 {weatherCopyText(recommendation.titleKey, 'ka')}
               </Text>
-              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 15, lineHeight: 22, color: colors.text200 }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14.5, lineHeight: 21, color: colors.text200 }}>
                 {weatherCopyText(recommendation.bodyKey, 'ka')}
               </Text>
               {recommendation.bestOutdoorWindow ? (
-                <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200, marginTop: 4 }}>
-                  {recommendation.bestOutdoorWindow.day === 'tomorrow' ? ui.tomorrowWindow : recommendation.bestOutdoorWindow.label === 'best' ? ui.bestTime : ui.goodTime}
-                  {': '}
-                  {recommendation.bestOutdoorWindow.start}–{recommendation.bestOutdoorWindow.end}
-                </Text>
+                <View
+                  style={{
+                    alignSelf: 'flex-start',
+                    marginTop: 4,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    backgroundColor: isDark ? '#115E59' : '#FFFFFF',
+                    borderRadius: 999,
+                    paddingHorizontal: 12,
+                    paddingVertical: 7,
+                  }}
+                >
+                  <Meteocon slug="time-morning" size={22} />
+                  <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, color: isDark ? '#99F6E4' : colors.primary100 }}>
+                    {recommendation.bestOutdoorWindow.day === 'tomorrow' ? ui.tomorrowWindow : recommendation.bestOutdoorWindow.label === 'best' ? ui.bestTime : ui.goodTime}
+                    {': '}
+                    {recommendation.bestOutdoorWindow.start}–{recommendation.bestOutdoorWindow.end}
+                  </Text>
+                </View>
               ) : (
-                <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>
-                  {ui.noWindow}
-                </Text>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13.5, color: colors.text300 }}>{ui.noWindow}</Text>
               )}
               {stale || fromCache || recommendation.adviceKind === 'cached' ? (
-                <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
-                  {ui.updated}
-                </Text>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>{ui.updated}</Text>
               ) : null}
             </View>
 
             {snapshot.airQuality ? <AirQualityBlock air={snapshot.airQuality} /> : null}
 
-            <StatsRow snapshot={snapshot} />
+            <StatsGrid snapshot={snapshot} />
 
             {hours.length ? (
               <View style={{ gap: 10 }}>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: colors.text100 }}>{ui.nextHours}</Text>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, color: colors.text100 }}>{ui.nextHours}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                  {hours.map((row) => {
-                    const Icon = weatherIconFor(row.condition, true);
-                    return (
-                      <View
-                        key={row.time}
-                        style={{
-                          width: 72,
-                          borderRadius: 16,
-                          borderWidth: 1,
-                          borderColor: isDark ? '#374151' : '#E5E7EB',
-                          backgroundColor: isDark ? '#111827' : '#FFFFFF',
-                          paddingVertical: 10,
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
-                          {String(hourOf(row.time) ?? '').padStart(2, '0')}:00
-                        </Text>
-                        <Icon size={18} color={weatherAccent(row.condition)} strokeWidth={2.1} />
-                        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: colors.text100 }}>
-                          {Math.round(row.temperatureC)}°
-                        </Text>
-                        <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, color: colors.text300 }}>
-                          {row.precipitationProbability != null ? `${Math.round(row.precipitationProbability)}%` : '—'}
-                        </Text>
-                      </View>
-                    );
-                  })}
+                  {hours.map((row) => (
+                    <View
+                      key={row.time}
+                      style={{
+                        width: 76,
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: colors.bg300,
+                        backgroundColor: colors.surface,
+                        paddingVertical: 12,
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
+                        {String(hourOf(row.time) ?? '').padStart(2, '0')}:00
+                      </Text>
+                      <Meteocon slug={meteoconSlugFor(row.condition, (hourOf(row.time) ?? 12) >= 7 && (hourOf(row.time) ?? 12) < 19)} size={40} />
+                      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: colors.text100 }}>
+                        {Math.round(row.temperatureC)}°
+                      </Text>
+                      <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, color: colors.text300 }}>
+                        {row.precipitationProbability != null ? `${Math.round(row.precipitationProbability)}%` : '—'}
+                      </Text>
+                    </View>
+                  ))}
                 </ScrollView>
               </View>
             ) : null}
 
             {days.length ? (
-              <View style={{ gap: 8 }}>
-                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: colors.text100 }}>{ui.nextDays}</Text>
-                {days.map((day) => {
-                  const Icon = weatherIconFor(day.condition, true);
-                  return (
-                    <View
-                      key={day.date}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 12,
-                        minHeight: 44,
-                        paddingVertical: 8,
-                        borderBottomWidth: 1,
-                        borderBottomColor: isDark ? '#1F2937' : '#F3F4F6',
-                      }}
-                    >
-                      <Text style={{ width: 52, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: colors.text100 }}>
-                        {weekdayShort(day.date, 'ka')}
-                      </Text>
-                      <Icon size={18} color={weatherAccent(day.condition)} strokeWidth={2.1} />
-                      <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, color: colors.text300 }} numberOfLines={1}>
-                        {weatherConditionLabel(day.condition, 'ka')}
-                      </Text>
-                      <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, color: colors.text200 }}>
-                        {Math.round(day.minC)}° / {Math.round(day.maxC)}°
-                      </Text>
-                      <Text style={{ width: 40, textAlign: 'right', fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, color: colors.text300 }}>
-                        {day.precipitationProbability != null ? `${Math.round(day.precipitationProbability)}%` : ''}
-                      </Text>
-                    </View>
-                  );
-                })}
+              <View
+                style={{
+                  backgroundColor: colors.surface,
+                  borderRadius: 24,
+                  borderWidth: 1,
+                  borderColor: colors.bg300,
+                  paddingHorizontal: 14,
+                  paddingTop: 14,
+                  paddingBottom: 6,
+                  gap: 2,
+                }}
+              >
+                <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, color: colors.text100, marginBottom: 6 }}>
+                  {ui.nextDays}
+                </Text>
+                {days.map((day, i) => (
+                  <View
+                    key={day.date}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      minHeight: 52,
+                      borderTopWidth: i === 0 ? 0 : 1,
+                      borderTopColor: isDark ? '#1F2937' : '#F3F4F6',
+                    }}
+                  >
+                    <Text style={{ width: 52, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13.5, color: colors.text100 }}>
+                      {weekdayShort(day.date, 'ka')}
+                    </Text>
+                    <Meteocon slug={meteoconSlugFor(day.condition, true)} size={36} />
+                    <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, color: colors.text300 }} numberOfLines={1}>
+                      {weatherConditionLabel(day.condition, 'ka')}
+                    </Text>
+                    <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: colors.text100 }}>
+                      {Math.round(day.maxC)}°
+                    </Text>
+                    <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, color: colors.text300 }}>
+                      {Math.round(day.minC)}°
+                    </Text>
+                  </View>
+                ))}
               </View>
             ) : null}
-
-          </>
-        ) : (
-          <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300, marginTop: 24 }}>
-            {loading ? ka.common.loading : ui.unavailable}
-          </Text>
-        )}
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );
 }
 
-function CurrentBlock({ snapshot }: { snapshot: NonNullable<ReturnType<typeof useWeather>['snapshot']> }) {
+function Hero({ snapshot }: { snapshot: NonNullable<ReturnType<typeof useWeather>['snapshot']> }) {
   const colors = useThemeColors();
-  const Icon = weatherIconFor(snapshot.current.condition, snapshot.current.isDay);
-  const accent = weatherAccent(snapshot.current.condition);
+  const slug = meteoconSlugFor(snapshot.current.condition, snapshot.current.isDay);
   return (
-    <View style={{ alignItems: 'center', gap: 8, paddingTop: 8 }}>
+    <View style={{ alignItems: 'center', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 18 }}>
       {snapshot.location.city ? (
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: colors.text100 }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: colors.text200 }}>
           {snapshot.location.city}
         </Text>
       ) : null}
-      <Icon size={36} color={accent} strokeWidth={2} />
-      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 48, lineHeight: 56, color: colors.text100 }}>
+      <Meteocon slug={slug} size={132} />
+      <Text
+        style={{
+          marginTop: -6,
+          fontFamily: 'NotoSansGeorgian_700Bold',
+          fontSize: 64,
+          lineHeight: 70,
+          letterSpacing: -2,
+          color: colors.text100,
+        }}
+      >
         {Math.round(snapshot.current.temperatureC)}°
       </Text>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 14, color: colors.text300 }}>
-        {ui.feelsLike(snapshot.current.feelsLikeC)} · {weatherConditionLabel(snapshot.current.condition, 'ka')}
+      <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 15, color: colors.text200, textAlign: 'center' }}>
+        {weatherConditionLabel(snapshot.current.condition, 'ka')}
+        {'  ·  '}
+        {ui.feelsLike(snapshot.current.feelsLikeC)}
       </Text>
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+        <MiniChip slug="thermometer-warmer" label={`${ui.high} ${Math.round(snapshot.today.maxC)}°`} />
+        <MiniChip slug="thermometer-colder" label={`${ui.low} ${Math.round(snapshot.today.minC)}°`} />
+      </View>
+    </View>
+  );
+}
+
+function MiniChip({ slug, label }: { slug: MeteoconSlug; label: string }) {
+  const colors = useThemeColors();
+  const isDark = useIsDark();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: isDark ? 'rgba(17,24,39,0.72)' : 'rgba(255,255,255,0.88)',
+      }}
+    >
+      <Meteocon slug={slug} size={22} />
+      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, color: colors.text100 }}>{label}</Text>
     </View>
   );
 }
@@ -224,7 +303,6 @@ function AirQualityBlock({ air }: { air: AirQualitySnapshot }) {
   const colors = useThemeColors();
   const isDark = useIsDark();
   const tint = airBandColor(air.band, isDark);
-  const AirIcon = airQualityIconFor(air.band);
   const pollutants = [
     { label: ui.pm25, value: formatUg(air.pm25) },
     { label: ui.pm10, value: formatUg(air.pm10) },
@@ -234,32 +312,32 @@ function AirQualityBlock({ air }: { air: AirQualitySnapshot }) {
   return (
     <View
       style={{
-        backgroundColor: isDark ? '#111827' : '#FFFFFF',
+        backgroundColor: colors.surface,
         borderWidth: 1,
-        borderColor: isDark ? '#374151' : '#E5E7EB',
+        borderColor: colors.bg300,
         borderRadius: 24,
         padding: 16,
         gap: 12,
       }}
     >
-      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: colors.text100 }}>{ui.airQuality}</Text>
+      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, color: colors.text100 }}>{ui.airQuality}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View
           style={{
-            width: 64,
-            height: 64,
-            borderRadius: 32,
+            width: 72,
+            height: 72,
+            borderRadius: 22,
             backgroundColor: isDark ? '#042F2E' : '#F0FDFA',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <AirIcon size={18} color={tint} strokeWidth={2.2} />
-          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, color: tint, marginTop: 2 }}>{air.europeanAqi}</Text>
+          <Meteocon slug={airMeteoconSlug(air.band)} size={44} />
         </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: tint }}>{ui.air(air.band)}</Text>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 19, color: colors.text200 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, color: tint }}>{air.europeanAqi}</Text>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, color: tint }}>{ui.air(air.band)}</Text>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 18, color: colors.text300 }}>
             {ui.airHint(air.band)}
           </Text>
         </View>
@@ -272,7 +350,7 @@ function AirQualityBlock({ air }: { air: AirQualitySnapshot }) {
               minWidth: 72,
               flexGrow: 1,
               borderRadius: 14,
-              backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
+              backgroundColor: isDark ? '#1F2937' : '#F5F7F7',
               paddingHorizontal: 10,
               paddingVertical: 8,
             }}
@@ -288,38 +366,53 @@ function AirQualityBlock({ air }: { air: AirQualitySnapshot }) {
   );
 }
 
-function StatsRow({ snapshot }: { snapshot: NonNullable<ReturnType<typeof useWeather>['snapshot']> }) {
+function StatsGrid({ snapshot }: { snapshot: NonNullable<ReturnType<typeof useWeather>['snapshot']> }) {
   const colors = useThemeColors();
   const isDark = useIsDark();
   const sunsetH = hourOf(snapshot.today.sunset);
-  const items = [
-    { label: ui.high, value: `${Math.round(snapshot.today.maxC)}°` },
-    { label: ui.low, value: `${Math.round(snapshot.today.minC)}°` },
-    { label: ui.rain(snapshot.today.precipitationProbability ?? 0).split(' ')[0], value: `${Math.round(snapshot.today.precipitationProbability ?? 0)}%` },
-    { label: ui.wind(0).split(' ')[0], value: `${Math.round(snapshot.current.windKmh)}` },
-    ...(snapshot.today.uvMax != null ? [{ label: 'UV', value: `${Math.round(snapshot.today.uvMax)}` }] : []),
-    ...(sunsetH != null ? [{ label: ui.sunset, value: `${String(sunsetH).padStart(2, '0')}:00` }] : []),
+  const items: { slug: MeteoconSlug; label: string; value: string }[] = [
+    { slug: 'rain', label: ui.rain(0).split(' ')[0], value: `${Math.round(snapshot.today.precipitationProbability ?? 0)}%` },
+    { slug: 'wind', label: ui.wind(0).split(' ')[0], value: `${Math.round(snapshot.current.windKmh)}` },
+    ...(snapshot.today.uvMax != null ? [{ slug: 'uv-index' as const, label: 'UV', value: `${Math.round(snapshot.today.uvMax)}` }] : []),
+    ...(sunsetH != null ? [{ slug: 'sunset' as const, label: ui.sunset, value: `${String(sunsetH).padStart(2, '0')}:00` }] : []),
   ];
   return (
     <View style={{ gap: 8 }}>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, color: colors.text100 }}>{ui.today}</Text>
+      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, color: colors.text100 }}>{ui.today}</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {items.map((item) => (
           <View
             key={item.label}
             style={{
-              minWidth: 96,
+              width: '48%',
               flexGrow: 1,
-              borderRadius: 16,
+              borderRadius: 20,
               borderWidth: 1,
-              borderColor: isDark ? '#374151' : '#E5E7EB',
-              backgroundColor: isDark ? '#111827' : '#FFFFFF',
-              paddingHorizontal: 12,
-              paddingVertical: 10,
+              borderColor: colors.bg300,
+              backgroundColor: colors.surface,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
             }}
           >
-            <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, color: colors.text300 }}>{item.label}</Text>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: colors.text100, marginTop: 4 }}>{item.value}</Text>
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                backgroundColor: isDark ? '#042F2E' : '#F0FDFA',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Meteocon slug={item.slug} size={34} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, color: colors.text300 }}>{item.label}</Text>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: colors.text100, marginTop: 1 }}>{item.value}</Text>
+            </View>
           </View>
         ))}
       </View>

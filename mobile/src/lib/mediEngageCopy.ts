@@ -142,5 +142,25 @@ export const ENGAGE_FALLBACKS: Record<string, { title: string; body: string }> =
   "engage-weather-uv": {
     "title": "მზე დღეს ძლიერია ☀️",
     "body": "თუ გარეთ დიდხანს იქნები, მზისგან დაცვა კარგი იდეაა."
+  },
+  "engage-quest-near-complete": {
+    "title": "ცოტა დაგვრჩა 💚",
+    "body": "თუ მოგინდება, პატარა მოძრაობაც საკმარისი იქნება."
+  },
+  "engage-quest-weather-window": {
+    "title": "სასიამოვნო დრო ჩანს გასასეირნებლად ☀️",
+    "body": "თუ გარეთ გასვლა მოგინდება, {windowStart}–{windowEnd} კარგი ფანჯარა ჩანს."
+  },
+  "engage-quest-comeback": {
+    "title": "დღეს მარტივად დავიწყოთ 💚",
+    "body": "რეკორდები არ გვჭირდება — უბრალოდ რიტმს დავუბრუნდეთ."
+  },
+  "engage-quest-morning-plan": {
+    "title": "დღის პატარა გეგმა მზადაა",
+    "body": "დღევანდელი Medi Quest შენს რიტმს მოვარგე — როცა მოგინდება, იქ დაგხვდება."
+  },
+  "engage-quest-weekly-progress": {
+    "title": "კვირის მისია კარგად მიდის 💚",
+    "body": "ამ კვირის მიზანთან ახლოს ხარ — ცოტა დაგვრჩა."
   }
 };

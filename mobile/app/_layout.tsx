@@ -8,9 +8,11 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { Notifications } from '@/lib/expoNotifications';
-import { enableScreens } from 'react-native-screens';
+import { enableFreeze, enableScreens } from 'react-native-screens';
 import Constants from 'expo-constants';
+import { AppChromeOverlay } from '@/components/navigation/AppChromeOverlay';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
+import { useTabChromeHidden } from '@/components/navigation/tabChrome';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { LocationAskHost } from '@/components/location/LocationAskHost';
@@ -24,8 +26,13 @@ import { ThemeProvider, useTheme } from '@/store/ThemeContext';
 import { api } from '@/lib/api';
 import { consumePendingCycleShare, isCycleShareCode, savePendingCycleShare } from '@/lib/cycleSharePending';
 import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { STACK_PUSH, STACK_REDUCED } from '@/theme/stackMotion';
 
-enableScreens(false);
+// Native screens = GPU stack transitions. Do not set this to false — that is
+// what made page changes feel like a late pop. Tab chrome stays above via AppChromeOverlay.
+enableScreens(true);
+enableFreeze(true);
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -153,7 +160,13 @@ function AppShell() {
   const { user, healthProfile, setHealthProfile } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const showTabBar = Boolean(user) && segments[0] === '(tabs)';
+  const reduceMotion = usePrefersReducedMotion();
+  const stackMotion = reduceMotion ? STACK_REDUCED : STACK_PUSH;
+  const tabChromeHidden = useTabChromeHidden();
+  const showTabBar =
+    Boolean(user) &&
+    !tabChromeHidden &&
+    (segments[0] === '(tabs)' || (segments[0] === 'run' && (segments.length === 1 || segments[1] === 'index')));
 
   useEffect(() => {
     if (!user) {
@@ -242,7 +255,6 @@ function AppShell() {
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <AuthGate>
         <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
-          <OfflineBanner />
           <View style={{ flex: 1 }}>
             <Stack
               screenOptions={{
@@ -251,6 +263,7 @@ function AppShell() {
                 headerTintColor: colors.primary200,
                 headerShadowVisible: false,
                 contentStyle: { backgroundColor: colors.bg100 },
+                ...stackMotion,
               }}
             >
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -269,13 +282,17 @@ function AppShell() {
               <Stack.Screen name="lab" options={{ headerShown: false }} />
               <Stack.Screen name="symptoms" options={{ headerShown: false }} />
               <Stack.Screen name="pharmacy" options={{ headerShown: false }} />
+              <Stack.Screen name="run" options={{ headerShown: false }} />
               <Stack.Screen name="record/[id]" options={{ headerBackTitle: 'უკან' }} />
             </Stack>
           </View>
-          {showTabBar ? <FloatingTabBar /> : null}
+          <AppChromeOverlay interactive={showTabBar}>
+            {user ? <FloatingTabBar visible={showTabBar} /> : null}
+          </AppChromeOverlay>
           <DailyCheckInHost />
           <LocationAskHost />
           <QuestHost />
+          <OfflineBanner />
         </View>
       </AuthGate>
     </>

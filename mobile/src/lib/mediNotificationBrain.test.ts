@@ -416,14 +416,15 @@ describe('mediNotificationBrain', () => {
   });
 
   it('revalidates weather companions when the window or rain forecast changes', () => {
+    const now = new Date('2026-09-06T15:10:00');
     const live: EngageLiveSignals = {
-      now: new Date('2026-09-06T15:10:00'),
+      now,
       hydrationMl: 400,
       hydrationGoal: 2000,
       loggedPain: false,
       seenWeekly: false,
       unfinished: null,
-      lastOpenAt: Date.now() - 4 * 3_600_000,
+      lastOpenAt: now.getTime() - 4 * 3_600_000,
       missingProfileField: null,
       recentVisitId: null,
       medMissedWeek: 0,
@@ -466,5 +467,179 @@ describe('mediNotificationBrain', () => {
     assert.equal(fallbackNotificationRoute('/medications/abc', false), '/medications');
     assert.equal(fallbackNotificationRoute('/visits/editor?id=x', false), '/visits');
     assert.equal(fallbackNotificationRoute('/health-metrics/hydration', true), '/health-metrics/hydration');
+  });
+
+  it('Phase 6: schedules at most one questSmart candidate and deep-links to Medi Quest', () => {
+    const now = new Date('2026-09-06T14:00:00');
+    const quiet = snap({
+      now,
+      lastOpenAt: now.getTime() - 3 * 3_600_000,
+      quest: {
+        daily: [
+          {
+            id: 'm1',
+            key: 'daily_steps',
+            progressType: 'STEPS',
+            status: 'ACTIVE',
+            progress: 4200,
+            target: 5000,
+            progressPercent: 84,
+            targetSource: 'PERSONALIZED',
+            difficulty: 'NORMAL',
+            periodKey: '2026-09-06',
+          },
+        ],
+        weekly: [],
+        hasQuestHistory: true,
+        weather: null,
+      },
+    });
+    const { accepted, trace } = evaluateEngageBrain(quiet);
+    const questRows = accepted.filter((row) => row.family === 'questSmart');
+    assert.ok(questRows.length <= 1);
+    assert.equal(questRows[0]?.key, 'engage-quest-near-complete');
+    assert.equal(engageDestination('questSmart'), '/medi-quest?from=push');
+    assert.equal(routeFromNotificationData({ type: 'medi_engage', family: 'questSmart' }), '/medi-quest?from=push');
+    const decision = trace.decisions.find((d) => d.family === 'questSmart' && d.decision === 'SEND');
+    assert.equal(decision?.candidate, 'QUEST_NEAR_COMPLETE');
+    assert.ok((decision?.score ?? 0) >= 78);
+  });
+
+  it('Phase 6: rare frequency still allows high-value Quest Smart but morning plan is suppressed', () => {
+    const now = new Date('2026-09-06T08:30:00');
+    const morning = evaluateEngageBrain(
+      snap({
+        now,
+        lastOpenAt: now.getTime() - 3 * 3_600_000,
+        prefs: { ...DEFAULT_ENGAGE_PREFS, frequency: 'rare' },
+        quest: {
+          daily: [
+            {
+              id: 'm1',
+              key: 'daily_steps',
+              progressType: 'STEPS',
+              status: 'ACTIVE',
+              progress: 0,
+              target: 5000,
+              progressPercent: 0,
+              targetSource: 'DEFAULT',
+              difficulty: 'NORMAL',
+              periodKey: '2026-09-06',
+            },
+          ],
+          weekly: [],
+          hasQuestHistory: true,
+          weather: null,
+        },
+      }),
+    );
+    assert.equal(
+      morning.accepted.some((row) => row.family === 'questSmart' && row.key === 'engage-quest-morning-plan'),
+      false,
+    );
+  });
+
+  it('Phase 6: family day limit + cooldown block a second questSmart after send', () => {
+    const now = new Date('2026-09-06T14:00:00');
+    const rows = evaluateEngageCandidates(
+      snap({
+        now,
+        lastOpenAt: now.getTime() - 3 * 3_600_000,
+        sent: [{ key: 'engage-quest-comeback', family: 'questSmart', at: now.getTime() - 60_000, ymd: '2026-09-06' }],
+        quest: {
+          daily: [
+            {
+              id: 'm1',
+              key: 'daily_steps',
+              progressType: 'STEPS',
+              status: 'ACTIVE',
+              progress: 4200,
+              target: 5000,
+              progressPercent: 84,
+              targetSource: 'PERSONALIZED',
+              difficulty: 'NORMAL',
+              periodKey: '2026-09-06',
+            },
+          ],
+          weekly: [],
+          hasQuestHistory: true,
+          weather: null,
+        },
+      }),
+    );
+    assert.equal(rows.some((row) => row.family === 'questSmart'), false);
+  });
+
+  it('Phase 6: revalidates questSmart near-complete after evening / completion', () => {
+    const now = new Date('2026-09-06T20:10:00');
+    const live: EngageLiveSignals = {
+      now,
+      hydrationMl: 500,
+      hydrationGoal: 2000,
+      loggedPain: false,
+      seenWeekly: false,
+      unfinished: null,
+      lastOpenAt: now.getTime() - 3 * 3_600_000,
+      missingProfileField: null,
+      recentVisitId: null,
+      medMissedWeek: 0,
+      todaySteps: 4200,
+      prevWeekSteps: 10000,
+      sent: [],
+      daily: [
+        {
+          id: 'm1',
+          key: 'daily_steps',
+          progressType: 'STEPS',
+          status: 'ACTIVE',
+          progress: 4200,
+          target: 5000,
+          progressPercent: 84,
+          targetSource: 'PERSONALIZED',
+        },
+      ],
+      weekly: [],
+      weather: null,
+    };
+    assert.equal(
+      revalidateEngageCandidate({ family: 'questSmart', templateKey: 'engage-quest-near-complete' }, live).reason,
+      'QUEST_EVENING_PRESSURE_BLOCK',
+    );
+    assert.equal(
+      revalidateEngageCandidate(
+        { family: 'questSmart', templateKey: 'engage-quest-near-complete' },
+        {
+          ...live,
+          now: new Date('2026-09-06T15:00:00'),
+          lastOpenAt: new Date('2026-09-06T15:00:00').getTime() - 3 * 3_600_000,
+          daily: [{ ...live.daily![0], status: 'COMPLETED', progressPercent: 100, progress: 5000 }],
+        },
+      ).reason,
+      'QUEST_ALREADY_COMPLETE',
+    );
+  });
+  it('Phase 6: Quest Smart copy has no streak fear, rewards, or medical claims', () => {
+    const banned = /streak|წარმატებ|XP|Coins|ჯანმრთელობ|დიაგნოზ|ექიმ|lose your|don't lose|დაიკარგ/i;
+    for (const key of [
+      'engage-quest-near-complete',
+      'engage-quest-weather-window',
+      'engage-quest-comeback',
+      'engage-quest-morning-plan',
+      'engage-quest-weekly-progress',
+    ]) {
+      const copy = ENGAGE_FALLBACKS[key];
+      assert.ok(copy, key);
+      assert.equal(banned.test(`${copy.title} ${copy.body}`), false, key);
+    }
+  });
+
+  it('Phase 6: fatigue still adapts global cap — questSmart does not bypass it', () => {
+    const fatigue = computeEngageFatigue('often', [
+      { key: 'a', family: 'checkin', sentAt: Date.now() - 3 * 3_600_000 },
+      { key: 'b', family: 'hydration', sentAt: Date.now() - 4 * 3_600_000 },
+      { key: 'c', family: 'questSmart', sentAt: Date.now() - 5 * 3_600_000 },
+    ]);
+    assert.equal(fatigue.selectedFrequency, 'often');
+    assert.ok(fatigue.adaptiveDailyCap <= dailyEngageCap('often'));
   });
 });

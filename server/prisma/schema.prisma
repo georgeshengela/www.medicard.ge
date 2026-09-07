@@ -423,6 +423,8 @@ model Admin {
   email         String         @unique
   passwordHash  String
   fullName      String
+  /// Phase 8 — JSON string[] of capabilities. null = full legacy access.
+  capabilities  Json?
   pushCampaigns PushCampaign[]
   aiEvalRuns    AiEvalRun[]
   createdAt     DateTime       @default(now())
@@ -1066,18 +1068,27 @@ model AdminAuditLog {
   @@index([targetType, targetId])
 }
 
-/// Phase 7 — minimal partner display for loyalty vouchers (not Pharmacy CRM).
+/// Phase 7/8 — commercial partner for loyalty vouchers (not Pharmacy CRM / not health).
 model RewardPartner {
-  id            String   @id @default(uuid())
-  key           String   @unique
-  displayName   String
-  logoAssetKey  String?
-  website       String?
-  /// ACTIVE | INACTIVE
-  status        String   @default("ACTIVE")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  rewards       RewardDefinition[]
+  id                 String   @id @default(uuid())
+  key                String   @unique
+  displayName        String
+  legalName          String?
+  /// PHARMACY | LAB | FITNESS | WELLNESS | FOOD | RETAIL | INSURANCE | CLINIC | OTHER
+  category           String?
+  logoAssetKey       String?
+  website            String?
+  contactName        String?
+  contactEmail       String?
+  countryCode        String?
+  notes              String?
+  lowStockThreshold  Int?
+  /// DRAFT | ACTIVE | PAUSED | ARCHIVED (legacy INACTIVE treated as not ACTIVE)
+  status             String   @default("DRAFT")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  rewards            RewardDefinition[]
+  campaigns          RewardCampaign[]
 }
 
 /// Phase 7 — Medi Coins Rewards Store catalog (loyalty points only).
@@ -1112,16 +1123,57 @@ model RewardDefinition {
   entitlementDurationDays Int?
   sortOrder             Int      @default(0)
   featured              Boolean  @default(false)
+  lowStockThreshold     Int?
   metadata              Json?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   redemptions           RewardRedemption[]
   codes                 RewardCode[]
   inventoryAdjustments  RewardInventoryAdjustment[]
+  campaigns             RewardCampaign[]
 
   @@index([status, sortOrder])
   @@index([type, status])
   @@index([featured, status])
+}
+
+/// Phase 8 — partner campaign wrapping a RewardDefinition (commercial ops).
+model RewardCampaign {
+  id                    String   @id @default(uuid())
+  key                   String   @unique
+  partnerId             String
+  partner               RewardPartner @relation(fields: [partnerId], references: [id])
+  rewardDefinitionId    String
+  reward                RewardDefinition @relation(fields: [rewardDefinitionId], references: [id])
+  name                  String
+  /// DRAFT | SCHEDULED | ACTIVE | PAUSED | ENDED | ARCHIVED
+  status                String   @default("DRAFT")
+  startsAt              DateTime?
+  endsAt                DateTime?
+  /// SPONSORED_FIXED | PER_REDEMPTION | PER_USED | AFFILIATE | INTERNAL
+  fundingModel          String?
+  budgetType            String?
+  budgetValue           Int?
+  maxRedemptions        Int?
+  perUserLimit          Int?
+  periodLimitType       String?
+  periodLimitCount      Int?
+  periodWindowDays      Int?
+  marketCountryCode     String?
+  commercialValueMinor  Int?
+  commercialCurrency    String?
+  internalCostMinor     Int?
+  lowStockThreshold     Int?
+  sortOrder             Int      @default(0)
+  createdByAdminId      String?
+  updatedByAdminId      String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  redemptions           RewardRedemption[]
+
+  @@index([partnerId, status])
+  @@index([rewardDefinitionId, status])
+  @@index([status, startsAt, endsAt])
 }
 
 /// Phase 7 — one redemption = one spend. coinCost is snapshotted.
@@ -1131,6 +1183,11 @@ model RewardRedemption {
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   rewardId           String
   reward             RewardDefinition @relation(fields: [rewardId], references: [id])
+  campaignId         String?
+  campaign           RewardCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  partnerIdSnapshot  String?
+  commercialValueMinorSnapshot Int?
+  commercialCurrencySnapshot   String?
   /// PENDING | ISSUED | USED | EXPIRED | CANCELLED
   status             String   @default("ISSUED")
   coinCost           Int
@@ -1152,6 +1209,10 @@ model RewardRedemption {
   @@index([userId, redeemedAt])
   @@index([userId, status])
   @@index([rewardId, status])
+  @@index([campaignId])
+  @@index([partnerIdSnapshot])
+  @@index([redeemedAt])
+  @@index([status, redeemedAt])
 }
 
 /// Phase 7 — partner / coupon codes. Never allocate the same code twice.
@@ -1171,6 +1232,8 @@ model RewardCode {
 
   @@unique([rewardId, code])
   @@index([rewardId, status])
+  @@index([status, expiresAt])
+  @@index([expiresAt])
 }
 
 /// Phase 7 — finite inventory audit trail (never silent stock mutation).

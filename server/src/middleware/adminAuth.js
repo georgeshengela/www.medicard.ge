@@ -19,7 +19,7 @@ export function requireAdmin(req, res, next) {
     return prisma.admin
       .findUnique({
         where: { id: payload.sub },
-        select: { id: true, email: true, fullName: true },
+        select: { id: true, email: true, fullName: true, capabilities: true },
       })
       .then((admin) => {
         if (!admin) {
@@ -28,7 +28,26 @@ export function requireAdmin(req, res, next) {
         req.admin = admin;
         return next();
       })
-      .catch(next);
+      .catch((err) => {
+        // Prisma client/schema lag: capabilities column may be missing from the generated client.
+        const msg = String(err?.message || '');
+        if (msg.includes('capabilities') || err?.name === 'PrismaClientValidationError') {
+          return prisma.admin
+            .findUnique({
+              where: { id: payload.sub },
+              select: { id: true, email: true, fullName: true },
+            })
+            .then((admin) => {
+              if (!admin) {
+                return res.status(401).json({ error: 'ადმინისტრატორი ვერ მოიძებნა.' });
+              }
+              req.admin = { ...admin, capabilities: null };
+              return next();
+            })
+            .catch(next);
+        }
+        return next(err);
+      });
   } catch {
     return res.status(401).json({ error: 'ადმინისტრატორის ტოკენი არასწორია ან ვადაგასულია.' });
   }

@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { STACK_PUSH } from '@/theme/stackMotion';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 
 export default function SymptomsLayout() {
@@ -8,7 +9,7 @@ export default function SymptomsLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: FIGMA_SYMPTOMS.white },
-        animation: 'slide_from_right',
+        ...STACK_PUSH,
       }}
     />
   );

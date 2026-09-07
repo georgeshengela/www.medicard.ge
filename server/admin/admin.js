@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'ai', 'health', 'audit', 'quality', 'settings'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'settings'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -903,6 +903,7 @@ async function switchTab(tab, opts = {}) {
     push: ['კომუნიკაცია', 'Push სტუდია', 'Medi ტექსტები, live გადახედვა და broadcast — ერთ სივრცეში.'],
     sms: ['კომუნიკაცია', 'SMS მენეჯმენტი', 'OTP, ბალანსი, გაგზავნა და გაგზავნილი მესიჯების ჟურნალი.'],
     pharmacy: ['კატალოგი', 'ფასების შედარება', 'აფთიაქების სინქრონიზაცია, პროდუქტები და სინქის ისტორია.'],
+    rewards: ['Rewards', 'Rewards Operations', 'Partners, campaigns, codes, redemptions — commercial only.'],
     ai: ['AI', 'ხარისხის ანალიზი', 'ყველა AI პასუხი იწერება, შეფასდება და გაუმჯობესდება კონტროლირებულად.'],
     settings: ['კონტროლი', 'აპის რეჟიმი', 'ოფლაინი, იძულებითი განახლება და რეგისტრაციის კარიბჭე.'],
   };
@@ -918,6 +919,7 @@ async function switchTab(tab, opts = {}) {
   if (tab === 'push') await renderPush();
   if (tab === 'sms') await renderSms();
   if (tab === 'pharmacy') await renderPharmacy();
+  if (tab === 'rewards' && typeof renderRewards === 'function') await renderRewards();
   if (tab === 'ai') await renderAi();
   if (tab === 'health' && typeof renderHealthOps === 'function') await renderHealthOps();
   if (tab === 'audit' && typeof renderAuditLog === 'function') await renderAuditLog();
@@ -971,7 +973,20 @@ function connectAdminRealtime() {
   adminSocket.on('ops:live', (snap) => {
     if (typeof window.patchOpsLive === 'function') window.patchOpsLive(snap);
   });
+  adminSocket.on('brain:sync', () => {
+    if (state.tab !== 'push' || pushStudioTab !== 'brain') return;
+    if (document.hidden || adminIsTyping()) return;
+    const drawer = $('drawer');
+    if (drawer && !drawer.classList.contains('hidden')) return;
+    if (brainSyncTimer) clearTimeout(brainSyncTimer);
+    brainSyncTimer = setTimeout(() => {
+      brainSyncTimer = null;
+      if (typeof window.patchPushBrainLive === 'function') window.patchPushBrainLive();
+    }, 600);
+  });
 }
+
+let brainSyncTimer = null;
 
 function disconnectAdminRealtime() {
   if (!adminSocket) return;
@@ -987,11 +1002,11 @@ async function refreshAdminLive() {
     return;
   }
   if (tab === 'push') {
+    // Numbers-only patch on compose-like tabs. History / devices / Brain are
+    // updated by the `brain:sync` socket event — never rebuilt on a timer.
     if (pushStudioTab === 'compose' || pushStudioTab === 'copy' || pushStudioTab === 'engage') {
       await patchPushLiveStats();
-      return;
     }
-    await renderPush();
   }
 }
 

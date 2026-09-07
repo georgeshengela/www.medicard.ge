@@ -37,22 +37,26 @@ export default function RewardsStoreScreen() {
   const [data, setData] = useState<StoreCatalog | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [liveCoins, setLiveCoins] = useState<number | null>(() => getMediCoinBalanceHint());
 
   const load = useCallback(async () => {
     if (isQuestDevEnabled() && getQuestDevScenario() !== 'LIVE') {
       setData(buildRewardsDevCatalog(getQuestDevScenario() as never) as StoreCatalog);
+      setLoadError(null);
       setLoading(false);
       return;
     }
     try {
       setData(await rewardsApi.catalog());
-    } catch {
+      setLoadError(null);
+    } catch (e) {
       setData(null);
+      setLoadError(e instanceof Error && e.message ? e.message : copy.loadFailed);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [copy.loadFailed]);
 
   useEffect(() => {
     void trackQuestEvent('rewards_store_opened');
@@ -201,6 +205,8 @@ export default function RewardsStoreScreen() {
         <Section title={copy.available}>
           {loading && !data ? (
             [0, 1].map((i) => <Bone key={i} height={96} radius={QUEST.radius} />)
+          ) : loadError ? (
+            <QuestMediLine text={loadError} />
           ) : !available.length ? (
             <QuestMediLine text={copy.emptyStore} />
           ) : (
@@ -315,6 +321,11 @@ function RewardCard({
           <Text numberOfLines={2} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 20, color: colors.text100 }}>
             {title}
           </Text>
+          {reward.partnerDisplay?.displayName ? (
+            <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16, color: colors.primary200 }}>
+              {reward.partnerDisplay.displayName}
+            </Text>
+          ) : null}
           <Text numberOfLines={2} style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 18, color: colors.text300 }}>
             {desc}
           </Text>

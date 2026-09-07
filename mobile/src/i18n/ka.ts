@@ -38,7 +38,7 @@ export const ka = {
     copied: 'დაკოპირდა',
     share: 'გაზიარება',
     seeAll: 'ყველას ნახვა',
-    offlineMode: 'ოფლაინ რეჟიმი',
+    offlineMode: 'ოფლაინ',
     offlineCached: 'ნაჩვენებია შენახული მონაცემები.',
     and: 'და',
     analyze: 'გაანალიზება',

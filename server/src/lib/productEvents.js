@@ -16,6 +16,12 @@ export const PRODUCT_EVENT_KINDS = new Set([
   'quest_wallet_opened',
   'step_setup_opened',
   'hydration_setup_opened',
+  // Phase 4 achievements
+  'achievements_opened',
+  'achievements_opened_from_hub',
+  'achievement_claim_tapped',
+  // Phase 5 smart quest ("why this goal?" sheet)
+  'quest_why_target_opened',
 ]);
 
 /** Server-authored only — never accepted from the client upsert path. */
@@ -23,6 +29,9 @@ export const SERVER_QUEST_EVENT_KINDS = Object.freeze([
   'quest_assigned',
   'quest_completed',
   'quest_claimed',
+  // Phase 5 — category carries buckets only (targetSource:difficulty:vN:cb0/1),
+  // never the exact personalized target.
+  'smart_quest_assigned',
 ]);
 
 let tableReady = false;

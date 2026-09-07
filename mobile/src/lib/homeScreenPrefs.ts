@@ -9,12 +9,17 @@ const KEYS = {
   promptSeen: 'medicard.home.cyclePromptSeen',
 } as const;
 
+let landingCache: HomeLanding | null = null;
+
 export async function getHomeLanding(): Promise<HomeLanding> {
+  if (landingCache) return landingCache;
   const value = await getPreference(KEYS.landing);
-  return value === 'cycle' ? 'cycle' : 'hub';
+  landingCache = value === 'cycle' ? 'cycle' : 'hub';
+  return landingCache;
 }
 
 export async function setHomeLanding(landing: HomeLanding): Promise<void> {
+  landingCache = landing;
   await setPreference(KEYS.landing, landing);
 }
 

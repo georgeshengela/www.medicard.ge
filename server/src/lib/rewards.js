@@ -20,6 +20,8 @@ import {
   rewardCatalogSeedRows,
 } from './rewardDefs.js';
 import { getRewardBalance } from './quest.js';
+import { findLiveCampaignForReward, explainMissingLiveCampaign } from './rewardCampaignRuntime.js';
+import { PARTNER_STATUSES } from './rewardCampaignDefs.js';
 
 const SUCCESS_STATUSES = new Set([REDEMPTION_STATUSES.ISSUED, REDEMPTION_STATUSES.USED]);
 
@@ -220,7 +222,11 @@ async function codePoolAvailable(tx, rewardId) {
 async function reserveCode(tx, rewardId, redemptionId, now) {
   // Atomic claim: updateMany with status filter → only one winner under concurrency.
   const candidates = await tx.rewardCode.findMany({
-    where: { rewardId, status: CODE_STATUSES.AVAILABLE },
+    where: {
+      rewardId,
+      status: CODE_STATUSES.AVAILABLE,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    },
     orderBy: { createdAt: 'asc' },
     take: 8,
   });
@@ -310,6 +316,7 @@ function publicPartner(partner) {
     key: partner.key,
     displayName: partner.displayName,
     logoAssetKey: partner.logoAssetKey || null,
+    category: partner.category || null,
   };
 }
 
@@ -329,6 +336,9 @@ function publicReward(reward, extras = {}) {
     inventoryRemaining: inventory.remaining,
     featured: Boolean(reward.featured),
     partnerDisplay: publicPartner(reward.partner),
+    campaignKey: extras.campaignKey || null,
+    commercialValueMinor: extras.commercialValueMinor ?? null,
+    commercialCurrency: extras.commercialCurrency || null,
     validUntil: reward.endsAt instanceof Date ? reward.endsAt.toISOString() : reward.endsAt || null,
     redemptionExpiryDays: reward.redemptionExpiryDays ?? null,
     entitlementKey: reward.entitlementKey || null,
@@ -420,6 +430,21 @@ export async function listStoreRewards(userId, options = {}) {
     if (reward.metadata?.neverShowInProduction) continue;
     if (reward.startsAt && new Date(reward.startsAt) > now) continue;
     if (reward.endsAt && new Date(reward.endsAt) < now) continue;
+    // Phase 8 — partner must be ACTIVE when linked
+    if (reward.partnerId && reward.partner && reward.partner.status !== PARTNER_STATUSES.ACTIVE) {
+      continue;
+    }
+    // If campaigns exist for this reward, require a live one (first-party w/o campaigns OK)
+    let liveCampaign = null;
+    if (typeof db.rewardCampaign?.count === 'function') {
+      const campaignCount = await db.rewardCampaign.count({
+        where: { rewardDefinitionId: reward.id },
+      });
+      if (campaignCount > 0) {
+        liveCampaign = await findLiveCampaignForReward(db, reward.id, now);
+        if (!liveCampaign) continue;
+      }
+    }
     const count = await countUserRedemptions(db, userId, reward.id);
     const availableCodes =
       reward.inventoryMode === INVENTORY_MODES.CODE_POOL ? await codePoolAvailable(db, reward.id) : null;
@@ -431,6 +456,9 @@ export async function listStoreRewards(userId, options = {}) {
         userBalance: balance.coins,
         inventory: eligibility.inventory,
         availableCodes,
+        campaignKey: liveCampaign?.key || null,
+        commercialValueMinor: liveCampaign?.commercialValueMinor ?? null,
+        commercialCurrency: liveCampaign?.commercialCurrency || null,
       }),
     );
   }
@@ -454,6 +482,19 @@ export async function getStoreReward(userId, rewardId, options = {}) {
   if (!reward || reward.status !== REWARD_STATUSES.ACTIVE || reward.metadata?.neverShowInProduction) {
     throw httpError('ჯილდო ვერ მოიძებნა.', 404, 'REWARD_NOT_FOUND');
   }
+  if (reward.partnerId && reward.partner && reward.partner.status !== PARTNER_STATUSES.ACTIVE) {
+    throw httpError('ჯილდო ვერ მოიძებნა.', 404, 'REWARD_NOT_FOUND');
+  }
+  let liveCampaign = null;
+  if (typeof db.rewardCampaign?.count === 'function') {
+    const campaignCount = await db.rewardCampaign.count({
+      where: { rewardDefinitionId: reward.id },
+    });
+    if (campaignCount > 0) {
+      liveCampaign = await findLiveCampaignForReward(db, reward.id, now);
+      if (!liveCampaign) throw httpError('ჯილდო ვერ მოიძებნა.', 404, 'REWARD_NOT_FOUND');
+    }
+  }
   const count = await countUserRedemptions(db, userId, reward.id);
   const availableCodes =
     reward.inventoryMode === INVENTORY_MODES.CODE_POOL ? await codePoolAvailable(db, reward.id) : null;
@@ -464,6 +505,9 @@ export async function getStoreReward(userId, rewardId, options = {}) {
     userBalance: balance.coins,
     inventory: eligibility.inventory,
     availableCodes,
+    campaignKey: liveCampaign?.key || null,
+    commercialValueMinor: liveCampaign?.commercialValueMinor ?? null,
+    commercialCurrency: liveCampaign?.commercialCurrency || null,
   });
 }
 
@@ -582,6 +626,33 @@ export async function redeemReward(userId, rewardId, options = {}) {
       include: { partner: true },
     });
     assertRewardRedeemable(reward, now);
+    if (reward.partnerId && reward.partner && reward.partner.status !== PARTNER_STATUSES.ACTIVE) {
+      throw httpError('პარტნიორი მიუწვდომელია.', 409, 'REWARD_PARTNER_INACTIVE');
+    }
+    let liveCampaign = null;
+    if (typeof tx.rewardCampaign?.count === 'function') {
+      const campaignCount = await tx.rewardCampaign.count({
+        where: { rewardDefinitionId: reward.id },
+      });
+      if (campaignCount > 0) {
+        liveCampaign = await findLiveCampaignForReward(tx, reward.id, now);
+        if (!liveCampaign) {
+          const why = await explainMissingLiveCampaign(tx, reward.id, now);
+          throw httpError(why.message, 409, why.code);
+        }
+        if (liveCampaign.maxRedemptions != null) {
+          const issued = await tx.rewardRedemption.count({
+            where: {
+              campaignId: liveCampaign.id,
+              status: { in: [...SUCCESS_STATUSES] },
+            },
+          });
+          if (issued >= Number(liveCampaign.maxRedemptions)) {
+            throw httpError('კამპანიის ლიმიტი ამოწურულია.', 409, 'REWARD_CAMPAIGN_LIMIT');
+          }
+        }
+      }
+    }
     await assertUserLimits(tx, userId, reward, now, timeZone);
 
     if (reward.inventoryMode === INVENTORY_MODES.FINITE) {
@@ -628,22 +699,36 @@ export async function redeemReward(userId, rewardId, options = {}) {
     } else if (reward.entitlementDurationDays != null) {
       expiresAt = new Date(now.getTime() + Number(reward.entitlementDurationDays) * 86_400_000);
     }
+    if (codeRow?.expiresAt) {
+      const codeExp = new Date(codeRow.expiresAt);
+      if (!expiresAt || codeExp < expiresAt) expiresAt = codeExp;
+    }
 
     let redemption;
     try {
-      redemption = await tx.rewardRedemption.create({
-        data: {
-          id: redemptionId,
-          userId,
-          rewardId: reward.id,
-          status: REDEMPTION_STATUSES.ISSUED,
-          coinCost: reward.coinCost,
-          codeId: codeRow?.id || null,
-          idempotencyKey,
-          redeemedAt: now,
-          expiresAt,
-        },
-      });
+      const createData = {
+        id: redemptionId,
+        userId,
+        rewardId: reward.id,
+        status: REDEMPTION_STATUSES.ISSUED,
+        coinCost: reward.coinCost,
+        codeId: codeRow?.id || null,
+        idempotencyKey,
+        redeemedAt: now,
+        expiresAt,
+      };
+      // Phase 8 snapshot fields (ignored if client/schema lag)
+      if (liveCampaign?.id) createData.campaignId = liveCampaign.id;
+      if (liveCampaign?.partnerId || reward.partnerId) {
+        createData.partnerIdSnapshot = liveCampaign?.partnerId || reward.partnerId;
+      }
+      if (liveCampaign?.commercialValueMinor != null) {
+        createData.commercialValueMinorSnapshot = liveCampaign.commercialValueMinor;
+      }
+      if (liveCampaign?.commercialCurrency) {
+        createData.commercialCurrencySnapshot = liveCampaign.commercialCurrency;
+      }
+      redemption = await tx.rewardRedemption.create({ data: createData });
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw httpError('გაცვლა უკვე შესრულდა.', 409, 'REWARD_ALREADY_REDEEMED');

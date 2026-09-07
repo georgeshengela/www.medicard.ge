@@ -13,7 +13,15 @@ export type StoreReward = {
   inventoryState: string;
   inventoryRemaining: number | null;
   featured: boolean;
-  partnerDisplay: { key: string; displayName: string; logoAssetKey: string | null } | null;
+  partnerDisplay: {
+    key: string;
+    displayName: string;
+    logoAssetKey: string | null;
+    category?: string | null;
+  } | null;
+  campaignKey?: string | null;
+  commercialValueMinor?: number | null;
+  commercialCurrency?: string | null;
   validUntil: string | null;
   redemptionExpiryDays: number | null;
   entitlementKey: string | null;

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, Flame } from 'lucide-react-native';
@@ -172,7 +172,6 @@ export function HomeMediQuestSection() {
 
   return (
     <Section title={copy.section}>
-      <Animated.View entering={reduce ? undefined : FadeInDown.duration(QUEST.motion.base).springify().damping(18)}>
         <Shell onPress={openHub} accessibilityLabel={a11y}>
           <Wash />
 
@@ -316,7 +315,6 @@ export function HomeMediQuestSection() {
             </Text>
           ) : null}
         </Shell>
-      </Animated.View>
       {/* Sits on the empty right half of the section title row, clear of the card title. */}
       <QuestRewardFloat text={floatReward} top={-6} align="end" inset={QUEST.pad} />
     </Section>

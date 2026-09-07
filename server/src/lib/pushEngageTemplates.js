@@ -298,5 +298,50 @@ export const PUSH_ENGAGE_TEMPLATE_DEFAULTS = [
     "body": "ბოლო დღეებში რამდენიმე მიღება გამოგვრჩა. თუ გინდა, შეხსენების დრო ერთად მოვარგოთ შენს რეჟიმს.",
     "placeholders": [],
     "sample": {}
+  },
+  {
+    "key": "engage-quest-near-complete",
+    "group": "engage",
+    "label": "Quest Smart · near complete",
+    "title": "ცოტა დაგვრჩა 💚",
+    "body": "თუ მოგინდება, პატარა მოძრაობაც საკმარისი იქნება.",
+    "placeholders": [],
+    "sample": {}
+  },
+  {
+    "key": "engage-quest-weather-window",
+    "group": "engage",
+    "label": "Quest Smart · weather window",
+    "title": "სასიამოვნო დრო ჩანს გასასეირნებლად ☀️",
+    "body": "თუ გარეთ გასვლა მოგინდება, {windowStart}–{windowEnd} კარგი ფანჯარა ჩანს.",
+    "placeholders": ["windowStart", "windowEnd"],
+    "sample": { "windowStart": "17:00", "windowEnd": "18:30" }
+  },
+  {
+    "key": "engage-quest-comeback",
+    "group": "engage",
+    "label": "Quest Smart · comeback",
+    "title": "დღეს მარტივად დავიწყოთ 💚",
+    "body": "რეკორდები არ გვჭირდება — უბრალოდ რიტმს დავუბრუნდეთ.",
+    "placeholders": [],
+    "sample": {}
+  },
+  {
+    "key": "engage-quest-morning-plan",
+    "group": "engage",
+    "label": "Quest Smart · morning plan",
+    "title": "დღის პატარა გეგმა მზადაა",
+    "body": "დღევანდელი Medi Quest შენს რიტმს მოვარგე — როცა მოგინდება, იქ დაგხვდება.",
+    "placeholders": [],
+    "sample": {}
+  },
+  {
+    "key": "engage-quest-weekly-progress",
+    "group": "engage",
+    "label": "Quest Smart · weekly progress",
+    "title": "კვირის მისია კარგად მიდის 💚",
+    "body": "ამ კვირის მიზანთან ახლოს ხარ — ცოტა დაგვრჩა.",
+    "placeholders": [],
+    "sample": {}
   }
 ];

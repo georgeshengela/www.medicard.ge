@@ -24,6 +24,7 @@ import { medicationsRouter } from './routes/medications.routes.js';
 import { visitsRouter } from './routes/visits.routes.js';
 import { usageRouter } from './routes/usage.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
+import { adminRewardsRouter } from './routes/adminRewards.routes.js';
 import { appRouter } from './routes/app.routes.js';
 import { cycleRouter, partnerShareClosedHandler } from './routes/cycle.routes.js';
 import { applyPrivateCache } from './lib/cycleShare.js';
@@ -184,6 +185,7 @@ app.use('/api/achievements', achievementsRouter);
 app.use('/api/rewards', rewardsRouter);
 app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/admin/rewards', adminRewardsRouter);
 
 if (serveAdmin) {
   // Must be registered before the marketing-site fallback, otherwise /admin becomes the landing page.

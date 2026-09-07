@@ -34,6 +34,7 @@ export const ENGAGE_TOPICS: EngageTopic[] = [
   'unfinished',
   'visitFollowup',
   'weather',
+  'questSmart',
 ];
 
 const PREFS_KEY = 'medicard.engage.prefs.v1';

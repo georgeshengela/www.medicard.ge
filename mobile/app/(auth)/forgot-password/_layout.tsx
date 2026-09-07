@@ -1,12 +1,13 @@
 import React from 'react';
 import { Stack } from 'expo-router';
 import { useThemeColors } from '@/theme/colors';
+import { STACK_PUSH } from '@/theme/stackMotion';
 
 export default function ForgotPasswordLayout() {
   const colors = useThemeColors();
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg100 } }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg100 }, ...STACK_PUSH }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="email" />
       <Stack.Screen name="sent" />

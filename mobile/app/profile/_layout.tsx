@@ -1,11 +1,12 @@
 import { Stack } from 'expo-router';
+import { STACK_PUSH } from '@/theme/stackMotion';
 
 export default function ProfileLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'slide_from_right',
+        ...STACK_PUSH,
       }}
     />
   );

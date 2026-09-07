@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { STACK_PUSH } from '@/theme/stackMotion';
 import { useFigmaLab } from '@/constants/figmaLabLayout';
 
 export default function LabLayout() {
@@ -8,7 +9,7 @@ export default function LabLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: T.pageBg },
-        animation: 'slide_from_right',
+        ...STACK_PUSH,
       }}
     />
   );

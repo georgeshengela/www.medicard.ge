@@ -1,11 +1,12 @@
 import { Stack } from 'expo-router';
+import { STACK_PUSH } from '@/theme/stackMotion';
 
 export default function HealthMetricsLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'slide_from_right',
+        ...STACK_PUSH,
       }}
     >
       <Stack.Screen name="weight/goal/pace" options={{ gestureEnabled: false, fullScreenGestureEnabled: false }} />

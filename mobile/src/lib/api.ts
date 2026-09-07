@@ -930,7 +930,7 @@ function safeParse(text: string): Record<string, unknown> {
 type AuthResponse = { token: string; user: User; usage: Usage };
 
 export const api = {
-  health: () => request<{ status: string }>('/health', { token: null, timeoutMs: 5_000 }),
+  health: () => request<{ status: string }>('/health', { token: null, timeoutMs: 12_000 }),
 
   app: {
     status: (version: string) =>

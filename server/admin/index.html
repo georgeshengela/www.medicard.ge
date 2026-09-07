@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="./admin.css?v=ops8" />
   <link rel="stylesheet" href="./admin-v24.css?v=ops10" />
   <link rel="stylesheet" href="./admin-v25.css?v=ops23" />
+  <link rel="stylesheet" href="./admin-v26.css?v=v26.2" />
 </head>
 <body>
   <div id="login-view" class="login-shell">
@@ -83,6 +84,7 @@
         <button data-tab="packages" class="nav" data-icon="layers" title="პაკეტები"><span class="nav-label">პაკეტები</span></button>
         <button data-tab="sms" class="nav" data-icon="send" title="SMS"><span class="nav-label">SMS</span></button>
         <button data-tab="pharmacy" class="nav" data-icon="pill" title="ფარმაცია"><span class="nav-label">ფარმაცია</span></button>
+        <button data-tab="rewards" class="nav" data-icon="layers" title="Rewards"><span class="nav-label">Rewards</span></button>
         <button data-tab="quality" class="nav" data-icon="activity" title="ხარისხი"><span class="nav-label">ხარისხი</span></button>
         <button data-tab="audit" class="nav" data-icon="file" title="აუდიტი"><span class="nav-label">აუდიტი</span></button>
         <button data-tab="settings" class="nav" data-icon="settings" title="აპის რეჟიმი"><span class="nav-label">რეჟიმი</span></button>
@@ -116,6 +118,7 @@
       <section id="tab-push" class="panel hidden"></section>
       <section id="tab-sms" class="panel hidden"></section>
       <section id="tab-pharmacy" class="panel hidden"></section>
+      <section id="tab-rewards" class="panel hidden"></section>
       <section id="tab-ai" class="panel hidden"></section>
       <section id="tab-health" class="panel hidden"></section>
       <section id="tab-quality" class="panel hidden"></section>
@@ -139,7 +142,8 @@
 
   <div id="toasts" class="toasts"></div>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="./ops-center.js?v=ops23"></script>
-  <script src="./admin.js?v=ops23"></script>
+  <script src="./ops-center.js?v=v26.3"></script>
+  <script src="./admin.js?v=v26.4"></script>
+  <script src="./rewards-admin.js?v=v35.1"></script>
 </body>
 </html>

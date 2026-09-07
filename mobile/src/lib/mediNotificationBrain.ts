@@ -160,6 +160,88 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
   } catch {
     weather = null;
   }
+  let quest: EngageSnapshot['quest'] = null;
+  try {
+    const { readQuestCache } = await import('@/lib/quest/cache');
+    const cached = await readQuestCache();
+    const dash = cached?.dashboard;
+    if (dash && !dash.unavailable) {
+      let questWeather: NonNullable<EngageSnapshot['quest']>['weather'] = null;
+      try {
+        const { readDevQuestWeather } = await import('@/lib/weather/devFixture');
+        const devWx = readDevQuestWeather(now);
+        if (devWx !== undefined) {
+          questWeather = devWx;
+        } else {
+          const { loadWeatherWellnessContext } = await import('@/lib/weather/context');
+          const { getWeatherWellnessRecommendation } = await import('@/lib/weather');
+          const { readWeatherCache, isCacheFresh } = await import('@/lib/weather/cache');
+          const wxCache = await readWeatherCache();
+          if (wxCache?.snapshot && isCacheFresh(wxCache)) {
+            const ctx = await loadWeatherWellnessContext({
+              profile: health,
+              userKey: user?.id ?? null,
+              loggedPain,
+              now,
+            });
+            const rec = getWeatherWellnessRecommendation(wxCache.snapshot, ctx);
+            questWeather = {
+              category: rec.category,
+              severity: rec.severity,
+              stale: Boolean(rec.adviceKind === 'cached'),
+              bestOutdoorWindow: rec.bestOutdoorWindow
+                ? {
+                    start: rec.bestOutdoorWindow.start,
+                    end: rec.bestOutdoorWindow.end,
+                    startIso: rec.bestOutdoorWindow.startIso,
+                    endIso: rec.bestOutdoorWindow.endIso,
+                  }
+                : null,
+            };
+          }
+        }
+      } catch {
+        questWeather = null;
+      }
+      quest = {
+        daily: (dash.daily?.quests || []).map((q) => ({
+          id: q.id,
+          key: q.key,
+          progressType: q.progressType,
+          cadence: q.cadence,
+          status: q.status,
+          progress: q.progress,
+          target: q.target,
+          progressPercent: q.progressPercent,
+          targetSource: q.targetSource ?? null,
+          difficulty: q.difficulty ?? null,
+          reasonKey: q.reasonKey ?? null,
+          periodKey: q.periodKey,
+        })),
+        weekly: (dash.weekly?.quests || []).map((q) => ({
+          id: q.id,
+          key: q.key,
+          progressType: q.progressType,
+          cadence: q.cadence,
+          status: q.status,
+          progress: q.progress,
+          target: q.target,
+          progressPercent: q.progressPercent,
+          targetSource: q.targetSource ?? null,
+          difficulty: q.difficulty ?? null,
+          periodKey: q.periodKey,
+        })),
+        hasQuestHistory: Boolean(
+          (dash.profile?.longestStreak ?? 0) > 0 ||
+            (dash.profile?.totalXp ?? 0) > 0 ||
+            (dash.summary?.dailyCompleted ?? 0) > 0,
+        ),
+        weather: questWeather,
+      };
+    }
+  } catch {
+    quest = null;
+  }
   return {
     now,
     lastOpenAt,
@@ -189,6 +271,7 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
     sent,
     prefs,
     weather,
+    quest,
   };
 }
 
@@ -268,6 +351,8 @@ export async function runMediNotificationBrain(
           signalHash: row.signalHash,
           entityId: row.entityId ?? '',
           validUntil: row.validUntil ?? 0,
+          candidateType: row.candidateType ?? '',
+          windowStartIso: typeof row.vars.windowStartIso === 'string' ? row.vars.windowStartIso : '',
         },
       },
       trigger: {
@@ -314,6 +399,20 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
   let weatherWindowGone = false;
   let weatherRainChanged = false;
   let stepsGoalReached = false;
+  let questDaily: Array<Record<string, unknown>> = [];
+  let questWeekly: Array<Record<string, unknown>> = [];
+  let questWeather: {
+    category: string;
+    severity?: string | null;
+    stale: boolean;
+    bestOutdoorWindow?: {
+      start?: string;
+      end?: string;
+      startIso?: string;
+      endIso?: string;
+    } | null;
+  } | null = null;
+  let weatherWindowChanged = false;
   if (String(data.family || '') === 'weatherWellness') {
     try {
       const { recheckWeatherForDelivery, weatherKeyToCandidate } = await import('@/lib/weather/engage');
@@ -328,6 +427,66 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
       stepsGoalReached = check.stepsGoalReached;
     } catch {
       weatherWindowGone = true;
+    }
+  }
+  if (String(data.family || '') === 'questSmart') {
+    try {
+      const { readQuestCache } = await import('@/lib/quest/cache');
+      const qCached = await readQuestCache();
+      const dash = qCached?.dashboard;
+      if (dash) {
+        questDaily = dash.daily?.quests || [];
+        questWeekly = dash.weekly?.quests || [];
+      }
+      const { readDevQuestWeather } = await import('@/lib/weather/devFixture');
+      const nowLive = new Date();
+      const devWx = readDevQuestWeather(nowLive);
+      if (devWx !== undefined) {
+        questWeather = devWx;
+      } else {
+        const { readWeatherCache, isCacheFresh } = await import('@/lib/weather/cache');
+        const { getWeatherWellnessRecommendation } = await import('@/lib/weather');
+        const { loadWeatherWellnessContext } = await import('@/lib/weather/context');
+        const wxCache = await readWeatherCache();
+        if (!wxCache?.snapshot || !isCacheFresh(wxCache)) {
+          questWeather = null;
+          weatherWindowChanged = String(data.templateKey || '') === 'engage-quest-weather-window';
+        } else {
+          const ctx = await loadWeatherWellnessContext({
+            profile: lastActor.health,
+            userKey: lastActor.user?.id ?? null,
+            loggedPain: cached?.loggedPain ?? false,
+            now: nowLive,
+          });
+          const rec = getWeatherWellnessRecommendation(wxCache.snapshot, ctx);
+          questWeather = {
+            category: rec.category,
+            severity: rec.severity,
+            stale: rec.adviceKind === 'cached',
+            bestOutdoorWindow: rec.bestOutdoorWindow
+              ? {
+                  start: rec.bestOutdoorWindow.start,
+                  end: rec.bestOutdoorWindow.end,
+                  startIso: rec.bestOutdoorWindow.startIso,
+                  endIso: rec.bestOutdoorWindow.endIso,
+                }
+              : null,
+          };
+          const expectedStart = typeof data.windowStartIso === 'string' ? data.windowStartIso : '';
+          if (
+            expectedStart &&
+            rec.bestOutdoorWindow?.startIso &&
+            Math.abs(new Date(expectedStart).getTime() - new Date(rec.bestOutdoorWindow.startIso).getTime()) > 45 * 60_000
+          ) {
+            weatherWindowChanged = true;
+          }
+        }
+      }
+    } catch {
+      if (String(data.templateKey || '') === 'engage-quest-weather-window') {
+        weatherWindowChanged = true;
+        questWeather = null;
+      }
     }
   }
   const live = {
@@ -348,6 +507,11 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
     stepsGoalReached,
     weatherWindowGone,
     weatherRainChanged,
+    daily: questDaily,
+    weekly: questWeekly,
+    weather: questWeather,
+    weatherWindowChanged,
+    openedRecently: Boolean(lastOpenAt && Date.now() - lastOpenAt < 90 * 60_000),
   };
   void prefs;
   return revalidateEngageCandidate(
@@ -358,6 +522,7 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
       signalHash: typeof data.signalHash === 'string' ? data.signalHash : undefined,
       entityId: typeof data.entityId === 'string' ? data.entityId : undefined,
       validUntil: typeof data.validUntil === 'number' ? data.validUntil : undefined,
+      candidateType: typeof data.candidateType === 'string' ? data.candidateType : undefined,
       medicationId,
       time,
     },

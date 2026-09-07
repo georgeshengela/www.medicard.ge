@@ -19,7 +19,8 @@ export type EngageTopic =
   | 'morning'
   | 'unfinished'
   | 'visitFollowup'
-  | 'weather';
+  | 'weather'
+  | 'questSmart';
 
 export type MediEngagePrefs = {
   topics: Record<EngageTopic, boolean>;
@@ -50,6 +51,7 @@ export const DEFAULT_ENGAGE_PREFS: MediEngagePrefs = {
     unfinished: true,
     visitFollowup: true,
     weather: true,
+    questSmart: true,
   },
   discreet: false,
   quietStart: '22:00',
@@ -122,6 +124,7 @@ export const FAMILY_COOLDOWN_HOURS: Record<string, number> = {
   unfinished: 24,
   visitFollowup: 5 * 24,
   weatherWellness: 22,
+  questSmart: 20,
   achievement: 0,
   reengage: 0,
 };

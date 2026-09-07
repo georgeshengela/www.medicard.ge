@@ -1018,6 +1018,49 @@ async function renderPushBrainPanel(host) {
   }
 }
 
+/* Real-time patch: updates Brain numbers + log in place (no skeleton, no rebuild).
+   Called from admin.js on the `brain:sync` socket event. */
+async function patchPushBrainLive() {
+  const host = document.getElementById('push-brain-host');
+  if (!host || !host.querySelector('.v25-dec-strip')) return;
+  try {
+    const [data, list] = await Promise.all([
+      api('/analytics/notifications?' + opsQs()),
+      api('/notifications/decisions?' + opsQs() + opsDecisionFilterQs() + '&limit=40'),
+    ]);
+    const f = data.funnel || {};
+    const strip = host.querySelector('.v25-dec-strip');
+    if (strip) {
+      const vals = [f.evaluated, f.scheduled, f.delivered, f.opened, f.actioned, f.suppressed, f.cancelled];
+      strip.querySelectorAll('.v25-dec-cell strong').forEach((el, i) => {
+        if (i >= vals.length) return;
+        const next = opsFmt(vals[i]);
+        if (el.textContent !== next) el.textContent = next;
+      });
+    }
+    const rates = host.querySelector('.v25-dec-rates');
+    if (rates) {
+      const rvals = [f.rates?.delivery, f.rates?.open, f.rates?.action, f.rates?.directAction, f.rates?.suppression];
+      rates.querySelectorAll('strong').forEach((el, i) => {
+        if (i < rvals.length) el.textContent = opsRate(rvals[i]);
+      });
+    }
+    // Refresh the log only when the operator isn't mid-search / mid-filter.
+    const q = document.getElementById('dec-q');
+    const searching = Boolean((q && q.value.trim()) || opsState.decisionFilter);
+    const body = document.getElementById('dec-body');
+    if (body && !searching) {
+      body.innerHTML = decisionRows(list.decisions);
+      body.querySelectorAll('tr[data-id]').forEach((tr) => {
+        tr.onclick = () => openDecisionDrawer(tr.dataset.id);
+      });
+    }
+  } catch {
+    /* silent — next socket event retries */
+  }
+}
+window.patchPushBrainLive = patchPushBrainLive;
+
 function decisionRows(rows) {
   if (!rows?.length) return `<tr><td colspan="7">${opsEmpty('ამ პერიოდში შეტყობინების გადაწყვეტილება არ არის.', 'Brain წერს კვალს ტელეფონზე; 23.0.3+ აქ სინქრონდება.')}</td></tr>`;
   return rows.map((row) => `

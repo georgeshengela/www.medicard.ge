@@ -1,31 +1,59 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { api } from '@/lib/api';
 
-/** True when the API health check cannot be reached (airplane / no network). */
-export function useOffline(): boolean {
-  const [offline, setOffline] = useState(false);
+/**
+ * One shared ping for the whole app. A single missed `/health` (Render wake,
+ * 5s blip, emulator DNS) used to flip every screen into "offline mode".
+ * Need two failures in a row before we believe it.
+ */
+let offline = false;
+let fails = 0;
+let watching = false;
+const listeners = new Set<() => void>();
 
-  const check = useCallback(async () => {
-    try {
-      await api.health();
-      setOffline(false);
-    } catch {
-      setOffline(true);
+function emit() {
+  listeners.forEach((listener) => listener());
+}
+
+async function ping() {
+  try {
+    await api.health();
+    fails = 0;
+    if (offline) {
+      offline = false;
+      emit();
     }
-  }, []);
+  } catch {
+    fails += 1;
+    if (fails >= 2 && !offline) {
+      offline = true;
+      emit();
+    }
+  }
+}
 
+function startWatch() {
+  if (watching) return;
+  watching = true;
+  void ping();
+  AppState.addEventListener('change', (next) => {
+    if (next === 'active') void ping();
+  });
+  setInterval(() => void ping(), 20_000);
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** True only after confirmed API unreachability — not a first-paint guess. */
+export function useOffline(): boolean {
   useEffect(() => {
-    void check();
-    const app = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void check();
-    });
-    const timer = setInterval(() => void check(), offline ? 8_000 : 20_000);
-    return () => {
-      app.remove();
-      clearInterval(timer);
-    };
-  }, [check, offline]);
-
-  return offline;
+    startWatch();
+  }, []);
+  return useSyncExternalStore(subscribe, () => offline, () => false);
 }

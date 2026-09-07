@@ -2,8 +2,8 @@ import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, G } from 'react-native-svg';
+import { Meteocon, meteoconSlugFor } from '@/components/weather/Meteocon';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { weatherIconFor } from '@/components/weather/weatherIcons';
 import type { WeatherCondition, WeatherRecommendation } from '@/lib/weather';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -18,13 +18,13 @@ type Props = {
   size?: number;
 };
 
-export function WeatherEmblem({ icon, isDay, accent, track, fill, score, size = 52 }: Props) {
-  const Icon = weatherIconFor(icon, isDay);
+export function WeatherEmblem({ icon, isDay, accent, track, fill, score, size = 64 }: Props) {
+  const slug = meteoconSlugFor(icon, isDay);
   const reduce = usePrefersReducedMotion();
-  const stroke = size >= 64 ? 5 : 4;
+  const stroke = size >= 72 ? 5 : 4;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const inner = Math.round(size * 0.7);
+  const inner = Math.round(size * 0.78);
   const progress = Math.max(0, Math.min(1, (score ?? 0) / 100));
   const anim = useSharedValue(reduce ? progress : 0);
 
@@ -39,7 +39,7 @@ export function WeatherEmblem({ icon, isDay, accent, track, fill, score, size = 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={track} strokeWidth={stroke} fill="none" />
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke={track} strokeWidth={stroke} fill={fill} />
         <G transform={`rotate(-90 ${size / 2} ${size / 2})`}>
           <AnimatedCircle
             cx={size / 2}
@@ -54,18 +54,7 @@ export function WeatherEmblem({ icon, isDay, accent, track, fill, score, size = 
           />
         </G>
       </Svg>
-      <View
-        style={{
-          width: inner,
-          height: inner,
-          borderRadius: inner / 2,
-          backgroundColor: fill,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Icon size={Math.round(size * 0.34)} color={accent} strokeWidth={2.15} />
-      </View>
+      <Meteocon slug={slug} size={inner} />
     </View>
   );
 }

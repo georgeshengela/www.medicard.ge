@@ -1,4 +1,5 @@
 import { cooldownMsForFamily } from './mediEngageModel.ts';
+import { revalidateQuestSmart, QUEST_SMART_REASON } from './quest/questSmartEngage.js';
 
 export type EngageSentLike = { key: string; family: string; at: number; ymd: string };
 export type UnfinishedLike = { kind: string; route: string; name?: string; updatedAt: number };
@@ -22,6 +23,43 @@ export type EngageLiveSignals = {
   weatherWindowGone?: boolean;
   weatherRainChanged?: boolean;
   weatherCandidate?: string | null;
+  /** Phase 6 Quest Smart live revalidation */
+  daily?: Array<{
+    id: string;
+    key: string | null;
+    progressType: string | null;
+    cadence?: string | null;
+    status: string;
+    progress: number;
+    target: number;
+    progressPercent: number;
+    targetSource?: string | null;
+  }>;
+  weekly?: Array<{
+    id: string;
+    key: string | null;
+    progressType: string | null;
+    cadence?: string | null;
+    status: string;
+    progress: number;
+    target: number;
+    progressPercent: number;
+    targetSource?: string | null;
+  }>;
+  weather?: {
+    category: string;
+    severity?: string | null;
+    stale: boolean;
+    bestOutdoorWindow?: {
+      start?: string;
+      end?: string;
+      startIso?: string;
+      endIso?: string;
+    } | null;
+  } | null;
+  weatherWindowChanged?: boolean;
+  smartQuestSentToday?: boolean;
+  openedRecently?: boolean;
 };
 
 export type EngagePayload = {
@@ -34,6 +72,8 @@ export type EngagePayload = {
   validUntil?: number;
   medicationId?: string;
   time?: string;
+  candidateType?: string;
+  questSmartType?: string;
 };
 
 export function newDecisionId(now = Date.now(), salt = Math.random()): string {
@@ -46,7 +86,7 @@ export function engageSignalHash(
     EngageLiveSignals,
     'hydrationMl' | 'hydrationGoal' | 'loggedPain' | 'seenWeekly' | 'unfinished' | 'recentVisitId' | 'missingProfileField' | 'todaySteps'
   >,
-  extra?: { key?: string; entityId?: string },
+  extra?: { key?: string; entityId?: string; candidateType?: string },
 ): string {
   switch (family) {
     case 'hydration':
@@ -65,6 +105,8 @@ export function engageSignalHash(
       return `achieve:${extra?.key ?? ''}`;
     case 'weatherWellness':
       return `weather:${extra?.key ?? ''}:pain:${live.loggedPain ? 1 : 0}`;
+    case 'questSmart':
+      return `questSmart:${extra?.candidateType || extra?.key || ''}:pain:${live.loggedPain ? 1 : 0}`;
     default:
       return `${family}:${extra?.key ?? ''}`;
   }
@@ -154,6 +196,35 @@ export function revalidateEngageCandidate(payload: EngagePayload, live: EngageLi
 
   if (family === 'achievement' && key && sentKeySince(live.sent, key, now - 7 * 86_400_000)) {
     return { ok: false, reason: 'achievement_already_sent' };
+  }
+
+  if (family === 'questSmart') {
+    const todayYmd = `${live.now.getFullYear()}-${String(live.now.getMonth() + 1).padStart(2, '0')}-${String(live.now.getDate()).padStart(2, '0')}`;
+    const smartQuestSentToday = live.sent.some((row) => row.family === 'questSmart' && row.ymd === todayYmd);
+    const result = revalidateQuestSmart(
+      {
+        templateKey: key,
+        candidateType: payload.candidateType || payload.questSmartType,
+      },
+      {
+        now: live.now,
+        lastOpenAt: live.lastOpenAt,
+        openedRecently: live.openedRecently,
+        loggedPain: live.loggedPain,
+        daily: live.daily || [],
+        weekly: live.weekly || [],
+        weather: live.weather || null,
+        weatherWindowChanged: live.weatherWindowChanged,
+        smartQuestSentToday,
+      },
+    );
+    if (!result.ok) return result;
+    const coolQs = cooldownMsForFamily('questSmart');
+    const lastQs = lastFamilyAt(live.sent, 'questSmart');
+    if (coolQs && lastQs && now - lastQs < coolQs) {
+      return { ok: false, reason: QUEST_SMART_REASON.QUEST_FAMILY_COOLDOWN };
+    }
+    return { ok: true, reason: null };
   }
 
   if (key === 'engage-insight-meds' && live.medMissedWeek < 3) {

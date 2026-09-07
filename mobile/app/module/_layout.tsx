@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { STACK_PUSH } from '@/theme/stackMotion';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 
 export default function ModuleLayout() {
@@ -8,7 +9,7 @@ export default function ModuleLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: FIGMA_CHAT.cardBg },
-        animation: 'slide_from_right',
+        ...STACK_PUSH,
       }}
     />
   );

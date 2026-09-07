@@ -94,6 +94,11 @@ export function publicQuest(row, extras = {}) {
     rewardCoins: template.rewardCoins ?? 0,
     rewardXp: template.rewardXp ?? 0,
     claimable: row.status === 'COMPLETED' && !paid,
+    // Phase 5 — safe Smart Quest presentation metadata only. Raw baseline,
+    // completion ratios, and the decision trace never leave the server.
+    targetSource: row.metadata?.smart?.targetSource ?? null,
+    difficulty: row.metadata?.smart?.difficulty ?? null,
+    reasonKey: row.metadata?.smart?.reasonKey ?? null,
   };
 }
 

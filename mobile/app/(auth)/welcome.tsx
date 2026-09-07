@@ -35,7 +35,10 @@ export default function WelcomeScreen() {
         onSignIn={() => void finish()}
         canPrev={false}
       />
-      <OnboardingDevLauncher variant="inline" />
+      {/* Floating so QA can always reach it regardless of screen height (DEV renders null in prod). */}
+      <View pointerEvents="box-none" style={{ position: 'absolute', top: 220, left: 0, right: 0 }}>
+        <OnboardingDevLauncher variant="inline" />
+      </View>
     </View>
   );
 }

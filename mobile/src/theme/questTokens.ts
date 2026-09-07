@@ -57,6 +57,19 @@ export const QUEST = {
     slow: 620,
     stagger: 60,
   },
+  /**
+   * Phase 4 — achievement rarity palette. Teal stays the brand base;
+   * rarity climbs from quiet gray to warm legendary amber.
+   * ink = icon/badge color, fill = medallion wash (light/dark).
+   */
+  rarity: {
+    COMMON: { ink: '#64748B', inkDark: '#94A3B8', fillLight: '#F1F5F9', fillDark: '#1E293B' },
+    UNCOMMON: { ink: '#0D9488', inkDark: '#2DD4BF', fillLight: '#CCFBF1', fillDark: '#042F2E' },
+    RARE: { ink: '#2563EB', inkDark: '#60A5FA', fillLight: '#DBEAFE', fillDark: '#172554' },
+    EPIC: { ink: '#7C3AED', inkDark: '#A78BFA', fillLight: '#EDE9FE', fillDark: '#2E1065' },
+    LEGENDARY: { ink: '#B45309', inkDark: '#FBBF24', fillLight: '#FEF3C7', fillDark: '#3A2A0B' },
+  },
 } as const;
 
 export type QuestAccentKind = keyof typeof QUEST.accent;
+export type QuestRarity = keyof typeof QUEST.rarity;

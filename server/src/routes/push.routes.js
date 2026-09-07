@@ -8,6 +8,7 @@ import { upsertNotificationOutcomes } from '../lib/notificationOutcomes.js';
 import { upsertProductEvents } from '../lib/productEvents.js';
 import { upsertMedicationDoseEvents } from '../lib/medicationDoseEvents.js';
 import { upsertNotificationPermission } from '../lib/notificationPermission.js';
+import { notifyBrainSync } from '../lib/adminRealtime.js';
 import { clientMetaFromRequest } from '../lib/appVersion.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
@@ -132,6 +133,7 @@ pushRouter.post(
       .parse(req.body ?? {});
 
     const result = await upsertNotificationDecisions(req.user.id, body.decisions, body.fatigue);
+    notifyBrainSync('decisions', body.decisions?.length || 0);
     res.json({ ok: true, ...result });
   }),
 );
@@ -160,6 +162,7 @@ pushRouter.post(
       .parse(req.body ?? {});
     const meta = clientMetaFromRequest(req, req.body || {});
     const result = await upsertNotificationOutcomes(req.user.id, body.outcomes, meta);
+    notifyBrainSync('outcomes', body.outcomes?.length || 0);
     res.json({ ok: true, ...result });
   }),
 );

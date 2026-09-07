@@ -117,7 +117,17 @@ export async function trackQuestEvent(
     | 'quest_history_opened'
     | 'quest_wallet_opened'
     | 'step_setup_opened'
-    | 'hydration_setup_opened',
+    | 'hydration_setup_opened'
+    | 'achievements_opened'
+    | 'achievements_opened_from_hub'
+    | 'achievement_claim_tapped'
+    | 'quest_why_target_opened'
+    | 'rewards_store_opened'
+    | 'reward_viewed'
+    | 'reward_redeem_started'
+    | 'reward_redeemed'
+    | 'reward_redeem_failed'
+    | 'my_rewards_opened',
   entityId?: string,
 ): Promise<void> {
   await api.push.syncProductEvents({
