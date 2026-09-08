@@ -257,6 +257,32 @@ describe('permissions and partner payload', () => {
     assert.equal(payload.estimated, true);
   });
 
+  it('strips sexual chips and unknown keys even when symptoms scope is on', () => {
+    const payload = buildPartnerPayload({
+      profile,
+      logs: [
+        {
+          date: '2026-08-01',
+          flow: 'medium',
+          symptoms: ['cramps', 'unprotected', 'protected', 'sex', 'future_chip_xyz'],
+          notes: 'private journal',
+          sexualActivity: true,
+          libido: 5,
+        },
+      ],
+      permissions: { period: true, cyclePhase: true, fertileWindow: false, symptoms: true },
+      today: '2026-08-01',
+    });
+    assert.deepEqual(payload.symptoms.keys, ['cramps']);
+    const text = JSON.stringify(payload);
+    assert.equal(text.includes('unprotected'), false);
+    assert.equal(text.includes('protected'), false);
+    assert.equal(text.includes('future_chip_xyz'), false);
+    assert.equal(text.includes('private journal'), false);
+    assert.equal(partnerPayloadHasLeak(payload), false);
+    assert.equal(partnerPayloadHasLeak({ symptoms: { keys: ['unprotected'] } }), true);
+  });
+
   it('strips each permission independently', () => {
     const base = { profile, logs, today: '2026-08-01' };
     const periodOff = buildPartnerPayload({

@@ -1,12 +1,20 @@
 import React, { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import type { CycleDayMark } from '@/lib/api';
-import { fertilityA11yBits, hasFertilityObservation } from '@/lib/cycleFertility';
+import { fertilityA11yBits } from '@/lib/cycleFertility';
+import { CycleOvulationSparkle } from '@/components/cycle/CycleOvulationSparkle';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import {
+  PREDICTED_NUMERAL_PREFIX,
+  calendarDayA11y,
+  classifyCycleDay,
+  getCycleCalendarDayVisualState,
+} from '@/lib/cyclePresentation.js';
 import { MONTHS_KA, WEEKDAYS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
-import { cycleShadow, useCycleColors } from '@/theme/cycle';
+import { cycleHexAlpha, cycleShadow, useCycleColors } from '@/theme/cycle';
 
 function dateKey(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -27,11 +35,22 @@ type Props = {
   onNext: () => void;
   /** Drop card chrome when already inside a sheet. */
   embedded?: boolean;
+  /** Server/bundle civil today. Device local is only the fallback. */
+  today?: string;
+  /** When set, days that return false are dimmed and not tappable. */
+  canSelect?: (iso: string) => boolean;
+  /** Engine contraception presentation — hides fertility layers cleanly. */
+  showFertility?: boolean;
+  /** Low server confidence — hide predicted period / fertile / ovulation marks. */
+  showPredicted?: boolean;
 };
 
-export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, onNext, embedded }: Props) {
+export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, onNext, embedded, today: todayProp, canSelect, showFertility = true, showPredicted = true }: Props) {
   const c = useCycleColors();
-  const today = todayKey();
+  const reduceMotion = usePrefersReducedMotion();
+  const today = todayProp || todayKey();
+  const selectedSoft = cycleHexAlpha(c.ink, 0.07);
+  const selectedRing = cycleHexAlpha(c.ink, 0.38);
 
   const cells = useMemo(() => {
     const first = new Date(year, month, 1);
@@ -111,112 +130,132 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {cells.map((cell, idx) => {
           if (!cell) {
-            return <View key={`e-${idx}`} style={{ width: '14.2857%', height: 52 }} />;
+            return <View key={`e-${idx}`} style={{ width: '14.2857%', height: 56 }} />;
           }
           const mark = marks[cell.key] || {};
           const isSelected = selected === cell.key;
           const isToday = today === cell.key;
+          const blocked = canSelect ? !canSelect(cell.key) : false;
+          const layers = classifyCycleDay(mark, { showFertility, showPredicted });
+          const visual = getCycleCalendarDayVisualState({ layers, isSelected, isToday });
 
-          let bg = 'transparent';
-          let textColor: string = c.ink;
-          let ring = isSelected ? c.brand : isToday ? c.todayRing : 'transparent';
-          let ringWidth = isSelected || isToday ? 2.5 : 0;
-          const actualPeriod = Boolean(mark.period && !mark.predicted);
-          const predictedPeriod = Boolean(mark.period && mark.predicted);
-          if (mark.ovulation) {
-            bg = c.ovulation;
-            textColor = c.white;
-          } else if (mark.fertile) {
-            bg = c.fertile;
-            textColor = c.white;
-          } else if (actualPeriod) {
-            bg = c.period;
-            textColor = c.white;
-          } else if (predictedPeriod) {
-            bg = 'transparent';
-            textColor = c.period;
-            if (!isSelected) {
-              ring = c.period;
-              ringWidth = 2;
-            }
-          }
+          const innerBg =
+            visual.fill === 'loggedPeriod'
+              ? c.period
+              : visual.fill === 'selectedSoft'
+                ? selectedSoft
+                : 'transparent';
+          const textColor = layers.loggedPeriod
+            ? c.white
+            : layers.predictedPeriod
+              ? c.period
+              : c.ink;
+          const ringColor =
+            visual.ring === 'today' ? c.todayRing : visual.ring === 'selected' ? selectedRing : 'transparent';
 
-          const a11y = [
-            `${cell.day}`,
-            isToday ? ka.cycle.jumpToday : null,
-            isSelected ? ka.cycle.selectedDay : null,
-            actualPeriod ? ka.cycle.legendPeriod : null,
-            predictedPeriod ? ka.cycle.legendPeriodPredicted : null,
-            ...fertilityA11yBits(mark),
-            mark.logged && !actualPeriod ? ka.cycle.legendLogged : null,
-            mark.hasNote ? ka.cycle.journalTitle : null,
-          ]
-            .filter(Boolean)
-            .join(', ');
+          const a11y = calendarDayA11y({
+            dayLabel: `${cell.day} ${MONTHS_KA[month]}`,
+            isToday,
+            isSelected,
+            layers,
+            copy: {
+              today: ka.cycle.jumpToday,
+              selected: ka.cycle.selectedDay,
+              loggedPeriod: ka.cycle.legendPeriod,
+              spotting: ka.cycle.legendSpotting,
+              predictedPeriod: ka.cycle.legendPeriodPredicted,
+              fertile: ka.cycle.legendFertile,
+              ovulation: ka.cycle.legendOvulation,
+              symptoms: ka.cycle.legendLogged,
+            },
+          });
+          const a11yExtra =
+            showPredicted && showFertility
+              ? fertilityA11yBits(mark)
+                  .filter((bit) => bit !== ka.cycle.legendFertile && bit !== ka.cycle.legendOvulation)
+                  .join(', ')
+              : '';
 
           return (
             <Pressable
               key={cell.key}
-              onPress={() => onSelect(cell.key)}
+              disabled={blocked}
+              onPress={() => {
+                if (blocked) return;
+                onSelect(cell.key);
+              }}
               accessibilityRole="button"
-              accessibilityLabel={a11y}
-              accessibilityState={{ selected: isSelected }}
+              accessibilityLabel={a11yExtra ? `${a11y}, ${a11yExtra}` : a11y}
+              accessibilityState={{ selected: isSelected, disabled: blocked }}
               style={{
                 width: '14.2857%',
-                height: 52,
+                height: 56,
                 alignItems: 'center',
                 justifyContent: 'center',
+                opacity: blocked ? 0.28 : 1,
               }}
             >
               <Animated.View
-                entering={isSelected ? ZoomIn.duration(180) : undefined}
+                entering={isSelected && !reduceMotion ? FadeIn.duration(160) : undefined}
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 19,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: bg,
-                  borderWidth: ringWidth,
-                  borderColor: ring,
+                  borderWidth: visual.ring === 'none' ? 0 : 1.5,
+                  borderColor: ringColor,
                 }}
               >
-                <Text
+                <View
                   style={{
-                    color: textColor,
-                    fontWeight: isToday || isSelected ? '800' : '600',
-                    fontSize: 14,
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: innerBg,
+                    borderWidth: visual.showPredictedDash ? 1.5 : 0,
+                    borderColor: visual.showPredictedDash ? c.period : 'transparent',
+                    borderStyle: visual.showPredictedDash ? 'dashed' : 'solid',
                   }}
                 >
-                  {cell.day}
-                </Text>
+                  <Text
+                    allowFontScaling={false}
+                    style={{
+                      color: textColor,
+                      fontWeight: isToday || isSelected ? '700' : '600',
+                      fontSize: 14,
+                      fontVariant: ['tabular-nums'],
+                    }}
+                  >
+                    {visual.showPredictedPrefix ? `${PREDICTED_NUMERAL_PREFIX}${cell.day}` : cell.day}
+                  </Text>
+                </View>
               </Animated.View>
-              {hasFertilityObservation(mark) ? (
-                <View
-                  style={{
-                    width: 5,
-                    height: 5,
-                    marginTop: 2,
-                    borderWidth: 1.5,
-                    borderColor: c.ink,
-                    backgroundColor: 'transparent',
-                    transform: [{ rotate: '45deg' }],
-                  }}
-                  accessibilityElementsHidden
-                />
-              ) : mark.logged && !actualPeriod && !mark.fertile && !mark.ovulation ? (
-                <View
-                  style={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: 2,
-                    backgroundColor: c.blushDeep,
-                    marginTop: 2,
-                  }}
-                />
-              ) : (
-                <View style={{ height: 6 }} />
-              )}
+
+              <View style={{ height: 8, marginTop: 1, alignItems: 'center', justifyContent: 'center' }}>
+                {visual.semanticIndicator === 'spottingDot' ? (
+                  <View
+                    style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: c.period }}
+                  />
+                ) : visual.semanticIndicator === 'ovulationSparkle' ? (
+                  <CycleOvulationSparkle color={c.ovulation} size={8} />
+                ) : visual.semanticIndicator === 'fertileDots' ? (
+                  <View style={{ flexDirection: 'row', gap: 2 }}>
+                    {[0, 1, 2].map((i) => (
+                      <View
+                        key={i}
+                        style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: c.fertile }}
+                      />
+                    ))}
+                  </View>
+                ) : visual.semanticIndicator === 'symptomDot' ? (
+                  <View
+                    style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.mutedSoft }}
+                  />
+                ) : null}
+              </View>
             </Pressable>
           );
         })}
@@ -239,15 +278,14 @@ function NavBtn({
       onPress={onPress}
       hitSlop={10}
       accessibilityRole="button"
-      style={({ pressed }) => ({
+      style={{
         width: 44,
         height: 44,
         borderRadius: 14,
         backgroundColor: c.cardSoft,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: pressed ? 0.75 : 1,
-      })}
+      }}
     >
       {children}
     </Pressable>

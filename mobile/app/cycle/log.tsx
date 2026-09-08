@@ -45,6 +45,7 @@ export default function CycleLogScreen() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [footerH, setFooterH] = useState(96);
   const [form, setForm] = useState(EMPTY_CYCLE_LOG);
   const [customTags, setCustomTags] = useState<CycleCustomTag[]>([]);
   const [creatingTag, setCreatingTag] = useState(false);
@@ -179,7 +180,8 @@ export default function CycleLogScreen() {
     <CycleAtmosphere>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 8 : 0}
       >
         {error ? (
           <View
@@ -215,7 +217,7 @@ export default function CycleLogScreen() {
           mode={mode}
           form={form}
           onChange={patchForm}
-          bottomInset={insets.bottom + (hasLog ? 72 : 24)}
+          bottomInset={footerH}
           initialTab={initialTab}
           customTags={customTags}
           onCreateTag={createTag}
@@ -223,6 +225,7 @@ export default function CycleLogScreen() {
         />
 
         <View
+          onLayout={(e) => setFooterH(e.nativeEvent.layout.height)}
           style={{
             position: 'absolute',
             left: 0,

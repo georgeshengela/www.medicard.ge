@@ -1,5 +1,5 @@
 import React, { useEffect, useId } from 'react';
-import { Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Svg, {
   Circle,
   Defs,
@@ -21,7 +21,12 @@ import { useCycleColors } from '@/theme/cycle';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-/** Figma 9001:295435 — Nightingale score gauge, cycle day readout. */
+/**
+ * CycleStatusGauge — Phase 5 hero (docs/CYCLE_DESIGN.md §4.1).
+ * Nightingale score-gauge geometry (Figma 9001:283189 / 9001:295435),
+ * re-skinned to MediCard. The arc is one cycle; the knob is today;
+ * estimated layers are dashed/hollow by the §24 honesty contract.
+ */
 const VB_W = 360;
 const VB_H = 327;
 const CX = 180;
@@ -48,30 +53,69 @@ const DASH_TL =
 const DASH_TR =
   'M212.202 10.5654C245.217 17.4385 275.167 34.6946 297.672 59.8099C320.176 84.9252 334.054 116.582 337.277 150.151';
 
-function knobPoint(t: number) {
-  const clamped = Math.min(1, Math.max(0, t));
-  const rad = ((START_DEG + clamped * SWEEP_DEG) * Math.PI) / 180;
-  return { x: CX + R * Math.cos(rad), y: CY + R * Math.sin(rad) };
+function clamp01(t: number) {
+  return Math.min(1, Math.max(0, t));
+}
+
+function pointAt(t: number, radius = R) {
+  const rad = ((START_DEG + clamp01(t) * SWEEP_DEG) * Math.PI) / 180;
+  return { x: CX + radius * Math.cos(rad), y: CY + radius * Math.sin(rad) };
+}
+
+/** SVG arc path along the gauge circle between two 0..1 positions. */
+function arcPath(from: number, to: number, radius = R) {
+  const a = clamp01(Math.min(from, to));
+  const b = clamp01(Math.max(from, to));
+  if (b - a <= 0.001) return null;
+  const p0 = pointAt(a, radius);
+  const p1 = pointAt(b, radius);
+  const largeArc = (b - a) * SWEEP_DEG > 180 ? 1 : 0;
+  return `M ${p0.x} ${p0.y} A ${radius} ${radius} 0 ${largeArc} 1 ${p1.x} ${p1.y}`;
 }
 
 type Props = {
   day: number | null;
   cycleLength: number;
-  label: string;
+  /** Phase line inside the disc — already honesty-labeled by the caller. */
   phaseHint?: string;
   periodActive?: boolean;
+  /** Estimated fertile window as 0..1 arc positions (server cycleDay / length). */
+  fertileArc?: { from: number; to: number } | null;
+  /** Estimated ovulation position 0..1. */
+  ovulationT?: number | null;
+  /** Predicted next-period start position 0..1 (hollow marker). */
+  predictedPeriodT?: number | null;
+  /** Concise screen-reader summary (§54). */
+  a11yLabel?: string;
+  /** Bottom badge tap — "how is this calculated". */
+  onInfo?: () => void;
 };
 
-export function CycleRing({ day, cycleLength, label, phaseHint, periodActive }: Props) {
+export function CycleStatusGauge({
+  day,
+  cycleLength,
+  phaseHint,
+  periodActive,
+  fertileArc,
+  ovulationT,
+  predictedPeriodT,
+  a11yLabel,
+  onInfo,
+}: Props) {
   const c = useCycleColors();
   const reduceMotion = usePrefersReducedMotion();
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
-  const { width: screenW } = useWindowDimensions();
-  const width = Math.min(screenW - 64, 320);
+  const { width: screenW, fontScale } = useWindowDimensions();
+  const largeText = fontScale >= 1.25;
+  const width = Math.min(
+    screenW - 48,
+    largeText ? 208 : screenW < 380 ? 228 : 268,
+  );
   const height = width * (VB_H / VB_W);
-  const progress = day && cycleLength ? Math.min(1, Math.max(0, day / cycleLength)) : 0;
+  const phaseOutside = largeText;
+  const progress = day && cycleLength ? clamp01(day / cycleLength) : 0;
   const anim = useSharedValue(reduceMotion ? progress : 0);
-  const knob = knobPoint(progress);
+  const knob = pointAt(progress);
 
   useEffect(() => {
     if (reduceMotion) {
@@ -91,9 +135,22 @@ export function CycleRing({ day, cycleLength, label, phaseHint, periodActive }: 
   const fill = periodActive ? c.period : c.brand;
   const glow = c.card;
 
+  const fertilePath = fertileArc ? arcPath(fertileArc.from, fertileArc.to) : null;
+  const ovulationPoint = ovulationT != null ? pointAt(ovulationT) : null;
+  const predictedPoint = predictedPeriodT != null ? pointAt(predictedPeriodT) : null;
+
   return (
-    <Animated.View entering={FadeIn.duration(500)} style={{ alignItems: 'center', width: '100%' }}>
+    <Animated.View
+      entering={reduceMotion ? undefined : FadeIn.duration(500)}
+      style={{ alignItems: 'center', width: '100%' }}
+    >
       <View style={{ width, height }}>
+        <View
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={a11yLabel}
+          style={{ width, height }}
+        >
         <Svg width={width} height={height} viewBox={`0 0 ${VB_W} ${VB_H}`}>
           <Defs>
             <LinearGradient id={`cycleFill-${uid}`} x1="180" y1="37.3311" x2="180" y2="293.331" gradientUnits="userSpaceOnUse">
@@ -153,10 +210,47 @@ export function CycleRing({ day, cycleLength, label, phaseHint, periodActive }: 
             animatedProps={animatedProps}
           />
 
+          {/* Estimated fertile window — dashed violet, never solid (§24). */}
+          {fertilePath ? (
+            <Path
+              d={fertilePath}
+              stroke={c.fertile}
+              strokeWidth={7}
+              strokeLinecap="round"
+              strokeDasharray="2 8"
+              fill="none"
+              opacity={0.95}
+            />
+          ) : null}
+
+          {/* Estimated ovulation — open violet diamond (hollow). */}
+          {ovulationPoint ? (
+            <Path
+              d={`M ${ovulationPoint.x} ${ovulationPoint.y - 8} L ${ovulationPoint.x + 8} ${ovulationPoint.y} L ${ovulationPoint.x} ${ovulationPoint.y + 8} L ${ovulationPoint.x - 8} ${ovulationPoint.y} Z`}
+              stroke={c.ovulation}
+              strokeWidth={2}
+              fill={c.card}
+            />
+          ) : null}
+
+          {/* Predicted next period — hollow rose ring, not a filled event. */}
+          {predictedPoint ? (
+            <Circle
+              cx={predictedPoint.x}
+              cy={predictedPoint.y}
+              r={8}
+              stroke={c.period}
+              strokeWidth={2}
+              strokeDasharray="3 3"
+              fill={c.card}
+            />
+          ) : null}
+
+          {/* Today knob — position marker (teal ring by contract). */}
           {progress > 0.02 ? (
             <>
               <Circle cx={knob.x} cy={knob.y} r={11} fill={c.white} />
-              <Circle cx={knob.x} cy={knob.y} r={12} stroke={fill} strokeWidth={2} fill="none" />
+              <Circle cx={knob.x} cy={knob.y} r={12} stroke={c.todayRing} strokeWidth={2.5} fill="none" />
             </>
           ) : null}
 
@@ -192,54 +286,48 @@ export function CycleRing({ day, cycleLength, label, phaseHint, periodActive }: 
                 lineHeight: Math.round(64 * (width / VB_W)),
                 letterSpacing: -1,
                 textAlign: 'center',
+                fontVariant: ['tabular-nums'],
               }}
             >
               {day ?? '—'}
             </Text>
             <Text
               style={{
-                color: c.ink,
+                color: c.muted,
                 fontFamily: 'NotoSansGeorgian_600SemiBold',
-                fontSize: Math.round(16 * (width / VB_W)),
-                lineHeight: Math.round(22 * (width / VB_W)),
+                fontSize: Math.round(15 * (width / VB_W)),
+                lineHeight: Math.round(20 * (width / VB_W)),
                 marginTop: 2,
                 textAlign: 'center',
               }}
             >
               {ka.cycle.outOf(cycleLength)}
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
+            {phaseHint && !phaseOutside ? (
               <Text
+                numberOfLines={2}
                 style={{
-                  color: c.muted,
-                  fontFamily: 'NotoSansGeorgian_400Regular',
-                  fontSize: 12,
-                  lineHeight: 16,
+                  color: periodActive ? c.period : c.ink,
+                  fontFamily: 'NotoSansGeorgian_600SemiBold',
+                  fontSize: Math.round(14 * (width / VB_W)),
+                  lineHeight: Math.round(19 * (width / VB_W)),
+                  marginTop: 6,
+                  textAlign: 'center',
+                  maxWidth: '96%',
                 }}
               >
-                {label}
+                {phaseHint}
               </Text>
-              <Svg width={16} height={16} viewBox="0 0 16 16">
-                <Path
-                  d="M8 7.5C8.27614 7.5 8.5 7.72386 8.5 8V11.3333C8.5 11.6095 8.27614 11.8333 8 11.8333C7.72386 11.8333 7.5 11.6095 7.5 11.3333V8C7.5 7.72386 7.72386 7.5 8 7.5Z"
-                  fill="#9CA3AF"
-                />
-                <Path
-                  d="M8 4.66667C8.46024 4.66667 8.83333 5.03976 8.83333 5.5C8.83333 5.96024 8.46024 6.33333 8 6.33333C7.53976 6.33333 7.16667 5.96024 7.16667 5.5C7.16667 5.03976 7.53976 4.66667 8 4.66667Z"
-                  fill="#9CA3AF"
-                />
-                <Path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M8 1.5C11.5899 1.5 14.5 4.41015 14.5 8C14.5 11.5899 11.5899 14.5 8 14.5C4.41015 14.5 1.5 11.5899 1.5 8C1.5 4.41015 4.41015 1.5 8 1.5ZM8 2.5C4.96243 2.5 2.5 4.96243 2.5 8C2.5 11.0376 4.96243 13.5 8 13.5C11.0376 13.5 13.5 11.0376 13.5 8C13.5 4.96243 11.0376 2.5 8 2.5Z"
-                  fill="#9CA3AF"
-                />
-              </Svg>
-            </View>
+            ) : null}
           </View>
         </View>
+        </View>
 
-        <View
+        <Pressable
+          onPress={onInfo}
+          disabled={!onInfo}
+          accessibilityRole={onInfo ? 'button' : undefined}
+          accessibilityLabel={onInfo ? ka.cycle.howCalculated : undefined}
           style={{
             position: 'absolute',
             left: (152 / VB_W) * width,
@@ -255,35 +343,24 @@ export function CycleRing({ day, cycleLength, label, phaseHint, periodActive }: 
           }}
         >
           <MedicardLogoMark size={Math.round(28 * (width / VB_W))} tone="inverse" />
-        </View>
+        </Pressable>
       </View>
-
-      {phaseHint ? (
-        <View
+      {phaseHint && phaseOutside ? (
+        <Text
+          numberOfLines={3}
           style={{
+            color: periodActive ? c.period : c.ink,
+            fontFamily: 'NotoSansGeorgian_600SemiBold',
+            fontSize: 15,
+            lineHeight: 21,
             marginTop: 4,
-            maxWidth: '92%',
-            backgroundColor: c.roseSoft,
-            borderWidth: 1,
-            borderColor: c.border,
-            paddingHorizontal: 14,
-            paddingVertical: 7,
-            borderRadius: 999,
+            marginBottom: 4,
+            textAlign: 'center',
+            paddingHorizontal: 16,
           }}
         >
-          <Text
-            style={{
-              color: c.rose,
-              fontFamily: 'NotoSansGeorgian_600SemiBold',
-              fontSize: 13,
-              textAlign: 'center',
-              lineHeight: 18,
-            }}
-            numberOfLines={2}
-          >
-            {phaseHint}
-          </Text>
-        </View>
+          {phaseHint}
+        </Text>
       ) : null}
     </Animated.View>
   );

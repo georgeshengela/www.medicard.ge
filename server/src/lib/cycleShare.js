@@ -8,6 +8,10 @@ import {
   todayInTimeZone,
   toDateKey,
 } from './cycle.js';
+import {
+  CYCLE_SEXUAL_SYMPTOM_KEYS,
+  partnerSafeSymptomKeys,
+} from './cycleAiContext.js';
 
 /** 32 bytes → 64 hex chars. 12-hex legacy codes are rejected. */
 export const SHARE_TOKEN_BYTES = 32;
@@ -181,13 +185,14 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
   const allowed = normalizeSharePermissions(permissions);
   const inferred = inferCycleStats(logs, profile.avgCycleLength, profile.avgPeriodLength);
   const averages = resolveForecastAverages(profile, inferred);
-  const lastPeriodStart = toDateKey(profile.lastPeriodStart) || inferred.lastPeriodStart;
+  const lastPeriodStart = inferred.lastPeriodStart || toDateKey(profile.lastPeriodStart);
   const predictions = buildPredictions({
     lastPeriodStart,
     avgCycleLength: averages.usedCycleLength,
     avgPeriodLength: averages.usedPeriodLength,
     cycleCount: averages.cycleCount,
     isIrregular: profile.isIrregular,
+    cycleLengths: inferred.cycleGaps,
     logs,
   });
   const phase = detectCyclePhase({
@@ -231,7 +236,9 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
   }
   if (allowed.symptoms) {
     const dayLog = (logs || []).find((l) => l.date === today);
-    const keys = Array.isArray(dayLog?.symptoms) ? dayLog.symptoms.map(String) : [];
+    const keys = partnerSafeSymptomKeys(
+      Array.isArray(dayLog?.symptoms) ? dayLog.symptoms.map(String) : [],
+    );
     payload.symptoms = { keys };
   }
 
@@ -284,7 +291,13 @@ export function partnerPayloadHasLeak(payload) {
     'lifestylePatterns',
     'loggingCoverage',
   ];
-  return forbidden.some((key) => Object.hasOwn(payload, key) || new RegExp(`"${key}"`).test(text));
+  if (forbidden.some((key) => Object.hasOwn(payload, key) || new RegExp(`"${key}"`).test(text))) {
+    return true;
+  }
+  if (CYCLE_SEXUAL_SYMPTOM_KEYS.some((key) => new RegExp(`"${key}"`).test(text))) {
+    return true;
+  }
+  return false;
 }
 
 export { PERM_KEYS };

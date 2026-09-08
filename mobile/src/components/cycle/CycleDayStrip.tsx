@@ -15,7 +15,9 @@ import { WEEKDAYS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
 import { addDaysToKey } from '@/lib/cyclePhase';
 import { todayKey } from '@/components/cycle/CycleCalendar';
-import { useCycleColors } from '@/theme/cycle';
+import { CycleOvulationSparkle } from '@/components/cycle/CycleOvulationSparkle';
+import { PREDICTED_NUMERAL_PREFIX, classifyCycleDay, getCycleCalendarDayVisualState } from '@/lib/cyclePresentation.js';
+import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
 const ITEM_WIDTH = 56;
 const RANGE = 60;
@@ -31,14 +33,30 @@ type Props = {
   onSelect: (date: string) => void;
   marks: Record<string, CycleDayMark>;
   onLongPress?: (date: string) => void;
+  /** Server/bundle civil today. Device local is only the fallback. */
+  today?: string;
+  showFertility?: boolean;
+  showPredicted?: boolean;
+  /** Keep cells out of the Quick Log FAB column. */
+  reservedRight?: number;
 };
 
-export function CycleDayStrip({ selected, onSelect, marks, onLongPress }: Props) {
+export function CycleDayStrip({
+  selected,
+  onSelect,
+  marks,
+  onLongPress,
+  today: todayProp,
+  showFertility = true,
+  showPredicted = true,
+  reservedRight = 0,
+}: Props) {
   const c = useCycleColors();
   const { width: screenWidth } = useWindowDimensions();
   const listRef = useRef<FlatList<string>>(null);
-  const sidePad = Math.max(0, (screenWidth - ITEM_WIDTH) / 2);
-  const today = todayKey();
+  const listWidth = Math.max(ITEM_WIDTH, screenWidth - reservedRight);
+  const sidePad = Math.max(0, (listWidth - ITEM_WIDTH) / 2);
+  const today = todayProp || todayKey();
   const skipScrollRef = useRef(false);
   const [anchor, setAnchor] = useState(selected);
 
@@ -100,7 +118,7 @@ export function CycleDayStrip({ selected, onSelect, marks, onLongPress }: Props)
   };
 
   return (
-    <View style={{ marginBottom: 8 }}>
+    <View style={{ marginBottom: 8, width: listWidth, overflow: 'hidden' }}>
       <FlatList
         ref={listRef}
         key={anchor}
@@ -129,21 +147,21 @@ export function CycleDayStrip({ selected, onSelect, marks, onLongPress }: Props)
           const [, , dd] = item.split('-');
           const weekday = weekdayLabel(item);
 
-          const actualPeriod = Boolean(mark?.period && mark.predicted === false);
-          const predictedPeriod = Boolean(mark?.period && mark.predicted);
-          let dot: string = c.mutedSoft;
-          if (mark?.ovulation) dot = c.ovulation;
-          else if (mark?.fertile) dot = c.fertile;
-          else if (actualPeriod) dot = c.period;
-          else if (mark?.logged) dot = c.blushDeep;
+          const layers = classifyCycleDay(mark, { showFertility, showPredicted });
+          const visual = getCycleCalendarDayVisualState({
+            layers,
+            isSelected: active,
+            isToday,
+          });
           const a11y = [
             isToday ? ka.cycle.jumpToday : weekday,
             String(Number(dd)),
-            actualPeriod ? ka.cycle.legendPeriod : null,
-            predictedPeriod ? ka.cycle.legendPeriodPredicted : null,
-            mark?.fertile && !mark?.ovulation ? ka.cycle.legendFertile : null,
-            mark?.ovulation ? ka.cycle.legendOvulation : null,
-            mark?.logged && !actualPeriod ? ka.cycle.legendLogged : null,
+            layers.loggedPeriod ? ka.cycle.legendPeriod : null,
+            layers.predictedPeriod ? ka.cycle.legendPeriodPredicted : null,
+            layers.fertile ? ka.cycle.legendFertile : null,
+            layers.ovulation ? ka.cycle.legendOvulation : null,
+            layers.spotting ? ka.cycle.legendSpotting : null,
+            layers.symptomDot ? ka.cycle.legendLogged : null,
           ]
             .filter(Boolean)
             .join(', ');
@@ -183,38 +201,68 @@ export function CycleDayStrip({ selected, onSelect, marks, onLongPress }: Props)
               </Text>
               <View
                 style={{
-                  width: active ? 44 : 38,
-                  height: active ? 44 : 38,
-                  borderRadius: active ? 22 : 19,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: active ? c.card : 'transparent',
-                  borderWidth: active || isToday ? 2 : 0,
-                  borderColor: active ? (isToday ? c.todayRing : c.brand) : isToday ? c.todayRing : 'transparent',
+                  borderWidth: visual.ring === 'none' ? 0 : 1.5,
+                  borderColor:
+                    visual.ring === 'today'
+                      ? c.todayRing
+                      : visual.ring === 'selected'
+                        ? cycleHexAlpha(c.ink, 0.38)
+                        : 'transparent',
                 }}
               >
-                <Text
+                <View
                   style={{
-                    color: c.ink,
-                    fontFamily: 'NotoSansGeorgian_700Bold',
-                    fontSize: active ? 17 : 15,
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor:
+                      visual.fill === 'loggedPeriod'
+                        ? c.period
+                        : visual.fill === 'selectedSoft'
+                          ? cycleHexAlpha(c.ink, 0.07)
+                          : 'transparent',
+                    borderWidth: visual.showPredictedDash ? 1.5 : 0,
+                    borderColor: visual.showPredictedDash ? c.period : 'transparent',
+                    borderStyle: visual.showPredictedDash ? 'dashed' : 'solid',
                   }}
                 >
-                  {Number(dd)}
-                </Text>
+                  <Text
+                    style={{
+                      color: layers.loggedPeriod ? c.white : layers.predictedPeriod ? c.period : c.ink,
+                      fontFamily: 'NotoSansGeorgian_700Bold',
+                      fontSize: 15,
+                      fontVariant: ['tabular-nums'],
+                    }}
+                  >
+                    {visual.showPredictedPrefix ? `${PREDICTED_NUMERAL_PREFIX}${Number(dd)}` : Number(dd)}
+                  </Text>
+                </View>
               </View>
-              <View
-                style={{
-                  width: predictedPeriod ? 7 : 5,
-                  height: predictedPeriod ? 7 : 5,
-                  borderRadius: 4,
-                  backgroundColor: predictedPeriod ? 'transparent' : dot,
-                  borderWidth: predictedPeriod ? 1.5 : 0,
-                  borderColor: predictedPeriod ? c.period : 'transparent',
-                  marginTop: 6,
-                  opacity: mark ? 1 : 0.25,
-                }}
-              />
+              <View style={{ height: 10, marginTop: 4, alignItems: 'center', justifyContent: 'center' }}>
+                {visual.semanticIndicator === 'spottingDot' ? (
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: c.period }} />
+                ) : visual.semanticIndicator === 'ovulationSparkle' ? (
+                  <CycleOvulationSparkle color={c.ovulation} size={8} />
+                ) : visual.semanticIndicator === 'fertileDots' ? (
+                  <View style={{ flexDirection: 'row', gap: 2 }}>
+                    {[0, 1, 2].map((i) => (
+                      <View
+                        key={i}
+                        style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: c.fertile }}
+                      />
+                    ))}
+                  </View>
+                ) : visual.semanticIndicator === 'symptomDot' ? (
+                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.mutedSoft }} />
+                ) : null}
+              </View>
             </Pressable>
           );
         }}

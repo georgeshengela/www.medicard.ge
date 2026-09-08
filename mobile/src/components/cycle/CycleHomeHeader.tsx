@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { CalendarDays, ChevronLeft, Settings2 } from 'lucide-react-native';
+import { ChevronLeft, Settings2 } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
 
@@ -10,7 +10,6 @@ type Props = {
   subtitle: string;
   topInset: number;
   onBack: () => void;
-  onCalendar: () => void;
   onSettings: () => void;
 };
 
@@ -35,15 +34,14 @@ function IconBtn({
       hitSlop={10}
       accessibilityLabel={label}
       accessibilityRole="button"
-      style={({ pressed }) => ({
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: filled ? c.cta : 'transparent',
-        opacity: pressed ? 0.75 : 1,
-      })}
+      }}
     >
       {children}
     </Pressable>
@@ -55,7 +53,6 @@ export function CycleHomeHeader({
   subtitle,
   topInset,
   onBack,
-  onCalendar,
   onSettings,
 }: Props) {
   const c = useCycleColors();
@@ -67,10 +64,9 @@ export function CycleHomeHeader({
         paddingHorizontal: 16,
         paddingBottom: 8,
         backgroundColor: c.cream,
-        minHeight: 56,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <IconBtn onPress={onBack} label={ka.common.back}>
           <ChevronLeft size={24} color={c.ink} strokeWidth={2.2} />
         </IconBtn>
@@ -88,27 +84,23 @@ export function CycleHomeHeader({
             {monthLabel}
           </Text>
           <Text
-            numberOfLines={1}
+            numberOfLines={2}
             style={{
               color: c.muted,
               fontFamily: 'NotoSansGeorgian_500Medium',
               fontSize: 12,
               lineHeight: 16,
               marginTop: 2,
+              textAlign: 'center',
             }}
           >
             {subtitle}
           </Text>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <IconBtn onPress={onCalendar} label={ka.cycle.openFullCalendar}>
-            <CalendarDays size={22} color={c.ink} strokeWidth={2.1} />
-          </IconBtn>
-          <IconBtn onPress={onSettings} label={ka.cycle.settings} filled>
-            <Settings2 size={20} color="#FFFFFF" strokeWidth={2.2} />
-          </IconBtn>
-        </View>
+        <IconBtn onPress={onSettings} label={ka.cycle.settings} filled>
+          <Settings2 size={20} color="#FFFFFF" strokeWidth={2.2} />
+        </IconBtn>
       </View>
     </View>
   );

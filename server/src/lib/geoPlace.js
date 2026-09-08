@@ -256,6 +256,22 @@ export function countryNameKa(code, fallback) {
   return iso || (fallback ? String(fallback).trim() : null);
 }
 
+/** Admin-safe place fields only — never lat/lng/accuracy. */
+export function publicPlaceSnapshot(row) {
+  if (!row) {
+    return { countryCode: null, countryKa: null, cityKa: null, enabled: false, updatedAt: null };
+  }
+  const countryCode = countryCodeOf(row.countryCode);
+  const cityRaw = typeof row.cityKa === 'string' ? row.cityKa.trim() : '';
+  return {
+    countryCode,
+    countryKa: countryNameKa(countryCode, row.countryKa),
+    cityKa: cityNameKa(cityRaw) || (cityRaw || null),
+    enabled: row.enabled !== false,
+    updatedAt: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
+  };
+}
+
 export function cityNameKa(raw) {
   const text = cleanCityLabel(String(raw || '').trim());
   if (!text) return null;

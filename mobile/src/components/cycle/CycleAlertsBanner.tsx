@@ -4,21 +4,25 @@ import { AlertTriangle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { ka } from '@/i18n/ka';
 import type { CycleBundle } from '@/lib/api';
+import { alertPresentation } from '@/lib/cyclePresentation.js';
 import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
   bundle: CycleBundle;
+  /** Skip alerts already shown as the Overview contextual late note. */
+  excludeLate?: boolean;
 };
 
-export function CycleAlertsBanner({ bundle }: Props) {
+export function CycleAlertsBanner({ bundle, excludeLate }: Props) {
   const c = useCycleColors();
   const router = useRouter();
-  const alerts = bundle.alerts ?? [];
+  const alerts = (bundle.alerts ?? []).filter((a) => !(excludeLate && alertPresentation(a).late));
   if (!alerts.length) return null;
 
   const top = alerts.find((a) => a.level === 'urgent') ?? alerts[0];
+  const chrome = alertPresentation(top);
   const bg =
-    top.level === 'urgent' ? c.danger : top.level === 'warn' ? '#F57C00' : c.lavender;
+    chrome.tone === 'urgent' ? c.danger : chrome.tone === 'calm' ? c.brand : c.ink;
 
   return (
     <Pressable

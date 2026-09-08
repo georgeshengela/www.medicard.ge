@@ -161,7 +161,8 @@ export function CycleHealthConnectCard({ onConnected }: Props) {
       {Platform.OS === 'android' && enabled ? (
         <Pressable
           onPress={() => openHealthAppSettings().catch(() => undefined)}
-          style={({ pressed }) => ({
+          className="active:opacity-90"
+          style={{
             marginTop: 12,
             flexDirection: 'row',
             alignItems: 'center',
@@ -169,10 +170,9 @@ export function CycleHealthConnectCard({ onConnected }: Props) {
             backgroundColor: c.cardSoft,
             borderRadius: 14,
             paddingVertical: 12,
-            opacity: pressed ? 0.85 : 1,
             borderWidth: 1,
             borderColor: c.border,
-          })}
+          }}
         >
           <ExternalLink size={16} color={c.ink} />
           <Text style={{ color: c.ink, fontWeight: '700', marginLeft: 8, fontSize: 13 }}>

@@ -53,6 +53,16 @@ export function CycleNotificationMaskPreview({ maskEnabled, maskStyle }: Props) 
   return (
     <View style={{ marginTop: 12, gap: 10 }}>
       <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18 }}>{ka.cycle.maskExplain}</Text>
+      <Text
+        style={{
+          color: c.mutedSoft,
+          fontSize: 11,
+          fontFamily: 'NotoSansGeorgian_700Bold',
+          letterSpacing: 0.3,
+        }}
+      >
+        {ka.cycle.maskPreviewExample}
+      </Text>
 
       {!maskEnabled ? (
         <>

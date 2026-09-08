@@ -148,7 +148,7 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
       : !user?.phone
         ? 'phone'
         : null;
-  const loggedPain = await detectLoggedPain(user, today);
+  const { loggedPain, cyclePrivacyEnabled } = await detectLoggedPain(user, today);
   let weather: EngageSnapshot['weather'] = null;
   try {
     const { loadWeatherEngageSignal } = await import('@/lib/weather/engage');
@@ -263,6 +263,7 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
     lastChatId,
     lastChatMode,
     cycleRegular: false,
+    cyclePrivacyEnabled,
     seenWeekly: Boolean(seen.weekly),
     unfinished: pickUnfinished(drafts, scheduleGap),
     recentVisit,
@@ -275,15 +276,18 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
   };
 }
 
-async function detectLoggedPain(user: User | null | undefined, today: string): Promise<boolean> {
-  if (!user?.id) return false;
+async function detectLoggedPain(user: User | null | undefined, today: string): Promise<{ loggedPain: boolean; cyclePrivacyEnabled: boolean }> {
+  if (!user?.id) return { loggedPain: false, cyclePrivacyEnabled: false };
   try {
     const { loadCycleView } = await import('@/lib/cycleOffline');
     const view = await loadCycleView(user.id);
     const log = view.display.logs.find((row) => row.date === today);
-    return Boolean(log?.painEntries?.length);
+    return {
+      loggedPain: Boolean(log?.painEntries?.length),
+      cyclePrivacyEnabled: Boolean(view.canonical?.profile?.privacyEnabled),
+    };
   } catch {
-    return false;
+    return { loggedPain: false, cyclePrivacyEnabled: false };
   }
 }
 
@@ -332,7 +336,11 @@ export async function runMediNotificationBrain(
   let scheduled = 0;
   for (const row of accepted) {
     if (row.fireAt.getTime() <= Date.now() + 45_000) continue;
-    const copy = snap.prefs.discreet ? applyPushCopy('engage-masked', row.vars) : applyPushCopy(row.key, row.vars);
+    const cycleInsight = row.key === 'engage-insight-cycle';
+    const discreet = snap.prefs.discreet || (cycleInsight && snap.cyclePrivacyEnabled);
+    const copy = discreet
+      ? applyPushCopy(cycleInsight ? 'cycle-masked' : 'engage-masked', row.vars)
+      : applyPushCopy(row.key, row.vars);
     const id = `${NOTIF_PREFIX.engage}${row.key}:${ymd(row.fireAt)}`;
     const categoryIdentifier = snap.prefs.discreet ? undefined : categoryForNotification('medi_engage', row.family);
     await Notifications.scheduleNotificationAsync({
@@ -374,11 +382,93 @@ export function requestEngageRefresh(): void {
   }, 450);
 }
 
+async function deliverCycleReminder(data: Record<string, unknown>): Promise<{
+  ok: boolean;
+  reason: string | null;
+  rewriteMasked?: boolean;
+}> {
+  const { cycleDeliveryDecision, getEffectiveCycleMask } = await import('./cycleNotificationContract.js');
+  const { getCycleReminderPrefs } = await import('./cycleReminderPrefs');
+  const prefs = await getCycleReminderPrefs();
+  const engage = await loadEngagePrefs().catch(() => null);
+  let today = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+  let live: Record<string, unknown> = {
+    today,
+    prefsEnabled: prefs.enabled,
+    globalEnabled: true,
+    privacyEnabled: false,
+    typeEnabled: {
+      period_soon: prefs.periodDaysBefore > 0,
+      period_start: true,
+      ovulation: prefs.ovulation,
+      fertile: prefs.ovulation,
+      pms: prefs.pms,
+      opk: prefs.opk,
+      bbt: prefs.bbt,
+      log_nudge: prefs.dailyLog,
+    },
+    periodDaysBefore: prefs.periodDaysBefore,
+    logs: [],
+  };
+  const userId = lastActor.user?.id;
+  if (userId) {
+    try {
+      const { loadCycleView } = await import('@/lib/cycleOffline');
+      const { cycleToday } = await import('@/lib/cycleCanonical');
+      const view = await loadCycleView(userId);
+      const bundle = view.canonical;
+      today = cycleToday(bundle, today);
+      live = {
+        ...live,
+        today,
+        mode: bundle.profile.mode,
+        privacyEnabled: Boolean(bundle.profile.privacyEnabled),
+        nextPeriodStart: bundle.predictions.nextPeriodStart,
+        ovulationDate: bundle.predictions.ovulationDate,
+        fertileWindowStart: bundle.predictions.fertileWindow?.start ?? null,
+        showFertilityMarkers: bundle.contraception?.presentation?.showFertilityMarkers !== false,
+        logs: bundle.logs,
+      };
+    } catch {
+      /* prefs + mask still apply */
+    }
+  }
+  const mask = getEffectiveCycleMask({
+    privacyEnabled: Boolean(live.privacyEnabled),
+    maskNotifications: prefs.maskNotifications,
+    discreet: Boolean(engage?.discreet),
+  });
+  if (data.type === 'cycle_tip' || !data.candidateType) {
+    if (mask.masked && !data.masked) {
+      return { ok: true, reason: 'DELIVER_WITH_DISCREET_COPY', rewriteMasked: true };
+    }
+    return { ok: true, reason: mask.masked ? 'PRIVACY_MASKED' : null };
+  }
+  return cycleDeliveryDecision(
+    {
+      type: String(data.candidateType || ''),
+      candidateType: String(data.candidateType || ''),
+      eventDate: String(data.eventDate || ''),
+      candidateId: String(data.candidateId || ''),
+      masked: Boolean(data.masked),
+      notifyEligible: String(data.candidateType || '') !== 'late',
+    },
+    live,
+    mask,
+  );
+}
+
 export async function shouldDeliverNotification(data: Record<string, unknown> | undefined | null): Promise<{
   ok: boolean;
   reason: string | null;
+  rewriteMasked?: boolean;
 }> {
   if (!data || typeof data !== 'object') return { ok: true, reason: null };
+  if (data.rewrite === true) return { ok: true, reason: 'PRIVACY_MASKED' };
+
+  if (data.type === 'cycle_reminder' || data.family === 'cycleReminder' || data.type === 'cycle_tip') {
+    return deliverCycleReminder(data);
+  }
   const { revalidateEngageCandidate } = await import('./mediNotificationRevalidate');
   const { findDoseLog, loadDoseLogs } = await import('@/lib/medications.shared');
   const { dayTotalMl, loadHydrationGoalMl, loadHydrationLogs, todayYmd } = await import('@/lib/hydration');

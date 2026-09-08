@@ -83,6 +83,7 @@ export type EngageSnapshot = {
   lastChatId: string | null;
   lastChatMode: 'DOCTOR' | 'CONSILIUM' | null;
   cycleRegular: boolean;
+  cyclePrivacyEnabled?: boolean;
   seenWeekly: boolean;
   unfinished: UnfinishedDraft | null;
   recentVisit: { id: string; hoursAgo: number } | null;

@@ -85,12 +85,12 @@ function PillButton({
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => ({
+      android_ripple={{ color: 'rgba(0,0,0,0.08)' }}
+      style={{
         width: '100%',
         borderRadius: PILL,
         overflow: 'hidden',
-        opacity: pressed ? 0.92 : 1,
-      })}
+      }}
     >
       <View style={{ ...SHELL, backgroundColor: isPrimary ? CYCLE : colors.bg200 }}>{inner}</View>
     </Pressable>

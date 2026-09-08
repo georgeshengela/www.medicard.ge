@@ -90,7 +90,8 @@ export function CyclePregnancyTransitionSheet({ visible, lastPeriod, onClose, on
           <Pressable
             disabled={saving}
             onPress={confirm}
-            style={({ pressed }) => ({
+            className="active:opacity-90"
+            style={{
               marginTop: 16,
               minHeight: 52,
               backgroundColor: c.cta,
@@ -98,9 +99,8 @@ export function CyclePregnancyTransitionSheet({ visible, lastPeriod, onClose, on
               paddingVertical: 16,
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: pressed ? 0.9 : 1,
               ...cycleShadow.soft,
-            })}
+            }}
           >
             {saving ? (
               <ActivityIndicator color="#fff" />

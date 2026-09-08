@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import Animated, { FadeInRight } from 'react-native-reanimated';
-import { Check, ChevronRight, Droplets, Heart, Sparkles } from 'lucide-react-native';
+import { Check, ChevronRight, Droplets, Heart, Lock, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import type { LucideIcon } from 'lucide-react-native';
 import {
@@ -232,7 +232,7 @@ export function CycleLogTabs({
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: bottomInset + 88 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: bottomInset + 24 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -365,6 +365,36 @@ export function CycleLogTabs({
               />
             </Block>
 
+            <Block title={ka.cycle.journalTitle} hint={ka.cycle.logNotesHint}>
+              <CycleJournalField value={form.notes} onChange={(notes) => onChange({ notes })} />
+            </Block>
+
+            {/* §7.4 — private grouping: sensitive fields never sit among
+                generic shortcuts. Presentation only; storage is unchanged. */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginTop: 4,
+                marginBottom: 4,
+              }}
+            >
+              <Lock size={15} color={c.muted} strokeWidth={2.2} />
+              <Text
+                style={{
+                  color: c.ink,
+                  fontFamily: 'NotoSansGeorgian_700Bold',
+                  fontSize: 15,
+                  marginLeft: 8,
+                }}
+              >
+                {ka.cycle.privateSection}
+              </Text>
+            </View>
+            <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 14 }}>
+              {ka.cycle.privateSectionHint}
+            </Text>
+
             <Block title={ka.cycle.sexual} hint={ka.cycle.logSexHint}>
               <View style={{ flexDirection: 'row', marginHorizontal: -5, marginBottom: form.sexual ? 12 : 0 }}>
                 {[
@@ -485,10 +515,6 @@ export function CycleLogTabs({
                 </Block>
               </>
             ) : null}
-
-            <Block title={ka.cycle.journalTitle} hint={ka.cycle.logNotesHint}>
-              <CycleJournalField value={form.notes} onChange={(notes) => onChange({ notes })} />
-            </Block>
           </Animated.View>
         ) : null}
       </ScrollView>

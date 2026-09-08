@@ -24,6 +24,16 @@ function resolveBaseUrl(): string {
 
 export const API_BASE_URL = resolveBaseUrl();
 
+/** IANA zone for Cycle "today". Historical YYYY-MM-DD rows are never rewritten. */
+function clientTimezoneHeaders(): Record<string, string> {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return tz ? { 'X-Client-Timezone': tz } : {};
+  } catch {
+    return {};
+  }
+}
+
 export type Usage = {
   date: string;
   periodKey?: string;
@@ -773,6 +783,7 @@ export type CycleBundle = {
     level: 'info' | 'warn' | 'urgent';
     messageKa: string;
     action?: 'chat' | null;
+    late?: { status?: string } | null;
   }[];
   summary: {
     mode: CycleMode;
@@ -837,6 +848,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
         Accept: 'application/json',
         'X-Medicard-Platform': Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web',
         'X-Medicard-App-Version': String(Constants.expoConfig?.version || ''),
+        ...clientTimezoneHeaders(),
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },

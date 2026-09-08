@@ -66,6 +66,8 @@ type Props = {
   isIrregular?: boolean;
   offline?: boolean;
   onLoaded?: (insights: CycleInsights) => void;
+  /** §44: cap rendered insight cards (Overview passes 1). */
+  maxCards?: number;
 };
 
 export function CycleInsightsPanel({
@@ -78,6 +80,7 @@ export function CycleInsightsPanel({
   isIrregular,
   offline,
   onLoaded,
+  maxCards,
 }: Props) {
   const c = useCycleColors();
   const theme = useThemeColors();
@@ -157,7 +160,8 @@ export function CycleInsightsPanel({
   ].filter((item): item is string => Boolean(item));
 
   const featured = cards[0];
-  const rest = cards.slice(1);
+  /* §4.2.4 / §44: Overview shows max one insight — never an AI feed. */
+  const rest = maxCards === 1 ? [] : cards.slice(1);
   const heroTone = featured
     ? toneVisual(c, theme.accent100, featured.tone)
     : toneVisual(c, theme.accent100, 'calm');
@@ -238,7 +242,7 @@ export function CycleInsightsPanel({
             onPress={() => openDetail(featured)}
             accessibilityRole="button"
             accessibilityLabel={`${featured.title}. ${ka.cycle.aiViewDetails}`}
-            style={({ pressed }) => ({ opacity: pressed ? 0.96 : 1 })}
+            className="active:opacity-95"
           >
             <LinearGradient
               colors={[heroTone.wash, c.card]}
@@ -445,7 +449,7 @@ export function CycleInsightsPanel({
                   onPress={() => openDetail(card)}
                   accessibilityRole="button"
                   accessibilityLabel={`${card.title}. ${ka.cycle.aiViewDetails}`}
-                  style={({ pressed }) => ({ opacity: pressed ? 0.94 : 1 })}
+                  className="active:opacity-95"
                 >
                   <View
                     collapsable={false}

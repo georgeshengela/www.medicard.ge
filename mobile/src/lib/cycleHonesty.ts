@@ -77,7 +77,8 @@ export function periodSoonBody(days: number, flags: CycleHonestyFlags) {
 }
 
 export function nextPeriodConfidenceCopy(flags: CycleHonestyFlags) {
-  if (flags.cautious) return ka.cycle.confidenceLowExplain;
-  if (flags.confidence === 'medium') return ka.cycle.confidenceMediumExplain;
+  if (flags.irregular) return ka.cycle.confidenceIrregularShort;
+  if (flags.cautious) return ka.cycle.confidenceLowShort;
+  if (flags.confidence === 'medium') return ka.cycle.confidenceMediumShort;
   return ka.cycle.confidenceHighShort;
 }

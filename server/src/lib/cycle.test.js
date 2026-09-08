@@ -5,6 +5,7 @@ import {
   buildDoctorSummary,
   buildPredictions,
   CYCLE_TIMEZONE,
+  cycleLengthSpread,
   cycleLengthStats,
   daysBetween,
   detectCyclePhase,
@@ -14,6 +15,7 @@ import {
   pickLastPeriodStart,
   predictionConfidence,
   resolveForecastAverages,
+  resolveLastPeriodStart,
   stampCalendarPhases,
   todayInTimeZone,
   toDateKey,
@@ -155,6 +157,19 @@ describe('pickLastPeriodStart', () => {
     );
     assert.equal(next, '2026-03-01');
   });
+
+  it('prefers derived LMP over a stale stored start', () => {
+    assert.equal(resolveLastPeriodStart('2026-03-04', '2026-03-01'), '2026-03-01');
+    assert.equal(resolveLastPeriodStart('2026-02-01', null), '2026-02-01');
+    const merged = pickLastPeriodStart(
+      '2026-03-04',
+      logs([
+        ['2026-03-01', 'medium'],
+        ['2026-03-03', 'medium'],
+      ]),
+    );
+    assert.equal(merged, '2026-03-01');
+  });
 });
 
 describe('buildPredictions', () => {
@@ -267,7 +282,8 @@ describe('cycleLengthStats + confidence', () => {
     assert.equal(predictionConfidence({ cycleCount: 1 }), 'low');
     assert.equal(predictionConfidence({ cycleCount: 4, isIrregular: true }), 'low');
     assert.equal(predictionConfidence({ cycleCount: 3 }), 'medium');
-    assert.equal(predictionConfidence({ cycleCount: 6 }), 'high');
+    assert.equal(predictionConfidence({ cycleCount: 6 }), 'medium');
+    assert.equal(predictionConfidence({ cycleCount: 6, cycleLengths: [28, 28, 28, 28, 28, 28] }), 'high');
   });
 });
 
@@ -454,7 +470,7 @@ describe('forecast source (recommendation C)', () => {
 });
 
 describe('history depth → confidence', () => {
-  it('zero and one cycle stay low; four medium; six high', () => {
+  it('zero and one cycle stay low; four medium; six high only with consistent lengths', () => {
     assert.equal(predictionConfidence({ cycleCount: 0 }), 'low');
     assert.equal(predictionConfidence({ cycleCount: 1 }), 'low');
     const two = inferCycleStats(cycleStarts('2026-01-01', '2026-01-29', '2026-02-26'));
@@ -477,7 +493,8 @@ describe('history depth → confidence', () => {
       ),
     );
     assert.equal(six.cycleCount, 6);
-    assert.equal(predictionConfidence({ cycleCount: 6 }), 'high');
+    assert.equal(predictionConfidence({ cycleCount: 6 }), 'medium');
+    assert.equal(predictionConfidence({ cycleCount: 6, cycleLengths: six.cycleGaps }), 'high');
   });
 });
 
@@ -490,7 +507,7 @@ describe('canonical predictions', () => {
       cycleCount: 6,
     });
     assert.equal(pred.estimated, true);
-    assert.equal(pred.confidence, 'high');
+    assert.equal(pred.confidence, 'medium');
     assert.equal(pred.nextPeriodStart, '2026-03-29');
     assert.equal(pred.ovulationDate, '2026-03-15');
     assert.deepEqual(pred.fertileWindow, { start: '2026-03-10', end: '2026-03-16' });
@@ -498,6 +515,16 @@ describe('canonical predictions', () => {
     assert.equal(pred.calendar['2026-03-29'].estimated, true);
     assert.equal(pred.calendar['2026-03-15'].ovulation, true);
     assert.equal(pred.calendar['2026-03-15'].estimated, true);
+    assert.equal(
+      buildPredictions({
+        lastPeriodStart: '2026-03-01',
+        avgCycleLength: 28,
+        avgPeriodLength: 5,
+        cycleCount: 6,
+        cycleLengths: [28, 28, 28, 28, 28, 28],
+      }).confidence,
+      'high',
+    );
   });
 
   it('stamps cycle day and phase from the server, not the client', () => {
@@ -557,5 +584,105 @@ describe('stampCalendarPhases', () => {
     assert.equal(calendar['2026-03-02'].cycleDay, 2);
     assert.equal(calendar['2026-03-02'].logged, undefined);
     assert.equal(calendar['2026-03-02'].flow, undefined);
+  });
+});
+
+describe('variability-aware confidence (Phase 2 + Phase 3 trim)', () => {
+  it('A: six 28-day cycles are high, not low for lack of history', () => {
+    assert.equal(
+      predictionConfidence({ cycleCount: 6, cycleLengths: [28, 28, 28, 28, 28, 28] }),
+      'high',
+    );
+  });
+
+  it('B: six cycles alternating 21/45 are not high', () => {
+    assert.equal(
+      predictionConfidence({ cycleCount: 6, cycleLengths: [21, 45, 21, 45, 21, 45] }),
+      'low',
+    );
+  });
+
+  it('C: three regular cycles are medium', () => {
+    assert.equal(predictionConfidence({ cycleCount: 3, cycleLengths: [28, 29, 27] }), 'medium');
+  });
+
+  it('D: one valid gap is low', () => {
+    assert.equal(predictionConfidence({ cycleCount: 1, cycleLengths: [28] }), 'low');
+  });
+
+  it('E: irregular flag stays low even with six identical gaps', () => {
+    assert.equal(
+      predictionConfidence({ cycleCount: 6, isIrregular: true, cycleLengths: [28, 28, 28, 28, 28, 28] }),
+      'low',
+    );
+  });
+
+  it('F: five 28-day cycles plus one 45-day outlier is high after trimming', () => {
+    assert.equal(
+      predictionConfidence({ cycleCount: 6, cycleLengths: [28, 28, 28, 28, 28, 45] }),
+      'high',
+    );
+  });
+
+  it('Phase 3 C-spread: 28,29,27,28,30,28 is high', () => {
+    assert.equal(
+      predictionConfidence({ cycleCount: 6, cycleLengths: [28, 29, 27, 28, 30, 28] }),
+      'high',
+    );
+  });
+
+  it('Phase 3 E-spread: 24–35 mixed history is medium, not high', () => {
+    assert.equal(
+      predictionConfidence({ cycleCount: 6, cycleLengths: [24, 30, 35, 27, 33, 25] }),
+      'medium',
+    );
+  });
+
+  it('Phase 3 F: a 60-day gap is excluded from averages and does not pollute confidence', () => {
+    const inferred = inferCycleStats(
+      logs([
+        ['2025-01-01', 'medium'],
+        ['2025-01-29', 'medium'],
+        ['2025-02-26', 'medium'],
+        ['2025-03-26', 'medium'],
+        ['2025-04-23', 'medium'],
+        ['2025-06-22', 'medium'],
+      ]),
+    );
+    assert.equal(inferred.cycleGaps.includes(60), false);
+    assert.ok(inferred.cycleGaps.every((g) => g === 28));
+    assert.equal(
+      predictionConfidence({ cycleCount: inferred.cycleCount, cycleLengths: inferred.cycleGaps }),
+      'medium',
+    );
+  });
+
+  it('Phase 3 G: 22–27 drifting regular history is high after trim', () => {
+    assert.equal(
+      predictionConfidence({ cycleCount: 6, cycleLengths: [22, 23, 24, 25, 26, 27] }),
+      'high',
+    );
+  });
+
+  it('Phase 3 H: five 35-day cycles plus one 21-day outlier is high after trim', () => {
+    assert.equal(
+      predictionConfidence({ cycleCount: 6, cycleLengths: [35, 35, 35, 35, 35, 21] }),
+      'high',
+    );
+  });
+});
+
+describe('cycleLengthSpread sample-size safety', () => {
+  it('does not trim below 6 gaps', () => {
+    assert.equal(cycleLengthSpread([28, 45]), 17);
+    assert.equal(cycleLengthSpread([28, 28, 45]), 17);
+    assert.equal(cycleLengthSpread([28, 28, 28, 45]), 17);
+    assert.equal(cycleLengthSpread([28, 28, 28, 28, 45]), 17);
+  });
+
+  it('trims one min and one max from 6+ gaps', () => {
+    assert.equal(cycleLengthSpread([28, 28, 28, 28, 28, 45]), 0);
+    assert.equal(cycleLengthSpread([21, 45, 21, 45, 21, 45]), 24);
+    assert.equal(cycleLengthSpread([28, 28, 28, 28, 28, 28, 28, 28, 28, 45]), 0);
   });
 });

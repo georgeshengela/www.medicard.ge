@@ -83,7 +83,7 @@ export function CycleTrendsCharts({ bundle }: Props) {
             ) : null}
           </CycleCard>
         ) : null}
-        {cycles.length >= 2 ? <CycleLengthBars cycles={cycles} c={c} /> : null}
+        {cycles.length >= 3 ? <CycleLengthBars cycles={cycles} c={c} /> : null}
       </Section>
 
       <Section title={ka.cycle.trendsSectionBefore}>

@@ -1,0 +1,5 @@
+IOS QA DEFERRED BY PRODUCT DECISION.
+
+This phase is Android-only. Do not treat missing iOS simulator,
+Xcode, physical iPhone, iOS screenshots, iOS safe area, or iOS
+keyboard validation as a failure or BLOCKED gate.

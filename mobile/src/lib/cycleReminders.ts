@@ -1,6 +1,7 @@
 import type { CycleBundle } from '@/lib/api';
-import { addDaysToKey, parseDateKey } from '@/lib/cyclePhase';
+import { parseDateKey } from '@/lib/cyclePhase';
 import { todayKey } from '@/components/cycle/CycleCalendar';
+import { cycleToday } from '@/lib/cycleCanonical';
 import {
   cancelCycleReminders,
   scheduleCycleDateNotification,
@@ -8,17 +9,45 @@ import {
 import type { CycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { cycleHonestyFlags } from '@/lib/cycleHonesty';
 import { applyPushCopy } from '@/lib/pushCopy';
+import { bumpOutOfQuiet } from '@/lib/mediEngageModel';
+import { loadEngagePrefs } from '@/lib/mediEngagePrefs';
+import {
+  buildCycleCandidates,
+  CYCLE_REMINDER_HOUR,
+  CYCLE_REMINDER_MINUTE,
+  pickCycleScheduleSet,
+  revalidateCycleCandidate,
+} from '@/lib/cycleNotificationContract.js';
 
-const REMINDER_HOUR = 9;
-const REMINDER_MINUTE = 0;
-
-function reminderDate(ymd: string): Date {
+function reminderDate(ymd: string, quietStart: string, quietEnd: string): Date {
   const { y, m, d } = parseDateKey(ymd);
-  return new Date(y, m, d, REMINDER_HOUR, REMINDER_MINUTE, 0, 0);
+  const atNine = new Date(y, m, d, CYCLE_REMINDER_HOUR, CYCLE_REMINDER_MINUTE, 0, 0);
+  return bumpOutOfQuiet(atNine, quietStart, quietEnd);
 }
 
-function isFutureYmd(ymd: string): boolean {
-  return ymd >= todayKey();
+function liveFromBundle(bundle: CycleBundle, prefs: CycleReminderPrefs, today: string) {
+  return {
+    today,
+    mode: bundle.profile.mode,
+    nextPeriodStart: bundle.predictions.nextPeriodStart,
+    ovulationDate: bundle.predictions.ovulationDate,
+    fertileWindowStart: bundle.predictions.fertileWindow?.start ?? null,
+    periodDaysBefore: prefs.periodDaysBefore,
+    showFertilityMarkers: bundle.contraception?.presentation?.showFertilityMarkers !== false,
+    logs: bundle.logs,
+    prefsEnabled: prefs.enabled,
+    globalEnabled: true,
+    typeEnabled: {
+      period_soon: prefs.periodDaysBefore > 0,
+      period_start: true,
+      ovulation: prefs.ovulation,
+      fertile: prefs.ovulation,
+      pms: prefs.pms,
+      opk: prefs.opk,
+      bbt: prefs.bbt,
+      log_nudge: prefs.dailyLog,
+    },
+  };
 }
 
 export async function syncCycleReminders(
@@ -28,81 +57,56 @@ export async function syncCycleReminders(
   await cancelCycleReminders();
   if (!prefs.enabled) return 0;
 
-  let count = 0;
-  const { profile, predictions, logs } = bundle;
-  const mode = profile.mode;
+  const today = cycleToday(bundle, todayKey());
+  const engage = await loadEngagePrefs().catch(() => null);
   const flags = cycleHonestyFlags({
-    confidence: predictions.confidence,
-    isIrregular: profile.isIrregular,
-    conditions: profile.conditions,
+    confidence: bundle.predictions.confidence,
+    isIrregular: bundle.profile.isIrregular,
+    conditions: bundle.profile.conditions,
   });
-  const today = todayKey();
-  const hasLogToday = logs.some((l) => l.date === today);
+  const lateAlert = (bundle.alerts ?? []).find((row) => Boolean((row as { late?: { status?: string } }).late));
+  const candidates = buildCycleCandidates({
+    today,
+    mode: bundle.profile.mode,
+    predictions: bundle.predictions,
+    logs: bundle.logs,
+    prefs,
+    showFertilityMarkers: bundle.contraception?.presentation?.showFertilityMarkers !== false,
+    lateStatus: lateAlert ? { status: 'late' } : null,
+  } as never);
+  const live = liveFromBundle(bundle, prefs, today);
+  const chosen = pickCycleScheduleSet(candidates, today);
+  let count = 0;
 
-  const schedule = async (
-    id: string,
-    ymd: string,
-    templateKey: string,
-    vars: Record<string, string | number | undefined>,
-    route: string,
-  ) => {
-    if (!isFutureYmd(ymd) && ymd !== today) return;
-    const date = reminderDate(ymd);
-    if (date.getTime() <= Date.now()) return;
-    const copy = applyPushCopy(templateKey, vars);
+  for (const candidate of chosen) {
+    const check = revalidateCycleCandidate(candidate, live);
+    if (!check.ok) continue;
+    const date = reminderDate(candidate.eventDate, engage?.quietStart ?? '22:00', engage?.quietEnd ?? '08:00');
+    if (date.getTime() <= Date.now()) continue;
+    const vars =
+      candidate.type === 'period_soon'
+        ? { days: flags.cautious ? `დაახლოებით ${prefs.periodDaysBefore}` : String(prefs.periodDaysBefore) }
+        : {};
+    const copy = applyPushCopy(candidate.templateKey, vars);
     const ok = await scheduleCycleDateNotification({
-      identifier: `${id}:${ymd}`,
+      identifier: `${candidate.type}:${candidate.eventDate}`,
       title: copy.title,
       body: copy.body,
       date,
-      data: { route, templateKey },
+      privacyEnabled: Boolean(bundle.profile.privacyEnabled),
+      data: {
+        candidateId: candidate.candidateId,
+        candidateType: candidate.type,
+        eventDate: candidate.eventDate,
+        templateKey: candidate.templateKey,
+        route: candidate.route,
+        estimated: candidate.estimated,
+        predicted: candidate.predicted,
+        revalidationKey: candidate.revalidationKey,
+        family: 'cycleReminder',
+      },
     });
     if (ok) count += 1;
-  };
-
-  if (mode !== 'PREGNANCY' && predictions.nextPeriodStart) {
-    const start = predictions.nextPeriodStart;
-    if (prefs.periodDaysBefore > 0) {
-      const soon = addDaysToKey(start, -prefs.periodDaysBefore);
-      await schedule(
-        'period_soon',
-        soon,
-        'cycle-period-soon',
-        { days: flags.cautious ? `დაახლოებით ${prefs.periodDaysBefore}` : String(prefs.periodDaysBefore) },
-        '/cycle',
-      );
-    }
-    await schedule('period_start', start, 'cycle-period-start', {}, '/cycle/log');
-  }
-
-  const allowFertilityReminders = bundle.contraception?.presentation?.showFertilityMarkers !== false;
-
-  if (mode === 'TRY_TO_CONCEIVE' && prefs.ovulation && allowFertilityReminders) {
-    if (predictions.ovulationDate) {
-      await schedule('ovulation', predictions.ovulationDate, 'cycle-ovulation', {}, '/cycle/log?tab=more');
-    }
-    if (predictions.fertileWindow?.start) {
-      await schedule('fertile', predictions.fertileWindow.start, 'cycle-fertile', {}, '/cycle');
-    }
-  }
-
-  if (prefs.pms && allowFertilityReminders && mode !== 'PREGNANCY' && profile.lastPeriodStart && predictions.ovulationDate) {
-    await schedule('pms', addDaysToKey(predictions.ovulationDate, 2), 'cycle-pms', {}, '/cycle');
-  }
-
-  if (mode === 'TRY_TO_CONCEIVE' && prefs.opk && allowFertilityReminders && predictions.fertileWindow?.start) {
-    await schedule('opk', predictions.fertileWindow.start, 'cycle-opk', {}, '/cycle/log?tab=more');
-  }
-
-  if (mode === 'TRY_TO_CONCEIVE' && prefs.bbt && allowFertilityReminders) {
-    const hasBbtToday = logs.some((l) => l.date === today && l.bbt != null);
-    if (!hasBbtToday) {
-      await schedule('bbt', today, 'cycle-bbt', {}, '/cycle/log?tab=more');
-    }
-  }
-
-  if (prefs.dailyLog && !hasLogToday) {
-    await schedule('log_nudge', today, 'cycle-log', {}, '/cycle/log');
   }
 
   return count;

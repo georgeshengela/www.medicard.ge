@@ -9,14 +9,14 @@ const PHASE_LIGHT = {
   blushDeep: '#E11D48',
   rose: '#E11D48',
   roseSoft: '#FCE8EE',
-  lavender: '#C026D3',
-  lavenderSoft: '#F5E8FA',
+  lavender: '#7C3AED',
+  lavenderSoft: '#F3E8FF',
   peach: '#FCE8EE',
   mint: '#F9A8D4',
   period: '#E11D48',
-  fertile: '#C026D3',
-  ovulation: '#A21CAF',
-  todayRing: '#14B8A6',
+  fertile: '#7C3AED',
+  ovulation: '#7C3AED',
+  todayRing: '#0D9488',
 };
 
 const PHASE_DARK = {
@@ -24,13 +24,13 @@ const PHASE_DARK = {
   blushDeep: '#FB7185',
   rose: '#FB7185',
   roseSoft: '#3A1A24',
-  lavender: '#E879F9',
-  lavenderSoft: '#3B1A40',
+  lavender: '#A78BFA',
+  lavenderSoft: '#2E1B4A',
   peach: '#3A1A24',
   mint: '#F9A8D4',
   period: '#FB7185',
-  fertile: '#E879F9',
-  ovulation: '#E879F9',
+  fertile: '#A78BFA',
+  ovulation: '#A78BFA',
   todayRing: '#14B8A6',
 };
 
@@ -106,6 +106,16 @@ export const cycleDark: CyclePalette = {
   ...PHASE_DARK,
   ...chrome(darkColors, true),
 };
+
+/** Convert #RRGGBB + alpha 0-1 → rgba() for reliable RN colors. */
+export function cycleHexAlpha(hex: string, alpha: number) {
+  const raw = String(hex || '').replace('#', '');
+  if (raw.length !== 6) return hex;
+  const r = parseInt(raw.slice(0, 2), 16);
+  const g = parseInt(raw.slice(2, 4), 16);
+  const b = parseInt(raw.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 
 export function useCycleColors(): CyclePalette {
   const theme = useThemeColors();

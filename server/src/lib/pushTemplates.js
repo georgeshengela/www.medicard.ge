@@ -41,18 +41,18 @@ export const PUSH_TEMPLATE_DEFAULTS = [
   {
     key: 'cycle-ovulation',
     group: 'cycle',
-    label: '🥚 ოვულაციის შეხსენება (TTC)',
-    title: 'ოვულაციის დრო ახლოვდება ✨',
-    body: 'თუ ორსულობას გეგმავ, დღეს შეიძლება ერთ-ერთი მნიშვნელოვანი დღე იყოს 💗 Medi შენთანაა.',
+    label: '🥚 სავარაუდო ოვულაციის შეხსენება (TTC)',
+    title: 'სავარაუდო ოვულაცია ახლოვდება ✨',
+    body: 'კალენდრის მიხედვით, სავარაუდო ოვულაციის დღე ახლოვდება. ეს შეფასებაა — ციკლი ყოველთვის ზუსტად არ მიჰყვება კალენდარს 🤍',
     placeholders: [],
     sample: {},
   },
   {
     key: 'cycle-fertile',
     group: 'cycle',
-    label: '🌱 ნაყოფიერი ფანჯარა',
-    title: 'ნაყოფიერი დღეები დაიწყო 🌱',
-    body: 'შენი სავარაუდო ნაყოფიერი ფანჯარა დაიწყო. თუ ორსულობას გეგმავ, შეგიძლია ეს დღეები გაითვალისწინო 💚',
+    label: '🌱 სავარაუდო ნაყოფიერი ფანჯარა',
+    title: 'სავარაუდო ნაყოფიერი ფანჯარა 🌱',
+    body: 'შენი სავარაუდო ნაყოფიერი ფანჯარა შეიძლება იწყებოდეს. ეს კალენდარული შეფასებაა — პროგნოზი შეიძლება შეიცვალოს 🤍',
     placeholders: [],
     sample: {},
   },
@@ -70,7 +70,7 @@ export const PUSH_TEMPLATE_DEFAULTS = [
     group: 'cycle',
     label: '🧪 ოვულაციის ტესტის შეხსენება',
     title: 'OPK ტესტის დროა 🧪',
-    body: 'თუ ამ ციკლში ოვულაციას აკვირდები, დღეს OPK ტესტის გაკეთება არ დაგავიწყდეს 💗',
+    body: 'თუ ამ ციკლში ოვულაციის ტესტს იყენებ, დღეს OPK-ის გაკეთება არ დაგავიწყდეს 💗',
     placeholders: [],
     sample: {},
   },
@@ -211,6 +211,53 @@ export function applyPushTemplate(template, vars = {}) {
   };
 }
 
+export const FERTILITY_PUSH_KEYS = Object.freeze(['cycle-ovulation', 'cycle-fertile']);
+
+const FERTILITY_UNSAFE_PHRASES = [
+  'ოვულირებთ',
+  'ნაყოფიერი დღეები დაიწყო',
+  'დღეს ოვულაციის დღეა',
+  'შენ ნაყოფიერი ხარ',
+  'you are ovulating',
+  'you are fertile',
+];
+
+export function fertilityPushCopyUnsafe(title, body) {
+  const hay = `${title ?? ''} ${body ?? ''}`;
+  if (FERTILITY_UNSAFE_PHRASES.some((phrase) => hay.toLowerCase().includes(phrase.toLowerCase()))) {
+    return true;
+  }
+  if (!/სავარაუდო|შეიძლება/.test(hay)) return true;
+  return false;
+}
+
+export function validateFertilityPushCopy(key, title, body) {
+  if (!FERTILITY_PUSH_KEYS.includes(key)) return { ok: true, errors: [] };
+  if (fertilityPushCopyUnsafe(title, body)) {
+    return { ok: false, errors: ['fertility_copy_must_stay_estimated'] };
+  }
+  return { ok: true, errors: [] };
+}
+
+/**
+ * DB overrides win unless they are fertility templates that violate the safety contract.
+ * Unsafe stored copy is kept in the table but not served.
+ */
+export function resolvePushTemplateCopy(def, customRow) {
+  if (!customRow) {
+    return { title: def.title, body: def.body, source: 'default' };
+  }
+  if (FERTILITY_PUSH_KEYS.includes(def.key) && fertilityPushCopyUnsafe(customRow.title, customRow.body)) {
+    return {
+      title: def.title,
+      body: def.body,
+      source: 'default_safety_override',
+      customStored: true,
+    };
+  }
+  return { title: customRow.title, body: customRow.body, source: 'db' };
+}
+
 /** Reject unmatched braces / illegal placeholder names before they reach production. */
 export function validatePushTemplatePlaceholders(title, body) {
   const errors = [];
@@ -273,11 +320,13 @@ export async function listPushTemplates() {
   const byKey = new Map((overrides ?? []).map((row) => [row.key, row]));
   return PUSH_TEMPLATE_DEFAULTS.map((def) => {
     const custom = byKey.get(def.key);
+    const resolved = resolvePushTemplateCopy(def, custom);
     return {
       ...def,
-      title: custom?.title ?? def.title,
-      body: custom?.body ?? def.body,
+      title: resolved.title,
+      body: resolved.body,
       custom: Boolean(custom),
+      safetyOverride: resolved.source === 'default_safety_override',
       updatedAt: custom?.updatedAt ?? null,
     };
   });
@@ -302,6 +351,12 @@ export async function savePushTemplate(key, { title, body }) {
     err.code = 'invalid_template';
     throw err;
   }
+  const fertility = validateFertilityPushCopy(key, title, body);
+  if (!fertility.ok) {
+    const err = new Error(fertility.errors.join('; '));
+    err.code = 'unsafe_fertility_copy';
+    throw err;
+  }
   const id = crypto.randomUUID();
   await prisma.$executeRaw`
     INSERT INTO "PushTemplate" (id, key, title, body, "updatedAt")
@@ -320,15 +375,17 @@ export async function resetPushTemplate(key) {
 export async function logPushEvent({ source, key, title, body, userId }) {
   await ensurePushTemplateTables();
   try {
+    const k = String(key || 'unknown');
+    const cycle = k.startsWith('cycle-') || k.startsWith('cycle:') || k === 'cycle_reminder';
     const id = crypto.randomUUID();
     await prisma.$executeRaw`
       INSERT INTO "PushEvent" (id, source, key, title, body, "userId", "createdAt")
       VALUES (
         ${id},
         ${String(source || 'local').slice(0, 32)},
-        ${String(key || 'unknown').slice(0, 80)},
-        ${String(title || '').slice(0, 160)},
-        ${String(body || '').slice(0, 600)},
+        ${k.slice(0, 80)},
+        ${String(cycle ? '[cycle-redacted]' : title || '').slice(0, 160)},
+        ${String(cycle ? '[cycle-redacted]' : body || '').slice(0, 600)},
         ${userId || null},
         CURRENT_TIMESTAMP
       )

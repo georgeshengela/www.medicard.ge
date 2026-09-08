@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { CycleRing } from '@/components/cycle/CycleRing';
+import { CycleStatusGauge } from '@/components/cycle/CycleStatusGauge';
+import { PredictionBadge, ConfidenceHint } from '@/components/cycle/CycleBadges';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import type { CycleBundle } from '@/lib/api';
 import { cycleHonestyFlags, displayPhaseLabel, nextPeriodConfidenceCopy } from '@/lib/cycleHonesty';
+import { addDaysToKey, daysBetween } from '@/lib/cyclePhase';
 import { isBleedFlow } from '@/lib/cycleLogSave';
-import { bleedingIsUncertain } from '@/lib/cycleContraception';
+import { bleedingIsUncertain, showFertilityUi } from '@/lib/cycleContraception';
+import { confidencePresentation, gaugeA11ySummary } from '@/lib/cyclePresentation.js';
 import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
@@ -19,8 +22,14 @@ type Props = {
   onLog: () => void;
   onStart: () => void;
   onEnd: () => void;
+  onInfo?: () => void;
 };
 
+/**
+ * Phase 5 Overview hero (docs/CYCLE_DESIGN.md §4.1):
+ * CycleStatusGauge → status line → PredictionBadge + ConfidenceHint → CTA.
+ * All facts are server-derived; this component only maps them to visuals.
+ */
 export function CycleHero({
   bundle,
   day,
@@ -31,6 +40,7 @@ export function CycleHero({
   onLog,
   onStart,
   onEnd,
+  onInfo,
 }: Props) {
   const c = useCycleColors();
   const next = bundle.predictions?.nextPeriodStart ?? null;
@@ -40,6 +50,8 @@ export function CycleHero({
   const predictedToday = Boolean(
     bundle.predictions?.calendar?.[today]?.period && bundle.predictions.calendar[today].predicted,
   );
+  const uncertainBleed = bleedingIsUncertain(bundle);
+  const fertilityVisible = showFertilityUi(bundle);
 
   const flags = cycleHonestyFlags({
     confidence,
@@ -47,7 +59,57 @@ export function CycleHero({
     conditions: bundle.profile.conditions,
   });
   const confidenceCopy = nextPeriodConfidenceCopy(flags);
+  const predViz = confidencePresentation(confidence);
+  const hidePredicted = predViz.hidePredictedOverlays;
   const phaseHint = displayPhaseLabel(phase ?? 'unknown', phaseKa, { loggedPeriod: onPeriod });
+
+  /**
+   * Gauge overlays — display mapping only: server dates → 0..1 arc positions
+   * within the current cycle window [cycleStart, cycleStart + length).
+   */
+  const overlays = useMemo(() => {
+    if (day == null || !cycleLength || hidePredicted) {
+      return { fertileArc: null, ovulationT: null, predictedPeriodT: null };
+    }
+    const cycleStart = addDaysToKey(today, -(day - 1));
+    const cycleEndExclusive = addDaysToKey(cycleStart, cycleLength);
+    const toT = (dateKey: string | null | undefined) => {
+      if (!dateKey) return null;
+      if (dateKey < cycleStart || dateKey >= cycleEndExclusive) return null;
+      const idx = daysBetween(cycleStart, dateKey) + 1;
+      return Math.min(1, Math.max(0, idx / cycleLength));
+    };
+    const fw = fertilityVisible ? bundle.predictions?.fertileWindow : null;
+    const from = toT(fw?.start);
+    const to = toT(fw?.end);
+    return {
+      fertileArc: from != null && to != null ? { from, to } : null,
+      ovulationT: fertilityVisible ? toT(bundle.predictions?.ovulationDate) : null,
+      predictedPeriodT: toT(next),
+    };
+  }, [bundle.predictions, day, cycleLength, today, next, fertilityVisible, hidePredicted]);
+
+  /** Status line (§4.1): estimate wording always; window copy when cautious. */
+  const statusLine = useMemo(() => {
+    if (onPeriod) {
+      return uncertainBleed ? ka.cycle.loggedBleedingToday : ka.cycle.currentlyOnPeriod;
+    }
+    if (hidePredicted) return null;
+    if (predictedToday) return ka.cycle.predictedPeriodToday;
+    if (!next || bundle.profile.mode === 'PREGNANCY') return null;
+    const inDays = daysBetween(today, next);
+    if (inDays < 0) return null; // Late state is carried by the alerts banner.
+    if (inDays === 0) return ka.cycle.predictedPeriodToday;
+    return uncertainBleed
+      ? ka.cycle.statusNextBleedingIn(inDays)
+      : ka.cycle.statusNextPeriodIn(inDays);
+  }, [onPeriod, hidePredicted, predictedToday, next, bundle.profile.mode, today, uncertainBleed]);
+
+  const gaugeA11y = gaugeA11ySummary({
+    dayLabel: day != null ? `${ka.cycle.cycleDay} ${day}` : null,
+    phaseLabel: phaseHint,
+    nextPeriodLabel: statusLine,
+  });
 
   return (
     <View
@@ -60,102 +122,86 @@ export function CycleHero({
         paddingBottom: 16,
       }}
     >
-      <CycleRing
+      <CycleStatusGauge
         day={day}
         cycleLength={cycleLength}
-        label={ka.cycle.cycleDay}
         phaseHint={phaseHint}
         periodActive={onPeriod}
+        fertileArc={overlays.fertileArc}
+        ovulationT={overlays.ovulationT}
+        predictedPeriodT={overlays.predictedPeriodT}
+        a11yLabel={gaugeA11y}
+        onInfo={onInfo}
       />
 
       <View style={{ paddingHorizontal: 16, marginTop: 4 }}>
-        {onPeriod ? (
+        {statusLine ? (
           <Text
             style={{
-              color: c.period,
+              color: onPeriod ? c.period : c.ink,
               fontFamily: 'NotoSansGeorgian_700Bold',
-              fontSize: 13,
+              fontSize: 18,
+              lineHeight: 25,
               textAlign: 'center',
             }}
           >
-            {bleedingIsUncertain(bundle) ? ka.cycle.loggedBleedingToday : ka.cycle.currentlyOnPeriod}
+            {statusLine}
           </Text>
-        ) : predictedToday ? (
+        ) : next && bundle.profile.mode !== 'PREGNANCY' && !hidePredicted ? (
+          <Text
+            style={{
+              color: c.ink,
+              fontFamily: 'NotoSansGeorgian_700Bold',
+              fontSize: 16,
+              lineHeight: 23,
+              textAlign: 'center',
+            }}
+          >
+            {uncertainBleed ? ka.cycle.estimatedNextBleeding : ka.cycle.estimatedNextPeriod}:{' '}
+            {formatCycleDateKa(next)}
+          </Text>
+        ) : (
           <Text
             style={{
               color: c.muted,
               fontFamily: 'NotoSansGeorgian_500Medium',
-              fontSize: 13,
+              fontSize: 14,
+              lineHeight: 20,
               textAlign: 'center',
             }}
           >
-            {ka.cycle.predictedPeriodToday}
+            {ka.cycle.statusLearning}
           </Text>
-        ) : null}
+        )}
 
-        {next && bundle.profile.mode !== 'PREGNANCY' ? (
-          <View style={{ marginTop: 12 }}>
-            <Text
-              style={{
-                color: c.muted,
-                fontSize: 11,
-                textAlign: 'center',
-                fontFamily: 'NotoSansGeorgian_500Medium',
-              }}
-            >
-              {bleedingIsUncertain(bundle) ? ka.cycle.estimatedNextBleeding : ka.cycle.estimatedNextPeriod}
-            </Text>
-            <Text
-              style={{
-                color: c.ink,
-                fontFamily: 'NotoSansGeorgian_700Bold',
-                fontSize: 18,
-                textAlign: 'center',
-                marginTop: 4,
-              }}
-            >
-              {formatCycleDateKa(next)}
-            </Text>
-            {confidence === 'high' ? (
-              <Text
-                style={{
-                  color: c.mutedSoft,
-                  fontSize: 11,
-                  textAlign: 'center',
-                  marginTop: 6,
-                }}
-              >
-                {confidenceCopy}
-              </Text>
-            ) : (
-              <Text
-                style={{
-                  color: c.muted,
-                  fontSize: 12,
-                  lineHeight: 17,
-                  textAlign: 'center',
-                  marginTop: 6,
-                  fontFamily: 'NotoSansGeorgian_400Regular',
-                }}
-              >
-                {confidenceCopy}
-              </Text>
-            )}
-            {flags.pcos ? (
-              <Text
-                style={{
-                  color: c.muted,
-                  fontSize: 11,
-                  lineHeight: 16,
-                  textAlign: 'center',
-                  marginTop: 8,
-                  fontFamily: 'NotoSansGeorgian_400Regular',
-                }}
-              >
-                {ka.cycle.pcosFertilityCaution}
-              </Text>
-            ) : null}
-          </View>
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: 8,
+            marginTop: 12,
+          }}
+        >
+          {next && bundle.profile.mode !== 'PREGNANCY' && !onPeriod && !hidePredicted ? (
+            <PredictionBadge date={next} />
+          ) : null}
+          <ConfidenceHint label={confidenceCopy} />
+        </View>
+
+        {flags.pcos && fertilityVisible ? (
+          <Text
+            style={{
+              color: c.muted,
+              fontSize: 11,
+              lineHeight: 16,
+              textAlign: 'center',
+              marginTop: 10,
+              fontFamily: 'NotoSansGeorgian_400Regular',
+            }}
+          >
+            {ka.cycle.pcosFertilityCaution}
+          </Text>
         ) : null}
 
         <View style={{ marginTop: 14, gap: 8 }}>
@@ -196,22 +242,12 @@ export function CycleHero({
                   {ka.cycle.periodEndCta}
                 </Text>
               </Pressable>
-              <Text
-                style={{
-                  color: c.mutedSoft,
-                  fontSize: 11,
-                  textAlign: 'center',
-                  lineHeight: 16,
-                }}
-              >
-                {ka.cycle.periodEndHint}
-              </Text>
             </>
           ) : (
             <Pressable
-              onPress={onStart}
+              onPress={onLog}
               accessibilityRole="button"
-              accessibilityLabel={ka.cycle.quickLogStart}
+              accessibilityLabel={ka.cycle.logTodayCta}
               style={{
                 minHeight: 48,
                 borderRadius: 14,
@@ -221,7 +257,7 @@ export function CycleHero({
               }}
             >
               <Text style={{ color: c.white, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
-                {ka.cycle.quickLogStart}
+                {ka.cycle.logTodayCta}
               </Text>
             </Pressable>
           )}

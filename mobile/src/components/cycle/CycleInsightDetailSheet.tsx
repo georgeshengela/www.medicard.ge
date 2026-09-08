@@ -300,7 +300,8 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
               <Pressable
                 onPress={runAuto}
                 disabled={busy}
-                style={({ pressed }) => ({
+                className="active:opacity-90"
+                style={{
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -309,9 +310,9 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
                   borderRadius: 16,
                   borderWidth: 1,
                   borderColor: c.border,
-                  backgroundColor: pressed ? c.card : c.cardSoft,
+                  backgroundColor: c.cardSoft,
                   opacity: busy ? 0.6 : 1,
-                })}
+                }}
               >
                 <Bell size={16} color={c.brand} strokeWidth={2.2} />
                 <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>

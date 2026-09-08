@@ -17,7 +17,7 @@ import {
   resetPushTemplate,
   savePushTemplate,
 } from '../lib/pushTemplates.js';
-import { toDateOnly, calculateAge } from '../lib/patient.js';
+import { toDateOnly, calculateAge, genderSchema } from '../lib/patient.js';
 import { asyncHandler } from '../middleware/error.js';
 import { requireAdmin } from '../middleware/adminAuth.js';
 import { getProviderBalances } from '../lib/providerBalances.js';
@@ -481,6 +481,7 @@ adminRouter.patch(
         fullName: z.string().trim().min(2).max(120).optional(),
         email: z.string().trim().toLowerCase().email().optional(),
         phone: z.string().trim().nullable().optional(),
+        gender: z.preprocess((value) => (value === '' ? null : value), genderSchema.nullable().optional()),
         status: z.enum(['ACTIVE', 'BLOCKED']).optional(),
         adminNote: z.string().max(2000).nullable().optional(),
         packageCode: z.enum(['FREE', 'STANDARD', 'ULTIMATE']).optional(),
@@ -499,6 +500,7 @@ adminRouter.patch(
     if (body.fullName !== undefined) data.fullName = body.fullName;
     if (body.email !== undefined) data.email = body.email;
     if (body.phone !== undefined) data.phone = body.phone;
+    if (body.gender !== undefined) data.gender = body.gender;
     if (body.status !== undefined) data.status = body.status;
     if (body.adminNote !== undefined) data.adminNote = body.adminNote;
 
@@ -540,6 +542,16 @@ adminRouter.patch(
           targetId: user.id,
           previousValue: { status: existing.status },
           newValue: { status: user.status },
+        });
+      }
+      if (body.gender !== undefined && body.gender !== existing.gender) {
+        await writeAdminAudit({
+          admin: req.admin,
+          action: 'user.gender',
+          targetType: 'user',
+          targetId: user.id,
+          previousValue: { gender: existing.gender },
+          newValue: { gender: user.gender },
         });
       }
       res.json({ user: adminUserRow(user, await getUsage(user.id)) });

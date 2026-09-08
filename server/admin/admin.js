@@ -2230,6 +2230,10 @@ function fatigueKa(value) {
 function platformKa(value) {
   return ({ ios: 'iOS', android: 'Android', web: 'Web' }[value] || null);
 }
+function genderKa(value) {
+  return ({ MALE: 'მამრობითი', FEMALE: 'მდედრობითი', OTHER: 'სხვა' }[String(value || '').toUpperCase()] || 'უცნობია');
+}
+window.genderKa = genderKa;
 function yesNoKa(value) {
   if (value === true) return 'კი';
   if (value === false) return 'არა';
@@ -2272,6 +2276,26 @@ const FEATURE_USAGE_ICONS = {
   weekly_report: 'file',
 };
 
+function adminFlagImg(code) {
+  const iso = String(code || '').toLowerCase();
+  if (!/^[a-z]{2}$/.test(iso)) return '';
+  return `<img class="v3-user-flag" src="https://flagcdn.com/w40/${iso}.png" srcset="https://flagcdn.com/w80/${iso}.png 2x" width="20" height="15" alt="" decoding="async">`;
+}
+
+function adminPlaceOf(loc) {
+  const row = loc && typeof loc === 'object' ? loc : {};
+  const country = row.countryKa || row.countryCode || '';
+  const city = row.cityKa || '';
+  return {
+    country: country || 'უცნობია',
+    city: city || 'უცნობია',
+    flag: adminFlagImg(row.countryCode),
+    line: [city, country].filter(Boolean).join(', '),
+  };
+}
+window.adminFlagImg = adminFlagImg;
+window.adminPlaceOf = adminPlaceOf;
+
 function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab) {
   const inv = extra.investigation || {};
   const ov = inv.overview || {};
@@ -2279,6 +2303,7 @@ function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab)
   const notes = inv.notifications || extra.notifications || {};
   const tab = USER_TABS.some(([key]) => key === activeTab) ? activeTab : 'overview';
   const tel = ov.telemetry || notes.telemetry || {};
+  const place = adminPlaceOf(ov.location);
   const row = (label, value, icoName) => `<div class="inv-row">${icoName ? `<span class="inv-row-ico">${icon(icoName)}</span>` : ''}<span>${label}</span><strong>${value}</strong></div>`;
   const sect = (title, icoName, body) => `<section class="inv-section"><h4>${icon(icoName)} ${title}</h4>${body}</section>`;
   const form = `
@@ -2286,6 +2311,14 @@ function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab)
       <label class="field"><span>სახელი</span><input id="edit-name" value="${escapeAttr(user.fullName)}" /></label>
       <label class="field"><span>ელ-ფოსტა</span><input id="edit-email" type="email" value="${escapeAttr(user.email)}" /></label>
       <label class="field"><span>ტელეფონი</span><input id="edit-phone" type="tel" value="${escapeAttr(user.phone || '')}" placeholder="—" /></label>
+      <label class="field"><span>სქესი</span>
+        <select id="edit-gender">
+          <option value="" ${!user.gender ? 'selected' : ''}>არ არის მითითებული</option>
+          <option value="MALE" ${user.gender === 'MALE' ? 'selected' : ''}>მამრობითი</option>
+          <option value="FEMALE" ${user.gender === 'FEMALE' ? 'selected' : ''}>მდედრობითი</option>
+          <option value="OTHER" ${user.gender === 'OTHER' ? 'selected' : ''}>სხვა</option>
+        </select>
+      </label>
       <label class="field"><span>სტატუსი</span>
         <select id="edit-status">
           <option value="ACTIVE" ${user.status === 'ACTIVE' ? 'selected' : ''}>აქტიური — შეუძლია შესვლა</option>
@@ -2313,6 +2346,9 @@ function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab)
       ${row('User ID', `<button type="button" class="inv-copy" data-copy="${escapeAttr(user.id)}" data-copy-label="User ID">${escapeHtml(user.id)}</button>`, 'copy')}
       ${row('ანგარიშის სტატუსი', user.status === 'BLOCKED' ? 'დაბლოკილი' : 'შესვლა დაშვებულია', user.status === 'BLOCKED' ? 'lock' : 'check')}
       ${row('რეგისტრაცია', fmtDateShort(user.createdAt), 'calendar')}
+      ${row('სქესი', genderKa(user.gender), 'user')}
+      ${row('ქვეყანა', `${place.flag}<span>${escapeHtml(place.country)}</span>`, 'globe')}
+      ${row('ქალაქი', escapeHtml(place.city), 'globe')}
     </div>`)}
     ${sect('აქტივობა', 'activity', `<div class="inv-grid">
       ${row('ბოლო აქტივობა', ov.lastActiveAt ? fmtDate(ov.lastActiveAt) : 'უცნობია', 'activity')}
@@ -2723,6 +2759,7 @@ async function renderUserPage(id, opts = {}) {
           fullName: $('edit-name').value.trim(),
           email: $('edit-email').value.trim(),
           phone: $('edit-phone').value.trim() || null,
+          gender: $('edit-gender')?.value || null,
           status: $('edit-status').value,
           packageCode,
           packageStartedAt: startedRaw ? new Date(`${startedRaw}T00:00:00.000Z`).toISOString() : undefined,

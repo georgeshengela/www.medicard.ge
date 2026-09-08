@@ -12,6 +12,8 @@ import {
   fatigueState,
   telemetryCapability,
 } from './clientContext.js';
+import { loadUserLocationRow } from './userLocation.js';
+import { publicPlaceSnapshot } from './geoPlace.js';
 
 export const PRIVACY_FORBIDDEN_KEYS = [
   'messages',
@@ -217,6 +219,7 @@ export async function getUserInvestigation(userId, range = {}, policy = APP_VERS
     outcomesListed,
     audit,
     mediPeriodCount,
+    locationRow,
   ] = await Promise.all([
     ignoreMissing(() => prisma.$queryRaw`
       SELECT "firstAt", "lastAt", "platform", "appVersion", "activityType", "date"
@@ -308,6 +311,7 @@ export async function getUserInvestigation(userId, range = {}, policy = APP_VERS
     }).catch(() => ({ outcomes: [] })),
     listAdminAudit({ targetId: userId, limit: 40, offset: 0 }).catch(() => ({ entries: [] })),
     countMediInRange(userId, fromDt, toExclusiveDt),
+    loadUserLocationRow(userId).catch(() => null),
   ]);
 
   const decisions = await enrichDecisions(listed.decisions || [], policy);
@@ -474,6 +478,7 @@ export async function getUserInvestigation(userId, range = {}, policy = APP_VERS
         : null,
       preferredEngagementWindow: null,
       telemetry,
+      location: publicPlaceSnapshot(locationRow),
     },
     timeline,
     productUsage,

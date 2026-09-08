@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -147,7 +148,8 @@ function CycleOptionTile({
       }}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      style={({ pressed }) => ({
+      className="active:opacity-90"
+      style={{
         minHeight: 58,
         borderRadius: 16,
         alignItems: 'center',
@@ -157,10 +159,8 @@ function CycleOptionTile({
         backgroundColor: selected ? accent : c.cardSoft,
         borderWidth: selected ? 0 : 1,
         borderColor: c.border,
-        opacity: pressed ? 0.92 : 1,
-        transform: [{ scale: pressed ? 0.98 : 1 }],
         ...(selected ? cycleShadow.soft : {}),
-      })}
+      }}
     >
       <Text
         style={{
@@ -352,7 +352,8 @@ export function CycleScalePicker({
                 }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                style={({ pressed }) => ({
+                className="active:opacity-90"
+                style={{
                   height: 56,
                   borderRadius: 16,
                   alignItems: 'center',
@@ -360,10 +361,8 @@ export function CycleScalePicker({
                   backgroundColor: on ? accent : c.cardSoft,
                   borderWidth: on ? 0 : 1,
                   borderColor: c.border,
-                  opacity: pressed ? 0.92 : 1,
-                  transform: [{ scale: pressed ? 0.97 : 1 }],
                   ...(on ? cycleShadow.soft : {}),
-                })}
+                }}
               >
                 <Text
                   style={{
@@ -451,14 +450,14 @@ export function CyclePrimaryButton({
       disabled={blocked}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => ({
+      className={blocked ? undefined : 'active:opacity-90'}
+      style={{
         width: '100%',
-        opacity: blocked ? 0.5 : pressed ? 0.92 : 1,
-        transform: [{ scale: pressed && !blocked ? 0.985 : 1 }],
+        opacity: blocked ? 0.5 : 1,
         borderRadius: 16,
         overflow: 'hidden',
         ...cycleShadow.soft,
-      })}
+      }}
     >
       <View
         style={{
@@ -499,34 +498,50 @@ export function CyclePrimaryButton({
   );
 }
 
-export function CycleFab({ onPress, label }: { onPress: () => void; label?: string }) {
+/** Right-column reserve so the FAB never sits on the 7-day strip. */
+export const CYCLE_FAB_GUTTER = 156;
+
+export function CycleFab({
+  onPress,
+  label,
+  onWidth,
+  compact: compactProp,
+}: {
+  onPress: () => void;
+  label?: string;
+  onWidth?: (width: number) => void;
+  compact?: boolean;
+}) {
   const c = useCycleColors();
+  const { width: screenW, fontScale } = useWindowDimensions();
+  const compact = compactProp ?? (screenW < 380 || fontScale >= 1.3);
   const text = label || 'აღრიცხვა';
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={text}
+      onLayout={(e) => onWidth?.(e.nativeEvent.layout.width)}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
         onPress();
       }}
-      style={({ pressed }) => ({
+      className="active:opacity-90"
+      style={{
         alignSelf: 'flex-end',
         borderRadius: 999,
         overflow: 'hidden',
-        transform: [{ scale: pressed ? 0.96 : 1 }],
         ...cycleShadow.fab,
-      })}
+      }}
     >
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          minHeight: 56,
+          minHeight: 48,
           borderRadius: 999,
-          paddingLeft: 18,
-          paddingRight: 22,
-          paddingVertical: 14,
+          paddingLeft: 14,
+          paddingRight: 16,
+          paddingVertical: 8,
           backgroundColor: c.cta,
         }}
       >
@@ -538,23 +553,25 @@ export function CycleFab({ onPress, label }: { onPress: () => void; label?: stri
             backgroundColor: 'rgba(255,255,255,0.18)',
             alignItems: 'center',
             justifyContent: 'center',
-            marginRight: 10,
+            marginRight: compact ? 0 : 10,
           }}
         >
           <Text style={{ color: '#fff', fontSize: 22, fontWeight: '300', lineHeight: 24, marginTop: -2 }}>
             +
           </Text>
         </View>
-        <Text
-          style={{
-            color: '#fff',
-            fontFamily: 'NotoSansGeorgian_700Bold',
-            fontSize: 15,
-            letterSpacing: -0.2,
-          }}
-        >
-          {text}
-        </Text>
+        {compact ? null : (
+          <Text
+            style={{
+              color: '#fff',
+              fontFamily: 'NotoSansGeorgian_700Bold',
+              fontSize: 15,
+              letterSpacing: -0.2,
+            }}
+          >
+            {text}
+          </Text>
+        )}
       </View>
     </Pressable>
   );
@@ -574,116 +591,6 @@ export function CycleActionPanel({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-    </View>
-  );
-}
-
-/** Full-width action row with gradient accent. */
-export function CycleFeatureTile({
-  icon: Icon,
-  title,
-  subtitle,
-  color,
-  onPress,
-  delay: _delay = 0,
-}: {
-  icon: LucideIcon;
-  title: string;
-  subtitle: string;
-  color: string;
-  onPress: () => void;
-  delay?: number;
-}) {
-  const c = useCycleColors();
-  return (
-    <View style={{ width: '100%', paddingBottom: 10 }}>
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={`${title}. ${subtitle}`}
-        style={({ pressed }) => ({
-          opacity: pressed ? 0.92 : 1,
-          transform: [{ scale: pressed ? 0.985 : 1 }],
-        })}
-      >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingVertical: 16,
-            paddingHorizontal: 14,
-            borderRadius: 16,
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            borderBottomLeftRadius: 16,
-            borderBottomRightRadius: 16,
-            borderWidth: 1,
-            borderColor: c.border,
-            backgroundColor: c.card,
-            minHeight: 84,
-          }}
-        >
-          <View
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 18,
-              backgroundColor: withAlpha(color, 0.16),
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icon size={24} color={color} strokeWidth={2.15} />
-          </View>
-
-          <View style={{ flex: 1, marginLeft: 14, marginRight: 10, minWidth: 0 }}>
-            <Text
-              numberOfLines={1}
-              style={{
-                color: c.ink,
-            fontFamily: 'NotoSansGeorgian_700Bold',
-            fontSize: 16,
-            lineHeight: 20,
-              }}
-            >
-              {title}
-            </Text>
-            <Text
-              numberOfLines={2}
-              style={{
-                color: c.muted,
-                fontSize: 12,
-                lineHeight: 16,
-                marginTop: 4,
-              }}
-            >
-              {subtitle}
-            </Text>
-          </View>
-
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: c.cardSoft,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <View
-              style={{
-                width: 7,
-                height: 7,
-                borderTopWidth: 2,
-                borderRightWidth: 2,
-                borderColor: c.muted,
-                transform: [{ rotate: '45deg' }, { translateX: -1 }],
-              }}
-            />
-          </View>
-        </View>
-      </Pressable>
     </View>
   );
 }
@@ -712,16 +619,16 @@ export function CycleActionRow({
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={`${title}. ${subtitle}`}
-        style={({ pressed }) => ({
+        className="active:opacity-90"
+        style={{
           flexDirection: 'row',
           alignItems: 'center',
           minHeight: 72,
           paddingVertical: 14,
           paddingHorizontal: 14,
-          opacity: pressed ? 0.88 : 1,
           borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth,
           borderBottomColor: c.border,
-        })}
+        }}
       >
         <View
           style={{

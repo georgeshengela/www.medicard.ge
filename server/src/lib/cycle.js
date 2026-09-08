@@ -1,7 +1,8 @@
 /**
  * Cycle prediction helpers — period, fertile window, ovulation.
  * Identity is a civil calendar day YYYY-MM-DD, never a timestamp.
- * Engine "today" is Asia/Tbilisi — never Date#toISOString, never host TZ.
+ * Engine "today" is resolved by cycleCivilDate (device TZ → stored quest TZ →
+ * Asia/Tbilisi). Never Date#toISOString, never host TZ, never a UTC midnight identity.
  */
 
 import {
@@ -21,8 +22,13 @@ import {
   buildTtcObservationCards,
   collectFertilityTests,
   CYCLE_FERTILITY_AI_RULES,
-  fertilityObservationBits,
 } from './cycleFertility.js';
+import {
+  CYCLE_FIELD_CATEGORIES,
+  classifyCycleSymptomKey,
+  inspectCycleAiCategories,
+  serializeCycleLogForAi,
+} from './cycleAiContext.js';
 import {
   contraceptionInsightsFilter,
   interpretContraception,
@@ -31,7 +37,6 @@ import {
   collectPainObservations,
   lifestyleSummary,
   logHasPhase9Extras,
-  observationAiBits,
 } from './cycleObservations.js';
 import { buildPmsByDaysBefore, historicalAnalyticsForAi } from './cycleHistoryAnalytics.js';
 import { segmentHistoricalCycles } from './cycleHistory.js';
@@ -86,8 +91,46 @@ export function daysBetween(a, b) {
 /** Confirmed bleed — spotting is not a period start. */
 export const PERIOD_FLOWS = ['light', 'medium', 'heavy'];
 
+/** Merge at most one interior calendar day (missing or spotting). Explicit `none` never bridges. */
+export const PERIOD_MERGE_MAX_INTERIOR_DAYS = 1;
+/** Inclusive calendar span when bridging a logging gap. Consecutive logged bleed is not split. */
+export const PERIOD_MERGE_MAX_SPAN_DAYS = 10;
+
 export function isPeriodFlow(flow) {
   return PERIOD_FLOWS.includes(flow);
+}
+
+/** missing row / null flow vs explicit none vs spotting vs bleed. */
+export function classifyCycleFlowDay(flow) {
+  if (isPeriodFlow(flow)) return 'bleed';
+  if (flow === 'none') return 'none';
+  if (flow === 'spotting') return 'spotting';
+  return 'missing';
+}
+
+function interiorHasExplicitNone(prevBleed, nextBleed, byDate) {
+  let d = addDays(prevBleed, 1);
+  while (d < nextBleed) {
+    if (classifyCycleFlowDay(byDate.get(d)?.flow) === 'none') return true;
+    d = addDays(d, 1);
+  }
+  return false;
+}
+
+/**
+ * Same menstrual episode vs new episode.
+ * Consecutive bleed always continues. A single missing/spotting day may continue
+ * if the episode span stays ≤ 10 days. Explicit flow=none never continues.
+ */
+export function canContinuePeriod(runStart, lastBleed, nextBleed, byDate) {
+  if (!runStart || !lastBleed || !nextBleed) return false;
+  const gap = daysBetween(lastBleed, nextBleed);
+  if (gap <= 1) return true;
+  const interior = gap - 1;
+  if (interior > PERIOD_MERGE_MAX_INTERIOR_DAYS) return false;
+  if (daysBetween(runStart, nextBleed) + 1 > PERIOD_MERGE_MAX_SPAN_DAYS) return false;
+  if (interiorHasExplicitNone(lastBleed, nextBleed, byDate)) return false;
+  return true;
 }
 
 /** Infer averages and logged period ranges from bleed days (not spotting). */
@@ -99,6 +142,7 @@ export function inferCycleStats(
   const periodStarts = [];
   const periodRanges = [];
   const sorted = [...logs].sort((x, y) => x.date.localeCompare(y.date));
+  const byDate = new Map(sorted.map((log) => [log.date, log]));
   let lastBleedDate = null;
   let runStart = null;
   let runEnd = null;
@@ -117,7 +161,7 @@ export function inferCycleStats(
 
   for (const log of sorted) {
     if (!isPeriodFlow(log.flow)) continue;
-    if (!lastBleedDate || daysBetween(lastBleedDate, log.date) > 1) {
+    if (!lastBleedDate || !canContinuePeriod(runStart, lastBleedDate, log.date, byDate)) {
       flushRun();
       periodStarts.push(log.date);
       runStart = log.date;
@@ -162,6 +206,7 @@ export function inferCycleStats(
     inferredPeriodLength,
     periodStarts,
     periodRanges,
+    cycleGaps: gaps,
     cycleCount: gaps.length,
     lastPeriodStart: periodStarts[periodStarts.length - 1] ?? null,
   };
@@ -225,10 +270,51 @@ export function cycleLengthStats(cycleLengths = []) {
   };
 }
 
-export function predictionConfidence({ cycleCount = 0, isIrregular = false }) {
-  if (isIrregular || cycleCount < 2) return 'low';
-  if (cycleCount < 6) return 'medium';
-  return 'high';
+/** HIGH needs ≥6 in-band gaps and trimmed/full spread ≤7 days. MEDIUM needs ≥2 gaps and spread ≤14. */
+export const CONFIDENCE_HIGH_MIN_GAPS = 6;
+export const CONFIDENCE_HIGH_MAX_RANGE_DAYS = 7;
+export const CONFIDENCE_MEDIUM_MIN_GAPS = 2;
+export const CONFIDENCE_MEDIUM_MAX_RANGE_DAYS = 14;
+
+/**
+ * Robust spread of in-band cycle lengths.
+ * n < 6: full range (small samples cannot spare an outlier).
+ * n ≥ 6: trimmed range (drop one min and one max) so a single isolated cycle
+ * does not collapse confidence, while persistent 21/45 chaos stays wide.
+ */
+export function cycleLengthSpread(lengths) {
+  const nums = (Array.isArray(lengths) ? lengths : []).map(Number).filter((n) => Number.isFinite(n));
+  if (nums.length < 2) return null;
+  const sorted = [...nums].sort((a, b) => a - b);
+  const used = sorted.length >= CONFIDENCE_HIGH_MIN_GAPS ? sorted.slice(1, -1) : sorted;
+  return Math.max(...used) - Math.min(...used);
+}
+
+/**
+ * Confidence = history quantity AND typical consistency of the same 18–45 day gaps.
+ * Metric: trimmed range at n≥6, else full range. No fake percentages.
+ * Missing lengths never produce HIGH.
+ */
+export function predictionConfidence({
+  cycleCount = 0,
+  isIrregular = false,
+  cycleLengths = null,
+} = {}) {
+  if (isIrregular || cycleCount < CONFIDENCE_MEDIUM_MIN_GAPS) return 'low';
+  const lengths = Array.isArray(cycleLengths)
+    ? cycleLengths.map(Number).filter((n) => Number.isFinite(n))
+    : null;
+  const spread = lengths && lengths.length >= 2 ? cycleLengthSpread(lengths) : null;
+  if (spread != null && spread > CONFIDENCE_MEDIUM_MAX_RANGE_DAYS) return 'low';
+  if (
+    cycleCount >= CONFIDENCE_HIGH_MIN_GAPS &&
+    spread != null &&
+    spread <= CONFIDENCE_HIGH_MAX_RANGE_DAYS
+  ) {
+    return 'high';
+  }
+  if (spread == null && cycleCount >= CONFIDENCE_HIGH_MIN_GAPS) return 'medium';
+  return 'medium';
 }
 
 /**
@@ -243,9 +329,10 @@ export function buildPredictions({
   horizonDays = 90,
   cycleCount = 0,
   isIrregular = false,
+  cycleLengths = null,
   logs = [],
 }) {
-  const confidence = predictionConfidence({ cycleCount, isIrregular });
+  const confidence = predictionConfidence({ cycleCount, isIrregular, cycleLengths });
   if (!lastPeriodStart) {
     return {
       nextPeriodStart: null,
@@ -362,6 +449,11 @@ export function stampCalendarPhases(calendar, {
   return next;
 }
 
+/** Derived LMP from logs wins; stored onboarding LMP is the fallback. */
+export function resolveLastPeriodStart(stored, inferredStart) {
+  return inferredStart || stored || null;
+}
+
 /** Keep onboarding/profile start when logs have no confirmed bleed run. */
 export function pickLastPeriodStart(
   current,
@@ -370,7 +462,7 @@ export function pickLastPeriodStart(
   fallbackPeriod = DEFAULT_PERIOD_LENGTH,
 ) {
   const inferred = inferCycleStats(logs, fallbackCycle, fallbackPeriod);
-  return inferred.lastPeriodStart || current || null;
+  return resolveLastPeriodStart(current, inferred.lastPeriodStart);
 }
 
 /**
@@ -476,14 +568,19 @@ export function buildDoctorSummary({ profile, logs, predictions, analytics }) {
   const confidence = predictionConfidence({
     cycleCount: stats.count,
     isIrregular: profile.isIrregular,
+    cycleLengths: lengths,
   });
   const symptomFreq = {};
   const moodFreq = {};
   for (const log of logs) {
     for (const s of Array.isArray(log.symptoms) ? log.symptoms : []) {
+      const cat = classifyCycleSymptomKey(s);
+      if (cat !== CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS && cat !== CYCLE_FIELD_CATEGORIES.MOOD) continue;
       symptomFreq[s] = (symptomFreq[s] || 0) + 1;
     }
     for (const m of Array.isArray(log.moods) ? log.moods : []) {
+      const cat = classifyCycleSymptomKey(m);
+      if (cat !== CYCLE_FIELD_CATEGORIES.MOOD && cat !== CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS) continue;
       moodFreq[m] = (moodFreq[m] || 0) + 1;
     }
   }
@@ -541,22 +638,6 @@ export function buildDoctorSummary({ profile, logs, predictions, analytics }) {
       : undefined,
   };
 }
-
-const SYMPTOM_KA = {
-  cramps: 'კრუნჩხვები',
-  headache: 'თავის ტკივილი',
-  bloating: 'შებერილობა',
-  acne: 'აკნე',
-  fatigue: 'დაღლილობა',
-  back_pain: 'წელის ტკივილი',
-  breast_tenderness: 'მკერდის მგრძნობელობა',
-  nausea: 'გულისრევა',
-  anxious: 'შფოთვა',
-  irritable: 'გაღიზიანება',
-  sensitive: 'მგრძნობიარე',
-  energetic: 'ენერგიული',
-  sad: 'სევდიანი',
-};
 
 export function detectCyclePhase({
   lastPeriodStart,
@@ -721,6 +802,8 @@ export function buildCycleTrends({ profile, logs, inferred, averages, today }) {
   for (const log of logs) {
     if (log.date < cutoff) continue;
     for (const s of Array.isArray(log.symptoms) ? log.symptoms : []) {
+      const cat = classifyCycleSymptomKey(s);
+      if (cat !== CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS && cat !== CYCLE_FIELD_CATEGORIES.MOOD) continue;
       symptomFreq[s] = (symptomFreq[s] || 0) + 1;
     }
   }
@@ -750,8 +833,105 @@ export function buildCycleTrends({ profile, logs, inferred, averages, today }) {
     confidence: predictionConfidence({
       cycleCount: stats.count,
       isIrregular: profile.isIrregular,
+      cycleLengths: cycleLengths.map((c) => c.length),
     }),
   };
+}
+
+export const LATE_GRACE_HIGH_DAYS = 2;
+export const LATE_GRACE_MEDIUM_DAYS = 5;
+export const LATE_GRACE_LOW_DAYS = 14;
+export const LATE_FALLBACK_DAYS_SINCE_FLOW = 45;
+
+/**
+ * Personalized late-period status. Estimates only — never pregnancy.
+ * notifyEligible is always false: there is no Cycle late push; in-app alert only.
+ */
+export function detectLatePeriod({
+  today,
+  profile,
+  logs = [],
+  predictions = {},
+  inferred = {},
+} = {}) {
+  const todayKey = today || todayInTimeZone();
+  const empty = {
+    status: 'unknown',
+    reason: 'insufficient',
+    daysPastPredicted: null,
+    graceDays: null,
+    notifyEligible: false,
+  };
+  if (profile?.mode === 'PREGNANCY') return { ...empty, reason: 'pregnancy_mode' };
+
+  const ranges = inferred?.periodRanges ?? [];
+  if (ranges.some((r) => todayKey >= r.start && todayKey <= r.end)) {
+    return { ...empty, status: 'on_time', reason: 'in_period' };
+  }
+
+  const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date));
+  const lastFlow = sorted.find((l) => isPeriodFlow(l.flow));
+  if (!lastFlow) return { ...empty, reason: 'no_flow' };
+
+  const cycleCount = inferred?.cycleCount ?? 0;
+  const confidence = predictions?.confidence === 'high' || predictions?.confidence === 'medium'
+    ? predictions.confidence
+    : 'low';
+  const predicted = predictions?.nextPeriodStart || null;
+  const irregular = Boolean(profile?.isIrregular);
+
+  if (cycleCount >= 2 && predicted && !irregular && confidence !== 'low') {
+    const grace = confidence === 'high' ? LATE_GRACE_HIGH_DAYS : LATE_GRACE_MEDIUM_DAYS;
+    const daysPast = daysBetween(predicted, todayKey);
+    if (daysPast > grace) {
+      return {
+        status: 'late',
+        reason: 'predicted',
+        daysPastPredicted: daysPast,
+        graceDays: grace,
+        notifyEligible: false,
+      };
+    }
+    return {
+      status: 'on_time',
+      reason: 'within_grace',
+      daysPastPredicted: daysPast,
+      graceDays: grace,
+      notifyEligible: false,
+    };
+  }
+
+  if (predicted && (irregular || confidence === 'low') && cycleCount >= 2) {
+    const daysPast = daysBetween(predicted, todayKey);
+    if (daysPast > LATE_GRACE_LOW_DAYS) {
+      return {
+        status: 'late',
+        reason: 'wide_prediction',
+        daysPastPredicted: daysPast,
+        graceDays: LATE_GRACE_LOW_DAYS,
+        notifyEligible: false,
+      };
+    }
+    return {
+      status: 'on_time',
+      reason: 'within_wide_grace',
+      daysPastPredicted: daysPast,
+      graceDays: LATE_GRACE_LOW_DAYS,
+      notifyEligible: false,
+    };
+  }
+
+  const sinceFlow = daysBetween(lastFlow.date, todayKey);
+  if (sinceFlow >= LATE_FALLBACK_DAYS_SINCE_FLOW) {
+    return {
+      status: 'late',
+      reason: 'low_history_fallback',
+      daysPastPredicted: predicted ? daysBetween(predicted, todayKey) : null,
+      graceDays: null,
+      notifyEligible: false,
+    };
+  }
+  return empty;
 }
 
 export function buildCycleAlerts({ profile, logs, predictions, inferred, today }) {
@@ -785,15 +965,20 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today }
     }
   }
 
-  if (profile.mode !== 'PREGNANCY' && sorted.length > 0) {
-    const lastFlow = sorted.find((l) => isPeriodFlow(l.flow));
-    if (lastFlow && daysBetween(lastFlow.date, todayKey) > 40) {
-      alerts.push({
-        level: 'warn',
-        messageKa: latePeriodAlertKa(),
-        action: 'chat',
-      });
-    }
+  const late = detectLatePeriod({
+    today: todayKey,
+    profile,
+    logs,
+    predictions,
+    inferred,
+  });
+  if (late.status === 'late') {
+    alerts.push({
+      level: 'warn',
+      messageKa: latePeriodAlertKa(),
+      action: 'chat',
+      late,
+    });
   }
 
   if (conditions.includes('pcos')) {
@@ -816,6 +1001,36 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today }
   return alerts.slice(0, 4);
 }
 
+export function buildCycleWellnessContext({
+  profile,
+  logs,
+  predictions,
+  pregnancy,
+  user,
+  averages,
+  today,
+  contraception,
+  analytics,
+}) {
+  const prompt = buildCycleAiUserPrompt({
+    profile,
+    logs,
+    predictions,
+    pregnancy,
+    user,
+    averages,
+    today,
+    contraception,
+    analytics,
+  });
+  const inspect = inspectCycleAiCategories({ logs });
+  return {
+    prompt,
+    includedCategories: inspect.includedCategories,
+    excludedCategories: inspect.excludedCategories,
+  };
+}
+
 export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, user, averages, today, contraception, analytics }) {
   const phase = detectCyclePhase({
     lastPeriodStart: toDateKey(profile.lastPeriodStart),
@@ -836,12 +1051,7 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
     });
   const limited = contra.predictionAvailability === 'LIMITED';
   const recent = [...logs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
-  const lines = recent.map((l) => {
-    const sym = (l.symptoms || []).map((s) => SYMPTOM_KA[s] || s).join(', ') || '—';
-    const mood = (l.moods || []).map((m) => SYMPTOM_KA[m] || m).join(', ') || '—';
-    const extra = [...fertilityObservationBits(l), ...observationAiBits(l)];
-    return `${l.date}: flow=${l.flow || 'none'}; სიმპტომები=${sym}; განწყობა=${mood}${extra.length ? `; ${extra.join('; ')}` : ''}`;
-  });
+  const lines = recent.map((l) => serializeCycleLogForAi(l).line).filter(Boolean);
 
   return [
     'USER_LOGGED:',

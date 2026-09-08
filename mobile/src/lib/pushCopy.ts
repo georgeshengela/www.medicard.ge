@@ -1,5 +1,6 @@
 import { api } from '@/lib/api';
 import { ENGAGE_FALLBACKS } from '@/lib/mediEngageCopy';
+import { redactCyclePushLog } from '@/lib/cycleNotificationContract.js';
 
 export type PushTemplate = {
   key: string;
@@ -28,12 +29,12 @@ const FALLBACKS: Record<string, { title: string; body: string }> = {
     body: 'Medi-ს გამოთვლებით, მენსტრუაცია სავარაუდოდ დღეს დაიწყება. თუ სხვაგვარად იქნება, არაფერი — ციკლი ყოველთვის ზუსტად კალენდარს არ მიჰყვება 🤍',
   },
   'cycle-ovulation': {
-    title: 'ოვულაციის დრო ახლოვდება ✨',
-    body: 'თუ ორსულობას გეგმავ, დღეს შეიძლება ერთ-ერთი მნიშვნელოვანი დღე იყოს 💗 Medi შენთანაა.',
+    title: 'სავარაუდო ოვულაცია ახლოვდება ✨',
+    body: 'კალენდრის მიხედვით, სავარაუდო ოვულაციის დღე ახლოვდება. ეს შეფასებაა — ციკლი ყოველთვის ზუსტად არ მიჰყვება კალენდარს 🤍',
   },
   'cycle-fertile': {
-    title: 'ნაყოფიერი დღეები დაიწყო 🌱',
-    body: 'შენი სავარაუდო ნაყოფიერი ფანჯარა დაიწყო. თუ ორსულობას გეგმავ, შეგიძლია ეს დღეები გაითვალისწინო 💚',
+    title: 'სავარაუდო ნაყოფიერი ფანჯარა 🌱',
+    body: 'შენი სავარაუდო ნაყოფიერი ფანჯარა შეიძლება იწყებოდეს. ეს კალენდარული შეფასებაა — პროგნოზი შეიძლება შეიცვალოს 🤍',
   },
   'cycle-pms': {
     title: 'შეიძლება PMS ახლოვდებოდეს 🌙',
@@ -41,7 +42,7 @@ const FALLBACKS: Record<string, { title: string; body: string }> = {
   },
   'cycle-opk': {
     title: 'OPK ტესტის დროა 🧪',
-    body: 'თუ ამ ციკლში ოვულაციას აკვირდები, დღეს OPK ტესტის გაკეთება არ დაგავიწყდეს 💗',
+    body: 'თუ ამ ციკლში ოვულაციის ტესტს იყენებ, დღეს OPK-ის გაკეთება არ დაგავიწყდეს 💗',
   },
   'cycle-bbt': {
     title: 'დილა მშვიდობისა ☀️ BBT?',
@@ -158,7 +159,7 @@ export async function logPushEvent(opts: {
   body: string;
 }): Promise<void> {
   try {
-    await api.push.logEvent(opts);
+    await api.push.logEvent(redactCyclePushLog(opts));
   } catch {
     /* admin log is best-effort */
   }

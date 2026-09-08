@@ -40,6 +40,11 @@ import {
   todayInTimeZone,
   toDateKey,
 } from '../lib/cycle.js';
+import { clientTimezoneFromReq, resolveCycleClock } from '../lib/cycleCivilDate.js';
+import {
+  CYCLE_DISPLAY_LOG_LIMIT,
+  engineLogWhere,
+} from '../lib/cycleHistoryQuery.js';
 import { buildHistoricalAnalytics } from '../lib/cycleHistoryAnalytics.js';
 import {
   DELETE_CYCLE_CONFIRM,
@@ -92,6 +97,25 @@ function assertFemale(user) {
     err.status = 403;
     throw err;
   }
+}
+
+async function cycleClockForUser(userId, deviceTimezone = null) {
+  let stored = null;
+  try {
+    const row = await prisma.userQuestProfile.findUnique({
+      where: { userId },
+      select: { timezone: true },
+    });
+    stored = row?.timezone ?? null;
+  } catch {
+    stored = null;
+  }
+  return resolveCycleClock({ deviceTimezone, storedTimezone: stored });
+}
+
+async function bundleFor(req) {
+  const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+  return loadBundle(req.user.id, clock);
 }
 
 function parseJsonArray(value) {
@@ -168,12 +192,12 @@ async function getOrCreateProfile(userId) {
   });
 }
 
-async function syncLastPeriodStart(userId) {
+async function syncLastPeriodStart(userId, today = todayInTimeZone()) {
   const profile = await getOrCreateProfile(userId);
   const logs = await prisma.cycleLog.findMany({
-    where: { userId },
+    where: engineLogWhere(userId, today),
     select: { date: true, flow: true },
-    take: 400,
+    orderBy: { date: 'asc' },
   });
   const current = toDateKey(profile.lastPeriodStart);
   const next = pickLastPeriodStart(current, logs);
@@ -222,15 +246,20 @@ async function clearBleedDay(userId, date) {
   });
 }
 
-async function loadBundle(userId) {
-  const [profile, logs, pregnancyLogs, customTags, dailyMetrics] = await Promise.all([
+async function loadBundle(userId, clock = null) {
+  const today = clock?.today || todayInTimeZone();
+  const timezone = clock?.timezone || CYCLE_TIMEZONE;
+  const [profile, engineLogs, displayLogs, pregnancyLogs, customTags, dailyMetrics] = await Promise.all([
     getOrCreateProfile(userId),
-    // Bounded recent history: 400 logs (~1–2 years of daily tracking). Analytics
-    // then uses the last 12 pattern-valid completed cycles from that window.
+    prisma.cycleLog.findMany({
+      where: engineLogWhere(userId, today),
+      orderBy: { date: 'asc' },
+      select: { date: true, flow: true },
+    }),
     prisma.cycleLog.findMany({
       where: { userId },
       orderBy: { date: 'desc' },
-      take: 400,
+      take: CYCLE_DISPLAY_LOG_LIMIT,
     }),
     prisma.pregnancyLog.findMany({
       where: { userId },
@@ -241,24 +270,23 @@ async function loadBundle(userId) {
     loadDailyMetrics(userId),
   ]);
 
-  const shapedLogs = logs.map(shapeCycleLog);
+  const shapedLogs = displayLogs.map(shapeCycleLog);
 
   const inferred = inferCycleStats(
-    shapedLogs,
+    engineLogs,
     profile.avgCycleLength,
     profile.avgPeriodLength,
   );
   const averages = resolveForecastAverages(profile, inferred);
 
-  const lastPeriodStart =
-    toDateKey(profile.lastPeriodStart) || inferred.lastPeriodStart;
+  const lastPeriodStart = inferred.lastPeriodStart || toDateKey(profile.lastPeriodStart);
 
-  const today = todayInTimeZone();
   const rawPredictions = buildPredictions({
     lastPeriodStart,
     avgCycleLength: averages.usedCycleLength,
     avgPeriodLength: averages.usedPeriodLength,
     cycleCount: averages.cycleCount,
+    cycleLengths: inferred.cycleGaps,
     isIrregular: profile.isIrregular,
     logs: shapedLogs,
   });
@@ -325,7 +353,7 @@ async function loadBundle(userId) {
   }
 
   return {
-    meta: { today, timezone: CYCLE_TIMEZONE },
+    meta: { today, timezone },
     cycleDay: todayPhase.day,
     phase: todayPhase.phase,
     phaseKa: todayPhase.phaseKa,
@@ -406,7 +434,7 @@ cycleRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     assertFemale(req.user);
-    const bundle = await loadBundle(req.user.id);
+    const bundle = await bundleFor(req);
     return res.json(bundle);
   }),
 );
@@ -415,7 +443,7 @@ cycleRouter.get(
   '/export',
   asyncHandler(async (req, res) => {
     assertFemale(req.user);
-    const bundle = await loadBundle(req.user.id);
+    const bundle = await bundleFor(req);
     return res.json(
       buildCycleExportPayload({
         profile: bundle.profile,
@@ -440,7 +468,7 @@ cycleRouter.post(
       throw err;
     }
     const deleted = await wipeCycleHealthData(prisma, req.user.id);
-    const bundle = await loadBundle(req.user.id);
+    const bundle = await bundleFor(req);
     return res.json({ ok: true, deleted, bundle });
   }),
 );
@@ -480,9 +508,9 @@ const profileUpdateSchema = z.object({
     .optional(),
 });
 
-async function respondWithBundle(userId, res, fallback) {
+async function respondWithBundle(req, res, fallback) {
   try {
-    return res.json(await loadBundle(userId));
+    return res.json(await bundleFor(req));
   } catch (err) {
     console.error('[cycle] loadBundle failed after write', err);
     return res.json(fallback);
@@ -537,9 +565,10 @@ async function applyProfileUpdate(req, res) {
     await updateOwnerSharePermissions(req.user.id, body.sharePermissions);
   }
 
-  return respondWithBundle(req.user.id, res, {
+  const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+  return respondWithBundle(req, res, {
     profile: { lastPeriodStart: body.lastPeriodStart ?? null },
-    meta: { today: todayInTimeZone(), timezone: CYCLE_TIMEZONE },
+    meta: { today: clock.today, timezone: clock.timezone },
   });
 }
 
@@ -553,14 +582,15 @@ cycleRouter.post(
   asyncHandler(async (req, res) => {
     assertFemale(req.user);
     const date = DATE_KEY.parse(req.body?.date ?? req.body?.lastPeriodStart);
+    const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
     await getOrCreateProfile(req.user.id);
     await prisma.cycleProfile.update({
       where: { userId: req.user.id },
       data: { lastPeriodStart: new Date(`${date}T00:00:00.000Z`) },
     });
-    return respondWithBundle(req.user.id, res, {
+    return respondWithBundle(req, res, {
       profile: { lastPeriodStart: date },
-      meta: { today: todayInTimeZone(), timezone: CYCLE_TIMEZONE },
+      meta: { today: clock.today, timezone: clock.timezone },
     });
   }),
 );
@@ -623,7 +653,7 @@ cycleRouter.get(
   asyncHandler(async (req, res) => {
     assertFemale(req.user);
     applyPrivateCache(res);
-    const bundle = await loadBundle(req.user.id);
+    const bundle = await bundleFor(req);
     return res.json({ share: bundle.partnerShare });
   }),
 );
@@ -636,7 +666,7 @@ cycleRouter.post(
     const body = z.object({ permissions: sharePermSchema.optional() }).parse(req.body ?? {});
     await getOrCreateProfile(req.user.id);
     await createOwnerShare(req.user.id, body.permissions);
-    return res.json(await loadBundle(req.user.id));
+    return res.json(await bundleFor(req));
   }),
 );
 
@@ -653,7 +683,7 @@ cycleRouter.patch(
     const manage = decideShareManage({ share, viewerUserId: req.user.id });
     if (!manage.ok) return denyShare(res);
     await updateOwnerSharePermissions(req.user.id, body.permissions);
-    return res.json(await loadBundle(req.user.id));
+    return res.json(await bundleFor(req));
   }),
 );
 
@@ -663,7 +693,7 @@ cycleRouter.delete(
     assertFemale(req.user);
     applyPrivateCache(res);
     await revokeOwnerShares(req.user.id);
-    return res.json(await loadBundle(req.user.id));
+    return res.json(await bundleFor(req));
   }),
 );
 
@@ -721,21 +751,30 @@ cycleRouter.get(
     const profile = await prisma.cycleProfile.findUnique({ where: { userId: share.ownerUserId } });
     if (!profile) return denyShare(res);
 
-    const logs = await prisma.cycleLog.findMany({
-      where: { userId: share.ownerUserId },
-      select: { date: true, flow: true, symptoms: true },
-      take: 400,
-    });
-    const shaped = logs.map((l) => ({
+    const ownerClock = await cycleClockForUser(share.ownerUserId);
+    const [engineLogs, todayRow] = await Promise.all([
+      prisma.cycleLog.findMany({
+        where: engineLogWhere(share.ownerUserId, ownerClock.today),
+        select: { date: true, flow: true },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.cycleLog.findUnique({
+        where: { userId_date: { userId: share.ownerUserId, date: ownerClock.today } },
+        select: { date: true, flow: true, symptoms: true },
+      }),
+    ]);
+    const shaped = engineLogs.map((l) => ({
       date: l.date,
       flow: l.flow,
-      symptoms: Array.isArray(l.symptoms) ? l.symptoms.map(String) : [],
+      symptoms: l.date === todayRow?.date
+        ? (Array.isArray(todayRow.symptoms) ? todayRow.symptoms.map(String) : [])
+        : [],
     }));
-
     const payload = buildPartnerPayload({
       profile,
       logs: shaped,
       permissions: share.permissions,
+      today: ownerClock.today,
     });
     securityShareLog('peek_ok', { partner: true });
     return res.json(payload);
@@ -746,7 +785,7 @@ cycleRouter.put(
   '/period',
   asyncHandler(async (req, res) => {
     assertFemale(req.user);
-    const today = todayInTimeZone();
+    const { today } = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
     const body = z
       .object({
         action: z.enum(['start', 'end', 'fill']),
@@ -770,8 +809,8 @@ cycleRouter.put(
     } else if (body.action === 'end') {
       const date = assertCycleDateKey(body.date, today);
       const existing = await prisma.cycleLog.findMany({
-        where: { userId: req.user.id },
-        take: 400,
+        where: engineLogWhere(req.user.id, today),
+        orderBy: { date: 'asc' },
       });
       const inferred = inferCycleStats(existing);
       const plan = planEndPeriod({
@@ -791,8 +830,8 @@ cycleRouter.put(
         throw err;
       }
       const existing = await prisma.cycleLog.findMany({
-        where: { userId: req.user.id },
-        take: 400,
+        where: engineLogWhere(req.user.id, today),
+        orderBy: { date: 'asc' },
       });
       const plan = planFillRange(start, end, existing, flow);
       for (const key of plan.fill) {
@@ -800,8 +839,8 @@ cycleRouter.put(
       }
     }
 
-    await syncLastPeriodStart(req.user.id);
-    return res.json(await loadBundle(req.user.id));
+    await syncLastPeriodStart(req.user.id, today);
+    return res.json(await bundleFor(req));
   }),
 );
 
@@ -809,7 +848,8 @@ cycleRouter.put(
   '/logs/:date',
   asyncHandler(async (req, res) => {
     assertFemale(req.user);
-    const date = assertCycleDateKey(z.string().parse(req.params.date));
+    const { today } = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+    const date = assertCycleDateKey(z.string().parse(req.params.date), today);
     const body = z
       .object({
         flow: z.enum(FLOWS).nullable().optional(),
@@ -881,9 +921,9 @@ cycleRouter.put(
       },
     });
 
-    await syncLastPeriodStart(req.user.id);
+    await syncLastPeriodStart(req.user.id, today);
 
-    return res.json({ log: shapeCycleLog(log), bundle: await loadBundle(req.user.id) });
+    return res.json({ log: shapeCycleLog(log), bundle: await bundleFor(req) });
   }),
 );
 
@@ -891,10 +931,11 @@ cycleRouter.delete(
   '/logs/:date',
   asyncHandler(async (req, res) => {
     assertFemale(req.user);
-    const date = assertCycleDateKey(z.string().parse(req.params.date));
+    const { today } = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+    const date = assertCycleDateKey(z.string().parse(req.params.date), today);
     await prisma.cycleLog.deleteMany({ where: { userId: req.user.id, date } });
-    await syncLastPeriodStart(req.user.id);
-    return res.json(await loadBundle(req.user.id));
+    await syncLastPeriodStart(req.user.id, today);
+    return res.json(await bundleFor(req));
   }),
 );
 
@@ -926,7 +967,7 @@ cycleRouter.post(
       where: { userId: req.user.id, nameNormalized: parsed.nameNormalized, archivedAt: null },
     });
     if (existing) {
-      return res.json({ tag: { id: existing.id, name: existing.name, archivedAt: null, createdAt: existing.createdAt.toISOString() }, bundle: await loadBundle(req.user.id) });
+      return res.json({ tag: { id: existing.id, name: existing.name, archivedAt: null, createdAt: existing.createdAt.toISOString() }, bundle: await bundleFor(req) });
     }
     if (activeCount >= CYCLE_TAG_ACTIVE_MAX) {
       const err = new Error('აქტიური ნიშნების ლიმიტი ამოწურულია.');
@@ -947,7 +988,7 @@ cycleRouter.post(
         });
         return res.json({
           tag: { id: updated.id, name: updated.name, archivedAt: null, createdAt: updated.createdAt.toISOString() },
-          bundle: await loadBundle(req.user.id),
+          bundle: await bundleFor(req),
         });
       }
     }
@@ -961,7 +1002,7 @@ cycleRouter.post(
     });
     return res.json({
       tag: { id: tag.id, name: tag.name, archivedAt: null, createdAt: tag.createdAt.toISOString() },
-      bundle: await loadBundle(req.user.id),
+      bundle: await bundleFor(req),
     });
   }),
 );
@@ -1008,7 +1049,7 @@ cycleRouter.patch(
         archivedAt: tag.archivedAt ? tag.archivedAt.toISOString() : null,
         createdAt: tag.createdAt.toISOString(),
       },
-      bundle: await loadBundle(req.user.id),
+      bundle: await bundleFor(req),
     });
   }),
 );
@@ -1035,7 +1076,7 @@ cycleRouter.delete(
         archivedAt: tag.archivedAt ? tag.archivedAt.toISOString() : null,
         createdAt: tag.createdAt.toISOString(),
       },
-      bundle: await loadBundle(req.user.id),
+      bundle: await bundleFor(req),
     });
   }),
 );
@@ -1075,7 +1116,7 @@ cycleRouter.put(
       },
     });
 
-    return res.json({ log, bundle: await loadBundle(req.user.id) });
+    return res.json({ log, bundle: await bundleFor(req) });
   }),
 );
 
@@ -1090,7 +1131,7 @@ cycleRouter.post(
       .object({ refresh: z.boolean().optional() })
       .parse(req.body ?? {});
 
-    const bundle = await loadBundle(req.user.id);
+    const bundle = await bundleFor(req);
     const cached = bundle.profile.aiInsights;
     const cachedAt = bundle.profile.aiInsightsAt
       ? new Date(bundle.profile.aiInsightsAt).getTime()

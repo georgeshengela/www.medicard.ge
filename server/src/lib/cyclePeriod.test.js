@@ -234,7 +234,7 @@ describe('period range inference extras', () => {
     assert.equal(seven.periodRanges[0].lengthDays, 7);
   });
 
-  it('splits after deleting the middle day', () => {
+  it('keeps one episode after deleting the middle day; explicit none still splits', () => {
     const afterDelete = inferCycleStats(
       logs([
         ['2026-08-10', 'light'],
@@ -244,6 +244,19 @@ describe('period range inference extras', () => {
       ]),
     );
     assert.deepEqual(afterDelete.periodRanges, [
+      { start: '2026-08-10', end: '2026-08-14', lengthDays: 5, source: 'logged' },
+    ]);
+
+    const afterNone = inferCycleStats(
+      logs([
+        ['2026-08-10', 'light'],
+        ['2026-08-11', 'medium'],
+        ['2026-08-12', 'none'],
+        ['2026-08-13', 'medium'],
+        ['2026-08-14', 'light'],
+      ]),
+    );
+    assert.deepEqual(afterNone.periodRanges, [
       { start: '2026-08-10', end: '2026-08-11', lengthDays: 2, source: 'logged' },
       { start: '2026-08-13', end: '2026-08-14', lengthDays: 2, source: 'logged' },
     ]);

@@ -722,6 +722,10 @@
     const tone = typeof avatarTone === 'function' ? avatarTone(user) : 'teal';
     const init = typeof initials === 'function' ? initials(user.fullName || user.email) : '?';
     const subLine = [user.email, user.phone].filter(Boolean).join(' · ');
+    const place = (typeof adminPlaceOf === 'function' ? adminPlaceOf(ov.location) : { line: '', country: 'უცნობია', city: 'უცნობია', flag: '' });
+    const placeMeta = place.line
+      ? `<span class="v3-user-place">${place.flag || ico('globe')} ${esc(place.line)}</span>`
+      : `<span class="v3-user-place is-unknown">${ico('globe')} ქვეყანა უცნობია</span>`;
 
     const pkgOptions = packages.map((p) => {
       const limitLabel = p.unlimited ? 'შეუზღუდავი' : `${p.monthlyAiLimit} / თვე`;
@@ -740,6 +744,17 @@
         ${V.field ? V.field({ id: 'edit-name', label: 'სახელი', control: V.input({ id: 'edit-name', value: user.fullName }) }) : ''}
         ${V.field ? V.field({ id: 'edit-email', label: 'ელ-ფოსტა', control: V.input({ id: 'edit-email', type: 'email', value: user.email }) }) : ''}
         ${V.field ? V.field({ id: 'edit-phone', label: 'ტელეფონი', control: V.input({ id: 'edit-phone', type: 'tel', value: user.phone || '' }) }) : ''}
+        ${V.field ? V.field({
+          id: 'edit-gender',
+          label: 'სქესი',
+          help: 'ციკლის მოდული მხოლოდ მდედრობითზე ჩანს',
+          control: `<select id="edit-gender" class="v3-input">
+            <option value="" ${!user.gender ? 'selected' : ''}>არ არის მითითებული</option>
+            <option value="MALE" ${user.gender === 'MALE' ? 'selected' : ''}>მამრობითი</option>
+            <option value="FEMALE" ${user.gender === 'FEMALE' ? 'selected' : ''}>მდედრობითი</option>
+            <option value="OTHER" ${user.gender === 'OTHER' ? 'selected' : ''}>სხვა</option>
+          </select>`,
+        }) : ''}
         ${V.field ? V.field({
           id: 'edit-status',
           label: 'ანგარიშის სტატუსი',
@@ -805,6 +820,7 @@
                 <button type="button" class="v3-user-idchip inv-copy" data-copy="${escA(user.id)}" data-copy-label="User ID" title="User ID კოპირება">
                   ${ico('file')} ${esc(String(user.id).slice(0, 8))}…
                 </button>
+                ${placeMeta}
                 <span>${ico('calendar')} ${esc(createdLabel)}</span>
                 <span>${ico(platformIco(platformLabel))} ${esc(platformLabel)}${appVer ? ` · ${esc(appVer)}` : ''}</span>
               </div>
@@ -937,9 +953,16 @@
         message: `განახლდება გამოწერის პერიოდი და AI ლიმიტის ფანჯარა. მიმდინარე ვადა: ${exp}.`,
         confirmLabel: '+30 დღე',
         onConfirm: async () => {
-          await (V.runMutation
-            ? V.runMutation(() => api(`/users/${id}/renew`, { method: 'POST' }), { successToast: 'გამოწერა განახლდა' })
-            : api(`/users/${id}/renew`, { method: 'POST' }).then(() => toast('გამოწერა განახლდა')));
+          if (V.runMutation) {
+            const out = await V.runMutation({
+              action: () => api(`/users/${id}/renew`, { method: 'POST' }),
+              successMessage: 'გამოწერა განახლდა',
+            });
+            if (!out?.ok) return;
+          } else {
+            await api(`/users/${id}/renew`, { method: 'POST' });
+            toast('გამოწერა განახლდა');
+          }
           await renderUserPageV3(id, { profileTab: typeof currentUserProfileTab === 'function' ? currentUserProfileTab() : 'overview' });
         },
       });
@@ -953,6 +976,7 @@
         fullName: $('edit-name')?.value.trim(),
         email: $('edit-email')?.value.trim(),
         phone: $('edit-phone')?.value.trim() || null,
+        gender: $('edit-gender')?.value || null,
         status: $('edit-status')?.value,
         packageCode,
         packageStartedAt: packageCode === 'FREE'
@@ -966,10 +990,12 @@
       const btn = $('user-save');
       try {
         if (V.runMutation) {
-          await V.runMutation(() => api(`/users/${id}`, { method: 'PATCH', body }), {
-            button: btn,
-            successToast: 'პროფილი განახლდა',
+          const out = await V.runMutation({
+            action: () => api(`/users/${id}`, { method: 'PATCH', body }),
+            pendingElement: btn,
+            successMessage: 'პროფილი განახლდა',
           });
+          if (!out?.ok) return;
         } else {
           await api(`/users/${id}`, { method: 'PATCH', body });
           toast('პროფილი განახლდა');

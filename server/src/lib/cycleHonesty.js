@@ -44,7 +44,7 @@ export function ttcWindowBody(predictions, flags) {
 }
 
 export function latePeriodAlertKa() {
-  return 'მენსტრუაცია მიმდინარე შეფასებაზე გვიანია. თუ გაწუხებთ, მიმართეთ ექიმს.';
+  return 'მენსტრუაცია ბოლო პატერნზე გვიანია. ეს შეფასებაა, არა დიაგნოზი. თუ გაწუხებთ, მიმართეთ ექიმს.';
 }
 
 export function irregularLengthAlertKa(lastGap) {

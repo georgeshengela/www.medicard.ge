@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
-import { ChevronRight, Heart } from 'lucide-react-native';
-import { CycleDateField } from '@/components/cycle/CycleDateField';
-import type { CycleContraceptionMethod } from '@/lib/api';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { CalendarHeart, ChevronRight } from 'lucide-react-native';
+import { CycleCalendar } from '@/components/cycle/CycleCalendar';
+import { CycleAtmosphere, formatCycleDateKa } from '@/components/cycle/CycleUI';
+import type { CycleContraceptionMethod, CycleDayMark } from '@/lib/api';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
+import { useThemeColors } from '@/theme/colors';
 
 const METHODS = Object.keys(ka.cycle.contraceptionMethod) as CycleContraceptionMethod[];
+const OTHER_METHODS = METHODS.filter((id) => id !== 'NONE');
 
 type Props = {
   visible: boolean;
@@ -27,251 +31,228 @@ function firstName(full?: string | null) {
   return part || '';
 }
 
-/** First-visit gate: ask for last period start before the main cycle UI. */
+function startOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+function canPickPeriodStart(iso: string, now = new Date()) {
+  const [y, m, day] = iso.split('-').map(Number);
+  if (!y || !m || !day) return false;
+  const t = startOfDay(new Date(y, m - 1, day));
+  if (t > startOfDay(now)) return false;
+  const min = new Date(now.getFullYear(), now.getMonth() - 18, 1);
+  return t >= startOfDay(min);
+}
+
+function shiftMonth(year: number, month: number, delta: number) {
+  const next = new Date(year, month + delta, 1);
+  return { year: next.getFullYear(), month: next.getMonth() };
+}
+
+function monthTooOld(year: number, month: number, now = new Date()) {
+  const min = new Date(now.getFullYear(), now.getMonth() - 18, 1);
+  return new Date(year, month, 1) < min;
+}
+
+function monthTooNew(year: number, month: number, now = new Date()) {
+  return new Date(year, month, 1) > new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+/** First-visit gate: pick last period on the same calendar used in the hub. */
 export function CycleOnboarding({ visible, saving, userName, error, onSave, onFinishContraception }: Props) {
   const c = useCycleColors();
+  const theme = useThemeColors();
   const insets = useSafeAreaInsets();
+  const now = useMemo(() => new Date(), []);
   const [date, setDate] = useState('');
   const [step, setStep] = useState<'date' | 'contraception'>('date');
   const [method, setMethod] = useState<CycleContraceptionMethod | null>(null);
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
   const name = firstName(userName);
   const greeting = name ? `${ka.cycle.onboardHi}, ${name}` : ka.cycle.onboardHi;
+  const title = step === 'date' ? ka.cycle.modePeriod : ka.cycle.contraceptionAsk;
+  const lead = step === 'date' ? ka.cycle.onboardLead : ka.cycle.contraceptionLead;
+
+  const marks = useMemo<Record<string, CycleDayMark>>(
+    () => (date ? { [date]: { period: true } } : {}),
+    [date],
+  );
 
   if (!visible) return null;
 
-  return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: c.cream }}
-        contentContainerStyle={{
-          flexGrow: 1,
+  const goPrev = () => {
+    const next = shiftMonth(year, month, -1);
+    if (monthTooOld(next.year, next.month, now)) return;
+    setYear(next.year);
+    setMonth(next.month);
+  };
+
+  const goNext = () => {
+    const next = shiftMonth(year, month, 1);
+    if (monthTooNew(next.year, next.month, now)) return;
+    setYear(next.year);
+    setMonth(next.month);
+  };
+
+  const pickDay = (iso: string) => {
+    if (!canPickPeriodStart(iso, now)) return;
+    Haptics.selectionAsync().catch(() => undefined);
+    setDate(iso);
+  };
+
+  const header = (
+    <Animated.View entering={FadeIn.duration(280)} style={{ alignItems: 'center', paddingTop: 8 }}>
+      <View
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: 36,
+          backgroundColor: theme.accent100,
+          alignItems: 'center',
           justifyContent: 'center',
-          paddingTop: insets.top + 28,
-          paddingBottom: insets.bottom + 28,
-          paddingHorizontal: 22,
+          marginBottom: 16,
         }}
-        keyboardShouldPersistTaps="handled"
       >
-        <Animated.View entering={FadeIn.duration(480)} style={{ flexGrow: 1, justifyContent: 'center' }}>
-          <Animated.View entering={FadeInUp.delay(40).duration(420)} style={{ alignItems: 'center' }}>
-            <View
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 16,
-                backgroundColor: c.card,
-                borderWidth: 1,
-                borderColor: c.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 18,
-              }}
-            >
-              <Heart size={28} color={c.rose} strokeWidth={2.2} />
-            </View>
-
-            <Text
-              style={{
-                color: c.ink,
-                fontSize: 30,
-                fontFamily: 'NotoSansGeorgian_700Bold',
-                textAlign: 'center',
-                letterSpacing: -0.6,
-              }}
-            >
-              {greeting}
-            </Text>
-            <Text
-              style={{
-                color: c.muted,
-                fontSize: 15,
-                lineHeight: 23,
-                textAlign: 'center',
-                marginTop: 12,
-                marginBottom: 8,
-                paddingHorizontal: 4,
-                fontFamily: 'NotoSansGeorgian_500Medium',
-              }}
-            >
-              {ka.cycle.onboardBody}
-            </Text>
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInUp.delay(120).duration(420)}
+        <CalendarHeart size={32} color={c.brand} strokeWidth={2.1} />
+      </View>
+      <Text
+        style={{
+          color: c.muted,
+          fontSize: 14,
+          lineHeight: 20,
+          textAlign: 'center',
+          fontFamily: 'NotoSansGeorgian_500Medium',
+        }}
+      >
+        {greeting}
+      </Text>
+      <Text
+        style={{
+          color: c.ink,
+          fontSize: 26,
+          lineHeight: 32,
+          marginTop: 6,
+          textAlign: 'center',
+          fontFamily: 'NotoSansGeorgian_700Bold',
+          letterSpacing: -0.5,
+        }}
+      >
+        {title}
+      </Text>
+      <Text
+        style={{
+          color: c.muted,
+          fontSize: 14,
+          lineHeight: 20,
+          marginTop: 10,
+          paddingHorizontal: 18,
+          textAlign: 'center',
+          fontFamily: 'NotoSansGeorgian_500Medium',
+        }}
+      >
+        {lead}
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 6, marginTop: 14 }}>
+        {(['date', 'contraception'] as const).map((s) => (
+          <View
+            key={s}
             style={{
-              marginTop: 18,
-              backgroundColor: c.card,
-              borderRadius: 16,
-              padding: 18,
-              borderWidth: 1,
-              borderColor: c.border,
+              width: step === s ? 18 : 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: step === s ? c.cta : c.border,
             }}
-          >
-            {step === 'date' ? (
-            <Text
-              style={{
-                color: c.ink,
-                fontFamily: 'NotoSansGeorgian_700Bold',
-                fontSize: 17,
-                letterSpacing: -0.2,
-              }}
-            >
-              {ka.cycle.lastPeriod}
-            </Text>
-            ) : null}
-            <Text
-              style={{
-                color: c.muted,
-                fontSize: 13,
-                lineHeight: 19,
-                marginTop: 6,
-                marginBottom: 16,
-                fontFamily: 'NotoSansGeorgian_500Medium',
-              }}
-            >
-              {ka.cycle.onboardHint}
-            </Text>
+          />
+        ))}
+      </View>
+    </Animated.View>
+  );
 
-            {step === 'date' ? (
-              <>
-            <CycleDateField
-              value={date}
-              onChange={setDate}
-              placeholder={ka.cycle.onboardTapCalendar}
-              range="past"
-              variant="hero"
-              inline
-            />
-            <View style={{ height: 32 }} />
-              </>
-            ) : null}
+  const footerNote = (
+    <Text
+      style={{
+        color: c.mutedSoft,
+        fontSize: 11,
+        lineHeight: 16,
+        textAlign: 'center',
+        paddingTop: 12,
+        fontFamily: 'NotoSansGeorgian_500Medium',
+      }}
+    >
+      {ka.cycle.onboardPrivacy}
+    </Text>
+  );
 
-            {step === 'contraception' ? (
-              <>
-                <Text
-                  style={{
-                    color: c.ink,
-                    fontFamily: 'NotoSansGeorgian_700Bold',
-                    fontSize: 17,
-                  }}
-                >
-                  {ka.cycle.contraceptionAsk}
-                </Text>
-                <Text
-                  style={{
-                    color: c.muted,
-                    fontSize: 13,
-                    lineHeight: 19,
-                    marginTop: 6,
-                    marginBottom: 14,
-                  }}
-                >
-                  {ka.cycle.contraceptionHint}
-                </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {METHODS.map((id) => {
-                    const on = method === id;
-                    return (
-                      <Pressable
-                        key={id}
-                        onPress={() => setMethod(id)}
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 10,
-                          borderRadius: 999,
-                          backgroundColor: on ? c.cta : c.cardSoft,
-                          borderWidth: 1,
-                          borderColor: on ? c.cta : c.border,
-                        }}
-                      >
-                        <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 12 }}>
-                          {ka.cycle.contraceptionMethod[id]}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                <Pressable
-                  disabled={saving}
-                  onPress={() => void onFinishContraception?.({ method, startedAt: null })}
-                  style={{
-                    marginTop: 20,
-                    minHeight: 52,
-                    borderRadius: 16,
-                    backgroundColor: c.cta,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: saving ? 0.5 : 1,
-                  }}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold' }}>
-                      {ka.cycle.onboardCta}
-                    </Text>
-                  )}
-                </Pressable>
-                <Pressable
-                  disabled={saving}
-                  onPress={() => void onFinishContraception?.({ method: null, startedAt: null })}
-                  style={{ marginTop: 10, paddingVertical: 12, alignItems: 'center' }}
-                >
-                  <Text style={{ color: c.muted, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
-                    {ka.cycle.contraceptionSkip} · {ka.cycle.contraceptionPreferNot}
-                  </Text>
-                </Pressable>
-              </>
-            ) : null}
+  return (
+    <CycleAtmosphere>
+      <View
+        style={{
+          flex: 1,
+          paddingTop: insets.top + 8,
+          paddingBottom: insets.bottom + 14,
+          paddingHorizontal: 16,
+        }}
+      >
+        {header}
 
-            <Pressable
-              disabled={!date || saving || step !== 'date'}
-              onPress={() => {
-                if (!date || step !== 'date') return;
-                void Promise.resolve(onSave(date)).then(() => setStep('contraception'));
-              }}
-              style={({ pressed }) => ({
-                borderRadius: 16,
-                overflow: 'hidden',
-                display: step === 'date' ? 'flex' : 'none',
-                opacity: !date || saving ? 0.45 : pressed ? 0.92 : 1,
-              })}
+        {step === 'date' ? (
+          <>
+            <Animated.View
+              entering={FadeInDown.duration(320)}
+              style={{ flex: 1, justifyContent: 'center' }}
             >
+              <CycleCalendar
+                year={year}
+                month={month}
+                marks={marks}
+                selected={date || null}
+                onSelect={pickDay}
+                onPrev={goPrev}
+                onNext={goNext}
+                canSelect={(iso) => canPickPeriodStart(iso, now)}
+              />
+
               <View
                 style={{
-                  minHeight: 56,
-                  borderRadius: 16,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingHorizontal: 20,
+                  alignSelf: 'center',
+                  marginTop: 16,
                   flexDirection: 'row',
-                  gap: 6,
-                  backgroundColor: c.cta,
+                  alignItems: 'center',
+                  gap: 8,
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  backgroundColor: date ? c.roseSoft : c.card,
+                  borderWidth: 1,
+                  borderColor: date ? c.period : c.border,
                 }}
               >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Text
-                      style={{
-                        color: '#fff',
-                        fontFamily: 'NotoSansGeorgian_700Bold',
-                        fontSize: 16,
-                      }}
-                    >
-                      {ka.cycle.onboardCta}
-                    </Text>
-                    {date ? <ChevronRight size={18} color="#fff" strokeWidth={2.6} /> : null}
-                  </>
-                )}
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: date ? c.period : c.mutedSoft,
+                  }}
+                />
+                <Text
+                  style={{
+                    color: date ? c.ink : c.muted,
+                    fontSize: 14,
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                  }}
+                >
+                  {date ? formatCycleDateKa(date) : ka.cycle.pickDate}
+                </Text>
               </View>
-            </Pressable>
+            </Animated.View>
+
             {error ? (
               <Text
                 style={{
                   color: c.danger,
-                  marginTop: 12,
+                  marginBottom: 10,
                   textAlign: 'center',
                   fontFamily: 'NotoSansGeorgian_600SemiBold',
                   fontSize: 13,
@@ -281,22 +262,162 @@ export function CycleOnboarding({ visible, saving, userName, error, onSave, onFi
                 {error}
               </Text>
             ) : null}
-          </Animated.View>
 
-          <Text
-            style={{
-              color: c.mutedSoft,
-              fontSize: 11,
-              textAlign: 'center',
-              marginTop: 18,
-              lineHeight: 16,
-              paddingHorizontal: 8,
-              fontFamily: 'NotoSansGeorgian_500Medium',
-            }}
+            <Pressable
+              disabled={!date || saving}
+              onPress={() => {
+                if (!date) return;
+                void Promise.resolve(onSave(date)).then(() => setStep('contraception'));
+              }}
+              style={{
+                minHeight: 52,
+                borderRadius: 28,
+                backgroundColor: c.cta,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                gap: 6,
+                opacity: !date || saving ? 0.45 : 1,
+              }}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Text
+                    style={{
+                      color: '#fff',
+                      fontFamily: 'NotoSansGeorgian_700Bold',
+                      fontSize: 16,
+                    }}
+                  >
+                    {ka.cycle.onboardCta}
+                  </Text>
+                  {date ? <ChevronRight size={18} color="#fff" strokeWidth={2.6} /> : null}
+                </>
+              )}
+            </Pressable>
+            {footerNote}
+          </>
+        ) : (
+          <ScrollView
+            style={{ flex: 1, marginTop: 18 }}
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 8 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            {ka.cycle.onboardPrivacy}
-          </Text>
-        </Animated.View>
-      </ScrollView>
+            <Animated.View entering={FadeInDown.duration(280)}>
+              <Pressable
+                onPress={() => setMethod('NONE')}
+                style={{
+                  minHeight: 48,
+                  borderRadius: 28,
+                  paddingHorizontal: 16,
+                  justifyContent: 'center',
+                  backgroundColor: method === 'NONE' ? c.cta : c.card,
+                  borderWidth: 1,
+                  borderColor: method === 'NONE' ? c.cta : c.border,
+                  marginBottom: 10,
+                }}
+              >
+                <Text
+                  style={{
+                    color: method === 'NONE' ? '#fff' : c.ink,
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    fontSize: 14,
+                  }}
+                >
+                  {ka.cycle.contraceptionMethod.NONE}
+                </Text>
+              </Pressable>
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 }}>
+                {OTHER_METHODS.map((id) => {
+                  const on = method === id;
+                  return (
+                    <Pressable
+                      key={id}
+                      onPress={() => setMethod(id)}
+                      style={{
+                        width: '48.5%',
+                        minHeight: 48,
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                        borderRadius: 16,
+                        backgroundColor: on ? c.cta : c.card,
+                        borderWidth: 1,
+                        borderColor: on ? c.cta : c.border,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text
+                        numberOfLines={2}
+                        style={{
+                          color: on ? '#fff' : c.ink,
+                          fontFamily: 'NotoSansGeorgian_600SemiBold',
+                          fontSize: 12,
+                          lineHeight: 16,
+                          textAlign: 'center',
+                        }}
+                      >
+                        {ka.cycle.contraceptionMethod[id]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {error ? (
+                <Text
+                  style={{
+                    color: c.danger,
+                    marginTop: 12,
+                    textAlign: 'center',
+                    fontFamily: 'NotoSansGeorgian_600SemiBold',
+                    fontSize: 13,
+                    lineHeight: 18,
+                  }}
+                >
+                  {error}
+                </Text>
+              ) : null}
+
+              <Pressable
+                disabled={saving}
+                onPress={() => void onFinishContraception?.({ method, startedAt: null })}
+                style={{
+                  marginTop: 16,
+                  minHeight: 52,
+                  borderRadius: 28,
+                  backgroundColor: c.cta,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: saving ? 0.5 : 1,
+                }}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16 }}>
+                    {ka.cycle.onboardCta}
+                  </Text>
+                )}
+              </Pressable>
+              <Pressable
+                disabled={saving}
+                onPress={() => void onFinishContraception?.({ method: null, startedAt: null })}
+                style={{ marginTop: 8, paddingVertical: 10, alignItems: 'center' }}
+              >
+                <Text style={{ color: c.muted, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13 }}>
+                  {ka.cycle.contraceptionSkip}
+                </Text>
+              </Pressable>
+            </Animated.View>
+            <View style={{ marginTop: 'auto' }}>{footerNote}</View>
+          </ScrollView>
+        )}
+      </View>
+    </CycleAtmosphere>
   );
 }

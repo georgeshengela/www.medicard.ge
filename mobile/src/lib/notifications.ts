@@ -5,7 +5,12 @@ import { Platform } from 'react-native';
 import { ApiError, api } from './api';
 import type { Medication, ScheduledDose } from './api';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
-import { maskCycleNotificationContent } from '@/lib/cycleNotificationMask';
+import { loadEngagePrefs } from '@/lib/mediEngagePrefs';
+import {
+  cyclePushPayload,
+  getEffectiveCycleMask,
+  redactCyclePushLog,
+} from '@/lib/cycleNotificationContract.js';
 import { parseMedicationConfig } from '@/lib/medications.shared';
 import {
   planMedicationReminderSlots,
@@ -41,9 +46,23 @@ Notifications.setNotificationHandler({
       const { shouldDeliverNotification } = await import('@/lib/mediNotificationBrain');
       const { patchEngageDecision } = await import('@/lib/mediEngagePrefs');
       const check = await shouldDeliverNotification(data);
+      if (check.rewriteMasked && data.type === 'cycle_reminder' && data.rewrite !== true) {
+        const discreet = applyPushCopy('cycle-masked');
+        void Notifications.scheduleNotificationAsync({
+          identifier: `cycle:mask-rewrite:${String(data.candidateId || Date.now())}`,
+          content: {
+            title: discreet.title,
+            body: discreet.body,
+            sound: 'default',
+            data: { ...data, masked: true, rewrite: true, templateKey: 'cycle-masked' },
+          },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
+        });
+        return { shouldShowBanner: false, shouldShowList: false, shouldPlaySound: false, shouldSetBadge: false };
+      }
       if (!check.ok) {
         const id = typeof data.decisionId === 'string' ? data.decisionId : '';
-        if (id) {
+        if (id && check.reason !== 'DELIVER_WITH_DISCREET_COPY') {
           void patchEngageDecision(id, {
             decision: 'BLOCKED',
             blocked: check.reason,
@@ -506,11 +525,24 @@ type ScheduleCycleOpts = {
   body: string;
   date: Date;
   data?: Record<string, unknown>;
+  privacyEnabled?: boolean;
 };
 
-async function resolveCycleNotificationContent(title: string, body: string) {
-  const prefs = await getCycleReminderPrefs();
-  if (prefs.maskNotifications) {
+async function resolveCycleNotificationContent(
+  title: string,
+  body: string,
+  privacyEnabled = false,
+) {
+  const [prefs, engage] = await Promise.all([
+    getCycleReminderPrefs(),
+    loadEngagePrefs().catch(() => null),
+  ]);
+  const effective = getEffectiveCycleMask({
+    privacyEnabled,
+    maskNotifications: prefs.maskNotifications,
+    discreet: Boolean(engage?.discreet),
+  });
+  if (effective.masked) {
     const discreet = applyPushCopy('cycle-masked');
     return {
       title: discreet.title,
@@ -519,9 +551,8 @@ async function resolveCycleNotificationContent(title: string, body: string) {
       masked: true,
     };
   }
-  const masked = maskCycleNotificationContent({ title, body }, false, prefs.maskStyle);
   const channelId = Platform.OS === 'android' ? CYCLE_CHANNEL_ID : undefined;
-  return { title: masked.title, body: masked.body, channelId, masked: false };
+  return { title, body, channelId, masked: false };
 }
 
 /** Schedule a one-time cycle notification at a specific local date/time. */
@@ -532,7 +563,22 @@ export async function scheduleCycleDateNotification(opts: ScheduleCycleOpts): Pr
   const now = Date.now();
   if (opts.date.getTime() <= now) return false;
 
-  const content = await resolveCycleNotificationContent(opts.title, opts.body);
+  const content = await resolveCycleNotificationContent(opts.title, opts.body, opts.privacyEnabled);
+  const candidateType = String(opts.data?.candidateType || 'log_nudge');
+  const eventDate = String(opts.data?.eventDate || '');
+  const payload = cyclePushPayload(
+    {
+      candidateId: String(opts.data?.candidateId || opts.identifier),
+      type: candidateType,
+      eventDate,
+      templateKey: String(opts.data?.templateKey || 'cycle-log'),
+      route: String(opts.data?.route || '/cycle'),
+      estimated: opts.data?.estimated !== false,
+      predicted: Boolean(opts.data?.predicted),
+      revalidationKey: opts.data?.revalidationKey,
+    },
+    { masked: content.masked },
+  );
 
   await Notifications.scheduleNotificationAsync({
     identifier: `${NOTIF_PREFIX.cycle}${opts.identifier}`,
@@ -540,12 +586,7 @@ export async function scheduleCycleDateNotification(opts: ScheduleCycleOpts): Pr
       title: content.title,
       body: content.body,
       sound: 'default',
-      data: {
-        type: 'cycle_reminder',
-        templateKey: String(opts.data?.templateKey || 'cycle-log'),
-        masked: content.masked,
-        ...(opts.data ?? {}),
-      },
+      data: payload,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -576,7 +617,7 @@ export async function scheduleCycleReminder(opts: {
       title: content.title,
       body: content.body,
       sound: 'default',
-      data: { type: 'cycle_tip', templateKey: 'cycle-tip', masked: content.masked, route: '/cycle' },
+      data: { type: 'cycle_tip', templateKey: 'cycle-tip', masked: content.masked, route: '/cycle', family: 'cycleReminder' },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,

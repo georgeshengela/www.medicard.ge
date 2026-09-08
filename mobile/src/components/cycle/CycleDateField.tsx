@@ -78,7 +78,8 @@ export function CycleDateField({
         accessibilityRole="button"
         accessibilityHint={ka.cycle.onboardTapHint}
         onPress={() => setOpen(true)}
-        style={({ pressed }) =>
+        className="active:opacity-90"
+        style={
           hero
             ? {
                 backgroundColor: displayKa ? c.card : c.cardSoft,
@@ -88,7 +89,6 @@ export function CycleDateField({
                 borderWidth: 1,
                 borderColor: displayKa ? c.brand : c.border,
                 borderStyle: displayKa ? 'solid' : 'dashed',
-                opacity: pressed ? 0.92 : 1,
               }
             : {
                 flexDirection: 'row',
@@ -99,7 +99,6 @@ export function CycleDateField({
                 paddingVertical: 15,
                 borderWidth: 1,
                 borderColor: displayKa ? c.brand : c.border,
-                opacity: pressed ? 0.9 : 1,
                 ...cycleShadow.card,
               }
         }
