@@ -25,6 +25,7 @@ import { nextProfileSetupHref } from '@/lib/onboarding';
 import { FontsProvider } from '@/store/FontsContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
 import { api } from '@/lib/api';
+import { rememberMapboxToken } from '@/lib/run/mapbox';
 import { consumePendingCycleShare, isCycleShareCode, savePendingCycleShare } from '@/lib/cycleSharePending';
 import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -62,6 +63,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     api.app
       .status(APP_VERSION)
       .then((status) => {
+        rememberMapboxToken(status.mapboxToken);
         if (status.settings.maintenanceMode) {
           setGate({ kind: 'maintenance', message: status.settings.maintenanceMessage });
           return;

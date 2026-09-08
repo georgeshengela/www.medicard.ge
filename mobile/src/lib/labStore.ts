@@ -1,4 +1,5 @@
 import { getScopedPreference, setScopedPreferenceStrict } from '@/lib/localAccount';
+import { mergeLabPanelLists } from '@/lib/labMerge';
 import { resolveCanonicalLabKey, titledLabPanel } from '@/lib/labNames';
 import type { LabPanel } from '@/types/lab';
 
@@ -38,35 +39,14 @@ export async function mergeImportedLabPanels(incoming: LabPanel[]): Promise<LabP
   if (!valid.length) return loadCanonicalLabPanels();
 
   const current = await loadLabPanels();
-  const byDate = new Map(current.map((row) => [row.date, row]));
-  let changed = false;
-
-  for (const panel of valid) {
-    const existing = byDate.get(panel.date);
-    if (!existing) {
-      byDate.set(panel.date, titledLabPanel(panel));
-      changed = true;
-      continue;
-    }
-    const keys = new Set(existing.parameters.map((item) => resolveCanonicalLabKey(item)));
-    const extra = panel.parameters.filter((item) => !keys.has(resolveCanonicalLabKey(item)));
-    if (!extra.length) continue;
-    byDate.set(panel.date, titledLabPanel({
-      ...existing,
-      analysis: existing.analysis || panel.analysis,
-      visionNotes: existing.visionNotes || panel.visionNotes,
-      parameters: [...existing.parameters, ...extra],
-    }));
-    changed = true;
-  }
-
-  const next = [...byDate.values()].map(titledLabPanel).sort((a, b) => b.date.localeCompare(a.date));
-  if (changed || fingerprint(current) !== fingerprint(next)) await saveLabPanels(next);
+  const next = mergeLabPanelLists(current, valid);
+  if (fingerprint(current) !== fingerprint(next)) await saveLabPanels(next);
   return next;
 }
 
 export async function saveLabPanels(panels: LabPanel[]): Promise<void> {
   await setScopedPreferenceStrict(KEY, JSON.stringify(panels));
+  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
 }
 
 export async function replaceLabPanels(panels: LabPanel[]): Promise<LabPanel[]> {

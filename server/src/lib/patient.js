@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { prisma } from './prisma.js';
+import { publicExtraAnswers } from './appState.js';
 import { resolvePackageAiLimit } from './packages.js';
 
 function packageIsExpired(user) {
@@ -204,7 +205,7 @@ export function publicHealthProfile(profile) {
     medications: profile.medications ?? [],
     familyHistory: profile.familyHistory ?? [],
     healthGoals: profile.healthGoals ?? [],
-    extraAnswers: profile.extraAnswers ?? {},
+    extraAnswers: publicExtraAnswers(profile.extraAnswers ?? {}),
     currentStepIndex: profile.currentStepIndex ?? 0,
     completedAt: profile.completedAt ?? null,
     bmi:

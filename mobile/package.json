@@ -66,7 +66,7 @@
     "export:web": "expo export --platform web --output-dir dist",
     "typecheck": "tsc --noEmit",
     "test:offline": "node --test src/lib/cycleOffline.test.js",
-    "test:lab": "node --experimental-strip-types --test src/lib/labExtract.test.ts src/lib/labChartScale.test.ts src/lib/labFilter.test.ts src/lib/labExplain.test.ts src/lib/labNames.test.ts",
+    "test:lab": "node --experimental-strip-types --test src/lib/labExtract.test.ts src/lib/labChartScale.test.ts src/lib/labFilter.test.ts src/lib/labExplain.test.ts src/lib/labNames.test.ts src/lib/labMerge.test.ts",
     "test:geo": "node --experimental-strip-types --test src/lib/geoPlace.test.ts",
     "test:weather": "node --experimental-strip-types --test src/lib/weather/*.test.ts",
     "test:quest": "node --test src/lib/quest/logic.test.js src/lib/quest/smartContext.test.js src/lib/quest/questSmartEngage.test.js",

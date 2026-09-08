@@ -11,6 +11,7 @@ import { calculateAge, withPatientAiContext } from '../lib/patient.js';
 import { buildSymptomPrompt, formatSymptomRecordKa, runSymptomCheck } from '../lib/symptomCheck.js';
 import { saveUpload } from '../lib/storage.js';
 import { extractLabFromText } from '../lib/labExtract.js';
+import { persistLabExtract } from '../lib/appState.js';
 import { alignLabAnalytes } from '../lib/labAlign.js';
 import { adviseWeight } from '../lib/weightAdvice.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -414,6 +415,7 @@ aiRouter.post(
         where: { id: existing.id },
         data: { aiAnalysis: visionNotes },
       });
+      await persistLabExtract(req.user.id, labExtract, record).catch(() => undefined);
       return res.json({
         record: {
           id: record.id,
@@ -443,6 +445,7 @@ aiRouter.post(
         aiAnalysis: visionNotes,
       },
     });
+    await persistLabExtract(req.user.id, labExtract, record).catch(() => undefined);
 
     const usage = await req.consumeAiCredit();
 

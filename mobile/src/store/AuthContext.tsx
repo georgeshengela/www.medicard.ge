@@ -64,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStats(null);
     setHealthProfile(null);
     setPendingDailyBonus(null);
+    void import('@/lib/accountSync').then(({ resetAccountSync }) => resetAccountSync());
   }, []);
 
   const applyVisualSession = useCallback(() => {
@@ -122,6 +123,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void import('@/lib/pushCopy').then(({ loadPushTemplates }) => loadPushTemplates());
       void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
         runMediNotificationBrain(me.user, me.healthProfile ?? null),
+      );
+      void import('@/lib/accountSync').then(({ pullAccountState }) =>
+        pullAccountState().catch(() => undefined),
       );
     } catch (error) {
       if (error instanceof ApiError && error.isUnauthorized) {
@@ -204,6 +208,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         void import('@/lib/pushCopy').then(({ loadPushTemplates }) => loadPushTemplates());
         void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
           runMediNotificationBrain(confirmed.user, confirmed.healthProfile ?? null),
+        );
+        void import('@/lib/accountSync').then(({ pullAccountState }) =>
+          pullAccountState().catch(() => undefined),
         );
       } catch (error) {
         await clearToken();

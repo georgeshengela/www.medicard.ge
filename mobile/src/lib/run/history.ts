@@ -42,6 +42,7 @@ export async function saveRunSummary(summary: RunSummary): Promise<void> {
   const list = await loadRunHistory();
   const next = [summary, ...list.filter((r) => r.id !== summary.id)].slice(0, MAX);
   await setScopedPreference(KEY, JSON.stringify(next));
+  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
 }
 
 export async function getRunById(id: string): Promise<RunSummary | null> {

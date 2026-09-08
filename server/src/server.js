@@ -26,6 +26,7 @@ import { usageRouter } from './routes/usage.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { adminRewardsRouter } from './routes/adminRewards.routes.js';
 import { appRouter } from './routes/app.routes.js';
+import { accountRouter } from './routes/account.routes.js';
 import { cycleRouter, partnerShareClosedHandler } from './routes/cycle.routes.js';
 import { applyPrivateCache } from './lib/cycleShare.js';
 import { pushRouter } from './routes/push.routes.js';
@@ -170,6 +171,7 @@ app.use(enforceAppAvailability);
 
 app.use('/api/auth', authRouter);
 app.use('/api/health-profile', healthProfileRouter);
+app.use('/api/account', accountRouter);
 app.use('/api/health-metrics', healthMetricsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/chats', chatsRouter);

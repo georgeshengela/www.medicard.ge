@@ -135,6 +135,18 @@ export type HealthProfile = {
   bmi: number | null;
 };
 
+export type AccountAppState = {
+  labPanels: import('@/types/lab').LabPanel[];
+  weightGoal: import('@/types/weightGoal').WeightGoal | null;
+  weightLogs: import('@/types/weightGoal').WeightLog[];
+  stepsGoal: import('@/types/stepsGoal').StepsGoal | null;
+  stepsGoalHistory: import('@/types/stepsGoal').StepsGoalRecord[];
+  runHistory: import('@/lib/run/history').RunSummary[];
+  doseLogs: import('@/types/medications').MedicationDoseLog[];
+  symptomHistory: import('@/lib/symptomResultStorage').SavedSymptomSession[];
+  updatedAt?: string | null;
+};
+
 export type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
@@ -945,6 +957,7 @@ export const api = {
         };
         client: { version: string; needsUpdate: boolean; blockedByForceUpdate: boolean };
         packages?: UserPackage[];
+        mapboxToken?: string;
       }>(`/api/app/status?version=${encodeURIComponent(version)}`, { token: null, timeoutMs: 15_000 }),
   },
 
@@ -1080,6 +1093,12 @@ export const api = {
         body: { force: Boolean(opts?.force) },
         timeoutMs: 120_000,
       }),
+  },
+
+  account: {
+    getAppState: () => request<{ state: AccountAppState }>('/api/account/app-state', { timeoutMs: 30_000 }),
+    putAppState: (body: Partial<AccountAppState>) =>
+      request<{ state: AccountAppState }>('/api/account/app-state', { method: 'PUT', body, timeoutMs: 30_000 }),
   },
 
   healthMetrics: {

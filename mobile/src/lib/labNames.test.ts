@@ -36,6 +36,13 @@ describe('labNames', () => {
     assert.equal(merged[0].nameKa, 'ჰემოგლობინი');
   });
 
+  it('maps hormones and tumor markers onto the expanded catalog', () => {
+    assert.equal(resolveCanonicalLabKey(row({ key: 'psa', nameEn: 'PSA' })), 'psa');
+    assert.equal(resolveCanonicalLabKey(row({ key: 'insuline', nameEn: 'Insuline' })), 'insulin');
+    assert.equal(resolveCanonicalLabKey(row({ key: 'ft3', nameEn: 'T3 libre' })), 'free_t3');
+    assert.equal(titledLabParam(row({ key: 'psa' })).nameKa, 'PSA');
+  });
+
   it('applies Medi align maps so a French key joins the catalog', () => {
     const next = applyLabMaps(
       [

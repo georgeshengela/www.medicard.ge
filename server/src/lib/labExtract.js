@@ -110,6 +110,31 @@ const ALIASES = {
   'taux de prothrombine quick': 'pt_percent',
   'temps de prothrombine quick': 'pt_time',
   'inr ratio': 'inr',
+  ft3: 'free_t3',
+  't3 libre': 'free_t3',
+  insulin: 'insulin',
+  insuline: 'insulin',
+  cortisol: 'cortisol',
+  testosterone: 'testosterone',
+  estradiol: 'estradiol',
+  oestradiol: 'estradiol',
+  prolactin: 'prolactin',
+  prolactine: 'prolactin',
+  progesterone: 'progesterone',
+  psa: 'psa',
+  amylase: 'amylase',
+  'd dimer': 'd_dimer',
+  fibrinogen: 'fibrinogen',
+  fibrinogene: 'fibrinogen',
+  aptt: 'aptt',
+  transferrin: 'transferrin',
+  transferrine: 'transferrin',
+  tibc: 'tibc',
+  troponin: 'troponin',
+  troponine: 'troponin',
+  homocysteine: 'homocysteine',
+  zinc: 'zinc',
+  'bilirubine indirecte': 'bilirubin_indirect',
 };
 
 const NAME_KA = {
@@ -165,6 +190,23 @@ const NAME_KA = {
   monocytes_pct: 'მონოციტები',
   nlr: 'ნეიტროფილ/ლიმფოციტთა თანაფარდობა',
   inr: 'INR',
+  free_t3: 'თავისუფალი T3',
+  t3: 'T3',
+  t4: 'T4',
+  insulin: 'ინსულინი',
+  cortisol: 'კორტიზოლი',
+  testosterone: 'ტესტოსტერონი',
+  estradiol: 'ესტრადიოლი',
+  prolactin: 'პროლაქტინი',
+  progesterone: 'პროგესტერონი',
+  psa: 'PSA',
+  amylase: 'ამილაზა',
+  d_dimer: 'D-დიმერი',
+  fibrinogen: 'ფიბრინოგენი',
+  transferrin: 'ტრანსფერინი',
+  troponin: 'ტროპონინი',
+  homocysteine: 'ჰომოცისტეინი',
+  zinc: 'თუთია',
 };
 
 function tidyUnit(unit) {
@@ -187,7 +229,7 @@ function slugKey(raw) {
     .replace(/[^a-z0-9\u10A0-\u10FF]+/gi, ' ')
     .trim();
   const first = compact.split(/\s+/)[0] ?? compact;
-  const aliased = ALIASES[compact] ?? (compact.includes(' ') ? undefined : ALIASES[first]);
+  const aliased = ALIASES[compact] ?? ALIASES[compact.replace(/\s+/g, '_')] ?? ALIASES[first];
   return aliased || compact.replace(/\s+/g, '_').slice(0, 48) || 'analyte';
 }
 

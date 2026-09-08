@@ -6,7 +6,7 @@ import Constants from 'expo-constants';
 import { ka } from '@/i18n/ka';
 import type { LatLng } from '@/lib/run/geo';
 import { buildRunMapHtml } from '@/lib/run/mapHtml';
-import { MAPBOX_TOKEN, hasMapboxToken } from '@/lib/run/mapbox';
+import { peekMapboxToken, resolveMapboxToken } from '@/lib/run/mapbox';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
 export type RunMapMessage =
@@ -68,13 +68,30 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
   const web = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [token, setToken] = useState(() => peekMapboxToken());
+  const [tokenReady, setTokenReady] = useState(() => peekMapboxToken().startsWith('pk.'));
   const initialDark = useRef(dark);
   const initialCenter = useRef(center);
   const baseUrl = useMemo(() => metroBaseUrl(), []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void resolveMapboxToken().then((next) => {
+      if (cancelled) return;
+      setToken(next);
+      setTokenReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const html = useMemo(
-    () => buildRunMapHtml({ token: MAPBOX_TOKEN, center: initialCenter.current, dark: initialDark.current }),
-    [],
+    () =>
+      token.startsWith('pk.')
+        ? buildRunMapHtml({ token, center: initialCenter.current, dark: initialDark.current })
+        : '',
+    [token],
   );
 
   const send = useCallback((msg: RunMapMessage) => {
@@ -143,12 +160,13 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
     [onError, onFollowChange, onReady],
   );
 
-  const tokenMissing = !hasMapboxToken();
+  const tokenMissing = tokenReady && !token.startsWith('pk.');
 
   return (
     <View style={[styles.fill, { backgroundColor: dark ? '#030712' : '#e5eef0' }, style]}>
-      {!tokenMissing ? (
+      {html ? (
         <WebView
+          key={token.slice(0, 16)}
           ref={web}
           originWhitelist={['*']}
           source={{ html, baseUrl }}

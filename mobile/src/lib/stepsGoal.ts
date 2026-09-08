@@ -9,6 +9,7 @@ import {
 } from '@/lib/notifications';
 import { expoWeekdayFromMonday } from '@/lib/notificationPlan';
 import { getPreference, setPreference } from '@/lib/storage';
+import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
 import { applyPushCopy } from '@/lib/pushCopy';
 import { getCachedTodaySteps } from '@/lib/healthDataSync';
 import { archiveReachedStepsGoal } from '@/lib/stepsGoalHistory';
@@ -79,7 +80,7 @@ export function reminderDaysLabel(days: number[]): string {
 }
 
 export async function loadStepsGoal(): Promise<StepsGoal | null> {
-  const raw = await getPreference(STORAGE_KEY);
+  const raw = (await getScopedPreference(STORAGE_KEY)) ?? (await getPreference(STORAGE_KEY));
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as StepsGoal;
@@ -91,13 +92,18 @@ export async function loadStepsGoal(): Promise<StepsGoal | null> {
 }
 
 export async function saveStepsGoal(goal: StepsGoal): Promise<void> {
-  await setPreference(STORAGE_KEY, JSON.stringify(goal));
+  const payload = JSON.stringify(goal);
+  await setScopedPreference(STORAGE_KEY, payload);
+  await setPreference(STORAGE_KEY, payload);
   await syncStepsGoalReminders(goal);
+  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
 }
 
 export async function clearStepsGoal(): Promise<void> {
+  await setScopedPreference(STORAGE_KEY, '');
   await setPreference(STORAGE_KEY, '');
   await cancelNotificationsByPrefix(NOTIF_PREFIX.steps);
+  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
 }
 
 export async function archiveAndClearStepsGoal(goal: StepsGoal, currentSteps: number): Promise<void> {

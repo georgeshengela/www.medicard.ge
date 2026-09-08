@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { resolveCanonicalLabKey, titledLabName, titledLabPanel } from '@/lib/labNames';
 import { loadCanonicalLabPanels, mergeImportedLabPanels, removeLabPanel, removeLabParameter, replaceLabPanels, setLabPanelAnalysis, upsertLabPanel } from '@/lib/labStore';
+import { pullLabPanels } from '@/lib/accountSync';
 import { useAuth } from '@/store/AuthContext';
 import type { LabPanel, LabParameter } from '@/types/lab';
 
@@ -22,7 +23,13 @@ export function useLab() {
       return;
     }
     const seeded = panelsFromProfile((healthProfile?.extraAnswers ?? {}) as Record<string, unknown>);
-    const raw = seeded.length ? await mergeImportedLabPanels(seeded) : await loadCanonicalLabPanels();
+    let raw = seeded.length ? await mergeImportedLabPanels(seeded) : await loadCanonicalLabPanels();
+    try {
+      const synced = await pullLabPanels();
+      if (synced.length) raw = synced;
+    } catch {
+      /* keep local */
+    }
     const next = raw.map(titledLabPanel);
     setPanels(next);
     setLoading(false);

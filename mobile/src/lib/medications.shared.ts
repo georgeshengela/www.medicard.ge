@@ -91,6 +91,7 @@ export async function saveDoseLog(entry: MedicationDoseLog, source: 'app' | 'not
     { ...entry, updatedAt: new Date().toISOString() },
   ];
   await setScopedPreference(DOSE_LOG_KEY, JSON.stringify(next));
+  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
   void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
   if (entry.status === 'taken' || entry.status === 'skipped') {
     void import('@/lib/productObservability').then(({ syncDoseEvent }) =>

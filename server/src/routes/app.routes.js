@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getAppSettings, publicAppSettings, compareSemver } from '../lib/settings.js';
+import { mapboxPublicToken } from '../lib/adminUserGeo.js';
 import { publicPackage } from '../lib/packages.js';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/error.js';
@@ -22,6 +23,7 @@ appRouter.get(
     res.json({
       settings: publicAppSettings(settings),
       packages: packages.map(publicPackage),
+      mapboxToken: mapboxPublicToken(),
       client: {
         version: clientVersion,
         needsUpdate,

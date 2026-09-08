@@ -92,11 +92,13 @@ export async function loadWeightGoal(): Promise<WeightGoal | null> {
 export async function saveWeightGoal(goal: WeightGoal): Promise<void> {
   await setScopedPreference(GOAL_KEY, JSON.stringify(goal));
   await syncWeightGoalReminders(goal);
+  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
 }
 
 export async function clearWeightGoal(): Promise<void> {
   await setScopedPreference(GOAL_KEY, '');
   await cancelNotificationsByPrefix(NOTIF_PREFIX.weight);
+  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
 }
 
 export async function loadWeightDraft(): Promise<WeightGoalDraft | null> {
@@ -150,6 +152,7 @@ export async function loadWeightLogs(): Promise<WeightLog[]> {
 
 export async function saveWeightLogs(logs: WeightLog[]): Promise<void> {
   await setScopedPreference(LOGS_KEY, JSON.stringify(logs));
+  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
 }
 
 async function ensureWeightAccountScope() {

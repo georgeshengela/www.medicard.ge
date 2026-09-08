@@ -20,6 +20,7 @@ export async function saveSymptomSession(session: SavedSymptomSession) {
   const list = await loadSymptomHistory();
   const next = [session, ...list.filter((s) => s.recordId !== session.recordId)].slice(0, MAX);
   await setScopedPreference(KEY, JSON.stringify(next));
+  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
 }
 
 export async function loadSymptomHistory(): Promise<SavedSymptomSession[]> {

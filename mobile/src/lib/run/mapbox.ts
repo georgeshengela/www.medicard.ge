@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import {
   candidateBearings,
   crowFliesRadiusM,
@@ -5,11 +6,62 @@ import {
   haversineM,
   type LatLng,
 } from '@/lib/run/geo';
+import { API_BASE_URL } from '@/lib/api';
+import { getPreference, setPreference } from '@/lib/storage';
 
-/** Public `pk.*` token — shipped in the bundle by design. Set in `mobile/.env`. */
-export const MAPBOX_TOKEN: string = (process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '').trim();
+const CACHE_KEY = 'medicard.mapbox.token';
 
-export const hasMapboxToken = () => MAPBOX_TOKEN.startsWith('pk.');
+/** Public `pk.*` token. Prefer the bundle, then a cached/runtime copy from the API. */
+const BUNDLE_TOKEN: string = (process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '').trim();
+let runtimeToken = BUNDLE_TOKEN.startsWith('pk.') ? BUNDLE_TOKEN : '';
+let resolving: Promise<string> | null = null;
+
+function takeToken(raw?: string | null): string {
+  const token = String(raw ?? '').trim();
+  return token.startsWith('pk.') ? token : '';
+}
+
+export function rememberMapboxToken(raw?: string | null): string {
+  const token = takeToken(raw);
+  if (!token) return peekMapboxToken();
+  runtimeToken = token;
+  void setPreference(CACHE_KEY, token);
+  return token;
+}
+
+export function peekMapboxToken(): string {
+  if (runtimeToken.startsWith('pk.')) return runtimeToken;
+  return BUNDLE_TOKEN.startsWith('pk.') ? BUNDLE_TOKEN : '';
+}
+
+/** @deprecated Use peekMapboxToken / resolveMapboxToken — production builds often omit the env token. */
+export const MAPBOX_TOKEN: string = BUNDLE_TOKEN;
+
+export const hasMapboxToken = () => peekMapboxToken().startsWith('pk.');
+
+export async function resolveMapboxToken(): Promise<string> {
+  const known = peekMapboxToken();
+  if (known.startsWith('pk.')) return known;
+  if (resolving) return resolving;
+
+  resolving = (async () => {
+    try {
+      const cached = takeToken(await getPreference(CACHE_KEY));
+      if (cached) return rememberMapboxToken(cached);
+      const version = Constants.expoConfig?.version ?? '0.0.0';
+      const res = await fetch(`${API_BASE_URL}/api/app/status?version=${encodeURIComponent(version)}`);
+      if (!res.ok) return peekMapboxToken();
+      const json = (await res.json()) as { mapboxToken?: string };
+      return rememberMapboxToken(json.mapboxToken);
+    } catch {
+      return peekMapboxToken();
+    } finally {
+      resolving = null;
+    }
+  })();
+
+  return resolving;
+}
 
 export type RunRoute = {
   /** [lng, lat] pairs — GeoJSON order, ready for the map. */
@@ -29,11 +81,12 @@ type DirectionsResponse = {
 
 /** Walking route between two points via Mapbox Directions. Null on any failure. */
 export async function fetchWalkingRoute(from: LatLng, to: LatLng, signal?: AbortSignal): Promise<RunRoute | null> {
-  if (!hasMapboxToken()) return null;
+  const token = await resolveMapboxToken();
+  if (!token.startsWith('pk.')) return null;
   const path = `${from.lng.toFixed(6)},${from.lat.toFixed(6)};${to.lng.toFixed(6)},${to.lat.toFixed(6)}`;
   const url =
     `https://api.mapbox.com/directions/v5/mapbox/walking/${path}` +
-    `?geometries=geojson&overview=full&steps=false&access_token=${encodeURIComponent(MAPBOX_TOKEN)}`;
+    `?geometries=geojson&overview=full&steps=false&access_token=${encodeURIComponent(token)}`;
   try {
     const res = await fetch(url, { signal });
     if (!res.ok) return null;
