@@ -58,6 +58,9 @@ export async function ensureUserLocationTable() {
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS "UserLocation_updatedAt_idx" ON "UserLocation"("updatedAt")
   `);
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "UserLocation_countryCode_idx" ON "UserLocation"("countryCode")
+  `);
   tableReady = true;
 }
 

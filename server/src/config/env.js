@@ -43,6 +43,9 @@ const schema = z.object({
 
   // Optional. Required only if the Expo project has Enhanced Push Security on.
   EXPO_ACCESS_TOKEN: z.string().default(''),
+
+  /** Mapbox public token (pk.*) for the admin user-country map. */
+  MAPBOX_PUBLIC_TOKEN: z.string().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

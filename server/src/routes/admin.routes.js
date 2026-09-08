@@ -46,6 +46,7 @@ import {
   getPermissionAnalytics,
   getWeeklyInsightMedication,
 } from '../lib/adminAnalytics.js';
+import { getUserGeoAnalytics } from '../lib/adminUserGeo.js';
 import { getNotificationDecision, listNotificationDecisions } from '../lib/notificationDecisions.js';
 import { listNotificationOutcomes } from '../lib/notificationOutcomes.js';
 import { loadActiveUserIds, loadAppActivityRows, loadLatestActivityMap } from '../lib/appActivity.js';
@@ -1323,6 +1324,14 @@ adminRouter.get(
     } catch (error) {
       sendAnalyticsError(res, error);
     }
+  }),
+);
+
+adminRouter.get(
+  '/analytics/geo',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json(await getUserGeoAnalytics());
   }),
 );
 

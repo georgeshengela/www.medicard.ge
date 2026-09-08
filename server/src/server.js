@@ -81,12 +81,14 @@ app.use(
         ? {
             directives: {
               defaultSrc: ["'self'"],
-              scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-              styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+              scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://api.mapbox.com'],
+              styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://api.mapbox.com'],
               imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
               connectSrc: ["'self'", 'https:', 'ws:', 'wss:'],
               fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
               mediaSrc: ["'self'", 'blob:'],
+              workerSrc: ["'self'", 'blob:'],
+              childSrc: ["'self'", 'blob:'],
               objectSrc: ["'none'"],
               frameAncestors: ["'self'"],
             },

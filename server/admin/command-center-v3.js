@@ -23,6 +23,11 @@
   let ccLive = { status: 'live', at: null, error: null };
   let ccLastUsers = null;
   let ccLastBalances = null;
+  let geoMap = null;
+  let geoMapboxP = null;
+  let geoLast = null;
+  let geoThemeObs = null;
+  let geoMarkers = [];
 
   function esc(value) {
     return typeof opsEscape === 'function' ? opsEscape(value) : String(value ?? '');
@@ -261,6 +266,7 @@
   async function renderCommandCenter() {
     const gen = ++opsFetchGen;
     const root = $('tab-overview');
+    destroyGeoMap();
     const actions = $('page-header-actions');
     if (actions) {
       actions.innerHTML = V3().iconButton
@@ -288,6 +294,7 @@
           <div id="ops-retention">${skel('is-strip')}</div>
           <div id="ops-features">${skel('is-alert')}</div>
         </div>
+        <div id="ops-geo">${skel('is-map')}</div>
       </div>`;
     if (typeof bindOpsRange === 'function') bindOpsRange(renderCommandCenter);
     $('ops-refresh')?.addEventListener('click', () => {
@@ -299,7 +306,7 @@
 
     const q = typeof opsQs === 'function' ? opsQs() : `range=${opsState.range}`;
     const grain = opsState.grain || 'dau';
-    const [overview, users, features, retention, notif, system, balances] = await Promise.all([
+    const [overview, users, features, retention, notif, system, balances, geo] = await Promise.all([
       api(`/analytics/overview?${q}`).catch((err) => ({ error: err.message })),
       api(`/analytics/users?${q}&grain=${grain}`).catch((err) => ({ error: err.message })),
       api(`/analytics/features?${q}`).catch((err) => ({ error: err.message })),
@@ -307,6 +314,7 @@
       api(`/analytics/notifications?${q}`).catch((err) => ({ error: err.message })),
       api('/system/health').catch((err) => ({ error: err.message })),
       api('/balances').catch((err) => ({ error: err.message })),
+      api('/analytics/geo').catch((err) => ({ error: err.message })),
     ]);
     if (gen !== opsFetchGen) return;
     if (refreshBtn) refreshBtn.classList.remove('is-loading');
@@ -349,6 +357,7 @@
     paintGrowth(root, overview);
     paintRetention(root, retention);
     paintFeatures(root, features);
+    paintGeo(root, geo);
     bindGo(root);
     applyLiveSnap();
   }
@@ -771,6 +780,233 @@
         + '</button>';
       }).join('') + '</div>',
     });
+  }
+
+  function flagImg(code, cls = 'v3-cc-geo-flag') {
+    const iso = String(code || '').toLowerCase();
+    if (!/^[a-z]{2}$/.test(iso)) {
+      return `<span class="v3-cc-geo-iso">${esc(String(code || '').toUpperCase())}</span>`;
+    }
+    return `<img class="${cls}" src="https://flagcdn.com/w80/${iso}.png" srcset="https://flagcdn.com/w40/${iso}.png 1x, https://flagcdn.com/w80/${iso}.png 2x" width="20" height="15" alt="" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'v3-cc-geo-iso',textContent:'${iso.toUpperCase()}'}))">`;
+  }
+
+  function destroyGeoMap() {
+    clearGeoMarkers();
+    if (geoMap) {
+      try { geoMap.remove(); } catch (_) { /* already gone */ }
+      geoMap = null;
+    }
+  }
+
+  function clearGeoMarkers() {
+    geoMarkers.forEach((marker) => { try { marker.remove(); } catch (_) { /* gone */ } });
+    geoMarkers = [];
+  }
+
+  function loadMapboxGl() {
+    if (global.mapboxgl) return Promise.resolve(global.mapboxgl);
+    if (geoMapboxP) return geoMapboxP;
+    geoMapboxP = new Promise((resolve, reject) => {
+      if (!document.getElementById('mapbox-gl-css')) {
+        const css = document.createElement('link');
+        css.id = 'mapbox-gl-css';
+        css.rel = 'stylesheet';
+        css.href = 'https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css';
+        document.head.appendChild(css);
+      }
+      const script = document.createElement('script');
+      script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js';
+      script.onload = () => resolve(global.mapboxgl);
+      script.onerror = () => {
+        geoMapboxP = null;
+        reject(new Error('Mapbox GL ვერ ჩაიტვირთა'));
+      };
+      document.head.appendChild(script);
+    });
+    return geoMapboxP;
+  }
+
+  function geoStyleUrl() {
+    return document.documentElement.dataset.theme === 'dark'
+      ? 'mapbox://styles/mapbox/dark-v11'
+      : 'mapbox://styles/mapbox/light-v11';
+  }
+
+  function bindGeoTheme() {
+    if (geoThemeObs) return;
+    geoThemeObs = new MutationObserver(() => {
+      if (!geoMap || !geoLast?.token) return;
+      const next = geoStyleUrl();
+      const current = geoMap.getStyle()?.sprite || '';
+      if ((next.includes('dark-v11') && String(current).includes('dark-v11'))
+        || (next.includes('light-v11') && String(current).includes('light-v11'))) return;
+      geoMap.setStyle(next);
+      geoMap.once('style.load', () => paintGeoLayers(geoMap, geoLast));
+    });
+    geoThemeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+
+  function paintGeoLayers(map, geo) {
+    const countries = geo.countries || [];
+    if (map.getLayer('geo-line')) map.removeLayer('geo-line');
+    if (map.getLayer('geo-fill')) map.removeLayer('geo-fill');
+    if (map.getSource('countries')) map.removeSource('countries');
+    const codes = countries.map((row) => row.code);
+    map.addSource('countries', {
+      type: 'vector',
+      url: 'mapbox://mapbox.country-boundaries-v1',
+      promoteId: { country_boundaries: 'iso_3166_1' },
+    });
+    const lit = codes.length ? ['in', ['get', 'iso_3166_1'], ['literal', codes]] : ['==', ['get', 'iso_3166_1'], ''];
+    map.addLayer({
+      id: 'geo-fill',
+      type: 'fill',
+      source: 'countries',
+      'source-layer': 'country_boundaries',
+      filter: ['all', ['match', ['get', 'worldview'], ['all', 'US'], true, false], lit],
+      paint: {
+        'fill-color': [
+          'interpolate', ['linear'], ['coalesce', ['feature-state', 'users'], 1],
+          1, '#99F6E4',
+          8, '#14B8A6',
+          25, '#0D9488',
+        ],
+        'fill-opacity': 0.55,
+      },
+    });
+    map.addLayer({
+      id: 'geo-line',
+      type: 'line',
+      source: 'countries',
+      'source-layer': 'country_boundaries',
+      filter: ['all', ['match', ['get', 'worldview'], ['all', 'US'], true, false], lit],
+      paint: {
+        'line-color': '#14B8A6',
+        'line-width': 1.15,
+        'line-opacity': 0.9,
+      },
+    });
+    for (const row of countries) {
+      map.setFeatureState(
+        { source: 'countries', sourceLayer: 'country_boundaries', id: row.code },
+        { users: row.users },
+      );
+    }
+    clearGeoMarkers();
+    for (const row of countries) {
+      if (row.lng == null || row.lat == null) continue;
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'v3-cc-geo-pin';
+      el.setAttribute('aria-label', `${row.nameKa}: ${row.users}`);
+      el.innerHTML = `${flagImg(row.code, 'v3-cc-geo-pin-flag')}<b>${fmt(row.users)}</b>`;
+      const popup = new global.mapboxgl.Popup({ offset: 18, closeButton: false, className: 'v3-cc-geo-pop' })
+        .setHTML(`<strong>${flagImg(row.code)} ${esc(row.nameKa)}</strong><span>${fmt(row.users)} მომხმარებელი</span>`);
+      const marker = new global.mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([row.lng, row.lat])
+        .setPopup(popup)
+        .addTo(map);
+      el.addEventListener('click', () => marker.togglePopup());
+      geoMarkers.push(marker);
+    }
+  }
+
+  function fitGeoMap(map, countries) {
+    const pts = (countries || []).filter((c) => c.lng != null && c.lat != null);
+    if (!pts.length) {
+      map.jumpTo({ center: [43.5, 42], zoom: 3.2 });
+      return;
+    }
+    if (pts.length === 1) {
+      map.jumpTo({ center: [pts[0].lng, pts[0].lat], zoom: 4.6 });
+      return;
+    }
+    const bounds = pts.reduce(
+      (b, c) => b.extend([c.lng, c.lat]),
+      new global.mapboxgl.LngLatBounds([pts[0].lng, pts[0].lat], [pts[0].lng, pts[0].lat]),
+    );
+    map.fitBounds(bounds, { padding: 56, maxZoom: 4.8, duration: 0 });
+  }
+
+  async function mountGeoMap(geo) {
+    const host = $('ops-geo-map');
+    if (!host || !geo?.token) return;
+    try {
+      const mapboxgl = await loadMapboxGl();
+      if (!$('ops-geo-map')) return;
+      mapboxgl.accessToken = geo.token;
+      destroyGeoMap();
+      geoMap = new mapboxgl.Map({
+        container: host,
+        style: geoStyleUrl(),
+        center: [43.5, 42],
+        zoom: 3.2,
+        attributionControl: true,
+        cooperativeGestures: true,
+      });
+      geoMap.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+      geoMap.once('load', () => {
+        geoMap.resize();
+        paintGeoLayers(geoMap, geo);
+        fitGeoMap(geoMap, geo.countries);
+      });
+      bindGeoTheme();
+    } catch (err) {
+      host.innerHTML = `<p class="muted">${esc(err.message || 'რუკა ვერ ჩაიტვირთა')}</p>`;
+    }
+  }
+
+  function paintGeo(_root, geo) {
+    const host = $('ops-geo');
+    if (!host) return;
+    if (geo.error) {
+      host.innerHTML = section({
+        title: 'ქვეყნები',
+        helpKey: 'overview.geo',
+        content: errBox('რუკა ვერ ჩაიტვირთა', geo.error, 'ops-retry-geo'),
+      });
+      $('ops-retry-geo')?.addEventListener('click', renderCommandCenter);
+      return;
+    }
+    geoLast = geo;
+    const countries = geo.countries || [];
+    const located = Number(geo.located) || 0;
+    const unknown = Number(geo.unknown) || 0;
+    const list = countries.length
+      ? '<ol class="v3-cc-geo-list">' + countries.map((row, i) => (
+        `<li><button type="button" class="v3-cc-geo-item" data-geo-i="${i}">`
+        + `${flagImg(row.code)}`
+        + `<span class="v3-cc-geo-name">${esc(row.nameKa)}</span>`
+        + `<strong>${fmt(row.users)}</strong></button></li>`
+      )).join('')
+        + (unknown ? `<li class="v3-cc-geo-unknown"><span>უცნობი ქვეყანა</span><strong>${fmt(unknown)}</strong></li>` : '')
+        + '</ol>'
+      : emptyBox(
+        'ქვეყანა ჯერ არ ჩანს',
+        unknown
+          ? `${fmt(unknown)} მომხმარებელს მდებარეობა ჯერ არ აქვს — რუკა ინათება GPS ქვეყნის მოსვლისას.`
+          : 'რუკა ინათება, როცა მომხმარებელი მდებარეობას დაუშვებს.',
+      );
+    const mapPane = geo.token
+      ? '<div id="ops-geo-map" class="v3-cc-geo-map" role="img" aria-label="მომხმარებლების ქვეყნები"></div>'
+      : `<div class="v3-cc-geo-missing">${emptyBox('Mapbox ტოკენი არ არის', 'დაამატეთ MAPBOX_PUBLIC_TOKEN (pk.*) სერვერის გარემოში — იგივე public ტოკენი, რაც მობილურ Run რუკაზეა.')}</div>`;
+    host.innerHTML = section({
+      title: 'ქვეყნები',
+      helpKey: 'overview.geo',
+      description: located
+        ? `${fmt(countries.length)} ქვეყანა · ${fmt(located)} მომხმარებელი მდებარეობით` + (unknown ? ` · ${fmt(unknown)} უცნობი` : '') + '.'
+        : 'ქვეყანა ინათება პირველი რეგისტრაციისას, როცა GPS ქვეყანა ცნობილია.',
+      content: `<div class="v3-cc-geo">${mapPane}${list}</div>`,
+    });
+    host.querySelectorAll('[data-geo-i]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const row = countries[Number(btn.dataset.geoI)];
+        if (!row || row.lng == null || !geoMap) return;
+        geoMap.flyTo({ center: [row.lng, row.lat], zoom: 4.8, duration: 700 });
+        host.querySelectorAll('.v3-cc-geo-item').forEach((el) => el.classList.toggle('is-on', el === btn));
+      });
+    });
+    mountGeoMap(geo);
   }
 
   let ccPollBusy = false;

@@ -60,6 +60,8 @@ services:
         sync: false
       - key: SMS_OFFICE_SENDER
         value: MEDICARD
+      - key: MAPBOX_PUBLIC_TOKEN
+        sync: false
 
   - type: cron
     name: medicard-pharmacy-sync
