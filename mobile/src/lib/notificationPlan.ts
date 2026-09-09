@@ -109,6 +109,8 @@ export function routeFromNotificationData(data: Record<string, unknown> | undefi
       return typeof data.visitId === 'string' && data.visitId
         ? `/visits/editor?id=${encodeURIComponent(data.visitId)}`
         : '/visits';
+    case 'quota_reset':
+      return '/chat/DOCTOR';
     case 'cycle_reminder':
     case 'cycle_tip':
       return '/cycle';
@@ -119,13 +121,14 @@ export function routeFromNotificationData(data: Record<string, unknown> | undefi
   }
 }
 
-export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' | 'steps' | 'weight' | 'engage' | 'qa' | 'other' {
+export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' | 'steps' | 'weight' | 'engage' | 'quota' | 'qa' | 'other' {
   if (id.startsWith('med:')) return 'med';
   if (id.startsWith('cycle:')) return 'cycle';
   if (id.startsWith('visit:')) return 'visit';
   if (id.startsWith('steps:')) return 'steps';
   if (id.startsWith('weight:')) return 'weight';
   if (id.startsWith('engage:')) return 'engage';
+  if (id.startsWith('quota:')) return 'quota';
   if (id.startsWith('qa:')) return 'qa';
   return 'other';
 }

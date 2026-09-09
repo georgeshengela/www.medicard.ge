@@ -49,6 +49,9 @@ export type Usage = {
   unlimited?: boolean;
   resetsInMs: number;
   resetAt?: string | null;
+  resetKind?: 'lock' | 'calendar' | null;
+  refilled?: boolean;
+  refilledKey?: string | null;
 };
 
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
@@ -717,6 +720,35 @@ export type CycleDayMark = {
   hasBbt?: boolean;
   hasMucus?: boolean;
   hasSex?: boolean;
+};
+
+export type CyclePredictionHistoryEpisode = {
+  cycleAnchorDate: string;
+  actualStart: string | null;
+  firstPredictedStart: string | null;
+  lastPredictedStart: string | null;
+  firstErrorDays: number | null;
+  lastErrorDays: number | null;
+  firstAbsErrorDays: number | null;
+  lastAbsErrorDays: number | null;
+  snapshotCount: number;
+  prePeriodSnapshotCount: number;
+  confidenceAtFirst: string | null;
+  confidenceAtLast: string | null;
+  status: 'completed' | 'open' | 'excluded';
+  exclusionReason: string | null;
+};
+
+export type CyclePredictionHistory = {
+  engineVersion: number;
+  snapshotCount: number;
+  completedCount: number;
+  openCount: number;
+  excludedCount: number;
+  aggregateEligible: boolean;
+  aggregate: { completedCount: number; typicalAbsErrorDays: number | null; basis: string } | null;
+  episodes: CyclePredictionHistoryEpisode[];
+  emptyReason: 'NO_SNAPSHOTS' | null;
 };
 
 export type CycleBundle = {
@@ -1620,6 +1652,8 @@ export const api = {
         engine?: string;
         usage?: Usage;
       }>('/api/cycle/insights', { method: 'POST', body: { refresh } }),
+    predictionHistory: () =>
+      request<CyclePredictionHistory>('/api/cycle/prediction-history', { cache: 'no-store' }),
   },
 
   quests: {

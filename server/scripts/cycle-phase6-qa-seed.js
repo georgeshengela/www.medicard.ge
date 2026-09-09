@@ -208,6 +208,11 @@ async function main() {
   });
 
   await prisma.cycleLog.deleteMany({ where: { userId: user.id } });
+  try {
+    await prisma.cyclePredictionSnapshot.deleteMany({ where: { userId: user.id } });
+  } catch {
+    /* table may be absent on older local DBs */
+  }
   await prisma.cycleProfile.upsert({
     where: { userId: user.id },
     create: {

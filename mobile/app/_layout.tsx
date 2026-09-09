@@ -16,6 +16,7 @@ import { useTabChromeHidden } from '@/components/navigation/tabChrome';
 import { ActiveRunBadge, useActiveRunChrome } from '@/components/run/ActiveRunBadge';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
+import { QuotaReadyHost } from '@/components/QuotaReadyHost';
 import { LocationAskHost } from '@/components/location/LocationAskHost';
 import { QuestHost } from '@/components/quest/QuestHost';
 import { useThemeColors } from '@/theme/colors';
@@ -309,6 +310,7 @@ function AppShell() {
             {user ? <ActiveRunBadge /> : null}
           </AppChromeOverlay>
           <DailyCheckInHost />
+          <QuotaReadyHost />
           <LocationAskHost />
           <QuestHost />
           <OfflineBanner />

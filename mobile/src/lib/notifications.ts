@@ -1,7 +1,7 @@
 import { Notifications } from '@/lib/expoNotifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { ApiError, api } from './api';
 import type { Medication, ScheduledDose } from './api';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
@@ -37,12 +37,26 @@ export const NOTIF_PREFIX = {
   steps: 'steps:',
   weight: 'weight:',
   engage: 'engage:',
+  quota: 'quota:',
 } as const;
 
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = (notification.request.content.data ?? {}) as Record<string, unknown>;
     try {
+      if (data.type === 'quota_reset' || data.family === 'quotaReset') {
+        const resetKey = typeof data.resetKey === 'string' ? data.resetKey : null;
+        const { wasQuotaResetShown, markQuotaResetShown } = await import('@/lib/quotaResetNotification');
+        const shown = await wasQuotaResetShown(resetKey);
+        const hideBanner = shown || AppState.currentState === 'active';
+        if (!shown && !hideBanner) void markQuotaResetShown(resetKey);
+        return {
+          shouldShowBanner: !hideBanner,
+          shouldShowList: !shown,
+          shouldPlaySound: !hideBanner,
+          shouldSetBadge: false,
+        };
+      }
       const { shouldDeliverNotification } = await import('@/lib/mediNotificationBrain');
       const { patchEngageDecision } = await import('@/lib/mediEngagePrefs');
       const check = await shouldDeliverNotification(data);
@@ -353,6 +367,7 @@ export type ScheduledReminderCounts = {
   steps: number;
   weight: number;
   engage: number;
+  quota: number;
   qa: number;
   other: number;
   total: number;
@@ -366,6 +381,7 @@ export async function getScheduledReminderCounts(): Promise<ScheduledReminderCou
     steps: 0,
     weight: 0,
     engage: 0,
+    quota: 0,
     qa: 0,
     other: 0,
     total: 0,

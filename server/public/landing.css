@@ -205,7 +205,7 @@ h3,
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 18px;
   color: var(--dim);
   font-size: 13px;
   font-weight: 500;
@@ -296,6 +296,7 @@ html[data-theme="light"] .icon-moon {
 .ic-play { --src: url("/icons/play.svg"); }
 .ic-check { --src: url("/icons/check.svg"); }
 .ic-emergency { --src: url("/icons/emergency.svg"); }
+.ic-calc { --src: url("/icons/calc.svg"); }
 .ic-lg {
   width: 22px;
   height: 22px;
@@ -1338,7 +1339,12 @@ html.theme-ready .day button,
 html.theme-ready .theme-btn,
 html.theme-ready .menu-btn,
 html.theme-ready .btn-ghost,
-html.theme-ready .legal-dates article {
+html.theme-ready .legal-dates article,
+html.theme-ready .calc-tile,
+html.theme-ready .calc-card,
+html.theme-ready .calc-result,
+html.theme-ready .mc-date-btn,
+html.theme-ready .mc-cal {
   transition: background-color 0.28s ease, color 0.28s ease, border-color 0.28s ease;
 }
 

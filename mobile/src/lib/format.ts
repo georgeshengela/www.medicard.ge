@@ -20,6 +20,11 @@ export function formatDate(iso: string): string {
   return `${date.getDate()} ${KA_MONTHS[date.getMonth()]}, ${date.getFullYear()}`;
 }
 
+/** Home header — `9 სექტემბერი 2026`. Avoids RN `ka-GE` locale dropping the day. */
+export function formatDayMonthYearKa(date = new Date()): string {
+  return `${date.getDate()} ${KA_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 export function formatDateTime(iso: string): string {
   const date = new Date(iso);
   const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;

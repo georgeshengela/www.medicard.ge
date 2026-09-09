@@ -10,6 +10,7 @@ export const NOTIF_CATEGORY = {
   hydration: 'medi-hydration',
   checkin: 'medi-checkin',
   visit: 'medi-visit',
+  quota: 'medi-quota',
 } as const;
 
 export const NOTIF_ACTION = {
@@ -26,6 +27,7 @@ export function categoryForNotification(type?: string, family?: string): string 
   if (type === 'visit_reminder' || family === 'visitFollowup') return NOTIF_CATEGORY.visit;
   if (family === 'hydration') return NOTIF_CATEGORY.hydration;
   if (family === 'checkin' || family === 'morning' || family === 'sleep') return NOTIF_CATEGORY.checkin;
+  if (type === 'quota_reset' || family === 'quotaReset') return NOTIF_CATEGORY.quota;
   return undefined;
 }
 
@@ -46,6 +48,9 @@ export async function registerNotificationCategories(): Promise<void> {
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.visit, [
       { identifier: NOTIF_ACTION.open, buttonTitle: 'გახსნა', options: { opensAppToForeground: true } },
       { identifier: NOTIF_ACTION.snooze, buttonTitle: 'შემახსენე მოგვიანებით', options: { opensAppToForeground: false } },
+    ]);
+    await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.quota, [
+      { identifier: NOTIF_ACTION.chat, buttonTitle: 'ჰკითხე Medi-ს', options: { opensAppToForeground: true } },
     ]);
   } catch {
     /* categories are best-effort on Expo Go */

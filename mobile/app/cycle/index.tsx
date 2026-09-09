@@ -6,7 +6,6 @@ import {
   ScrollView,
   Text,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,7 +30,6 @@ import { CycleTtcConflictSheet } from '@/components/cycle/CycleTtcConflictSheet'
 import { mergeFertilityMarks } from '@/lib/cycleFertility';
 import { CycleCalendar, todayKey } from '@/components/cycle/CycleCalendar';
 import {
-  CYCLE_FAB_GUTTER,
   CycleAtmosphere,
   CycleFab,
   CycleLoading,
@@ -137,11 +135,7 @@ export default function CycleHome() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const c = useCycleColors();
-  const { width: screenW, fontScale } = useWindowDimensions();
   const [pane, setPane] = useState<CyclePane>('overview');
-  const fabCompact = screenW < 380 || fontScale >= 1.3 || pane === 'overview';
-  const [fabWidth, setFabWidth] = useState(fabCompact ? 72 : CYCLE_FAB_GUTTER);
-  const fabGutter = Math.max(fabCompact ? 72 : 120, fabWidth + 36);
 
   const [bundle, setBundle] = useState<CycleBundle | null>(null);
   const [cycleView, setCycleView] = useState<CycleView | null>(null);
@@ -294,12 +288,6 @@ export default function CycleHome() {
     setStartIntent(markStart);
     setDaySheetOpen(false);
     setQuickOpen(true);
-  };
-
-  const openCalendarAt = (date: string) => {
-    setSelected(date);
-    setPane('calendar');
-    setDaySheetOpen(true);
   };
 
   const endPeriod = () => {
@@ -470,6 +458,8 @@ export default function CycleHome() {
           onBack={() => {
             if (pane !== 'overview') {
               setPane('overview');
+              setDaySheetOpen(false);
+              setQuickOpen(false);
               return;
             }
             if (router.canGoBack()) router.back();
@@ -478,7 +468,31 @@ export default function CycleHome() {
           onSettings={() => router.push('/cycle/settings' as never)}
         />
 
-        <PaneSwitcher pane={pane} onChange={setPane} />
+        <PaneSwitcher
+          pane={pane}
+          onChange={(next) => {
+            setPane(next);
+            if (next === 'overview') {
+              setDaySheetOpen(false);
+              setQuickOpen(false);
+            }
+          }}
+        />
+
+        {bundle ? (
+          <CycleDayStrip
+            selected={selected}
+            onSelect={setSelected}
+            onActivate={(date) => {
+              setSelected(date);
+              setDaySheetOpen(true);
+            }}
+            marks={marks}
+            today={today}
+            showFertility={fertilityVisible}
+            showPredicted={showPredicted}
+          />
+        ) : null}
 
         <ScrollView
           style={{
@@ -674,18 +688,6 @@ export default function CycleHome() {
                 </Pressable>
               ) : null}
 
-              <View style={{ marginBottom: 8 }}>
-                <CycleDayStrip
-                  selected={selected}
-                  onSelect={openCalendarAt}
-                  marks={marks}
-                  today={today}
-                  showFertility={fertilityVisible}
-                  showPredicted={showPredicted}
-                  reservedRight={fabGutter}
-                />
-              </View>
-
               <View style={{ paddingHorizontal: 16 }}>
                 <CycleInsightsPanel
                   seed={(bundle.profile.aiInsights as never) || bundle.localInsights || null}
@@ -707,10 +709,15 @@ export default function CycleHome() {
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    minHeight: 48,
-                    paddingHorizontal: 4,
-                    marginTop: 4,
+                    minHeight: 44,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    marginTop: 8,
                     marginBottom: 8,
+                    borderRadius: 16,
+                    backgroundColor: c.roseSoft,
+                    borderWidth: 1,
+                    borderColor: c.border,
                   }}
                 >
                   <MessageSquareText size={17} color={c.brand} strokeWidth={2.1} />
@@ -804,11 +811,9 @@ export default function CycleHome() {
       </View>
 
       {!needsOnboarding && pane !== 'journal' && !daySheetOpen && !quickOpen ? (
-        <View style={{ position: 'absolute', right: 18, bottom: insets.bottom + 20 }}>
+        <View style={{ position: 'absolute', left: 16, bottom: insets.bottom + 18 }}>
           <CycleFab
             label={ka.cycle.logFab}
-            compact={fabCompact}
-            onWidth={(w) => setFabWidth((prev) => (Math.abs(prev - w) < 1 ? prev : w))}
             onPress={() => openQuickLog(pane === 'calendar' ? selected : today)}
           />
         </View>
@@ -821,7 +826,14 @@ export default function CycleHome() {
           setQuickOpen(false);
           setStartIntent(false);
         }}
-        onSaved={load}
+        onSaved={(view) => {
+          if (view) {
+            setCycleView(view);
+            setBundle(view.display);
+            return;
+          }
+          void load();
+        }}
         isPeriodStart={startIntent}
         onOpenFull={() => {
           setQuickOpen(false);

@@ -15,20 +15,33 @@ type CompletedPayload = {
   completedAt?: string;
 };
 
-type ClaimedPayload = {
-  questId: string;
-  coinsAwarded?: number;
+type UsageResetPayload = {
+  resetKey?: string;
+  resetKind?: string;
+  remaining?: number;
+  limit?: number;
 };
 
 const seen = new Set<string>();
 let socket: Socket | null = null;
 let lastCompleted: CompletedPayload | null = null;
 const completedListeners = new Set<(payload: CompletedPayload) => void>();
+const usageResetListeners = new Set<(payload: UsageResetPayload) => void>();
 
 export function onQuestSocketCompleted(listener: (payload: CompletedPayload) => void) {
   completedListeners.add(listener);
   return () => completedListeners.delete(listener);
 }
+
+export function onUsageReset(listener: (payload: UsageResetPayload) => void) {
+  usageResetListeners.add(listener);
+  return () => usageResetListeners.delete(listener);
+}
+
+type ClaimedPayload = {
+  questId: string;
+  coinsAwarded?: number;
+};
 
 export function markQuestCelebration(kind: string, questId: string, stamp?: string) {
   return shouldCelebrate(seen, celebrationKey(kind, questId, stamp));
@@ -87,6 +100,9 @@ export async function connectQuestSocket() {
       });
     },
   );
+  socket.on('usage:reset', (payload: UsageResetPayload) => {
+    usageResetListeners.forEach((fn) => fn(payload || {}));
+  });
 }
 
 export function disconnectQuestSocket() {

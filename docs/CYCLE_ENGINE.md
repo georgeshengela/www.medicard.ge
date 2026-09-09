@@ -164,3 +164,5 @@ Cycle reminders are local (mobile). There are no server future-cycle notificatio
 ## What this engine does not do
 
 No Flo-like expansion, TTC/pregnancy/BBT/LH productization, OpenRouter Cycle AI, median forecast, or UI redesign. EvidenceMD `CYCLE_WELLNESS` allowlist is unchanged.
+
+Phase 8 historical snapshots (`docs/CYCLE_PREDICTION_HISTORY_CONTRACT.md`) observe `nextPeriodStart` after a bundle is built. They do not change this file's forecast mean, confidence, late, fertility, or segmentation.

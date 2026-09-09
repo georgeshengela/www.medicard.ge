@@ -1,19 +1,19 @@
 import { darkColors, lightColors, useIsDark, useThemeColors, type Palette } from '@/theme/colors';
 
 /**
- * Cycle chrome follows the app (navy / teal / flat cards).
- * Rose / purple stay on period, fertile, ovulation — data only.
+ * Cycle chrome — Nightingale 9001:283189 rose wash on light.
+ * Dark stays navy. Fertile/ovulation stay violet so estimates ≠ period.
  */
 const PHASE_LIGHT = {
-  blush: '#F8BBD0',
-  blushDeep: '#E11D48',
-  rose: '#E11D48',
-  roseSoft: '#FCE8EE',
+  blush: '#FECDD3',
+  blushDeep: '#F43F5E',
+  rose: '#F43F5E',
+  roseSoft: '#FFF1F2',
   lavender: '#7C3AED',
   lavenderSoft: '#F3E8FF',
-  peach: '#FCE8EE',
+  peach: '#FFF1F2',
   mint: '#F9A8D4',
-  period: '#E11D48',
+  period: '#F43F5E',
   fertile: '#7C3AED',
   ovulation: '#7C3AED',
   todayRing: '#0D9488',
@@ -75,17 +75,17 @@ export type CyclePalette = CyclePhaseTokens & CycleChromeTokens;
 
 function chrome(theme: Palette, dark: boolean): CycleChromeTokens {
   return {
-    cream: theme.bg100,
-    creamDeep: theme.bg200,
-    ink: theme.text100,
-    muted: theme.text200,
-    mutedSoft: theme.text300,
-    card: theme.surface,
-    cardSoft: theme.bg200,
-    fab: dark ? '#0D9488' : theme.primary200,
-    brand: theme.primary200,
-    cta: dark ? '#0D9488' : theme.primary200,
-    border: theme.bg300,
+    cream: dark ? theme.bg100 : '#FFF7F8',
+    creamDeep: dark ? theme.bg200 : '#FFF1F2',
+    ink: dark ? theme.text100 : '#1F2937',
+    muted: dark ? theme.text200 : '#4B5563',
+    mutedSoft: dark ? theme.text300 : '#9CA3AF',
+    card: dark ? theme.surface : '#FFFFFF',
+    cardSoft: dark ? theme.bg200 : '#FFF1F2',
+    fab: dark ? '#F43F5E' : '#F43F5E',
+    brand: dark ? '#FB7185' : '#F43F5E',
+    cta: dark ? '#F43F5E' : '#F43F5E',
+    border: dark ? theme.bg300 : '#FECDD3',
     shadow: 'transparent',
     danger: theme.danger,
     success: theme.success,

@@ -6,7 +6,7 @@ export const QUOTA_EXCEEDED_MESSAGE_KA =
 
 /**
  * Enforces the user's daily AI cap before any AI engine is called.
- * The 24h countdown starts when they hit the last query, not at midnight / month end.
+ * Unused credits reset at Tbilisi midnight. Hitting the last query starts a 24h countdown from that moment.
  */
 export async function enforceAiQuota(req, res, next) {
   try {

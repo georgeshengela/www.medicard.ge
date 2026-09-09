@@ -3,7 +3,7 @@
     "name": "MEDICARD",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "39.0.4",
+    "version": "39.0.22",
     "assetBundlePatterns": [
       "assets/**"
     ],

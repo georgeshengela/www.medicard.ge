@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ka" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>hCG კალკულატორი — მედიქარდი</title>
+  <meta name="description" content="გამოთვალე ბეტა-hCG-ის გაორმაგების დრო ორ ანალიზს შორის. Medicard.GE — არ ცვლის ექიმის ინტერპრეტაციას." />
+  <link rel="canonical" href="https://medicard.ge/calculators/hcg" />
+  <meta name="theme-color" content="#f3f5f6" />
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("medicard.landing.theme");
+        if (t !== "light" && t !== "dark") {
+          t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = t;
+        document.documentElement.style.colorScheme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ka_GE" />
+  <meta property="og:url" content="https://medicard.ge/calculators/hcg" />
+  <meta property="og:title" content="hCG კალკულატორი — მედიქარდი" />
+  <meta property="og:description" content="გამოთვალე ბეტა-hCG-ის გაორმაგების დრო ორ ანალიზს შორის. Medicard.GE — არ ცვლის ექიმის ინტერპრეტაციას." />
+  <meta property="og:image" content="https://medicard.ge/screens/home.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/icon.png" />
+  <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/landing.css?v=39" />
+  <link rel="stylesheet" href="/calculators.css?v=2" />
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">
+        <img src="/icon.png" width="36" height="36" alt="" />
+        მედიქარდი
+      </a>
+      <nav class="nav-links" aria-label="მენიუ">
+        <a href="/"><span class="ic ic-house" aria-hidden="true"></span>მთავარი გვერდი</a>
+        <a href="/#how"><span class="ic ic-chat" aria-hidden="true"></span>Medi</a>
+        <a href="/#features"><span class="ic ic-health" aria-hidden="true"></span>ფუნქციები</a>
+        <a href="/calculators" aria-current="page"><span class="ic ic-calc" aria-hidden="true"></span>კალკულატორები</a>
+        <a href="/#plans"><span class="ic ic-wallet" aria-hidden="true"></span>გეგმები</a>
+        <a class="nav-download" href="/#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="theme-btn" id="theme-toggle" type="button" aria-pressed="false" aria-label="გადართე მუქ თემაზე">
+          <span class="ic ic-moon icon-moon" aria-hidden="true"></span>
+          <span class="ic ic-sun icon-sun" aria-hidden="true"></span>
+        </button>
+        <button class="menu-btn" id="menu-toggle" type="button" aria-label="მენიუ" aria-expanded="false">
+          <span class="ic ic-menu" aria-hidden="true"></span>
+        </button>
+        <a class="btn btn-cta" href="/#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="calc-hero band-dark">
+      <div class="wrap">
+        <p class="calc-crumb"><a href="/">მთავარი</a> / <a href="/calculators">კალკულატორები</a> / hCG კალკულატორი</p>
+        <p class="kicker">ორსულობა</p>
+        <h1>hCG კალკულატორი</h1>
+        <p class="lead">ადრეულ ორსულობაში hCG ხშირად 48–72 საათში ორმაგდება. შეიყვანე ორი შედეგი და თარიღი — ნახე ფარდობა და სავარაუდო შემდეგი დიაპაზონი.</p>
+        <div class="chips"><span class="chip">ბეტა-hCG</span><span class="chip">48–72 საათი</span><span class="chip">არ არის დიაგნოზი</span></div>
+      </div>
+    </section>
+    <section class="calc-stage band-paper">
+      <div class="wrap calc-layout">
+        <form class="calc-card" data-calc="hcg" novalidate autocomplete="off">
+          <h2>გამოთვლა</h2>
+          <div class="calc-field">
+          <label for="date1">პირველი ანალიზის თარიღი</label>
+          <input id="date1" name="date1" type="date" required />
+        </div>
+        <div class="calc-field">
+          <label for="value1">პირველი hCG (mIU/ml)</label>
+          <input id="value1" name="value1" type="number" min="1" step="0.1" required />
+        </div>
+        <div class="calc-field">
+          <label for="date2">მეორე ანალიზის თარიღი</label>
+          <input id="date2" name="date2" type="date" required />
+        </div>
+        <div class="calc-field">
+          <label for="value2">მეორე hCG (mIU/ml)</label>
+          <input id="value2" name="value2" type="number" min="1" step="0.1" required />
+        </div>
+        <div class="calc-field">
+          <span class="lbl">გესტაციური კვირა (არასავალდებულო)</span>
+          <div class="calc-stepper">
+            <button type="button" data-step="-1" aria-label="შემცირება">−</button>
+            <input id="week" name="week" type="number" min="3" max="20" value="5" />
+            <button type="button" data-step="1" aria-label="გაზრდა">+</button>
+          </div>
+        </div>
+        <div class="calc-actions">
+          <button class="btn btn-cta" type="submit">გამოთვლა</button>
+          <button class="btn btn-ghost" type="button" data-reset>თავიდან</button>
+        </div>
+        <p class="calc-note">შედეგი არის ორიენტირი. არ ცვლის ექიმს, ულტრაბგერას ან ლაბორატორიას.</p>
+        </form>
+        <div class="calc-result" data-result></div>
+      </div>
+    </section>
+    <section class="calc-article band-paper">
+      <div class="wrap">
+        
+        <h2>რას ნიშნავს გაორმაგება</h2>
+        <p>იმპლანტაციის შემდეგ hCG იმატებს. ადრეულ კვირებში ხშირად ორმაგდება 48–72 საათში. მოგვიანებით მატება ნელდება და პიკს დაახლოებით 8–10 კვირაზე აღწევს.</p>
+        <p>ერთი რიცხვი თითქმის არაფერს ამბობს — დიაპაზონი კვირის მიხედვით ძალიან ფართოა. ორი ანალიზი ერთსა და იმავე ლაბში უფრო სასარგებლოა.</p>
+        <ul>
+          <li>კლება ან ძალიან ნელი მატება — ექიმთან;</li>
+          <li>სწრაფი მატება შეიძლება ნორმა იყოს, მათ შორის მრავალნაყოფიან ორსულობაში;</li>
+          <li>ულტრაბგერა ადასტურებს საშვილოსნოსშიდა ორსულობას, არა მხოლოდ hCG.</li>
+        </ul>
+        <h2>სხვა კალკულატორები</h2>
+        <div class="calc-related"><a href="/calculators/pregnancy-test"><small>კალკულატორი</small><b>ორსულობის ტესტის კალკულატორი</b></a><a href="/calculators/implantation"><small>კალკულატორი</small><b>იმპლანტაციის კალკულატორი</b></a><a href="/calculators/due-date"><small>კალკულატორი</small><b>მშობიარობის თარიღი</b></a></div>
+      </div>
+    </section>
+  </main>
+  <footer class="band-paper">
+    <div class="wrap">
+      <div class="disclaimer" id="disclaimer"><strong>ეს არ არის საბოლოო დიაგნოზი.</strong>
+          კალკულატორები, Medi და აპის ანალიზები ეხმარება გაგებაში, მაგრამ არ ცვლის ექიმის კონსულტაციას,
+          დანიშნულებას ან სასწრაფო დახმარებას. ციკლის პროგნოზი არ არის კონტრაცეფცია. თუ მდგომარეობა მძიმეა — მიმართე სპეციალისტს ან 112-ს.</div>
+      <div class="foot-top">
+        <div>
+          <a class="brand" href="/">
+            <img src="/icon.png" width="36" height="36" alt="" />
+            მედიქარდი
+          </a>
+          <p class="foot-note">Medicard.GE · მხოლოდ iOS და Android</p>
+        </div>
+        <a class="foot-mail" href="mailto:support@medicard.ge">support@medicard.ge</a>
+        <p class="foot-note">ანგარიში, ჩატი და ციკლი მხოლოდ ტელეფონზეა.</p>
+      </div>
+      <div class="foot-legal">
+        <p>© <span id="y"></span> Medicard.GE</p>
+        <p>
+          <a href="/calculators">კალკულატორები</a>
+          · <a href="/privacy">კონფიდენციალურობა</a>
+          · <a href="/terms">წესები</a>
+          · <a href="#disclaimer">პასუხისმგებლობა</a>
+        </p>
+      </div>
+    </div>
+  </footer>
+  <script src="/landing.js?v=16"></script>
+  <script type="module" src="/calculators.js?v=2"></script>
+</body>
+</html>

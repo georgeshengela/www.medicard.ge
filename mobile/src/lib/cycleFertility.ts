@@ -1,4 +1,5 @@
 import type { CycleDayMark, CycleLog } from '@/lib/api';
+import { cycleLogHasFacts } from '@/lib/cycleLogFacts';
 import { ka } from '@/i18n/ka';
 
 export const CYCLE_TEST_RESULTS = ['negative', 'positive', 'unclear'] as const;
@@ -25,13 +26,7 @@ export function mergeFertilityMarks(
     const prev = next[log.date] || {};
     next[log.date] = {
       ...prev,
-      logged:
-        Boolean(prev.logged) ||
-        isCycleTestResult(log.ovulationTest) ||
-        isCycleTestResult(log.pregnancyTest) ||
-        log.bbt != null ||
-        Boolean(log.cervicalMucus) ||
-        Boolean(log.sexualActivity),
+      logged: Boolean(prev.logged) || cycleLogHasFacts(log),
       ovulationTest: isCycleTestResult(log.ovulationTest) ? log.ovulationTest : prev.ovulationTest,
       pregnancyTest: isCycleTestResult(log.pregnancyTest) ? log.pregnancyTest : prev.pregnancyTest,
       hasBbt: log.bbt != null || prev.hasBbt,

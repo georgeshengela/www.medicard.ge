@@ -22,11 +22,12 @@ export async function revokeCycleShares(prisma, ownerUserId) {
 
 export async function wipeCycleHealthData(prisma, userId) {
   await revokeCycleShares(prisma, userId);
-  const [logs, tags, pregnancy, shares, profile] = await prisma.$transaction([
+  const [logs, tags, pregnancy, shares, snapshots, profile] = await prisma.$transaction([
     prisma.cycleLog.deleteMany({ where: { userId } }),
     prisma.cycleCustomTag.deleteMany({ where: { userId } }),
     prisma.pregnancyLog.deleteMany({ where: { userId } }),
     prisma.cyclePartnerShare.deleteMany({ where: { ownerUserId: userId } }),
+    prisma.cyclePredictionSnapshot.deleteMany({ where: { userId } }),
     prisma.cycleProfile.deleteMany({ where: { userId } }),
   ]);
   return {
@@ -34,6 +35,7 @@ export async function wipeCycleHealthData(prisma, userId) {
     tags: tags.count,
     pregnancyLogs: pregnancy.count,
     shares: shares.count,
+    predictionSnapshots: snapshots.count,
     profiles: profile.count,
   };
 }
@@ -45,6 +47,7 @@ export function buildCycleExportPayload({
   inferred = {},
   contraception = null,
   pregnancyLogs = [],
+  predictionSnapshots = [],
 } = {}) {
   return {
     format: 'medicard.cycle.export.v1',
@@ -99,6 +102,14 @@ export function buildCycleExportPayload({
       caffeine: log.caffeine ?? null,
       alcohol: log.alcohol ?? null,
       customTagIds: log.customTagIds ?? [],
+    })),
+    predictionSnapshots: (predictionSnapshots || []).map((row) => ({
+      type: row.type,
+      predictedDate: row.predictedDate,
+      snapshotDate: row.snapshotDate,
+      cycleAnchorDate: row.cycleAnchorDate,
+      confidence: row.confidence,
+      engineVersion: row.engineVersion,
     })),
     pregnancyLogs: (pregnancyLogs || []).map((p) => ({
       date: p.date,

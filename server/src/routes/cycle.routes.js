@@ -52,6 +52,10 @@ import {
   wipeCycleHealthData,
 } from '../lib/cycleLifecycle.js';
 import {
+  buildPredictionHistory,
+  observeNextPeriodPrediction,
+} from '../lib/cyclePredictionHistory.js';
+import {
   assertCycleDateKey,
   DEFAULT_BLEED_FLOW,
   logHasExtras,
@@ -352,7 +356,7 @@ async function loadBundle(userId, clock = null) {
     partnerShare = ownerShareView(null, null);
   }
 
-  return {
+  const bundle = {
     meta: { today, timezone },
     cycleDay: todayPhase.day,
     phase: todayPhase.phase,
@@ -428,6 +432,25 @@ async function loadBundle(userId, clock = null) {
       today,
     }),
   };
+
+  try {
+    await observeNextPeriodPrediction(prisma, {
+      userId,
+      today,
+      now: clock?.now || new Date(),
+      predictedDate: rawPredictions.nextPeriodStart,
+      cycleAnchorDate: lastPeriodStart,
+      confidence: rawPredictions.confidence,
+      validGapCount: averages.cycleCount,
+      isIrregular: Boolean(profile.isIrregular),
+      source: averages.source,
+      mode: profile.mode,
+    });
+  } catch {
+    /* Observation must never fail the Cycle bundle. */
+  }
+
+  return bundle;
 }
 
 cycleRouter.get(
@@ -444,6 +467,23 @@ cycleRouter.get(
   asyncHandler(async (req, res) => {
     assertFemale(req.user);
     const bundle = await bundleFor(req);
+    let predictionSnapshots = [];
+    try {
+      predictionSnapshots = await prisma.cyclePredictionSnapshot.findMany({
+        where: { userId: req.user.id },
+        orderBy: { snapshotAt: 'asc' },
+        select: {
+          type: true,
+          predictedDate: true,
+          snapshotDate: true,
+          cycleAnchorDate: true,
+          confidence: true,
+          engineVersion: true,
+        },
+      });
+    } catch {
+      predictionSnapshots = [];
+    }
     return res.json(
       buildCycleExportPayload({
         profile: bundle.profile,
@@ -452,8 +492,43 @@ cycleRouter.get(
         inferred: bundle.inferred,
         contraception: bundle.contraception,
         pregnancyLogs: bundle.pregnancyLogs,
+        predictionSnapshots,
       }),
     );
+  }),
+);
+
+cycleRouter.get(
+  '/prediction-history',
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+    const today = clock.today;
+    const engineLogs = await prisma.cycleLog.findMany({
+      where: engineLogWhere(req.user.id, today),
+      orderBy: { date: 'asc' },
+      select: { date: true, flow: true, createdAt: true },
+    });
+    let snapshots = [];
+    try {
+      snapshots = await prisma.cyclePredictionSnapshot.findMany({
+        where: { userId: req.user.id, type: 'NEXT_PERIOD_START' },
+        orderBy: { snapshotAt: 'asc' },
+      });
+    } catch {
+      snapshots = [];
+    }
+    const inferred = inferCycleStats(engineLogs);
+    const loggedAtByDate = {};
+    for (const log of engineLogs) {
+      if (log.createdAt && !loggedAtByDate[log.date]) {
+        loggedAtByDate[log.date] = log.createdAt;
+      }
+    }
+    return res.json(buildPredictionHistory(snapshots, {
+      periodStarts: inferred.periodStarts,
+      loggedAtByDate,
+    }));
   }),
 );
 

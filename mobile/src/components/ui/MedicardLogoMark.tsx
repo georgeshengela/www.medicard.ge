@@ -13,12 +13,13 @@ type Props = {
   size?: number;
   /** Teal mark on light surfaces. */
   tone?: 'brand' | 'inverse';
+  color?: string;
 };
 
-export function MedicardLogoMark({ size = 64, tone = 'brand' }: Props) {
-  const fill = tone === 'inverse' ? '#FFFFFF' : colors.primary200;
-  const strokeFrom = tone === 'inverse' ? '#FFFFFF' : colors.primary200;
-  const gradId = tone === 'inverse' ? 'logoStrokeInv' : 'logoStrokeBrand';
+export function MedicardLogoMark({ size = 64, tone = 'brand', color }: Props) {
+  const fill = color || (tone === 'inverse' ? '#FFFFFF' : colors.primary200);
+  const strokeFrom = fill;
+  const gradId = `logoStroke-${tone}-${String(fill).replace(/[^a-zA-Z0-9]/g, '')}`;
 
   return (
     <Svg width={size} height={size} viewBox="66.375 30.375 72.75 72.75" fill="none">

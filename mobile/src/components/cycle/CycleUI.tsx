@@ -5,21 +5,35 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import type { LucideIcon } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Plus, type LucideIcon } from 'lucide-react-native';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { CyclePageSkeleton } from '@/components/ui/Skeleton';
-import { cycleShadow, useCycleColors, type CyclePalette } from '@/theme/cycle';
+import { useIsDark } from '@/theme/colors';
+import { cycleHexAlpha, cycleShadow, useCycleColors, type CyclePalette } from '@/theme/cycle';
 
-/** App page canvas — same navy / gray as home, hydration, steps. */
+/** Cycle canvas — Figma 9001:283189 blush wash on light, navy on dark. */
 export function CycleAtmosphere({ children }: { children: React.ReactNode }) {
   const c = useCycleColors();
-  return <View style={{ flex: 1, backgroundColor: c.cream }}>{children}</View>;
+  const dark = useIsDark();
+  return (
+    <View style={{ flex: 1, backgroundColor: c.cream }}>
+      {dark ? null : (
+        <LinearGradient
+          pointerEvents="none"
+          colors={['rgba(244,63,94,0.16)', 'rgba(255,247,248,0)']}
+          locations={[0, 0.58]}
+          style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 440 }}
+        />
+      )}
+      {children}
+    </View>
+  );
 }
 
 export function CycleLoading() {
@@ -498,14 +512,12 @@ export function CyclePrimaryButton({
   );
 }
 
-/** Right-column reserve so the FAB never sits on the 7-day strip. */
-export const CYCLE_FAB_GUTTER = 156;
+/** Legacy name — the strip is full-width; FAB no longer reserves a column. */
+export const CYCLE_FAB_GUTTER = 72;
 
 export function CycleFab({
   onPress,
   label,
-  onWidth,
-  compact: compactProp,
 }: {
   onPress: () => void;
   label?: string;
@@ -513,67 +525,68 @@ export function CycleFab({
   compact?: boolean;
 }) {
   const c = useCycleColors();
-  const { width: screenW, fontScale } = useWindowDimensions();
-  const compact = compactProp ?? (screenW < 380 || fontScale >= 1.3);
   const text = label || 'აღრიცხვა';
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={text}
-      onLayout={(e) => onWidth?.(e.nativeEvent.layout.width)}
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-        onPress();
-      }}
-      className="active:opacity-90"
-      style={{
-        alignSelf: 'flex-end',
-        borderRadius: 999,
-        overflow: 'hidden',
-        ...cycleShadow.fab,
-      }}
-    >
+    <View style={{ alignSelf: 'flex-start' }}>
       <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: -5,
+          right: -5,
+          top: -5,
+          bottom: -5,
+          borderRadius: 27,
+          backgroundColor: cycleHexAlpha(c.cta, 0.16),
+        }}
+      />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={text}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+          onPress();
+        }}
+        className="active:opacity-90"
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          minHeight: 48,
-          borderRadius: 999,
-          paddingLeft: 14,
-          paddingRight: 16,
-          paddingVertical: 8,
+          height: 44,
+          paddingLeft: 7,
+          paddingRight: 12,
+          borderRadius: 22,
           backgroundColor: c.cta,
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.28)',
+          gap: 7,
         }}
       >
         <View
           style={{
-            width: 34,
-            height: 34,
-            borderRadius: 17,
-            backgroundColor: 'rgba(255,255,255,0.18)',
+            width: 26,
+            height: 26,
+            borderRadius: 13,
+            backgroundColor: 'rgba(255,255,255,0.2)',
             alignItems: 'center',
             justifyContent: 'center',
-            marginRight: compact ? 0 : 10,
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 22, fontWeight: '300', lineHeight: 24, marginTop: -2 }}>
-            +
-          </Text>
+          <Plus size={15} color="#FFFFFF" strokeWidth={2.7} />
         </View>
-        {compact ? null : (
-          <Text
-            style={{
-              color: '#fff',
-              fontFamily: 'NotoSansGeorgian_700Bold',
-              fontSize: 15,
-              letterSpacing: -0.2,
-            }}
-          >
-            {text}
-          </Text>
-        )}
-      </View>
-    </Pressable>
+        <Text
+          numberOfLines={1}
+          style={{
+            color: '#FFFFFF',
+            fontFamily: 'NotoSansGeorgian_700Bold',
+            fontSize: 12,
+            letterSpacing: 0.15,
+            includeFontPadding: false,
+          }}
+        >
+          {text}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 

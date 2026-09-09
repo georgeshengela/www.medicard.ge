@@ -484,6 +484,13 @@ export const ka = {
     quotaOf: (remaining: number, _limit: number) => String(remaining),
     usedOf: (used: number, limit: number) => `გამოიყენეთ ${used} / ${limit}`,
     waitCta: 'დაელოდე განახლებას',
+    resetReadyTitle: 'ლიმიტი განახლდა',
+    resetReadyBody: (remaining: number, limit: number) =>
+      remaining === 1
+        ? `დღეს ისევ შეგიძლია Medi-ს ჰკითხო. დარჩა 1 შეკითხვა ${limit}-დან.`
+        : `დღეს ისევ შეგიძლია Medi-ს ჰკითხო. დარჩა ${remaining} შეკითხვა ${limit}-დან.`,
+    resetReadyCta: 'ჰკითხე Medi-ს',
+    resetReadyLater: 'მოგვიანებით',
     upsellTitle: 'აირჩიეთ უფრო მაღალი გეგმა',
     upsellBody: 'სტანდარტი — 50 AI შეკითხვა დღეში · ულტიმატი — შეუზღუდავი.',
     upsellCta: 'გეგმის განახლება',
@@ -1639,6 +1646,16 @@ export const ka = {
     todayEmpty: 'დღეს ჯერ არაფერია აღრიცხული — ერთი შეხებით დაიწყეთ',
     dayNothingLogged: 'ამ დღეს ჩანაწერი არ არის.',
     estimatedDisclaimer: 'შეფასება ბოლო ციკლების მიხედვით — თარიღები შეიძლება შეიცვალოს.',
+    gaugeRingCaption: 'ეს წრე ერთ ციკლს ასახავს, არა კალენდარულ თვეს.',
+    gaugeLegendElapsed: 'გასული დღეები',
+    gaugeLegendFertile: 'სავარაუდო ნაყოფიერი',
+    gaugeLegendToday: 'დღეს',
+    gaugeDayTitle: (n: number) => `ციკლის დღე ${n}`,
+    gaugeElapsedBody: (date: string) => `${date} უკვე გავიდა ამ ციკლში.`,
+    gaugeTodayBody: (date: string) => `დღეს ${date} — ციკლის მიმდინარე დღე.`,
+    gaugeUpcomingBody: (date: string) => `${date} ჯერ წინ არის ამ ციკლში.`,
+    gaugeFertileRange: (from: string, to: string) => `${from} – ${to}`,
+    gaugeOvulationDate: (date: string) => date,
     howCalculated: 'როგორ ითვლება?',
     howCalculatedBody:
       'თქვენ აღრიცხავთ მენსტრუაციის დაწყებას. MediCard ითვლის ბოლო ციკლების საშუალო ხანგრძლივობას და მისით აფასებს შემდეგ თარიღებს. რაც მეტ ციკლს აღრიცხავთ, მით უფრო ზუსტდება შეფასება. ეს ყოველთვის შეფასებაა და შეიძლება გადაიწიოს.',
@@ -1655,6 +1672,37 @@ export const ka = {
       'განსაკუთრებით პირადი ველები — არ ჩანს პარტნიორის გაზიარებაში და Medi-ს რჩევებში.',
     settingsMyCycle: 'ჩემი ციკლი',
     avgHintOnboarding: 'გამოიყენება მხოლოდ საწყისად — შემდეგ თქვენი ჩანაწერებით ზუსტდება.',
+    predictionHistory: 'პროგნოზების ისტორია',
+    predictionHistoryLead: 'რას ვარაუდობდა MediCard და როდის დაიწყო მენსტრუაცია.',
+    predictionHistoryEmpty: 'პროგნოზების ისტორია მომავალ ციკლებთან ერთად გამოჩნდება.',
+    predictionHistoryFootnote: 'წინა პროგნოზების შედეგები მომდევნო ციკლის ზუსტ თარიღს არ იძლევა.',
+    predictionHistoryPredicted: 'პროგნოზი',
+    predictionHistoryActual: 'დაიწყო',
+    predictionHistoryFirst: 'პირველი შეფასება',
+    predictionHistoryLatest: 'ბოლო შეფასება',
+    predictionHistoryOpen: 'მიმდინარე პროგნოზი',
+    predictionHistoryUpdated: 'შეფასება განახლდა',
+    predictionHistoryShowMore: 'ყველას ნახვა',
+    predictionHistorySameDay: 'იმავე დღეს',
+    predictionHistoryDaysLater: (n: number) => (n === 1 ? '1 დღით გვიან' : `${n} დღით გვიან`),
+    predictionHistoryDaysEarlier: (n: number) => (n === 1 ? '1 დღით ადრე' : `${n} დღით ადრე`),
+    predictionHistoryRevisions: (n: number) => (n === 1 ? 'პროგნოზი 1-ჯერ განახლდა' : `პროგნოზი ${n}-ჯერ განახლდა`),
+    predictionHistoryFirstMatched: 'პირველი შეფასება დაწყების თარიღს დაემთხვა.',
+    predictionHistoryLastMatched: 'ბოლო შეფასება დაწყების თარიღს დაემთხვა.',
+    predictionHistoryFirstEarlier: (n: number) =>
+      n === 1 ? 'პირველი შეფასება დაწყებამდე 1 დღით ადრე იყო.' : `პირველი შეფასება დაწყებამდე ${n} დღით ადრე იყო.`,
+    predictionHistoryFirstLater: (n: number) =>
+      n === 1 ? 'პირველი შეფასება დაწყებიდან 1 დღით გვიან იყო.' : `პირველი შეფასება დაწყებიდან ${n} დღით გვიან იყო.`,
+    predictionHistoryLastEarlier: (n: number) =>
+      n === 1 ? 'ბოლო შეფასება დაწყებამდე 1 დღით ადრე იყო.' : `ბოლო შეფასება დაწყებამდე ${n} დღით ადრე იყო.`,
+    predictionHistoryLastLater: (n: number) =>
+      n === 1 ? 'ბოლო შეფასება დაწყებიდან 1 დღით გვიან იყო.' : `ბოლო შეფასება დაწყებიდან ${n} დღით გვიან იყო.`,
+    predictionHistoryConfidenceFirst: 'პირველი შეფასების სანდოობა',
+    predictionHistoryConfidenceLast: 'ბოლო შეფასების სანდოობა',
+    predictionHistoryA11yRow: (month: string, finalDate: string, actualDate: string, delta: string) =>
+      `${month} ციკლი. ბოლო შეფასება ${finalDate}. მენსტრუაცია დაიწყო ${actualDate}. ${delta}.`,
+    predictionHistoryAggregate: (cycles: number, days: number) =>
+      `ბოლო ${cycles} დასრულებულ ციკლში პროგნოზსა და დაწყების თარიღს შორის ტიპური სხვაობა ${days} დღე იყო.`,
     periodHistory: 'მენსტრუაციის ისტორია',
     periodHistoryEmpty: 'ჯერ არ არის აღრიცხული მენსტრუაცია.',
     periodRangeDays: (n: number) => `${n} დღე`,

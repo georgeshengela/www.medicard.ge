@@ -466,6 +466,9 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
   if (!data || typeof data !== 'object') return { ok: true, reason: null };
   if (data.rewrite === true) return { ok: true, reason: 'PRIVACY_MASKED' };
 
+  if (data.type === 'quota_reset' || data.family === 'quotaReset') {
+    return { ok: true, reason: null };
+  }
   if (data.type === 'cycle_reminder' || data.family === 'cycleReminder' || data.type === 'cycle_tip') {
     return deliverCycleReminder(data);
   }

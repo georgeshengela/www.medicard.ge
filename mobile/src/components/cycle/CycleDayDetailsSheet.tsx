@@ -4,13 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
-import { FLOW_OPTIONS, MOOD_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
-import {
-  formatPainEntry,
-  sleepLabel,
-  stressLabel,
-  exerciseLabel,
-} from '@/lib/cycleObservations';
+import { cycleLogFactBits, cycleLogHasFacts } from '@/lib/cycleLogFacts';
 import { classifyCycleDay } from '@/lib/cyclePresentation.js';
 import { cycleToday, phaseFromBundle } from '@/lib/cycleCanonical';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
@@ -20,10 +14,6 @@ import { todayKey } from '@/components/cycle/CycleCalendar';
 import { ka } from '@/i18n/ka';
 import type { CycleBundle, CycleDayMark } from '@/lib/api';
 import { useCycleColors } from '@/theme/cycle';
-
-function labelOf(id: string, list: { id: string; label: string }[]) {
-  return list.find((x) => x.id === id)?.label ?? id;
-}
 
 type Props = {
   visible: boolean;
@@ -65,38 +55,30 @@ export function CycleDayDetailsSheet({
   const phase = useMemo(() => phaseFromBundle(bundle, date), [bundle, date]);
   const layers = classifyCycleDay(mark, { showFertility, showPredicted });
 
-  const loggedBits: string[] = [];
-  if (log?.flow) loggedBits.push(`${ka.cycle.flow}: ${labelOf(log.flow, FLOW_OPTIONS)}`);
-  for (const entry of log?.painEntries ?? []) loggedBits.push(formatPainEntry(entry));
-  if (log?.moods?.length) {
-    loggedBits.push(
-      `${ka.cycle.moods}: ${log.moods.map((m) => labelOf(m, MOOD_OPTIONS)).join(', ')}`,
-    );
+  const loggedBits = cycleLogFactBits(log);
+  if (log?.notes?.trim()) {
+    const idx = loggedBits.lastIndexOf(ka.cycle.journalTitle);
+    const noteLine = `${ka.cycle.journalTitle}: ${log.notes.trim()}`;
+    if (idx >= 0) loggedBits[idx] = noteLine;
+    else loggedBits.push(noteLine);
   }
-  if (log?.symptoms?.length) {
-    loggedBits.push(
-      `${ka.cycle.symptoms}: ${log.symptoms.map((s) => labelOf(s, PHYSICAL_SYMPTOMS)).join(', ')}`,
-    );
-  }
-  if (log?.sleepQuality) loggedBits.push(`${ka.cycle.sleep}: ${sleepLabel(log.sleepQuality)}`);
-  if (log?.stressLevel) loggedBits.push(`${ka.cycle.stress}: ${stressLabel(log.stressLevel)}`);
-  if (log?.exerciseLevel)
-    loggedBits.push(`${ka.cycle.exercise}: ${exerciseLabel(log.exerciseLevel)}`);
-  if (log?.notes?.trim()) loggedBits.push(`${ka.cycle.journalTitle}: ${log.notes.trim()}`);
 
   const estimatedBits: string[] = [];
   if (layers.predictedPeriod) estimatedBits.push(ka.cycle.legendPeriodPredicted);
   if (layers.fertile) estimatedBits.push(ka.cycle.legendFertile);
   if (layers.ovulation) estimatedBits.push(ka.cycle.legendOvulation);
+  const phaseCoveredByMark =
+    layers.ovulation || layers.fertile || layers.predictedPeriod || layers.loggedPeriod;
   if (
+    !phaseCoveredByMark &&
     phase.day != null &&
     phase.phase !== 'unknown' &&
-    !layers.loggedPeriod &&
     bundle.contraception?.presentation?.showPhaseAsBiological !== false
   ) {
-    estimatedBits.push(
-      displayPhaseLabel(phase.phase, phase.phaseKa, { loggedPeriod: isBleedFlow(log?.flow) }),
-    );
+    const phaseLabel = displayPhaseLabel(phase.phase, phase.phaseKa, {
+      loggedPeriod: isBleedFlow(log?.flow),
+    });
+    if (!estimatedBits.includes(phaseLabel)) estimatedBits.push(phaseLabel);
   }
 
   const isFuture = date > today;
@@ -185,7 +167,7 @@ export function CycleDayDetailsSheet({
             contentContainerStyle={{ paddingBottom: 4 }}
           >
             {/* ● Logged facts — solid glyphs, factual wording. */}
-            {loggedBits.length ? (
+            {cycleLogHasFacts(log) || loggedBits.length ? (
               <View style={{ marginBottom: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                   <View
@@ -208,7 +190,7 @@ export function CycleDayDetailsSheet({
                     {ka.cycle.logged}
                   </Text>
                 </View>
-                {loggedBits.map((bit, i) => (
+                {(loggedBits.length ? loggedBits : [ka.cycle.loggedEntryEmpty]).map((bit, i) => (
                   <Text
                     key={i}
                     style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 3 }}

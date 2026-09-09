@@ -76,6 +76,14 @@ const FALLBACKS: Record<string, { title: string; body: string }> = {
     title: 'მე ვარ, Medi 💚',
     body: 'შენთვის პატარა ამბავი მაქვს.',
   },
+  'quota-reset': {
+    title: 'Medi ისევ შენთანაა ✨',
+    body: 'შენი AI ლიმიტი განახლდა — დღეს {limit} შეკითხვა გაქვს. ჰკითხე რაც გინდა 💬',
+  },
+  'quota-reset-lock': {
+    title: '24 საათი გავიდა 💚',
+    body: 'ისევ შეგიძლია Medi-სთან საუბარი — {limit} შეკითხვა გელოდება. დავიწყოთ?',
+  },
 };
 
 let cache: Record<string, PushTemplate> | null = null;

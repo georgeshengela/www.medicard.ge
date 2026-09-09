@@ -20,6 +20,12 @@ describe('pushTemplates', () => {
     assert.equal(new Set(keys).size, keys.length);
     assert.ok(keys.includes('medication'));
     assert.ok(keys.includes('admin-push'));
+    assert.ok(keys.includes('quota-reset'));
+    assert.ok(keys.includes('quota-reset-lock'));
+    assert.equal(templateByKey(PUSH_TEMPLATE_DEFAULTS, 'quota-reset')?.group, 'quota');
+    const ready = applyPushTemplate(templateByKey(PUSH_TEMPLATE_DEFAULTS, 'quota-reset'), { limit: '3' });
+    assert.match(ready.title, /Medi/);
+    assert.match(ready.body, /3/);
     assert.equal(templateByKey(PUSH_TEMPLATE_DEFAULTS, 'steps')?.group, 'activity');
     assert.equal(templateByKey(PUSH_TEMPLATE_DEFAULTS, 'weight')?.group, 'activity');
   });

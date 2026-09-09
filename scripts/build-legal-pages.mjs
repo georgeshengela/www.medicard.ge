@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const root = new URL("../", import.meta.url);
-const CSS = "/landing.css?v=38";
+const CSS = "/landing.css?v=39";
 
 const pages = [
   {
@@ -289,6 +289,7 @@ function pageHtml(page, meta, blocks) {
         <a href="/"><span class="ic ic-house" aria-hidden="true"></span>მთავარი გვერდი</a>
         <a href="/#how"><span class="ic ic-chat" aria-hidden="true"></span>Medi</a>
         <a href="/#features"><span class="ic ic-health" aria-hidden="true"></span>ფუნქციები</a>
+        <a href="/calculators"><span class="ic ic-calc" aria-hidden="true"></span>კალკულატორები</a>
         <a href="/privacy"${privacyCurrent}><span class="ic ic-lock" aria-hidden="true"></span>კონფიდენციალურობა</a>
         <a href="/terms"${termsCurrent}>წესები</a>
         <a class="nav-download" href="/#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
@@ -379,7 +380,8 @@ ${toc}
       <div class="foot-legal">
         <p>© <span id="y"></span> Medicard.GE</p>
         <p>
-          <a href="/privacy"${privacyCurrent}>კონფიდენციალურობა</a>
+          <a href="/calculators">კალკულატორები</a>
+          · <a href="/privacy"${privacyCurrent}>კონფიდენციალურობა</a>
           · <a href="/terms"${termsCurrent}>წესები</a>
           · <a href="/#disclaimer">პასუხისმგებლობა</a>
         </p>

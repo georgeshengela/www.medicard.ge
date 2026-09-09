@@ -1,11 +1,17 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { CycleGaugeExplainSheet, type GaugeExplain } from '@/components/cycle/CycleGaugeExplainSheet';
 import { CycleStatusGauge } from '@/components/cycle/CycleStatusGauge';
 import { PredictionBadge, ConfidenceHint } from '@/components/cycle/CycleBadges';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import type { CycleBundle } from '@/lib/api';
-import { cycleHonestyFlags, displayPhaseLabel, nextPeriodConfidenceCopy } from '@/lib/cycleHonesty';
+import {
+  cycleHonestyFlags,
+  displayPhaseLabel,
+  fertileInsightCopy,
+  nextPeriodConfidenceCopy,
+} from '@/lib/cycleHonesty';
 import { addDaysToKey, daysBetween } from '@/lib/cyclePhase';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { bleedingIsUncertain, showFertilityUi } from '@/lib/cycleContraception';
@@ -62,32 +68,42 @@ export function CycleHero({
   const predViz = confidencePresentation(confidence);
   const hidePredicted = predViz.hidePredictedOverlays;
   const phaseHint = displayPhaseLabel(phase ?? 'unknown', phaseKa, { loggedPeriod: onPeriod });
+  const [explain, setExplain] = useState<GaugeExplain | null>(null);
 
-  /**
-   * Gauge overlays — display mapping only: server dates → 0..1 arc positions
-   * within the current cycle window [cycleStart, cycleStart + length).
-   */
+  const cycleStart = day != null && day > 0 ? addDaysToKey(today, -(day - 1)) : null;
+  const dateForCycleDay = (cycleDay: number) =>
+    cycleStart ? addDaysToKey(cycleStart, cycleDay - 1) : null;
+
   const overlays = useMemo(() => {
-    if (day == null || !cycleLength || hidePredicted) {
-      return { fertileArc: null, ovulationT: null, predictedPeriodT: null };
+    if (!cycleStart || !cycleLength || hidePredicted) {
+      return { fertileDays: null as { from: number; to: number } | null };
     }
-    const cycleStart = addDaysToKey(today, -(day - 1));
-    const cycleEndExclusive = addDaysToKey(cycleStart, cycleLength);
-    const toT = (dateKey: string | null | undefined) => {
+    const toDay = (dateKey: string | null | undefined) => {
       if (!dateKey) return null;
-      if (dateKey < cycleStart || dateKey >= cycleEndExclusive) return null;
       const idx = daysBetween(cycleStart, dateKey) + 1;
-      return Math.min(1, Math.max(0, idx / cycleLength));
+      if (idx < 1 || idx > cycleLength) return null;
+      return idx;
     };
     const fw = fertilityVisible ? bundle.predictions?.fertileWindow : null;
-    const from = toT(fw?.start);
-    const to = toT(fw?.end);
+    const from = toDay(fw?.start);
+    const to = toDay(fw?.end);
     return {
-      fertileArc: from != null && to != null ? { from, to } : null,
-      ovulationT: fertilityVisible ? toT(bundle.predictions?.ovulationDate) : null,
-      predictedPeriodT: toT(next),
+      fertileDays: from != null && to != null ? { from, to } : null,
     };
-  }, [bundle.predictions, day, cycleLength, today, next, fertilityVisible, hidePredicted]);
+  }, [bundle.predictions, cycleStart, cycleLength, fertilityVisible, hidePredicted]);
+
+  const openFertile = () => {
+    if (!overlays.fertileDays) return;
+    const copy = fertileInsightCopy(flags, bundle.profile.mode);
+    const from = dateForCycleDay(overlays.fertileDays.from);
+    const to = dateForCycleDay(overlays.fertileDays.to);
+    setExplain({
+      title: copy.title,
+      range: from && to ? ka.cycle.gaugeFertileRange(formatCycleDateKa(from), formatCycleDateKa(to)) : undefined,
+      body: copy.body,
+      accent: 'purple',
+    });
+  };
 
   /** Status line (§4.1): estimate wording always; window copy when cautious. */
   const statusLine = useMemo(() => {
@@ -112,27 +128,18 @@ export function CycleHero({
   });
 
   return (
-    <View
-      style={{
-        borderRadius: 16,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: c.border,
-        backgroundColor: c.card,
-        paddingBottom: 16,
-      }}
-    >
+    <View style={{ paddingBottom: 8 }}>
       <CycleStatusGauge
         day={day}
         cycleLength={cycleLength}
         phaseHint={phaseHint}
         periodActive={onPeriod}
-        fertileArc={overlays.fertileArc}
-        ovulationT={overlays.ovulationT}
-        predictedPeriodT={overlays.predictedPeriodT}
+        fertileDays={overlays.fertileDays}
         a11yLabel={gaugeA11y}
         onInfo={onInfo}
+        onPressFertile={overlays.fertileDays ? openFertile : undefined}
       />
+      <CycleGaugeExplainSheet visible={Boolean(explain)} explain={explain} onClose={() => setExplain(null)} />
 
       <View style={{ paddingHorizontal: 16, marginTop: 4 }}>
         {statusLine ? (
@@ -213,7 +220,7 @@ export function CycleHero({
                 accessibilityLabel={ka.cycle.logTodayFlow}
                 style={{
                   minHeight: 48,
-                  borderRadius: 14,
+                  borderRadius: 18,
                   backgroundColor: c.cta,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -229,7 +236,7 @@ export function CycleHero({
                 accessibilityLabel={ka.cycle.periodEndCta}
                 style={{
                   minHeight: 48,
-                  borderRadius: 14,
+                  borderRadius: 18,
                   backgroundColor: c.cardSoft,
                   borderWidth: 1,
                   borderColor: c.border,
@@ -250,7 +257,7 @@ export function CycleHero({
               accessibilityLabel={ka.cycle.logTodayCta}
               style={{
                 minHeight: 48,
-                borderRadius: 14,
+                borderRadius: 18,
                 backgroundColor: c.cta,
                 alignItems: 'center',
                 justifyContent: 'center',

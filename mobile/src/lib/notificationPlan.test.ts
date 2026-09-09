@@ -41,6 +41,7 @@ describe('notificationPlan', () => {
     assert.equal(routeFromNotificationData({ type: 'steps-goal' }), '/health-metrics/steps');
     assert.equal(routeFromNotificationData({ type: 'visit_reminder' }), '/visits');
     assert.equal(routeFromNotificationData({ type: 'visit_reminder', visitId: 'v9' }), '/visits/editor?id=v9');
+    assert.equal(routeFromNotificationData({ type: 'quota_reset' }), '/chat/DOCTOR');
     assert.equal(routeFromNotificationData({ type: 'cycle_tip' }), '/cycle');
     assert.equal(routeFromNotificationData({ type: 'cycle_reminder', route: '/cycle/log' }), '/cycle/log');
     assert.equal(routeFromNotificationData({ type: 'admin_push', route: '/(tabs)/home' }), '/(tabs)/home');
@@ -52,6 +53,7 @@ describe('notificationPlan', () => {
     assert.equal(prefixForNotificationId('med:1:09:00'), 'med');
     assert.equal(prefixForNotificationId('weight:goal:1'), 'weight');
     assert.equal(prefixForNotificationId('engage:weekly:2026-09-06'), 'engage');
+    assert.equal(prefixForNotificationId('quota:reset'), 'quota');
     assert.equal(prefixForNotificationId('qa:medication:1'), 'qa');
   });
 });

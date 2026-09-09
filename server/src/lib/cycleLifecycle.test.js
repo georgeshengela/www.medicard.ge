@@ -22,6 +22,7 @@ function mockPrisma() {
     cycleLog: { deleteMany: async () => ({ count: 7 }) },
     cycleCustomTag: { deleteMany: async () => ({ count: 3 }) },
     pregnancyLog: { deleteMany: async () => ({ count: 1 }) },
+    cyclePredictionSnapshot: { deleteMany: async () => ({ count: 4 }) },
     $transaction: async (ops) => Promise.all(ops),
   };
 }
@@ -56,6 +57,7 @@ describe('cycle export', () => {
     assert.equal(JSON.stringify(payload).includes('should-not-appear'), false);
     assert.equal(JSON.stringify(payload).includes('aiInsights'), false);
     assert.equal(Object.hasOwn(payload, 'analytics'), false);
+    assert.equal(Array.isArray(payload.predictionSnapshots), true);
   });
 });
 
@@ -70,6 +72,7 @@ describe('cycle wipe', () => {
     assert.equal(deleted.tags, 3);
     assert.equal(deleted.pregnancyLogs, 1);
     assert.equal(deleted.shares, 2);
+    assert.equal(deleted.predictionSnapshots, 4);
     assert.equal(deleted.profiles, 1);
   });
 });

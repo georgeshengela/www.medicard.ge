@@ -63,7 +63,7 @@ export function CycleHomeHeader({
         paddingTop: topInset + 4,
         paddingHorizontal: 16,
         paddingBottom: 8,
-        backgroundColor: c.cream,
+        backgroundColor: 'transparent',
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>

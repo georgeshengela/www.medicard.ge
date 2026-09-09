@@ -146,6 +146,24 @@ export const PUSH_TEMPLATE_DEFAULTS = [
     placeholders: [],
     sample: {},
   },
+  {
+    key: 'quota-reset',
+    group: 'quota',
+    label: '♻️ AI ლიმიტის განახლება',
+    title: 'Medi ისევ შენთანაა ✨',
+    body: 'შენი AI ლიმიტი განახლდა — დღეს {limit} შეკითხვა გაქვს. ჰკითხე რაც გინდა 💬',
+    placeholders: ['limit'],
+    sample: { limit: '3' },
+  },
+  {
+    key: 'quota-reset-lock',
+    group: 'quota',
+    label: '♻️ 24სთ ლიმიტის განახლება',
+    title: '24 საათი გავიდა 💚',
+    body: 'ისევ შეგიძლია Medi-სთან საუბარი — {limit} შეკითხვა გელოდება. დავიწყოთ?',
+    placeholders: ['limit'],
+    sample: { limit: '3' },
+  },
   ...PUSH_ENGAGE_TEMPLATE_DEFAULTS,
 ];
 
@@ -156,6 +174,7 @@ export const PUSH_TEMPLATE_GROUP_LABELS = {
   activity: 'აქტივობა',
   admin: 'ადმინი · remote',
   engage: 'Engaging · Medi companion',
+  quota: 'AI ლიმიტი',
 };
 
 export const PUSH_PLACEHOLDER_HELP = [
@@ -168,6 +187,7 @@ export const PUSH_PLACEHOLDER_HELP = [
   { key: 'steps', label: 'ნაბიჯების რაოდენობა' },
   { key: 'kg', label: 'წონა' },
   { key: 'firstName', label: 'სახელი' },
+  { key: 'limit', label: 'დღიური AI ლიმიტი' },
 ];
 
 function isBlank(value) {

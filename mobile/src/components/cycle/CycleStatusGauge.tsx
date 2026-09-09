@@ -1,94 +1,130 @@
-import React, { useEffect, useId } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient,
-  Path,
-  Stop,
-} from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import Animated, {
   Easing,
   FadeIn,
+  type SharedValue,
   useAnimatedProps,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { Info } from 'lucide-react-native';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ka } from '@/i18n/ka';
+import { useIsDark } from '@/theme/colors';
 import { useCycleColors } from '@/theme/cycle';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-/**
- * CycleStatusGauge — Phase 5 hero (docs/CYCLE_DESIGN.md §4.1).
- * Nightingale score-gauge geometry (Figma 9001:283189 / 9001:295435),
- * re-skinned to MediCard. The arc is one cycle; the knob is today;
- * estimated layers are dashed/hollow by the §24 honesty contract.
- */
-const VB_W = 360;
-const VB_H = 327;
-const CX = 180;
-const CY = 165.53;
-const R = 128.2;
-const START_DEG = 135;
-const SWEEP_DEG = 270;
-const TRACK_LEN = 603.185;
-
-const GLOW_D =
-  'M89.4903 255.841C71.5892 237.94 59.3984 215.132 54.4595 190.303C49.5206 165.473 52.0554 139.737 61.7434 116.348C71.4314 92.9586 87.8375 72.9678 108.887 58.9029C129.937 44.8381 154.684 37.3311 180 37.3311C205.316 37.3311 230.063 44.8381 251.113 58.9029C272.162 72.9678 288.569 92.9586 298.257 116.348C307.945 139.737 310.479 165.473 305.541 190.303C300.602 215.132 288.411 237.94 270.51 255.841';
-
-const SEG_LEFT =
-  'M89.4903 255.841C68.4284 234.779 55.3712 207.031 52.5681 177.377C49.7649 147.723 57.3914 118.02 74.1337 93.3844';
-const SEG_RIGHT =
-  'M270.51 255.841C291.572 234.779 304.629 207.031 307.432 177.377C310.235 147.723 302.609 118.02 285.866 93.3844';
-const SEG_TOP =
-  'M261.576 66.6938C238.623 47.7107 209.768 37.3268 179.982 37.3311C150.196 37.3353 121.344 47.7273 98.3957 66.7169';
-
-const DASH_BL = 'M68.2771 276.973C45.7157 254.411 30.5135 225.548 24.6712 194.181';
-const DASH_BR = 'M291.723 276.973C314.056 254.64 329.183 226.126 335.152 195.112';
-const DASH_TL =
-  'M22.7954 149.416C26.1748 115.862 40.201 84.2709 62.8226 59.261C85.4442 34.2512 115.474 17.1353 148.521 10.4166';
-const DASH_TR =
-  'M212.202 10.5654C245.217 17.4385 275.167 34.6946 297.672 59.8099C320.176 84.9252 334.054 116.582 337.277 150.151';
+/** Nightingale 9001:295435, closed to a circle. */
+const VB = 316;
+const CX = 158;
+const CY = 158;
+const R = 128;
+const TRACK = 32;
+const GLOW = 40;
+const INNER_R = 93;
+const SEGMENTS = 4;
+const GAP_DEG = 16.2;
+const SEG_SWEEP = (360 - SEGMENTS * GAP_DEG) / SEGMENTS;
+const SEG_LEN = R * ((SEG_SWEEP * Math.PI) / 180);
+const TRACK_FILL = '#FFE4E6';
+const DOT_FILL = '#FDA4AF';
 
 function clamp01(t: number) {
   return Math.min(1, Math.max(0, t));
 }
 
-function pointAt(t: number, radius = R) {
-  const rad = ((START_DEG + clamp01(t) * SWEEP_DEG) * Math.PI) / 180;
+function polar(deg: number, radius = R) {
+  const rad = (deg * Math.PI) / 180;
   return { x: CX + radius * Math.cos(rad), y: CY + radius * Math.sin(rad) };
 }
 
-/** SVG arc path along the gauge circle between two 0..1 positions. */
-function arcPath(from: number, to: number, radius = R) {
-  const a = clamp01(Math.min(from, to));
-  const b = clamp01(Math.max(from, to));
-  if (b - a <= 0.001) return null;
-  const p0 = pointAt(a, radius);
-  const p1 = pointAt(b, radius);
-  const largeArc = (b - a) * SWEEP_DEG > 180 ? 1 : 0;
-  return `M ${p0.x} ${p0.y} A ${radius} ${radius} 0 ${largeArc} 1 ${p1.x} ${p1.y}`;
+function segmentStartDeg(index: number) {
+  return -90 + index * 90 - SEG_SWEEP / 2;
+}
+
+function segmentPath(index: number, radius = R) {
+  const start = segmentStartDeg(index);
+  const p0 = polar(start, radius);
+  const p1 = polar(start + SEG_SWEEP, radius);
+  return `M ${p0.x} ${p0.y} A ${radius} ${radius} 0 0 1 ${p1.x} ${p1.y}`;
+}
+
+function fertileSegmentPaths(fromDay: number, toDay: number, length: number) {
+  const start = (Math.min(fromDay, toDay) - 1) / length;
+  const end = Math.max(fromDay, toDay) / length;
+  const out: string[] = [];
+  for (let i = 0; i < SEGMENTS; i += 1) {
+    const segA = i / SEGMENTS;
+    const segB = (i + 1) / SEGMENTS;
+    const a = Math.max(start, segA);
+    const b = Math.min(end, segB);
+    if (b - a < 0.002) continue;
+    const t0 = (a - segA) * SEGMENTS;
+    const t1 = (b - segA) * SEGMENTS;
+    const deg0 = segmentStartDeg(i) + t0 * SEG_SWEEP;
+    const deg1 = segmentStartDeg(i) + t1 * SEG_SWEEP;
+    const p0 = polar(deg0);
+    const p1 = polar(deg1);
+    out.push(`M ${p0.x} ${p0.y} A ${R} ${R} 0 0 1 ${p1.x} ${p1.y}`);
+  }
+  return out;
+}
+
+function knobOnTrack(t: number) {
+  const filledDeg = clamp01(t) * SEGMENTS * SEG_SWEEP;
+  let remaining = filledDeg;
+  for (let i = 0; i < SEGMENTS; i += 1) {
+    const start = segmentStartDeg(i);
+    if (remaining <= SEG_SWEEP + 0.0001) return polar(start + remaining);
+    remaining -= SEG_SWEEP;
+  }
+  return polar(segmentStartDeg(SEGMENTS - 1) + SEG_SWEEP);
+}
+
+function SegmentFill({
+  d,
+  index,
+  anim,
+  color,
+}: {
+  d: string;
+  index: number;
+  anim: SharedValue<number>;
+  color: string;
+}) {
+  const animatedProps = useAnimatedProps(() => {
+    const filled = Math.min(SEG_LEN, Math.max(0, anim.value * SEG_LEN * SEGMENTS - index * SEG_LEN));
+    return {
+      strokeDashoffset: SEG_LEN - filled,
+      opacity: filled > 0.35 ? 1 : 0,
+    };
+  });
+  return (
+    <AnimatedPath
+      d={d}
+      stroke={color}
+      strokeWidth={TRACK}
+      strokeLinecap="round"
+      fill="none"
+      strokeDasharray={`${SEG_LEN} ${SEG_LEN}`}
+      animatedProps={animatedProps}
+    />
+  );
 }
 
 type Props = {
   day: number | null;
   cycleLength: number;
-  /** Phase line inside the disc — already honesty-labeled by the caller. */
   phaseHint?: string;
   periodActive?: boolean;
-  /** Estimated fertile window as 0..1 arc positions (server cycleDay / length). */
-  fertileArc?: { from: number; to: number } | null;
-  /** Estimated ovulation position 0..1. */
-  ovulationT?: number | null;
-  /** Predicted next-period start position 0..1 (hollow marker). */
-  predictedPeriodT?: number | null;
-  /** Concise screen-reader summary (§54). */
+  fertileDays?: { from: number; to: number } | null;
   a11yLabel?: string;
-  /** Bottom badge tap — "how is this calculated". */
   onInfo?: () => void;
+  onPressFertile?: () => void;
 };
 
 export function CycleStatusGauge({
@@ -96,26 +132,34 @@ export function CycleStatusGauge({
   cycleLength,
   phaseHint,
   periodActive,
-  fertileArc,
-  ovulationT,
-  predictedPeriodT,
+  fertileDays,
   a11yLabel,
   onInfo,
+  onPressFertile,
 }: Props) {
   const c = useCycleColors();
+  const dark = useIsDark();
   const reduceMotion = usePrefersReducedMotion();
-  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const { width: screenW, fontScale } = useWindowDimensions();
   const largeText = fontScale >= 1.25;
-  const width = Math.min(
-    screenW - 48,
-    largeText ? 208 : screenW < 380 ? 228 : 268,
-  );
-  const height = width * (VB_H / VB_W);
+  const width = Math.min(screenW - 24, largeText ? 240 : 316);
+  const height = width;
   const phaseOutside = largeText;
-  const progress = day && cycleLength ? clamp01(day / cycleLength) : 0;
+  const length = Math.max(14, Math.round(cycleLength) || 28);
+  const progress = day && length ? clamp01(day / length) : 0;
   const anim = useSharedValue(reduceMotion ? progress : 0);
-  const knob = pointAt(progress);
+  const knob = knobOnTrack(progress);
+  const segments = useMemo(() => Array.from({ length: SEGMENTS }, (_, i) => segmentPath(i)), []);
+  const track = dark ? c.blush : TRACK_FILL;
+  const dots = dark ? c.rose : DOT_FILL;
+  const fill = periodActive ? c.period : c.brand;
+  const fertilePaths = useMemo(
+    () =>
+      fertileDays && length
+        ? fertileSegmentPaths(fertileDays.from, fertileDays.to, length)
+        : [],
+    [fertileDays, length],
+  );
 
   useEffect(() => {
     if (reduceMotion) {
@@ -124,20 +168,6 @@ export function CycleStatusGauge({
     }
     anim.value = withTiming(progress, { duration: 700, easing: Easing.out(Easing.cubic) });
   }, [progress, anim, reduceMotion]);
-
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: TRACK_LEN * (1 - anim.value),
-  }));
-
-  const track = c.cardSoft;
-  const dots = c.border;
-  const dash = c.border;
-  const fill = periodActive ? c.period : c.brand;
-  const glow = c.card;
-
-  const fertilePath = fertileArc ? arcPath(fertileArc.from, fertileArc.to) : null;
-  const ovulationPoint = ovulationT != null ? pointAt(ovulationT) : null;
-  const predictedPoint = predictedPeriodT != null ? pointAt(predictedPeriodT) : null;
 
   return (
     <Animated.View
@@ -151,139 +181,88 @@ export function CycleStatusGauge({
           accessibilityLabel={a11yLabel}
           style={{ width, height }}
         >
-        <Svg width={width} height={height} viewBox={`0 0 ${VB_W} ${VB_H}`}>
-          <Defs>
-            <LinearGradient id={`cycleFill-${uid}`} x1="180" y1="37.3311" x2="180" y2="293.331" gradientUnits="userSpaceOnUse">
-              <Stop offset="0" stopColor={fill} stopOpacity={0} />
-              <Stop offset="1" stopColor={fill} />
-            </LinearGradient>
-          </Defs>
-
-          <Path d={DASH_BL} stroke={dash} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="8 8" fill="none" />
-          <Path d={DASH_BR} stroke={dash} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="8 8" fill="none" />
-          <Path d={DASH_TL} stroke={dash} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="8 8" fill="none" />
-          <Path d={DASH_TR} stroke={dash} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="8 8" fill="none" />
-
-          <Path
-            d={GLOW_D}
-            stroke={glow}
-            strokeWidth={40}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-            opacity={0.55}
-          />
-
-          {[SEG_LEFT, SEG_RIGHT, SEG_TOP].map((d) => (
-            <Path
-              key={d.slice(0, 18)}
-              d={d}
-              stroke={track}
-              strokeWidth={32}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-          ))}
-
-          {[SEG_LEFT, SEG_RIGHT, SEG_TOP].map((d) => (
-            <Path
-              key={`dot-${d.slice(0, 12)}`}
-              d={d}
-              stroke={dots}
-              strokeWidth={4}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray="1 32"
-              fill="none"
-            />
-          ))}
-
-          <AnimatedPath
-            d={GLOW_D}
-            stroke={`url(#cycleFill-${uid})`}
-            strokeWidth={32}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-            strokeDasharray={`${TRACK_LEN} ${TRACK_LEN}`}
-            animatedProps={animatedProps}
-          />
-
-          {/* Estimated fertile window — dashed violet, never solid (§24). */}
-          {fertilePath ? (
-            <Path
-              d={fertilePath}
-              stroke={c.fertile}
-              strokeWidth={7}
-              strokeLinecap="round"
-              strokeDasharray="2 8"
-              fill="none"
-              opacity={0.95}
-            />
-          ) : null}
-
-          {/* Estimated ovulation — open violet diamond (hollow). */}
-          {ovulationPoint ? (
-            <Path
-              d={`M ${ovulationPoint.x} ${ovulationPoint.y - 8} L ${ovulationPoint.x + 8} ${ovulationPoint.y} L ${ovulationPoint.x} ${ovulationPoint.y + 8} L ${ovulationPoint.x - 8} ${ovulationPoint.y} Z`}
-              stroke={c.ovulation}
-              strokeWidth={2}
-              fill={c.card}
-            />
-          ) : null}
-
-          {/* Predicted next period — hollow rose ring, not a filled event. */}
-          {predictedPoint ? (
+          <Svg width={width} height={height} viewBox={`0 0 ${VB} ${VB}`}>
             <Circle
-              cx={predictedPoint.x}
-              cy={predictedPoint.y}
-              r={8}
-              stroke={c.period}
-              strokeWidth={2}
-              strokeDasharray="3 3"
-              fill={c.card}
+              cx={CX}
+              cy={CY}
+              r={158}
+              stroke={c.blush}
+              strokeWidth={1}
+              strokeDasharray="2 10"
+              fill="none"
+              opacity={0.45}
             />
-          ) : null}
+            <Circle cx={CX} cy={CY} r={R} stroke={c.white} strokeWidth={GLOW} fill="none" opacity={dark ? 0.08 : 0.95} />
 
-          {/* Today knob — position marker (teal ring by contract). */}
-          {progress > 0.02 ? (
-            <>
-              <Circle cx={knob.x} cy={knob.y} r={11} fill={c.white} />
-              <Circle cx={knob.x} cy={knob.y} r={12} stroke={c.todayRing} strokeWidth={2.5} fill="none" />
-            </>
-          ) : null}
+            {segments.map((d, i) => (
+              <Path
+                key={`trk-${i}`}
+                d={d}
+                stroke={track}
+                strokeWidth={TRACK}
+                strokeLinecap="round"
+                fill="none"
+              />
+            ))}
+            {segments.map((d, i) => (
+              <Path
+                key={`dot-${i}`}
+                d={d}
+                stroke={dots}
+                strokeWidth={4}
+                strokeLinecap="round"
+                strokeDasharray="1 32"
+                fill="none"
+                opacity={0.95}
+              />
+            ))}
+            {segments.map((d, i) => (
+              <SegmentFill key={`fill-${i}`} d={d} index={i} anim={anim} color={fill} />
+            ))}
+            {fertilePaths.map((d, i) => (
+              <Path
+                key={`fertile-${i}`}
+                d={d}
+                stroke={c.fertile}
+                strokeWidth={TRACK}
+                strokeLinecap="round"
+                fill="none"
+                opacity={0.94}
+                onPress={onPressFertile}
+              />
+            ))}
 
-          <Circle cx={180} cy={165.332} r={93} fill={c.card} />
-        </Svg>
+            {progress > 0.015 ? (
+              <>
+                <Circle cx={knob.x} cy={knob.y} r={12} fill={c.white} />
+                <Circle cx={knob.x} cy={knob.y} r={10} stroke={fill} strokeWidth={2.5} fill={c.white} />
+              </>
+            ) : null}
 
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            width,
-            height,
-          }}
-        >
+            <Circle cx={CX} cy={CY} r={INNER_R} fill={c.card} />
+          </Svg>
+
           <View
+            pointerEvents="box-none"
             style={{
               position: 'absolute',
-              left: (87 / VB_W) * width,
-              top: (78 / VB_H) * height,
-              width: (186 / VB_W) * width,
-              height: (150 / VB_H) * height,
+              left: ((CX - INNER_R) / VB) * width,
+              top: ((CY - INNER_R) / VB) * height,
+              width: ((INNER_R * 2) / VB) * width,
+              height: ((INNER_R * 2) / VB) * height,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
+            <View pointerEvents="none" style={{ position: 'absolute', opacity: 0.08 }}>
+              <MedicardLogoMark size={Math.round(96 * (width / VB))} color={fill} />
+            </View>
             <Text
               style={{
                 color: c.ink,
                 fontFamily: 'NotoSansGeorgian_700Bold',
-                fontSize: Math.round(60 * (width / VB_W)),
-                lineHeight: Math.round(64 * (width / VB_W)),
+                fontSize: Math.round(60 * (width / VB)),
+                lineHeight: Math.round(68 * (width / VB)),
                 letterSpacing: -1,
                 textAlign: 'center',
                 fontVariant: ['tabular-nums'],
@@ -293,74 +272,110 @@ export function CycleStatusGauge({
             </Text>
             <Text
               style={{
-                color: c.muted,
+                color: c.ink,
                 fontFamily: 'NotoSansGeorgian_600SemiBold',
-                fontSize: Math.round(15 * (width / VB_W)),
-                lineHeight: Math.round(20 * (width / VB_W)),
-                marginTop: 2,
+                fontSize: Math.round(16 * (width / VB)),
+                lineHeight: Math.round(22 * (width / VB)),
+                marginTop: 4,
                 textAlign: 'center',
               }}
             >
-              {ka.cycle.outOf(cycleLength)}
+              {ka.cycle.outOf(length)}
             </Text>
             {phaseHint && !phaseOutside ? (
-              <Text
-                numberOfLines={2}
-                style={{
-                  color: periodActive ? c.period : c.ink,
-                  fontFamily: 'NotoSansGeorgian_600SemiBold',
-                  fontSize: Math.round(14 * (width / VB_W)),
-                  lineHeight: Math.round(19 * (width / VB_W)),
-                  marginTop: 6,
-                  textAlign: 'center',
-                  maxWidth: '96%',
-                }}
+              onInfo ? (
+                <Pressable
+                  onPress={onInfo}
+                  accessibilityRole="button"
+                  accessibilityLabel={ka.cycle.howCalculated}
+                  hitSlop={8}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    marginTop: 8,
+                    maxWidth: '90%',
+                    paddingHorizontal: 4,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Text
+                    numberOfLines={2}
+                    style={{
+                      color: periodActive ? c.period : c.muted,
+                      fontFamily: 'NotoSansGeorgian_400Regular',
+                      fontSize: Math.round(12 * (width / VB)),
+                      lineHeight: Math.round(16 * (width / VB)),
+                      textAlign: 'center',
+                      flexShrink: 1,
+                    }}
+                  >
+                    {phaseHint}
+                  </Text>
+                  <Info size={16} color={c.muted} strokeWidth={2} />
+                </Pressable>
+              ) : (
+                <Text
+                  numberOfLines={2}
+                  style={{
+                    color: periodActive ? c.period : c.muted,
+                    fontFamily: 'NotoSansGeorgian_400Regular',
+                    fontSize: Math.round(12 * (width / VB)),
+                    lineHeight: Math.round(16 * (width / VB)),
+                    marginTop: 8,
+                    textAlign: 'center',
+                    maxWidth: '88%',
+                  }}
+                >
+                  {phaseHint}
+                </Text>
+              )
+            ) : onInfo ? (
+              <Pressable
+                onPress={onInfo}
+                accessibilityRole="button"
+                accessibilityLabel={ka.cycle.howCalculated}
+                hitSlop={10}
+                style={{ marginTop: 8, padding: 6 }}
               >
-                {phaseHint}
-              </Text>
+                <Info size={16} color={c.muted} strokeWidth={2} />
+              </Pressable>
             ) : null}
           </View>
         </View>
-        </View>
-
+      </View>
+      {phaseHint && phaseOutside ? (
         <Pressable
           onPress={onInfo}
           disabled={!onInfo}
           accessibilityRole={onInfo ? 'button' : undefined}
           accessibilityLabel={onInfo ? ka.cycle.howCalculated : undefined}
           style={{
-            position: 'absolute',
-            left: (152 / VB_W) * width,
-            top: (230.251 / VB_H) * height,
-            width: (56 / VB_W) * width,
-            height: (56 / VB_W) * width,
-            borderRadius: 999,
-            backgroundColor: fill,
+            flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            borderWidth: 3,
-            borderColor: 'rgba(255,255,255,0.3)',
-          }}
-        >
-          <MedicardLogoMark size={Math.round(28 * (width / VB_W))} tone="inverse" />
-        </Pressable>
-      </View>
-      {phaseHint && phaseOutside ? (
-        <Text
-          numberOfLines={3}
-          style={{
-            color: periodActive ? c.period : c.ink,
-            fontFamily: 'NotoSansGeorgian_600SemiBold',
-            fontSize: 15,
-            lineHeight: 21,
+            gap: 6,
             marginTop: 4,
             marginBottom: 4,
-            textAlign: 'center',
             paddingHorizontal: 16,
           }}
         >
-          {phaseHint}
-        </Text>
+          <Text
+            numberOfLines={3}
+            style={{
+              color: periodActive ? c.period : c.ink,
+              fontFamily: 'NotoSansGeorgian_600SemiBold',
+              fontSize: 15,
+              lineHeight: 21,
+              textAlign: 'center',
+              flexShrink: 1,
+            }}
+          >
+            {phaseHint}
+          </Text>
+          {onInfo ? <Info size={16} color={c.muted} strokeWidth={2} /> : null}
+        </Pressable>
       ) : null}
     </Animated.View>
   );

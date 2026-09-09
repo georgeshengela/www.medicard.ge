@@ -39,6 +39,7 @@ import { rewardsRouter } from './routes/rewards.routes.js';
 import { mediCompanionRouter } from './routes/mediCompanion.routes.js';
 import { PRIVACY_HTML, TERMS_HTML } from './lib/legalPages.js';
 import { attachAdminRealtime } from './lib/adminRealtime.js';
+import { startQuotaResetSweeper, stopQuotaResetSweeper } from './lib/usageNotify.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -156,6 +157,22 @@ app.get('/terms', (_req, res) => {
   res.type('html').send(TERMS_HTML);
 });
 
+app.get(['/calculators', '/calculators/'], (req, res, next) => {
+  if (!PUBLIC_DIST) return next();
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.sendFile(path.join(PUBLIC_DIST, 'calculators', 'index.html'));
+});
+
+app.get('/calculators/:slug', (req, res, next) => {
+  if (!PUBLIC_DIST) return next();
+  const slug = String(req.params.slug || '');
+  if (!/^[a-z0-9-]+$/.test(slug)) return next();
+  const file = path.join(PUBLIC_DIST, 'calculators', `${slug}.html`);
+  if (!existsSync(file)) return next();
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.sendFile(file);
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -242,7 +259,9 @@ if (serveLanding) {
       p.startsWith('/admin/') ||
       p === '/health' ||
       p === '/privacy' ||
-      p === '/terms'
+      p === '/terms' ||
+      p === '/calculators' ||
+      p.startsWith('/calculators/')
     ) {
       return next();
     }
@@ -269,10 +288,12 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
   }
 });
 attachAdminRealtime(server);
+startQuotaResetSweeper();
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, async () => {
     console.log(`\n[medicard] ${signal} received, shutting down…`);
+    stopQuotaResetSweeper();
     server.close();
     await Promise.allSettled([prisma.$disconnect(), shutdownOcr()]);
     process.exit(0);

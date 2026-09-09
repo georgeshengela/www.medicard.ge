@@ -24,7 +24,7 @@ import { buildCycleAdvice, mergeInsightCards } from '@/lib/cycleAdvice';
 import type { CyclePhaseInfo } from '@/lib/cycleCanonical';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
-import { useIsDark, useThemeColors } from '@/theme/colors';
+import { useIsDark } from '@/theme/colors';
 
 function hexAlpha(hex: string, alpha: number) {
   const raw = hex.replace('#', '');
@@ -44,7 +44,7 @@ function toneVisual(
     case 'care':
       return { accent: c.rose, wash: c.roseSoft, Icon: Droplets };
     case 'energy':
-      return { accent: c.brand, wash: accentWash, Icon: Sun };
+      return { accent: c.brand, wash: c.roseSoft, Icon: Sun };
     case 'fertile':
       return { accent: c.fertile, wash: c.lavenderSoft, Icon: Heart };
     case 'pregnancy':
@@ -52,7 +52,7 @@ function toneVisual(
     case 'mood':
       return { accent: c.lavender, wash: c.lavenderSoft, Icon: Sparkles };
     default:
-      return { accent: c.brand, wash: accentWash, Icon: Moon };
+      return { accent: c.brand, wash: c.roseSoft, Icon: Moon };
   }
 }
 
@@ -83,7 +83,6 @@ export function CycleInsightsPanel({
   maxCards,
 }: Props) {
   const c = useCycleColors();
-  const theme = useThemeColors();
   const dark = useIsDark();
   const router = useRouter();
   const { applyUsage } = useAuth();
@@ -163,8 +162,8 @@ export function CycleInsightsPanel({
   /* §4.2.4 / §44: Overview shows max one insight — never an AI feed. */
   const rest = maxCards === 1 ? [] : cards.slice(1);
   const heroTone = featured
-    ? toneVisual(c, theme.accent100, featured.tone)
-    : toneVisual(c, theme.accent100, 'calm');
+    ? toneVisual(c, c.roseSoft, featured.tone)
+    : toneVisual(c, c.roseSoft, 'calm');
   const HeroIcon = heroTone.Icon;
   const fadeTo = dark ? 'rgba(17,24,39,0)' : 'rgba(255,255,255,0)';
 
@@ -197,9 +196,9 @@ export function CycleInsightsPanel({
               width: 36,
               height: 36,
               borderRadius: 18,
-              backgroundColor: theme.accent100,
+              backgroundColor: c.roseSoft,
               borderWidth: 1,
-              borderColor: hexAlpha(c.brand, 0.35),
+              borderColor: c.border,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: refreshing ? 0.6 : 1,
@@ -306,7 +305,7 @@ export function CycleInsightsPanel({
                   justifyContent: 'center',
                 }}
               >
-                <MedicardLogoMark size={34} tone={dark ? 'inverse' : 'brand'} />
+                <MedicardLogoMark size={34} color={c.brand} />
               </View>
             </View>
 
@@ -329,17 +328,17 @@ export function CycleInsightsPanel({
                 <View
                   style={{
                     marginLeft: 10,
-                    backgroundColor: hexAlpha(c.brand, dark ? 0.18 : 0.1),
+                    backgroundColor: c.roseSoft,
                     borderRadius: 999,
                     paddingHorizontal: 10,
                     paddingVertical: 5,
                     borderWidth: 1,
-                    borderColor: hexAlpha(c.brand, 0.28),
+                    borderColor: c.border,
                   }}
                 >
                   <Text
                     style={{
-                      color: dark ? theme.primary100 : c.brand,
+                      color: c.brand,
                       fontFamily: 'NotoSansGeorgian_600SemiBold',
                       fontSize: 12,
                       lineHeight: 16,
@@ -419,7 +418,7 @@ export function CycleInsightsPanel({
                 <Text
                   style={{
                     flex: 1,
-                    color: theme.onPrimary,
+                    color: c.white,
                     fontFamily: 'NotoSansGeorgian_700Bold',
                     fontSize: 14,
                     lineHeight: 18,
@@ -428,7 +427,7 @@ export function CycleInsightsPanel({
                 >
                   {featured.action || ka.cycle.aiViewDetails}
                 </Text>
-                <ChevronRight size={18} color={theme.onPrimary} strokeWidth={2.4} />
+                <ChevronRight size={18} color={c.white} strokeWidth={2.4} />
               </View>
             </View>
             </LinearGradient>
@@ -440,7 +439,7 @@ export function CycleInsightsPanel({
         {rest.length ? (
           <View style={styles.rail}>
             {rest.map((card, idx) => {
-              const tone = toneVisual(c, theme.accent100, card.tone);
+              const tone = toneVisual(c, c.roseSoft, card.tone);
               const Icon = tone.Icon;
               const last = idx === rest.length - 1;
               return (

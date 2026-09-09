@@ -41,6 +41,7 @@ model User {
   cycleProfile     CycleProfile?
   cycleLogs        CycleLog[]
   cycleCustomTags  CycleCustomTag[]
+  cyclePredictionSnapshots CyclePredictionSnapshot[]
   pregnancyLogs    PregnancyLog[]
   cycleSharesOwned    CyclePartnerShare[] @relation("CycleShareOwner")
   cycleSharesAccepted CyclePartnerShare[] @relation("CycleSharePartner")
@@ -364,6 +365,32 @@ model CycleCustomTag {
   @@index([userId, nameNormalized])
 }
 
+/// Phase 8: what MediCard predicted at the time. Immutable observation. Not engine output.
+model CyclePredictionSnapshot {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// NEXT_PERIOD_START
+  type            String   @default("NEXT_PERIOD_START")
+  predictedDate   String
+  snapshotDate    String
+  snapshotAt      DateTime @default(now())
+  /// Derived LMP at observation — episode identity (not the moving predictedDate).
+  cycleAnchorDate String
+  confidence      String
+  engineVersion   Int
+  validGapCount   Int      @default(0)
+  isIrregular     Boolean  @default(false)
+  /// inferred | stored | default
+  source          String   @default("stored")
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, type, cycleAnchorDate, predictedDate, confidence, engineVersion], map: "CyclePredictionSnapshot_identity")
+  @@index([userId, cycleAnchorDate])
+  @@index([userId, snapshotDate])
+  @@index([userId, type, createdAt])
+}
+
 /// One active invite per owner in product UI. Token hash is looked up; plaintext is owner-only.
 model CyclePartnerShare {
   id            String    @id @default(uuid())
@@ -409,7 +436,7 @@ model Package {
   descriptionKa String
   /// Monthly equivalent for marketing / admin (-1 = unlimited). Metering uses dailyAiLimit.
   monthlyAiLimit Int      @default(90)
-  /// Consume cap per rolling window. After the user hits this, resetAt is now + 24h.
+  /// Consume cap per day. Unused credits reset at Tbilisi midnight; hitting the cap starts a 24h lock.
   dailyAiLimit  Int       @default(3)
   priceGel      Float     @default(0)
   /// JSON feature flags / module access
@@ -458,8 +485,10 @@ model PeriodUsage {
   /// Billing period key — rolling daily (roll:daily), calendar month (cal:YYYY-MM), or subscription (sub:start:end).
   periodKey String
   count     Int      @default(0)
-  /// When the daily cap is hit, countdown starts here (typically now + 24h). Null while under the cap.
+  /// Unlock instant. Under the cap this is the next Tbilisi midnight; after a 0/N hit it is now + 24h.
   resetAt   DateTime?
+  /// Quiet-hours-aware ping after a refill. Cleared once the user is notified.
+  notifyAt  DateTime?
   createdAt DateTime @default(now())
 
   @@unique([userId, periodKey])

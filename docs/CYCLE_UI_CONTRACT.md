@@ -2,7 +2,7 @@
 
 **Status:** ANDROID FROZEN (calendar visual refinement). iOS QA deferred by product decision.  
 **Date:** 2026-09-08  
-**App version:** mobile `39.0.4`  
+**App version:** mobile `39.0.15`  
 **Design source:** `docs/CYCLE_DESIGN.md`  
 **Engine / safety / notifications remain frozen:** `CYCLE_ENGINE.md`, `CYCLE_SAFETY_CONTRACT.md`, `CYCLE_NOTIFICATION_CONTRACT.md`
 
@@ -53,13 +53,15 @@ Must show without scrolling: current state, prediction or learning context, Quic
 
 ## 3. Gauge contract
 
-Nightingale 9001:283189 geometry, MediCard recolor:
+Nightingale 9001:283189 treatment, closed into a true circle:
 
-- ~270° horseshoe, open bottom
-- Track ≈ Ø256-class, inner disc ≈ Ø186-class, bottom badge ≈ Ø56-class
-- Scaled to `min(screen − 48, 228` on narrow / `268` otherwise)
-- Today knob: teal ring
-- Logged menstrual arc: solid rose
+- Full 360° ring (kit horseshoe closed). Track Ø256, stroke 32, inner disc Ø186, outer ticks Ø316
+- Four rounded pills; centerline gap **16.2°** — the same distance as the three Figma segments
+- Dotted ticks: `#FDA4AF`, `1 32`; track fill `#FFE4E6`
+- Progress fills the pills only — never the gaps. Knob sits on the active pill.
+- Faint Medicard mark sits *inside* the disc, behind the day numeral
+- Rendered at Figma scale (`min(screen − 24, 316)`); large text may shrink so the first fold stays useful
+- Logged menstrual arc: solid rose (`#F43F5E`)
 - Estimated fertile: violet dashed/ticked — never solid “confirmed”
 - Estimated ovulation: hollow violet diamond
 - Predicted period: dashed, never solid fill
@@ -147,7 +149,7 @@ Private detailed fields live on the full log under `პირადი ჩან
 Stats band from the engine (integers / ranges, no fake precision).  
 History rows: actual derived / logged periods — mini-bars are **not** prediction bars.  
 Trends: empty-state copy until thresholds are met (cycle-length chart needs ≥3 gaps). No fake charts.  
-**Prediction accuracy is absent** and must stay absent until a dedicated snapshot phase.
+Phase 9/10 Journal block **პროგნოზების ისტორია** (Android presentation frozen): compact rows + optional first/final expand from `GET /api/cycle/prediction-history`. Difference language only — no accuracy %, score, or Journal redesign. Hidden on API failure. Empty copy still appears when Journal has no period logs. iOS QA deferred.
 
 ---
 
@@ -170,10 +172,12 @@ Privacy:
 
 | Role | Color | Use |
 |---|---|---|
-| Brand / today / CTA | MediCard teal (`#14B8A6` light, `#0D9488` filled dark CTA) | Today ring, primary buttons, FAB |
-| Logged period | Rose | Solid fills only |
+| Cycle brand / CTA / FAB | Nightingale rose (`#F43F5E`) | Primary Cycle buttons, gauge fill, settings gear |
+| Today ring | MediCard teal (`#0D9488` / `#14B8A6`) | Position only — never a period or fertility mark |
+| Logged period | Rose (`#F43F5E`) | Solid fills only |
 | Estimated fertility | Violet | Dashed / dotted / hollow only |
-| Ink / surfaces | Cool gray-950 navy in dark (`#030712` page, `#111827` cards) | Never teal charcoal |
+| Light surfaces | Blush wash (`#FFF7F8` / `#FFF1F2`), white cards, `#FECDD3` hairline | Figma 9001:283189 |
+| Dark surfaces | Cool gray-950 navy (`#030712` page, `#111827` cards) | Rose accents, never teal charcoal |
 
 Violet must not overpower teal. Fertility is never visually “confirmed”.
 
@@ -232,7 +236,7 @@ After reseed, pull-to-refresh on Overview (do not swipe through the day strip).
 
 Layout-only. IA, semantics, and engine unchanged.
 
-- **FAB:** width is measured (`onLayout`) and passed to the 7-day strip as `reservedRight`. Overview uses an icon-only FAB so the 7-day strip keeps a full row of tappable days (accessibility label stays `აღრიცხვა`). Labeled FAB remains on Calendar. Also compact under 380pt or `fontScale >= 1.3`. Calendar pane keeps a modest bottom inset so the legend can sit above the FAB.
+- **FAB:** Compact labeled chip (`+ აღრიცხვა`) at the **bottom left**. 44px tall, rose fill, white hairline. Hidden while Day Details or Quick Log is open. Calendar pane keeps a modest bottom inset so the legend can sit above it. The 7-day strip sits under the tabs, full width, and pages by week on swipe.
 - **Detailed log Save:** sticky footer height is measured (`onLayout`) and applied as ScrollView bottom inset. KeyboardAvoidingView uses safe-area offset. Do not use magic spacers.
 - **Large text:** pane labels may wrap to two lines. Header phase subtitle may use two lines (header grows; do not clip with a fixed min-height). Gauge decorative size may shrink; at `fontScale >= 1.25` the phase line moves *under* the disc so it does not clip. Calendar **day-cell numerals** use `allowFontScaling={false}` so the month grid stays intact — full meaning is on the accessibility label. Settings switch rows wrap; toggles stay on the trailing edge.
 - **Pull-to-refresh vs strip:** a long downward swipe that *ends* on a day cell can open that day. Normal short PTR from the hero does not. Not treated as a frequent accidental activation.

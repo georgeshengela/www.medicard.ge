@@ -26,7 +26,7 @@ export function resolvePackageAiLimit(pkg) {
 
 /**
  * Cap the user actually spends against. FREE = 3/day, STANDARD = 50/day.
- * After they hit this number, the window resets 24h later — not at month end.
+ * Unused credits reset at the next Tbilisi midnight. Hitting the cap starts a 24h lock from that moment.
  */
 export function resolveConsumeLimit(pkg) {
   if (!pkg) {

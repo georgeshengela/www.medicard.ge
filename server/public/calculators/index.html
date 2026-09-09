@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ka" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>კალკულატორები — მედიქარდი</title>
+  <meta name="description" content="Medicard.GE ციკლისა და ორსულობის კალკულატორები: ოვულაცია, პერიოდი, ტესტი, იმპლანტაცია, ვადა, IVF, ულტრაბგერა და hCG." />
+  <link rel="canonical" href="https://medicard.ge/calculators" />
+  <meta name="theme-color" content="#f3f5f6" />
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("medicard.landing.theme");
+        if (t !== "light" && t !== "dark") {
+          t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = t;
+        document.documentElement.style.colorScheme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ka_GE" />
+  <meta property="og:url" content="https://medicard.ge/calculators" />
+  <meta property="og:title" content="კალკულატორები — მედიქარდი" />
+  <meta property="og:description" content="Medicard.GE ციკლისა და ორსულობის კალკულატორები: ოვულაცია, პერიოდი, ტესტი, იმპლანტაცია, ვადა, IVF, ულტრაბგერა და hCG." />
+  <meta property="og:image" content="https://medicard.ge/screens/home.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/icon.png" />
+  <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/landing.css?v=39" />
+  <link rel="stylesheet" href="/calculators.css?v=2" />
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">
+        <img src="/icon.png" width="36" height="36" alt="" />
+        მედიქარდი
+      </a>
+      <nav class="nav-links" aria-label="მენიუ">
+        <a href="/"><span class="ic ic-house" aria-hidden="true"></span>მთავარი გვერდი</a>
+        <a href="/#how"><span class="ic ic-chat" aria-hidden="true"></span>Medi</a>
+        <a href="/#features"><span class="ic ic-health" aria-hidden="true"></span>ფუნქციები</a>
+        <a href="/calculators" aria-current="page"><span class="ic ic-calc" aria-hidden="true"></span>კალკულატორები</a>
+        <a href="/#plans"><span class="ic ic-wallet" aria-hidden="true"></span>გეგმები</a>
+        <a class="nav-download" href="/#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="theme-btn" id="theme-toggle" type="button" aria-pressed="false" aria-label="გადართე მუქ თემაზე">
+          <span class="ic ic-moon icon-moon" aria-hidden="true"></span>
+          <span class="ic ic-sun icon-sun" aria-hidden="true"></span>
+        </button>
+        <button class="menu-btn" id="menu-toggle" type="button" aria-label="მენიუ" aria-expanded="false">
+          <span class="ic ic-menu" aria-hidden="true"></span>
+        </button>
+        <a class="btn btn-cta" href="/#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="calc-hero band-dark">
+      <div class="wrap">
+        <p class="calc-crumb"><a href="/">მთავარი</a> / კალკულატორები</p>
+        <p class="kicker">10 უფასო ინსტრუმენტი</p>
+        <h1>ციკლისა და ორსულობის კალკულატორები</h1>
+        <p class="lead">ოვულაცია, პერიოდი, ტესტი, იმპლანტაცია, ვადა, IVF, ულტრაბგერა და hCG — ქართულად, Medicard-ის ესთეტიკით. ყველა გამოთვლა რჩება შენს ბრაუზერში.</p>
+        <div class="chips">
+          <span class="chip">არ იგზავნება სერვერზე</span>
+          <span class="chip">არ ცვლის ექიმს</span>
+          <span class="chip">არ არის კონტრაცეფცია</span>
+        </div>
+      </div>
+    </section>
+    <section class="calc-hub band-paper">
+      <div class="wrap">
+        <div class="calc-group">
+          <div class="calc-group-head">
+            <h2>ციკლი</h2>
+            <p>5 კალკულატორი</p>
+          </div>
+          <div class="calc-grid"><a class="calc-tile" data-tone="cycle" href="/calculators/ovulation">
+            <div class="icon"><span class="ic ic-lg ic-cycle" aria-hidden="true"></span></div>
+            <h3>ოვულაციის კალკულატორი</h3>
+            <p>სავარაუდო ოვულაცია და ნაყოფიერი ფანჯარა ბოლო პერიოდისა და ციკლის სიგრძით.</p>
+            <span class="calc-tile-go">გამოთვლა →</span>
+          </a><a class="calc-tile" data-tone="cycle" href="/calculators/period">
+            <div class="icon"><span class="ic ic-lg ic-calendar" aria-hidden="true"></span></div>
+            <h3>მენსტრუაციის კალკულატორი</h3>
+            <p>შემდეგი პერიოდის თარიღი და მომავალი ციკლების ორიენტირი.</p>
+            <span class="calc-tile-go">გამოთვლა →</span>
+          </a><a class="calc-tile" data-tone="cycle" href="/calculators/cycle">
+            <div class="icon"><span class="ic ic-lg ic-cycle" aria-hidden="true"></span></div>
+            <h3>ციკლის კალკულატორი</h3>
+            <p>დღევანდელი ფაზა, ოვულაცია, ნაყოფიერი ფანჯარა და შემდეგი პერიოდი.</p>
+            <span class="calc-tile-go">გამოთვლა →</span>
+          </a><a class="calc-tile" data-tone="cycle" href="/calculators/pregnancy-test">
+            <div class="icon"><span class="ic ic-lg ic-flask" aria-hidden="true"></span></div>
+            <h3>ორსულობის ტესტის კალკულატორი</h3>
+            <p>როდის აქვს შარდის ტესტს საუკეთესო შანსი — გაცდენილ პერიოდამდე და შემდეგ.</p>
+            <span class="calc-tile-go">გამოთვლა →</span>
+          </a><a class="calc-tile" data-tone="cycle" href="/calculators/implantation">
+            <div class="icon"><span class="ic ic-lg ic-health" aria-hidden="true"></span></div>
+            <h3>იმპლანტაციის კალკულატორი</h3>
+            <p>სავარაუდო 6–10 დღიანი ფანჯარა ოვულაციის შემდეგ.</p>
+            <span class="calc-tile-go">გამოთვლა →</span>
+          </a></div>
+        </div>
+        <div class="calc-group">
+          <div class="calc-group-head">
+            <h2>ორსულობა</h2>
+            <p>5 კალკულატორი</p>
+          </div>
+          <div class="calc-grid"><a class="calc-tile" data-tone="pregnancy" href="/calculators/weeks-to-months">
+            <div class="icon"><span class="ic ic-lg ic-calendar" aria-hidden="true"></span></div>
+            <h3>კვირები თვეებში</h3>
+            <p>რომელ თვესა და ტრიმესტრში ხარ 40-კვირიანი ორსულობის მიხედვით.</p>
+            <span class="calc-tile-go">გამოთვლა →</span>
+          </a><a class="calc-tile" data-tone="pregnancy" href="/calculators/due-date">
+            <div class="icon"><span class="ic ic-lg ic-calendar" aria-hidden="true"></span></div>
+            <h3>მშობიარობის თარიღი</h3>
+            <p>Naegele-ს წესი: ბოლო პერიოდი + 280 დღე, ციკლის სიგრძის კორექციით.</p>
+            <span class="calc-tile-go">გამოთვლა →</span>
+          </a><a class="calc-tile" data-tone="pregnancy" href="/calculators/ivf">
+            <div class="icon"><span class="ic ic-lg ic-flask" aria-hidden="true"></span></div>
+            <h3>IVF და FET თარიღი</h3>
+            <p>ვადა ემბრიონის ასაკით: აღება, 3-დღიანი ან 5/6-დღიანი ტრანსფერი.</p>
+            <span class="calc-tile-go">გამოთვლა →</span>
+          </a><a class="calc-tile" data-tone="pregnancy" href="/calculators/ultrasound">
+            <div class="icon"><span class="ic ic-lg ic-health" aria-hidden="true"></span></div>
+            <h3>ულტრაბგერითი თარიღი</h3>
+            <p>EDD სკანის თარიღით და იმ დღის გესტაციური ასაკით.</p>
+            <span class="calc-tile-go">გამოთვლა →</span>
+          </a><a class="calc-tile" data-tone="pregnancy" href="/calculators/hcg">
+            <div class="icon"><span class="ic ic-lg ic-flask" aria-hidden="true"></span></div>
+            <h3>hCG კალკულატორი</h3>
+            <p>ორი ბეტა-hCG მნიშვნელობით გაორმაგების დრო და ადრეული ორიენტირი.</p>
+            <span class="calc-tile-go">გამოთვლა →</span>
+          </a></div>
+        </div>
+      </div>
+    </section>
+    <section class="calc-article band-paper">
+      <div class="wrap">
+        <h2>როგორ ვითვლით</h2>
+        <p>ოვულაცია ≈ შემდეგი პერიოდი − 14 დღე. ნაყოფიერი ფანჯარა ≈ ოვულაცია − 5 დღე … +1. ორსულობის ვადა = LMP + 280 დღე, ან სკანის/IVF წესები. hCG გაორმაგება ითვლება ორ მნიშვნელობას შორის ლოგარითმით.</p>
+        <p>ეს იგივე სამედიცინო ორიენტირებია, რასაც კლინიკური კალკულატორები იყენებენ. შედეგი არის შეფასება. ორსულობის დასადასტურებლად და დასათარიღებლად საჭიროა ექიმი და ულტრაბგერა.</p>
+        <p>სრული ციკლის აღრიცხვა, სიმპტომები და Medi — მხოლოდ აპში.</p>
+      </div>
+    </section>
+  </main>
+  <footer class="band-paper">
+    <div class="wrap">
+      <div class="disclaimer" id="disclaimer"><strong>ეს არ არის საბოლოო დიაგნოზი.</strong>
+          კალკულატორები, Medi და აპის ანალიზები ეხმარება გაგებაში, მაგრამ არ ცვლის ექიმის კონსულტაციას,
+          დანიშნულებას ან სასწრაფო დახმარებას. ციკლის პროგნოზი არ არის კონტრაცეფცია. თუ მდგომარეობა მძიმეა — მიმართე სპეციალისტს ან 112-ს.</div>
+      <div class="foot-top">
+        <div>
+          <a class="brand" href="/">
+            <img src="/icon.png" width="36" height="36" alt="" />
+            მედიქარდი
+          </a>
+          <p class="foot-note">Medicard.GE · მხოლოდ iOS და Android</p>
+        </div>
+        <a class="foot-mail" href="mailto:support@medicard.ge">support@medicard.ge</a>
+        <p class="foot-note">ანგარიში, ჩატი და ციკლი მხოლოდ ტელეფონზეა.</p>
+      </div>
+      <div class="foot-legal">
+        <p>© <span id="y"></span> Medicard.GE</p>
+        <p>
+          <a href="/calculators">კალკულატორები</a>
+          · <a href="/privacy">კონფიდენციალურობა</a>
+          · <a href="/terms">წესები</a>
+          · <a href="#disclaimer">პასუხისმგებლობა</a>
+        </p>
+      </div>
+    </div>
+  </footer>
+  <script src="/landing.js?v=16"></script>
+  
+</body>
+</html>

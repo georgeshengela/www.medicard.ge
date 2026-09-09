@@ -1,15 +1,10 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { NotebookPen, Plus } from 'lucide-react-native';
-import { FLOW_OPTIONS, MOOD_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
-import { formatPainEntry } from '@/lib/cycleObservations';
+import { cycleLogFactBits, cycleLogHasFacts } from '@/lib/cycleLogFacts';
 import { ka } from '@/i18n/ka';
 import type { CycleLog } from '@/lib/api';
 import { useCycleColors } from '@/theme/cycle';
-
-function labelOf(id: string, list: { id: string; label: string }[]) {
-  return list.find((x) => x.id === id)?.label ?? id;
-}
 
 /**
  * DaySummary — compact logged-facts row (§4.2.1). Row, not card wall.
@@ -23,27 +18,15 @@ export function CycleDaySummary({
   onPress: () => void;
 }) {
   const c = useCycleColors();
-
-  const bits: string[] = [];
-  if (log?.flow) bits.push(labelOf(log.flow, FLOW_OPTIONS));
-  for (const entry of log?.painEntries ?? []) bits.push(formatPainEntry(entry));
-  for (const mood of (log?.moods ?? []).slice(0, 2)) bits.push(labelOf(mood, MOOD_OPTIONS));
-  const symptomCount = log?.symptoms?.length ?? 0;
-  if (symptomCount > 0) {
-    const first = labelOf(log!.symptoms[0], PHYSICAL_SYMPTOMS);
-    bits.push(symptomCount === 1 ? first : `${first} +${symptomCount - 1}`);
-  }
-  if (log?.notes?.trim()) bits.push(ka.cycle.journalTitle);
-
-  const hasContent = bits.length > 0;
+  const bits = cycleLogFactBits(log);
+  const hasContent = cycleLogHasFacts(log);
+  const summary = bits.length ? bits.join(' · ') : ka.cycle.loggedEntryEmpty;
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={
-        hasContent ? `${ka.cycle.loggedByYou}: ${bits.join(', ')}` : ka.cycle.todayEmpty
-      }
+      accessibilityLabel={hasContent ? `${ka.cycle.loggedByYou}: ${summary}` : ka.cycle.todayEmpty}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -96,7 +79,7 @@ export function CycleDaySummary({
                 fontFamily: 'NotoSansGeorgian_600SemiBold',
               }}
             >
-              {bits.join(' · ')}
+              {summary}
             </Text>
           </>
         ) : (

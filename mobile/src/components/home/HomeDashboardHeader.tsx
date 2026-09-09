@@ -6,6 +6,7 @@ import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constant
 import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
 import { ka } from '@/i18n/ka';
 import type { Gender } from '@/lib/api';
+import { formatDayMonthYearKa } from '@/lib/format';
 
 type Props = {
   firstName: string;
@@ -29,11 +30,7 @@ export function HomeDashboardHeader({
   onStreakPress,
 }: Props) {
   const FIGMA_HOME_DASHBOARD = useFigmaHomeDashboard();
-  const dateLabel = new Date().toLocaleDateString('ka-GE', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
+  const dateLabel = formatDayMonthYearKa();
   const normalizedAvatar = normalizeAvatarForGender(avatarId ?? null, gender ?? null);
   const avatarSource = isAvatarId(normalizedAvatar) ? AVATAR_SOURCES[normalizedAvatar] : null;
   const displayName = firstName || ka.home.defaultName;

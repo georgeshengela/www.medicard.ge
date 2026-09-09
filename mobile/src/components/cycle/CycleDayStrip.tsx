@@ -8,7 +8,6 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import type { CycleDayMark } from '@/lib/api';
 import { WEEKDAYS_KA } from '@/constants/cycle';
@@ -19,8 +18,8 @@ import { CycleOvulationSparkle } from '@/components/cycle/CycleOvulationSparkle'
 import { PREDICTED_NUMERAL_PREFIX, classifyCycleDay, getCycleCalendarDayVisualState } from '@/lib/cyclePresentation.js';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
-const ITEM_WIDTH = 56;
-const RANGE = 60;
+const COLS = 7;
+const WEEK_RANGE = 40;
 
 function weekdayLabel(key: string) {
   const [y, m, d] = key.split('-').map(Number);
@@ -28,64 +27,78 @@ function weekdayLabel(key: string) {
   return WEEKDAYS_KA[idx];
 }
 
+function mondayOf(key: string) {
+  const [y, m, d] = key.split('-').map(Number);
+  const dow = (new Date(y, m - 1, d).getDay() + 6) % 7;
+  return addDaysToKey(key, -dow);
+}
+
 type Props = {
   selected: string;
   onSelect: (date: string) => void;
   marks: Record<string, CycleDayMark>;
+  /** User tap only — never from snap/scroll. */
+  onActivate?: (date: string) => void;
   onLongPress?: (date: string) => void;
-  /** Server/bundle civil today. Device local is only the fallback. */
   today?: string;
   showFertility?: boolean;
   showPredicted?: boolean;
-  /** Keep cells out of the Quick Log FAB column. */
-  reservedRight?: number;
 };
 
 export function CycleDayStrip({
   selected,
   onSelect,
   marks,
+  onActivate,
   onLongPress,
   today: todayProp,
   showFertility = true,
   showPredicted = true,
-  reservedRight = 0,
 }: Props) {
   const c = useCycleColors();
   const { width: screenWidth } = useWindowDimensions();
   const listRef = useRef<FlatList<string>>(null);
-  const listWidth = Math.max(ITEM_WIDTH, screenWidth - reservedRight);
-  const sidePad = Math.max(0, (listWidth - ITEM_WIDTH) / 2);
+  const itemWidth = screenWidth / COLS;
   const today = todayProp || todayKey();
   const skipScrollRef = useRef(false);
-  const [anchor, setAnchor] = useState(selected);
+  const ignoreSnapRef = useRef(true);
+  const [anchor, setAnchor] = useState(() => mondayOf(selected));
+
+  useEffect(() => {
+    ignoreSnapRef.current = true;
+    const t = setTimeout(() => {
+      ignoreSnapRef.current = false;
+    }, 350);
+    return () => clearTimeout(t);
+  }, [anchor, screenWidth]);
 
   const dates = useMemo(() => {
+    const start = mondayOf(anchor);
     const out: string[] = [];
-    for (let i = -RANGE; i <= RANGE; i += 1) {
-      out.push(addDaysToKey(anchor, i));
+    for (let i = -WEEK_RANGE * COLS; i < WEEK_RANGE * COLS; i += 1) {
+      out.push(addDaysToKey(start, i));
     }
     return out;
   }, [anchor]);
 
   const selectedIndex = dates.indexOf(selected);
-  const initialIndex = selectedIndex >= 0 ? selectedIndex : RANGE;
 
-  const scrollToIndex = useCallback(
-    (index: number, animated = true) => {
-      if (index < 0 || index >= dates.length) return;
-      listRef.current?.scrollToIndex({
-        index,
+  const scrollToSelectedWeek = useCallback(
+    (animated = true) => {
+      const idx = dates.indexOf(selected);
+      if (idx < 0) return;
+      const weekStart = idx - (idx % COLS);
+      listRef.current?.scrollToOffset({
+        offset: (weekStart / COLS) * screenWidth,
         animated,
-        viewPosition: 0.5,
       });
     },
-    [dates.length],
+    [dates, selected, screenWidth],
   );
 
   useEffect(() => {
     if (selectedIndex === -1) {
-      setAnchor(selected);
+      setAnchor(mondayOf(selected));
     }
   }, [selected, selectedIndex]);
 
@@ -94,11 +107,8 @@ export function CycleDayStrip({
       skipScrollRef.current = false;
       return;
     }
-    const idx = dates.indexOf(selected);
-    if (idx >= 0) {
-      requestAnimationFrame(() => scrollToIndex(idx, true));
-    }
-  }, [selected, dates, scrollToIndex]);
+    requestAnimationFrame(() => scrollToSelectedWeek(true));
+  }, [selected, dates, scrollToSelectedWeek]);
 
   const pickDate = useCallback(
     (date: string, fromStrip = true) => {
@@ -111,33 +121,38 @@ export function CycleDayStrip({
   );
 
   const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / ITEM_WIDTH);
-    const clamped = Math.min(dates.length - 1, Math.max(0, idx));
-    const next = dates[clamped];
+    if (ignoreSnapRef.current) return;
+    const page = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+    const col = selectedIndex >= 0 ? selectedIndex % COLS : 0;
+    const next = dates[page * COLS + col];
     if (next) pickDate(next, true);
   };
 
   return (
-    <View style={{ marginBottom: 8, width: listWidth, overflow: 'hidden' }}>
+    <View style={{ width: screenWidth, marginBottom: 4 }}>
       <FlatList
         ref={listRef}
-        key={anchor}
+        key={`${anchor}-${screenWidth}`}
         data={dates}
         horizontal
         keyExtractor={(item) => item}
         showsHorizontalScrollIndicator={false}
-        snapToInterval={ITEM_WIDTH}
+        pagingEnabled
         decelerationRate="fast"
-        bounces={false}
-        initialScrollIndex={initialIndex}
-        contentContainerStyle={{ paddingHorizontal: sidePad, paddingVertical: 6 }}
+        bounces
+        initialScrollIndex={selectedIndex >= 0 ? selectedIndex - (selectedIndex % COLS) : WEEK_RANGE * COLS}
         getItemLayout={(_, index) => ({
-          length: ITEM_WIDTH,
-          offset: sidePad + ITEM_WIDTH * index,
+          length: itemWidth,
+          offset: itemWidth * index,
           index,
         })}
         onScrollToIndexFailed={(info) => {
-          setTimeout(() => scrollToIndex(info.index, false), 50);
+          setTimeout(() => {
+            listRef.current?.scrollToOffset({
+              offset: (Math.floor(info.index / COLS) * screenWidth),
+              animated: false,
+            });
+          }, 50);
         }}
         onMomentumScrollEnd={onScrollEnd}
         renderItem={({ item }) => {
@@ -170,8 +185,7 @@ export function CycleDayStrip({
             <Pressable
               onPress={() => {
                 pickDate(item, true);
-                const idx = dates.indexOf(item);
-                if (idx >= 0) scrollToIndex(idx, true);
+                onActivate?.(item);
               }}
               onLongPress={() => {
                 onLongPress?.(item);
@@ -181,11 +195,11 @@ export function CycleDayStrip({
               accessibilityLabel={a11y}
               accessibilityState={{ selected: active }}
               style={{
-                width: ITEM_WIDTH,
+                width: itemWidth,
                 alignItems: 'center',
                 justifyContent: 'center',
                 paddingVertical: 2,
-                minHeight: 88,
+                minHeight: 84,
               }}
             >
               <Text
@@ -267,33 +281,6 @@ export function CycleDayStrip({
           );
         }}
       />
-
-      {/* Soft edge fades — hints swipe, no buttons */}
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: 0,
-          bottom: 0,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-        }}
-      >
-        <LinearGradient
-          colors={[c.cream, `${c.cream}00`]}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={{ width: 28, height: '100%' }}
-        />
-        <LinearGradient
-          colors={[`${c.cream}00`, c.cream]}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={{ width: 28, height: '100%' }}
-        />
-      </View>
     </View>
   );
 }

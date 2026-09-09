@@ -22,8 +22,8 @@ import { MOOD_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
 import { recentSymptomIds } from '@/lib/cyclePresentation.js';
 import { PAIN_MANAGED_SYMPTOM_IDS } from '@/lib/cycleObservations';
 import { ka } from '@/i18n/ka';
-import { loadCycleView } from '@/lib/cycleOffline';
 import { EMPTY_CYCLE_LOG, formFromCycleLog, isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
+import { loadCycleView, type CycleView } from '@/lib/cycleOffline';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
@@ -39,7 +39,7 @@ type Props = {
   visible: boolean;
   date: string;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (view?: CycleView | null) => void;
   isPeriodStart?: boolean;
   onOpenFull?: () => void;
 };
@@ -64,11 +64,13 @@ export function CycleQuickLogSheet({
   const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState('TRACK_PERIOD');
   const [recentIds, setRecentIds] = useState<string[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) return;
     let alive = true;
     if (!user?.id) return;
+    setSaveError(null);
     void loadCycleView(user.id).then((view) => {
       if (!alive) return;
       setForm(formFromCycleLog(view.display.logs.find((l) => l.date === date)));
@@ -82,6 +84,7 @@ export function CycleQuickLogSheet({
 
   const save = async (markStart?: boolean) => {
     setSaving(true);
+    setSaveError(null);
     try {
       const next = {
         ...form,
@@ -91,9 +94,13 @@ export function CycleQuickLogSheet({
             : form.flow,
       };
       if (!user?.id) return;
-      await persistCycleLog(user.id, date, next, { markStart });
+      const result = await persistCycleLog(user.id, date, next, { markStart });
+      if (!result.view && !result.synced && !result.persistedLocally && !result.sessionOnly) {
+        setSaveError(ka.cycle.saveNotPersisted);
+        return;
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      onSaved();
+      onSaved(result.view);
       onClose();
     } finally {
       setSaving(false);
@@ -291,6 +298,19 @@ export function CycleQuickLogSheet({
                   );
                 })}
               </View>
+
+              {saveError ? (
+                <Text
+                  style={{
+                    color: c.period,
+                    fontFamily: 'NotoSansGeorgian_600SemiBold',
+                    fontSize: 13,
+                    marginTop: 12,
+                  }}
+                >
+                  {saveError}
+                </Text>
+              ) : null}
 
               <Pressable
                 disabled={saving}

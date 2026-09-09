@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FileText } from 'lucide-react-native';
 import { CyclePeriodHistory } from '@/components/cycle/CyclePeriodHistory';
+import { CyclePredictionHistoryCard } from '@/components/cycle/CyclePredictionHistoryCard';
 import { CycleTrendsCharts } from '@/components/cycle/CycleTrendsChart';
 import { CycleActionRow, CycleActionPanel, CycleSection } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
@@ -43,7 +44,7 @@ export function CycleJournalPane({
 
   if (!hasAnyLog) {
     return (
-      <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 20 }}>
         <View
           style={{
             borderRadius: 16,
@@ -60,6 +61,9 @@ export function CycleJournalPane({
             {ka.cycle.journalEmptyBody}
           </Text>
         </View>
+        <CyclePredictionHistoryCard
+          refreshKey={(bundle.inferred?.periodStarts || []).join('|')}
+        />
       </View>
     );
   }
@@ -138,6 +142,10 @@ export function CycleJournalPane({
           </Text>
         </View>
       )}
+
+      <CyclePredictionHistoryCard
+        refreshKey={(bundle.inferred?.periodStarts || []).join('|')}
+      />
 
       <CycleSection title={ka.cycle.periodHistory} delay={40}>
         <CyclePeriodHistory bundle={bundle} onChanged={onChanged} />

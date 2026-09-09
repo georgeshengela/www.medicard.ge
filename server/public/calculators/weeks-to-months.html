@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ka" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>კვირები თვეებში — მედიქარდი</title>
+  <meta name="description" content="გადაიყვანე ორსულობის კვირები თვეებსა და ტრიმესტრში. Medicard.GE — 40-კვირიანი კალენდარი." />
+  <link rel="canonical" href="https://medicard.ge/calculators/weeks-to-months" />
+  <meta name="theme-color" content="#f3f5f6" />
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("medicard.landing.theme");
+        if (t !== "light" && t !== "dark") {
+          t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = t;
+        document.documentElement.style.colorScheme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ka_GE" />
+  <meta property="og:url" content="https://medicard.ge/calculators/weeks-to-months" />
+  <meta property="og:title" content="კვირები თვეებში — მედიქარდი" />
+  <meta property="og:description" content="გადაიყვანე ორსულობის კვირები თვეებსა და ტრიმესტრში. Medicard.GE — 40-კვირიანი კალენდარი." />
+  <meta property="og:image" content="https://medicard.ge/screens/home.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/icon.png" />
+  <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/landing.css?v=39" />
+  <link rel="stylesheet" href="/calculators.css?v=2" />
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/">
+        <img src="/icon.png" width="36" height="36" alt="" />
+        მედიქარდი
+      </a>
+      <nav class="nav-links" aria-label="მენიუ">
+        <a href="/"><span class="ic ic-house" aria-hidden="true"></span>მთავარი გვერდი</a>
+        <a href="/#how"><span class="ic ic-chat" aria-hidden="true"></span>Medi</a>
+        <a href="/#features"><span class="ic ic-health" aria-hidden="true"></span>ფუნქციები</a>
+        <a href="/calculators" aria-current="page"><span class="ic ic-calc" aria-hidden="true"></span>კალკულატორები</a>
+        <a href="/#plans"><span class="ic ic-wallet" aria-hidden="true"></span>გეგმები</a>
+        <a class="nav-download" href="/#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="theme-btn" id="theme-toggle" type="button" aria-pressed="false" aria-label="გადართე მუქ თემაზე">
+          <span class="ic ic-moon icon-moon" aria-hidden="true"></span>
+          <span class="ic ic-sun icon-sun" aria-hidden="true"></span>
+        </button>
+        <button class="menu-btn" id="menu-toggle" type="button" aria-label="მენიუ" aria-expanded="false">
+          <span class="ic ic-menu" aria-hidden="true"></span>
+        </button>
+        <a class="btn btn-cta" href="/#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="calc-hero band-dark">
+      <div class="wrap">
+        <p class="calc-crumb"><a href="/">მთავარი</a> / <a href="/calculators">კალკულატორები</a> / კვირები თვეებში</p>
+        <p class="kicker">ორსულობა</p>
+        <h1>კვირები თვეებში</h1>
+        <p class="lead">ექიმები კვირებით საუბრობენ. ახლობლები თვეებს ეკითხებიან. ეს ცხრილი ორივეს აკავშირებს — მიახლოებით, 40-კვირიან კალენდარზე.</p>
+        <div class="chips"><span class="chip">40 კვირა</span><span class="chip">3 ტრიმესტრი</span><span class="chip">9 თვე</span></div>
+      </div>
+    </section>
+    <section class="calc-stage band-paper">
+      <div class="wrap calc-layout">
+        <form class="calc-card" data-calc="weeks-to-months" novalidate autocomplete="off">
+          <h2>გამოთვლა</h2>
+          <div class="calc-field">
+          <span class="lbl">კვირა</span>
+          <div class="calc-stepper">
+            <button type="button" data-step="-1" aria-label="შემცირება">−</button>
+            <input id="weeks" name="weeks" type="number" min="1" max="42" value="12" required />
+            <button type="button" data-step="1" aria-label="გაზრდა">+</button>
+          </div>
+        </div>
+        <div class="calc-field">
+          <span class="lbl">დღე</span>
+          <div class="calc-stepper">
+            <button type="button" data-step="-1" aria-label="შემცირება">−</button>
+            <input id="days" name="days" type="number" min="0" max="6" value="0" required />
+            <button type="button" data-step="1" aria-label="გაზრდა">+</button>
+          </div>
+        </div>
+        <div class="calc-actions">
+          <button class="btn btn-cta" type="submit">გამოთვლა</button>
+          <button class="btn btn-ghost" type="button" data-reset>თავიდან</button>
+        </div>
+        <p class="calc-note">შედეგი არის ორიენტირი. არ ცვლის ექიმს, ულტრაბგერას ან ლაბორატორიას.</p>
+        </form>
+        <div class="calc-result" data-result></div>
+      </div>
+    </section>
+    <section class="calc-article band-paper">
+      <div class="wrap">
+        
+        <h2>რატომ კვირები და არა თვეები</h2>
+        <p>გესტაციური ასაკი ითვლება ბოლო პერიოდის პირველი დღიდან. პირველი ორი კვირა ტექნიკურად ჯერ ორსულობა არ არის — ამ დროს ხდება ოვულაცია და ჩასახვა.</p>
+        <p>თვე საშუალოდ 4 კვირაზე მეტია. ამიტომ „მეხუთე თვე“ ხშირად 18–22 კვირაა, არა ზუსტად 20. ტრიმესტრები: 1–13, 14–27, 28–40+.</p>
+        <ul>
+          <li>ნაადრევი — 37 კვირამდე;</li>
+          <li>სრული ვადა — დაახლოებით 39–40 კვირა 6 დღე;</li>
+          <li>გადაცილებული — 42 კვირიდან.</li>
+        </ul>
+        <h2>სხვა კალკულატორები</h2>
+        <div class="calc-related"><a href="/calculators/due-date"><small>კალკულატორი</small><b>მშობიარობის თარიღი</b></a><a href="/calculators/ultrasound"><small>კალკულატორი</small><b>ულტრაბგერითი თარიღი</b></a><a href="/calculators/ivf"><small>კალკულატორი</small><b>IVF და FET თარიღი</b></a></div>
+      </div>
+    </section>
+  </main>
+  <footer class="band-paper">
+    <div class="wrap">
+      <div class="disclaimer" id="disclaimer"><strong>ეს არ არის საბოლოო დიაგნოზი.</strong>
+          კალკულატორები, Medi და აპის ანალიზები ეხმარება გაგებაში, მაგრამ არ ცვლის ექიმის კონსულტაციას,
+          დანიშნულებას ან სასწრაფო დახმარებას. ციკლის პროგნოზი არ არის კონტრაცეფცია. თუ მდგომარეობა მძიმეა — მიმართე სპეციალისტს ან 112-ს.</div>
+      <div class="foot-top">
+        <div>
+          <a class="brand" href="/">
+            <img src="/icon.png" width="36" height="36" alt="" />
+            მედიქარდი
+          </a>
+          <p class="foot-note">Medicard.GE · მხოლოდ iOS და Android</p>
+        </div>
+        <a class="foot-mail" href="mailto:support@medicard.ge">support@medicard.ge</a>
+        <p class="foot-note">ანგარიში, ჩატი და ციკლი მხოლოდ ტელეფონზეა.</p>
+      </div>
+      <div class="foot-legal">
+        <p>© <span id="y"></span> Medicard.GE</p>
+        <p>
+          <a href="/calculators">კალკულატორები</a>
+          · <a href="/privacy">კონფიდენციალურობა</a>
+          · <a href="/terms">წესები</a>
+          · <a href="#disclaimer">პასუხისმგებლობა</a>
+        </p>
+      </div>
+    </div>
+  </footer>
+  <script src="/landing.js?v=16"></script>
+  <script type="module" src="/calculators.js?v=2"></script>
+</body>
+</html>
