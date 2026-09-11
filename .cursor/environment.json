@@ -1,0 +1,21 @@
+{
+  "name": "Medicard.GE",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "api",
+      "command": "npm run server",
+      "description": "Express + Prisma API on http://localhost:4000 (serves /api, /health, /admin and the marketing landing)."
+    },
+    {
+      "name": "expo-web",
+      "command": "npm run mobile:web",
+      "description": "Expo (React Native Web) dev server for the mobile app on http://localhost:8081."
+    }
+  ],
+  "ports": [
+    { "name": "api", "port": 4000 },
+    { "name": "expo-web", "port": 8081 }
+  ]
+}
