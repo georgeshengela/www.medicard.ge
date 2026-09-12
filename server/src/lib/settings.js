@@ -1,5 +1,7 @@
 import { prisma } from './prisma.js';
 import { getMobileAppVersion } from './mobileAppVersion.js';
+import { parseAppVersion } from './appVersion.js';
+import { isMediWorldEnabled, isMediWorldExploreEnabled, isMediWorldMovementEnabled, isMediWorldGardenEnabled } from './mediWorld/flags.js';
 
 const DEFAULTS = {
   id: 'default',
@@ -42,7 +44,15 @@ export async function getAppSettings() {
   }
 
   const mobileVersion = getMobileAppVersion();
-  if (mobileVersion && row.minAppVersion === '1.0.0' && compareSemver(mobileVersion, row.minAppVersion) > 0) {
+  const parsedMobile = parseAppVersion(mobileVersion);
+  // Do not auto-promote the 1.0.0 placeholder onto public generation 1 (`1.0.0.7.66`).
+  // That would force-update historic 15–65 clients. Only fill from epoch-0 builds.
+  if (
+    mobileVersion &&
+    row.minAppVersion === '1.0.0' &&
+    parsedMobile?.epoch === 0 &&
+    compareSemver(mobileVersion, row.minAppVersion) > 0
+  ) {
     try {
       row = await prisma.appSettings.update({
         where: { id: 'default' },
@@ -64,6 +74,10 @@ export function publicAppSettings(settings) {
     forceUpdate: settings.forceUpdate,
     allowRegistrations: settings.allowRegistrations,
     supportEmail: settings.supportEmail,
+    mediWorldEnabled: isMediWorldEnabled(),
+    mediWorldExploreEnabled: isMediWorldExploreEnabled(),
+    mediWorldMovementEnabled: isMediWorldMovementEnabled(),
+    mediWorldGardenEnabled: isMediWorldGardenEnabled(),
     updatedAt: settings.updatedAt,
   };
 }

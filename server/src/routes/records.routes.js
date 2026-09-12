@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { unlinkStoredUpload } from '../lib/privateUploads.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 
@@ -46,9 +47,15 @@ recordsRouter.delete(
   '/:id',
   asyncHandler(async (req, res) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
-    const { count } = await prisma.medicalRecord.deleteMany({ where: { id, userId: req.user.id } });
+    const record = await prisma.medicalRecord.findFirst({
+      where: { id, userId: req.user.id },
+      select: { imageUrl: true },
+    });
+    if (!record) return res.status(404).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
 
+    const { count } = await prisma.medicalRecord.deleteMany({ where: { id, userId: req.user.id } });
     if (count === 0) return res.status(404).json({ error: 'ჩანაწერი ვერ მოიძებნა.' });
+    await unlinkStoredUpload(record.imageUrl);
     return res.json({ deleted: true });
   }),
 );

@@ -1,0 +1,5 @@
+After local API restart (disposable Postgres medicard_phase38):
+GET /api/medi-world/movement/history
+status=completed distanceBand=within_500m completionRatioBps=10000
+coordinate/token leak in JSON: false
+ledger still movement-session:355683fd-446d-4e30-ba5e-85a6beda393a (one row)

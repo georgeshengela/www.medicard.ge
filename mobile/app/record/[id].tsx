@@ -7,7 +7,9 @@ import { Markdown } from '@/components/ui/Markdown';
 import { Disclaimer } from '@/components/Disclaimer';
 import { DetailCardSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
-import { ApiError, absoluteUrl, api, type MedicalRecord } from '@/lib/api';
+import { ApiError, API_BASE_URL, api, type MedicalRecord } from '@/lib/api';
+import { getToken } from '@/lib/storage';
+import { privateFileImageSource } from '@/lib/privateFile';
 import { formatDateTime } from '@/lib/format';
 
 export default function RecordDetail() {
@@ -15,6 +17,11 @@ export default function RecordDetail() {
 
   const [record, setRecord] = useState<MedicalRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    void getToken().then(setToken);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -24,8 +31,8 @@ export default function RecordDetail() {
       .catch((err) => setError(err instanceof ApiError ? err.message : ka.common.error));
   }, [id]);
 
-  const imageUrl = absoluteUrl(record?.imageUrl ?? null);
-  const isPdf = record?.imageUrl?.endsWith('.pdf');
+  const imageSource = privateFileImageSource(record?.imageUrl ?? null, token, API_BASE_URL);
+  const isPdf = record?.imageUrl?.toLowerCase().endsWith('.pdf');
 
   return (
     <>
@@ -45,9 +52,9 @@ export default function RecordDetail() {
               <Text className="ml-2.5 text-sm text-text-300">{formatDateTime(record.createdAt)}</Text>
             </View>
 
-            {imageUrl && !isPdf ? (
+            {imageSource && !isPdf ? (
               <Image
-                source={{ uri: imageUrl }}
+                source={imageSource}
                 className="mb-3 h-60 w-full rounded-2xl border border-bg-300"
                 resizeMode="cover"
               />

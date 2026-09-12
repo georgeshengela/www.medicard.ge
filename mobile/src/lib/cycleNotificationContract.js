@@ -70,6 +70,9 @@ export const CYCLE_SUPPRESSION = Object.freeze({
   PERIOD_STARTED: 'PERIOD_STARTED',
   CONTRACEPTION_SUPPRESSED: 'CONTRACEPTION_SUPPRESSED',
   PREGNANCY_SUPPRESSED: 'PREGNANCY_SUPPRESSED',
+  PERIMENOPAUSE_SUPPRESSED: 'PERIMENOPAUSE_SUPPRESSED',
+  POSTPARTUM_SUPPRESSED: 'POSTPARTUM_SUPPRESSED',
+  FORECAST_GATE_SUPPRESSED: 'FORECAST_GATE_SUPPRESSED',
   DUPLICATE: 'DUPLICATE',
   COOLDOWN: 'COOLDOWN',
   NOT_ELIGIBLE: 'NOT_ELIGIBLE',
@@ -106,7 +109,7 @@ export function cycleCandidateId(type, eventDate) {
 
 export function isCyclePushKey(key) {
   const k = String(key || '');
-  return k.startsWith('cycle-') || k.startsWith('cycle:');
+  return k.startsWith('cycle-') || k.startsWith('cycle:') || k.startsWith('pregnancy-care');
 }
 
 export function isFertilityCycleType(type) {
@@ -214,6 +217,7 @@ export function buildCycleCandidates({
   prefs = {},
   showFertilityMarkers = true,
   lateStatus = null,
+  forecastAllowed = true,
 } = {}) {
   const candidates = [];
   const estimated = predictions.estimated !== false;
@@ -238,7 +242,7 @@ export function buildCycleCandidates({
     });
   };
 
-  if (mode !== 'PREGNANCY' && predictions.nextPeriodStart) {
+  if (mode !== 'PREGNANCY' && mode !== 'PERIMENOPAUSE' && mode !== 'POSTPARTUM' && forecastAllowed !== false && predictions.nextPeriodStart) {
     const start = predictions.nextPeriodStart;
     if ((prefs.periodDaysBefore ?? 0) > 0) {
       push({
@@ -256,7 +260,7 @@ export function buildCycleCandidates({
     });
   }
 
-  const fertilityOk = showFertilityMarkers !== false && mode !== 'PREGNANCY';
+  const fertilityOk = showFertilityMarkers !== false && mode !== 'PREGNANCY' && mode !== 'PERIMENOPAUSE' && mode !== 'POSTPARTUM' && forecastAllowed !== false;
   if (mode === 'TRY_TO_CONCEIVE' && prefs.ovulation && fertilityOk) {
     if (predictions.ovulationDate) {
       push({
@@ -315,7 +319,7 @@ export function buildCycleCandidates({
     });
   }
 
-  if (lateStatus?.status === 'late') {
+  if (lateStatus?.status === 'late' && mode !== 'PERIMENOPAUSE' && mode !== 'POSTPARTUM' && forecastAllowed !== false) {
     push({
       type: 'late',
       eventDate: today,
@@ -371,6 +375,15 @@ export function revalidateCycleCandidate(candidate, live = {}) {
   }
   if (live.mode === 'PREGNANCY' && type !== 'log_nudge') {
     return { ok: false, reason: CYCLE_SUPPRESSION.PREGNANCY_SUPPRESSED };
+  }
+  if (live.mode === 'PERIMENOPAUSE' && type !== 'log_nudge') {
+    return { ok: false, reason: CYCLE_SUPPRESSION.PERIMENOPAUSE_SUPPRESSED };
+  }
+  if (live.mode === 'POSTPARTUM' && type !== 'log_nudge') {
+    return { ok: false, reason: CYCLE_SUPPRESSION.POSTPARTUM_SUPPRESSED };
+  }
+  if (live.forecastAllowed === false && type !== 'log_nudge' && type !== 'bbt') {
+    return { ok: false, reason: CYCLE_SUPPRESSION.FORECAST_GATE_SUPPRESSED };
   }
   if (isFertilityCycleType(type) && live.showFertilityMarkers === false) {
     return { ok: false, reason: CYCLE_SUPPRESSION.CONTRACEPTION_SUPPRESSED };

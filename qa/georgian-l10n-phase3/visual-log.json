@@ -1,0 +1,635 @@
+{
+  "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+  "results": [
+    {
+      "id": "01-home",
+      "route": "/home",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "home.*",
+        "hydration hub title"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "MEDICARD",
+        "11 სექტემბერი 2026",
+        "4",
+        "გამარჯობა, Cycle!",
+        "3",
+        "—",
+        "დაასრულეთ შეფასება",
+        "ჯანმრთელი",
+        "შემდეგი მიღება",
+        "აქტიურობა",
+        "Health Connect-თან დაკავშირება",
+        "ჰიდრატაცია"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\01-home.png",
+      "notes": ""
+    },
+    {
+      "id": "02-sign-in",
+      "route": "/sign-in?preview=1",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "auth.signInHero",
+        "auth.email"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "მედიქარდი",
+        "შედით ანგარიშში — ჭკვიანი სამედიცინო და e-აფთიაქის სერვისები.",
+        "ელ-ფოსტა",
+        "შეიყვანეთ ელ-ფოსტა…",
+        "პაროლი",
+        "შეიყვანეთ პაროლი…",
+        "დამახსოვრება",
+        "დაგავიწყდათ პაროლი?",
+        "შესვლა",
+        "ჯერ არ გაქვთ ანგარიში? რეგისტრაცია"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\02-sign-in.png",
+      "notes": ""
+    },
+    {
+      "id": "03-sign-up",
+      "route": "/sign-up?preview=1",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "auth.signUpHero",
+        "auth.signUpTitle"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "რეგისტრაცია",
+        "უკვე გაქვთ ანგარიში? შესვლა",
+        "სახელი და გვარი",
+        "მაგ. ნინო ბერიძე",
+        "ელ-ფოსტა",
+        "name@example.com",
+        "პაროლი",
+        "მინიმუმ 8 სიმბოლო",
+        "პაროლის დადასტურება",
+        "გაიმეორეთ პაროლი",
+        "რეგისტრაცია",
+        "რეგისტრაციით თქვენ ეთანხმებით მომსახურების პირობებს და კონფიდენციალურობის პოლიტიკას."
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\03-sign-up.png",
+      "notes": ""
+    },
+    {
+      "id": "04-phone-otp",
+      "route": "/phone?preview=1",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "auth.phoneHero",
+        "auth.sendCode"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "მედიქარდი",
+        "შეიყვანეთ ტელეფონის ნომერი — გამოგიგზავნით დამადასტურებელ კოდს.",
+        "ტელეფონის ნომერი",
+        "5XX XX XX XX",
+        "+995",
+        "კოდის გამოგზავნა",
+        "ელ-ფოსტით გაგრძელება"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\04-phone-otp.png",
+      "notes": ""
+    },
+    {
+      "id": "05-forgot",
+      "route": "/forgot-password?preview=1",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "auth.forgotPasswordChoose"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "პაროლის აღდგენა",
+        "აირჩიეთ პაროლის აღდგენის გზა",
+        "ელ-ფოსტით",
+        "SMS-ით",
+        "2FA-ით"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\05-forgot.png",
+      "notes": ""
+    },
+    {
+      "id": "06-forgot-email",
+      "route": "/forgot-password/email?preview=1",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "auth.forgotPasswordEmailHint"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "პაროლის აღდგენა",
+        "შეიყვანეთ ელ-ფოსტა — გამოგიგზავნით 6-ნიშნა კოდს.",
+        "ელ-ფოსტა",
+        "შეიყვანეთ ელ-ფოსტა…",
+        "კოდის გაგზავნა",
+        "ელ-ფოსტა არ გახსოვთ?",
+        "დაგვიკავშირდით: support@medicard.ge"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\06-forgot-email.png",
+      "notes": ""
+    },
+    {
+      "id": "07-assess-name",
+      "route": "/assessment?step=02-name&preview=1",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "assessment.steps.nameTitle"
+      ],
+      "pass": false,
+      "blocker": "wait regex not found after open",
+      "visibleText": [],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\07-assess-name.png",
+      "notes": ""
+    },
+    {
+      "id": "08-assess-smoking",
+      "route": "/assessment?step=14-smoking&preview=1",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "assessment.steps.smokingTitle"
+      ],
+      "pass": false,
+      "blocker": "wait regex not found after open",
+      "visibleText": [],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\08-assess-smoking.png",
+      "notes": ""
+    },
+    {
+      "id": "09-assess-meds",
+      "route": "/assessment?step=17-meds-gate&preview=1",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "assessment.steps.medsGateTitle"
+      ],
+      "pass": false,
+      "blocker": "wait regex not found after open",
+      "visibleText": [],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\09-assess-meds.png",
+      "notes": ""
+    },
+    {
+      "id": "10-assess-conditions",
+      "route": "/assessment?step=21-conditions-list&preview=1",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "assessment.conditions.pcos"
+      ],
+      "pass": false,
+      "blocker": "wait regex not found after open",
+      "visibleText": [],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\10-assess-conditions.png",
+      "notes": ""
+    },
+    {
+      "id": "11-cycle",
+      "route": "/cycle",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "cycle dashboard"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "სექტემბერი 2026",
+        "ციკლის დღე 1 · სავარაუდო მენსტრუაცია",
+        "მიმოხილვა",
+        "კალენდარი",
+        "დღიური",
+        "ორშ",
+        "7",
+        "სამ",
+        "8",
+        "ოთხ",
+        "9",
+        "ხუთ",
+        "10",
+        "დღეს",
+        "~11",
+        "შაბ",
+        "~12",
+        "კვი",
+        "~13",
+        "1",
+        "28-დან",
+        "სავარაუდო მენსტრუაცია",
+        "დღეს სავარაუდო მენსტრუაციის დღეა — მენსტრუაცია ჯერ არ არის აღრიცხული",
+        "სავარაუდო · 11 სექტემბერი 2026",
+        "რამდენიმე ციკლის მიხედვით · თარიღი შეიძლება გადაიწიოს",
+        "დღის აღრიცხვა",
+        "აღრიცხვა"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\11-cycle.png",
+      "notes": ""
+    },
+    {
+      "id": "12-cycle-log",
+      "route": "/cycle/log",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "cycle logging"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "დღის აღრიცხვა"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\12-cycle-log.png",
+      "notes": ""
+    },
+    {
+      "id": "13-cycle-journal",
+      "route": "/cycle/journal",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "cycle.journalEmptyTitle"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "დღიური",
+        "დღეები, სადაც ჩანაწერი გაქვთ",
+        "ძებნა ჩანაწერებში…",
+        "ჯერ არც ერთი ჩანაწერი არ არის."
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\13-cycle-journal.png",
+      "notes": ""
+    },
+    {
+      "id": "14-pregnancy",
+      "route": "/cycle/pregnancy",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "pregnancy home"
+      ],
+      "pass": false,
+      "blocker": "wait regex not found after open",
+      "visibleText": [
+        "სექტემბერი 2026",
+        "ციკლის დღე 1 · სავარაუდო მენსტრუაცია",
+        "მიმოხილვა",
+        "კალენდარი",
+        "დღიური",
+        "ორშ",
+        "7",
+        "სამ",
+        "8",
+        "ოთხ",
+        "9",
+        "ხუთ",
+        "10",
+        "დღეს",
+        "~11",
+        "შაბ",
+        "~12",
+        "კვი",
+        "~13",
+        "1",
+        "28-დან",
+        "სავარაუდო მენსტრუაცია",
+        "დღეს სავარაუდო მენსტრუაციის დღეა — მენსტრუაცია ჯერ არ არის აღრიცხული",
+        "სავარაუდო · 11 სექტემბერი 2026",
+        "რამდენიმე ციკლის მიხედვით · თარიღი შეიძლება გადაიწიოს",
+        "დღის აღრიცხვა",
+        "აღრიცხვა"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\14-pregnancy.png",
+      "notes": "სექტემბერი 2026 | ციკლის დღე 1 · სავარაუდო მენსტრუაცია | მიმოხილვა | კალენდარი | დღიური | ორშ | 7 | სამ | 8 | ოთხ | 9 | ხუთ"
+    },
+    {
+      "id": "15-care-plan",
+      "route": "/cycle/pregnancy/care-plan",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "cycle.carePlan.title",
+        "care_first_booking_title"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "ორსულობის მოვლის გეგმა",
+        "ეს გეგმა საინფორმაციოა და არ ცვლის შენი ორსულობის გუნდის რეკომენდებულ განრიგს.",
+        "ეს არის საინფორმაციო გეგმა — არა სამედიცინო დანიშნულება და არა დიაგნოზი."
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\15-care-plan.png",
+      "notes": ""
+    },
+    {
+      "id": "16-timeline",
+      "route": "/cycle/pregnancy/timeline",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "cycle.timeline.journey"
+      ],
+      "pass": false,
+      "blocker": "wait regex not found after open",
+      "visibleText": [
+        "სექტემბერი 2026",
+        "ციკლის დღე 1 · სავარაუდო მენსტრუაცია",
+        "მიმოხილვა",
+        "კალენდარი",
+        "დღიური",
+        "ორშ",
+        "7",
+        "სამ",
+        "8",
+        "ოთხ",
+        "9",
+        "ხუთ",
+        "10",
+        "დღეს",
+        "~11",
+        "შაბ",
+        "~12",
+        "კვი",
+        "~13",
+        "1",
+        "28-დან",
+        "სავარაუდო მენსტრუაცია",
+        "დღეს სავარაუდო მენსტრუაციის დღეა — მენსტრუაცია ჯერ არ არის აღრიცხული",
+        "სავარაუდო · 11 სექტემბერი 2026",
+        "რამდენიმე ციკლის მიხედვით · თარიღი შეიძლება გადაიწიოს",
+        "დღის აღრიცხვა",
+        "აღრიცხვა"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\16-timeline.png",
+      "notes": "სექტემბერი 2026 | ციკლის დღე 1 · სავარაუდო მენსტრუაცია | მიმოხილვა | კალენდარი | დღიური | ორშ | 7 | სამ | 8 | ოთხ | 9 | ხუთ"
+    },
+    {
+      "id": "17-meds-hub",
+      "route": "/medications",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "meds.hubTitle"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "მედიკამენტების კალენდარი",
+        "მედიკამენტები არ არის",
+        "დაამატეთ მნიშვნელოვანი მედიკამენტები და მიიღეთ შეხსენებები.",
+        "გაგრძელება"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\17-meds-hub.png",
+      "notes": ""
+    },
+    {
+      "id": "18-meds-add",
+      "route": "/medications/add/search",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "meds.addIntroTitle"
+      ],
+      "pass": false,
+      "blocker": "wait regex not found after open",
+      "visibleText": [
+        "ახალი მედიკამენტი",
+        "მედიკამენტის ძიება…",
+        "ყველა",
+        "მედიკამენტები",
+        "Adiflox - ადიფლოქსი 500მგ 7 ტაბლეტი",
+        "ტაბლეტი · 500",
+        "Adora - ადორა პაკეტი 15გრ",
+        "15",
+        "Adora - ადორა ქილა 150გ",
+        "150",
+        "Adrenaline - ადრენალინის ჰ/ტ 0.18% 10 ამპულა",
+        "Advenza - ადვენზა 30 კაფსულა",
+        "კაფსულა",
+        "Aerva Lanata - პოლ-პალას ჩაი 20 პაკეტი",
+        "Alenox - ალენოქსი სიროფი 150მლ",
+        "150",
+        "Anaftin - ანაფტინი სპრეი 15მლ",
+        "15",
+        "Angioflux - ანგიოფლუქსი 250მგ 50 კაფსულა",
+        "კაფსულა · 250"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\18-meds-add.png",
+      "notes": "ახალი მედიკამენტი | მედიკამენტის ძიება… | ყველა | მედიკამენტები | Adiflox - ადიფლოქსი 500მგ 7 ტაბლეტი | ტაბლეტი · 500 | Adora - ადორა პაკეტი 15გრ | 15 | Adora - ადორა ქილა 150გ | 150 | Adrenaline - ადრენალინის ჰ/ტ 0.18% 10 ამპულა | Advenza - ადვენზა 30 კაფსულა"
+    },
+    {
+      "id": "19-hydration-level",
+      "route": "/health-metrics/hydration/level",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "hydration.levels.1.title",
+        "hydration.levels.2.title"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "თქვენი ჰიდრატაციის დონე",
+        "დონე 1",
+        "წყლის მიღება ძალიან დაბალია",
+        "1",
+        "რას ნიშნავს თქვენი დონე",
+        "5. ოპტიმალური",
+        "▾",
+        "4. ჰიდრატირებული",
+        "▾",
+        "3. ცოტა დაბალი",
+        "▾",
+        "2. წყლის მიღება დაბალია",
+        "▾",
+        "1. წყლის მიღება ძალიან დაბალია",
+        "▴",
+        "დღიური მიზნის მისაღწევად დალიეთ წყალი ახლავე.",
+        "როგორ გააუმჯობესოთ"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\19-hydration-level.png",
+      "notes": ""
+    },
+    {
+      "id": "20-chat",
+      "route": "/chat/ask",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "chat empty / disclaimer"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "Medi",
+        "AI",
+        "დარჩა 3 შეკითხვა",
+        "დაიწყეთ საუბარი",
+        "მოკლედ აღწერეთ რა გაწუხებთ — ექიმი დაგისვამთ კითხვებს და ერთად გაარკვევთ.",
+        "7:43 pm",
+        "სამი დღეა თავი მტკივა",
+        "მაღალი წნევა მაქვს, რა ვქნა?",
+        "ბავშვს 38.5 ტემპერატურა აქვს",
+        "დაწერეთ შეტყობინება…"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\20-chat.png",
+      "notes": ""
+    },
+    {
+      "id": "21-quest",
+      "route": "/medi-quest",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "quest dashboard"
+      ],
+      "pass": false,
+      "blocker": "wait regex not found after open",
+      "visibleText": [
+        "Medi Quest",
+        "ᲓᲝᲜᲔ 1",
+        "ᲓᲝᲜᲔ",
+        "1",
+        "დამწყები",
+        "0 / 200 XP",
+        "200 XP შემდეგ დონემდე",
+        "0",
+        "Medi Coins",
+        "—",
+        "სერია",
+        "ერთი პატარა ნაბიჯიც კარგი დღეა.",
+        "დღეს",
+        "0 / 2",
+        "ესაუბრე Medi-ს",
+        "+20 XP",
+        "+10",
+        "დღეს ერთი ნამდვილი საუბარი საკმარისია.",
+        "გახსენი Medi",
+        "წყლის ბალანსი",
+        "0%",
+        "+35 XP",
+        "+20",
+        "დალიე შენი დღიური მიზანი, ზედმეტის გარეშე.",
+        "მიღწევები",
+        "0 / 50"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\21-quest.png",
+      "notes": "Medi Quest | ᲓᲝᲜᲔ 1 | ᲓᲝᲜᲔ | 1 | დამწყები | 0 / 200 XP | 200 XP შემდეგ დონემდე | 0 | Medi Coins | — | სერია | ერთი პატარა ნაბიჯიც კარგი დღეა."
+    },
+    {
+      "id": "22-profile",
+      "route": "/profile",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "profile"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "პროფილი",
+        "Cycle QA Phase6",
+        "უფასო გეგმა",
+        "რეგისტრირებულია 8 სექტემბერი, 2026",
+        "ტელეფონი",
+        "+995500000016",
+        "ელფოსტა",
+        "cycle.qa.phase6@medicard.ge",
+        "4 დღიანი სერია",
+        "გახსენი აპი ყოველდღე — სერია გრძელდება",
+        "გარეგნობა",
+        "ღია",
+        "მუქი",
+        "სისტემის",
+        "აპის გახსნა",
+        "აპის გახსნისას შეგიძლია პირდაპირ ციკლზე მოხვიდე, ან ჩვეულებრივ მთავარ გვერდზე — მედიკამენტებით, ლაბით და ყველა სერვისით. ციკლს მთავარიდანაც მიუწვდები.",
+        "ზოგადი",
+        "ციკლი",
+        "აპი პირდაპირ ციკლის ეკრანით გაიხსნება",
+        "სამედიცინო პროფილი",
+        "სქესი",
+        "ქალი",
+        "ასაკი",
+        "30 წლის",
+        "დაბადების თარიღი",
+        "12.03.1996"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\22-profile.png",
+      "notes": ""
+    },
+    {
+      "id": "23-privacy",
+      "route": "/profile/privacy",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "privacy"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "კონფიდენციალურობის პოლიტიკა",
+        "ძალაშია: 4 სექტემბერი, 2026",
+        "MEDICARD-ისთვის თქვენი პირადი და ჯანმრთელობის მონაცემების კონფიდენციალურობა უმნიშვნელოვანესია. წინამდებარე კონფიდენციალურობის პოლიტიკა განმარტავს, რა სახის პერსონალურ მონაცემებს ვაგროვებთ, რატომ და როგორ ვამუშავებთ მათ, როგორ ვიცავთ ინფორმაციას, რა შემთხვევებში შეიძლება მოხდეს მონაცემების მესამე მხარეებისთვის გადაცემა და რა უფლებები გაქვთ თქვენს მონაცემებთან დაკავშირებით. MEDICARD არის მობილური ჯანმრთელობის პლატფორმა, რომელიც ერთ სივრცეში აერთიანებს ჯანმრთელობასთან დაკავშირებულ სხვადასხვა ფუნქციას, მათ შორის: პირად AI ასისტენტს — Medi, სამედიცინო ანალიზების მართვას, მედიკამენტების აღრიცხვას, ციკლის მონიტორინგს, ჯანმრთელობის ყოველდღიურ მაჩვენებლებს, ნაბიჯებს, ჰიდრატაციას, წონას, ჯანმრთელობის ისტორიასა და სხვა შესაბამის ფუნქციებს. MEDICARD-ის გამოყენებით თქვენ ადასტურებთ, რომ გაეცანით წინამდებარე კონფიდენციალურობის პოლიტიკას.",
+        "MEDICARD არ ყიდის თქვენს ჯანმრთელობის მონაცემებს. სრული პოლიტიკა: medicard.ge/privacy.",
+        "1. ვინ არის პასუხისმგებელი თქვენს მონაცემებზე",
+        "MEDICARD-ის ფარგლებში პერსონალური მონაცემების დამუშავებაზე პასუხისმგებელი პირი/ორგანიზაციაა:"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\23-privacy.png",
+      "notes": ""
+    },
+    {
+      "id": "24-ai",
+      "route": "/profile/ai",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "ai model"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "Medi მოდელი",
+        "ეს მოდელი პასუხობს ჩატში, ანალიზებში, რჩევებსა და ყველა AI კითხვაზე. ნაგულისხმევი არის Gemini Flash — ყოველთვის აირჩიეთ ის, თუ ეჭვი გაქვთ.",
+        "Gemini Flash",
+        "ნაგულისხმევი",
+        "OpenRouter · google/gemini-3.8-flash. სწრაფი და სტაბილური — ჩატი, ანალიზები, რჩევები და პროგნოზები.",
+        "Ling Sante",
+        "ექსპერიმენტული",
+        "OpenRouter · inclusionai/ling-3.0-flash-sante:free. უფასო ექსპერიმენტული მოდელი. თუ ვერ გაივლის, აპი Gemini-ს სცდის.",
+        "EvidenceMD",
+        "კლინიკური",
+        "გაიდლაინები და კლინიკური მსჯელობა. ფოტოების ამოცნობა მაინც Gemini-ით მუშაობს."
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\24-ai.png",
+      "notes": ""
+    },
+    {
+      "id": "25-notifications",
+      "route": "/profile/notifications",
+      "viewport": "1080x2400 @ 420dpi (Pixel_8 / standard phone)",
+      "keys": [
+        "notification settings"
+      ],
+      "pass": true,
+      "blocker": null,
+      "visibleText": [
+        "შეტყობინებები",
+        "Medi მხოლოდ მაშინ გწერს, როცა ამის მიზეზი აქვს — არა იმიტომ, რომ შეუძლია.",
+        "ᲐᲣᲪᲘᲚᲔᲑᲔᲚᲘ ᲨᲔᲮᲡᲔᲜᲔᲑᲔᲑᲘ",
+        "&#128138; მედიკამენტები · &#129658; ვიზიტები",
+        "ეს შეხსენებები თავიანთ ეკრანებზე ირთვება და სიხშირის ლიმიტს არ ექვემდებარება.",
+        "ᲩᲔᲛᲘ ᲯᲐᲜᲛᲠᲗᲔᲚᲝᲑᲐ",
+        "&#128167; წყალი",
+        "&#128095; ნაბიჯები",
+        "⚖️ წონა",
+        "&#127800; ციკლი",
+        "&#127769; ყოველდღიური ჩანაწერი",
+        "&#129658; ვიზიტის შემდეგ",
+        "&#127780;️ ამინდი და გასეირნება",
+        "MEDI &#128154;",
+        "&#128154; Medi-ს მოკითხვები",
+        "&#129504; Medi-ს დაკვირვებები"
+      ],
+      "shot": "C:\\Users\\User\\Desktop\\www.medicard\\qa\\georgian-l10n-phase3\\shots\\25-notifications.png",
+      "notes": ""
+    }
+  ]
+}

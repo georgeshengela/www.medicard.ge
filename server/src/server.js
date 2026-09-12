@@ -10,7 +10,7 @@ import rateLimit from 'express-rate-limit';
 
 import { env, hasVisionProvider } from './config/env.js';
 import { prisma } from './lib/prisma.js';
-import { UPLOAD_DIR } from './lib/storage.js';
+import { denyLegacyPublicUploads } from './lib/privateUploads.js';
 import { shutdownOcr } from './lib/ocr.js';
 import { errorHandler, notFound } from './middleware/error.js';
 import { enforceAppAvailability } from './middleware/auth.js';
@@ -37,6 +37,8 @@ import { questsRouter } from './routes/quests.routes.js';
 import { achievementsRouter } from './routes/achievements.routes.js';
 import { rewardsRouter } from './routes/rewards.routes.js';
 import { mediCompanionRouter } from './routes/mediCompanion.routes.js';
+import { mediWorldRouter } from './routes/mediWorld.routes.js';
+import { filesRouter } from './routes/files.routes.js';
 import { PRIVACY_HTML, TERMS_HTML } from './lib/legalPages.js';
 import { attachAdminRealtime } from './lib/adminRealtime.js';
 import { startQuotaResetSweeper, stopQuotaResetSweeper } from './lib/usageNotify.js';
@@ -105,6 +107,9 @@ app.use(
   morgan((tokens, req, res) => {
     let url = tokens.url(req, res) || '';
     if (url.startsWith('/api/cycle/share')) url = '/api/cycle/share/[redacted]';
+    if (url.startsWith('/api/files/')) url = '/api/files/[redacted]';
+    if (url.startsWith('/uploads/')) url = '/uploads/[redacted]';
+    url = url.replace(/([?&])(lat|lng|latitude|longitude|accuracy|coords|continuationToken|token)=[^&]*/gi, '$1$2=[redacted]');
     return [
       tokens.method(req, res),
       url,
@@ -143,7 +148,7 @@ app.use(
   },
 );
 
-app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
+app.use('/uploads', denyLegacyPublicUploads);
 
 app.get('/privacy', (_req, res) => {
   res.set('Cache-Control', 'public, max-age=3600');
@@ -193,6 +198,7 @@ app.use('/api/health-metrics', healthMetricsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/chats', chatsRouter);
 app.use('/api/records', recordsRouter);
+app.use('/api/files', filesRouter);
 app.use('/api/medications', medicationsRouter);
 app.use('/api/visits', visitsRouter);
 app.use('/api/cycle', cycleRouter);
@@ -206,6 +212,7 @@ app.use('/api/quests', questsRouter);
 app.use('/api/achievements', achievementsRouter);
 app.use('/api/rewards', rewardsRouter);
 app.use('/api/medi-companion', mediCompanionRouter);
+app.use('/api/medi-world', mediWorldRouter);
 app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/rewards', adminRewardsRouter);

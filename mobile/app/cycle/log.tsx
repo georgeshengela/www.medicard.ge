@@ -4,7 +4,6 @@ import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { CycleLogTabs, type CycleLogForm } from '@/components/cycle/CycleLogTabs';
-import { CyclePregnancyTransitionSheet } from '@/components/cycle/CyclePregnancyTransitionSheet';
 import { EMPTY_CYCLE_LOG, formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
 import { api, ApiError, type CycleCustomTag, type CycleLog } from '@/lib/api';
 import { loadCycleView, queueRemoveCycleLog } from '@/lib/cycleOffline';
@@ -53,8 +52,6 @@ export default function CycleLogScreen() {
   const [saved, setSaved] = useState<string | null>(null);
   const [hasLog, setHasLog] = useState(false);
   const [mode, setMode] = useState('TRACK_PERIOD');
-  const [lastPeriod, setLastPeriod] = useState('');
-  const [offerPregnancy, setOfferPregnancy] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions(cycleNavHeader(c, ka.cycle.logToday));
@@ -69,7 +66,6 @@ export default function CycleLogScreen() {
         if (!alive) return;
         const bundle = view.display;
         setMode(bundle.profile.mode);
-        setLastPeriod(bundle.profile.lastPeriodStart || bundle.inferred.lastPeriodStart || date);
         setCustomTags(bundle.customTags ?? []);
         const existing = bundle.logs.find((l) => l.date === date) as CycleLog | undefined;
         setHasLog(Boolean(existing));
@@ -131,8 +127,7 @@ export default function CycleLogScreen() {
       }
       if (form.pregnancyTest === 'positive' && mode !== 'PREGNANCY') {
         Alert.alert(ka.cycle.positivePregTitle, ka.cycle.positivePregBody, [
-          { text: ka.cycle.positivePregLater, style: 'cancel', onPress: () => router.back() },
-          { text: ka.cycle.positivePregConfirm, onPress: () => setOfferPregnancy(true) },
+          { text: ka.cycle.positivePregConfirm, onPress: () => router.back() },
         ]);
         return;
       }
@@ -261,18 +256,6 @@ export default function CycleLogScreen() {
           ) : null}
         </View>
       </KeyboardAvoidingView>
-      <CyclePregnancyTransitionSheet
-        visible={offerPregnancy}
-        lastPeriod={lastPeriod}
-        onClose={() => {
-          setOfferPregnancy(false);
-          router.back();
-        }}
-        onComplete={() => {
-          setOfferPregnancy(false);
-          setMode('PREGNANCY');
-        }}
-      />
     </CycleAtmosphere>
   );
 }

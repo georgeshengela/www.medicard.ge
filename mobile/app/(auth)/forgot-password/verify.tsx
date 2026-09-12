@@ -7,6 +7,7 @@ import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { authErrorMessage } from '@/lib/authErrorMessage';
 
 export default function ForgotPasswordVerify() {
   const router = useRouter();
@@ -35,7 +36,7 @@ export default function ForgotPasswordVerify() {
       const result = await api.auth.passwordForgot(email);
       if (result.devCode) setCode(result.devCode);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : ka.common.error);
+      setError(authErrorMessage(err));
     } finally {
       setResending(false);
     }

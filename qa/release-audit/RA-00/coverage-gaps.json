@@ -1,0 +1,309 @@
+{
+  "generatedAt": "2026-09-11T20:32:26.156Z",
+  "modules": [
+    {
+      "module": "AUTH",
+      "unit": "PARTIAL",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "partial (qaOtp, checkIn) / none interaction"
+    },
+    {
+      "module": "ONBOARDING",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "HOME",
+      "unit": "PARTIAL",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "partial homeSectionOrder / none interaction"
+    },
+    {
+      "module": "MEDI_AI",
+      "unit": "PARTIAL",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "partial (aiEngine, onboardingAnalysis) / none interaction"
+    },
+    {
+      "module": "LABS",
+      "unit": "PARTIAL",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "partial mobile lab unit / none interaction"
+    },
+    {
+      "module": "MEDICATIONS",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "none dedicated suite / none interaction"
+    },
+    {
+      "module": "SYMPTOMS",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "none / none interaction"
+    },
+    {
+      "module": "DOCTOR_HISTORY",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "CYCLE",
+      "unit": "HIGH",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "high — dozens of unit/contract tests; no E2E clicking UI"
+    },
+    {
+      "module": "TTC",
+      "unit": "HIGH",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "high unit / none interaction"
+    },
+    {
+      "module": "PREGNANCY",
+      "unit": "HIGH",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "high unit / none interaction"
+    },
+    {
+      "module": "POSTPARTUM",
+      "unit": "HIGH",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "high unit / none interaction"
+    },
+    {
+      "module": "PERIMENOPAUSE",
+      "unit": "HIGH",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "high unit / none interaction"
+    },
+    {
+      "module": "HEALTH_METRICS",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "STEPS",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "partial via quest engine / none interaction"
+    },
+    {
+      "module": "HYDRATION",
+      "unit": "PARTIAL",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "partial hydrationSync / none interaction"
+    },
+    {
+      "module": "WEIGHT",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "none / none interaction"
+    },
+    {
+      "module": "WEATHER",
+      "unit": "PARTIAL",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "partial recommendation tests / none interaction"
+    },
+    {
+      "module": "PHARMACY",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "none / none interaction"
+    },
+    {
+      "module": "QUEST",
+      "unit": "HIGH",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "high unit / none interaction"
+    },
+    {
+      "module": "COMPANION",
+      "unit": "PARTIAL",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "partial unit / none interaction"
+    },
+    {
+      "module": "JOURNEY",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "ACHIEVEMENTS",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "REWARDS",
+      "unit": "HIGH",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "high unit / none interaction"
+    },
+    {
+      "module": "PARTNER_REWARDS",
+      "unit": "HIGH",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "NOTIFICATIONS",
+      "unit": "PARTIAL",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "partial unit (brain, plan, contract) / none interaction"
+    },
+    {
+      "module": "PROFILE",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "none / none interaction"
+    },
+    {
+      "module": "SETTINGS",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "REPORTS",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "EXPORTS",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "ADMIN",
+      "unit": "PARTIAL",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "partial analytics/help/rewardsAdmin / none interaction"
+    },
+    {
+      "module": "ANALYTICS",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "DEVICE_INTEGRATIONS",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "none / none interaction"
+    },
+    {
+      "module": "SECURITY_PRIVACY",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "RUN",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "none / none interaction"
+    },
+    {
+      "module": "BILLING",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "RECORDS",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    },
+    {
+      "module": "PLATFORM",
+      "unit": "LOW_OR_NONE",
+      "integration": "LOW_OR_NONE",
+      "e2e": "NONE",
+      "interactionCoverage": "NONE",
+      "note": "no dedicated automated tests found; no UI click coverage"
+    }
+  ]
+}

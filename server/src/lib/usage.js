@@ -29,6 +29,16 @@ export async function getUsage(userId) {
   return synced.usage;
 }
 
+/** Register/login must still return a JWT if quota rows are slow. */
+export async function getUsageSafe(userId) {
+  try {
+    return await getUsage(userId);
+  } catch (error) {
+    console.warn('[quota] getUsageSafe failed', error?.message);
+    return emptyUsage();
+  }
+}
+
 /** Admin: wipe this user's period counters so the current quota starts at 0 used. */
 export async function resetUsage(userId) {
   const { user } = (await getUserPackage(userId)) ?? {};

@@ -78,6 +78,12 @@ function withInclude(row, include, state) {
   if (include.completions) {
     out.completions = [...state.questCompletion.values()].filter((item) => item.userQuestId === row.id).map(clone);
   }
+  if (include.slots) {
+    out.slots = [...state.mediWorldAdventureSlot.values()].filter((item) => item.adventureId === row.id).map(clone);
+  }
+  if (include.swaps) {
+    out.swaps = [...state.mediWorldAdventureSwap.values()].filter((item) => item.adventureId === row.id).map(clone);
+  }
   if (include.partner) {
     out.partner = row.partnerId ? clone(state.rewardPartner.get(row.partnerId) || null) : null;
   }
@@ -99,16 +105,29 @@ function withInclude(row, include, state) {
   return out;
 }
 
+function compareValues(av, bv) {
+  if (av instanceof Date || bv instanceof Date) {
+    const at = av instanceof Date ? av.getTime() : Date.parse(av);
+    const bt = bv instanceof Date ? bv.getTime() : Date.parse(bv);
+    if (at === bt) return 0;
+    if (Number.isNaN(at)) return -1;
+    if (Number.isNaN(bt)) return 1;
+    return at > bt ? 1 : -1;
+  }
+  if (av === bv) return 0;
+  if (av == null) return -1;
+  if (bv == null) return 1;
+  return av > bv ? 1 : -1;
+}
+
 function sortRows(rows, orderBy) {
   const orders = Array.isArray(orderBy) ? orderBy : orderBy ? [orderBy] : [];
   if (!orders.length) return rows;
   return [...rows].sort((a, b) => {
     for (const order of orders) {
       const [key, dir] = Object.entries(order)[0];
-      const av = a[key];
-      const bv = b[key];
-      if (av === bv) continue;
-      const cmp = av > bv ? 1 : -1;
+      const cmp = compareValues(a[key], b[key]);
+      if (cmp === 0) continue;
       return dir === 'desc' ? -cmp : cmp;
     }
     return 0;
@@ -231,6 +250,22 @@ export function createQuestFakeDb(seed = {}) {
     rewardRedemptionAudit: new Map(),
     mediCompanionProfile: new Map(),
     mediJourneyUnlock: new Map(),
+    mediWorldProfile: new Map(),
+    mediWorldLedger: new Map(),
+    mediCompanionWorldStageUnlock: new Map(),
+    mediCompanionBondEvent: new Map(),
+    mediCompanionCosmeticOwn: new Map(),
+    mediWorldAdventurePreference: new Map(),
+    mediWorldDailyAdventure: new Map(),
+    mediWorldAdventureSlot: new Map(),
+    mediWorldAdventureSwap: new Map(),
+    worldMovementPreference: new Map(),
+    worldMovementSession: new Map(),
+    careGarden: new Map(),
+    careGardenPlant: new Map(),
+    careGardenNurtureEvent: new Map(),
+    careGardenEvent: new Map(),
+    careGardenMutation: new Map(),
     queryCount: 0,
     queryByModel: {},
   };
@@ -342,12 +377,191 @@ export function createQuestFakeDb(seed = {}) {
       defaults: () => ({
         selectedCosmetics: {},
         selectedEnvironmentKey: 'env.day',
+        displayName: null,
+        worldStageKey: 'spark',
+        bondPoints: 0,
+        lastWorldVisitPeriodKey: null,
+        lastCareMomentPeriodKey: null,
+        lastCareMomentKey: null,
+        lastSeenAt: null,
+        equippedAuraKey: 'aura_teal_origin',
+        equippedTrailKey: null,
+        equippedCharmKey: null,
+        equippedAccentKey: null,
       }),
     }),
     mediJourneyUnlock: modelApi(state, 'mediJourneyUnlock', {
       uniques: [{ name: 'userId_milestoneKey', fields: ['userId', 'milestoneKey'] }],
     }),
+    mediCompanionWorldStageUnlock: modelApi(state, 'mediCompanionWorldStageUnlock', {
+      uniques: [{ name: 'userId_stageKey', fields: ['userId', 'stageKey'] }],
+      defaults: () => ({ rulesetVersion: 1, unlockedAt: new Date() }),
+    }),
+    mediCompanionBondEvent: modelApi(state, 'mediCompanionBondEvent', {
+      uniques: [
+        { name: 'idempotencyKey', fields: ['idempotencyKey'] },
+        { name: 'userId_idempotencyKey', fields: ['userId', 'idempotencyKey'] },
+      ],
+      defaults: () => ({ points: 0, rulesetVersion: 1, periodKey: null }),
+    }),
+    mediCompanionCosmeticOwn: modelApi(state, 'mediCompanionCosmeticOwn', {
+      uniques: [{ name: 'userId_catalogKey', fields: ['userId', 'catalogKey'] }],
+      defaults: () => ({ catalogVersion: 1, debitLedgerId: null, unlockedAt: new Date() }),
+    }),
+    mediWorldAdventurePreference: modelApi(state, 'mediWorldAdventurePreference', {
+      idField: 'userId',
+      uniques: [{ name: 'userId', fields: ['userId'] }],
+      defaults: () => ({
+        intensity: 'gentle',
+        enabledCategories: ['movement', 'hydration', 'care'],
+        allowVariety: true,
+        preferredRestWeekdays: [],
+        reducedPressureLanguage: true,
+        showTargets: false,
+        movementMode: 'default',
+      }),
+    }),
+    mediWorldDailyAdventure: modelApi(state, 'mediWorldDailyAdventure', {
+      uniques: [{ name: 'userId_periodKey', fields: ['userId', 'periodKey'] }],
+      defaults: () => ({
+        restDay: false,
+        restDayActivatedAt: null,
+        status: 'available',
+        swapCount: 0,
+        reasonCodes: [],
+        narrativeKey: 'open.ready',
+        storyEventKey: null,
+        companionReactionKey: null,
+        rulesetVersion: 'medi-world-adventure-v1',
+        completedAt: null,
+      }),
+    }),
+    mediWorldAdventureSlot: modelApi(state, 'mediWorldAdventureSlot', {
+      uniques: [{ name: 'adventureId_slotKey_optionKey', fields: ['adventureId', 'slotKey', 'optionKey'] }],
+      defaults: () => ({
+        optionKey: 'a',
+        status: 'available',
+        selected: true,
+        required: true,
+        swappedFromKey: null,
+        userQuestId: null,
+      }),
+    }),
+    mediWorldAdventureSwap: modelApi(state, 'mediWorldAdventureSwap', {
+      uniques: [{ name: 'adventureId_idempotencyKey', fields: ['adventureId', 'idempotencyKey'] }],
+    }),
+    mediWorldProfile: modelApi(state, 'mediWorldProfile', {
+      idField: 'userId',
+      uniques: [{ name: 'userId', fields: ['userId'] }],
+      defaults: () => ({
+        rulesetVersion: 2,
+        foundationXp: 0,
+        foundationLevel: 1,
+        energyMovement: 0,
+        energyHydration: 0,
+        energyCalm: 0,
+        energyCare: 0,
+        energyConnection: 0,
+        companionProfileId: null,
+        coarseCommunityKey: null,
+      }),
+    }),
+    mediWorldLedger: modelApi(state, 'mediWorldLedger', {
+      uniques: [
+        { name: 'idempotencyKey', fields: ['idempotencyKey'] },
+        { name: 'userId_idempotencyKey', fields: ['userId', 'idempotencyKey'] },
+      ],
+      defaults: () => ({
+        energyAmount: 0,
+        foundationXp: 0,
+        completionRatioBps: 0,
+        rulesetVersion: 2,
+        transactionType: 'CREDIT',
+        reasonCode: null,
+        periodKey: null,
+        logicalEventId: null,
+        intentFingerprint: null,
+      }),
+    }),
+    worldMovementPreference: modelApi(state, 'worldMovementPreference', {
+      idField: 'userId',
+      uniques: [{ name: 'userId', fields: ['userId'] }],
+      defaults: () => ({
+        movementMode: 'walk',
+        targetMinutes: 10,
+      }),
+    }),
+    worldMovementSession: modelApi(state, 'worldMovementSession', {
+      uniques: [{ name: 'userId_startIdempotencyKey', fields: ['userId', 'startIdempotencyKey'] }],
+      defaults: () => ({
+        acceptedDurationSec: 0,
+        activeWallDurationSec: 0,
+        pausedDurationSec: 0,
+        acceptedSegmentCount: 0,
+        rejectedSegmentCount: 0,
+        lastSequence: 0,
+        distanceBand: 'none',
+        accuracyQuality: 'unknown',
+        mockLocationRisk: false,
+        motorizedRisk: false,
+        completionRatioBps: 0,
+        verificationStatus: 'pending',
+        rulesetVersion: 'medi-world-movement-v1',
+        rewardLedgerId: null,
+        lastSegmentIdempotencyKey: null,
+        lastSegmentReason: null,
+        pausedAt: null,
+        completedAt: null,
+        expiredAt: null,
+      }),
+    }),
+    careGarden: modelApi(state, 'careGarden', {
+      idField: 'userId',
+      uniques: [{ name: 'userId', fields: ['userId'] }],
+      defaults: () => ({
+        rulesetVersion: 'medi-world-garden-v1',
+        catalogVersion: 'medi-world-garden-v1',
+        lastVisitAt: null,
+        lastSeenUnlockLevel: 1,
+      }),
+    }),
+    careGardenPlant: modelApi(state, 'careGardenPlant', {
+      uniques: [
+        { name: 'plantIdempotencyKey', fields: ['plantIdempotencyKey'] },
+        { name: 'gardenUserId_plotIndex', fields: ['gardenUserId', 'plotIndex'] },
+      ],
+      defaults: () => ({
+        plotIndex: null,
+        stage: 'seed',
+        nurtureDays: 0,
+        storedAt: null,
+        plantIdempotencyKey: null,
+        debitLedgerId: null,
+        plantedAt: new Date(),
+      }),
+    }),
+    careGardenNurtureEvent: modelApi(state, 'careGardenNurtureEvent', {
+      uniques: [{ name: 'plantId_periodKey', fields: ['plantId', 'periodKey'] }],
+      defaults: () => ({
+        creditLedgerId: null,
+      }),
+    }),
+    careGardenEvent: modelApi(state, 'careGardenEvent', {
+      uniques: [{ name: 'gardenUserId_uniqueKey', fields: ['gardenUserId', 'uniqueKey'] }],
+    }),
+    careGardenMutation: modelApi(state, 'careGardenMutation', {
+      uniques: [{ name: 'gardenUserId_idempotencyKey', fields: ['gardenUserId', 'idempotencyKey'] }],
+      defaults: () => ({
+        plantId: null,
+      }),
+    }),
     _txTail: Promise.resolve(),
+    async $executeRaw() {
+      return 0;
+    },
+    async $queryRaw() {
+      return [];
+    },
     async $transaction(fn, _opts) {
       if (Array.isArray(fn)) return Promise.all(fn);
       const run = this._txTail.then(async () => {
@@ -375,6 +589,22 @@ export function createQuestFakeDb(seed = {}) {
         rewardRedemptionAudit: clone([...state.rewardRedemptionAudit.entries()]),
         mediCompanionProfile: clone([...state.mediCompanionProfile.entries()]),
         mediJourneyUnlock: clone([...state.mediJourneyUnlock.entries()]),
+        mediWorldProfile: clone([...state.mediWorldProfile.entries()]),
+        mediWorldLedger: clone([...state.mediWorldLedger.entries()]),
+        mediCompanionWorldStageUnlock: clone([...state.mediCompanionWorldStageUnlock.entries()]),
+        mediCompanionBondEvent: clone([...state.mediCompanionBondEvent.entries()]),
+        mediCompanionCosmeticOwn: clone([...state.mediCompanionCosmeticOwn.entries()]),
+        mediWorldAdventurePreference: clone([...state.mediWorldAdventurePreference.entries()]),
+        mediWorldDailyAdventure: clone([...state.mediWorldDailyAdventure.entries()]),
+        mediWorldAdventureSlot: clone([...state.mediWorldAdventureSlot.entries()]),
+        mediWorldAdventureSwap: clone([...state.mediWorldAdventureSwap.entries()]),
+        worldMovementPreference: clone([...state.worldMovementPreference.entries()]),
+        worldMovementSession: clone([...state.worldMovementSession.entries()]),
+        careGarden: clone([...state.careGarden.entries()]),
+        careGardenPlant: clone([...state.careGardenPlant.entries()]),
+        careGardenNurtureEvent: clone([...state.careGardenNurtureEvent.entries()]),
+        careGardenEvent: clone([...state.careGardenEvent.entries()]),
+        careGardenMutation: clone([...state.careGardenMutation.entries()]),
       };
       try {
         return await fn(db);
@@ -402,6 +632,22 @@ export function createQuestFakeDb(seed = {}) {
         state.rewardRedemptionAudit = new Map(snap.rewardRedemptionAudit);
         state.mediCompanionProfile = new Map(snap.mediCompanionProfile);
         state.mediJourneyUnlock = new Map(snap.mediJourneyUnlock);
+        state.mediWorldProfile = new Map(snap.mediWorldProfile);
+        state.mediWorldLedger = new Map(snap.mediWorldLedger);
+        state.mediCompanionWorldStageUnlock = new Map(snap.mediCompanionWorldStageUnlock);
+        state.mediCompanionBondEvent = new Map(snap.mediCompanionBondEvent);
+        state.mediCompanionCosmeticOwn = new Map(snap.mediCompanionCosmeticOwn);
+        state.mediWorldAdventurePreference = new Map(snap.mediWorldAdventurePreference);
+        state.mediWorldDailyAdventure = new Map(snap.mediWorldDailyAdventure);
+        state.mediWorldAdventureSlot = new Map(snap.mediWorldAdventureSlot);
+        state.mediWorldAdventureSwap = new Map(snap.mediWorldAdventureSwap);
+        state.worldMovementPreference = new Map(snap.worldMovementPreference);
+        state.worldMovementSession = new Map(snap.worldMovementSession);
+        state.careGarden = new Map(snap.careGarden);
+        state.careGardenPlant = new Map(snap.careGardenPlant);
+        state.careGardenNurtureEvent = new Map(snap.careGardenNurtureEvent);
+        state.careGardenEvent = new Map(snap.careGardenEvent);
+        state.careGardenMutation = new Map(snap.careGardenMutation);
         throw error;
       }
       });

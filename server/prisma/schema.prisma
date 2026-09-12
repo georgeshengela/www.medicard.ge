@@ -28,6 +28,8 @@ model User {
   currentStreak    Int                  @default(0)
   longestStreak    Int                  @default(0)
   lastCheckInDate  DateTime?            @db.Date
+  /// gemini_flash | ling_free | evidencemd
+  aiEngine         String               @default("gemini_flash")
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   records          MedicalRecord[]
@@ -43,6 +45,10 @@ model User {
   cycleCustomTags  CycleCustomTag[]
   cyclePredictionSnapshots CyclePredictionSnapshot[]
   pregnancyLogs    PregnancyLog[]
+  cyclePregnancyEpisodes CyclePregnancyEpisode[]
+  cyclePostpartumEpisodes CyclePostpartumEpisode[]
+  cyclePostpartumBleedClassifications CyclePostpartumBleedClassification[]
+  pregnancyCarePlanItemStates PregnancyCarePlanItemState[]
   cycleSharesOwned    CyclePartnerShare[] @relation("CycleShareOwner")
   cycleSharesAccepted CyclePartnerShare[] @relation("CycleSharePartner")
   aiInteractions   AiInteraction[]
@@ -72,6 +78,18 @@ model User {
   /// Phase 9 — Medi Companion
   mediCompanionProfile  MediCompanionProfile?
   mediJourneyUnlocks    MediJourneyUnlock[]
+  mediCompanionWorldStageUnlocks MediCompanionWorldStageUnlock[]
+  mediCompanionBondEvents         MediCompanionBondEvent[]
+  mediCompanionCosmeticOwns       MediCompanionCosmeticOwn[]
+  /// Medi World Phase 38 foundation
+  mediWorldProfile      MediWorldProfile?
+  mediWorldLedger       MediWorldLedger[]
+  mediWorldAdventurePreference MediWorldAdventurePreference?
+  mediWorldDailyAdventures    MediWorldDailyAdventure[]
+  careSparkCollections         CareSparkCollection[]
+  worldMovementPreference      WorldMovementPreference?
+  worldMovementSessions        WorldMovementSession[]
+  careGarden                   CareGarden?
 
   @@index([status])
   @@index([packageId])
@@ -283,7 +301,7 @@ model CycleProfile {
   id               String    @id @default(uuid())
   userId           String    @unique
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// TRACK_PERIOD | TRY_TO_CONCEIVE | PREGNANCY
+  /// TRACK_PERIOD | TRY_TO_CONCEIVE | PREGNANCY | PERIMENOPAUSE | POSTPARTUM
   mode             String    @default("TRACK_PERIOD")
   avgCycleLength   Int       @default(28)
   avgPeriodLength  Int       @default(5)
@@ -303,6 +321,11 @@ model CycleProfile {
   /// Current method only. null = never asked; NONE = explicit no method.
   contraceptionMethod     String?
   contraceptionStartedAt  DateTime? @db.Date
+  /// Phase 42. null = ordinary TRACK. POSTPARTUM_RETURN = explicit leave from postpartum.
+  /// Never backfilled. Forecast readiness is derived from classified history, not stored here.
+  forecastGateKind        String?
+  /// Ended CyclePostpartumEpisode that scopes post-postpartum forecast evidence.
+  forecastGateEpisodeId   String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }
@@ -343,12 +366,25 @@ model CycleLog {
   alcohol         String?
   /// CycleCustomTag ids for this calendar day
   customTagIds    Json     @default("[]")
+  /// Registry-backed extras that are not dedicated columns (e.g. energy).
+  observations    Json     @default("{}")
+  observationSchemaVersion Int @default(1)
+  /// Explicit absence coverage for assessment-eligible keys. PRESENT is derived from symptoms[].
+  /// Missing key = UNKNOWN. Never backfilled. Additive Phase 28.
+  observationAssessments Json @default("{}")
+  /// null | POSTPARTUM. Engine excludes POSTPARTUM. Never backfilled. Not a diagnosis.
+  trackingContext String?
+  /// Active/ended postpartum episode this write belonged to. Null for historical logs.
+  postpartumEpisodeId String?
+  postpartumEpisode CyclePostpartumEpisode? @relation(fields: [postpartumEpisodeId], references: [id], onDelete: SetNull)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@unique([userId, date])
   @@index([userId, date])
   @@index([date])
+  @@index([userId, trackingContext])
+  @@index([postpartumEpisodeId])
 }
 
 /// User-owned Cycle labels. Archive instead of hard-delete.
@@ -425,6 +461,107 @@ model PregnancyLog {
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+/// Phase 18 — one pregnancy episode. Mode=PREGNANCY requires exactly one ACTIVE row.
+/// History is retained (ENDED). Re-entry creates a new episode. No outcome enum.
+model CyclePregnancyEpisode {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Civil YYYY-MM-DD. Preferred source: confirmed last menstrual period.
+  referenceDate String
+  /// LMP | USER_SELECTED
+  referenceType String
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+  /// ACTIVE | ENDED
+  status        String    @default("ACTIVE")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  carePlanStates PregnancyCarePlanItemState[]
+
+  @@index([userId, status])
+  @@index([userId, startedAt])
+}
+
+/// Owner-selected postpartum tracking interval. Not a pregnancy outcome.
+/// One ACTIVE episode per user (SQL partial unique). Re-entry creates a new row.
+model CyclePostpartumEpisode {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Owner-entered civil YYYY-MM-DD. Optional. Not a birth date. Never derived.
+  referenceDate String?
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+  /// ACTIVE | ENDED
+  status        String    @default("ACTIVE")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  logs          CycleLog[]
+  bleedClassifications CyclePostpartumBleedClassification[]
+
+  @@index([userId, status])
+  @@index([userId, startedAt])
+}
+
+/// Phase 41 — owner-only explicit classification of a postpartum bleed episode.
+/// V1 classification is MENSTRUAL_PERIOD only. Absence = UNKNOWN. Not a diagnosis.
+/// Identity is the engine bleed-run start (inferCycleStats / canContinuePeriod).
+model CyclePostpartumBleedClassification {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postpartumEpisodeId String
+  postpartumEpisode    CyclePostpartumEpisode @relation(fields: [postpartumEpisodeId], references: [id], onDelete: Cascade)
+  /// First PERIOD_FLOW day of the grouped bleed run.
+  bleedStart          String
+  bleedEnd            String
+  /// MENSTRUAL_PERIOD
+  classification      String   @default("MENSTRUAL_PERIOD")
+  /// OWNER
+  source              String   @default("OWNER")
+  classifiedAt        DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([userId, postpartumEpisodeId, bleedStart])
+  @@index([userId, postpartumEpisodeId])
+}
+
+/// Owner-only prenatal care planner overrides. Catalog items stay in versioned code.
+model PregnancyCarePlanItemState {
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pregnancyEpisodeId   String
+  episode              CyclePregnancyEpisode @relation(fields: [pregnancyEpisodeId], references: [id], onDelete: Cascade)
+  careItemId           String
+  /// PLANNED | COMPLETED | DISMISSED | NOT_APPLICABLE
+  status               String
+  plannedDate          String?
+  /// Optional local wall-clock HH:mm. Null means date-only. Never stored without plannedDate.
+  plannedTime          String?
+  /// Optional owner-entered visit place text. Null without plannedDate. Never geocoded.
+  plannedPlace         String?
+  completedDate        String?
+  note                 String?
+  catalogVersion       String
+  /// Owner opt-in. Never auto-enabled by plannedDate, plannedTime, or catalog window.
+  reminderEnabled      Boolean  @default(false)
+  /// Civil DAYS for DATE_BASED only. 0 = same civil day, 1 = one day before, 3 = three days before.
+  reminderOffset       Int      @default(1)
+  /// DATE_BASED (default / legacy null) | EXACT_TIME. Null means DATE_BASED.
+  reminderMode         String?
+  /// Minutes before plannedTime for EXACT_TIME only: 0, 30, 60, 120. Never reinterpret reminderOffset.
+  exactReminderOffsetMinutes Int?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([pregnancyEpisodeId, careItemId])
+  @@index([userId])
+  @@index([pregnancyEpisodeId])
 }
 
 model Package {
@@ -1320,6 +1457,7 @@ model RewardRedemptionAudit {
 }
 
 /// Phase 9 — Medi Companion cosmetic loadout (derived progress is not stored).
+/// Phase 40 extends this same row. There is no MediWorldCompanion model.
 model MediCompanionProfile {
   id                      String   @id @default(uuid())
   userId                  String   @unique
@@ -1327,6 +1465,19 @@ model MediCompanionProfile {
   /// Slot map: accent / accessory / background / decoration → cosmetic catalog keys
   selectedCosmetics       Json     @default("{}")
   selectedEnvironmentKey  String   @default("env.day")
+  /// Phase 40 — private display name. Null means default "Medi".
+  displayName             String?
+  /// Currently presented World evolution stage (must be unlocked).
+  worldStageKey           String   @default("spark")
+  bondPoints              Int      @default(0)
+  lastWorldVisitPeriodKey String?
+  lastCareMomentPeriodKey String?
+  lastCareMomentKey       String?
+  lastSeenAt              DateTime?
+  equippedAuraKey         String   @default("aura_teal_origin")
+  equippedTrailKey        String?
+  equippedCharmKey        String?
+  equippedAccentKey       String?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 }
@@ -1342,5 +1493,405 @@ model MediJourneyUnlock {
 
   @@unique([userId, milestoneKey])
   @@index([userId, unlockedAt])
+}
+
+/// Phase 40 — permanent World evolution-stage unlocks. Never regress.
+model MediCompanionWorldStageUnlock {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stageKey           String
+  worldLevelAtUnlock Int
+  rulesetVersion     Int      @default(1)
+  unlockedAt         DateTime @default(now())
+
+  @@unique([userId, stageKey])
+  @@index([userId, unlockedAt])
+}
+
+/// Phase 40 — append-only Bond events. Unique idempotencyKey. Points are never negative.
+model MediCompanionBondEvent {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idempotencyKey String   @unique
+  reasonCode     String
+  points         Int
+  periodKey      String?
+  rulesetVersion Int      @default(1)
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, periodKey])
+  @@index([userId, createdAt])
+}
+
+/// Phase 40 — owned World cosmetics. Default aura is granted on ensure.
+model MediCompanionCosmeticOwn {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogKey     String
+  catalogVersion Int      @default(1)
+  debitLedgerId  String?
+  unlockedAt     DateTime @default(now())
+
+  @@unique([userId, catalogKey])
+  @@index([userId, unlockedAt])
+}
+
+/// Medi World Phase 41 — privacy-safe Daily Adventure preferences. Conservative defaults.
+model MediWorldAdventurePreference {
+  userId                  String   @id
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// gentle | balanced | active
+  intensity               String   @default("gentle")
+  enabledCategories       Json     @default("[\"movement\", \"hydration\", \"care\"]")
+  allowVariety            Boolean  @default(true)
+  /// Local weekdays 0–6 (Sunday–Saturday). Empty means none.
+  preferredRestWeekdays  Json     @default("[]")
+  reducedPressureLanguage Boolean  @default(true)
+  showTargets             Boolean  @default(false)
+  /// default | wheelchair | low_mobility — never inferred from GPS or diagnosis.
+  movementMode            String   @default("default")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+/// Medi World Phase 41 — one Daily Adventure per user per accepted local period.
+model MediWorldDailyAdventure {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodKey          String
+  timezone           String
+  restDay            Boolean  @default(false)
+  restDayActivatedAt DateTime?
+  /// available | in_progress | completed | rest_day | expired | unavailable
+  status             String   @default("available")
+  swapCount          Int      @default(0)
+  reasonCodes        Json     @default("[]")
+  narrativeKey       String
+  storyEventKey      String?
+  companionReactionKey String?
+  rulesetVersion     String   @default("medi-world-adventure-v1")
+  completedAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  slots              MediWorldAdventureSlot[]
+  swaps              MediWorldAdventureSwap[]
+
+  @@unique([userId, periodKey])
+  @@index([userId, createdAt])
+}
+
+/// Medi World Phase 41 — Adventure slots bound to canonical Quest or Care Moment.
+model MediWorldAdventureSlot {
+  id             String   @id @default(uuid())
+  adventureId    String
+  adventure      MediWorldDailyAdventure @relation(fields: [adventureId], references: [id], onDelete: Cascade)
+  /// anchor | balance | choice
+  slotKey        String
+  /// a | b (choice alternatives)
+  optionKey      String   @default("a")
+  capabilityKey  String
+  userQuestId    String?
+  /// available | selected | in_progress | completed | swapped | expired | rest_day | unavailable
+  status         String   @default("available")
+  selected       Boolean  @default(true)
+  required       Boolean  @default(true)
+  swappedFromKey String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([adventureId, slotKey, optionKey])
+  @@index([adventureId, slotKey])
+}
+
+/// Medi World Phase 41 — swap audit. Concurrent duplicate keys are idempotent.
+model MediWorldAdventureSwap {
+  id             String   @id @default(uuid())
+  adventureId    String
+  adventure      MediWorldDailyAdventure @relation(fields: [adventureId], references: [id], onDelete: Cascade)
+  idempotencyKey String
+  slotKey        String
+  fromCapability String
+  toCapability   String
+  createdAt      DateTime @default(now())
+
+  @@unique([adventureId, idempotencyKey])
+  @@index([adventureId, createdAt])
+}
+
+/// Medi World Phase 38 — one world profile per user. Integer Care Energy only.
+model MediWorldProfile {
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rulesetVersion      Int      @default(1)
+  foundationXp        Int      @default(0)
+  foundationLevel     Int      @default(1)
+  energyMovement      Int      @default(0)
+  energyHydration     Int      @default(0)
+  energyCalm          Int      @default(0)
+  energyCare          Int      @default(0)
+  energyConnection    Int      @default(0)
+  /// Optional MediCompanionProfile.id — never created from this table.
+  companionProfileId String?
+  /// Future coarse community membership. Phase 38 always null; never GPS.
+  coarseCommunityKey String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+/// Medi World Phase 38 — append-only progression ledger. Unique idempotencyKey.
+model MediWorldLedger {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idempotencyKey     String   @unique
+  sourceType         String
+  sourceId           String
+  adapterId          String
+  /// movement | hydration | calm | care | connection
+  energyType         String
+  /// CREDIT | DEBIT. Stored amounts stay non-negative. Phase 38 writes CREDIT only.
+  transactionType    String   @default("CREDIT")
+  energyAmount       Int      @default(0)
+  foundationXp       Int      @default(0)
+  /// verified | user_reported | estimated | pending | rejected
+  progressState      String
+  completionRatioBps Int     @default(0)
+  rulesetVersion      Int      @default(1)
+  /// Non-sensitive ids only (templateKey, periodKey, cadence).
+  metadata           Json?
+  /// Phase 39: privacy-safe explanation code. Null on Phase 38 rows (FOUNDATION_LEGACY).
+  reasonCode         String?
+  /// Local Quest calendar day YYYY-MM-DD used for daily caps. Never GPS.
+  periodKey          String?
+  /// Logical event identity for pending → verified finalization.
+  logicalEventId     String?
+  /// Hash of request identity for semantic idempotency conflicts.
+  intentFingerprint  String?
+  createdAt          DateTime @default(now())
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([userId, periodKey])
+  @@index([userId, logicalEventId])
+}
+
+/// Medi World Phase 42 — server-owned public place. Coordinates are public POIs, never a user location.
+model WorldPlace {
+  id               String   @id
+  nameKa           String
+  nameEn           String
+  placeType        String
+  latitude         Float
+  longitude        Float
+  coarseAreaKey    String
+  status           String    @default("review")
+  active           Boolean   @default(false)
+  source           String
+  sourceIdentifier String
+  accessibility    String    @default("unknown")
+  accessibilityNote String?
+  safeHoursPolicy  String?
+  lastReviewedAt   DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  spawns           CareSparkSpawn[]
+  collections      CareSparkCollection[]
+
+  @@unique([source, sourceIdentifier])
+  @@index([coarseAreaKey, status, active])
+}
+
+model CareSparkDefinition {
+  id             String   @id
+  category       String
+  locKey         String
+  rulesetVersion String   @default("medi-world-explore-v1")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  spawns         CareSparkSpawn[]
+}
+
+model CareSparkSpawn {
+  id             String   @id
+  definitionId   String
+  definition     CareSparkDefinition @relation(fields: [definitionId], references: [id], onUpdate: Cascade)
+  placeId        String
+  place          WorldPlace @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  windowKey      String
+  startsAt       DateTime
+  expiresAt      DateTime
+  status         String   @default("active")
+  rulesetVersion String   @default("medi-world-explore-v1")
+  createdAt      DateTime @default(now())
+  collections    CareSparkCollection[]
+
+  @@unique([placeId, windowKey])
+  @@index([placeId, status])
+  @@index([expiresAt])
+}
+
+/// User collection history. Never stores submitted coordinates.
+model CareSparkCollection {
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spawnId              String
+  spawn                CareSparkSpawn @relation(fields: [spawnId], references: [id], onUpdate: Cascade)
+  placeId              String
+  place                WorldPlace @relation(fields: [placeId], references: [id], onUpdate: Cascade)
+  periodKey            String
+  collectedAt          DateTime @default(now())
+  coarseAreaKey        String
+  distanceBand        String
+  accuracyBand        String
+  verificationOutcome String
+  rejectionReason      String?
+  rulesetVersion       String   @default("medi-world-explore-v1")
+  idempotencyKey       String
+  mockLocationSignal   Boolean  @default(false)
+
+  @@unique([userId, spawnId])
+  @@unique([userId, idempotencyKey])
+  @@index([userId, periodKey])
+  @@index([userId, collectedAt])
+}
+
+/// Medi World Phase 43 — duration preference. Never GPS.
+model WorldMovementPreference {
+  userId         String   @id
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movementMode   String   @default("walk")
+  targetMinutes  Int      @default(10)
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+}
+
+/// Privacy-preserving movement session. No coordinates, routes, or samples.
+model WorldMovementSession {
+  id                       String    @id @default(uuid())
+  userId                   String
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movementMode             String
+  targetDurationSec        Int
+  status                   String
+  acceptedDurationSec      Int       @default(0)
+  activeWallDurationSec    Int       @default(0)
+  pausedDurationSec        Int       @default(0)
+  acceptedSegmentCount     Int       @default(0)
+  rejectedSegmentCount     Int       @default(0)
+  lastSequence             Int       @default(0)
+  distanceBand             String    @default("none")
+  accuracyQuality          String    @default("unknown")
+  mockLocationRisk         Boolean    @default(false)
+  motorizedRisk            Boolean   @default(false)
+  completionRatioBps      Int       @default(0)
+  verificationStatus       String    @default("pending")
+  periodKey                String
+  rulesetVersion           String    @default("medi-world-movement-v1")
+  rewardLedgerId           String?
+  startIdempotencyKey      String
+  lastSegmentIdempotencyKey String?
+  lastSegmentReason        String?
+  startedAt                DateTime @default(now())
+  lastEventAt              DateTime @default(now())
+  pausedAt                 DateTime?
+  completedAt              DateTime?
+  expiredAt                DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  @@unique([userId, startIdempotencyKey])
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([userId, periodKey])
+}
+
+/// Medi World Phase 44 — one private garden per user. Plants never decay.
+model CareGarden {
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rulesetVersion      String   @default("medi-world-garden-v1")
+  catalogVersion      String   @default("medi-world-garden-v1")
+  lastVisitAt         DateTime?
+  lastSeenUnlockLevel Int      @default(1)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  plants              CareGardenPlant[]
+  events              CareGardenEvent[]
+  nurtures            CareGardenNurtureEvent[]
+  mutations           CareGardenMutation[]
+}
+
+model CareGardenPlant {
+  id                  String    @id @default(uuid())
+  gardenUserId        String
+  garden              CareGarden @relation(fields: [gardenUserId], references: [userId], onDelete: Cascade)
+  catalogKey          String
+  category            String
+  plotIndex           Int?
+  stage               String    @default("seed")
+  nurtureDays         Int       @default(0)
+  plantedAt           DateTime @default(now())
+  storedAt            DateTime?
+  catalogVersion      String
+  presentationKey     String
+  plantIdempotencyKey String?   @unique
+  debitLedgerId       String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  nurtures            CareGardenNurtureEvent[]
+
+  @@unique([gardenUserId, plotIndex])
+  @@index([gardenUserId, category])
+}
+
+model CareGardenNurtureEvent {
+  id             String          @id @default(uuid())
+  gardenUserId   String
+  garden         CareGarden      @relation(fields: [gardenUserId], references: [userId], onDelete: Cascade)
+  plantId        String
+  plant          CareGardenPlant @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  category       String
+  periodKey      String
+  creditLedgerId String?
+  createdAt      DateTime        @default(now())
+
+  @@unique([plantId, periodKey])
+  @@index([gardenUserId, periodKey])
+}
+
+model CareGardenEvent {
+  id           String     @id @default(uuid())
+  gardenUserId String
+  garden       CareGarden @relation(fields: [gardenUserId], references: [userId], onDelete: Cascade)
+  type         String
+  plantId      String?
+  catalogKey   String?
+  fromPlot     Int?
+  toPlot       Int?
+  stage        String?
+  uniqueKey    String
+  createdAt    DateTime   @default(now())
+
+  @@unique([gardenUserId, uniqueKey])
+  @@index([gardenUserId, createdAt])
+}
+
+model CareGardenMutation {
+  id             String     @id @default(uuid())
+  gardenUserId   String
+  garden         CareGarden @relation(fields: [gardenUserId], references: [userId], onDelete: Cascade)
+  idempotencyKey String
+  operation      String
+  fingerprint    String
+  plantId        String?
+  createdAt      DateTime   @default(now())
+
+  @@unique([gardenUserId, idempotencyKey])
 }
 

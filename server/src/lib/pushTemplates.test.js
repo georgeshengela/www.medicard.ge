@@ -67,6 +67,30 @@ describe('pushTemplates', () => {
     }
   });
 
+  it('keeps pregnancy-care lock-screen copy user-planned and privacy-minimal', () => {
+    const plan = templateByKey(PUSH_TEMPLATE_DEFAULTS, 'pregnancy-care-plan');
+    const masked = templateByKey(PUSH_TEMPLATE_DEFAULTS, 'pregnancy-care-masked');
+    const planHay = `${plan.title} ${plan.body}`;
+    const maskedHay = `${masked.title} ${masked.body}`;
+    assert.match(planHay, /დაგეგმე/);
+    assert.equal(planHay.includes('დროა'), false);
+    assert.equal(planHay.includes('გჭირდება'), false);
+    assert.equal(planHay.includes('აუცილებელია'), false);
+    assert.equal(planHay.includes('ვადაა'), false);
+    assert.equal(planHay.includes('აგვიანდება'), false);
+    for (const word of FORBIDDEN_MASK) {
+      assert.equal(maskedHay.includes(word), false, word);
+    }
+    assert.equal(maskedHay.includes('ანატომ'), false);
+    assert.equal(maskedCopyIsSafe(masked.title, masked.body), true);
+    const redacted = redactCyclePushLog({
+      key: 'pregnancy-care-plan',
+      title: plan.title,
+      body: plan.body,
+    });
+    assert.equal(redacted.title, '[cycle-redacted]');
+  });
+
   it('keeps fertility lock-screen copy probabilistic and not contraceptive', () => {
     const ov = templateByKey(PUSH_TEMPLATE_DEFAULTS, 'cycle-ovulation');
     const fertile = templateByKey(PUSH_TEMPLATE_DEFAULTS, 'cycle-fertile');

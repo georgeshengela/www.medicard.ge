@@ -2,7 +2,8 @@ import { Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { askEvidenceMd, AiEngineError } from '../lib/evidencemd.js';
+import { AiEngineError } from '../lib/evidencemd.js';
+import { askAi, normalizeAiEngine, publicAiEngineCatalog, resolveOpenRouterModel } from '../lib/aiEngine.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { describeImage, structureLabText, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
@@ -23,6 +24,16 @@ import { QuestSignal, refreshQuestProgressForUser } from '../lib/quest.js';
 export const aiRouter = Router();
 
 aiRouter.use(requireAuth);
+
+aiRouter.get(
+  '/engines',
+  asyncHandler(async (req, res) => {
+    return res.json({
+      selected: normalizeAiEngine(req.user.aiEngine),
+      engines: publicAiEngineCatalog(),
+    });
+  }),
+);
 
 const UPLOAD_MIME_ALIASES = {
   'image/jpg': 'image/jpeg',
@@ -85,7 +96,7 @@ function formatLabTable(parameters) {
 }
 
 /* ────────────────────────────────────────────────────────────────
- * POST /api/ai/query — text consultation (AI ექიმი & კონსილიუმი)
+ * POST /api/ai/query — text consultation (Medi & კონსილიუმი)
  * ──────────────────────────────────────────────────────────────── */
 
 const querySchema = z.object({
@@ -93,7 +104,50 @@ const querySchema = z.object({
   mode: z.enum(['DOCTOR', 'CONSILIUM']).default('DOCTOR'),
   sessionId: z.string().uuid().optional(),
   context: z.string().trim().max(4000).optional(),
+  stream: z.boolean().optional(),
 });
+
+function wantsChatStream(req) {
+  if (req.body?.stream === true) return true;
+  return String(req.headers.accept || '').includes('text/event-stream');
+}
+
+function writeSse(res, payload) {
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  if (typeof res.flush === 'function') res.flush();
+}
+
+async function persistChatTurn({ req, session, history, message, mode, answer }) {
+  const now = new Date().toISOString();
+  const nextMessages = [
+    ...history,
+    { role: 'user', content: message, timestamp: now },
+    {
+      role: 'assistant',
+      content: answer.content,
+      timestamp: new Date().toISOString(),
+      interactionId: answer.interactionId,
+    },
+  ];
+
+  const saved = session
+    ? await prisma.chatSession.update({
+        where: { id: session.id },
+        data: { messages: nextMessages, updatedAt: new Date() },
+      })
+    : await prisma.chatSession.create({
+        data: {
+          userId: req.user.id,
+          mode,
+          title: buildTitle(message),
+          messages: nextMessages,
+        },
+      });
+
+  const usage = await req.consumeAiCredit();
+  await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
+  return { saved, usage };
+}
 
 aiRouter.post(
   '/query',
@@ -121,6 +175,81 @@ aiRouter.post(
         ? buildDoctorTurnContext({ userTurnCount, assistantTurnCount })
         : null;
     const mergedContext = [profileContext, turnContext].filter(Boolean).join('\n\n');
+    const stream = wantsChatStream(req);
+
+    if (stream) {
+      req.setTimeout(0);
+      res.setTimeout(0);
+      res.status(200);
+      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+      if (req.socket) req.socket.setNoDelay(true);
+      if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+      const abort = new AbortController();
+      const onClose = () => {
+        if (!res.writableEnded) abort.abort();
+      };
+      req.on('close', onClose);
+
+      try {
+        const answer = await runTrackedAi({
+          userId: req.user.id,
+          mode,
+          chatSessionId: session?.id,
+          userPrompt: message,
+          fn: async () => {
+            const result = await askAi({
+              user: req.user,
+              mode,
+              context: mergedContext || undefined,
+              messages: [...priorTurns, { role: 'user', content: message }],
+              temperature: mode === 'DOCTOR' ? 0.4 : 0.2,
+              maxTokens: mode === 'DOCTOR' ? 900 : 2400,
+              signal: abort.signal,
+              onDelta: (text) => {
+                if (abort.signal.aborted || res.writableEnded) return;
+                writeSse(res, { type: 'delta', text });
+              },
+            });
+            if (mode === 'DOCTOR') {
+              result.content = sanitizeDoctorReply(result.content);
+            }
+            return result;
+          },
+        });
+
+        if (abort.signal.aborted) return;
+
+        const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer });
+        writeSse(res, {
+          type: 'done',
+          sessionId: saved.id,
+          title: saved.title,
+          mode: saved.mode,
+          answer: answer.content,
+          model: answer.model,
+          engine: answer.engine ?? 'openrouter',
+          interactionId: answer.interactionId,
+          usage,
+        });
+        res.end();
+      } catch (error) {
+        if (abort.signal.aborted || res.writableEnded) return;
+        const status = error instanceof AiEngineError ? error.status : error?.status;
+        writeSse(res, {
+          type: 'error',
+          error: error?.message || 'სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.',
+          status: status && status >= 400 && status < 600 ? status : 502,
+        });
+        res.end();
+      } finally {
+        req.removeListener('close', onClose);
+      }
+      return;
+    }
 
     const answer = await runTrackedAi({
       userId: req.user.id,
@@ -128,7 +257,8 @@ aiRouter.post(
       chatSessionId: session?.id,
       userPrompt: message,
       fn: async () => {
-        const result = await askEvidenceMd({
+        const result = await askAi({
+          user: req.user,
           mode,
           context: mergedContext || undefined,
           messages: [...priorTurns, { role: 'user', content: message }],
@@ -142,34 +272,7 @@ aiRouter.post(
       },
     });
 
-    const now = new Date().toISOString();
-    const nextMessages = [
-      ...history,
-      { role: 'user', content: message, timestamp: now },
-      {
-        role: 'assistant',
-        content: answer.content,
-        timestamp: new Date().toISOString(),
-        interactionId: answer.interactionId,
-      },
-    ];
-
-    const saved = session
-      ? await prisma.chatSession.update({
-          where: { id: session.id },
-          data: { messages: nextMessages, updatedAt: new Date() },
-        })
-      : await prisma.chatSession.create({
-          data: {
-            userId: req.user.id,
-            mode,
-            title: buildTitle(message),
-            messages: nextMessages,
-          },
-        });
-
-    const usage = await req.consumeAiCredit();
-    await refreshQuestProgressForUser(req.user.id, QuestSignal.MEDI_USED);
+    const { saved, usage } = await persistChatTurn({ req, session, history, message, mode, answer });
 
     return res.json({
       sessionId: saved.id,
@@ -177,7 +280,7 @@ aiRouter.post(
       mode: saved.mode,
       answer: answer.content,
       model: answer.model,
-      engine: 'evidencemd',
+      engine: answer.engine ?? 'openrouter',
       interactionId: answer.interactionId,
       usage,
     });
@@ -210,7 +313,7 @@ aiRouter.post(
     const isPdf = mimetype === 'application/pdf';
     if (mimetype === 'image/heic') {
       return res.status(400).json({
-        error: 'iPhone HEIC photo could not be read. Please pick the photos again.',
+        error: 'iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთეთ სურათი თავიდან JPEG ან PNG ფორმატში.',
       });
     }
 
@@ -231,7 +334,13 @@ aiRouter.post(
       visionNotes = `[PDF, ${pages} გვერდი]\n\n${text}`;
       extractor = { provider: 'pdf-parse', model: 'pdf-parse' };
     } else {
-      const described = await describeImage({ buffer, mimeType: mimetype, kind, context }).catch(
+      const described = await describeImage({
+        buffer,
+        mimeType: mimetype,
+        kind,
+        patientContext: context,
+        model: resolveOpenRouterModel(req.user),
+      }).catch(
         async (error) => {
           // If no vision provider is reachable, fall back to local OCR for lab sheets.
           if (kind !== 'LAB') throw error;
@@ -258,7 +367,8 @@ aiRouter.post(
         visionProvider: extractor.provider,
         visionModel: extractor.model,
         fn: () =>
-          askEvidenceMd({
+          askAi({
+            user: req.user,
             mode: kind,
             context: patientAiContext,
             messages: [
@@ -268,7 +378,7 @@ aiRouter.post(
       });
       analysisContent = analysis.content;
       interactionId = analysis.interactionId;
-      reasoning = { provider: 'evidencemd', model: analysis.model };
+      reasoning = { provider: analysis.engine ?? 'openrouter', model: analysis.model };
     }
 
     const imageUrl = await saveUpload(buffer, mimetype);
@@ -359,7 +469,7 @@ aiRouter.post(
       const mimeType = sniffImageMime(file.buffer, declared);
       if (mimeType === 'image/heic') {
         return res.status(400).json({
-          error: 'iPhone HEIC photo could not be read. Please pick the photos again.',
+          error: 'iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთეთ სურათი თავიდან JPEG ან PNG ფორმატში.',
         });
       }
       images.push({ buffer: file.buffer, mimeType });
@@ -377,6 +487,7 @@ aiRouter.post(
           mimeType: image.mimeType,
           kind: 'LAB',
           patientContext: context,
+          model: resolveOpenRouterModel(req.user),
         }).catch(async (error) => {
           const text = await ocrImage(image.buffer);
           if (!text) throw error;
@@ -391,7 +502,9 @@ aiRouter.post(
 
     let labExtract = extractLabFromText(visionNotes);
     if (labExtract.parameters.length < 3 && visionNotes.length >= 24) {
-      const structured = await structureLabText(visionNotes).catch(() => null);
+      const structured = await structureLabText(visionNotes, {
+        model: resolveOpenRouterModel(req.user),
+      }).catch(() => null);
       if (structured?.notes) {
         visionNotes = `${visionNotes}\n\n${structured.notes}`;
         labExtract = extractLabFromText(visionNotes);
@@ -514,7 +627,8 @@ aiRouter.post(
       mode: 'LAB',
       userPrompt: buildVisionHandoff({ kind: 'LAB', visionNotes, patientContext: body.context }),
       fn: () =>
-        askEvidenceMd({
+        askAi({
+          user: req.user,
           mode: 'LAB',
           context: patientAiContext,
           messages: [
@@ -573,9 +687,11 @@ aiRouter.post(
       mode: 'LAB_ALIGN',
       userPrompt: `align ${body.analytes.length} analytes`,
       visionProvider: 'openrouter',
-      visionModel: alignedModelHint(),
+      visionModel: alignedModelHint(req.user),
       fn: async () => {
-        const result = await alignLabAnalytes(body.analytes);
+        const result = await alignLabAnalytes(body.analytes, {
+          model: resolveOpenRouterModel(req.user),
+        });
         return { content: JSON.stringify({ joined: result.joined, leftover: result.leftover }), model: result.model, usage: result.tokenUsage, extra: result };
       },
     });
@@ -597,8 +713,8 @@ aiRouter.post(
   }),
 );
 
-function alignedModelHint() {
-  return process.env.OPENROUTER_MODEL || 'openai/gpt-4o';
+function alignedModelHint(user) {
+  return resolveOpenRouterModel(user);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -624,9 +740,13 @@ aiRouter.post(
       mode: 'WEIGHT_ADVICE',
       userPrompt: `weight ${body.weightKg} kg`,
       visionProvider: 'openrouter',
-      visionModel: alignedModelHint(),
+      visionModel: alignedModelHint(req.user),
       fn: async () => {
-        const result = await adviseWeight({ ...body, patientContext: patientAiContext });
+        const result = await adviseWeight({
+          ...body,
+          patientContext: patientAiContext,
+          model: resolveOpenRouterModel(req.user),
+        });
         return {
           content: JSON.stringify({ blurb: result.blurb, tips: result.tips }),
           model: result.model,
@@ -685,7 +805,8 @@ aiRouter.post(
       mode: 'SKINCARE',
       userPrompt: prompt,
       fn: () =>
-        askEvidenceMd({
+        askAi({
+          user: req.user,
           mode: 'SKINCARE',
           context: patientAiContext,
           messages: [{ role: 'user', content: prompt }],
@@ -739,7 +860,8 @@ aiRouter.post(
       mode: 'MEDICATION',
       userPrompt: list,
       fn: () =>
-        askEvidenceMd({
+        askAi({
+          user: req.user,
           mode: 'MEDICATION',
           context: patientAiContext,
           messages: [{ role: 'user', content: `პაციენტის მიმდინარე მედიკამენტები:\n${list}` }],
@@ -796,6 +918,7 @@ aiRouter.post(
       userPrompt: prompt,
       fn: async () => {
         const result = await runSymptomCheck({
+          user: req.user,
           prompt,
           patientContext: await withPatientAiContext(req.user),
           symptoms: data.symptoms,

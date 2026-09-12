@@ -369,7 +369,7 @@
   }
 
   function errorState(title, body, retryId) {
-    return `<div class="v3-error" role="alert"><strong>${esc(title || 'ჩატვირთვა ვერ მოხერხდა')}</strong>${body ? `<p>${esc(body)}</p>` : ''}${retryId ? `<button type="button" class="btn secondary compact" id="${esc(retryId)}">ხელახლა ცდა</button>` : ''}</div>`;
+    return `<div class="v3-error" role="alert"><strong>${esc(title || 'ჩატვირთვა ვერ მოხერხდა')}</strong>${body ? `<p>${esc(body)}</p>` : ''}${retryId ? `<button type="button" class="btn secondary compact" id="${esc(retryId)}">ხელახლა სცადე</button>` : ''}</div>`;
   }
 
   function skeleton(rows = 4) {
@@ -745,6 +745,7 @@
       ai: 'spark',
       health: 'activity',
       quality: 'check',
+      cycleqa: 'layers',
       audit: 'shield',
       settings: 'settings',
     };
@@ -802,6 +803,7 @@
       { group: 'Operations', tab: 'sms', label: 'SMS' },
       { group: 'Operations', tab: 'pharmacy', label: 'ფარმაცია' },
       { group: 'Production', tab: 'quality', label: 'ხარისხი' },
+      { group: 'Production', tab: 'cycleqa', label: 'ფაზები' },
       { group: 'Production', tab: 'audit', label: 'აუდიტი' },
       { group: 'Production', tab: 'settings', label: 'რეჟიმი' },
       { group: 'Help', tab: 'overview', label: 'როგორ მუშაობს Admin', helpKey: 'global.howAdminWorks' },

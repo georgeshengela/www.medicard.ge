@@ -107,6 +107,9 @@ let state: RunState = initial;
 const listeners = new Set<() => void>();
 
 let watchSub: Location.LocationSubscription | null = null;
+let headingSub: Location.LocationSubscription | null = null;
+/** Compass is live — do not overwrite heading with GPS course. */
+let compassLive = false;
 let timer: ReturnType<typeof setInterval> | null = null;
 let simTimer: ReturnType<typeof setInterval> | null = null;
 let movingAccumMs = 0;
@@ -486,9 +489,45 @@ export function hydrateActiveRun(): Promise<boolean> {
   return hydratePromise;
 }
 
+/** Walk/jog threshold — above this, heading is GPS course (GMaps/Waze), not phone compass. */
+const COURSE_SPEED_MPS = 1.0;
+
+function wrapHeading(deg: number): number {
+  return ((deg % 360) + 360) % 360;
+}
+
+function headingDelta(from: number, to: number): number {
+  return ((to - from + 540) % 360) - 180;
+}
+
+function isMovingForCourse(): boolean {
+  return emaSpeedMps >= COURSE_SPEED_MPS;
+}
+
+function smoothHeadingTo(next: number): number {
+  const wrapped = wrapHeading(next);
+  const prev = state.headingDeg;
+  if (prev == null) return wrapped;
+  const d = headingDelta(prev, wrapped);
+  if (Math.abs(d) > 90) return wrapped;
+  return wrapHeading(prev + d * 0.45);
+}
+
+function applyCompassHeading(deg: number): void {
+  compassLive = true;
+  // Moving: course-up from GPS / path, like Google Maps & Waze — not phone twist.
+  if (isMovingForCourse()) return;
+  const next = smoothHeadingTo(deg);
+  if (state.headingDeg != null && Math.abs(headingDelta(state.headingDeg, next)) < 2) return;
+  set({ headingDeg: next });
+}
+
 function stopEverything() {
   watchSub?.remove();
   watchSub = null;
+  headingSub?.remove();
+  headingSub = null;
+  compassLive = false;
   if (timer) clearInterval(timer);
   timer = null;
   if (simTimer) clearInterval(simTimer);
@@ -510,26 +549,42 @@ function startTimer() {
   }, 1000);
 }
 
-async function startWatch() {
-  if (watchSub || state.simulating) return;
+async function startHeadingWatch() {
+  if (headingSub || state.simulating) return;
   try {
-    watchSub = await Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.BestForNavigation,
-        timeInterval: 1000,
-        distanceInterval: 2,
-      },
-      (fix) => ingestFix({
-        lat: fix.coords.latitude,
-        lng: fix.coords.longitude,
-        accuracy: fix.coords.accuracy ?? null,
-        heading: fix.coords.heading != null && fix.coords.heading >= 0 ? fix.coords.heading : null,
-        at: fix.timestamp,
-      }),
-    );
+    headingSub = await Location.watchHeadingAsync((h) => {
+      const deg = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
+      if (typeof deg !== 'number' || deg < 0 || Number.isNaN(deg)) return;
+      applyCompassHeading(deg);
+    });
   } catch {
-    /* keep the timer running; the HUD shows the last known point */
+    compassLive = false;
   }
+}
+
+async function startWatch() {
+  if (state.simulating) return;
+  if (!watchSub) {
+    try {
+      watchSub = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 1000,
+          distanceInterval: 2,
+        },
+        (fix) => ingestFix({
+          lat: fix.coords.latitude,
+          lng: fix.coords.longitude,
+          accuracy: fix.coords.accuracy ?? null,
+          heading: fix.coords.heading != null && fix.coords.heading >= 0 ? fix.coords.heading : null,
+          at: fix.timestamp,
+        }),
+      );
+    } catch {
+      /* keep the timer running; the HUD shows the last known point */
+    }
+  }
+  await startHeadingWatch();
 }
 
 type Fix = { lat: number; lng: number; accuracy: number | null; heading: number | null; at: number };
@@ -589,14 +644,20 @@ function ingestFix(fix: Fix) {
   }
 
   const prev = state.path[state.path.length - 1] ?? state.current;
-  let heading = fix.heading ?? state.headingDeg;
+  let heading = state.headingDeg;
+  const stepped = Boolean(prev && haversineM(prev, point) >= 3);
+  if (isMovingForCourse() || stepped) {
+    if (fix.heading != null) heading = smoothHeadingTo(fix.heading);
+    else if (prev && stepped) heading = smoothHeadingTo(bearingDeg(prev, point));
+  } else if (!compassLive && fix.heading != null) {
+    heading = smoothHeadingTo(fix.heading);
+  }
 
   if (state.phase === 'running' && prev) {
     const d = haversineM(prev, point);
     const dt = lastFixAt ? (fix.at - lastFixAt) / 1000 : 1;
     const speed = dt > 0 ? d / dt : 0;
     if (d >= MIN_STEP_M && speed <= MAX_SPEED_MPS) {
-      if (d >= 3) heading = bearingDeg(prev, point);
       const distanceM = state.distanceM + d;
       const path = state.path.length ? [...state.path, point] : [prev, point];
       const completedTarget = state.completedTarget || distanceM >= state.targetMeters;
@@ -667,6 +728,9 @@ function setSimMode(mode: SimMode): void {
   }
   watchSub?.remove();
   watchSub = null;
+  headingSub?.remove();
+  headingSub = null;
+  compassLive = false;
   set({ simulating: true, simMode: mode });
 
   const line: LatLng[] =

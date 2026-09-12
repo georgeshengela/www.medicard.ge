@@ -1,11 +1,10 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
-import { Asset } from 'expo-asset';
 import Constants from 'expo-constants';
 import { ka } from '@/i18n/ka';
 import type { LatLng } from '@/lib/run/geo';
-import { buildRunMapHtml } from '@/lib/run/mapHtml';
+import { buildRunMapHtml, RUN_MAP_HTML_REV } from '@/lib/run/mapHtml';
 import { peekMapboxToken, resolveMapboxToken } from '@/lib/run/mapbox';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
@@ -29,15 +28,6 @@ type Props = {
   mapDark?: boolean;
 };
 
-const _mariaAsset = Asset.fromModule(require('../../../assets/characters/maria.glb'));
-
-/** Classic UMD builds — three@0.148+ removed examples/js; 0.147 is the last with GLTFLoader UMD. */
-const THREE_CDN = {
-  three: 'https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js',
-  gltf: 'https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js',
-  meshopt: 'https://cdn.jsdelivr.net/npm/meshoptimizer@0.22.0/meshopt_decoder.js',
-};
-
 function metroBaseUrl(): string {
   const host =
     Constants.expoConfig?.hostUri ??
@@ -47,16 +37,9 @@ function metroBaseUrl(): string {
   return `http://${bare}/`;
 }
 
-async function assetHttpUrl(asset: Asset): Promise<string> {
-  await asset.downloadAsync();
-  const url = asset.uri;
-  if (!url) throw new Error('asset.uri empty');
-  return url;
-}
-
 /**
- * Mapbox GL JS map in a WebView. Maria GLB is rendered with Three.js (classic UMD
- * scripts served by Metro — RN WebView does not run <script type="module">).
+ * Mapbox GL JS map in a WebView. Location uses the original teal puck
+ * (3D character overlay is parked for now).
  */
 export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
   { center, onReady, onFollowChange, onError, style, mapDark },
@@ -91,7 +74,7 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
       token.startsWith('pk.')
         ? buildRunMapHtml({ token, center: initialCenter.current, dark: initialDark.current })
         : '',
-    [token],
+    [token, RUN_MAP_HTML_REV],
   );
 
   const send = useCallback((msg: RunMapMessage) => {
@@ -104,37 +87,6 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
   useEffect(() => {
     if (ready) send({ type: 'theme', dark });
   }, [dark, ready, send]);
-
-  useEffect(() => {
-    if (!ready) return;
-    let cancelled = false;
-
-    async function bootCharacter() {
-      try {
-        const character = await assetHttpUrl(_mariaAsset);
-        if (cancelled) return;
-
-        // Cache-bust so Metro doesn't keep serving a pre-fix GLB after bake.
-        const characterUrl = character.includes('?') ? `${character}&v=4` : `${character}?v=4`;
-
-        console.log('[RunMap] boot character', characterUrl.slice(0, 120));
-
-        web.current?.injectJavaScript(
-          `window.__bootCharacterLibs && window.__bootCharacterLibs(${JSON.stringify({
-            ...THREE_CDN,
-            character: characterUrl,
-          })}); true;`,
-        );
-      } catch (e) {
-        if (!cancelled) console.warn('[RunMap] character boot failed:', e);
-      }
-    }
-
-    void bootCharacter();
-    return () => {
-      cancelled = true;
-    };
-  }, [ready]);
 
   const onMessage = useCallback(
     (e: WebViewMessageEvent) => {

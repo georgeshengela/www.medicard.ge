@@ -27,6 +27,7 @@ export const STRESS_LEVELS: CycleStressLevel[] = ['low', 'medium', 'high'];
 export const EXERCISE_LEVELS: CycleExerciseLevel[] = ['none', 'light', 'moderate', 'intense'];
 export const CAFFEINE_LEVELS: CycleCaffeineLevel[] = ['none', 'low', 'moderate', 'high'];
 export const ALCOHOL_LEVELS: CycleAlcoholLevel[] = ['none', 'light', 'moderate', 'heavy'];
+export const ENERGY_LEVELS = ['very_low', 'low', 'normal', 'high', 'very_high'] as const;
 
 export const PAIN_MANAGED_SYMPTOM_IDS = new Set([
   'cramps',
@@ -64,8 +65,8 @@ export function caffeineLabel(value: string): string {
   return ka.cycle.caffeineLevel[value as CycleCaffeineLevel] ?? value;
 }
 
-export function alcoholLabel(value: string): string {
-  return ka.cycle.alcoholLevel[value as CycleAlcoholLevel] ?? value;
+export function energyLabel(value: string): string {
+  return ka.cycle.energyLevel[value as keyof typeof ka.cycle.energyLevel] ?? value;
 }
 
 export function formatPainEntry(entry: CyclePainEntry): string {

@@ -28,11 +28,73 @@ import { parseAnalyticsRange, tbilisiYmd } from './adminAnalyticsRange.js';
 
 describe('app version parsing', () => {
   it('parses Expo versions and compares them', () => {
-    assert.deepEqual(parseAppVersion('24.0.0'), { raw: '24.0.0', major: 24, minor: 0, patch: 0 });
+    assert.deepEqual(parseAppVersion('24.0.0'), {
+      raw: '24.0.0',
+      major: 24,
+      minor: 0,
+      patch: 0,
+      build: 0,
+      revision: 0,
+      epoch: 0,
+    });
     assert.equal(compareAppVersions('23.0.3', '24.0.0') < 0, true);
     assert.equal(isAppVersionBelow('23.0.2', '23.0.3'), true);
     assert.equal(isAppVersionBelow('24.0.0', '23.0.3'), false);
     assert.equal(parseAppVersion('nope'), null);
+  });
+
+  it('parses public three-part 1.0.66 as a newer epoch than historic 23–65 builds', () => {
+    assert.deepEqual(parseAppVersion('1.0.66'), {
+      raw: '1.0.66',
+      major: 1,
+      minor: 0,
+      patch: 66,
+      build: 0,
+      revision: 0,
+      epoch: 1,
+    });
+    assert.equal(isAppVersionBelow('1.0.66', '23.0.3'), false);
+    assert.equal(isAppVersionBelow('65.0.3', '1.0.66'), true);
+    assert.equal(parseAppVersion('1.0.0')?.epoch, 0);
+  });
+
+  it('still parses historic five-part internal versions', () => {
+    assert.deepEqual(parseAppVersion('1.0.0.0.1'), {
+      raw: '1.0.0.0.1',
+      major: 1,
+      minor: 0,
+      patch: 0,
+      build: 0,
+      revision: 1,
+      epoch: 1,
+    });
+    assert.equal(isAppVersionBelow('1.0.0.0.1', '23.0.3'), false);
+    assert.equal(isAppVersionBelow('65.0.3', '1.0.0.0.1'), true);
+    assert.equal(isAppVersionBelow('1.0.0.0.1', '1.0.0.0.2'), true);
+    assert.equal(isAppVersionBelow('1.0.0.0.2', '1.0.0.1.0'), true);
+    assert.deepEqual(parseAppVersion('1.0.0.7.65'), {
+      raw: '1.0.0.7.65',
+      major: 1,
+      minor: 0,
+      patch: 0,
+      build: 7,
+      revision: 65,
+      epoch: 1,
+    });
+    assert.deepEqual(parseAppVersion('1.0.0.7.66'), {
+      raw: '1.0.0.7.66',
+      major: 1,
+      minor: 0,
+      patch: 0,
+      build: 7,
+      revision: 66,
+      epoch: 1,
+    });
+    assert.equal(isAppVersionBelow('1.0.0.7.66', '23.0.3'), false);
+    assert.equal(isAppVersionBelow('1.0.0.7.66', '1.0.0.7.65'), false);
+    // iOS store compression 1.7.66 is NOT a minAppVersion — it would block the five-part identity.
+    assert.equal(isAppVersionBelow('1.0.0.7.66', '1.7.66'), true);
+    assert.equal(isAppVersionBelow('1.0.0.7.66', '1.0.0'), false);
   });
 });
 

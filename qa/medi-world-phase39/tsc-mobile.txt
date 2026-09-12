@@ -1,0 +1,200 @@
+﻿app/(auth)/profile-setup/privacy.tsx(114,22): error TS2339: Property 'paragraphs' does not exist on type '{ readonly title: "1. ßâòßâÿßâ£ ßâÉßâáßâÿßâí ßâ₧ßâÉßâíßâúßâ«ßâÿßâíßâ¢ßâÆßâößâæßâößâÜßâÿ ßâùßâÑßâòßâößâ£ßâí ßâ¢ßâ¥ßâ£ßâÉßâ¬ßâößâ¢ßâößâæßâûßâö"; readonly intro: "MEDICARD-ßâÿßâí ßâñßâÉßâáßâÆßâÜßâößâæßâ¿ßâÿ ßâ₧ßâößâáßâíßâ¥ßâ£ßâÉßâÜßâúßâáßâÿ ßâ¢ßâ¥ßâ£ßâÉßâ¬ßâößâ¢ßâößâæßâÿßâí ßâôßâÉßâ¢ßâúßâ¿ßâÉßâòßâößâæßâÉßâûßâö ßâ₧ßâÉßâíßâúßâ«ßâÿßâíßâ¢ßâÆßâößâæßâößâÜßâÿ ßâ₧ßâÿßâáßâÿ/ßâ¥ßâáßâÆßâÉßâ£ßâÿßâûßâÉßâ¬ßâÿßâÉßâÉ:"; readonly paragraphs: readonly [...]; readonly bullets: readonly [...]; } | ... 42 more ... | { ...; }'.
+  Property 'paragraphs' does not exist on type '{ readonly title: "3. ßâáßâÉ ßâ¢ßâ¥ßâ£ßâÉßâ¬ßâößâ¢ßâößâæßâí ßâ¿ßâößâÿßâ½ßâÜßâößâæßâÉ ßâòßâÉßâÆßâáßâ¥ßâòßâößâæßâôßâößâù"; readonly intro: "MEDICARD-ßâÿßâí ßâÆßâÉßâ¢ßâ¥ßâºßâößâ£ßâößâæßâÿßâíßâÉßâí ßâôßâÉßâ¢ßâúßâ¿ßâÉßâòßâößâæßâúßâÜßâÿ ßâ¢ßâ¥ßâ£ßâÉßâ¬ßâößâ¢ßâößâæßâÿßâí ßâ¢ßâ¥ßâ¬ßâúßâÜßâ¥ßâæßâÉ ßâôßâÉßâ¢ßâ¥ßâÖßâÿßâôßâößâæßâúßâÜßâÿßâÉ ßâÿßâ¢ßâÉßâûßâö, ßâáßâ¥ßâ¢ßâößâÜ ßâñßâúßâ£ßâÑßâ¬ßâÿßâößâæßâí ßâÿßâºßâößâ£ßâößâæßâù ßâôßâÉ ßâáßâÉ ßâÿßâ£ßâñßâ¥ßâáßâ¢ßâÉßâ¬ßâÿßâÉßâí ßâÉßâ¢ßâÉßâóßâößâæßâù ßâÉßâ₧ßâÜßâÿßâÖßâÉßâ¬ßâÿßâÉßâ¿ßâÿ."; }'.
+app/(auth)/profile-setup/privacy.tsx(114,39): error TS7006: Parameter 'p' implicitly has an 'any' type.
+app/(auth)/profile-setup/privacy.tsx(119,22): error TS2339: Property 'bullets' does not exist on type '{ readonly title: "1. ßâòßâÿßâ£ ßâÉßâáßâÿßâí ßâ₧ßâÉßâíßâúßâ«ßâÿßâíßâ¢ßâÆßâößâæßâößâÜßâÿ ßâùßâÑßâòßâößâ£ßâí ßâ¢ßâ¥ßâ£ßâÉßâ¬ßâößâ¢ßâößâæßâûßâö"; readonly intro: "MEDICARD-ßâÿßâí ßâñßâÉßâáßâÆßâÜßâößâæßâ¿ßâÿ ßâ₧ßâößâáßâíßâ¥ßâ£ßâÉßâÜßâúßâáßâÿ ßâ¢ßâ¥ßâ£ßâÉßâ¬ßâößâ¢ßâößâæßâÿßâí ßâôßâÉßâ¢ßâúßâ¿ßâÉßâòßâößâæßâÉßâûßâö ßâ₧ßâÉßâíßâúßâ«ßâÿßâíßâ¢ßâÆßâößâæßâößâÜßâÿ ßâ₧ßâÿßâáßâÿ/ßâ¥ßâáßâÆßâÉßâ£ßâÿßâûßâÉßâ¬ßâÿßâÉßâÉ:"; readonly paragraphs: readonly [...]; readonly bullets: readonly [...]; } | ... 42 more ... | { ...; }'.
+  Property 'bullets' does not exist on type '{ readonly title: "2. ßâáßâÉ ßâÉßâáßâÿßâí ßâ₧ßâößâáßâíßâ¥ßâ£ßâÉßâÜßâúßâáßâÿ ßâ¢ßâ¥ßâ£ßâÉßâ¬ßâößâ¢ßâÿ"; readonly intro: "ßâ₧ßâößâáßâíßâ¥ßâ£ßâÉßâÜßâúßâáßâÿ ßâ¢ßâ¥ßâ£ßâÉßâ¬ßâößâ¢ßâÿßâÉ ßâ£ßâößâæßâÿßâíßâ¢ßâÿßâößâáßâÿ ßâÿßâ£ßâñßâ¥ßâáßâ¢ßâÉßâ¬ßâÿßâÉ, ßâáßâ¥ßâ¢ßâößâÜßâÿßâ¬ ßâ₧ßâÿßâáßâôßâÉßâ₧ßâÿßâá ßâÉßâ£ ßâÿßâáßâÿßâæßâÉßâô ßâúßâÖßâÉßâòßâ¿ßâÿßâáßâôßâößâæßâÉ ßâÿßâôßâößâ£ßâóßâÿßâñßâÿßâ¬ßâÿßâáßâößâæßâúßâÜ ßâÉßâ£ ßâÿßâôßâößâ£ßâóßâÿßâñßâÿßâ¬ßâÿßâáßâößâæßâÉßâô ßâñßâÿßâûßâÿßâÖßâúßâá ßâ₧ßâÿßâáßâí."; readonly paragraphs: readonly [...]; }'.
+app/(auth)/profile-setup/privacy.tsx(119,36): error TS7006: Parameter 'b' implicitly has an 'any' type.
+app/(tabs)/profile.tsx(305,48): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+app/(tabs)/profile.tsx(529,35): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+app/(tabs)/profile.tsx(568,11): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+app/_layout.tsx(180,95): error TS2493: Tuple type '[string]' of length '1' has no element at index '1'.
+app/_layout.tsx(226,14): error TS7006: Parameter 'last' implicitly has an 'any' type.
+app/_layout.tsx(231,69): error TS7006: Parameter 'notification' implicitly has an 'any' type.
+app/_layout.tsx(261,72): error TS7006: Parameter 'response' implicitly has an 'any' type.
+app/cycle/index.tsx(231,9): error TS2322: Type 'CycleMode' is not assignable to type 'null | undefined'.
+  Type '"TRACK_PERIOD"' is not assignable to type 'null | undefined'.
+app/cycle/index.tsx(291,9): error TS2322: Type 'CycleMode' is not assignable to type 'null | undefined'.
+  Type '"TRACK_PERIOD"' is not assignable to type 'null | undefined'.
+app/cycle/index.tsx(343,9): error TS2322: Type 'CycleMode' is not assignable to type 'null | undefined'.
+  Type '"TRACK_PERIOD"' is not assignable to type 'null | undefined'.
+app/cycle/index.tsx(476,19): error TS18047: 'bundle' is possibly 'null'.
+app/cycle/pregnancy/care-plan.tsx(309,9): error TS2322: Type 'string | null' is not assignable to type '"COMPLETED" | "PLANNED" | "DISMISSED" | "NOT_APPLICABLE" | "CLEAR" | null'.
+  Type 'string' is not assignable to type '"COMPLETED" | "PLANNED" | "DISMISSED" | "NOT_APPLICABLE" | "CLEAR" | null'.
+app/cycle/pregnancy/timeline.tsx(128,13): error TS2345: Argument of type '{ available: boolean; reviewRequired: boolean; currentWeek: null; currentDay: null; trimester: null; progress: null; currentMarker: null; currentMilestoneId: null; nextMilestone: null; beyondStandardTerm: boolean; ... 5 more ...; sourceSet: string; } | { ...; } | null' is not assignable to parameter of type 'SetStateAction<CyclePregnancyTimeline | null>'.
+  Type '{ available: boolean; reviewRequired: boolean; currentWeek: null; currentDay: null; trimester: null; progress: null; currentMarker: null; currentMilestoneId: null; nextMilestone: null; beyondStandardTerm: boolean; ... 5 more ...; sourceSet: string; }' is not assignable to type 'SetStateAction<CyclePregnancyTimeline | null>'.
+    Type '{ available: boolean; reviewRequired: boolean; currentWeek: null; currentDay: null; trimester: null; progress: null; currentMarker: null; currentMilestoneId: null; nextMilestone: null; beyondStandardTerm: boolean; ... 5 more ...; sourceSet: string; }' is not assignable to type 'CyclePregnancyTimeline'.
+      Types of property 'trimesterBands' are incompatible.
+        The type 'readonly (Readonly<{ trimester: 1; fromWeek: 0; toWeek: 12; }> | Readonly<{ trimester: 2; fromWeek: 13; toWeek: 26; }> | Readonly<{ trimester: 3; fromWeek: 27; toWeek: 40; }>)[]' is 'readonly' and cannot be assigned to the mutable type '{ trimester: number; fromWeek: number; toWeek: number; }[]'.
+app/cycle/summary.tsx(203,70): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ ka: string; en: string; fr: string; ru: string; }'.
+  No index signature with a parameter of type 'string' was found on type '{ ka: string; en: string; fr: string; ru: string; }'.
+app/cycle/week/[week].tsx(147,23): error TS7006: Parameter 'key' implicitly has an 'any' type.
+app/medi-quest/index.tsx(89,13): error TS2345: Argument of type '() => () => boolean' is not assignable to parameter of type 'EffectCallback'.
+  Type '() => boolean' is not assignable to type 'void | Destructor'.
+    Type '() => boolean' is not assignable to type 'Destructor'.
+      Type 'boolean' is not assignable to type 'void | { [UNDEFINED_VOID_ONLY]: never; }'.
+app/medi-quest/index.tsx(103,13): error TS2345: Argument of type '() => () => boolean' is not assignable to parameter of type 'EffectCallback'.
+  Type '() => boolean' is not assignable to type 'void | Destructor'.
+    Type '() => boolean' is not assignable to type 'Destructor'.
+      Type 'boolean' is not assignable to type 'void | { [UNDEFINED_VOID_ONLY]: never; }'.
+app/medi-quest/rewards/[id].tsx(65,12): error TS2304: Cannot find name 'trackQuestEvent'.
+app/medi-quest/rewards/[id].tsx(85,10): error TS2304: Cannot find name 'trackQuestEvent'.
+app/medi-quest/rewards/[id].tsx(132,14): error TS2304: Cannot find name 'trackQuestEvent'.
+app/medi-quest/rewards/[id].tsx(142,12): error TS2304: Cannot find name 'trackQuestEvent'.
+app/medi-quest/rewards/[id].tsx(144,35): error TS2304: Cannot find name 'ApiError'.
+app/medi-quest/rewards/[id].tsx(144,47): error TS18046: 'err' is of type 'unknown'.
+app/medi-quest/rewards/[id].tsx(144,58): error TS18046: 'err' is of type 'unknown'.
+app/medi-quest/rewards/[id].tsx(146,12): error TS2304: Cannot find name 'trackQuestEvent'.
+app/medi-quest/rewards/[id].tsx(157,36): error TS2304: Cannot find name 'QUEST'.
+app/medi-quest/rewards/[id].tsx(197,27): error TS2304: Cannot find name 'QUEST'.
+app/medi-quest/rewards/[id].tsx(209,39): error TS2304: Cannot find name 'QUEST'.
+app/medi-quest/rewards/[id].tsx(209,57): error TS2304: Cannot find name 'QUEST'.
+app/medi-quest/rewards/[id].tsx(399,23): error TS2304: Cannot find name 'QUEST'.
+app/medi-quest/rewards/index.tsx(66,13): error TS2345: Argument of type '() => () => boolean' is not assignable to parameter of type 'EffectCallback'.
+  Type '() => boolean' is not assignable to type 'void | Destructor'.
+    Type '() => boolean' is not assignable to type 'Destructor'.
+      Type 'boolean' is not assignable to type 'void | { [UNDEFINED_VOID_ONLY]: never; }'.
+app/medi-quest/wallet.tsx(53,13): error TS2345: Argument of type '() => () => boolean' is not assignable to parameter of type 'EffectCallback'.
+  Type '() => boolean' is not assignable to type 'void | Destructor'.
+    Type '() => boolean' is not assignable to type 'Destructor'.
+      Type 'boolean' is not assignable to type 'void | { [UNDEFINED_VOID_ONLY]: never; }'.
+app/profile/privacy.tsx(12,7): error TS4104: The type 'readonly [{ readonly title: "1. ßâòßâÿßâ£ ßâÉßâáßâÿßâí ßâ₧ßâÉßâíßâúßâ«ßâÿßâíßâ¢ßâÆßâößâæßâößâÜßâÿ ßâùßâÑßâòßâößâ£ßâí ßâ¢ßâ¥ßâ£ßâÉßâ¬ßâößâ¢ßâößâæßâûßâö"; readonly intro: "MEDICARD-ßâÿßâí ßâñßâÉßâáßâÆßâÜßâößâæßâ¿ßâÿ ßâ₧ßâößâáßâíßâ¥ßâ£ßâÉßâÜßâúßâáßâÿ ßâ¢ßâ¥ßâ£ßâÉßâ¬ßâößâ¢ßâößâæßâÿßâí ßâôßâÉßâ¢ßâúßâ¿ßâÉßâòßâößâæßâÉßâûßâö ßâ₧ßâÉßâíßâúßâ«ßâÿßâíßâ¢ßâÆßâößâæßâößâÜßâÿ ßâ₧ßâÿßâáßâÿ/ßâ¥ßâáßâÆßâÉßâ£ßâÿßâûßâÉßâ¬ßâÿßâÉßâÉ:"; readonly paragraphs: readonly [...]; readonly bullets: readonly [...]; }, ... 42 more ..., { ...; }]' is 'readonly' and cannot be assigned to the mutable type 'LegalSection[]'.
+src/components/AnalysisModule.tsx(148,23): error TS2322: Type 'ImagePickerAsset' is not assignable to type '{ uri: string; name?: string | undefined; fileName?: string | undefined; mimeType?: string | null | undefined; size?: number | null | undefined; fileSize?: number | null | undefined; }'.
+  Types of property 'fileName' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.
+src/components/AnalysisModule.tsx(165,22): error TS2345: Argument of type 'ImagePickerAsset[]' is not assignable to parameter of type '{ uri: string; name?: string | undefined; fileName?: string | undefined; mimeType?: string | null | undefined; size?: number | null | undefined; fileSize?: number | null | undefined; }[]'.
+  Type 'ImagePickerAsset' is not assignable to type '{ uri: string; name?: string | undefined; fileName?: string | undefined; mimeType?: string | null | undefined; size?: number | null | undefined; fileSize?: number | null | undefined; }'.
+    Types of property 'fileName' are incompatible.
+      Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+        Type 'null' is not assignable to type 'string | undefined'.
+src/components/cycle/CycleDayDetailsSheet.tsx(76,70): error TS18047: 'log.notes' is possibly 'null'.
+src/components/cycle/CycleMoreTracking.tsx(176,12): error TS2304: Cannot find name 'pregnancy'.
+src/components/cycle/CycleObservationFields.tsx(18,3): error TS2305: Module '"@/lib/cycleObservations"' has no exported member 'alcoholLabel'.
+src/components/cycle/CyclePregnancyTimelinePeek.tsx(42,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ width: string; height: number; borderRadius: number; backgroundColor: string; }' is not assignable to type 'StyleProp<ViewStyle>'.
+      Types of property 'width' are incompatible.
+        Type 'string' is not assignable to type 'DimensionValue | undefined'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ width: string; height: number; borderRadius: number; backgroundColor: string; }' is not assignable to type 'StyleProp<ViewStyle>'.
+      Types of property 'width' are incompatible.
+        Type 'string' is not assignable to type 'DimensionValue | undefined'.
+src/components/cycle/PregnancyCarePlannedPlace.tsx(68,12): error TS2345: Argument of type 'string | null | undefined' is not assignable to parameter of type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+src/components/dev/NotificationsDevLauncher.tsx(343,19): error TS2551: Property 'absoluteFillObject' does not exist on type 'typeof StyleSheet'. Did you mean 'absoluteFill'?
+src/components/lab/LabAlignCard.tsx(43,16): error TS2345: Argument of type '"ßâòßâÉßâÆßâáßâ¥ßâòßâößâæßâù ßâ¢ßâÉßâ⌐ßâòßâößâ£ßâößâæßâÜßâößâæßâíΓÇª" | "Medi ßâÖßâÉßâóßâÉßâÜßâ¥ßâÆßâí ßâÉßâôßâÉßâáßâößâæßâíΓÇª" | "ßâÆßâáßâÉßâñßâÿßâÖßâößâæßâí ßâòßâÉßâößâáßâùßâÿßâÉßâ£ßâößâæßâùΓÇª"' is not assignable to parameter of type 'SetStateAction<"ßâòßâÉßâÆßâáßâ¥ßâòßâößâæßâù ßâ¢ßâÉßâ⌐ßâòßâößâ£ßâößâæßâÜßâößâæßâíΓÇª">'.
+  Type '"Medi ßâÖßâÉßâóßâÉßâÜßâ¥ßâÆßâí ßâÉßâôßâÉßâáßâößâæßâíΓÇª"' is not assignable to type 'SetStateAction<"ßâòßâÉßâÆßâáßâ¥ßâòßâößâæßâù ßâ¢ßâÉßâ⌐ßâòßâößâ£ßâößâæßâÜßâößâæßâíΓÇª">'.
+src/components/lab/LabAlignCard.tsx(69,16): error TS2345: Argument of type '"Medi ßâÖßâÉßâóßâÉßâÜßâ¥ßâÆßâí ßâÉßâôßâÉßâáßâößâæßâíΓÇª"' is not assignable to parameter of type 'SetStateAction<"ßâòßâÉßâÆßâáßâ¥ßâòßâößâæßâù ßâ¢ßâÉßâ⌐ßâòßâößâ£ßâößâæßâÜßâößâæßâíΓÇª">'.
+src/components/lab/LabAlignCard.tsx(72,16): error TS2345: Argument of type '"ßâÆßâáßâÉßâñßâÿßâÖßâößâæßâí ßâòßâÉßâößâáßâùßâÿßâÉßâ£ßâößâæßâùΓÇª"' is not assignable to parameter of type 'SetStateAction<"ßâòßâÉßâÆßâáßâ¥ßâòßâößâæßâù ßâ¢ßâÉßâ⌐ßâòßâößâ£ßâößâæßâÜßâößâæßâíΓÇª">'.
+src/components/quest/HomeMediQuestSection.tsx(71,13): error TS2345: Argument of type '() => () => boolean' is not assignable to parameter of type 'EffectCallback'.
+  Type '() => boolean' is not assignable to type 'void | Destructor'.
+    Type '() => boolean' is not assignable to type 'Destructor'.
+      Type 'boolean' is not assignable to type 'void | { [UNDEFINED_VOID_ONLY]: never; }'.
+src/components/QuotaReadyHost.tsx(49,69): error TS7006: Parameter 'notification' implicitly has an 'any' type.
+src/components/ui/Input.tsx(81,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextInputProps): TextInput', gave the following error.
+    Type '{ outlineStyle?: "none" | undefined; backgroundColor?: string | undefined; flex: number; fontSize: number; lineHeight: number; fontFamily: string; color: string; paddingVertical: number; marginLeft: number; }' is not assignable to type 'Falsy | TextStyle | RecursiveArray<Falsy | TextStyle> | readonly (Falsy | TextStyle)[]'.
+      Type '{ outlineStyle?: "none" | undefined; backgroundColor?: string | undefined; flex: number; fontSize: number; lineHeight: number; fontFamily: string; color: string; paddingVertical: number; marginLeft: number; }' is not assignable to type 'undefined'.
+  Overload 2 of 2, '(props: TextInputProps, context: any): TextInput', gave the following error.
+    Type '{ outlineStyle?: "none" | undefined; backgroundColor?: string | undefined; flex: number; fontSize: number; lineHeight: number; fontFamily: string; color: string; paddingVertical: number; marginLeft: number; }' is not assignable to type 'Falsy | TextStyle | RecursiveArray<Falsy | TextStyle> | readonly (Falsy | TextStyle)[]'.
+      Type '{ outlineStyle?: "none" | undefined; backgroundColor?: string | undefined; flex: number; fontSize: number; lineHeight: number; fontFamily: string; color: string; paddingVertical: number; marginLeft: number; }' is not assignable to type 'undefined'.
+src/lib/appPermissions.ts(81,38): error TS2503: Cannot find namespace 'Notifications'.
+src/lib/cycleAnalytics.ts(28,60): error TS2339: Property 'confidence' does not exist on type 'CycleDoctorSummary'.
+src/lib/cycleLogFacts.ts(4,3): error TS2305: Module '"@/lib/cycleObservations"' has no exported member 'alcoholLabel'.
+src/lib/cycleLogFacts.ts(191,94): error TS2345: Argument of type 'string | null | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/cycleObservationExplainabilityCopy.ts(62,50): error TS2345: Argument of type '"ßâæßâ¥ßâÜßâ¥ ßâ¿ßâößâñßâÉßâíßâößâæßâúßâÜ ßâ₧ßâößâáßâÿßâ¥ßâôßâ¿ßâÿ ßâößâí ßâ£ßâÿßâ¿ßâÉßâ£ßâÿ ßâúßâñßâáßâ¥ ßâ¢ßâößâó ßâ₧ßâÉßâíßâúßâ«ßâÿßâÉßâ£ ßâôßâªßâößâûßâö ßâ¢ßâ¥ßâ£ßâÿßâ¿ßâ£ßâö. ßâößâí ßâ¢ßâ«ßâ¥ßâÜßâ¥ßâô ßâ¿ßâößâ£ßâí ßâ⌐ßâÉßâ£ßâÉßâ¼ßâößâáßâößâæßâí ßâÉßâªßâ¼ßâößâáßâí."' is not assignable to parameter of type '"ßâößâí ßâáßâÿßâ¬ßâ«ßâòßâößâæßâÿ ßâ¢ßâ«ßâ¥ßâÜßâ¥ßâô ßâÿßâ¢ ßâôßâªßâößâößâæßâí ßâÿßâºßâößâ£ßâößâæßâí, ßâáßâ¥ßâ¬ßâÉ ßâÉßâ¢ ßâ£ßâÿßâ¿ßâÉßâ£ßâí ßâúßâ₧ßâÉßâíßâúßâ«ßâö." | "ßâúßâ₧ßâÉßâíßâúßâ«ßâ¥ ßâôßâªßâö ßâÉßâ¢ ßâáßâÿßâ¬ßâ«ßâòßâ¿ßâÿ ßâÉßâá ßâ¿ßâößâôßâÿßâí ΓÇö ßâÿßâí ┬½ßâÉßâá ßâÿßâºßâ¥┬╗-ßâô ßâÉßâá ßâÿßâùßâòßâÜßâößâæßâÉ." | "┬½ßâôßâªßâößâí ßâÿßâºßâ¥┬╗ ßâ₧ßâÉßâíßâúßâ«ßâÿßâÉßâ£ ßâôßâªßâößâô ßâÿßâùßâòßâÜßâößâæßâÉ." | "┬½ßâôßâªßâößâí ßâÉßâá ßâÿßâºßâ¥┬╗ ßâ₧ßâÉßâíßâúßâ«ßâÿßâÉßâ£ ßâôßâªßâößâô ßâÿßâùßâòßâÜßâößâæßâÉ." | "ßâ¢ßâÉßâÆßâÉßâÜßâÿßâùßâÉßâô, 10-ßâôßâÉßâ£ 4 ßâ£ßâÿßâ¿ßâ£ßâÉßâòßâí: ßâÉßâ¢ ßâ£ßâÿßâ¿ßâÉßâ£ßâí 10 ßâôßâªßâößâí ßâúßâ₧ßâÉßâíßâúßâ«ßâö ßâôßâÉ 4-ßâ¿ßâÿ ßâ¢ßâ¥ßâ£ßâÿßâ¿ßâ£ßâö, ßâáßâ¥ßâ¢ ßâÿßâºßâ¥. ßâùßâòßâÿßâí ßâºßâòßâößâÜßâÉ ßâôßâªßâö ßâÉßâá ßâÿßâùßâòßâÜßâößâæßâÉ."'.
+src/lib/cycleObservationExplainabilityCopy.ts(63,49): error TS2345: Argument of type '"ßâæßâ¥ßâÜßâ¥ ßâ¿ßâößâñßâÉßâíßâößâæßâúßâÜ ßâ₧ßâößâáßâÿßâ¥ßâôßâ¿ßâÿ ßâößâí ßâ£ßâÿßâ¿ßâÉßâ£ßâÿ ßâúßâñßâáßâ¥ ßâ£ßâÉßâÖßâÜßâößâæ ßâ₧ßâÉßâíßâúßâ«ßâÿßâÉßâ£ ßâôßâªßâößâûßâö ßâ¢ßâ¥ßâ£ßâÿßâ¿ßâ£ßâö. ßâößâí ßâ¢ßâ«ßâ¥ßâÜßâ¥ßâô ßâ¿ßâößâ£ßâí ßâ⌐ßâÉßâ£ßâÉßâ¼ßâößâáßâößâæßâí ßâÉßâªßâ¼ßâößâáßâí."' is not assignable to parameter of type '"ßâößâí ßâáßâÿßâ¬ßâ«ßâòßâößâæßâÿ ßâ¢ßâ«ßâ¥ßâÜßâ¥ßâô ßâÿßâ¢ ßâôßâªßâößâößâæßâí ßâÿßâºßâößâ£ßâößâæßâí, ßâáßâ¥ßâ¬ßâÉ ßâÉßâ¢ ßâ£ßâÿßâ¿ßâÉßâ£ßâí ßâúßâ₧ßâÉßâíßâúßâ«ßâö." | "ßâúßâ₧ßâÉßâíßâúßâ«ßâ¥ ßâôßâªßâö ßâÉßâ¢ ßâáßâÿßâ¬ßâ«ßâòßâ¿ßâÿ ßâÉßâá ßâ¿ßâößâôßâÿßâí ΓÇö ßâÿßâí ┬½ßâÉßâá ßâÿßâºßâ¥┬╗-ßâô ßâÉßâá ßâÿßâùßâòßâÜßâößâæßâÉ." | "┬½ßâôßâªßâößâí ßâÿßâºßâ¥┬╗ ßâ₧ßâÉßâíßâúßâ«ßâÿßâÉßâ£ ßâôßâªßâößâô ßâÿßâùßâòßâÜßâößâæßâÉ." | "┬½ßâôßâªßâößâí ßâÉßâá ßâÿßâºßâ¥┬╗ ßâ₧ßâÉßâíßâúßâ«ßâÿßâÉßâ£ ßâôßâªßâößâô ßâÿßâùßâòßâÜßâößâæßâÉ." | "ßâ¢ßâÉßâÆßâÉßâÜßâÿßâùßâÉßâô, 10-ßâôßâÉßâ£ 4 ßâ£ßâÿßâ¿ßâ£ßâÉßâòßâí: ßâÉßâ¢ ßâ£ßâÿßâ¿ßâÉßâ£ßâí 10 ßâôßâªßâößâí ßâúßâ₧ßâÉßâíßâúßâ«ßâö ßâôßâÉ 4-ßâ¿ßâÿ ßâ¢ßâ¥ßâ£ßâÿßâ¿ßâ£ßâö, ßâáßâ¥ßâ¢ ßâÿßâºßâ¥. ßâùßâòßâÿßâí ßâºßâòßâößâÜßâÉ ßâôßâªßâö ßâÉßâá ßâÿßâùßâòßâÜßâößâæßâÉ."'.
+src/lib/cycleObservationExplainabilityCopy.ts(64,46): error TS2345: Argument of type '"ßâ¥ßâáßâÿßâòßâö ßâ₧ßâößâáßâÿßâ¥ßâôßâÿßâí ßâáßâÿßâ¬ßâ«ßâòßâößâæßâÿ ßâ⌐ßâÉßâ£ßâí, ßâ¢ßâÉßâÆßâáßâÉßâ¢ ßâÉßâ₧ßâÿ ßâÉßâ¢ ßâ¢ßâ¥ßâ£ßâÉßâ¬ßâößâ¢ßâößâæßâÿßâù ßâößâáßâù ßâ₧ßâößâáßâÿßâ¥ßâôßâí ßâ¢ßâößâ¥ßâáßâößâûßâö ßâ¢ßâößâóßâÉßâô ßâÉßâ£ ßâ£ßâÉßâÖßâÜßâößâæßâÉßâô ßâÉßâá ßâ¢ßâ¥ßâ£ßâÿßâ¿ßâ£ßâÉßâòßâí."' is not assignable to parameter of type '"ßâößâí ßâáßâÿßâ¬ßâ«ßâòßâößâæßâÿ ßâ¢ßâ«ßâ¥ßâÜßâ¥ßâô ßâÿßâ¢ ßâôßâªßâößâößâæßâí ßâÿßâºßâößâ£ßâößâæßâí, ßâáßâ¥ßâ¬ßâÉ ßâÉßâ¢ ßâ£ßâÿßâ¿ßâÉßâ£ßâí ßâúßâ₧ßâÉßâíßâúßâ«ßâö." | "ßâúßâ₧ßâÉßâíßâúßâ«ßâ¥ ßâôßâªßâö ßâÉßâ¢ ßâáßâÿßâ¬ßâ«ßâòßâ¿ßâÿ ßâÉßâá ßâ¿ßâößâôßâÿßâí ΓÇö ßâÿßâí ┬½ßâÉßâá ßâÿßâºßâ¥┬╗-ßâô ßâÉßâá ßâÿßâùßâòßâÜßâößâæßâÉ." | "┬½ßâôßâªßâößâí ßâÿßâºßâ¥┬╗ ßâ₧ßâÉßâíßâúßâ«ßâÿßâÉßâ£ ßâôßâªßâößâô ßâÿßâùßâòßâÜßâößâæßâÉ." | "┬½ßâôßâªßâößâí ßâÉßâá ßâÿßâºßâ¥┬╗ ßâ₧ßâÉßâíßâúßâ«ßâÿßâÉßâ£ ßâôßâªßâößâô ßâÿßâùßâòßâÜßâößâæßâÉ." | "ßâ¢ßâÉßâÆßâÉßâÜßâÿßâùßâÉßâô, 10-ßâôßâÉßâ£ 4 ßâ£ßâÿßâ¿ßâ£ßâÉßâòßâí: ßâÉßâ¢ ßâ£ßâÿßâ¿ßâÉßâ£ßâí 10 ßâôßâªßâößâí ßâúßâ₧ßâÉßâíßâúßâ«ßâö ßâôßâÉ 4-ßâ¿ßâÿ ßâ¢ßâ¥ßâ£ßâÿßâ¿ßâ£ßâö, ßâáßâ¥ßâ¢ ßâÿßâºßâ¥. ßâùßâòßâÿßâí ßâºßâòßâößâÜßâÉ ßâôßâªßâö ßâÉßâá ßâÿßâùßâòßâÜßâößâæßâÉ."'.
+src/lib/cycleObservationExplainabilityCopy.ts(65,14): error TS2345: Argument of type '"ßâößâí ßâ¢ßâ«ßâ¥ßâÜßâ¥ßâô ßâ¿ßâößâ£ßâí ßâ⌐ßâÉßâ£ßâÉßâ¼ßâößâáßâößâæßâí ßâÉßâªßâ¼ßâößâáßâí."' is not assignable to parameter of type '"ßâößâí ßâáßâÿßâ¬ßâ«ßâòßâößâæßâÿ ßâ¢ßâ«ßâ¥ßâÜßâ¥ßâô ßâÿßâ¢ ßâôßâªßâößâößâæßâí ßâÿßâºßâößâ£ßâößâæßâí, ßâáßâ¥ßâ¬ßâÉ ßâÉßâ¢ ßâ£ßâÿßâ¿ßâÉßâ£ßâí ßâúßâ₧ßâÉßâíßâúßâ«ßâö." | "ßâúßâ₧ßâÉßâíßâúßâ«ßâ¥ ßâôßâªßâö ßâÉßâ¢ ßâáßâÿßâ¬ßâ«ßâòßâ¿ßâÿ ßâÉßâá ßâ¿ßâößâôßâÿßâí ΓÇö ßâÿßâí ┬½ßâÉßâá ßâÿßâºßâ¥┬╗-ßâô ßâÉßâá ßâÿßâùßâòßâÜßâößâæßâÉ." | "┬½ßâôßâªßâößâí ßâÿßâºßâ¥┬╗ ßâ₧ßâÉßâíßâúßâ«ßâÿßâÉßâ£ ßâôßâªßâößâô ßâÿßâùßâòßâÜßâößâæßâÉ." | "┬½ßâôßâªßâößâí ßâÉßâá ßâÿßâºßâ¥┬╗ ßâ₧ßâÉßâíßâúßâ«ßâÿßâÉßâ£ ßâôßâªßâößâô ßâÿßâùßâòßâÜßâößâæßâÉ." | "ßâ¢ßâÉßâÆßâÉßâÜßâÿßâùßâÉßâô, 10-ßâôßâÉßâ£ 4 ßâ£ßâÿßâ¿ßâ£ßâÉßâòßâí: ßâÉßâ¢ ßâ£ßâÿßâ¿ßâÉßâ£ßâí 10 ßâôßâªßâößâí ßâúßâ₧ßâÉßâíßâúßâ«ßâö ßâôßâÉ 4-ßâ¿ßâÿ ßâ¢ßâ¥ßâ£ßâÿßâ¿ßâ£ßâö, ßâáßâ¥ßâ¢ ßâÿßâºßâ¥. ßâùßâòßâÿßâí ßâºßâòßâößâÜßâÉ ßâôßâªßâö ßâÉßâá ßâÿßâùßâòßâÜßâößâæßâÉ."'.
+src/lib/labAlign.ts(1,32): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/labExplain.ts(2,28): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/labExtract.ts(2,28): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/labExtract.ts(3,32): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/labExtract.ts(5,28): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/labMerge.ts(2,56): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/labNames.ts(2,28): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/medications.shared.ts(102,9): error TS2322: Type 'DoseStatus' is not assignable to type '"taken" | "skipped"'.
+  Type '"pending"' is not assignable to type '"taken" | "skipped"'.
+src/lib/mediNotificationActions.ts(73,32): error TS2503: Cannot find namespace 'Notifications'.
+src/lib/mediNotificationActions.ts(92,13): error TS2503: Cannot find namespace 'Notifications'.
+src/lib/mediNotificationBrain.shared.ts(13,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/mediNotificationBrain.shared.ts(14,35): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/mediNotificationBrain.shared.ts(15,49): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/mediNotificationBrain.ts(107,20): error TS7053: Element implicitly has an 'any' type because expression of type '0' can't be used to index type '{ sessions: ChatSummary[]; }'.
+  Property '0' does not exist on type '{ sessions: ChatSummary[]; }'.
+src/lib/mediNotificationBrain.ts(174,11): error TS2322: Type 'WeatherRecommendation | null' is not assignable to type '{ category: string; severity?: string | null | undefined; stale: boolean; bestOutdoorWindow?: { start?: string | undefined; end?: string | undefined; startIso?: string | undefined; endIso?: string | undefined; } | null | undefined; } | null | undefined'.
+  Property 'stale' is missing in type 'WeatherRecommendation' but required in type '{ category: string; severity?: string | null | undefined; stale: boolean; bestOutdoorWindow?: { start?: string | undefined; end?: string | undefined; startIso?: string | undefined; endIso?: string | undefined; } | null | undefined; }'.
+src/lib/mediNotificationBrain.ts(514,3): error TS2322: Type '{ deliver: boolean; rewriteMasked: boolean; ok: boolean; reason: "CROSS_USER"; eventDate?: undefined; plannedDate?: undefined; plannedTime?: undefined; offset?: undefined; reminderMode?: undefined; fireClock?: undefined; fireAtMs?: undefined; usesPlannedTime?: undefined; } | ... 9 more ... | { ...; }' is not assignable to type '{ ok: boolean; reason: string | null; rewriteMasked?: boolean | undefined; }'.
+  Type '{ deliver: boolean; rewriteMasked: boolean; ok: boolean; reason: "NOT_ELIGIBLE" | "NO_PLANNED_DATE" | "NO_PLANNED_TIME" | "INVALID_OFFSET" | "NONEXISTENT_LOCAL_TIME" | undefined; ... 7 more ...; usesPlannedTime?: undefined; }' is not assignable to type '{ ok: boolean; reason: string | null; rewriteMasked?: boolean | undefined; }'.
+    Types of property 'reason' are incompatible.
+      Type '"NOT_ELIGIBLE" | "NO_PLANNED_DATE" | "NO_PLANNED_TIME" | "INVALID_OFFSET" | "NONEXISTENT_LOCAL_TIME" | undefined' is not assignable to type 'string | null'.
+        Type 'undefined' is not assignable to type 'string | null'.
+src/lib/mediNotificationBrain.ts(613,9): error TS2322: Type 'WeatherRecommendation | null' is not assignable to type '{ category: string; severity?: string | null | undefined; stale: boolean; bestOutdoorWindow?: { start?: string | undefined; end?: string | undefined; startIso?: string | undefined; endIso?: string | undefined; } | null | undefined; } | null'.
+  Property 'stale' is missing in type 'WeatherRecommendation' but required in type '{ category: string; severity?: string | null | undefined; stale: boolean; bestOutdoorWindow?: { start?: string | undefined; end?: string | undefined; startIso?: string | undefined; endIso?: string | undefined; } | null | undefined; }'.
+src/lib/mediNotificationBrain.ts(697,5): error TS2345: Argument of type '{ now: Date; hydrationMl: number; hydrationGoal: number; loggedPain: boolean; seenWeekly: boolean; unfinished: UnfinishedDraft; lastOpenAt: number | null; missingProfileField: string | null; ... 13 more ...; openedRecently: boolean; }' is not assignable to parameter of type 'EngageLiveSignals'.
+  Types of property 'daily' are incompatible.
+    Type 'Record<string, unknown>[]' is not assignable to type '{ id: string; key: string | null; progressType: string | null; cadence?: string | null | undefined; status: string; progress: number; target: number; progressPercent: number; targetSource?: string | ... 1 more ... | undefined; }[]'.
+      Type 'Record<string, unknown>' is missing the following properties from type '{ id: string; key: string | null; progressType: string | null; cadence?: string | null | undefined; status: string; progress: number; target: number; progressPercent: number; targetSource?: string | ... 1 more ... | undefined; }': id, key, progressType, status, and 3 more.
+src/lib/mediNotificationRevalidate.ts(1,37): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/notifications.ts(45,30): error TS7006: Parameter 'notification' implicitly has an 'any' type.
+src/lib/notifications.ts(290,18): error TS7006: Parameter 'n' implicitly has an 'any' type.
+src/lib/notifications.ts(291,15): error TS7006: Parameter 'n' implicitly has an 'any' type.
+src/lib/notifications.ts(424,35): error TS2503: Cannot find namespace 'Notifications'.
+src/lib/notifications.ts(445,27): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/lib/pregnancyCareCalendar.ts(202,40): error TS2339: Property 'startTime' does not exist on type '{ startDate: any; endDate: string | null; allDay: boolean; exportMode: "ALL_DAY"; title: string; notes: string; alarms: never[]; timeZone: string; } | { startDate: any; startTime: any; endDate: any; ... 8 more ...; timeZone: string; }'.
+  Property 'startTime' does not exist on type '{ startDate: any; endDate: string | null; allDay: boolean; exportMode: "ALL_DAY"; title: string; notes: string; alarms: never[]; timeZone: string; }'.
+src/lib/pregnancyCareCalendar.ts(206,51): error TS2339: Property 'durationMinutes' does not exist on type '{ startDate: any; endDate: string | null; allDay: boolean; exportMode: "ALL_DAY"; title: string; notes: string; alarms: never[]; timeZone: string; } | { startDate: any; startTime: any; endDate: any; ... 8 more ...; timeZone: string; }'.
+  Property 'durationMinutes' does not exist on type '{ startDate: any; endDate: string | null; allDay: boolean; exportMode: "ALL_DAY"; title: string; notes: string; alarms: never[]; timeZone: string; }'.
+src/lib/pregnancyCareCalendar.ts(291,52): error TS2339: Property 'startTime' does not exist on type '{ startDate: any; endDate: string | null; allDay: boolean; exportMode: "ALL_DAY"; title: string; notes: string; alarms: never[]; timeZone: string; } | { startDate: any; startTime: any; endDate: any; ... 8 more ...; timeZone: string; }'.
+  Property 'startTime' does not exist on type '{ startDate: any; endDate: string | null; allDay: boolean; exportMode: "ALL_DAY"; title: string; notes: string; alarms: never[]; timeZone: string; }'.
+src/lib/pregnancyCareCalendar.ts(353,52): error TS2339: Property 'startTime' does not exist on type '{ startDate: any; endDate: string | null; allDay: boolean; exportMode: "ALL_DAY"; title: string; notes: string; alarms: never[]; timeZone: string; } | { startDate: any; startTime: any; endDate: any; ... 8 more ...; timeZone: string; }'.
+  Property 'startTime' does not exist on type '{ startDate: any; endDate: string | null; allDay: boolean; exportMode: "ALL_DAY"; title: string; notes: string; alarms: never[]; timeZone: string; }'.
+src/lib/pregnancyCareReminders.ts(47,5): error TS2322: Type 'CyclePregnancyCarePlanItem[]' is not assignable to type 'never[]'.
+  Type 'CyclePregnancyCarePlanItem' is not assignable to type 'never'.
+src/lib/pregnancyCareReminders.ts(67,18): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'number | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'number | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
+src/lib/pushCopy.ts(180,29): error TS2345: Argument of type '{ key: any; title: any; body: any; }' is not assignable to parameter of type '{ source: "local" | "qa" | "broadcast"; key: string; title: string; body: string; }'.
+  Property 'source' is missing in type '{ key: any; title: any; body: any; }' but required in type '{ source: "local" | "qa" | "broadcast"; key: string; title: string; body: string; }'.
+src/lib/run/store.ts(155,5): error TS2322: Type 'RunPhase' is not assignable to type '"running" | "paused"'.
+  Type '"ready"' is not assignable to type '"running" | "paused"'.
+src/lib/visitNotifications.ts(81,18): error TS7006: Parameter 'n' implicitly has an 'any' type.
+src/lib/visitNotifications.ts(82,15): error TS7006: Parameter 'n' implicitly has an 'any' type.
+src/lib/weather/cache.ts(3,40): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/cache.ts(9,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/engage.ts(2,98): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/engage.ts(3,94): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/engage.ts(4,89): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/index.ts(1,55): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/index.ts(2,42): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/index.ts(3,82): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/index.ts(4,84): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/index.ts(5,94): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/index.ts(6,33): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/index.ts(7,75): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/index.ts(15,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/index.ts(16,42): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/index.ts(33,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/openMeteo.ts(1,60): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/openMeteo.ts(2,42): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/outdoorWindow.ts(15,58): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/outdoorWindow.ts(16,80): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/outdoorWindow.ts(22,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/recommendation.ts(1,35): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/recommendation.ts(2,50): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/recommendation.ts(3,37): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/recommendation.ts(4,57): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/recommendation.ts(5,77): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/recommendation.ts(15,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/lib/weather/recommendation.ts(138,25): error TS2367: This comparison appears to be unintentional because the types '"heavy_rain" | "excellent_outdoor" | "good_outdoor" | "okay_outdoor" | "rainy" | "rain_soon" | "hot" | "cold" | "high_uv" | "very_windy" | "poor_visibility" | "evening" | "night" | "morning" | "mixed"' and '"weather_hot_hydration"' have no overlap.
+src/lib/weather/recommendation.ts(142,30): error TS2367: This comparison appears to be unintentional because the types '"heavy_rain" | "excellent_outdoor" | "good_outdoor" | "okay_outdoor" | "rainy" | "cold" | "high_uv" | "very_windy" | "poor_visibility" | "evening" | "night" | "morning" | "mixed"' and '"very_hot"' have no overlap.
+src/lib/weather/recommendation.ts(152,5): error TS2367: This comparison appears to be unintentional because the types '"heavy_rain" | "rainy" | "hot" | "cold" | "high_uv" | "very_windy" | "poor_visibility" | "night" | "mixed"' and '"rain_soon"' have no overlap.
+src/lib/weightNav.ts(1,15): error TS2724: '"expo-router"' has no exported member named 'Router'. Did you mean 'router'?

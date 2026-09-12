@@ -409,7 +409,7 @@ describe('AI, partner, and payload bounds', () => {
       predictions: { nextPeriodStart: '2026-01-01', ovulationDate: null, fertileWindow: null },
       analytics,
     });
-    assert.equal(summary.historical.source, 'calculated_from_logged_history');
-    assert.equal(summary.historical.completeness, 'based_on_recorded_days');
+    assert.equal(summary.historical, undefined);
+    assert.equal(Object.hasOwn(summary, 'loggingCoverage'), false);
   });
 });

@@ -1,11 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 import { ka } from '@/i18n/ka';
-import { ApiError, api, type CheckInState, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
+import { ApiError, api, type AiEngineId, type CheckInState, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
 import { setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAccount';
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
 import { clearSessionSnapshot, loadSessionSnapshot, saveSessionSnapshot } from '@/lib/sessionSnapshot';
 import { clearToken, getToken, setToken } from '@/lib/storage';
+import { jwtSubject } from '@/lib/jwtSubject';
 import {
   isQuestDevEnabled,
   isQuestVisualSession,
@@ -43,7 +44,12 @@ type AuthState = {
   refreshHealthProfile: () => Promise<HealthProfile | null>;
   setUser: (user: User) => void;
   setHealthProfile: (profile: HealthProfile | null) => void;
-  updateProfile: (input: { fullName?: string; gender?: Gender; birthDate?: string }) => Promise<void>;
+  updateProfile: (input: {
+    fullName?: string;
+    gender?: Gender;
+    birthDate?: string;
+    aiEngine?: AiEngineId;
+  }) => Promise<void>;
   applyUsage: (usage: Usage) => void;
 };
 
@@ -91,7 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const snapshot = await loadSessionSnapshot();
-    if (snapshot) {
+    const tokenUserId = jwtSubject(token);
+    if (snapshot?.user?.id && tokenUserId && snapshot.user.id !== tokenUserId) {
+      await clearSessionSnapshot();
+    } else if (snapshot && tokenUserId && snapshot.user.id === tokenUserId) {
       setLocalAccountId(snapshot.user.id);
       setUser(snapshot.user);
       setUsage(snapshot.usage);
@@ -176,49 +185,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await wipeLegacyUnscopedHealthCaches();
       await setToken(result.token);
 
-      try {
-        const me = await api.auth.me(result.token);
-        if (!me.user?.id || me.user.id !== result.user.id) {
-          throw new ApiError(ka.auth.registerNotConfirmed, 401);
-        }
-        // Second read on a new request — Neon pooler can briefly "see" a row that
-        // the next connection cannot. Fail signup here instead of after assessment.
-        await new Promise((resolve) => setTimeout(resolve, 150));
-        const confirmed = await api.auth.me(result.token);
-        if (!confirmed.user?.id || confirmed.user.id !== result.user.id) {
-          throw new ApiError(ka.auth.registerNotConfirmed, 401);
-        }
-        setLocalAccountId(confirmed.user.id);
-        setUser(confirmed.user);
-        setUsage(confirmed.usage);
-        setStats(confirmed.stats);
-        setHealthProfile(confirmed.healthProfile ?? null);
-        await saveSessionSnapshot({
-          user: confirmed.user,
-          usage: confirmed.usage,
-          stats: confirmed.stats,
-          healthProfile: confirmed.healthProfile ?? null,
-        });
+      const emptyStats = { records: 0, chats: 0, activeMedications: 0 };
+      const settle = async (user: User, usage: Usage, stats: Stats, healthProfile: HealthProfile | null) => {
+        setLocalAccountId(user.id);
+        setUser(user);
+        setUsage(usage);
+        setStats(stats);
+        setHealthProfile(healthProfile);
+        await saveSessionSnapshot({ user, usage, stats, healthProfile });
         void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
-          flushCycleQueue(confirmed.user.id).catch(() => undefined),
+          flushCycleQueue(user.id).catch(() => undefined),
         );
         void import('@/lib/notifications').then(({ syncPushRegistration }) =>
           syncPushRegistration(),
         );
         void import('@/lib/pushCopy').then(({ loadPushTemplates }) => loadPushTemplates());
         void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
-          runMediNotificationBrain(confirmed.user, confirmed.healthProfile ?? null),
+          runMediNotificationBrain(user, healthProfile),
         );
         void import('@/lib/accountSync').then(({ pullAccountState }) =>
           pullAccountState().catch(() => undefined),
         );
+      };
+
+      await settle(result.user, result.usage, emptyStats, null);
+
+      const readMe = async () => {
+        const me = await api.auth.me(result.token);
+        if (!me.user?.id || me.user.id !== result.user.id) {
+          throw new ApiError(ka.auth.registerNotConfirmed, 401);
+        }
+        return me;
+      };
+
+      try {
+        let me: Awaited<ReturnType<typeof readMe>>;
+        try {
+          me = await readMe();
+        } catch (error) {
+          // Server already confirmed the row before issuing the JWT. Retry once for Neon lag.
+          if (!(error instanceof ApiError) || !error.isUnauthorized) throw error;
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          me = await readMe();
+        }
+        await settle(me.user, me.usage, me.stats, me.healthProfile ?? null);
       } catch (error) {
-        await clearToken();
-        await clearSessionSnapshot();
-        resetSession();
-        throw error instanceof ApiError
-          ? error
-          : new ApiError(ka.auth.registerNotConfirmed, 0);
+        if (error instanceof ApiError && error.isUnauthorized) {
+          await clearToken();
+          await clearSessionSnapshot();
+          resetSession();
+          throw error;
+        }
+        // 429 / timeout / network — account exists. Stay signed in on the register payload.
       }
     },
     [resetSession],
@@ -284,6 +302,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         await api.auth.deleteAccount();
         if (userId) {
+          void import('@/lib/pregnancyCareCalendar').then(({ wipePregnancyCareCalendarOwnership }) =>
+            wipePregnancyCareCalendarOwnership(userId).catch(() => undefined),
+          );
           void import('@/lib/cycleOffline').then(({ destroyCycleOfflineAccount }) =>
             destroyCycleOfflineAccount(userId).catch(() => undefined),
           );

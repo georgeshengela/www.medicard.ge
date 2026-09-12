@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8" />
+  <title>Medicard Facebook cover variants</title>
+  <style>
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-Regular.woff2") format("woff2");
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-Medium.woff2") format("woff2");
+      font-weight: 500;
+    }
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-SemiBold.woff2") format("woff2");
+      font-weight: 600;
+    }
+    @font-face {
+      font-family: "DM Davit Guramishvili";
+      src: url("../server/public/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2") format("woff2");
+      font-weight: 400;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #030712; }
+
+    .cover {
+      position: relative;
+      width: 1640px;
+      height: 624px;
+      background: #030712;
+      color: #fff;
+      font-family: "FiraGO", sans-serif;
+      overflow: hidden;
+    }
+
+    .mark-ghost {
+      position: absolute;
+      left: -80px;
+      top: 78px;
+      width: 420px;
+      height: 420px;
+      opacity: 0.07;
+    }
+
+    .copy {
+      position: absolute;
+      left: 278px;
+      top: 0;
+      width: 560px;
+      height: 624px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      z-index: 2;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    .brand img { width: 44px; height: 44px; border-radius: 12px; display: block; }
+    .brand span {
+      font-size: 22px;
+      font-weight: 600;
+      font-feature-settings: "case" 1, "kern" 1;
+    }
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #14B8A6;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      margin-bottom: 14px;
+    }
+    .kicker::before { content: ""; width: 18px; height: 1px; background: #0D9488; }
+    h1 {
+      font-family: "DM Davit Guramishvili", "FiraGO", sans-serif;
+      font-size: 48px;
+      line-height: 1.14;
+      letter-spacing: -0.02em;
+      font-weight: 400;
+    }
+    .url { margin-top: 22px; color: #6B7280; font-size: 14px; font-weight: 500; letter-spacing: 0.04em; }
+
+    .stage {
+      position: absolute;
+      right: 266px;
+      top: 36px;
+      width: 552px;
+      height: 552px;
+    }
+    .halo {
+      position: absolute;
+      inset: -30px;
+      border-radius: 50%;
+      border: 1px solid #0D9488;
+      opacity: 0.32;
+    }
+    .orb {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: #042F2E;
+      border: 2px solid #14B8A6;
+    }
+
+    .core {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 112px;
+      height: 112px;
+      transform: translate(-50%, -50%);
+      border-radius: 32px;
+      overflow: hidden;
+      z-index: 2;
+      box-shadow: 0 0 0 6px #042F2E;
+    }
+    .core img { width: 100%; height: 100%; display: block; }
+
+    .sat {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 78px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      transform: translate(-50%, -50%) rotate(var(--a)) translate(var(--r)) rotate(calc(-1 * var(--a)));
+    }
+    .dot {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: #0D9488;
+      display: grid;
+      place-items: center;
+      flex: none;
+    }
+    .dot img {
+      width: 22px;
+      height: 22px;
+      display: block;
+      filter: brightness(0) invert(1);
+    }
+    .sat b {
+      font-size: 11px;
+      font-weight: 500;
+      color: #D1D5DB;
+      text-align: center;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      max-width: 78px;
+    }
+
+    .track {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      border-radius: 50%;
+      border: 1px solid rgba(20, 184, 166, 0.28);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    /* V3 cluster */
+    .cluster {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+    .cluster-row { display: flex; gap: 14px; }
+    .chip {
+      width: 86px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .chip .dot { width: 50px; height: 50px; }
+    .chip .dot img { width: 24px; height: 24px; }
+    .chip b {
+      font-size: 11px;
+      font-weight: 500;
+      color: #D1D5DB;
+      text-align: center;
+      line-height: 1.15;
+    }
+
+    /* V4 rim — icons sit on the circle, outer edge clipped */
+    .rim.orb { overflow: hidden; }
+    .rim .core { width: 128px; height: 128px; border-radius: 36px; }
+    .rim .sat { width: 58px; }
+    .rim .sat b { display: none; }
+    .rim .dot { width: 52px; height: 52px; }
+    .rim .dot img { width: 24px; height: 24px; }
+  </style>
+</head>
+<body>
+
+  <!-- V1 Orbit: logo in the middle, 12 modules around it -->
+  <section class="cover" id="v1">
+    <svg class="mark-ghost" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" fill="#FFFFFF" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/></svg>
+    <div class="copy">
+      <div class="brand"><img src="../mobile/assets/icon.png" alt="" /><span>მედიქარდი</span></div>
+      <p class="kicker">ქართულენოვანი ჯანმრთელობის აპი</p>
+      <h1>შენი ჯანმრთელობა.<br />შენი ისტორია.<br />შენთან ყოველთვის.</h1>
+      <p class="url">medicard.ge</p>
+    </div>
+    <div class="stage">
+      <div class="halo"></div>
+      <div class="orb">
+        <div class="track" style="width:396px;height:396px"></div>
+        <div class="core"><img src="../mobile/assets/icon.png" alt="" /></div>
+        <div class="sat" style="--a:-90deg;--r:198px"><span class="dot"><img src="../server/public/icons/chat.svg" alt="" /></span><b>Medi</b></div>
+        <div class="sat" style="--a:-60deg;--r:198px"><span class="dot"><img src="../server/public/icons/flask.svg" alt="" /></span><b>ანალიზები</b></div>
+        <div class="sat" style="--a:-30deg;--r:198px"><span class="dot"><img src="../server/public/icons/xray.svg" alt="" /></span><b>რენტგენი</b></div>
+        <div class="sat" style="--a:0deg;--r:198px"><span class="dot"><img src="../server/public/icons/skin.svg" alt="" /></span><b>კანი</b></div>
+        <div class="sat" style="--a:30deg;--r:198px"><span class="dot"><img src="../server/public/icons/body.svg" alt="" /></span><b>სიმპტომები</b></div>
+        <div class="sat" style="--a:60deg;--r:198px"><span class="dot"><img src="../server/public/icons/stethoscope.svg" alt="" /></span><b>კონსილიუმი</b></div>
+        <div class="sat" style="--a:90deg;--r:198px"><span class="dot"><img src="../server/public/icons/pill.svg" alt="" /></span><b>მედები</b></div>
+        <div class="sat" style="--a:120deg;--r:198px"><span class="dot"><img src="../server/public/icons/pharmacy.svg" alt="" /></span><b>აფთიაქი</b></div>
+        <div class="sat" style="--a:150deg;--r:198px"><span class="dot"><img src="../server/public/icons/cycle.svg" alt="" /></span><b>ციკლი</b></div>
+        <div class="sat" style="--a:180deg;--r:198px"><span class="dot"><img src="../server/public/icons/steps.svg" alt="" /></span><b>ნაბიჯები</b></div>
+        <div class="sat" style="--a:210deg;--r:198px"><span class="dot"><img src="../server/public/icons/water.svg" alt="" /></span><b>წყალი</b></div>
+        <div class="sat" style="--a:240deg;--r:198px"><span class="dot"><img src="../server/public/icons/weight.svg" alt="" /></span><b>წონა</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- V2 Double ring: 6 inner + 6 outer -->
+  <section class="cover" id="v2">
+    <svg class="mark-ghost" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" fill="#FFFFFF" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/></svg>
+    <div class="copy">
+      <div class="brand"><img src="../mobile/assets/icon.png" alt="" /><span>მედიქარდი</span></div>
+      <p class="kicker">ქართულენოვანი ჯანმრთელობის აპი</p>
+      <h1>შენი ჯანმრთელობა.<br />შენი ისტორია.<br />შენთან ყოველთვის.</h1>
+      <p class="url">medicard.ge</p>
+    </div>
+    <div class="stage">
+      <div class="halo"></div>
+      <div class="orb">
+        <div class="track" style="width:292px;height:292px"></div>
+        <div class="track" style="width:452px;height:452px"></div>
+        <div class="core"><img src="../mobile/assets/icon.png" alt="" /></div>
+        <div class="sat" style="--a:-90deg;--r:146px"><span class="dot"><img src="../server/public/icons/chat.svg" alt="" /></span><b>Medi</b></div>
+        <div class="sat" style="--a:-30deg;--r:146px"><span class="dot"><img src="../server/public/icons/flask.svg" alt="" /></span><b>ანალიზები</b></div>
+        <div class="sat" style="--a:30deg;--r:146px"><span class="dot"><img src="../server/public/icons/cycle.svg" alt="" /></span><b>ციკლი</b></div>
+        <div class="sat" style="--a:90deg;--r:146px"><span class="dot"><img src="../server/public/icons/pill.svg" alt="" /></span><b>მედები</b></div>
+        <div class="sat" style="--a:150deg;--r:146px"><span class="dot"><img src="../server/public/icons/body.svg" alt="" /></span><b>სიმპტომები</b></div>
+        <div class="sat" style="--a:210deg;--r:146px"><span class="dot"><img src="../server/public/icons/steps.svg" alt="" /></span><b>ნაბიჯები</b></div>
+        <div class="sat" style="--a:-60deg;--r:226px"><span class="dot"><img src="../server/public/icons/xray.svg" alt="" /></span><b>რენტგენი</b></div>
+        <div class="sat" style="--a:0deg;--r:226px"><span class="dot"><img src="../server/public/icons/skin.svg" alt="" /></span><b>კანი</b></div>
+        <div class="sat" style="--a:60deg;--r:226px"><span class="dot"><img src="../server/public/icons/stethoscope.svg" alt="" /></span><b>კონსილიუმი</b></div>
+        <div class="sat" style="--a:120deg;--r:226px"><span class="dot"><img src="../server/public/icons/pharmacy.svg" alt="" /></span><b>აფთიაქი</b></div>
+        <div class="sat" style="--a:180deg;--r:226px"><span class="dot"><img src="../server/public/icons/water.svg" alt="" /></span><b>წყალი</b></div>
+        <div class="sat" style="--a:240deg;--r:226px"><span class="dot"><img src="../server/public/icons/weight.svg" alt="" /></span><b>წონა</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- V3 Cluster: 2-3-4-3 packing, fully inside -->
+  <section class="cover" id="v3">
+    <svg class="mark-ghost" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" fill="#FFFFFF" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/></svg>
+    <div class="copy">
+      <div class="brand"><img src="../mobile/assets/icon.png" alt="" /><span>მედიქარდი</span></div>
+      <p class="kicker">ქართულენოვანი ჯანმრთელობის აპი</p>
+      <h1>შენი ჯანმრთელობა.<br />შენი ისტორია.<br />შენთან ყოველთვის.</h1>
+      <p class="url">medicard.ge</p>
+    </div>
+    <div class="stage">
+      <div class="halo"></div>
+      <div class="orb">
+        <div class="cluster">
+          <div class="cluster-row">
+            <div class="chip"><span class="dot"><img src="../server/public/icons/chat.svg" alt="" /></span><b>Medi</b></div>
+            <div class="chip"><span class="dot"><img src="../server/public/icons/flask.svg" alt="" /></span><b>ანალიზები</b></div>
+          </div>
+          <div class="cluster-row">
+            <div class="chip"><span class="dot"><img src="../server/public/icons/xray.svg" alt="" /></span><b>რენტგენი</b></div>
+            <div class="chip"><span class="dot"><img src="../server/public/icons/cycle.svg" alt="" /></span><b>ციკლი</b></div>
+            <div class="chip"><span class="dot"><img src="../server/public/icons/pill.svg" alt="" /></span><b>მედები</b></div>
+          </div>
+          <div class="cluster-row">
+            <div class="chip"><span class="dot"><img src="../server/public/icons/body.svg" alt="" /></span><b>სიმპტომები</b></div>
+            <div class="chip"><span class="dot"><img src="../server/public/icons/stethoscope.svg" alt="" /></span><b>კონსილიუმი</b></div>
+            <div class="chip"><span class="dot"><img src="../server/public/icons/pharmacy.svg" alt="" /></span><b>აფთიაქი</b></div>
+            <div class="chip"><span class="dot"><img src="../server/public/icons/skin.svg" alt="" /></span><b>კანი</b></div>
+          </div>
+          <div class="cluster-row">
+            <div class="chip"><span class="dot"><img src="../server/public/icons/steps.svg" alt="" /></span><b>ნაბიჯები</b></div>
+            <div class="chip"><span class="dot"><img src="../server/public/icons/water.svg" alt="" /></span><b>წყალი</b></div>
+            <div class="chip"><span class="dot"><img src="../server/public/icons/weight.svg" alt="" /></span><b>წონა</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- V4 Rim: icons sit on the circle edge, outer side clipped -->
+  <section class="cover" id="v4">
+    <svg class="mark-ghost" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" fill="#FFFFFF" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/></svg>
+    <div class="copy">
+      <div class="brand"><img src="../mobile/assets/icon.png" alt="" /><span>მედიქარდი</span></div>
+      <p class="kicker">ქართულენოვანი ჯანმრთელობის აპი</p>
+      <h1>შენი ჯანმრთელობა.<br />შენი ისტორია.<br />შენთან ყოველთვის.</h1>
+      <p class="url">medicard.ge</p>
+    </div>
+    <div class="stage">
+      <div class="halo"></div>
+      <div class="orb rim">
+        <div class="core"><img src="../mobile/assets/icon.png" alt="" /></div>
+        <div class="sat" style="--a:-90deg;--r:252px"><span class="dot"><img src="../server/public/icons/chat.svg" alt="" /></span></div>
+        <div class="sat" style="--a:-60deg;--r:252px"><span class="dot"><img src="../server/public/icons/flask.svg" alt="" /></span></div>
+        <div class="sat" style="--a:-30deg;--r:252px"><span class="dot"><img src="../server/public/icons/xray.svg" alt="" /></span></div>
+        <div class="sat" style="--a:0deg;--r:252px"><span class="dot"><img src="../server/public/icons/skin.svg" alt="" /></span></div>
+        <div class="sat" style="--a:30deg;--r:252px"><span class="dot"><img src="../server/public/icons/body.svg" alt="" /></span></div>
+        <div class="sat" style="--a:60deg;--r:252px"><span class="dot"><img src="../server/public/icons/stethoscope.svg" alt="" /></span></div>
+        <div class="sat" style="--a:90deg;--r:252px"><span class="dot"><img src="../server/public/icons/pill.svg" alt="" /></span></div>
+        <div class="sat" style="--a:120deg;--r:252px"><span class="dot"><img src="../server/public/icons/pharmacy.svg" alt="" /></span></div>
+        <div class="sat" style="--a:150deg;--r:252px"><span class="dot"><img src="../server/public/icons/cycle.svg" alt="" /></span></div>
+        <div class="sat" style="--a:180deg;--r:252px"><span class="dot"><img src="../server/public/icons/steps.svg" alt="" /></span></div>
+        <div class="sat" style="--a:210deg;--r:252px"><span class="dot"><img src="../server/public/icons/water.svg" alt="" /></span></div>
+        <div class="sat" style="--a:240deg;--r:252px"><span class="dot"><img src="../server/public/icons/weight.svg" alt="" /></span></div>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>

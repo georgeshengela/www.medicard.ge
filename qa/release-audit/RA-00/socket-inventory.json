@@ -1,0 +1,20 @@
+{
+  "path": "/socket.io",
+  "auth": "handshake.auth.token → JWT authorizeSocketHandshake (admin or active non-blocked user)",
+  "sourceFiles": ["server/src/lib/adminRealtime.js", "server/src/lib/socketAuth.js"],
+  "rooms": ["ops (admins)", "user:{userId}"],
+  "serverOn": ["connection"],
+  "serverEmit": [
+    "ops:live",
+    "brain:sync",
+    "usage:reset",
+    "quest:completed",
+    "quest:reward_claimed",
+    "quest:update",
+    "achievement:unlocked",
+    "achievement:claimed",
+    "medi_journey:milestone_unlocked"
+  ],
+  "crossUserRisk": "Users join only user:{ownId}; admins join ops. Tests in socketAuth.test.js. Stale subscriptions/cleanup not fully inventoried at client.",
+  "client": "socket.io-client in mobile; UX-only for quest/achievements — GET /api/quests remains source of truth"
+}

@@ -1,0 +1,12 @@
+{
+  "phase": 41,
+  "identity": "postpartumEpisodeId + bleedStart (inferCycleStats run start)",
+  "exactStartMatch": "KEEP; bleedEnd follows current run",
+  "shrinkSubset": "KEEP; update start/end",
+  "splitTwoOverlapsWithoutOriginalStart": "DROP; no duplicate",
+  "splitOriginalStartRemains": "KEEP only the start fragment",
+  "mergeExtendsOutsideStoredRange": "DROP; require reconfirm",
+  "nearbyNonOverlap": "DROP; no proximity jump",
+  "deleteAllBleed": "DROP orphan",
+  "noBackfill": true
+}

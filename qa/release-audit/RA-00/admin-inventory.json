@@ -1,0 +1,109 @@
+{
+  "generatedAt": "2026-09-11T20:32:26.156Z",
+  "spa": "server/admin/index.html",
+  "impersonation": "ABSENT",
+  "screens": [
+    {
+      "hash": "#/overview",
+      "file": "server/admin/command-center-v3.js",
+      "title": "Command Center"
+    },
+    {
+      "hash": "#/users",
+      "file": "server/admin/admin-users-v3.js",
+      "title": "Users registry"
+    },
+    {
+      "hash": "#/users/:id",
+      "file": "server/admin/admin-users-v3.js",
+      "title": "User investigation"
+    },
+    {
+      "hash": "#/push",
+      "file": "server/admin/v3/modules/push.js",
+      "title": "Push & Brain"
+    },
+    {
+      "hash": "#/health",
+      "file": "server/admin/v3/modules/health.js",
+      "title": "Feature usage"
+    },
+    {
+      "hash": "#/ai",
+      "file": "server/admin/v3/modules/medi.js",
+      "title": "Medi quality"
+    },
+    {
+      "hash": "#/rewards",
+      "file": "server/admin/v3/modules/rewards.js",
+      "title": "Rewards commerce"
+    },
+    {
+      "hash": "#/packages",
+      "file": "server/admin/v3/modules/packages.js",
+      "title": "Packages"
+    },
+    {
+      "hash": "#/orders",
+      "file": "server/admin/v3/modules/orders.js",
+      "title": "Orders"
+    },
+    {
+      "hash": "#/sms",
+      "file": "server/admin/v3/modules/sms.js",
+      "title": "SMS"
+    },
+    {
+      "hash": "#/pharmacy",
+      "file": "server/admin/v3/modules/pharmacy.js",
+      "title": "Pharmacy sync"
+    },
+    {
+      "hash": "#/quality",
+      "file": "server/admin/v3/modules/quality.js",
+      "title": "Data quality"
+    },
+    {
+      "hash": "#/cycleqa",
+      "file": "server/admin/v3/modules/cycleqa.js",
+      "title": "Cycle QA board"
+    },
+    {
+      "hash": "#/audit",
+      "file": "server/admin/v3/modules/audit.js",
+      "title": "Audit log"
+    },
+    {
+      "hash": "#/settings",
+      "file": "server/admin/v3/modules/settings.js",
+      "title": "App settings"
+    }
+  ],
+  "mutations": [
+    "PATCH /api/admin/users/:id",
+    "POST /api/admin/users/:id/block",
+    "POST /api/admin/users/:id/unblock",
+    "DELETE /api/admin/users/:id",
+    "POST /api/admin/users/:id/renew",
+    "POST /api/admin/users/:id/reset-usage",
+    "PATCH /api/admin/packages/:code",
+    "PATCH /api/admin/settings",
+    "POST /api/admin/push/campaigns",
+    "PUT /api/admin/push/templates/:key",
+    "DELETE /api/admin/push/templates/:key",
+    "POST /api/admin/ai/scan",
+    "POST /api/admin/pharmacy/sync",
+    "POST /api/admin/sms/send",
+    "POST /api/admin/rewards/partners",
+    "PATCH /api/admin/rewards/partners/:id",
+    "POST /api/admin/rewards/campaigns",
+    "PATCH /api/admin/rewards/campaigns/:id",
+    "POST /api/admin/rewards/campaigns/:id/activate",
+    "POST /api/admin/rewards/campaigns/:id/pause",
+    "POST /api/admin/rewards/redemptions/:id/mark-used",
+    "POST /api/admin/rewards/rewards/:rewardId/codes/import",
+    "POST /api/admin/rewards/codes/:id/disable",
+    "POST /api/admin/rewards/rewards/:rewardId/inventory/adjust",
+    "POST /api/admin/rewards/definitions"
+  ]
+}

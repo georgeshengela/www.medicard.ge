@@ -126,20 +126,29 @@ describe('AI context labels fertility tests as USER_LOGGED', () => {
 });
 
 describe('doctor summary fertility tests', () => {
-  it('lists user-reported tests and never says ovulation confirmed', () => {
+  it('excludes fertility tests by default and lists them only with opt-in', () => {
     const predictions = buildPredictions(BASE_PRED);
+    const logs = [
+      { date: '2026-08-14', ovulationTest: 'positive', symptoms: [], moods: [] },
+      { date: '2026-08-20', pregnancyTest: 'negative', symptoms: [], moods: [] },
+    ];
     const summary = buildDoctorSummary({
+      today: '2026-08-20',
       profile: { mode: 'TRY_TO_CONCEIVE', avgCycleLength: 28, avgPeriodLength: 5, isIrregular: false },
-      logs: [
-        { date: '2026-08-14', ovulationTest: 'positive', symptoms: [], moods: [] },
-        { date: '2026-08-20', pregnancyTest: 'negative', symptoms: [], moods: [] },
-      ],
+      logs,
       predictions,
     });
-    assert.equal(summary.fertilityTests.label, 'user_logged');
-    assert.equal(summary.fertilityTests.ovulationTests[0].result, 'positive');
-    assert.equal(summary.fertilityTests.pregnancyTests[0].result, 'negative');
-    assert.equal(JSON.stringify(summary).includes('Ovulation confirmed'), false);
+    assert.equal(summary.fertilityObservations, null);
+    const opted = buildDoctorSummary({
+      today: '2026-08-20',
+      profile: { mode: 'TRY_TO_CONCEIVE', avgCycleLength: 28, avgPeriodLength: 5 },
+      logs,
+      predictions,
+      options: { includeFertility: true },
+    });
+    assert.equal(opted.fertilityObservations.ovulationTests[0].result, 'positive');
+    assert.equal(opted.fertilityObservations.pregnancyTests[0].result, 'negative');
+    assert.equal(JSON.stringify(opted).includes('Ovulation confirmed'), false);
   });
 });
 

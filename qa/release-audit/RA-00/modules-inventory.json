@@ -1,0 +1,18 @@
+{
+  "canonicalModules": [
+    "AUTH", "ONBOARDING", "HOME", "MEDI_AI", "LABS", "MEDICATIONS", "SYMPTOMS",
+    "DOCTOR_HISTORY", "CYCLE", "TTC", "PREGNANCY", "POSTPARTUM", "PERIMENOPAUSE",
+    "HEALTH_METRICS", "STEPS", "HYDRATION", "WEIGHT", "WEATHER", "PHARMACY",
+    "QUEST", "COMPANION", "JOURNEY", "ACHIEVEMENTS", "REWARDS", "PARTNER_REWARDS",
+    "NOTIFICATIONS", "PROFILE", "SETTINGS", "REPORTS", "EXPORTS", "ADMIN",
+    "ANALYTICS", "DEVICE_INTEGRATIONS", "SECURITY_PRIVACY", "RUN", "BILLING",
+    "RECORDS", "PLATFORM"
+  ],
+  "addedBeyondBrief": ["PERIMENOPAUSE", "RUN", "BILLING", "RECORDS", "PLATFORM"],
+  "homeOrder": [
+    "dashboard", "nextDose", "steps", "hydration", "weight", "mediQuest",
+    "cycle (if includeCycle)", "lab", "weather", "run", "symptom", "analysis",
+    "consilium", "recentActivity", "disclaimer"
+  ],
+  "source": "mobile/src/lib/home/homeSectionOrder.ts FIXED_ORDER"
+}

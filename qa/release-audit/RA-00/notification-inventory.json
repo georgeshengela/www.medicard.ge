@@ -1,0 +1,199 @@
+{
+  "generatedAt": "2026-09-11T20:32:26.155Z",
+  "architecture": {
+    "brain": "mobile/src/lib/mediNotificationBrain.ts",
+    "localScheduler": "mobile/src/lib/notifications.ts",
+    "remotePush": "server/src/lib/push.js",
+    "templates": "server/src/lib/pushTemplates.js"
+  },
+  "local": [
+    "medication reminders",
+    "cycle reminders",
+    "pregnancy care DATE_BASED",
+    "pregnancy care EXACT_TIME",
+    "visit reminders",
+    "steps/weight goals",
+    "Brain engage families",
+    "quota reset local category"
+  ],
+  "remote": [
+    "admin campaigns",
+    "AI quota reset sweeper 30s"
+  ],
+  "engageFamilies": [
+    "birthday",
+    "visitFollowup",
+    "insight",
+    "achievement",
+    "weekly",
+    "reengage",
+    "unfinished",
+    "questSmart",
+    "hydration",
+    "stepsQuiet",
+    "streak",
+    "chat",
+    "morning",
+    "checkin",
+    "sleep",
+    "question",
+    "feature",
+    "weatherWellness"
+  ],
+  "actionButtons": {
+    "medi-med": [
+      "TAKE",
+      "SNOOZE"
+    ],
+    "medi-hydration": [
+      "DRANK"
+    ],
+    "medi-checkin": [
+      "OK",
+      "CHAT"
+    ],
+    "medi-visit": [
+      "OPEN",
+      "SNOOZE"
+    ],
+    "medi-quota": [
+      "CHAT"
+    ]
+  },
+  "deepLinks": [
+    {
+      "route": "/week",
+      "links": [
+        "notif medi_engage weekly/feature/insight"
+      ]
+    },
+    {
+      "route": "/(tabs)/profile",
+      "links": [
+        "notif question → ?action=question"
+      ]
+    },
+    {
+      "route": "/chat/[mode]",
+      "links": [
+        "/chat/DOCTOR",
+        "/chat/doctor",
+        "/chat/consilium",
+        "quota_reset"
+      ]
+    },
+    {
+      "route": "/cycle",
+      "links": [
+        "cycle_tip/reminder",
+        "landing cycle"
+      ]
+    },
+    {
+      "route": "/cycle/log",
+      "links": [
+        "cycle_reminder"
+      ]
+    },
+    {
+      "route": "/cycle/trends",
+      "links": [
+        "engage insight=cycle"
+      ]
+    },
+    {
+      "route": "/cycle/pregnancy/care-plan",
+      "links": [
+        "pregnancy_care_plan notif"
+      ]
+    },
+    {
+      "route": "/share/cycle/[code]",
+      "links": [
+        "https://medicard.ge/share/cycle/{code}",
+        "medicard:// implied"
+      ]
+    },
+    {
+      "route": "/health-metrics/hydration",
+      "links": [
+        "engage hydration"
+      ]
+    },
+    {
+      "route": "/health-metrics/steps",
+      "links": [
+        "steps-goal",
+        "engage steps"
+      ]
+    },
+    {
+      "route": "/health-metrics/weight",
+      "links": [
+        "weight-goal"
+      ]
+    },
+    {
+      "route": "/medications/[id]",
+      "links": [
+        "notif type=medication"
+      ]
+    },
+    {
+      "route": "/medications/add",
+      "links": [
+        "engage unfinished"
+      ]
+    },
+    {
+      "route": "/medications/reminders",
+      "links": [
+        "engage insight=meds"
+      ]
+    },
+    {
+      "route": "/visits",
+      "links": [
+        "visit_reminder"
+      ]
+    },
+    {
+      "route": "/visits/editor",
+      "links": [
+        "/visits/editor?id="
+      ]
+    },
+    {
+      "route": "/medi-quest",
+      "links": [
+        "engage questSmart"
+      ]
+    },
+    {
+      "route": "/weather",
+      "links": [
+        "engage weatherWellness → /weather?from=push"
+      ]
+    },
+    {
+      "route": "/(tabs)/home",
+      "links": [
+        "landing hub",
+        "admin push default"
+      ]
+    }
+  ],
+  "quietHours": "22:00–08:00 default; bumpOutOfQuiet; EXACT_TIME visit-alarm policy",
+  "jobs": [
+    {
+      "name": "quotaResetSweeper",
+      "interval": "30s",
+      "file": "server/src/lib/usageNotify.js"
+    },
+    {
+      "name": "pharmacy-sync",
+      "interval": "0 */6 * * *",
+      "file": "render.yaml"
+    }
+  ]
+}

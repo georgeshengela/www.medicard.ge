@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CycleObservationTrends } from '@/components/cycle/CycleObservationTrends';
 import { CycleTrendsCharts } from '@/components/cycle/CycleTrendsChart';
 import { CycleAtmosphere, CycleLoading, cycleNavHeader } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
@@ -54,12 +55,19 @@ export default function CycleTrendsScreen() {
             {ka.cycle.offlineRefreshHint}
           </Text>
         ) : null}
-        {bundle ? <CycleTrendsCharts bundle={bundle} /> : null}
-        {bundle &&
-        !(bundle.analytics?.completedCycleCount) &&
-        !(bundle.trends?.cycleLengths?.length) &&
-        !(bundle.trends?.bbtPoints?.length) ? (
-          <Text style={{ color: c.muted, marginTop: 16, lineHeight: 20 }}>{ka.cycle.trendsLogCycles}</Text>
+        {bundle ? (
+          <>
+            <CycleObservationTrends
+              refreshKey={(bundle.logs || [])
+                .map((l) => `${l.date}:${(l.symptoms || []).join(',')}:${l.energy || l.observations?.energy || ''}`)
+                .join('|')}
+              showEmpty={
+                (bundle.analytics?.completedCycleCount ?? 0) < 2 &&
+                !(bundle.trends?.cycleLengths && bundle.trends.cycleLengths.length >= 3)
+              }
+            />
+            <CycleTrendsCharts bundle={bundle} />
+          </>
         ) : null}
       </ScrollView>
     </CycleAtmosphere>

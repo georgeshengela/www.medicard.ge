@@ -1,0 +1,1518 @@
+{
+  "generatedAt": "2026-09-11T21:05:54.802Z",
+  "canonicalLiveCount": 215,
+  "unknownCount": 0,
+  "securityClassCounts": {
+    "PUBLIC": 18,
+    "OWNER_ONLY": 111,
+    "ADMIN_ONLY": 80,
+    "PARTNER_SCOPED": 6
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/admin",
+      "mount": "/admin",
+      "source": "server/src/server.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/app-state",
+      "mount": "/api/account",
+      "source": "server/src/routes/account.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/account/app-state",
+      "mount": "/api/account",
+      "source": "server/src/routes/account.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/achievements",
+      "mount": "/api/achievements",
+      "source": "server/src/routes/achievements.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/achievements/:id/claim",
+      "mount": "/api/achievements",
+      "source": "server/src/routes/achievements.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/achievements/reconcile",
+      "mount": "/api/achievements",
+      "source": "server/src/routes/achievements.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/ai/eval-runs",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/ai/eval-runs/:id",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/ai/interactions",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/ai/interactions/:id",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/ai/scan",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/ai/stats",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/feature-retention",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/features",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/geo",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/medi",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/notifications",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/outcomes-extra",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/overview",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/permissions",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/quality",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/retention",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/users",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/versions",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/audit",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/balances",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/cycle-qa",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/cycle-qa/contract/:file",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/cycle-qa/file/:folder/:file",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/export/audit",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/export/decisions",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/export/outcomes",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/export/users",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/login",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/me",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/notifications/decisions",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/notifications/decisions/:id",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/notifications/outcomes",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/packages",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/packages/:code",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/pharmacy/stats",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/pharmacy/sync",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/pharmacy/sync-runs",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/push/campaigns",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/push/campaigns",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/push/events",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/push/stats",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/push/templates",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/push/templates/:key",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/push/templates/:key",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/rewards/campaigns",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/rewards/campaigns",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/rewards/campaigns/:id",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/rewards/campaigns/:id/activate",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/rewards/campaigns/:id/partner-view",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/rewards/campaigns/:id/pause",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/rewards/codes/:id/disable",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/rewards/definitions",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/rewards/definitions",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/rewards/overview",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/rewards/partners",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/rewards/partners",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/rewards/partners/:id",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/rewards/redemptions",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/rewards/redemptions/:id",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/rewards/redemptions/:id/mark-used",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/rewards/rewards/:rewardId/codes",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/rewards/rewards/:rewardId/codes/import",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/rewards/rewards/:rewardId/inventory/adjust",
+      "mount": "/api/admin/rewards",
+      "source": "server/src/routes/adminRewards.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/settings",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/settings",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/sms/balance",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/sms/logs",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/sms/send",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/sms/stats",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/stats",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/system/health",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/users/:id",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/:id",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/users/:id",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:id/block",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:id/renew",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:id/reset-usage",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:id/unblock",
+      "mount": "/api/admin",
+      "source": "server/src/routes/admin.routes.js",
+      "securityClass": "ADMIN_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/align-lab",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/analyze-image",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/engines",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/explain-lab",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/extract-lab",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/feedback",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/medication-review",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/query",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/skincare",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/symptom-check",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/symptom-result/:recordId",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/weight-advice",
+      "mount": "/api/ai",
+      "source": "server/src/routes/ai.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/app/status",
+      "mount": "/api/app",
+      "source": "server/src/routes/app.routes.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "mount": "/api/auth",
+      "source": "server/src/routes/auth.routes.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/auth/me",
+      "mount": "/api/auth",
+      "source": "server/src/routes/auth.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "mount": "/api/auth",
+      "source": "server/src/routes/auth.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/auth/me",
+      "mount": "/api/auth",
+      "source": "server/src/routes/auth.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/password/forgot",
+      "mount": "/api/auth",
+      "source": "server/src/routes/auth.routes.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/password/reset",
+      "mount": "/api/auth",
+      "source": "server/src/routes/auth.routes.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/phone/link/start",
+      "mount": "/api/auth",
+      "source": "server/src/routes/auth.routes.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/phone/link/verify",
+      "mount": "/api/auth",
+      "source": "server/src/routes/auth.routes.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/phone/start",
+      "mount": "/api/auth",
+      "source": "server/src/routes/auth.routes.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/phone/verify",
+      "mount": "/api/auth",
+      "source": "server/src/routes/auth.routes.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "mount": "/api/auth",
+      "source": "server/src/routes/auth.routes.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chats",
+      "mount": "/api/chats",
+      "source": "server/src/routes/chats.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/chats/:id",
+      "mount": "/api/chats",
+      "source": "server/src/routes/chats.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chats/:id",
+      "mount": "/api/chats",
+      "source": "server/src/routes/chats.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/check-in",
+      "mount": "/api/check-in",
+      "source": "server/src/routes/check-in.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/check-in/claim",
+      "mount": "/api/check-in",
+      "source": "server/src/routes/check-in.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/check-in/session",
+      "mount": "/api/check-in",
+      "source": "server/src/routes/check-in.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/check-in/steps-goal",
+      "mount": "/api/check-in",
+      "source": "server/src/routes/check-in.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/doctor-summary",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/export",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cycle/insights",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cycle/last-period",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/cycle/logs/:date",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cycle/logs/:date",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/observation-trends",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cycle/period",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/postpartum",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cycle/postpartum",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/cycle/postpartum/bleed-classifications",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cycle/postpartum/bleed-classifications",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/prediction-history",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/pregnancy",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cycle/pregnancy/:date",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/pregnancy/care-plan",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cycle/pregnancy/care-plan/:careItemId",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/pregnancy/weeks/:week",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/cycle/profile",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cycle/profile",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/cycle/share",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "PARTNER_SCOPED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/share",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "PARTNER_SCOPED"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/cycle/share",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "PARTNER_SCOPED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cycle/share",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "PARTNER_SCOPED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/share/:code",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "PARTNER_SCOPED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cycle/share/:code/accept",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "PARTNER_SCOPED"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cycle/tags",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/cycle/tags/:id",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/cycle/tags/:id",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/ttc",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cycle/wipe",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/files/:filename",
+      "mount": "/api/files",
+      "source": "server/src/routes/files.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health-metrics",
+      "mount": "/api/health-metrics",
+      "source": "server/src/routes/health-metrics.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health-metrics/daily",
+      "mount": "/api/health-metrics",
+      "source": "server/src/routes/health-metrics.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health-metrics/hydration/goal",
+      "mount": "/api/health-metrics",
+      "source": "server/src/routes/health-metrics.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/health-metrics/hydration/goal",
+      "mount": "/api/health-metrics",
+      "source": "server/src/routes/health-metrics.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health-metrics/steps",
+      "mount": "/api/health-metrics",
+      "source": "server/src/routes/health-metrics.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health-metrics/steps/capability",
+      "mount": "/api/health-metrics",
+      "source": "server/src/routes/health-metrics.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/health-metrics/steps/capability",
+      "mount": "/api/health-metrics",
+      "source": "server/src/routes/health-metrics.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/health-metrics/sync",
+      "mount": "/api/health-metrics",
+      "source": "server/src/routes/health-metrics.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health-profile",
+      "mount": "/api/health-profile",
+      "source": "server/src/routes/health-profile.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/health-profile",
+      "mount": "/api/health-profile",
+      "source": "server/src/routes/health-profile.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/health-profile/complete",
+      "mount": "/api/health-profile",
+      "source": "server/src/routes/health-profile.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/health-profile/onboarding-analysis",
+      "mount": "/api/health-profile",
+      "source": "server/src/routes/health-profile.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/location",
+      "mount": "/api/location",
+      "source": "server/src/routes/location.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/location",
+      "mount": "/api/location",
+      "source": "server/src/routes/location.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/medi-companion",
+      "mount": "/api/medi-companion",
+      "source": "server/src/routes/mediCompanion.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/medi-companion/collection",
+      "mount": "/api/medi-companion",
+      "source": "server/src/routes/mediCompanion.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/medi-companion/equipment",
+      "mount": "/api/medi-companion",
+      "source": "server/src/routes/mediCompanion.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/medi-companion/journey",
+      "mount": "/api/medi-companion",
+      "source": "server/src/routes/mediCompanion.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/medi-companion/reconcile",
+      "mount": "/api/medi-companion",
+      "source": "server/src/routes/mediCompanion.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/medications",
+      "mount": "/api/medications",
+      "source": "server/src/routes/medications.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/medications",
+      "mount": "/api/medications",
+      "source": "server/src/routes/medications.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/medications/:id",
+      "mount": "/api/medications",
+      "source": "server/src/routes/medications.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/medications/:id",
+      "mount": "/api/medications",
+      "source": "server/src/routes/medications.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pharmacy/categories",
+      "mount": "/api/pharmacy",
+      "source": "server/src/routes/pharmacy.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pharmacy/meta/sync",
+      "mount": "/api/pharmacy",
+      "source": "server/src/routes/pharmacy.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pharmacy/products",
+      "mount": "/api/pharmacy",
+      "source": "server/src/routes/pharmacy.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pharmacy/products/:id",
+      "mount": "/api/pharmacy",
+      "source": "server/src/routes/pharmacy.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/decisions",
+      "mount": "/api/push",
+      "source": "server/src/routes/push.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/dose-events",
+      "mount": "/api/push",
+      "source": "server/src/routes/push.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/events",
+      "mount": "/api/push",
+      "source": "server/src/routes/push.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/events/product",
+      "mount": "/api/push",
+      "source": "server/src/routes/push.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/outcomes",
+      "mount": "/api/push",
+      "source": "server/src/routes/push.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/permission",
+      "mount": "/api/push",
+      "source": "server/src/routes/push.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/push/register",
+      "mount": "/api/push",
+      "source": "server/src/routes/push.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/register",
+      "mount": "/api/push",
+      "source": "server/src/routes/push.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/push/templates",
+      "mount": "/api/push",
+      "source": "server/src/routes/push.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/quests",
+      "mount": "/api/quests",
+      "source": "server/src/routes/quests.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/quests/:id/claim",
+      "mount": "/api/quests",
+      "source": "server/src/routes/quests.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/quests/history",
+      "mount": "/api/quests",
+      "source": "server/src/routes/quests.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/quests/profile",
+      "mount": "/api/quests",
+      "source": "server/src/routes/quests.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/quests/rewards",
+      "mount": "/api/quests",
+      "source": "server/src/routes/quests.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/quests/timezone",
+      "mount": "/api/quests",
+      "source": "server/src/routes/quests.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/records",
+      "mount": "/api/records",
+      "source": "server/src/routes/records.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/records/:id",
+      "mount": "/api/records",
+      "source": "server/src/routes/records.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/records/:id",
+      "mount": "/api/records",
+      "source": "server/src/routes/records.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/rewards",
+      "mount": "/api/rewards",
+      "source": "server/src/routes/rewards.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/rewards/:id",
+      "mount": "/api/rewards",
+      "source": "server/src/routes/rewards.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/rewards/:id/redeem",
+      "mount": "/api/rewards",
+      "source": "server/src/routes/rewards.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/rewards/entitlements",
+      "mount": "/api/rewards",
+      "source": "server/src/routes/rewards.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/rewards/redemptions",
+      "mount": "/api/rewards",
+      "source": "server/src/routes/rewards.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/rewards/redemptions/:id",
+      "mount": "/api/rewards",
+      "source": "server/src/routes/rewards.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/usage",
+      "mount": "/api/usage",
+      "source": "server/src/routes/usage.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/visits",
+      "mount": "/api/visits",
+      "source": "server/src/routes/visits.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "POST",
+      "path": "/api/visits",
+      "mount": "/api/visits",
+      "source": "server/src/routes/visits.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/visits/:id",
+      "mount": "/api/visits",
+      "source": "server/src/routes/visits.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/visits/:id",
+      "mount": "/api/visits",
+      "source": "server/src/routes/visits.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/visits/geocode",
+      "mount": "/api/visits",
+      "source": "server/src/routes/visits.routes.js",
+      "securityClass": "OWNER_ONLY"
+    },
+    {
+      "method": "GET",
+      "path": "/calculators",
+      "mount": "/",
+      "source": "server/src/server.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "GET",
+      "path": "/calculators/:slug",
+      "mount": "/",
+      "source": "server/src/server.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "mount": "/",
+      "source": "server/src/server.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "GET",
+      "path": "/privacy",
+      "mount": "/",
+      "source": "server/src/server.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "GET",
+      "path": "/share",
+      "mount": "/share",
+      "source": "server/src/server.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "GET",
+      "path": "/terms",
+      "mount": "/",
+      "source": "server/src/server.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "GET",
+      "path": "/uploads/*",
+      "mount": "/uploads",
+      "source": "server/src/server.js",
+      "securityClass": "PUBLIC"
+    },
+    {
+      "method": "HEAD",
+      "path": "/uploads/*",
+      "mount": "/uploads",
+      "source": "server/src/server.js",
+      "securityClass": "PUBLIC"
+    }
+  ]
+}

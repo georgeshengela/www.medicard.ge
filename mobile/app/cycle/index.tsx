@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -11,7 +11,7 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Baby, CalendarHeart, MessageSquareText } from 'lucide-react-native';
+import { CalendarHeart, MessageSquareText } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleHero } from '@/components/cycle/CycleHero';
 import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
@@ -23,6 +23,7 @@ import { CycleDaySummary } from '@/components/cycle/CycleDaySummary';
 import { CycleDayDetailsSheet } from '@/components/cycle/CycleDayDetailsSheet';
 import { CycleCalendarLegend } from '@/components/cycle/CycleCalendarLegend';
 import { CycleJournalPane } from '@/components/cycle/CycleJournalPane';
+import { CyclePostpartumBleedClassifySheet } from '@/components/cycle/CyclePostpartumBleedClassifySheet';
 import { CycleInsightsPanel } from '@/components/cycle/CycleInsights';
 import { CycleTtcCard } from '@/components/cycle/CycleTtcCard';
 import { CycleContraceptionCard } from '@/components/cycle/CycleContraceptionCard';
@@ -41,12 +42,13 @@ import { parseDateKey } from '@/lib/cyclePhase';
 import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonical';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { showContraceptionContextCard, showFertilityUi } from '@/lib/cycleContraception';
-import { alertPresentation, confidencePresentation } from '@/lib/cyclePresentation.js';
+import { alertPresentation, confidencePresentation, mergeOwnerClassifiedPeriodOntoMarks } from '@/lib/cyclePresentation.js';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
 import { CycleOfflineBanner } from '@/components/cycle/CycleOfflineBanner';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
+import { syncPregnancyCareReminders } from '@/lib/pregnancyCareReminders';
 import {
   cacheCycleBundle,
   discardCycleMutation,
@@ -54,7 +56,43 @@ import {
   queueApplyPeriod,
   type CycleView,
 } from '@/lib/cycleOffline';
-import { api, ApiError, type CycleBundle } from '@/lib/api';
+import { api, ApiError, type CycleBundle, type CyclePregnancyPayload, type CyclePostpartumPayload, type CycleTtcPayload } from '@/lib/api';
+import { CyclePregnancyCard } from '@/components/cycle/CyclePregnancyCard';
+import { CyclePerimenopauseCard } from '@/components/cycle/CyclePerimenopauseCard';
+import { CyclePostpartumCard } from '@/components/cycle/CyclePostpartumCard';
+import { CyclePregnancyTimelinePeek } from '@/components/cycle/CyclePregnancyTimelinePeek';
+import { CyclePregnancyCarePlannerCard } from '@/components/cycle/CyclePregnancyCarePlannerCard';
+import { cycleModeCapabilities, supportsCycleCapability } from '@/lib/cycleModes';
+import { forecastPresentationAllowed, suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
+import { cycleLoggedBleedLabel } from '@/lib/cycleHistoryCopy';
+import {
+  applyTtcFailure,
+  applyTtcSuccess,
+  beginTtcFetch,
+  emptyTtcQueryState,
+  scopeTtcQueryToUser,
+  shouldFetchCycleTtc,
+  stopTtcQuery,
+  ttcQueryTrace,
+} from '@/lib/cycleTtcQuery';
+import {
+  applyPregnancyFailure,
+  applyPregnancySuccess,
+  beginPregnancyFetch,
+  emptyPregnancyQueryState,
+  scopePregnancyQueryToUser,
+  shouldFetchCyclePregnancy,
+  stopPregnancyQuery,
+} from '@/lib/cyclePregnancyQuery';
+import {
+  applyPostpartumFailure,
+  applyPostpartumSuccess,
+  beginPostpartumFetch,
+  emptyPostpartumQueryState,
+  scopePostpartumQueryToUser,
+  shouldFetchCyclePostpartum,
+  stopPostpartumQuery,
+} from '@/lib/cyclePostpartumQuery';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
 
@@ -102,7 +140,8 @@ function PaneSwitcher({
             accessibilityLabel={p.label}
             style={{
               flex: 1,
-              minHeight: 44,
+              minHeight: 52,
+              paddingVertical: 8,
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: 12,
@@ -115,7 +154,7 @@ function PaneSwitcher({
                 color: active ? c.ink : c.muted,
                 fontFamily: active ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium',
                 fontSize: 13,
-                lineHeight: 17,
+                lineHeight: 20,
                 textAlign: 'center',
                 paddingHorizontal: 2,
               }}
@@ -130,7 +169,7 @@ function PaneSwitcher({
 }
 
 export default function CycleHome() {
-  const { user } = useAuth();
+  const { user, ready: authReady } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -145,6 +184,13 @@ export default function CycleHome() {
   const [onboardSaving, setOnboardSaving] = useState(false);
   const [holdOnboarding, setHoldOnboarding] = useState(false);
   const [ttcConflictOpen, setTtcConflictOpen] = useState(false);
+  const [classifyBleed, setClassifyBleed] = useState<{ date: string; classified: boolean } | null>(null);
+  const [ttcQuery, setTtcQuery] = useState(() => emptyTtcQueryState());
+  const ttcGen = useRef(0);
+  const [pregnancyQuery, setPregnancyQuery] = useState(() => emptyPregnancyQueryState());
+  const pregnancyGen = useRef(0);
+  const [postpartumQuery, setPostpartumQuery] = useState(() => emptyPostpartumQueryState());
+  const postpartumGen = useRef(0);
   const [quickOpen, setQuickOpen] = useState(false);
   const [daySheetOpen, setDaySheetOpen] = useState(false);
   const [startIntent, setStartIntent] = useState(false);
@@ -158,44 +204,257 @@ export default function CycleHome() {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
+  useEffect(() => {
+    if (typeof __DEV__ === 'undefined' || !__DEV__) return undefined;
+    const g = globalThis as typeof globalThis & {
+      __CYCLE_TTC_TRACE?: (event: string, extra?: Record<string, unknown>) => void;
+    };
+    g.__CYCLE_TTC_TRACE = (event, extra) => {
+      console.log(`[cycle-ttc] ${event}`, extra);
+    };
+    return () => {
+      delete g.__CYCLE_TTC_TRACE;
+    };
+  }, []);
+
+  useEffect(() => {
+    setTtcQuery((prev) => scopeTtcQueryToUser(prev, user?.id ?? null));
+    setPregnancyQuery((prev) => scopePregnancyQueryToUser(prev, user?.id ?? null));
+    setPostpartumQuery((prev) => scopePostpartumQueryToUser(prev, user?.id ?? null));
+  }, [user?.id]);
+
+  const refreshTtc = useCallback(
+    async (view: CycleView, userId: string, gen: number) => {
+      const eligible = shouldFetchCycleTtc({
+        authReady,
+        authenticated: Boolean(userId),
+        mode: view.display.profile.mode,
+        reachable: view.reachable !== false,
+      });
+      if (!eligible) {
+        if (!supportsCycleCapability(view.display.profile.mode, 'showTtcOverview')) {
+          setTtcQuery((prev) => stopTtcQuery(prev));
+        } else if (view.reachable === false) {
+          setTtcQuery((prev) =>
+            prev.data && prev.userId === userId
+              ? prev
+              : applyTtcFailure(prev, {
+                  generation: gen,
+                  currentGeneration: ttcGen.current,
+                  error: { status: 0 },
+                  userId,
+                }),
+          );
+        }
+        return;
+      }
+      setTtcQuery((prev) =>
+        beginTtcFetch(prev, { generation: gen, currentGeneration: ttcGen.current, userId }),
+      );
+      ttcQueryTrace('ttc_request_start', { gen, userId, t: Date.now() });
+      try {
+        const payload = await api.cycle.ttc();
+        ttcQueryTrace('ttc_response', { gen, userId, t: Date.now(), ok: true });
+        setTtcQuery((prev) =>
+          applyTtcSuccess(prev, {
+            generation: gen,
+            currentGeneration: ttcGen.current,
+            payload,
+            userId,
+          }),
+        );
+      } catch (err) {
+        ttcQueryTrace('ttc_response', {
+          gen,
+          userId,
+          t: Date.now(),
+          status: err instanceof ApiError ? err.status : 0,
+        });
+        setTtcQuery((prev) =>
+          applyTtcFailure(prev, {
+            generation: gen,
+            currentGeneration: ttcGen.current,
+            error: err,
+            userId,
+          }),
+        );
+      }
+    },
+    [authReady],
+  );
+
+  const refreshPregnancy = useCallback(
+    async (view: CycleView, userId: string, gen: number) => {
+      const eligible = shouldFetchCyclePregnancy({
+        authReady,
+        authenticated: Boolean(userId),
+        mode: view.display.profile.mode,
+        reachable: view.reachable !== false,
+      });
+      if (!eligible) {
+        if (!supportsCycleCapability(view.display.profile.mode, 'showPregnancyOverview')) {
+          setPregnancyQuery((prev) => stopPregnancyQuery(prev));
+        } else if (view.reachable === false) {
+          setPregnancyQuery((prev) =>
+            prev.data && prev.userId === userId
+              ? prev
+              : applyPregnancyFailure(prev, {
+                  generation: gen,
+                  currentGeneration: pregnancyGen.current,
+                  error: { status: 0 },
+                  userId,
+                }),
+          );
+        }
+        return;
+      }
+      setPregnancyQuery((prev) =>
+        beginPregnancyFetch(prev, { generation: gen, currentGeneration: pregnancyGen.current, userId }),
+      );
+      try {
+        const payload = await api.cycle.pregnancy();
+        setPregnancyQuery((prev) =>
+          applyPregnancySuccess(prev, {
+            generation: gen,
+            currentGeneration: pregnancyGen.current,
+            payload,
+            userId,
+          }),
+        );
+      } catch (err) {
+        setPregnancyQuery((prev) =>
+          applyPregnancyFailure(prev, {
+            generation: gen,
+            currentGeneration: pregnancyGen.current,
+            error: err,
+            userId,
+          }),
+        );
+      }
+    },
+    [authReady],
+  );
+
+  const refreshPostpartum = useCallback(
+    async (view: CycleView, userId: string, gen: number) => {
+      const eligible = shouldFetchCyclePostpartum({
+        authReady,
+        authenticated: Boolean(userId),
+        mode: view.display.profile.mode,
+        reachable: view.reachable !== false,
+      });
+      if (!eligible) {
+        if (!supportsCycleCapability(view.display.profile.mode, 'showPostpartumOverview')) {
+          setPostpartumQuery((prev) => stopPostpartumQuery(prev));
+        } else if (view.reachable === false) {
+          setPostpartumQuery((prev) =>
+            prev.data && prev.userId === userId
+              ? prev
+              : applyPostpartumFailure(prev, {
+                  generation: gen,
+                  currentGeneration: postpartumGen.current,
+                  error: { status: 0 },
+                  userId,
+                }),
+          );
+        }
+        return;
+      }
+      setPostpartumQuery((prev) =>
+        beginPostpartumFetch(prev, { generation: gen, currentGeneration: postpartumGen.current, userId }),
+      );
+      try {
+        const payload = await api.cycle.postpartum();
+        setPostpartumQuery((prev) =>
+          applyPostpartumSuccess(prev, {
+            generation: gen,
+            currentGeneration: postpartumGen.current,
+            payload,
+            userId,
+          }),
+        );
+      } catch (err) {
+        setPostpartumQuery((prev) =>
+          applyPostpartumFailure(prev, {
+            generation: gen,
+            currentGeneration: postpartumGen.current,
+            error: err,
+            userId,
+          }),
+        );
+      }
+    },
+    [authReady],
+  );
+
   const load = useCallback(async () => {
+    if (!authReady) return;
     if (!user?.id) {
+      setTtcQuery(emptyTtcQueryState(null));
+      setPregnancyQuery(emptyPregnancyQueryState(null));
+      setPostpartumQuery(emptyPostpartumQueryState(null));
       setLoading(false);
       return;
     }
+    const gen = ++ttcGen.current;
+    pregnancyGen.current = gen;
+    postpartumGen.current = gen;
+    const userId = user.id;
+    ttcQueryTrace('auth_hydrated', { gen, userId, t: Date.now() });
+    ttcQueryTrace('cycle_bundle_start', { gen, userId, t: Date.now() });
     try {
       setError(null);
-      const view = await loadCycleView(user.id);
+      const view = await loadCycleView(userId);
+      if (gen !== ttcGen.current) return;
+      ttcQueryTrace('cycle_bundle_response', { gen, userId, t: Date.now() });
       setCycleView(view);
       setBundle(view.display);
+      await refreshTtc(view, userId, gen);
+      await refreshPregnancy(view, userId, gen);
+      await refreshPostpartum(view, userId, gen);
       if (!view.stale && view.pendingCount === 0) {
         try {
           const prefs = await getCycleReminderPrefs();
           await syncCycleReminders(view.canonical, prefs);
+          if (supportsCycleCapability(view.canonical.profile.mode, 'showPregnancyCarePlanner')) {
+            const carePlan = await api.cycle.pregnancyCarePlan();
+            await syncPregnancyCareReminders({
+              plan: carePlan,
+              userId: userId,
+              mode: view.canonical.profile.mode,
+              today: cycleToday(view.canonical, todayKey()),
+              privacyEnabled: Boolean(view.canonical.profile.privacyEnabled),
+            });
+          }
         } catch {
           /* Reminders must not block last-period date pick. */
         }
       }
     } catch (err) {
+      if (gen !== ttcGen.current) return;
       setError(err instanceof ApiError ? err.message : ka.common.error);
     } finally {
-      setLoading(false);
+      if (gen === ttcGen.current) setLoading(false);
     }
-  }, [user?.id]);
+  }, [authReady, user?.id, refreshTtc, refreshPregnancy, refreshPostpartum]);
 
   useFocusEffect(
     useCallback(() => {
+      if (!authReady) return;
       if (user?.gender !== 'FEMALE') {
         setLoading(false);
         return;
       }
-      load();
-    }, [user?.gender, load]),
+      void load();
+    }, [authReady, user?.gender, load]),
   );
 
   const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
   const needsOnboarding =
-    Boolean(bundle) && user?.gender === 'FEMALE' && (!lastPeriod || holdOnboarding);
+    Boolean(bundle) &&
+    user?.gender === 'FEMALE' &&
+    !supportsCycleCapability(bundle?.profile.mode, 'showPostpartumOverview') &&
+    (!lastPeriod || holdOnboarding);
   const cycleTodayKey = cycleToday(bundle, todayKey());
   const cycleLen = bundle ? usedCycleLength(bundle) : 28;
   const today = cycleTodayKey;
@@ -211,13 +470,31 @@ export default function CycleHome() {
   const selectedMonth = useMemo(() => parseDateKey(selected), [selected]);
 
   const headerSubtitle = useMemo(() => {
+    const caps = cycleModeCapabilities(bundle?.profile.mode);
+    if (caps.showPregnancyOverview) {
+      const queryAge = (pregnancyQuery.data as CyclePregnancyPayload | null)?.estimatedGestationalAge;
+      const age = bundle.pregnancy?.age ?? (queryAge ? { week: queryAge.week, day: queryAge.day } : null);
+      if (age) return ka.cycle.pregnancyWeekDay(age.week, age.day);
+      return ka.cycle.pregnancyModeTitle;
+    }
+    if (caps.showPerimenopauseTracking) {
+      return ka.cycle.periModeTitle;
+    }
+    if (caps.showPostpartumOverview) {
+      const elapsed = (postpartumQuery.data as CyclePostpartumPayload | null)?.elapsed ?? bundle?.postpartum?.elapsed;
+      if (elapsed) return ka.cycle.postpartumElapsed(elapsed.week, elapsed.day);
+      return ka.cycle.postpartumModeTitle;
+    }
+    if (suppressCycleLengthChrome(bundle)) {
+      return ka.cycle.postpartumReturnGathering;
+    }
     if (todayPhase.day != null) {
       return `${ka.cycle.cycleDay} ${todayPhase.day} · ${displayPhaseLabel(todayPhase.phase, todayPhase.phaseKa, {
         loggedPeriod: isBleedFlow(bundle?.logs.find((l) => l.date === today)?.flow),
       })}`;
     }
     return ka.cycle.statusLearning;
-  }, [todayPhase, bundle, today]);
+  }, [todayPhase, bundle, today, pregnancyQuery.data, postpartumQuery.data]);
 
   useEffect(() => {
     setCursor({ y: selectedMonth.y, m: selectedMonth.m });
@@ -229,14 +506,25 @@ export default function CycleHome() {
     setSelected((prev) => (prev === todayKey() ? serverToday : prev));
   }, [bundle?.meta?.today]);
 
-  const marks = useMemo(
-    () => mergeFertilityMarks(bundle?.predictions?.calendar, bundle?.logs),
-    [bundle?.predictions?.calendar, bundle?.logs],
-  );
+  const marks = useMemo(() => {
+    const dates =
+      (postpartumQuery.data as CyclePostpartumPayload | null)?.classifiedDates
+      || bundle?.postpartum?.classifiedDates
+      || bundle?.classifiedDates
+      || [];
+    return mergeOwnerClassifiedPeriodOntoMarks(
+      mergeFertilityMarks(bundle?.predictions?.calendar, bundle?.logs),
+      dates,
+    );
+  }, [bundle?.predictions?.calendar, bundle?.logs, postpartumQuery.data, bundle?.postpartum]);
   const fertilityVisible = bundle ? showFertilityUi(bundle) : true;
-  const showPredicted = bundle
-    ? !confidencePresentation(bundle.predictions?.confidence).hidePredictedOverlays
-    : true;
+  const modeCaps = cycleModeCapabilities(bundle?.profile.mode);
+  const showPredicted = Boolean(
+    bundle
+    && modeCaps.showFertileEstimates
+    && forecastPresentationAllowed(bundle)
+    && !confidencePresentation(bundle.predictions?.confidence).hidePredictedOverlays,
+  );
 
   const saveLastPeriod = async (iso: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
@@ -307,8 +595,8 @@ export default function CycleHome() {
                 setCycleView(result.view);
                 setBundle(result.view.display);
               }
-            } catch {
-              setError(ka.common.error);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : ka.common.error);
             }
           })();
         },
@@ -428,21 +716,31 @@ export default function CycleHome() {
     hasPmsPattern(bundle!) &&
     bundle?.contraception?.presentation.showPhaseAsBiological !== false;
 
-  const lateAlert = (bundle?.alerts ?? []).find((row) => alertPresentation(row).late);
+  const lateAlert = modeCaps.showLatePeriod
+    ? (bundle?.alerts ?? []).find((row) => alertPresentation(row).late)
+    : undefined;
 
   /** §4.2.2 — exactly one contextual block: safety > mode > pattern. */
+  const bleedLegend = cycleLoggedBleedLabel(bundle?.profile.mode, ka.cycle);
+
   const contextualBlock: 'late' | 'pregnancy' | 'ttc' | 'contraception' | 'pms' | null =
-    lateAlert
+    modeCaps.showPregnancyOverview
+      ? 'pregnancy'
+      : modeCaps.showPostpartumOverview
+      ? null
+      : modeCaps.showPerimenopauseTracking
+      ? showContraceptionContextCard(bundle)
+        ? 'contraception'
+        : null
+      : lateAlert
       ? 'late'
-      : bundle?.profile.mode === 'PREGNANCY' && bundle.pregnancy?.age
-        ? 'pregnancy'
-        : bundle?.profile.mode === 'TRY_TO_CONCEIVE'
-          ? 'ttc'
-          : showContraceptionContextCard(bundle)
-            ? 'contraception'
-            : showPms
-              ? 'pms'
-              : null;
+      : modeCaps.showTtcOverview
+        ? 'ttc'
+        : showContraceptionContextCard(bundle)
+          ? 'contraception'
+          : showPms
+            ? 'pms'
+            : null;
 
   return (
     <CycleAtmosphere>
@@ -491,6 +789,7 @@ export default function CycleHome() {
             today={today}
             showFertility={fertilityVisible}
             showPredicted={showPredicted}
+            loggedBleedLabel={bleedLegend}
           />
         ) : null}
 
@@ -498,7 +797,7 @@ export default function CycleHome() {
           style={{
             flex: 1,
             marginBottom:
-              pane === 'calendar' && !daySheetOpen && !quickOpen ? insets.bottom + 84 : 0,
+              !daySheetOpen && !quickOpen ? insets.bottom + 84 : 0,
           }}
           contentContainerStyle={{
             paddingBottom: pane === 'calendar' ? 28 : 24,
@@ -554,20 +853,60 @@ export default function CycleHome() {
                 entering={FadeInUp.duration(360)}
                 style={{ marginHorizontal: 16, marginBottom: 16, marginTop: 4 }}
               >
-                <CycleHero
-                  bundle={bundle}
-                  day={todayPhase.day}
-                  cycleLength={cycleLen}
-                  phaseKa={todayPhase.phaseKa}
-                  phase={todayPhase.phase}
-                  today={today}
-                  onLog={() => openQuickLog(today)}
-                  onStart={() => openQuickLog(today, true)}
-                  onEnd={endPeriod}
-                  onInfo={() =>
-                    Alert.alert(ka.cycle.howCalculated, ka.cycle.howCalculatedBody)
-                  }
-                />
+                {modeCaps.showPregnancyOverview ? (
+                  <>
+                    <CyclePregnancyCard
+                      pregnancy={pregnancyQuery.data as CyclePregnancyPayload | null}
+                      status={pregnancyQuery.status}
+                      errorKind={pregnancyQuery.errorKind}
+                      onRetry={() => void load()}
+                      onLog={() => openQuickLog(today)}
+                      onOpenWeek={() => {
+                        const age = (pregnancyQuery.data as CyclePregnancyPayload | null)?.estimatedGestationalAge;
+                        if (!age || (pregnancyQuery.data as CyclePregnancyPayload | null)?.reviewRequired) return;
+                        router.push(`/cycle/week/${age.week}`);
+                      }}
+                    />
+                    <CyclePregnancyTimelinePeek
+                      timeline={(pregnancyQuery.data as CyclePregnancyPayload | null)?.timeline}
+                      onOpen={() => router.push('/cycle/pregnancy/timeline')}
+                    />
+                    {modeCaps.showPregnancyCarePlanner ? (
+                      <CyclePregnancyCarePlannerCard
+                        summary={(pregnancyQuery.data as CyclePregnancyPayload | null)?.carePlannerSummary}
+                        onOpen={() => router.push('/cycle/pregnancy/care-plan')}
+                      />
+                    ) : null}
+                  </>
+                ) : modeCaps.showPostpartumOverview ? (
+                  <CyclePostpartumCard
+                    postpartum={postpartumQuery.data as CyclePostpartumPayload | null}
+                    status={postpartumQuery.status}
+                    errorKind={postpartumQuery.errorKind}
+                    onRetry={() => void load()}
+                    onLog={() => openQuickLog(today)}
+                  />
+                ) : modeCaps.showPerimenopauseTracking ? (
+                  <CyclePerimenopauseCard
+                    peri={bundle.perimenopause}
+                    onLog={() => openQuickLog(today)}
+                  />
+                ) : (
+                  <CycleHero
+                    bundle={bundle}
+                    day={todayPhase.day}
+                    cycleLength={cycleLen}
+                    phaseKa={todayPhase.phaseKa}
+                    phase={todayPhase.phase}
+                    today={today}
+                    onLog={() => openQuickLog(today)}
+                    onStart={() => openQuickLog(today, true)}
+                    onEnd={endPeriod}
+                    onInfo={() =>
+                      Alert.alert(ka.cycle.howCalculated, ka.cycle.howCalculatedBody)
+                    }
+                  />
+                )}
               </Animated.View>
 
               <View style={{ paddingHorizontal: 16 }}>
@@ -575,6 +914,40 @@ export default function CycleHome() {
                   <CycleDaySummary log={todayLog} onPress={() => openQuickLog(today)} />
                 </CycleSection>
               </View>
+
+              {modeCaps.showPregnancyOverview ? (
+                <View style={{ paddingHorizontal: 16 }}>
+                  <Pressable
+                    onPress={() => router.push('/chat/doctor' as never)}
+                    accessibilityRole="button"
+                    accessibilityLabel={ka.cycle.askMedi}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      minHeight: 44,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      marginBottom: 8,
+                      borderRadius: 16,
+                      backgroundColor: c.roseSoft,
+                      borderWidth: 1,
+                      borderColor: c.border,
+                    }}
+                  >
+                    <MessageSquareText size={17} color={c.brand} strokeWidth={2.1} />
+                    <Text
+                      style={{
+                        color: c.brand,
+                        fontFamily: 'NotoSansGeorgian_600SemiBold',
+                        fontSize: 13,
+                        marginLeft: 8,
+                      }}
+                    >
+                      {ka.cycle.askMedi}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
 
               {contextualBlock === 'late' && lateAlert ? (
                 <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
@@ -615,15 +988,11 @@ export default function CycleHome() {
                     bundle={bundle}
                     date={today}
                     log={todayLog}
-                    onAction={(key) => {
-                      if (key === 'full') {
-                        router.push({ pathname: '/cycle/log', params: { date: today } } as never);
-                        return;
-                      }
-                      router.push({
-                        pathname: '/cycle/log',
-                        params: { date: today, tab: 'more' },
-                      } as never);
+                    ttcStatus={ttcQuery.status}
+                    ttcErrorKind={ttcQuery.errorKind}
+                    onRetryTtc={() => void load()}
+                    onAction={() => {
+                      openQuickLog(today);
                     }}
                   />
                 </View>
@@ -635,63 +1004,11 @@ export default function CycleHome() {
                 </View>
               ) : null}
 
-              {contextualBlock === 'pregnancy' && bundle.pregnancy?.age ? (
-                <Pressable
-                  onPress={() => router.push('/cycle/pregnancy' as never)}
-                  style={{
-                    marginHorizontal: 16,
-                    marginBottom: 16,
-                    borderRadius: 16,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <View
-                    style={{
-                      padding: 16,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: c.card,
-                      borderWidth: 1,
-                      borderColor: c.border,
-                      borderRadius: 16,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: 18,
-                        backgroundColor: c.lavenderSoft,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Baby size={26} color={c.lavender} strokeWidth={2} />
-                    </View>
-                    <View style={{ marginLeft: 14, flex: 1 }}>
-                      <Text
-                        style={{
-                          color: c.ink,
-                          fontFamily: 'NotoSansGeorgian_700Bold',
-                          fontSize: 17,
-                        }}
-                      >
-                        {ka.cycle.week} {bundle.pregnancy.age.week}, {ka.cycle.day}{' '}
-                        {bundle.pregnancy.age.day}
-                      </Text>
-                      <Text style={{ color: c.muted, marginTop: 3, fontSize: 13 }}>
-                        {ka.cycle.babySize}: {bundle.pregnancy.insight.size}
-                      </Text>
-                    </View>
-                    <Text style={{ color: c.muted, fontSize: 22, fontWeight: '700' }}>›</Text>
-                  </View>
-                </Pressable>
-              ) : null}
-
+              {modeCaps.showClassicCycleOverview ? (
               <View style={{ paddingHorizontal: 16 }}>
                 <CycleInsightsPanel
                   seed={(bundle.profile.aiInsights as never) || bundle.localInsights || null}
-                  phase={todayPhase}
+                  phase={suppressCycleLengthChrome(bundle) ? { ...todayPhase, day: null } : todayPhase}
                   mode={bundle.profile.mode}
                   conditions={bundle.profile.conditions}
                   log={todayLog}
@@ -733,6 +1050,7 @@ export default function CycleHome() {
                   </Text>
                 </Pressable>
               </View>
+              ) : null}
             </>
           ) : null}
 
@@ -776,6 +1094,7 @@ export default function CycleHome() {
                 selected={selected}
                 showFertility={fertilityVisible}
                 showPredicted={showPredicted}
+                loggedBleedLabel={bleedLegend}
                 onSelect={(d) => {
                   setSelected(d);
                   setDaySheetOpen(true);
@@ -795,7 +1114,16 @@ export default function CycleHome() {
               />
 
               <View style={{ marginTop: 14 }}>
-                <CycleCalendarLegend showFertility={fertilityVisible} showPredicted={showPredicted} />
+                <CycleCalendarLegend
+                  showFertility={fertilityVisible}
+                  showPredicted={showPredicted}
+                  loggedBleedLabel={bleedLegend}
+                  showOwnerClassified={Boolean(
+                    (postpartumQuery.data as CyclePostpartumPayload | null)?.classifiedDates?.length
+                    || bundle?.postpartum?.classifiedDates?.length
+                    || bundle?.classifiedDates?.length,
+                  )}
+                />
               </View>
             </View>
           ) : null}
@@ -804,7 +1132,17 @@ export default function CycleHome() {
             <CycleJournalPane
               bundle={bundle}
               canonical={cycleView?.canonical ?? null}
+              ttc={ttcQuery.data as CycleTtcPayload | null}
+              ttcStatus={ttcQuery.status}
+              ttcErrorKind={ttcQuery.errorKind}
+              pregnancy={pregnancyQuery.data as CyclePregnancyPayload | null}
+              pregnancyStatus={pregnancyQuery.status}
+              pregnancyErrorKind={pregnancyQuery.errorKind}
+              postpartum={postpartumQuery.data as CyclePostpartumPayload | null}
+              postpartumStatus={postpartumQuery.status}
               onChanged={() => void load()}
+              onLogFertility={() => openQuickLog(today)}
+              onClassifyPostpartumBleed={(date, classified) => setClassifyBleed({ date, classified })}
             />
           ) : null}
         </ScrollView>
@@ -830,6 +1168,10 @@ export default function CycleHome() {
           if (view) {
             setCycleView(view);
             setBundle(view.display);
+            if (authReady && user?.id) {
+              const gen = ++ttcGen.current;
+              void refreshTtc(view, user.id, gen);
+            }
             return;
           }
           void load();
@@ -854,8 +1196,18 @@ export default function CycleHome() {
             setDaySheetOpen(false);
             router.push({ pathname: '/cycle/log', params: { date } } as never);
           }}
+          postpartum={postpartumQuery.data as CyclePostpartumPayload | null}
+          onClassifyEpisode={(date, classified) => setClassifyBleed({ date, classified })}
         />
       ) : null}
+
+      <CyclePostpartumBleedClassifySheet
+        visible={Boolean(classifyBleed)}
+        date={classifyBleed?.date ?? null}
+        classified={Boolean(classifyBleed?.classified)}
+        onClose={() => setClassifyBleed(null)}
+        onComplete={() => void load()}
+      />
 
       <CycleTtcConflictSheet
         visible={ttcConflictOpen}
@@ -863,6 +1215,7 @@ export default function CycleHome() {
         onKeepTtc={() => setTtcConflictOpen(false)}
         onSwitchTrack={() => {
           setTtcConflictOpen(false);
+          setTtcQuery((prev) => stopTtcQuery(prev));
           void api.cycle
             .updateProfile({ mode: 'TRACK_PERIOD' })
             .then((data) => {

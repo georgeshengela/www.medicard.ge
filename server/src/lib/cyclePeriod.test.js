@@ -120,7 +120,7 @@ describe('end period plan', () => {
     );
   });
 
-  it('shortens a range by clearing bleed after the new end', () => {
+  it('clears bleed from the end date onward (that day is no longer a period day)', () => {
     const existing = logs([
       ['2026-08-10', 'light'],
       ['2026-08-11', 'medium'],
@@ -130,16 +130,44 @@ describe('end period plan', () => {
     ]);
     const { plan, next } = endPeriod(existing, '2026-08-13');
     assert.deepEqual(plan.fill, []);
-    assert.deepEqual(plan.clear, ['2026-08-14']);
+    assert.deepEqual(plan.clear, ['2026-08-13', '2026-08-14']);
     assert.deepEqual(
       next.map((l) => [l.date, l.flow]),
       [
         ['2026-08-10', 'light'],
         ['2026-08-11', 'medium'],
         ['2026-08-12', 'heavy'],
-        ['2026-08-13', 'medium'],
       ],
     );
+  });
+
+  it('clears today when ending on the last logged bleed day', () => {
+    const existing = logs([
+      ['2026-08-10', 'medium'],
+      ['2026-08-11', 'medium'],
+      ['2026-08-12', 'light'],
+    ]);
+    const { plan, next } = endPeriod(existing, '2026-08-12');
+    assert.deepEqual(plan.fill, []);
+    assert.deepEqual(plan.clear, ['2026-08-12']);
+    assert.deepEqual(
+      next.map((l) => [l.date, l.flow]),
+      [
+        ['2026-08-10', 'medium'],
+        ['2026-08-11', 'medium'],
+      ],
+    );
+  });
+
+  it('can stop a logged run longer than the fill span cap', () => {
+    const existing = logs(
+      Array.from({ length: 16 }, (_, i) => [addDays('2026-08-01', i), 'medium']),
+    );
+    const { plan, next } = endPeriod(existing, '2026-08-16');
+    assert.deepEqual(plan.fill, []);
+    assert.deepEqual(plan.clear, ['2026-08-16']);
+    assert.equal(next.length, 15);
+    assert.equal(next.at(-1).date, '2026-08-15');
   });
 
   it('refuses to apply a plan that still wants synthetic fill', () => {

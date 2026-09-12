@@ -149,3 +149,19 @@ Opaque routes only: `/cycle`, `/cycle/log`. No fertility status, cycle day, or s
 ## Timezone
 
 Event identity is the engine civil date. Delivery time is the device local clock (09:00, quiet-bumped). Logged Cycle dates are not mutated when the user travels.
+
+---
+
+## Phase 33 — user-opted prenatal care reminders
+
+Sibling family `pregnancyCareReminder` / `pregnancy_care_plan`. **USER_PLANNED_EVENT**, not a Cycle calendar type.
+
+- Requires explicit opt-in + `plannedDate`. Catalog windows never emit candidates.
+- Same Brain fire-time gate, 09:00 + quiet bump, Cycle lock-screen mask.
+- Does **not** enter Engage daily caps or the medication channel.
+- Deep link: `/cycle/pregnancy/care-plan?item=:careItemId`
+
+Full contract: `docs/PREGNANCY_CARE_REMINDER_CONTRACT.md`.
+
+**Phase 42:** postpartum-return forecast eligibility (`FORECAST_GATE_SUPPRESSED`) blocks predictive Cycle candidates even in TRACK/TTC until enough new classified history exists. Contract: `docs/CYCLE_POSTPARTUM_RETURN_TO_TRACK_CONTRACT.md`.
+

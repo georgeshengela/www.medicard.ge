@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8" />
+  <title>Medicard Facebook cover — new directions</title>
+  <style>
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-Regular.woff2") format("woff2");
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-Medium.woff2") format("woff2");
+      font-weight: 500;
+    }
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-SemiBold.woff2") format("woff2");
+      font-weight: 600;
+    }
+    @font-face {
+      font-family: "DM Davit Guramishvili";
+      src: url("../server/public/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2") format("woff2");
+      font-weight: 400;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #030712; }
+
+    .cover {
+      position: relative;
+      width: 1640px;
+      height: 624px;
+      background: #030712;
+      color: #fff;
+      font-family: "FiraGO", sans-serif;
+      overflow: hidden;
+    }
+
+    .mark-ghost {
+      position: absolute;
+      left: -80px;
+      top: 78px;
+      width: 420px;
+      height: 420px;
+      opacity: 0.07;
+    }
+
+    .copy {
+      position: absolute;
+      left: 278px;
+      top: 0;
+      width: 520px;
+      height: 624px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      z-index: 3;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    .brand img { width: 44px; height: 44px; border-radius: 12px; display: block; }
+    .brand span { font-size: 22px; font-weight: 600; font-feature-settings: "case" 1, "kern" 1; }
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #14B8A6;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      margin-bottom: 14px;
+    }
+    .kicker::before { content: ""; width: 18px; height: 1px; background: #0D9488; }
+    h1 {
+      font-family: "DM Davit Guramishvili", "FiraGO", sans-serif;
+      font-size: 48px;
+      line-height: 1.14;
+      letter-spacing: -0.02em;
+      font-weight: 400;
+    }
+    .url { margin-top: 22px; color: #6B7280; font-size: 14px; font-weight: 500; letter-spacing: 0.04em; }
+
+    /* V5 — monumental cropped mark */
+    .monument {
+      position: absolute;
+      right: -170px;
+      top: -168px;
+      width: 940px;
+      height: 940px;
+      z-index: 1;
+    }
+    .spine {
+      position: absolute;
+      left: 820px;
+      top: 0;
+      height: 624px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 16px;
+      z-index: 2;
+    }
+    .spine span {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #D1D5DB;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .spine i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #14B8A6;
+      flex: none;
+    }
+
+    /* V6 — type poster */
+    .waterfall {
+      position: absolute;
+      right: 200px;
+      top: -8px;
+      width: 520px;
+      text-align: right;
+      font-family: "DM Davit Guramishvili", "FiraGO", sans-serif;
+      font-size: 58px;
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+      z-index: 1;
+    }
+    .waterfall b { display: block; font-weight: 400; }
+    .waterfall b:nth-child(1) { color: #14B8A6; }
+    .waterfall b:nth-child(2) { color: #fff; }
+    .waterfall b:nth-child(3) { color: #fff; opacity: 0.82; }
+    .waterfall b:nth-child(4) { color: #fff; opacity: 0.64; }
+    .waterfall b:nth-child(5) { color: #fff; opacity: 0.48; }
+    .waterfall b:nth-child(6) { color: #fff; opacity: 0.34; }
+    .waterfall b:nth-child(7) { color: #fff; opacity: 0.22; }
+    .waterfall b:nth-child(8) { color: #fff; opacity: 0.12; }
+
+    /* V7 — bento */
+    .bento {
+      position: absolute;
+      right: 240px;
+      top: 72px;
+      width: 540px;
+      height: 480px;
+      display: grid;
+      grid-template-columns: 1.25fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      gap: 12px;
+      z-index: 1;
+    }
+    .tile {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 16px 16px 14px;
+      gap: 8px;
+    }
+    .tile.medi {
+      grid-row: 1 / 3;
+      grid-column: 1;
+      background: #0D9488;
+      border-color: #0D9488;
+      justify-content: space-between;
+    }
+    .tile .dot {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #042F2E;
+      display: grid;
+      place-items: center;
+    }
+    .tile.medi .dot { background: rgba(255,255,255,0.16); }
+    .tile img {
+      width: 18px;
+      height: 18px;
+      display: block;
+      filter: brightness(0) invert(1);
+    }
+    .tile b {
+      font-size: 14px;
+      font-weight: 500;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .tile.medi b { font-size: 22px; font-feature-settings: "case" 1; }
+
+    /* V8 — gradient squircle, same language as the app icon */
+    .slab {
+      position: absolute;
+      right: 236px;
+      top: 48px;
+      width: 528px;
+      height: 528px;
+      border-radius: 120px;
+      overflow: hidden;
+      z-index: 1;
+    }
+    .slab-fill {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #14B8A6 0%, #0F766E 100%);
+    }
+    .slab-mark {
+      position: absolute;
+      left: 50%;
+      top: 46%;
+      width: 280px;
+      height: 280px;
+      transform: translate(-50%, -50%);
+    }
+    .slab-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 58px;
+      text-align: center;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- V5 Monument: giant cropped clover + quiet module spine -->
+  <section class="cover" id="v5">
+    <svg class="mark-ghost" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true"><path fill-rule="evenodd" fill="#fff" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/></svg>
+    <svg class="monument" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true">
+      <path fill="#14B8A6" fill-rule="evenodd" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/>
+    </svg>
+    <div class="copy">
+      <div class="brand"><img src="../mobile/assets/icon.png" alt="" /><span>მედიქარდი</span></div>
+      <p class="kicker">ქართულენოვანი ჯანმრთელობის აპი</p>
+      <h1>შენი ჯანმრთელობა.<br />შენი ისტორია.<br />შენთან ყოველთვის.</h1>
+      <p class="url">medicard.ge</p>
+    </div>
+    <div class="spine">
+      <span><i></i>Medi</span>
+      <span><i></i>ანალიზები</span>
+      <span><i></i>ციკლი</span>
+      <span><i></i>მედიკამენტები</span>
+      <span><i></i>სიმპტომები</span>
+      <span><i></i>ნაბიჯები</span>
+    </div>
+  </section>
+
+  <!-- V6 Type poster: modules as giant cropped Georgian type -->
+  <section class="cover" id="v6">
+    <svg class="mark-ghost" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true"><path fill-rule="evenodd" fill="#fff" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/></svg>
+    <div class="copy">
+      <div class="brand"><img src="../mobile/assets/icon.png" alt="" /><span>მედიქარდი</span></div>
+      <p class="kicker">ქართულენოვანი ჯანმრთელობის აპი</p>
+      <h1>შენი ჯანმრთელობა.<br />შენი ისტორია.<br />შენთან ყოველთვის.</h1>
+      <p class="url">medicard.ge</p>
+    </div>
+    <div class="waterfall">
+      <b>Medi</b>
+      <b>ანალიზები</b>
+      <b>ციკლი</b>
+      <b>მედიკამენტები</b>
+      <b>სიმპტომები</b>
+      <b>ნაბიჯები</b>
+      <b>ჰიდრატაცია</b>
+      <b>წონა</b>
+    </div>
+  </section>
+
+  <!-- V7 Bento: modern mixed tiles, Medi featured -->
+  <section class="cover" id="v7">
+    <svg class="mark-ghost" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true"><path fill-rule="evenodd" fill="#fff" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/></svg>
+    <div class="copy">
+      <div class="brand"><img src="../mobile/assets/icon.png" alt="" /><span>მედიქარდი</span></div>
+      <p class="kicker">ქართულენოვანი ჯანმრთელობის აპი</p>
+      <h1>შენი ჯანმრთელობა.<br />შენი ისტორია.<br />შენთან ყოველთვის.</h1>
+      <p class="url">medicard.ge</p>
+    </div>
+    <div class="bento">
+      <div class="tile medi"><span class="dot"><img src="../server/public/icons/chat.svg" alt="" /></span><b>Medi</b></div>
+      <div class="tile"><span class="dot"><img src="../server/public/icons/flask.svg" alt="" /></span><b>ანალიზები</b></div>
+      <div class="tile"><span class="dot"><img src="../server/public/icons/cycle.svg" alt="" /></span><b>ციკლი</b></div>
+      <div class="tile"><span class="dot"><img src="../server/public/icons/pill.svg" alt="" /></span><b>მედები</b></div>
+      <div class="tile"><span class="dot"><img src="../server/public/icons/body.svg" alt="" /></span><b>სიმპტომები</b></div>
+      <div class="tile"><span class="dot"><img src="../server/public/icons/steps.svg" alt="" /></span><b>ნაბიჯები</b></div>
+      <div class="tile"><span class="dot"><img src="../server/public/icons/water.svg" alt="" /></span><b>წყალი</b></div>
+    </div>
+  </section>
+
+  <!-- V8 Icon language: same teal slab as the profile picture -->
+  <section class="cover" id="v8">
+    <svg class="mark-ghost" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true"><path fill-rule="evenodd" fill="#fff" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/></svg>
+    <div class="copy">
+      <div class="brand"><img src="../mobile/assets/icon.png" alt="" /><span>მედიქარდი</span></div>
+      <p class="kicker">ქართულენოვანი ჯანმრთელობის აპი</p>
+      <h1>შენი ჯანმრთელობა.<br />შენი ისტორია.<br />შენთან ყოველთვის.</h1>
+      <p class="url">medicard.ge</p>
+    </div>
+    <div class="slab">
+      <div class="slab-fill"></div>
+      <svg class="slab-mark" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true">
+        <path fill="#fff" fill-rule="evenodd" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/>
+      </svg>
+      <p class="slab-line">Medi · ციკლი · ანალიზები · მედები</p>
+    </div>
+  </section>
+
+</body>
+</html>

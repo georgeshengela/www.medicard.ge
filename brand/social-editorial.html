@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8" />
+  <title>Medicard editorial posters</title>
+  <style>
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-Regular.woff2") format("woff2");
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-Medium.woff2") format("woff2");
+      font-weight: 500;
+    }
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-SemiBold.woff2") format("woff2");
+      font-weight: 600;
+    }
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-Bold.woff2") format("woff2");
+      font-weight: 700;
+    }
+    @font-face {
+      font-family: "DM Davit Guramishvili";
+      src: url("../server/public/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2") format("woff2");
+      font-weight: 400;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #030712; }
+
+    .post {
+      position: relative;
+      width: 1080px;
+      height: 1080px;
+      background:
+        radial-gradient(900px 720px at 118% 18%, rgba(20, 184, 166, 0.22), transparent 58%),
+        radial-gradient(700px 520px at -10% 88%, rgba(20, 184, 166, 0.06), transparent 62%),
+        #030712;
+      color: #fff;
+      overflow: hidden;
+    }
+    .post.p45 { height: 1350px; }
+
+    .glow {
+      position: absolute;
+      right: -120px;
+      top: -40px;
+      width: 820px;
+      height: 820px;
+      background: radial-gradient(circle, rgba(20, 184, 166, 0.34) 0%, rgba(20, 184, 166, 0.1) 36%, transparent 68%);
+      z-index: 0;
+    }
+    .p45 .glow { top: 80px; width: 880px; height: 880px; }
+
+    .ghost {
+      position: absolute;
+      left: -110px;
+      top: 80px;
+      width: 520px;
+      height: 460px;
+      opacity: 0.055;
+      z-index: 1;
+    }
+    .p45 .ghost { top: 180px; }
+
+    .monument {
+      position: absolute;
+      right: -360px;
+      top: -30px;
+      width: 700px;
+      height: 700px;
+      z-index: 2;
+      filter: drop-shadow(0 0 72px rgba(20, 184, 166, 0.42));
+    }
+    .p45 .monument { right: -380px; top: 70px; width: 740px; height: 740px; }
+
+    .flat-mark {
+      background: #030712;
+    }
+    .flat-mark .glow { display: none; }
+    .flat-mark .monument { filter: none; }
+
+    .grain {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      pointer-events: none;
+      opacity: 0.14;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    .edge {
+      position: absolute;
+      left: 36px;
+      top: 50%;
+      transform: rotate(-90deg) translateX(-50%);
+      transform-origin: left center;
+      font-family: "FiraGO", sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.32em;
+      color: #14B8A6;
+      z-index: 4;
+      white-space: nowrap;
+    }
+
+    .hero {
+      position: absolute;
+      left: 88px;
+      top: 0;
+      width: 500px;
+      height: 1080px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      z-index: 4;
+    }
+    .p45 .hero { height: 1350px; width: 500px; }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    .brand svg { display: block; }
+    .brand span {
+      font-family: "FiraGO", sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      font-feature-settings: "case" 1, "kern" 1;
+    }
+
+    .kicker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: "FiraGO", sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: #14B8A6;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+    }
+    .kicker::before {
+      content: "";
+      width: 22px;
+      height: 1px;
+      background: #14B8A6;
+    }
+
+    h1 {
+      font-family: "DM Davit Guramishvili", "FiraGO", sans-serif;
+      font-size: 44px;
+      line-height: 1.14;
+      letter-spacing: -0.02em;
+      font-weight: 400;
+    }
+    .p45 h1 { font-size: 50px; }
+    h1 .latin {
+      font-family: "FiraGO", sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .lead {
+      margin-top: 18px;
+      font-family: "FiraGO", sans-serif;
+      font-size: 17px;
+      font-weight: 400;
+      line-height: 1.45;
+      color: #D1D5DB;
+      max-width: 520px;
+    }
+
+    .index {
+      margin-top: 26px;
+      list-style: none;
+    }
+    .index li {
+      display: grid;
+      grid-template-columns: 46px 1fr;
+      gap: 14px;
+      padding: 12px 0;
+      border-top: 1px solid rgba(55, 65, 81, 0.9);
+    }
+    .index li:last-child { border-bottom: 1px solid rgba(55, 65, 81, 0.9); }
+    .index .n {
+      font-family: "FiraGO", sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: #14B8A6;
+      letter-spacing: 0.08em;
+      padding-top: 3px;
+    }
+    .index b {
+      display: block;
+      font-family: "FiraGO", sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+    }
+    .index p {
+      margin-top: 3px;
+      font-family: "FiraGO", sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.35;
+      color: #9CA3AF;
+    }
+    .sq .index li { padding: 8px 0; }
+    .sq .index p { font-size: 13px; }
+    .sq .lead { font-size: 15px; }
+    .sq h1 { font-size: 40px; }
+
+    .more {
+      margin-top: 16px;
+      font-family: "FiraGO", sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6B7280;
+      letter-spacing: 0.02em;
+    }
+
+    .quote {
+      margin-top: 22px;
+      font-family: "DM Davit Guramishvili", "FiraGO", sans-serif;
+      font-size: 22px;
+      line-height: 1.3;
+      color: #99F6E4;
+    }
+
+    .foot {
+      margin-top: 22px;
+      font-family: "FiraGO", sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      color: #6B7280;
+      letter-spacing: 0.04em;
+    }
+
+    .rail {
+      position: relative;
+      margin-top: 28px;
+      padding-left: 28px;
+    }
+    .rail::before {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 10px;
+      bottom: 18px;
+      width: 1px;
+      background: linear-gradient(#14B8A6, rgba(20, 184, 166, 0.12));
+    }
+    .rail article {
+      position: relative;
+      padding-bottom: 22px;
+    }
+    .p45 .rail article { padding-bottom: 28px; }
+    .rail article:last-child { padding-bottom: 0; }
+    .rail article::before {
+      content: "";
+      position: absolute;
+      left: -28px;
+      top: 8px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #14B8A6;
+      box-shadow: 0 0 14px rgba(20, 184, 166, 0.8);
+    }
+    .rail time {
+      display: block;
+      font-family: "FiraGO", sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: #14B8A6;
+      margin-bottom: 4px;
+    }
+    .rail h2 {
+      font-family: "FiraGO", sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .rail p {
+      margin-top: 4px;
+      font-family: "FiraGO", sans-serif;
+      font-size: 15px;
+      font-weight: 400;
+      color: #9CA3AF;
+    }
+    .sq .rail p { font-size: 13px; }
+    .sq .rail article { padding-bottom: 14px; }
+    .sq .rail h2 { font-size: 17px; }
+
+    .slip {
+      width: 480px;
+      background: rgba(17, 24, 39, 0.88);
+      border: 1px solid #374151;
+      border-radius: 20px;
+      padding: 22px 24px 16px;
+      margin-top: 22px;
+      backdrop-filter: blur(8px);
+    }
+    .slip .cap {
+      font-family: "FiraGO", sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      color: #6B7280;
+      margin-bottom: 12px;
+    }
+    .slip table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: "FiraGO", sans-serif;
+      font-size: 18px;
+      font-weight: 500;
+    }
+    .slip td { padding: 7px 0; border-top: 1px solid rgba(55, 65, 81, 0.7); }
+    .slip tr:first-child td { border-top: 0; }
+    .slip td:first-child { color: #9CA3AF; letter-spacing: 0.08em; }
+    .slip td:nth-child(2) { text-align: right; color: #fff; font-weight: 600; }
+    .slip td:last-child { text-align: right; color: #6B7280; width: 92px; }
+
+    .steps {
+      margin-top: 22px;
+      display: grid;
+      gap: 12px;
+    }
+    .steps li {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 12px;
+      align-items: start;
+      list-style: none;
+    }
+    .steps b {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      background: #111827;
+      border: 1px solid #14B8A6;
+      color: #14B8A6;
+      font-family: "FiraGO", sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .steps h3 {
+      font-family: "FiraGO", sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+    }
+    .steps p {
+      margin-top: 2px;
+      font-family: "FiraGO", sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      color: #9CA3AF;
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+  <!-- 1. Manifesto / product index -->
+  <section class="post sq flat-mark" id="manifesto">
+    <div class="glow"></div>
+    <svg class="ghost" data-mark="#ffffff" viewBox="66.375 30.375 72.75 72.75"></svg>
+    <svg class="monument" data-mark="#14B8A6" viewBox="66.375 30.375 72.75 72.75"></svg>
+    <p class="edge">ქართულენოვანი ჯანმრთელობის აპი</p>
+    <div class="hero">
+      <div class="brand">
+        <svg width="34" height="34" data-mark="#14B8A6" viewBox="66.375 30.375 72.75 72.75"></svg>
+        <span>მედიქარდი</span>
+      </div>
+      <p class="kicker">ერთი ჰაბი</p>
+      <h1>ყველაფერი შენი<br />ჯანმრთელობისთვის.</h1>
+      <p class="lead">ქართულენოვანი ჯანმრთელობის ჰაბი. Medi, ანალიზები, მედიკამენტები და ციკლი — ერთ სივრცეში, ყოველდღე შენთან.</p>
+      <ol class="index">
+        <li><span class="n">01</span><div><b>Medi</b><p>ჰკითხე ქართულად. ხედავს შენს კონტექსტს.</p></div></li>
+        <li><span class="n">02</span><div><b>ანალიზები</b><p>გადაიღე შედეგი. წაიკითხე გასაგებად.</p></div></li>
+        <li><span class="n">03</span><div><b>მედიკამენტები</b><p>შეხსენება დროზე. არ დაგავიწყდეს.</p></div></li>
+        <li><span class="n">04</span><div><b>ციკლი</b><p>შენი ფაზა, შენი რიტმი, შენს ხელში.</p></div></li>
+        <li><span class="n">05</span><div><b>სიმპტომები</b><p>ჩაწერე. ჰკითხე. შეინახე ისტორიაში.</p></div></li>
+        <li><span class="n">06</span><div><b>აფთიაქი</b><p>შეადარე ფასები და იპოვე ახლოს.</p></div></li>
+      </ol>
+      <p class="more">ნაბიჯები · ჰიდრატაცია · წონა · ამინდი · ვიზიტები</p>
+      <p class="quote">არ ცვლის ექიმს.</p>
+      <p class="foot">medicard.ge · iOS და Android</p>
+    </div>
+    <div class="grain"></div>
+  </section>
+
+  <!-- 2. A day inside the app -->
+  <section class="post sq" id="day">
+    <div class="glow"></div>
+    <svg class="ghost" data-mark="#ffffff" viewBox="66.375 30.375 72.75 72.75"></svg>
+    <svg class="monument" data-mark="#14B8A6" viewBox="66.375 30.375 72.75 72.75"></svg>
+    <p class="edge">ყოველდღე შენთან</p>
+    <div class="hero">
+      <div class="brand">
+        <svg width="34" height="34" data-mark="#14B8A6" viewBox="66.375 30.375 72.75 72.75"></svg>
+        <span>მედიქარდი</span>
+      </div>
+      <p class="kicker">როგორ მუშაობს</p>
+      <h1>შენი დღე.<br />ერთ აპში.</h1>
+      <p class="lead">არა ხუთი შეტყობინება ხუთი აპიდან. ერთი რიტმი — დილიდან საღამომდე.</p>
+      <div class="rail">
+        <article>
+          <time>06:40</time>
+          <h2>დღის მიმოხილვა</h2>
+          <p>შენი ჯანმრთელობა ერთ ეკრანზე.</p>
+        </article>
+        <article>
+          <time>09:00</time>
+          <h2>მედიკამენტის შეხსენება</h2>
+          <p>დროა. არ დაგავიწყდეს.</p>
+        </article>
+        <article>
+          <time>13:20</time>
+          <h2>ნაბიჯები და წყალი</h2>
+          <p>რაც დღეს უკვე გააკეთე.</p>
+        </article>
+        <article>
+          <time>18:10</time>
+          <h2>ციკლის თვალყური</h2>
+          <p>შენი ფაზა, მშვიდად და გასაგებად.</p>
+        </article>
+        <article>
+          <time>21:00</time>
+          <h2>ჰკითხე Medi-ს</h2>
+          <p>ქართულად. შენს კონტექსტზე.</p>
+        </article>
+      </div>
+      <p class="quote">არ ცვლის ექიმს.</p>
+      <p class="foot">medicard.ge · iOS და Android</p>
+    </div>
+    <div class="grain"></div>
+  </section>
+
+  <!-- 3. Lab, explained -->
+  <section class="post sq" id="labstory">
+    <div class="glow"></div>
+    <svg class="ghost" data-mark="#ffffff" viewBox="66.375 30.375 72.75 72.75"></svg>
+    <svg class="monument" data-mark="#14B8A6" viewBox="66.375 30.375 72.75 72.75"></svg>
+    <p class="edge">ანალიზი ქართულად</p>
+    <div class="hero">
+      <div class="brand">
+        <svg width="34" height="34" data-mark="#14B8A6" viewBox="66.375 30.375 72.75 72.75"></svg>
+        <span>მედიქარდი</span>
+      </div>
+      <p class="kicker">რას აკეთებს Medicard</p>
+      <h1>გაუგებარი რიცხვები.<br />ქართული ახსნა.</h1>
+      <p class="lead">გადაიღე ანალიზის ფოტო. Medi აგიხსნის გასაგებად — რომ ექიმთან უფრო მომზადებული მიხვიდე.</p>
+      <div class="slip">
+        <p class="cap">ანალიზი</p>
+        <table>
+          <tr><td>HGB</td><td>128</td><td>g/L</td></tr>
+          <tr><td>WBC</td><td>6.1</td><td>×10⁹/L</td></tr>
+          <tr><td>PLT</td><td>241</td><td>×10⁹/L</td></tr>
+        </table>
+      </div>
+      <ol class="steps">
+        <li><b>1</b><div><h3>გადაიღე</h3><p>შედეგის გვერდი ტელეფონით.</p></div></li>
+        <li><b>2</b><div><h3>წაიკითხე ქართულად</h3><p>Medi ხსნის, არ სვამს დიაგნოზს.</p></div></li>
+        <li><b>3</b><div><h3>შეინახე</h3><p>შენი ისტორია რჩება შენთან.</p></div></li>
+      </ol>
+      <p class="quote">არ ცვლის ექიმს.</p>
+      <p class="foot">medicard.ge · iOS და Android</p>
+    </div>
+    <div class="grain"></div>
+  </section>
+
+  <script>
+    const D = "M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z";
+    document.querySelectorAll("[data-mark]").forEach((svg) => {
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("fill", svg.getAttribute("data-mark"));
+      p.setAttribute("fill-rule", "evenodd");
+      p.setAttribute("d", D);
+      svg.appendChild(p);
+    });
+    document.querySelectorAll(".post.sq").forEach((el) => {
+      const clone = el.cloneNode(true);
+      clone.id = el.id + "-45";
+      clone.classList.remove("sq");
+      clone.classList.add("p45");
+      document.body.appendChild(clone);
+    });
+  </script>
+</body>
+</html>

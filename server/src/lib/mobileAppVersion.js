@@ -21,7 +21,7 @@ function resolveMobileAppJson() {
   return null;
 }
 
-/** Current Expo app version from mobile/app.json (e.g. 4.1.2). */
+/** Current public Medicard version from mobile/app.json (e.g. 1.0.0.7.66). */
 export function getMobileAppVersion() {
   if (cachedVersion && Date.now() - cachedAt < CACHE_MS) return cachedVersion;
 

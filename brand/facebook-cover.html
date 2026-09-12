@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8" />
+  <title>Medicard Facebook cover</title>
+  <style>
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-Medium.woff2") format("woff2");
+      font-weight: 500;
+    }
+    @font-face {
+      font-family: "FiraGO";
+      src: url("../server/public/fonts/firago/FiraGO-SemiBold.woff2") format("woff2");
+      font-weight: 600;
+    }
+    @font-face {
+      font-family: "DM Davit Guramishvili";
+      src: url("../server/public/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2") format("woff2");
+      font-weight: 400;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 1640px;
+      height: 624px;
+      overflow: hidden;
+      background: #030712;
+    }
+
+    .cover {
+      position: relative;
+      width: 1640px;
+      height: 624px;
+      background: #030712;
+      color: #ffffff;
+      overflow: hidden;
+    }
+
+    .mark-ghost {
+      position: absolute;
+      left: -80px;
+      top: 78px;
+      width: 420px;
+      height: 420px;
+      opacity: 0.07;
+    }
+
+    .monument {
+      position: absolute;
+      right: -170px;
+      top: -168px;
+      width: 940px;
+      height: 940px;
+      z-index: 1;
+    }
+
+    .hero {
+      position: absolute;
+      left: 268px;
+      top: 0;
+      width: 580px;
+      height: 624px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      z-index: 3;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      display: block;
+    }
+    .brand span {
+      font-family: "FiraGO", sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      font-feature-settings: "case" 1, "kern" 1;
+    }
+
+    h1 {
+      font-family: "DM Davit Guramishvili", "FiraGO", sans-serif;
+      font-size: 52px;
+      line-height: 1.18;
+      letter-spacing: -0.02em;
+      font-weight: 400;
+      font-feature-settings: "kern" 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    <svg class="mark-ghost" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true">
+      <path fill-rule="evenodd" fill="#FFFFFF" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/>
+    </svg>
+    <svg class="monument" viewBox="66.375 30.375 72.75 72.75" aria-hidden="true">
+      <path fill="#14B8A6" fill-rule="evenodd" d="M102.75 30.75C111.787 30.75 119.114 38.0762 119.114 47.1136V50.3864H122.386C131.424 50.3864 138.75 57.7126 138.75 66.75C138.75 75.7874 131.424 83.1136 122.386 83.1136H119.114V86.3864C119.114 95.4238 111.787 102.75 102.75 102.75C93.7126 102.75 86.3864 95.4238 86.3864 86.3864V83.1136H83.1136C74.0762 83.1136 66.75 75.7874 66.75 66.75C66.75 57.7126 74.0762 50.3864 83.1136 50.3864H86.3864V47.1136C86.3864 38.0762 93.7126 30.75 102.75 30.75ZM118.931 56.9318C117.422 70.5842 106.584 81.4221 92.9318 82.9315V86.3864C92.9318 91.8088 97.3276 96.2045 102.75 96.2045C108.172 96.2045 112.568 91.8088 112.568 86.3864V79.8409C112.568 78.0334 114.033 76.5682 115.841 76.5682H122.386C127.809 76.5682 132.205 72.1724 132.205 66.75C132.205 61.3276 127.809 56.9318 122.386 56.9318H118.931ZM102.75 37.2955C97.3276 37.2955 92.9318 41.6912 92.9318 47.1136V53.6591C92.9318 55.4666 91.4666 56.9318 89.6591 56.9318H83.1136C77.6912 56.9318 73.2955 61.3276 73.2955 66.75C73.2955 72.1724 77.6912 76.5682 83.1136 76.5682H86.5685C88.0779 62.9158 98.9157 52.0762 112.568 50.5669V47.1136C112.568 41.6912 108.172 37.2955 102.75 37.2955ZM112.295 57.2035C102.482 58.7282 94.7282 66.482 93.2035 76.2949C103.018 74.7706 110.771 67.0175 112.295 57.2035Z"/>
+    </svg>
+    <div class="hero">
+      <div class="brand">
+        <img src="../mobile/assets/icon.png" alt="" />
+        <span>მედიქარდი</span>
+      </div>
+      <h1>ყველაფერი<br />შენი ჯანმრთელობისთვის.</h1>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-09-11T21:10:00.000Z",
+  "androidTwoAccount": "NOT EXECUTABLE — no second device password available; did not reuse the Cycle QA fixture password.",
+  "codeAndHttp": {
+    "adopt": "clears snapshot, setLocalAccountId(new), wipeLegacyUnscopedHealthCaches, then token",
+    "hydrate": "refuses to paint snapshot when JWT sub mismatches",
+    "prefs": "scoped as ${base}.${accountId}",
+    "reactQuery": "ABSENT",
+    "zustandPersist": "ABSENT",
+    "cycleOfflineQueue": "keyed by userId; logout does not destroy it (scoped, not leaked into UI of user B)"
+  },
+  "result": "PASS with the isolation guards above. Android A→B not visually executed."
+}

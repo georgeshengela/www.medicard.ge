@@ -4,15 +4,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
-import { cycleLogFactBits, cycleLogHasFacts } from '@/lib/cycleLogFacts';
+import { cycleLogFactGroups } from '@/lib/cycleLogFacts';
+import { cycleChipLabel } from '@/lib/cycleLabels';
+import { explicitAbsentKeys } from '@/lib/cycleObservationAssessment';
 import { classifyCycleDay } from '@/lib/cyclePresentation.js';
 import { cycleToday, phaseFromBundle } from '@/lib/cycleCanonical';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { showFertilityUi } from '@/lib/cycleContraception';
+import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { todayKey } from '@/components/cycle/CycleCalendar';
 import { ka } from '@/i18n/ka';
-import type { CycleBundle, CycleDayMark } from '@/lib/api';
+import type { CycleBundle, CycleDayMark, CyclePostpartumPayload } from '@/lib/api';
 import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
@@ -26,6 +29,8 @@ type Props = {
   /** Open the full detailed log for this day. */
   onFullLog: (date: string) => void;
   showPredicted?: boolean;
+  postpartum?: CyclePostpartumPayload | null;
+  onClassifyEpisode?: (date: string, classified: boolean) => void;
 };
 
 /**
@@ -42,26 +47,39 @@ export function CycleDayDetailsSheet({
   onLog,
   onFullLog,
   showPredicted = true,
+  postpartum = null,
+  onClassifyEpisode,
 }: Props) {
   const c = useCycleColors();
   const insets = useSafeAreaInsets();
   const today = cycleToday(bundle, todayKey());
-  const showFertility = showFertilityUi(bundle);
+  const caps = cycleModeCapabilities(bundle.profile?.mode);
+  const showFertility = caps.showFertileEstimates && showFertilityUi(bundle);
+  const allowPredicted = Boolean(showPredicted) && caps.showFertileEstimates;
 
   const log = useMemo(
     () => bundle.logs.find((l) => l.date === date) ?? null,
     [bundle.logs, date],
   );
   const phase = useMemo(() => phaseFromBundle(bundle, date), [bundle, date]);
-  const layers = classifyCycleDay(mark, { showFertility, showPredicted });
+  const layers = classifyCycleDay(mark, { showFertility, showPredicted: allowPredicted });
 
-  const loggedBits = cycleLogFactBits(log);
-  if (log?.notes?.trim()) {
-    const idx = loggedBits.lastIndexOf(ka.cycle.journalTitle);
-    const noteLine = `${ka.cycle.journalTitle}: ${log.notes.trim()}`;
-    if (idx >= 0) loggedBits[idx] = noteLine;
-    else loggedBits.push(noteLine);
-  }
+  const grouped = cycleLogFactGroups(log, {
+    pregnancy: caps.showPregnancyOverview,
+    perimenopause: caps.showPerimenopauseTracking,
+    postpartum: caps.showPostpartumTracking,
+  }).map((group) => {
+    if (!log?.notes?.trim() || group.id !== 'private') return group;
+    return {
+      ...group,
+      bits: group.bits.map((bit) =>
+        bit === ka.cycle.journalTitle ? `${ka.cycle.journalTitle}: ${log.notes.trim()}` : bit,
+      ),
+    };
+  });
+  const loggedGroups = grouped.filter((g) => g.id !== 'private');
+  const privateGroups = grouped.filter((g) => g.id === 'private');
+  const assessedBits = explicitAbsentKeys(log).map((key) => ka.cycle.assessmentAbsentBit(cycleChipLabel(key)));
 
   const estimatedBits: string[] = [];
   if (layers.predictedPeriod) estimatedBits.push(ka.cycle.legendPeriodPredicted);
@@ -70,6 +88,7 @@ export function CycleDayDetailsSheet({
   const phaseCoveredByMark =
     layers.ovulation || layers.fertile || layers.predictedPeriod || layers.loggedPeriod;
   if (
+    caps.showClassicCycleOverview &&
     !phaseCoveredByMark &&
     phase.day != null &&
     phase.phase !== 'unknown' &&
@@ -82,6 +101,18 @@ export function CycleDayDetailsSheet({
   }
 
   const isFuture = date > today;
+  const classifiedDates = postpartum?.classifiedDates || bundle.classifiedDates || [];
+  const bleedEpisode = (postpartum?.bleedEpisodes || []).find(
+    (row) => date >= row.start && date <= row.end,
+  );
+  const historicalPostpartumBleed =
+    log?.trackingContext === 'POSTPARTUM' && isBleedFlow(log?.flow);
+  const classifiedBleed = Boolean(
+    bleedEpisode?.classified
+    || classifiedDates.includes(date)
+    || mark?.ownerClassifiedPeriod,
+  );
+  const canClassifyBleed = Boolean(onClassifyEpisode && historicalPostpartumBleed && !isFuture);
 
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
@@ -129,7 +160,7 @@ export function CycleDayDetailsSheet({
               >
                 {formatCycleDateKa(date)}
               </Text>
-              {phase.day != null ? (
+              {caps.showClassicCycleOverview && phase.day != null ? (
                 <Text
                   style={{
                     color: c.muted,
@@ -167,7 +198,7 @@ export function CycleDayDetailsSheet({
             contentContainerStyle={{ paddingBottom: 4 }}
           >
             {/* ● Logged facts — solid glyphs, factual wording. */}
-            {cycleLogHasFacts(log) || loggedBits.length ? (
+            {loggedGroups.length ? (
               <View style={{ marginBottom: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                   <View
@@ -190,19 +221,106 @@ export function CycleDayDetailsSheet({
                     {ka.cycle.logged}
                   </Text>
                 </View>
-                {(loggedBits.length ? loggedBits : [ka.cycle.loggedEntryEmpty]).map((bit, i) => (
+                {(loggedGroups.length
+                  ? loggedGroups.map((g) => (
+                      <View key={g.id} style={{ marginBottom: 8 }}>
+                        <Text
+                          style={{
+                            color: c.mutedSoft,
+                            fontSize: 11,
+                            fontFamily: 'NotoSansGeorgian_700Bold',
+                            marginBottom: 4,
+                          }}
+                        >
+                          {g.title}
+                        </Text>
+                        {g.bits.map((bit, i) => (
+                          <Text
+                            key={`${g.id}-${i}`}
+                            style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 3 }}
+                            accessibilityLabel={`${ka.cycle.logged}: ${bit}`}
+                          >
+                            {bit}
+                          </Text>
+                        ))}
+                      </View>
+                    ))
+                  : [ka.cycle.loggedEntryEmpty].map((bit, i) => (
+                      <Text
+                        key={i}
+                        style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 3 }}
+                      >
+                        {bit}
+                      </Text>
+                    )))}
+              </View>
+            ) : !isFuture && !privateGroups.length && !assessedBits.length ? (
+              <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19, marginBottom: 14 }}>
+                {ka.cycle.dayNothingLogged}
+              </Text>
+            ) : null}
+
+            {canClassifyBleed ? (
+              <View style={{ marginBottom: 14 }}>
+                {classifiedBleed ? (
                   <Text
-                    key={i}
+                    accessibilityLabel={ka.cycle.postpartumClassifiedA11y}
+                    style={{
+                      color: c.brand,
+                      fontSize: 13,
+                      lineHeight: 19,
+                      fontFamily: 'NotoSansGeorgian_700Bold',
+                      marginBottom: 8,
+                    }}
+                  >
+                    {ka.cycle.postpartumClassifiedBadge}
+                  </Text>
+                ) : null}
+                <Pressable
+                  onPress={() => onClassifyEpisode?.(date, classifiedBleed)}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    classifiedBleed ? ka.cycle.postpartumUnclassify : ka.cycle.postpartumClassifyPeriod
+                  }
+                  style={{
+                    minHeight: 44,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13 }}>
+                    {classifiedBleed ? ka.cycle.postpartumUnclassify : ka.cycle.postpartumClassifyPeriod}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {assessedBits.length ? (
+              <View style={{ marginBottom: 14 }}>
+                <Text
+                  style={{
+                    color: c.mutedSoft,
+                    fontSize: 11,
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    letterSpacing: 0.4,
+                    marginBottom: 8,
+                  }}
+                >
+                  {ka.cycle.assessmentToday}
+                </Text>
+                {assessedBits.map((bit, i) => (
+                  <Text
+                    key={`assessed-${i}`}
                     style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 3 }}
+                    accessibilityLabel={`${ka.cycle.assessmentToday}: ${bit}`}
                   >
                     {bit}
                   </Text>
                 ))}
               </View>
-            ) : !isFuture ? (
-              <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19, marginBottom: 14 }}>
-                {ka.cycle.dayNothingLogged}
-              </Text>
             ) : null}
 
             {/* ◌ Estimates — hollow glyph, always labeled predicted. */}
@@ -236,6 +354,7 @@ export function CycleDayDetailsSheet({
                   <Text
                     key={i}
                     style={{ color: c.muted, fontSize: 13, lineHeight: 20, marginBottom: 3 }}
+                    accessibilityLabel={`${ka.cycle.estimated}: ${bit}`}
                   >
                     {bit}
                   </Text>
@@ -243,6 +362,43 @@ export function CycleDayDetailsSheet({
                 <Text style={{ color: c.mutedSoft, fontSize: 11, lineHeight: 16, marginTop: 6 }}>
                   {ka.cycle.estimatedDisclaimer}
                 </Text>
+              </View>
+            ) : null}
+
+            {privateGroups.length ? (
+              <View style={{ marginTop: 14, marginBottom: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <View
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: c.muted,
+                      marginRight: 8,
+                    }}
+                  />
+                  <Text
+                    style={{
+                      color: c.mutedSoft,
+                      fontSize: 11,
+                      fontFamily: 'NotoSansGeorgian_700Bold',
+                      letterSpacing: 0.4,
+                    }}
+                  >
+                    {ka.cycle.trackGroup.private}
+                  </Text>
+                </View>
+                {privateGroups.map((g) =>
+                  g.bits.map((bit, i) => (
+                    <Text
+                      key={`${g.id}-${i}`}
+                      style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 3 }}
+                      accessibilityLabel={`${ka.cycle.trackGroup.private}: ${bit}`}
+                    >
+                      {bit}
+                    </Text>
+                  )),
+                )}
               </View>
             ) : null}
           </ScrollView>

@@ -1,0 +1,4727 @@
+{
+  "generatedAt": "2026-09-07T15:40:53.480Z",
+  "base": "http://localhost:4000/admin",
+  "pageErrors": [],
+  "consoleLogs": [],
+  "failedRequests": [],
+  "totalAdminRequests": 150,
+  "requestCounts": {
+    "GET /socket.io/socket.io.js": 12,
+    "POST /api/admin/login": 6,
+    "GET /api/admin/analytics/overview": 6,
+    "GET /api/admin/analytics/users": 6,
+    "GET /api/admin/analytics/features": 7,
+    "GET /api/admin/analytics/retention": 6,
+    "GET /api/admin/analytics/medi": 7,
+    "GET /api/admin/analytics/notifications": 6,
+    "GET /api/admin/system/health": 6,
+    "GET /api/admin/users": 8,
+    "GET /api/admin/stats": 7,
+    "GET /api/admin/push/stats": 6,
+    "GET /api/admin/push/campaigns": 6,
+    "GET /api/admin/push/templates": 6,
+    "GET /api/admin/push/events": 6,
+    "GET /api/admin/analytics/feature-retention": 1,
+    "GET /api/admin/ai/stats": 1,
+    "GET /api/admin/ai/interactions": 1,
+    "GET /api/admin/ai/eval-runs": 1,
+    "GET /api/admin/rewards/overview": 7,
+    "GET /api/admin/packages": 3,
+    "GET /api/admin/orders": 1,
+    "GET /api/admin/sms/balance": 1,
+    "GET /api/admin/sms/stats": 1,
+    "GET /api/admin/sms/logs": 1,
+    "GET /api/admin/pharmacy/stats": 1,
+    "GET /api/admin/pharmacy/sync-runs": 1,
+    "GET /api/admin/analytics/quality": 6,
+    "GET /api/admin/analytics/versions": 6,
+    "GET /api/admin/analytics/permissions": 6,
+    "GET /api/admin/analytics/outcomes-extra": 6,
+    "GET /api/admin/audit": 2,
+    "GET /api/admin/settings": 1,
+    "GET /api/admin/rewards/partners": 1,
+    "GET /api/admin/users/6c39eb30-6c11-451a-94b5-7624e5d9d7ae": 1
+  },
+  "findings": {
+    "viewports": {
+      "1440-light": {
+        "width": 1440,
+        "theme": "light",
+        "shells": [],
+        "destinations": [
+          {
+            "name": "overview",
+            "heading": "ოპერაციები",
+            "kicker": "Overview",
+            "hash": "#/overview",
+            "overflowX": false
+          },
+          {
+            "name": "users",
+            "heading": "მომხმარებლები",
+            "kicker": "People",
+            "hash": "#/users",
+            "overflowX": false
+          },
+          {
+            "name": "push",
+            "heading": "Push & Brain",
+            "kicker": "Engagement",
+            "hash": "#/push",
+            "overflowX": false
+          },
+          {
+            "name": "health",
+            "heading": "ჯანმრთელობა",
+            "kicker": "Health & Medi",
+            "hash": "#/health",
+            "overflowX": false
+          },
+          {
+            "name": "ai",
+            "heading": "ხარისხის ანალიზი",
+            "kicker": "Health & Medi",
+            "hash": "#/ai",
+            "overflowX": false
+          },
+          {
+            "name": "rewards",
+            "heading": "ჯილდოების ოპერაციები",
+            "kicker": "Commerce",
+            "hash": "#/rewards",
+            "overflowX": false
+          },
+          {
+            "name": "packages",
+            "heading": "პაკეტები",
+            "kicker": "Commerce",
+            "hash": "#/packages",
+            "overflowX": false
+          },
+          {
+            "name": "orders",
+            "heading": "შეკვეთები",
+            "kicker": "Operations",
+            "hash": "#/orders",
+            "overflowX": false
+          },
+          {
+            "name": "sms",
+            "heading": "SMS მენეჯმენტი",
+            "kicker": "Operations",
+            "hash": "#/sms",
+            "overflowX": false
+          },
+          {
+            "name": "pharmacy",
+            "heading": "ფასების შედარება",
+            "kicker": "Operations",
+            "hash": "#/pharmacy",
+            "overflowX": false
+          },
+          {
+            "name": "quality",
+            "heading": "ხარისხი",
+            "kicker": "Production",
+            "hash": "#/quality",
+            "overflowX": false
+          },
+          {
+            "name": "audit",
+            "heading": "აუდიტი",
+            "kicker": "Production",
+            "hash": "#/audit",
+            "overflowX": false
+          },
+          {
+            "name": "settings",
+            "heading": "აპის რეჟიმი",
+            "kicker": "Production",
+            "hash": "#/settings",
+            "overflowX": false
+          }
+        ],
+        "interactions": [
+          {
+            "action": "package-drawer",
+            "open": true
+          },
+          {
+            "action": "partner-modal",
+            "open": true
+          },
+          {
+            "action": "user-page",
+            "hash": "#/users/6c39eb30-6c11-451a-94b5-7624e5d9d7ae?range=7d"
+          }
+        ],
+        "shell": {
+          "w": 1440,
+          "theme": "light",
+          "brand": "M MediCard ADMIN",
+          "plusLogo": false,
+          "groups": [
+            {
+              "id": "overview",
+              "label": "Overview",
+              "items": [
+                {
+                  "tab": "overview",
+                  "label": "ოპერაციები",
+                  "icon": "layout",
+                  "active": true
+                }
+              ]
+            },
+            {
+              "id": "people",
+              "label": "People",
+              "items": [
+                {
+                  "tab": "users",
+                  "label": "მომხმარებლები",
+                  "icon": "users",
+                  "active": false
+                }
+              ]
+            },
+            {
+              "id": "engagement",
+              "label": "Engagement",
+              "items": [
+                {
+                  "tab": "push",
+                  "label": "Push & Brain",
+                  "icon": "bell",
+                  "active": false
+                }
+              ]
+            },
+            {
+              "id": "health",
+              "label": "Health & Medi",
+              "items": [
+                {
+                  "tab": "health",
+                  "label": "ჯანმრთელობა",
+                  "icon": "activity",
+                  "active": false
+                },
+                {
+                  "tab": "ai",
+                  "label": "Medi",
+                  "icon": "spark",
+                  "active": false
+                }
+              ]
+            },
+            {
+              "id": "commerce",
+              "label": "Commerce",
+              "items": [
+                {
+                  "tab": "rewards",
+                  "label": "ჯილდოები",
+                  "icon": "gift",
+                  "active": false
+                },
+                {
+                  "tab": "packages",
+                  "label": "პაკეტები",
+                  "icon": "layers",
+                  "active": false
+                }
+              ]
+            },
+            {
+              "id": "operations",
+              "label": "Operations",
+              "items": [
+                {
+                  "tab": "orders",
+                  "label": "შეკვეთები",
+                  "icon": "calendar",
+                  "active": false
+                },
+                {
+                  "tab": "sms",
+                  "label": "SMS",
+                  "icon": "send",
+                  "active": false
+                },
+                {
+                  "tab": "pharmacy",
+                  "label": "ფარმაცია",
+                  "icon": "pill",
+                  "active": false
+                }
+              ]
+            },
+            {
+              "id": "production",
+              "label": "Production",
+              "items": [
+                {
+                  "tab": "quality",
+                  "label": "ხარისხი",
+                  "icon": "shield",
+                  "active": false
+                },
+                {
+                  "tab": "audit",
+                  "label": "აუდიტი",
+                  "icon": "file",
+                  "active": false
+                },
+                {
+                  "tab": "settings",
+                  "label": "რეჟიმი",
+                  "icon": "settings",
+                  "active": false
+                }
+              ]
+            }
+          ],
+          "themeAria": "მუქი თემა",
+          "logoutAria": "გასვლა",
+          "compactAria": "კომპაქტური მენიუ",
+          "kicker": "Overview",
+          "heading": "ოპერაციები",
+          "overflowX": false,
+          "scrollW": 1440,
+          "v3": true,
+          "apis": [
+            "adaptLegacyDrawer",
+            "bindTabs",
+            "confirmLeave",
+            "copyIdButton",
+            "dataTable",
+            "emptyState",
+            "enhanceA11y",
+            "errorState",
+            "field",
+            "filterBar",
+            "formatDate",
+            "humanLabel",
+            "iconButton",
+            "initSidebar",
+            "input",
+            "openConfirm",
+            "openDialog",
+            "pageHeader",
+            "paletteSections",
+            "releaseFocus",
+            "renderPaletteList",
+            "requestCloseOverlay",
+            "runMutation",
+            "section",
+            "setDirty",
+            "skeleton",
+            "statusBadge",
+            "statusTone",
+            "stickyActions",
+            "syncHeader",
+            "tabs",
+            "toast",
+            "toolbar",
+            "watchDirty"
+          ],
+          "hash": "#/overview?range=7d"
+        },
+        "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('#tab-audit table tbody tr, .admin-table tbody tr').first()\n    - locator resolved to <tr>…</tr>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n"
+      },
+      "1440-dark": {
+        "width": 1440,
+        "theme": "dark",
+        "shells": [
+          {
+            "name": "overview",
+            "w": 1440,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Overview",
+            "heading": "ოპერაციები",
+            "overflowX": false,
+            "scrollW": 1440,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/overview"
+          },
+          {
+            "name": "users",
+            "w": 1440,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "People",
+            "heading": "მომხმარებლები",
+            "overflowX": false,
+            "scrollW": 1440,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/users"
+          },
+          {
+            "name": "push",
+            "w": 1440,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Engagement",
+            "heading": "Push & Brain",
+            "overflowX": false,
+            "scrollW": 1440,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/push"
+          },
+          {
+            "name": "rewards",
+            "w": 1440,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": true
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Commerce",
+            "heading": "ჯილდოების ოპერაციები",
+            "overflowX": false,
+            "scrollW": 1440,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/rewards"
+          },
+          {
+            "name": "quality",
+            "w": 1440,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": true
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Production",
+            "heading": "ხარისხი",
+            "overflowX": false,
+            "scrollW": 1440,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/quality"
+          }
+        ],
+        "destinations": [],
+        "interactions": []
+      },
+      "1280-light": {
+        "width": 1280,
+        "theme": "light",
+        "shells": [
+          {
+            "name": "overview",
+            "w": 1280,
+            "theme": "light",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "მუქი თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Overview",
+            "heading": "ოპერაციები",
+            "overflowX": false,
+            "scrollW": 1280,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/overview"
+          },
+          {
+            "name": "users",
+            "w": 1280,
+            "theme": "light",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "მუქი თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "People",
+            "heading": "მომხმარებლები",
+            "overflowX": false,
+            "scrollW": 1280,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/users"
+          },
+          {
+            "name": "push",
+            "w": 1280,
+            "theme": "light",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "მუქი თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Engagement",
+            "heading": "Push & Brain",
+            "overflowX": false,
+            "scrollW": 1280,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/push"
+          },
+          {
+            "name": "rewards",
+            "w": 1280,
+            "theme": "light",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": true
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "მუქი თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Commerce",
+            "heading": "ჯილდოების ოპერაციები",
+            "overflowX": false,
+            "scrollW": 1280,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/rewards"
+          },
+          {
+            "name": "quality",
+            "w": 1280,
+            "theme": "light",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": true
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "მუქი თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Production",
+            "heading": "ხარისხი",
+            "overflowX": false,
+            "scrollW": 1280,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/quality"
+          }
+        ],
+        "destinations": [],
+        "interactions": []
+      },
+      "1280-dark": {
+        "width": 1280,
+        "theme": "dark",
+        "shells": [
+          {
+            "name": "overview",
+            "w": 1280,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Overview",
+            "heading": "ოპერაციები",
+            "overflowX": false,
+            "scrollW": 1280,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/overview"
+          },
+          {
+            "name": "users",
+            "w": 1280,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "People",
+            "heading": "მომხმარებლები",
+            "overflowX": false,
+            "scrollW": 1280,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/users"
+          },
+          {
+            "name": "push",
+            "w": 1280,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Engagement",
+            "heading": "Push & Brain",
+            "overflowX": false,
+            "scrollW": 1280,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/push"
+          },
+          {
+            "name": "rewards",
+            "w": 1280,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": true
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Commerce",
+            "heading": "ჯილდოების ოპერაციები",
+            "overflowX": false,
+            "scrollW": 1280,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/rewards"
+          },
+          {
+            "name": "quality",
+            "w": 1280,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": true
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Production",
+            "heading": "ხარისხი",
+            "overflowX": false,
+            "scrollW": 1280,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/quality"
+          }
+        ],
+        "destinations": [],
+        "interactions": []
+      },
+      "1920-light": {
+        "width": 1920,
+        "theme": "light",
+        "shells": [
+          {
+            "name": "overview",
+            "w": 1920,
+            "theme": "light",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "მუქი თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Overview",
+            "heading": "ოპერაციები",
+            "overflowX": false,
+            "scrollW": 1920,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/overview"
+          },
+          {
+            "name": "users",
+            "w": 1920,
+            "theme": "light",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "მუქი თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "People",
+            "heading": "მომხმარებლები",
+            "overflowX": false,
+            "scrollW": 1920,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/users"
+          },
+          {
+            "name": "push",
+            "w": 1920,
+            "theme": "light",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "მუქი თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Engagement",
+            "heading": "Push & Brain",
+            "overflowX": false,
+            "scrollW": 1920,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/push"
+          },
+          {
+            "name": "rewards",
+            "w": 1920,
+            "theme": "light",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": true
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "მუქი თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Commerce",
+            "heading": "ჯილდოების ოპერაციები",
+            "overflowX": false,
+            "scrollW": 1920,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/rewards"
+          },
+          {
+            "name": "quality",
+            "w": 1920,
+            "theme": "light",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": true
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "მუქი თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Production",
+            "heading": "ხარისხი",
+            "overflowX": false,
+            "scrollW": 1920,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/quality"
+          }
+        ],
+        "destinations": [],
+        "interactions": []
+      },
+      "1920-dark": {
+        "width": 1920,
+        "theme": "dark",
+        "shells": [
+          {
+            "name": "overview",
+            "w": 1920,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Overview",
+            "heading": "ოპერაციები",
+            "overflowX": false,
+            "scrollW": 1920,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/overview"
+          },
+          {
+            "name": "users",
+            "w": 1920,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "People",
+            "heading": "მომხმარებლები",
+            "overflowX": false,
+            "scrollW": 1920,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/users"
+          },
+          {
+            "name": "push",
+            "w": 1920,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": true
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Engagement",
+            "heading": "Push & Brain",
+            "overflowX": false,
+            "scrollW": 1920,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/push"
+          },
+          {
+            "name": "rewards",
+            "w": 1920,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": true
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": false
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Commerce",
+            "heading": "ჯილდოების ოპერაციები",
+            "overflowX": false,
+            "scrollW": 1920,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/rewards"
+          },
+          {
+            "name": "quality",
+            "w": 1920,
+            "theme": "dark",
+            "brand": "M MediCard ADMIN",
+            "plusLogo": false,
+            "groups": [
+              {
+                "id": "overview",
+                "label": "Overview",
+                "items": [
+                  {
+                    "tab": "overview",
+                    "label": "ოპერაციები",
+                    "icon": "layout",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "people",
+                "label": "People",
+                "items": [
+                  {
+                    "tab": "users",
+                    "label": "მომხმარებლები",
+                    "icon": "users",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "engagement",
+                "label": "Engagement",
+                "items": [
+                  {
+                    "tab": "push",
+                    "label": "Push & Brain",
+                    "icon": "bell",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "health",
+                "label": "Health & Medi",
+                "items": [
+                  {
+                    "tab": "health",
+                    "label": "ჯანმრთელობა",
+                    "icon": "activity",
+                    "active": false
+                  },
+                  {
+                    "tab": "ai",
+                    "label": "Medi",
+                    "icon": "spark",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "commerce",
+                "label": "Commerce",
+                "items": [
+                  {
+                    "tab": "rewards",
+                    "label": "ჯილდოები",
+                    "icon": "gift",
+                    "active": false
+                  },
+                  {
+                    "tab": "packages",
+                    "label": "პაკეტები",
+                    "icon": "layers",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "operations",
+                "label": "Operations",
+                "items": [
+                  {
+                    "tab": "orders",
+                    "label": "შეკვეთები",
+                    "icon": "calendar",
+                    "active": false
+                  },
+                  {
+                    "tab": "sms",
+                    "label": "SMS",
+                    "icon": "send",
+                    "active": false
+                  },
+                  {
+                    "tab": "pharmacy",
+                    "label": "ფარმაცია",
+                    "icon": "pill",
+                    "active": false
+                  }
+                ]
+              },
+              {
+                "id": "production",
+                "label": "Production",
+                "items": [
+                  {
+                    "tab": "quality",
+                    "label": "ხარისხი",
+                    "icon": "shield",
+                    "active": true
+                  },
+                  {
+                    "tab": "audit",
+                    "label": "აუდიტი",
+                    "icon": "file",
+                    "active": false
+                  },
+                  {
+                    "tab": "settings",
+                    "label": "რეჟიმი",
+                    "icon": "settings",
+                    "active": false
+                  }
+                ]
+              }
+            ],
+            "themeAria": "ღია თემა",
+            "logoutAria": "გასვლა",
+            "compactAria": "კომპაქტური მენიუ",
+            "kicker": "Production",
+            "heading": "ხარისხი",
+            "overflowX": false,
+            "scrollW": 1920,
+            "v3": true,
+            "apis": [
+              "adaptLegacyDrawer",
+              "bindTabs",
+              "confirmLeave",
+              "copyIdButton",
+              "dataTable",
+              "emptyState",
+              "enhanceA11y",
+              "errorState",
+              "field",
+              "filterBar",
+              "formatDate",
+              "humanLabel",
+              "iconButton",
+              "initSidebar",
+              "input",
+              "openConfirm",
+              "openDialog",
+              "pageHeader",
+              "paletteSections",
+              "releaseFocus",
+              "renderPaletteList",
+              "requestCloseOverlay",
+              "runMutation",
+              "section",
+              "setDirty",
+              "skeleton",
+              "statusBadge",
+              "statusTone",
+              "stickyActions",
+              "syncHeader",
+              "tabs",
+              "toast",
+              "toolbar",
+              "watchDirty"
+            ],
+            "hash": "#/quality"
+          }
+        ],
+        "destinations": [],
+        "interactions": []
+      }
+    },
+    "workflows": {},
+    "notes": []
+  }
+}

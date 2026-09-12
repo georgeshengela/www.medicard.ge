@@ -46,10 +46,18 @@ function generateDekBytes() {
   return globalThis.crypto.getRandomValues(new Uint8Array(32));
 }
 
+/** Hermes importKey rejects SharedArrayBuffer views; always pass a copy. */
+function standaloneBytes(bytes) {
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  return u8.slice();
+}
+
 async function aesGcmEncrypt(keyBytes, plaintext) {
   const subtle = requireSubtle();
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
-  const key = await subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
+  const key = await subtle.importKey('raw', standaloneBytes(keyBytes), { name: 'AES-GCM' }, false, [
+    'encrypt',
+  ]);
   const encoded = new TextEncoder().encode(plaintext);
   const buf = await subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
   return { iv: bytesToB64(iv), ciphertext: bytesToB64(new Uint8Array(buf)) };
@@ -57,9 +65,11 @@ async function aesGcmEncrypt(keyBytes, plaintext) {
 
 async function aesGcmDecrypt(keyBytes, ivB64, ciphertextB64) {
   const subtle = requireSubtle();
-  const iv = b64ToBytes(ivB64);
-  const ct = b64ToBytes(ciphertextB64);
-  const key = await subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
+  const iv = standaloneBytes(b64ToBytes(ivB64));
+  const ct = standaloneBytes(b64ToBytes(ciphertextB64));
+  const key = await subtle.importKey('raw', standaloneBytes(keyBytes), { name: 'AES-GCM' }, false, [
+    'decrypt',
+  ]);
   try {
     const buf = await subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
     return new TextDecoder().decode(buf);

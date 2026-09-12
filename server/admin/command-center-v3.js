@@ -12,6 +12,7 @@
   const DEST = {
     '#/ai': 'Medi',
     '#/quality': 'ხარისხი',
+    '#/cycleqa': 'ფაზები',
     '#/push': 'Push & Brain',
     '#/settings': 'რეჟიმი',
     '#/sms': 'SMS',
@@ -167,6 +168,7 @@
     if (key === 'pharmacy-sync' || href.includes('/pharmacy')) return 'pill';
     if (key === 'push-failed' || href.includes('/push')) return 'bell';
     if (href.includes('/settings')) return 'settings';
+    if (href.includes('/cycleqa')) return 'layers';
     if (href.includes('/quality')) return 'shield';
     if (href.includes('/users')) return 'users';
     return item?.severity === 'critical' ? 'zap' : 'alert';

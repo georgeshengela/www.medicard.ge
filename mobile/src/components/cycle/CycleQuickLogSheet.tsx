@@ -16,14 +16,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { CycleFlowPicker } from '@/components/cycle/CycleFlowPicker';
 import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
+import { CycleMoreTracking } from '@/components/cycle/CycleMoreTracking';
 import { CyclePainEditor } from '@/components/cycle/CycleObservationFields';
+import { CyclePregnancyQuickLog } from '@/components/cycle/CyclePregnancyQuickLog';
+import { CyclePerimenopauseQuickLog } from '@/components/cycle/CyclePerimenopauseQuickLog';
+import { CyclePostpartumQuickLog } from '@/components/cycle/CyclePostpartumQuickLog';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
-import { MOOD_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
-import { recentSymptomIds } from '@/lib/cyclePresentation.js';
+import { MOOD_OPTIONS, MUCUS_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
+import { recentObservationKeys } from '@/lib/cycleObservationRegistry';
 import { PAIN_MANAGED_SYMPTOM_IDS } from '@/lib/cycleObservations';
 import { ka } from '@/i18n/ka';
 import { EMPTY_CYCLE_LOG, formFromCycleLog, isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
+import { applySymptomChipToggle } from '@/lib/cycleObservationAssessment';
 import { loadCycleView, type CycleView } from '@/lib/cycleOffline';
+import { cyclePresentationModeKnown } from '@/lib/cycleHistoryCopy';
+import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
@@ -62,21 +69,32 @@ export function CycleQuickLogSheet({
   const { fontScale } = useWindowDimensions();
   const [form, setForm] = useState<CycleLogForm>(EMPTY_CYCLE_LOG);
   const [saving, setSaving] = useState(false);
-  const [mode, setMode] = useState('TRACK_PERIOD');
+  const [mode, setMode] = useState<string | null>(null);
+  const caps = cyclePresentationModeKnown(mode) ? cycleModeCapabilities(mode) : null;
   const [recentIds, setRecentIds] = useState<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     let alive = true;
     if (!user?.id) return;
     setSaveError(null);
-    void loadCycleView(user.id).then((view) => {
-      if (!alive) return;
-      setForm(formFromCycleLog(view.display.logs.find((l) => l.date === date)));
-      setMode(view.display.profile.mode);
-      setRecentIds(recentSymptomIds(view.display.logs, 4));
-    });
+    setHydrated(false);
+    setMode(null);
+    void loadCycleView(user.id)
+      .then((view) => {
+        if (!alive) return;
+        setForm(formFromCycleLog(view.display.logs.find((l) => l.date === date)));
+        setMode(view.display.profile.mode);
+        setRecentIds(recentObservationKeys(view.display.logs, { limit: 4, minDays: 2 }));
+        setHydrated(true);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setSaveError(ka.cycle.assessmentLoadError);
+        setHydrated(false);
+      });
     return () => {
       alive = false;
     };
@@ -129,7 +147,7 @@ export function CycleQuickLogSheet({
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               overflow: 'hidden',
-              maxHeight: fontScale >= 1.3 ? '88%' : '92%',
+              maxHeight: fontScale >= 1.5 ? '94%' : fontScale >= 1.3 ? '90%' : '92%',
               borderTopWidth: 1,
               borderColor: c.border,
             }}
@@ -142,18 +160,69 @@ export function CycleQuickLogSheet({
               <Text style={{ color: c.ink, fontSize: 18, fontFamily: 'NotoSansGeorgian_700Bold' }}>
                 {ka.cycle.quickLogTitle}
               </Text>
+              {!hydrated || !caps ? (
+                <View style={{ minHeight: 120, justifyContent: 'center', alignItems: 'center', paddingVertical: 24 }}>
+                  <ActivityIndicator color={c.brand} />
+                  <Text
+                    accessibilityLabel={ka.common.loading}
+                    style={{ color: c.muted, fontSize: 13, marginTop: 10 }}
+                  >
+                    {ka.common.loading}
+                  </Text>
+                </View>
+              ) : (
+              <>
               <Text style={{ color: c.muted, fontSize: 13, marginTop: 4, marginBottom: 14 }}>
-                {formatCycleDateKa(date)} · {ka.cycle.quickLogHint}
+                {formatCycleDateKa(date)} ·{' '}
+                {caps.showPregnancyOverview
+                  ? ka.cycle.pregnancyQuickLogHint
+                  : caps.showPostpartumTracking
+                    ? ka.cycle.postpartumQuickLogHint
+                    : caps.showPerimenopauseTracking
+                      ? ka.cycle.periQuickLogHint
+                      : ka.cycle.quickLogHint}
               </Text>
 
+              {caps.showPregnancyObservations ? (
+                <CyclePregnancyQuickLog
+                  form={form}
+                  onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+                  assessmentReady={hydrated}
+                />
+              ) : caps.showPostpartumTracking ? (
+                <CyclePostpartumQuickLog
+                  form={form}
+                  onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+                />
+              ) : caps.showPerimenopauseTracking ? (
+                <CyclePerimenopauseQuickLog
+                  form={form}
+                  onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+                  assessmentReady={hydrated}
+                />
+              ) : (
+                <View>
               <CycleFlowPicker
                 value={form.flow}
                 disabled={saving}
                 onChange={(id) => setForm((prev) => ({ ...prev, flow: id }))}
               />
 
-              {mode === 'TRY_TO_CONCEIVE' ? (
+              {caps.showFertilityShortcuts ? (
                 <View style={{ marginTop: 14 }}>
+                  <Text
+                    style={{
+                      color: c.ink,
+                      fontFamily: 'NotoSansGeorgian_700Bold',
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {ka.cycle.ttcQuickLogTitle}
+                  </Text>
+                  <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 10 }}>
+                    {ka.cycle.ttcOpkHint}
+                  </Text>
                   <Text
                     style={{
                       color: c.ink,
@@ -167,7 +236,6 @@ export function CycleQuickLogSheet({
                   <CycleTestResultRow
                     value={form.ovulationTest}
                     onChange={(ovulationTest) => setForm((prev) => ({ ...prev, ovulationTest }))}
-                    accent={c.fertile}
                   />
                   <Text
                     style={{
@@ -184,8 +252,9 @@ export function CycleQuickLogSheet({
                     value={form.bbt}
                     onChangeText={(bbt) => setForm((prev) => ({ ...prev, bbt }))}
                     keyboardType="decimal-pad"
-                    placeholder="36.5"
+                    placeholder="36.6"
                     placeholderTextColor={c.mutedSoft}
+                    accessibilityLabel={ka.cycle.bbt}
                     style={{
                       minHeight: 44,
                       borderRadius: 12,
@@ -197,6 +266,60 @@ export function CycleQuickLogSheet({
                       fontSize: 16,
                       fontFamily: 'NotoSansGeorgian_700Bold',
                     }}
+                  />
+                  <Text
+                    style={{
+                      color: c.ink,
+                      fontFamily: 'NotoSansGeorgian_700Bold',
+                      fontSize: 13,
+                      marginTop: 14,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {ka.cycle.mucus}
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {MUCUS_OPTIONS.map((opt) => {
+                      const on = form.mucus === opt.id;
+                      return (
+                        <Pressable
+                          key={opt.id}
+                          onPress={() => {
+                            Haptics.selectionAsync().catch(() => undefined);
+                            setForm((prev) => ({ ...prev, mucus: on ? null : opt.id }));
+                          }}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: on }}
+                          accessibilityLabel={opt.label}
+                          style={{
+                            minHeight: 44,
+                            paddingHorizontal: 12,
+                            borderRadius: 14,
+                            justifyContent: 'center',
+                            backgroundColor: on ? c.card : c.cardSoft,
+                            borderWidth: 1,
+                            borderColor: on ? c.ink : c.border,
+                          }}
+                        >
+                          <Text style={{ color: c.ink, fontSize: 13 }}>{opt.label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <Text
+                    style={{
+                      color: c.ink,
+                      fontFamily: 'NotoSansGeorgian_700Bold',
+                      fontSize: 13,
+                      marginTop: 14,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {ka.cycle.pregnancyTest}
+                  </Text>
+                  <CycleTestResultRow
+                    value={form.pregnancyTest}
+                    onChange={(pregnancyTest) => setForm((prev) => ({ ...prev, pregnancyTest }))}
                   />
                 </View>
               ) : null}
@@ -240,7 +363,7 @@ export function CycleQuickLogSheet({
                       accessibilityState={{ selected: on }}
                       accessibilityLabel={opt.label}
                       style={{
-                        minHeight: 40,
+                        minHeight: 44,
                         paddingHorizontal: 12,
                         borderRadius: 12,
                         justifyContent: 'center',
@@ -277,12 +400,12 @@ export function CycleQuickLogSheet({
                   return (
                     <Pressable
                       key={opt.id}
-                      onPress={() => setForm((prev) => ({ ...prev, symptoms: toggle(prev.symptoms, opt.id) }))}
+                      onPress={() => setForm((prev) => ({ ...prev, ...applySymptomChipToggle(prev, opt.id) }))}
                       accessibilityRole="button"
                       accessibilityState={{ selected: on }}
                       accessibilityLabel={opt.label}
                       style={{
-                        minHeight: 40,
+                        minHeight: 44,
                         paddingHorizontal: 12,
                         borderRadius: 12,
                         justifyContent: 'center',
@@ -297,6 +420,17 @@ export function CycleQuickLogSheet({
                     </Pressable>
                   );
                 })}
+              </View>
+                </View>
+              )}
+
+              <View style={{ marginTop: 16 }}>
+                <CycleMoreTracking
+                  form={form}
+                  onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+                  compact
+                  mode={mode || undefined}
+                />
               </View>
 
               {saveError ? (
@@ -330,7 +464,7 @@ export function CycleQuickLogSheet({
                   <ActivityIndicator color={c.white} />
                 ) : (
                   <Text style={{ color: c.white, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
-                    {isPeriodStart ? ka.cycle.quickLogStart : ka.cycle.saveLog}
+                    {isPeriodStart && caps.showClassicCycleOverview ? ka.cycle.quickLogStart : ka.cycle.saveLog}
                   </Text>
                 )}
               </Pressable>
@@ -345,6 +479,8 @@ export function CycleQuickLogSheet({
                   <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.fullLog}</Text>
                 </Pressable>
               ) : null}
+              </>
+              )}
             </ScrollView>
           </Pressable>
         </Pressable>

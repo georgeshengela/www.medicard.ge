@@ -1,0 +1,15 @@
+appId: ge.medicard.app
+name: RA-01 auth smoke
+---
+# Requires MAESTRO_EMAIL / MAESTRO_PASSWORD. OTP-only accounts are not in this subset.
+- launchApp
+- assertVisible: "შესვლა"
+- tapOn: "ელ-ფოსტა"
+- inputText: ${MAESTRO_EMAIL}
+- tapOn: "პაროლი"
+- inputText: ${MAESTRO_PASSWORD}
+- tapOn: "შესვლა"
+- assertVisible: "მთავარი"
+- tapOn: "პროფილი"
+- tapOn: "გასვლა"
+- assertVisible: "შესვლა"

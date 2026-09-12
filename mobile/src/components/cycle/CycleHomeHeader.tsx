@@ -37,6 +37,7 @@ function IconBtn({
       style={{
         width: 44,
         height: 44,
+        flexShrink: 0,
         borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
@@ -71,7 +72,7 @@ export function CycleHomeHeader({
           <ChevronLeft size={24} color={c.ink} strokeWidth={2.2} />
         </IconBtn>
 
-        <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 8 }}>
+        <View style={{ flex: 1, minWidth: 0, alignItems: 'center', paddingHorizontal: 8 }}>
           <Text
             numberOfLines={1}
             style={{

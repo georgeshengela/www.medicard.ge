@@ -1,0 +1,163 @@
+{
+  "version": "cycle.doctor-summary.v1",
+  "generatedAt": "2026-09-11T00:00:00.000Z",
+  "range": {
+    "from": "2026-03-16",
+    "to": "2026-09-11",
+    "queryDays": 180,
+    "loggedDays": 19
+  },
+  "inclusions": {
+    "menstrual": true,
+    "pain": true,
+    "symptoms": true,
+    "wellness": true,
+    "fertility": false,
+    "sexual": false,
+    "notes": false,
+    "pregnancyContext": false,
+    "perimenopauseContext": true,
+    "postpartumContext": false
+  },
+  "pregnancyContext": null,
+  "perimenopauseContext": {
+    "current": true,
+    "trackingMode": "PERIMENOPAUSE",
+    "userSelected": true,
+    "variability": {
+      "intervalCount": 4,
+      "shortestDays": 24,
+      "longestDays": 46,
+      "sourceWindow": "last_6_completed_intervals"
+    }
+  },
+  "postpartumContext": null,
+  "menstrualHistory": {
+    "episodes": [
+      {
+        "start": "2026-04-24",
+        "end": "2026-04-27",
+        "durationDays": 4,
+        "flowSequence": [
+          "medium",
+          "light"
+        ],
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      },
+      {
+        "start": "2026-05-18",
+        "end": "2026-05-20",
+        "durationDays": 3,
+        "flowSequence": [
+          "medium",
+          "light"
+        ],
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      },
+      {
+        "start": "2026-06-18",
+        "end": "2026-06-22",
+        "durationDays": 5,
+        "flowSequence": [
+          "medium",
+          "light"
+        ],
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      },
+      {
+        "start": "2026-08-03",
+        "end": "2026-08-06",
+        "durationDays": 4,
+        "flowSequence": [
+          "medium",
+          "light"
+        ],
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      },
+      {
+        "start": "2026-09-01",
+        "end": "2026-09-03",
+        "durationDays": 3,
+        "flowSequence": [
+          "medium",
+          "light"
+        ],
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      }
+    ],
+    "spottingDates": [],
+    "cycleLengths": [
+      {
+        "start": "2026-04-24",
+        "end": "2026-05-18",
+        "lengthDays": 24,
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      },
+      {
+        "start": "2026-05-18",
+        "end": "2026-06-18",
+        "lengthDays": 31,
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      },
+      {
+        "start": "2026-08-03",
+        "end": "2026-09-01",
+        "lengthDays": 29,
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      }
+    ],
+    "periodDayCount": 19
+  },
+  "pain": null,
+  "symptoms": null,
+  "wellness": null,
+  "contraception": null,
+  "fertilityObservations": null,
+  "privateObservations": null,
+  "disclaimer": "history_not_diagnosis",
+  "sourceLabels": [
+    "USER_LOGGED",
+    "DERIVED_FROM_LOGGED_PERIODS"
+  ],
+  "mode": "PERIMENOPAUSE",
+  "avgCycleLength": 28,
+  "avgPeriodLength": 5,
+  "cycleCount": 3,
+  "shortestCycle": 24,
+  "longestCycle": 31,
+  "loggedDays": 19,
+  "periodDaysLogged": 19,
+  "painObservations": [],
+  "lifestyleSummary": {
+    "sleep": {
+      "poor": 0,
+      "okay": 0,
+      "good": 0
+    },
+    "stress": {
+      "low": 0,
+      "medium": 0,
+      "high": 0
+    },
+    "exercise": {
+      "none": 0,
+      "light": 0,
+      "moderate": 0,
+      "intense": 0
+    },
+    "caffeine": {
+      "none": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0
+    },
+    "alcohol": {
+      "none": 0,
+      "light": 0,
+      "moderate": 0,
+      "heavy": 0
+    }
+  },
+  "topSymptoms": [],
+  "topMoods": []
+}

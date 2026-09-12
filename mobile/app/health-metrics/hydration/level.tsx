@@ -25,7 +25,7 @@ export default function HydrationLevelScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 24 }}>
         <View>
           <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: T.brand }}>{ka.hydration.levelN(level)}</Text>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 32, color: T.textPrimary }}>{ka.hydration.levels[level].title}</Text>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 32, lineHeight: 40, color: T.textPrimary }}>{ka.hydration.levels[level].title}</Text>
         </View>
 
         <View style={{ height: 240, flexDirection: 'row', alignItems: 'center', gap: 16 }}>

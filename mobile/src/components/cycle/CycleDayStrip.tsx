@@ -43,6 +43,7 @@ type Props = {
   today?: string;
   showFertility?: boolean;
   showPredicted?: boolean;
+  loggedBleedLabel?: string;
 };
 
 export function CycleDayStrip({
@@ -54,6 +55,7 @@ export function CycleDayStrip({
   today: todayProp,
   showFertility = true,
   showPredicted = true,
+  loggedBleedLabel,
 }: Props) {
   const c = useCycleColors();
   const { width: screenWidth } = useWindowDimensions();
@@ -171,7 +173,7 @@ export function CycleDayStrip({
           const a11y = [
             isToday ? ka.cycle.jumpToday : weekday,
             String(Number(dd)),
-            layers.loggedPeriod ? ka.cycle.legendPeriod : null,
+            layers.loggedPeriod ? loggedBleedLabel || ka.cycle.legendPeriod : null,
             layers.predictedPeriod ? ka.cycle.legendPeriodPredicted : null,
             layers.fertile ? ka.cycle.legendFertile : null,
             layers.ovulation ? ka.cycle.legendOvulation : null,

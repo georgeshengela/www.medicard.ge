@@ -1,0 +1,37 @@
+{
+  "id": "RA00-001",
+  "reproducedBeforeFix": true,
+  "request": {
+    "method": "GET",
+    "url": "/uploads/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee.jpg",
+    "authorization": null,
+    "cookie": null
+  },
+  "response": {
+    "status": 200,
+    "contentType": "image/jpeg",
+    "cacheControl": "public, max-age=604800",
+    "contentLength": "25",
+    "headers": {
+      "accept-ranges": "bytes",
+      "cache-control": "public, max-age=604800",
+      "connection": "keep-alive",
+      "content-length": "25",
+      "content-type": "image/jpeg",
+      "date": "Fri, 11 Sep 2026 20:51:14 GMT",
+      "etag": "W/\"19-1a0923d1f49\"",
+      "keep-alive": "timeout=5",
+      "last-modified": "Fri, 11 Sep 2026 20:51:14 GMT",
+      "x-powered-by": "Express"
+    }
+  },
+  "fileBytesReturned": true,
+  "byteLength": 25,
+  "authAbsent": true,
+  "arbitraryLocalHttpAccess": true,
+  "source": {
+    "file": "server/src/server.js",
+    "pattern": "app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }))"
+  },
+  "note": "Fixture bytes only. No medical content captured."
+}

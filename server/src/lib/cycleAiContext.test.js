@@ -117,11 +117,9 @@ describe('cycle AI allowlist', () => {
       ],
       predictions: { nextPeriodStart: '2025-03-29', ovulationDate: '2025-03-15', fertileWindow: null },
     });
-    assert.deepEqual(
-      summary.topSymptoms.map((row) => row.key),
-      ['cramps'],
-    );
+    assert.ok(summary.pain.aggregates.some((row) => row.type === 'cramps'));
     assert.equal(JSON.stringify(summary).includes('unprotected'), false);
+    assert.equal(summary.topMoods.length, 0);
   });
 
   it('buildCycleWellnessContext returns only the allowlisted prompt plus category inspect', () => {

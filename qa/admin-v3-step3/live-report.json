@@ -1,0 +1,232 @@
+{
+  "generatedAt": "2026-09-07T16:26:57.275Z",
+  "base": "http://localhost:4000/admin",
+  "shots": [
+    "02-overview-light-1440",
+    "01-overview-light-1280",
+    "03-overview-light-1920",
+    "04-overview-dark-1440"
+  ],
+  "routes": {
+    "users": {
+      "hash": "#/users",
+      "heading": "მომხმარებლები",
+      "hasError": false,
+      "hidden": false
+    },
+    "push": {
+      "hash": "#/push",
+      "heading": "Push & Brain",
+      "hasError": false,
+      "hidden": false
+    },
+    "rewards": {
+      "hash": "#/rewards",
+      "heading": "ჯილდოების ოპერაციები",
+      "hasError": false,
+      "hidden": false
+    },
+    "health": {
+      "hash": "#/health",
+      "heading": "ჯანმრთელობა",
+      "hasError": false,
+      "hidden": false
+    },
+    "quality": {
+      "hash": "#/quality",
+      "heading": "ხარისხი",
+      "hasError": false,
+      "hidden": false
+    }
+  },
+  "live": {
+    "firstLoadGets": 0,
+    "firstLoadPaths": [],
+    "inspect1440": {
+      "w": 1440,
+      "h": 900,
+      "theme": "light",
+      "hash": "#/overview?range=30d",
+      "heading": "ოპერაციები",
+      "purpose": "წარმოების მდგომარეობა, მნიშვნელოვანი სიგნალები და ის, რაც ყურადღებას საჭიროებს.",
+      "overflowX": false,
+      "scrollW": 1440,
+      "statusClass": "v3-cc-status is-attention",
+      "statusText": "საჭიროა ყურადღება ქვემოთ ჩამოთვლილი სიგნალები საჭიროებს შემოწმებას. AI შეცდომები API ბაზა 293ms გარემო · development",
+      "attentionText": "საჭიროებს ყურადღებას გაფრთხილება AI შეცდომები 3 შეცდომა ბოლო 24 საათში · 9 მოთხოვნიდან. ბოლო 24სთ · 3 Medi",
+      "todayText": "დღეს თბილისის კალენდარული დღე. არჩეული პერიოდი აქ არ მოქმედებს. აქტიური დღეს 2 დღეს · თბილისი ახალი დღეს 1 დღეს · თბილისი AI შეცდომა 3 ბოლო 24სთ",
+      "hasActiveToday": true,
+      "hasScheduled": true,
+      "hasSentLie": false,
+      "hasIntegrity": false,
+      "fold": {
+        "status": {
+          "top": 179,
+          "bottom": 250,
+          "inFold": true
+        },
+        "attention": {
+          "top": 258,
+          "bottom": 384,
+          "inFold": true
+        },
+        "today": {
+          "top": 388,
+          "bottom": 528,
+          "inFold": true
+        }
+      },
+      "featurePct": [
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "0% აქტიურებიდან"
+      ],
+      "featureOver100": false,
+      "cc": true,
+      "refresh": true
+    },
+    "grainHash": "#/overview?range=30d&grain=wau",
+    "inspect1280": {
+      "w": 1280,
+      "h": 900,
+      "theme": "light",
+      "hash": "#/overview?range=30d",
+      "heading": "ოპერაციები",
+      "purpose": "წარმოების მდგომარეობა, მნიშვნელოვანი სიგნალები და ის, რაც ყურადღებას საჭიროებს.",
+      "overflowX": false,
+      "scrollW": 1280,
+      "statusClass": "v3-cc-status is-attention",
+      "statusText": "საჭიროა ყურადღება ქვემოთ ჩამოთვლილი სიგნალები საჭიროებს შემოწმებას. AI შეცდომები API ბაზა 156ms გარემო · development",
+      "attentionText": "საჭიროებს ყურადღებას გაფრთხილება AI შეცდომები 3 შეცდომა ბოლო 24 საათში · 9 მოთხოვნიდან. ბოლო 24სთ · 3 Medi",
+      "todayText": "დღეს თბილისის კალენდარული დღე. არჩეული პერიოდი აქ არ მოქმედებს. აქტიური დღეს 2 დღეს · თბილისი ახალი დღეს 1 დღეს · თბილისი AI შეცდომა 3 ბოლო 24სთ",
+      "hasActiveToday": true,
+      "hasScheduled": true,
+      "hasSentLie": false,
+      "hasIntegrity": false,
+      "fold": {
+        "status": {
+          "top": 173,
+          "bottom": 244,
+          "inFold": true
+        },
+        "attention": {
+          "top": 252,
+          "bottom": 378,
+          "inFold": true
+        },
+        "today": {
+          "top": 382,
+          "bottom": 522,
+          "inFold": true
+        }
+      },
+      "featurePct": [
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "0% აქტიურებიდან"
+      ],
+      "featureOver100": false,
+      "cc": true,
+      "refresh": true
+    },
+    "inspect1920": {
+      "w": 1920,
+      "h": 900,
+      "theme": "light",
+      "hash": "#/overview?range=30d",
+      "heading": "ოპერაციები",
+      "purpose": "წარმოების მდგომარეობა, მნიშვნელოვანი სიგნალები და ის, რაც ყურადღებას საჭიროებს.",
+      "overflowX": false,
+      "scrollW": 1920,
+      "statusClass": "v3-cc-status is-attention",
+      "statusText": "საჭიროა ყურადღება ქვემოთ ჩამოთვლილი სიგნალები საჭიროებს შემოწმებას. AI შეცდომები API ბაზა 156ms გარემო · development",
+      "attentionText": "საჭიროებს ყურადღებას გაფრთხილება AI შეცდომები 3 შეცდომა ბოლო 24 საათში · 9 მოთხოვნიდან. ბოლო 24სთ · 3 Medi",
+      "todayText": "დღეს თბილისის კალენდარული დღე. არჩეული პერიოდი აქ არ მოქმედებს. აქტიური დღეს 2 დღეს · თბილისი ახალი დღეს 1 დღეს · თბილისი AI შეცდომა 3 ბოლო 24სთ",
+      "hasActiveToday": true,
+      "hasScheduled": true,
+      "hasSentLie": false,
+      "hasIntegrity": false,
+      "fold": {
+        "status": {
+          "top": 179,
+          "bottom": 250,
+          "inFold": true
+        },
+        "attention": {
+          "top": 258,
+          "bottom": 384,
+          "inFold": true
+        },
+        "today": {
+          "top": 388,
+          "bottom": 528,
+          "inFold": true
+        }
+      },
+      "featurePct": [
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "0% აქტიურებიდან"
+      ],
+      "featureOver100": false,
+      "cc": true,
+      "refresh": true
+    },
+    "inspectDark1440": {
+      "w": 1440,
+      "h": 900,
+      "theme": "dark",
+      "hash": "#/overview?range=30d",
+      "heading": "ოპერაციები",
+      "purpose": "წარმოების მდგომარეობა, მნიშვნელოვანი სიგნალები და ის, რაც ყურადღებას საჭიროებს.",
+      "overflowX": false,
+      "scrollW": 1440,
+      "statusClass": "v3-cc-status is-attention",
+      "statusText": "საჭიროა ყურადღება ქვემოთ ჩამოთვლილი სიგნალები საჭიროებს შემოწმებას. AI შეცდომები API ბაზა 156ms გარემო · development",
+      "attentionText": "საჭიროებს ყურადღებას გაფრთხილება AI შეცდომები 3 შეცდომა ბოლო 24 საათში · 9 მოთხოვნიდან. ბოლო 24სთ · 3 Medi",
+      "todayText": "დღეს თბილისის კალენდარული დღე. არჩეული პერიოდი აქ არ მოქმედებს. აქტიური დღეს 2 დღეს · თბილისი ახალი დღეს 1 დღეს · თბილისი AI შეცდომა 3 ბოლო 24სთ",
+      "hasActiveToday": true,
+      "hasScheduled": true,
+      "hasSentLie": false,
+      "hasIntegrity": false,
+      "fold": {
+        "status": {
+          "top": 179,
+          "bottom": 250,
+          "inFold": true
+        },
+        "attention": {
+          "top": 258,
+          "bottom": 384,
+          "inFold": true
+        },
+        "today": {
+          "top": 388,
+          "bottom": 528,
+          "inFold": true
+        }
+      },
+      "featurePct": [
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "50% აქტიურებიდან",
+        "0% აქტიურებიდან"
+      ],
+      "featureOver100": false,
+      "cc": true,
+      "refresh": true
+    }
+  },
+  "notes": [],
+  "pageErrors": [],
+  "consoleLogs": [],
+  "failedRequests": [],
+  "totalAdminRequests": 33
+}

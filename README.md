@@ -111,7 +111,7 @@ prescription dosing). The disclaimer is appended in code rather than trusted to 
 | `GET` | `/api/auth/me` | profile, quota and record counts |
 | `PATCH` | `/api/auth/me` | completes the medical profile (sex, birth date, name) |
 | `GET` | `/api/usage` | free-tier counter with its Georgian label |
-| `POST` | `/api/ai/query` | AI ექიმი / კონსილიუმი — metered |
+| `POST` | `/api/ai/query` | Medi / კონსილიუმი — metered |
 | `POST` | `/api/ai/analyze-image` | multipart lab / imaging / skin upload — metered |
 | `POST` | `/api/ai/skincare` | routine builder — metered |
 | `POST` | `/api/ai/medication-review` | interaction check on the active schedule — metered |
@@ -126,7 +126,7 @@ via Expo SecureStore, with a `localStorage` fallback on web.
 
 | Module | Screen | Pipeline |
 | --- | --- | --- |
-| AI ექიმი | `app/chat/[mode].tsx` | EvidenceMD, conversational, last 12 turns kept for context |
+| Medi | `app/chat/[mode].tsx` | EvidenceMD, conversational, last 12 turns kept for context |
 | კონსილიუმი | same screen, `consilium` mode | EvidenceMD picks 3–5 relevant specialists and writes each opinion |
 | გაშიფრე ანალიზები | `app/module/lab.tsx` | image → vision OCR, or PDF → `pdf-parse` → EvidenceMD → ნორმაშია / ყურადღება მისაქცევი / რეკომენდაციები |
 | რენტგენი / CT / MRI | `app/module/imaging.tsx` | vision description → EvidenceMD radiology read |

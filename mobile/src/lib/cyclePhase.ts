@@ -7,6 +7,7 @@ import {
   type CycleHonestyConfidence,
 } from '@/lib/cycleHonesty';
 import { ka } from '@/i18n/ka';
+import { supportsCycleCapability } from '@/lib/cycleModes';
 
 export type { CyclePhaseInfo, CyclePhaseKind } from '@/lib/cycleCanonical';
 
@@ -123,7 +124,7 @@ export function buildDayPredictions({
     }
   }
 
-  if (nextPeriodStart && mode !== 'PREGNANCY' && !mark?.period) {
+  if (nextPeriodStart && supportsCycleCapability(mode, 'showClassicCycleOverview') && !mark?.period) {
     const until = daysBetween(date, nextPeriodStart);
     if (until > 0 && until <= 3) {
       cards.unshift({
@@ -145,7 +146,7 @@ export function buildDayPredictions({
     }
   }
 
-  if (ovulationDate && mode === 'TRY_TO_CONCEIVE' && !mark?.ovulation && !mark?.fertile) {
+  if (ovulationDate && supportsCycleCapability(mode, 'showTtcOverview') && !mark?.ovulation && !mark?.fertile) {
     const untilOv = daysBetween(date, ovulationDate);
     if (untilOv > 0 && untilOv <= 3) {
       cards.push({
@@ -168,7 +169,7 @@ export function buildDayPredictions({
     }
     if (log.bbt != null) bits.push(ka.cycle.loggedBbt(String(log.bbt)));
     if (log.cervicalMucus) bits.push(ka.cycle.loggedMucus(log.cervicalMucus));
-    if (log.sexualActivity && mode === 'TRY_TO_CONCEIVE') bits.push(ka.cycle.loggedSex);
+    if (log.sexualActivity && supportsCycleCapability(mode, 'showTtcOverview')) bits.push(ka.cycle.loggedSex);
     if (log.pregnancyTest === 'negative' || log.pregnancyTest === 'positive' || log.pregnancyTest === 'unclear') {
       bits.push(ka.cycle.loggedPreg(ka.cycle.testResult[log.pregnancyTest]));
     }

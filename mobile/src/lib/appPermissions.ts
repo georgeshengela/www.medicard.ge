@@ -19,6 +19,7 @@ import { ka } from '@/i18n/ka';
 import {
   cancelAllReminders,
   cancelCycleReminders,
+  cancelPregnancyCareReminders,
   getNotificationPermissionStatus,
   getScheduledReminderCounts,
   isPushOptedIn,
@@ -277,6 +278,7 @@ export async function resetLocalReminders(): Promise<void> {
 
 export async function resetCycleRemindersOnly(): Promise<void> {
   await cancelCycleReminders();
+  await cancelPregnancyCareReminders();
 }
 
 export async function resetAllConnectionsAndPermissions(): Promise<void> {

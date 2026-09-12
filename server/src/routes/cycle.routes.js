@@ -30,8 +30,6 @@ import {
   emptyCycleAiCache,
   CYCLE_TIMEZONE,
   detectCyclePhase,
-  fetalInsightForWeek,
-  gestationalAge,
   inferCycleStats,
   parseCycleInsightsJson,
   pickLastPeriodStart,
@@ -39,13 +37,77 @@ import {
   stampCalendarPhases,
   todayInTimeZone,
   toDateKey,
+  addDays,
+  daysBetween,
 } from '../lib/cycle.js';
+import { isCycleAiContextSupported } from '../lib/cycleModes.js';
 import { clientTimezoneFromReq, resolveCycleClock } from '../lib/cycleCivilDate.js';
 import {
   CYCLE_DISPLAY_LOG_LIMIT,
   engineLogWhere,
 } from '../lib/cycleHistoryQuery.js';
 import { buildHistoricalAnalytics } from '../lib/cycleHistoryAnalytics.js';
+import { buildObservationTrends, OBSERVATION_TREND_QUERY_DAYS } from '../lib/cycleObservationTrends.js';
+import { buildCycleTtcData, CYCLE_TTC_HTTP_PATH, TTC_HISTORY_DAYS } from '../lib/cycleTtc.js';
+import {
+  applyPregnancyEpisodeTransition,
+  buildCyclePregnancyData,
+  bundlePregnancyView,
+  CYCLE_PREGNANCY_HTTP_PATH,
+  isPregnancyProfileMode,
+  loadActivePregnancyEpisode,
+  PREGNANCY_HISTORY_DAYS,
+  presentPregnancyDating,
+  serializePregnancyEpisodeForExport,
+} from '../lib/cyclePregnancy.js';
+import {
+  CYCLE_PREGNANCY_CARE_PLAN_HTTP_PATH,
+  loadPregnancyCarePlanStates,
+  presentPregnancyCarePlan,
+  resolveCarePlanPlaceFields,
+  resolveCarePlanReminderFields,
+  resolveCarePlanTimeFields,
+  serializeCarePlanStateForExport,
+  validateCarePlanWrite,
+} from '../lib/pregnancyCarePlan.js';
+import { buildPerimenopauseContext, PERIMENOPAUSE_INTERVAL_HORIZON_DAYS } from '../lib/cyclePerimenopause.js';
+import {
+  applyPostpartumEpisodeTransition,
+  buildCyclePostpartumData,
+  bundlePostpartumView,
+  CYCLE_POSTPARTUM_HTTP_PATH,
+  isPostpartumProfileMode,
+  loadActivePostpartumEpisode,
+  POSTPARTUM_HISTORY_DAYS,
+  serializePostpartumEpisodeForExport,
+  stampPostpartumLogWrite,
+} from '../lib/cyclePostpartum.js';
+import {
+  CYCLE_POSTPARTUM_BLEED_CLASSIFICATION_PATH,
+  classifyPostpartumBleedEpisode,
+  groupPostpartumBleedRuns,
+  loadClassifiedPeriodFlowLogs,
+  mergeForecastLogs,
+  reconcileUserBleedClassifications,
+  serializeBleedClassificationsForExport,
+  unclassifyPostpartumBleedEpisode,
+} from '../lib/cyclePostpartumBleedClassification.js';
+import {
+  applyForecastEligibilityToPredictions,
+  applyForecastEligibilityToTodayPhase,
+  evaluateForecastEligibility,
+  forecastGateProfilePatch,
+  omitForecastGateFromProfile,
+  publicForecastEligibility,
+  serializePostpartumReturnForExport,
+} from '../lib/cyclePostpartumReturnForecast.js';
+import { pregnancyLogQueryFrom } from '../lib/cyclePregnancyObservations.js';
+import { weekDevelopmentForCompletedWeek } from '../../../mobile/src/lib/pregnancyWeekData.js';
+import {
+  buildCycleDoctorSummaryData,
+  DOCTOR_SUMMARY_MAX_RANGE_DAYS,
+  DOCTOR_SUMMARY_QUERY_DAYS,
+} from '../lib/cycleDoctorSummary.js';
 import {
   DELETE_CYCLE_CONFIRM,
   buildCycleExportPayload,
@@ -63,7 +125,7 @@ import {
   planFillRange,
   planStartPeriod,
 } from '../lib/cyclePeriod.js';
-import { askEvidenceMd } from '../lib/evidencemd.js';
+import { askAi } from '../lib/aiEngine.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
 import { calculateAge, withPatientAiContext } from '../lib/patient.js';
@@ -91,7 +153,7 @@ cycleRouter.use((_req, res, next) => {
   next();
 });
 
-const MODES = ['TRACK_PERIOD', 'TRY_TO_CONCEIVE', 'PREGNANCY'];
+const MODES = ['TRACK_PERIOD', 'TRY_TO_CONCEIVE', 'PREGNANCY', 'PERIMENOPAUSE', 'POSTPARTUM'];
 const FLOWS = ['none', 'spotting', 'light', 'medium', 'heavy'];
 const MUCUS = ['dry', 'sticky', 'creamy', 'watery', 'eggwhite'];
 
@@ -221,7 +283,18 @@ async function syncLastPeriodStart(userId, today = todayInTimeZone()) {
   });
 }
 
+async function postpartumWriteStamp(userId) {
+  const profile = await prisma.cycleProfile.findUnique({
+    where: { userId },
+    select: { mode: true },
+  });
+  if (profile?.mode !== 'POSTPARTUM') return {};
+  const episode = await loadActivePostpartumEpisode(prisma, userId);
+  return stampPostpartumLogWrite({ mode: 'POSTPARTUM', episodeId: episode?.id });
+}
+
 async function upsertBleedDay(userId, date, flow) {
+  const stamp = await postpartumWriteStamp(userId);
   return prisma.cycleLog.upsert({
     where: { userId_date: { userId, date } },
     create: {
@@ -230,8 +303,9 @@ async function upsertBleedDay(userId, date, flow) {
       flow,
       symptoms: [],
       moods: [],
+      ...stamp,
     },
-    update: { flow },
+    update: { flow, ...stamp },
   });
 }
 
@@ -253,7 +327,7 @@ async function clearBleedDay(userId, date) {
 async function loadBundle(userId, clock = null) {
   const today = clock?.today || todayInTimeZone();
   const timezone = clock?.timezone || CYCLE_TIMEZONE;
-  const [profile, engineLogs, displayLogs, pregnancyLogs, customTags, dailyMetrics] = await Promise.all([
+  const [profile, engineLogs, displayLogs, pregnancyLogs, customTags, dailyMetrics, activeEpisode, activePostpartum] = await Promise.all([
     getOrCreateProfile(userId),
     prisma.cycleLog.findMany({
       where: engineLogWhere(userId, today),
@@ -272,12 +346,30 @@ async function loadBundle(userId, clock = null) {
     }),
     loadCustomTags(userId),
     loadDailyMetrics(userId),
+    loadActivePregnancyEpisode(prisma, userId),
+    loadActivePostpartumEpisode(prisma, userId),
   ]);
 
   const shapedLogs = displayLogs.map(shapeCycleLog);
 
+  const classifiedState = await reconcileUserBleedClassifications(prisma, userId);
+  const forecastEligibility = evaluateForecastEligibility({
+    forecastGateKind: profile.forecastGateKind,
+    forecastGateEpisodeId: profile.forecastGateEpisodeId,
+    classifications: classifiedState.keep,
+  });
+  let forecastLogs = engineLogs;
+  if (profile.mode !== 'POSTPARTUM' && profile.mode !== 'PREGNANCY' && classifiedState.classifiedDates.length) {
+    try {
+      const extra = await loadClassifiedPeriodFlowLogs(prisma, userId, today, classifiedState.classifiedDates);
+      forecastLogs = mergeForecastLogs(engineLogs, extra);
+    } catch {
+      forecastLogs = engineLogs;
+    }
+  }
+
   const inferred = inferCycleStats(
-    engineLogs,
+    forecastLogs,
     profile.avgCycleLength,
     profile.avgPeriodLength,
   );
@@ -314,29 +406,32 @@ async function loadBundle(userId, clock = null) {
       toKey: lastPeriodStart,
     });
   }
-  const predictions = presentPredictions(rawPredictions, contraception);
+  const predictions = applyForecastEligibilityToPredictions(
+    presentPredictions(rawPredictions, contraception),
+    forecastEligibility,
+  );
 
-  const todayPhase = presentTodayPhase(
-    detectCyclePhase({
-      lastPeriodStart,
-      avgCycleLength: averages.usedCycleLength,
-      avgPeriodLength: averages.usedPeriodLength,
-      today,
-    }),
-    contraception,
+  const todayPhase = applyForecastEligibilityToTodayPhase(
+    presentTodayPhase(
+      detectCyclePhase({
+        lastPeriodStart,
+        avgCycleLength: averages.usedCycleLength,
+        avgPeriodLength: averages.usedPeriodLength,
+        today,
+      }),
+      contraception,
+    ),
+    forecastEligibility,
   );
 
   const due = toDateKey(profile.dueDate);
-  const pregnancy =
-    profile.mode === 'PREGNANCY' && due
-      ? {
-          dueDate: due,
-          age: gestationalAge(due, today),
-          insight: fetalInsightForWeek(gestationalAge(due, today)?.week ?? 14),
-        }
-      : null;
+  const pregnancy = bundlePregnancyView({
+    profile,
+    episode: activeEpisode,
+    today,
+  });
 
-  const profileView = { ...profile, lastPeriodStart };
+  const profileView = { ...omitForecastGateFromProfile(profile), lastPeriodStart };
   const analytics = buildHistoricalAnalytics({
     logs: shapedLogs,
     inferred,
@@ -366,10 +461,9 @@ async function loadBundle(userId, clock = null) {
     partnerShare,
     contraception,
     profile: {
-      ...profile,
+      ...profileView,
       partnerShareCode: isShareTokenFormat(profile.partnerShareCode) ? profile.partnerShareCode : null,
-      lastPeriodStart,
-      dueDate: due,
+      dueDate: pregnancy?.dueDate ?? due,
       contraceptionMethod: contraception.method,
       contraceptionStartedAt: contraception.startedAt,
       conditions: Array.isArray(profile.conditions) ? profile.conditions.map(String) : [],
@@ -404,8 +498,10 @@ async function loadBundle(userId, clock = null) {
     summary: buildDoctorSummary({
       profile: profileView,
       logs: shapedLogs,
-      predictions,
-      analytics,
+      today,
+      inferred,
+      pregnancyEpisode: activeEpisode,
+      postpartumEpisode: activePostpartum,
     }),
     analytics,
     localInsights: buildLocalInsights({
@@ -430,7 +526,24 @@ async function loadBundle(userId, clock = null) {
       predictions,
       inferred,
       today,
+      forecastEligibility,
     }),
+    perimenopause: buildPerimenopauseContext({
+      mode: profile.mode,
+      inferred,
+      logs: shapedLogs,
+      predictions,
+      today,
+    }),
+    postpartum: bundlePostpartumView({
+      profile,
+      episode: activePostpartum,
+      today,
+      classifiedDates: classifiedState.classifiedDates,
+      latestClassified: classifiedState.latest,
+    }),
+    classifiedDates: classifiedState.classifiedDates,
+    forecastEligibility: publicForecastEligibility(forecastEligibility),
   };
 
   try {
@@ -445,6 +558,7 @@ async function loadBundle(userId, clock = null) {
       isIrregular: Boolean(profile.isIrregular),
       source: averages.source,
       mode: profile.mode,
+      forecastAllowed: forecastEligibility.allowed,
     });
   } catch {
     /* Observation must never fail the Cycle bundle. */
@@ -484,6 +598,52 @@ cycleRouter.get(
     } catch {
       predictionSnapshots = [];
     }
+    let pregnancyEpisodes = [];
+    try {
+      const episodeRows = await prisma.cyclePregnancyEpisode.findMany({
+        where: { userId: req.user.id },
+        orderBy: { startedAt: 'asc' },
+      });
+      pregnancyEpisodes = episodeRows.map(serializePregnancyEpisodeForExport);
+    } catch {
+      pregnancyEpisodes = [];
+    }
+    let pregnancyCarePlan = [];
+    try {
+      const rows = await prisma.pregnancyCarePlanItemState.findMany({
+        where: { userId: req.user.id },
+        orderBy: { updatedAt: 'asc' },
+      });
+      pregnancyCarePlan = rows.map(serializeCarePlanStateForExport);
+    } catch {
+      pregnancyCarePlan = [];
+    }
+    let postpartumEpisodes = [];
+    try {
+      const episodeRows = await prisma.cyclePostpartumEpisode.findMany({
+        where: { userId: req.user.id },
+        orderBy: { startedAt: 'asc' },
+      });
+      postpartumEpisodes = episodeRows.map(serializePostpartumEpisodeForExport);
+    } catch {
+      postpartumEpisodes = [];
+    }
+    let postpartumBleedClassifications = [];
+    try {
+      const rows = await prisma.cyclePostpartumBleedClassification.findMany({
+        where: { userId: req.user.id },
+        orderBy: { bleedStart: 'asc' },
+      });
+      postpartumBleedClassifications = serializeBleedClassificationsForExport(rows);
+    } catch {
+      postpartumBleedClassifications = [];
+    }
+    let ownerProfile = null;
+    try {
+      ownerProfile = await prisma.cycleProfile.findUnique({ where: { userId: req.user.id } });
+    } catch {
+      ownerProfile = null;
+    }
     return res.json(
       buildCycleExportPayload({
         profile: bundle.profile,
@@ -493,6 +653,475 @@ cycleRouter.get(
         contraception: bundle.contraception,
         pregnancyLogs: bundle.pregnancyLogs,
         predictionSnapshots,
+        pregnancyEpisodes,
+        pregnancyCarePlan,
+        postpartumEpisodes,
+        postpartumBleedClassifications,
+        postpartumReturn: serializePostpartumReturnForExport({
+          forecastGateKind: ownerProfile?.forecastGateKind,
+          forecastGateEpisodeId: ownerProfile?.forecastGateEpisodeId,
+          forecastEligibility: bundle.forecastEligibility,
+        }),
+      }),
+    );
+  }),
+);
+
+cycleRouter.get(
+  CYCLE_TTC_HTTP_PATH,
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    applyPrivateCache(res);
+    const bundle = await bundleFor(req);
+    const today = bundle.meta.today;
+    const from = addDays(today, -(TTC_HISTORY_DAYS - 1));
+    const rows = await prisma.cycleLog.findMany({
+      where: { userId: req.user.id, date: { gte: from } },
+      orderBy: { date: 'desc' },
+    });
+    const logs = rows.map((row) =>
+      shapeCycleLog({
+        ...row,
+        date: toDateKey(row.date) || row.date,
+      }),
+    );
+    return res.json(
+      buildCycleTtcData({
+        today,
+        profile: bundle.profile,
+        logs,
+        predictions: bundle.predictions,
+        contraception: bundle.contraception,
+      }),
+    );
+  }),
+);
+
+cycleRouter.get(
+  CYCLE_PREGNANCY_HTTP_PATH,
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    applyPrivateCache(res);
+    const bundle = await bundleFor(req);
+    const today = bundle.meta.today;
+    const episode = await loadActivePregnancyEpisode(prisma, req.user.id);
+    const from = pregnancyLogQueryFrom({ episode, today, historyDays: PREGNANCY_HISTORY_DAYS });
+    const rows = await prisma.cycleLog.findMany({
+      where: { userId: req.user.id, date: { gte: from } },
+      orderBy: { date: 'desc' },
+    });
+    const logs = rows.map((row) =>
+      shapeCycleLog({
+        ...row,
+        date: toDateKey(row.date) || row.date,
+      }),
+    );
+    const carePlanStates = await loadPregnancyCarePlanStates(prisma, {
+      userId: req.user.id,
+      episodeId: episode?.id,
+    });
+    return res.json(
+      buildCyclePregnancyData({
+        today,
+        profile: bundle.profile,
+        episode,
+        logs,
+        carePlanStates,
+      }),
+    );
+  }),
+);
+
+cycleRouter.get(
+  CYCLE_POSTPARTUM_HTTP_PATH,
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    applyPrivateCache(res);
+    const bundle = await bundleFor(req);
+    const today = bundle.meta.today;
+    const episode = await loadActivePostpartumEpisode(prisma, req.user.id);
+    const from = addDays(today, -(POSTPARTUM_HISTORY_DAYS - 1));
+    const rows = await prisma.cycleLog.findMany({
+      where: { userId: req.user.id, date: { gte: from } },
+      orderBy: { date: 'desc' },
+    });
+    const logs = rows.map((row) =>
+      shapeCycleLog({
+        ...row,
+        date: toDateKey(row.date) || row.date,
+      }),
+    );
+    const classifiedState = await reconcileUserBleedClassifications(prisma, req.user.id);
+    const episodeLogs = episode
+      ? logs.filter((log) => log?.postpartumEpisodeId === episode.id)
+      : [];
+    const runs = groupPostpartumBleedRuns(episodeLogs);
+    const classifiedStarts = new Set(
+      (classifiedState.episodes || [])
+        .filter((row) => row.postpartumEpisodeId === episode?.id)
+        .map((row) => row.start),
+    );
+    const bleedEpisodes = runs.map((run) => ({
+      start: run.start,
+      end: run.end,
+      classified: classifiedStarts.has(run.start),
+    }));
+    return res.json(
+      buildCyclePostpartumData({
+        today,
+        profile: bundle.profile,
+        episode,
+        logs,
+        classifiedDates: classifiedState.classifiedDates,
+        classifiedEpisodes: classifiedState.episodes,
+        latestClassified: classifiedState.latest,
+        bleedEpisodes,
+      }),
+    );
+  }),
+);
+
+cycleRouter.put(
+  CYCLE_POSTPARTUM_HTTP_PATH,
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    applyPrivateCache(res);
+    const bundle = await bundleFor(req);
+    if (!isPostpartumProfileMode(bundle.profile?.mode)) {
+      const err = new Error('საწყისი თარიღი მხოლოდ მშობიარობის შემდგომ რეჟიმში იცვლება.');
+      err.status = 404;
+      throw err;
+    }
+    const body = z
+      .object({
+        referenceDate: DATE_KEY.nullable(),
+      })
+      .parse(req.body ?? {});
+    const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+    await prisma.$transaction(async (tx) => {
+      await applyPostpartumEpisodeTransition(tx, {
+        userId: req.user.id,
+        currentMode: 'POSTPARTUM',
+        nextMode: 'POSTPARTUM',
+        body: { postpartumReferenceDate: body.referenceDate },
+        today: clock.today,
+      });
+    });
+    return respondWithBundle(req, res, {
+      profile: bundle.profile,
+      meta: bundle.meta,
+    });
+  }),
+);
+
+cycleRouter.put(
+  CYCLE_POSTPARTUM_BLEED_CLASSIFICATION_PATH,
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    applyPrivateCache(res);
+    const bundle = await bundleFor(req);
+    const body = z.object({ date: DATE_KEY }).parse(req.body ?? {});
+    await classifyPostpartumBleedEpisode(prisma, {
+      userId: req.user.id,
+      date: body.date,
+      mode: bundle.profile?.mode,
+      today: bundle.meta.today,
+    });
+    return respondWithBundle(req, res, {
+      profile: bundle.profile,
+      meta: bundle.meta,
+    });
+  }),
+);
+
+cycleRouter.delete(
+  CYCLE_POSTPARTUM_BLEED_CLASSIFICATION_PATH,
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    applyPrivateCache(res);
+    const bundle = await bundleFor(req);
+    const body = z.object({ date: DATE_KEY }).parse(req.body ?? {});
+    await unclassifyPostpartumBleedEpisode(prisma, {
+      userId: req.user.id,
+      date: body.date,
+      mode: bundle.profile?.mode,
+    });
+    return respondWithBundle(req, res, {
+      profile: bundle.profile,
+      meta: bundle.meta,
+    });
+  }),
+);
+
+cycleRouter.get(
+  `${CYCLE_PREGNANCY_HTTP_PATH}/weeks/:week`,
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    applyPrivateCache(res);
+    const bundle = await bundleFor(req);
+    if (!isPregnancyProfileMode(bundle.profile?.mode)) {
+      const err = new Error('ორსულობის კვირის კატალოგი მხოლოდ ორსულობის რეჟიმშია.');
+      err.status = 404;
+      throw err;
+    }
+    const week = z.coerce.number().int().parse(req.params.week);
+    const weekDevelopment = weekDevelopmentForCompletedWeek(week);
+    if (!weekDevelopment) {
+      const err = new Error('კვირა არასწორია.');
+      err.status = 400;
+      throw err;
+    }
+    return res.json({ weekDevelopment });
+  }),
+);
+
+cycleRouter.get(
+  CYCLE_PREGNANCY_CARE_PLAN_HTTP_PATH,
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    applyPrivateCache(res);
+    const bundle = await bundleFor(req);
+    if (!isPregnancyProfileMode(bundle.profile?.mode)) {
+      const err = new Error('მოვლის გეგმა მხოლოდ ორსულობის რეჟიმშია.');
+      err.status = 404;
+      throw err;
+    }
+    const episode = await loadActivePregnancyEpisode(prisma, req.user.id);
+    if (!episode || episode.status !== 'ACTIVE') {
+      const err = new Error('აქტიური ორსულობის ეპიზოდი არ არის.');
+      err.status = 404;
+      throw err;
+    }
+    const dating = presentPregnancyDating({
+      referenceDate: episode.referenceDate,
+      referenceType: episode.referenceType,
+      today: bundle.meta.today,
+    });
+    const states = await loadPregnancyCarePlanStates(prisma, {
+      userId: req.user.id,
+      episodeId: episode.id,
+    });
+    return res.json(
+      presentPregnancyCarePlan({
+        mode: bundle.profile.mode,
+        pregnancyActive: true,
+        dating,
+        episodeId: episode.id,
+        states,
+      }),
+    );
+  }),
+);
+
+cycleRouter.put(
+  `${CYCLE_PREGNANCY_CARE_PLAN_HTTP_PATH}/:careItemId`,
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    applyPrivateCache(res);
+    const bundle = await bundleFor(req);
+    if (!isPregnancyProfileMode(bundle.profile?.mode)) {
+      const err = new Error('მოვლის გეგმა მხოლოდ ორსულობის რეჟიმშია.');
+      err.status = 404;
+      throw err;
+    }
+    const episode = await loadActivePregnancyEpisode(prisma, req.user.id);
+    if (!episode || episode.status !== 'ACTIVE') {
+      const err = new Error('აქტიური ორსულობის ეპიზოდი არ არის.');
+      err.status = 404;
+      throw err;
+    }
+    const careItemId = String(req.params.careItemId || '');
+    const parsed = validateCarePlanWrite(req.body ?? {}, {
+      careItemId,
+      today: bundle.meta.today,
+    });
+    if (parsed.action === 'CLEAR') {
+      await prisma.pregnancyCarePlanItemState.deleteMany({
+        where: {
+          userId: req.user.id,
+          pregnancyEpisodeId: episode.id,
+          careItemId,
+        },
+      });
+    } else {
+      const existing = await prisma.pregnancyCarePlanItemState.findUnique({
+        where: {
+          pregnancyEpisodeId_careItemId: {
+            pregnancyEpisodeId: episode.id,
+            careItemId,
+          },
+        },
+      });
+      const time = resolveCarePlanTimeFields({ parsed, existing });
+      const plannedPlace = resolveCarePlanPlaceFields({
+        parsed,
+        existing,
+        plannedDate: time.plannedDate,
+      });
+      const reminder = resolveCarePlanReminderFields({
+        parsed: { ...parsed, plannedDate: time.plannedDate },
+        existing,
+        plannedTime: time.plannedTime,
+      });
+      if (parsed.reminderEnabled === true && !reminder.reminderEnabled) {
+        const err = new Error(
+          parsed.reminderMode === 'EXACT_TIME'
+            ? 'დროითი შეხსენება დაგეგმილ თარიღსა და დროს საჭიროებს.'
+            : 'შეხსენება მხოლოდ დაგეგმილ თარიღზე ირთვება.',
+        );
+        err.status = 400;
+        throw err;
+      }
+      const data = {
+        userId: req.user.id,
+        pregnancyEpisodeId: episode.id,
+        careItemId,
+        status: parsed.status,
+        plannedDate: time.plannedDate,
+        plannedTime: time.plannedTime,
+        plannedPlace,
+        completedDate:
+          parsed.completedDate === undefined ? existing?.completedDate ?? null : parsed.completedDate,
+        note: parsed.note === undefined ? existing?.note ?? null : parsed.note,
+        reminderEnabled: reminder.reminderEnabled,
+        reminderOffset: reminder.reminderOffset,
+        reminderMode: reminder.reminderMode,
+        exactReminderOffsetMinutes: reminder.exactReminderOffsetMinutes,
+        catalogVersion: parsed.catalogVersion,
+      };
+      await prisma.pregnancyCarePlanItemState.upsert({
+        where: {
+          pregnancyEpisodeId_careItemId: {
+            pregnancyEpisodeId: episode.id,
+            careItemId,
+          },
+        },
+        create: data,
+        update: {
+          status: data.status,
+          plannedDate: data.plannedDate,
+          plannedTime: data.plannedTime,
+          plannedPlace: data.plannedPlace,
+          completedDate: data.completedDate,
+          note: data.note,
+          reminderEnabled: data.reminderEnabled,
+          reminderOffset: data.reminderOffset,
+          reminderMode: data.reminderMode,
+          exactReminderOffsetMinutes: data.exactReminderOffsetMinutes,
+          catalogVersion: data.catalogVersion,
+        },
+      });
+    }
+    const dating = presentPregnancyDating({
+      referenceDate: episode.referenceDate,
+      referenceType: episode.referenceType,
+      today: bundle.meta.today,
+    });
+    const states = await loadPregnancyCarePlanStates(prisma, {
+      userId: req.user.id,
+      episodeId: episode.id,
+    });
+    return res.json(
+      presentPregnancyCarePlan({
+        mode: bundle.profile.mode,
+        pregnancyActive: true,
+        dating,
+        episodeId: episode.id,
+        states,
+      }),
+    );
+  }),
+);
+
+cycleRouter.get(
+  '/observation-trends',
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+    const today = clock.today;
+    const from = addDays(today, -(OBSERVATION_TREND_QUERY_DAYS - 1));
+    const rows = await prisma.cycleLog.findMany({
+      where: { userId: req.user.id, date: { gte: from } },
+      orderBy: { date: 'asc' },
+    });
+    const logs = rows.map((row) =>
+      shapeCycleLog({
+        ...row,
+        date: toDateKey(row.date) || row.date,
+      }),
+    );
+    const inferred = inferCycleStats(logs);
+    return res.json(buildObservationTrends({ logs, today, inferred }));
+  }),
+);
+
+cycleRouter.get(
+  '/doctor-summary',
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+    const today = clock.today;
+    const query = z
+      .object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        includeFertility: z.enum(['0', '1', 'true', 'false']).optional(),
+        includeSexual: z.enum(['0', '1', 'true', 'false']).optional(),
+        includeNotes: z.enum(['0', '1', 'true', 'false']).optional(),
+      })
+      .parse(req.query);
+    const flag = (value) => value === '1' || value === 'true';
+    const to = query.to && query.to < today ? query.to : today;
+    let from = query.from || addDays(to, -(DOCTOR_SUMMARY_QUERY_DAYS - 1));
+    if (from > to) from = to;
+    if (daysBetween(from, to) + 1 > DOCTOR_SUMMARY_MAX_RANGE_DAYS) {
+      from = addDays(to, -(DOCTOR_SUMMARY_MAX_RANGE_DAYS - 1));
+    }
+    const [rows, profile, pregnancyEpisode, postpartumEpisode] = await Promise.all([
+      prisma.cycleLog.findMany({
+        where: { userId: req.user.id, date: { gte: from, lte: to } },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.cycleProfile.findUnique({ where: { userId: req.user.id } }),
+      loadActivePregnancyEpisode(prisma, req.user.id),
+      loadActivePostpartumEpisode(prisma, req.user.id),
+    ]);
+    const logs = rows.map((row) =>
+      shapeCycleLog({
+        ...row,
+        date: toDateKey(row.date) || row.date,
+      }),
+    );
+    let inferred = null;
+    if (profile?.mode === 'PERIMENOPAUSE') {
+      const horizonFrom = addDays(today, -(PERIMENOPAUSE_INTERVAL_HORIZON_DAYS - 1));
+      const flowRows = await prisma.cycleLog.findMany({
+        where: { userId: req.user.id, date: { gte: horizonFrom, lte: today } },
+        select: { date: true, flow: true },
+        orderBy: { date: 'asc' },
+      });
+      inferred = inferCycleStats(
+        flowRows.map((row) => ({
+          date: toDateKey(row.date) || row.date,
+          flow: row.flow,
+        })),
+      );
+    }
+    return res.json(
+      buildCycleDoctorSummaryData({
+        profile: profile || {},
+        logs,
+        today,
+        inferred,
+        pregnancyEpisode,
+        postpartumEpisode,
+        options: {
+          from: query.from,
+          to: query.to,
+          includeFertility: flag(query.includeFertility),
+          includeSexual: flag(query.includeSexual),
+          includeNotes: flag(query.includeNotes),
+        },
       }),
     );
   }),
@@ -559,6 +1188,11 @@ const profileUpdateSchema = z.object({
   contraceptionStartedAt: DATE_KEY.nullable().optional(),
   isIrregular: z.boolean().optional(),
   dueDate: DATE_KEY.nullable().optional(),
+  pregnancyReferenceDate: DATE_KEY.optional(),
+  pregnancyReferenceType: z.enum(['LMP', 'USER_SELECTED']).optional(),
+  pregnancyConfirm: z.literal(true).optional(),
+  postpartumConfirm: z.literal(true).optional(),
+  postpartumReferenceDate: DATE_KEY.nullable().optional(),
   privacyEnabled: z.boolean().optional(),
   enablePartnerShare: z.boolean().optional(),
   sharePermissions: z
@@ -607,9 +1241,6 @@ async function applyProfileUpdate(req, res) {
       ? new Date(`${body.lastPeriodStart}T00:00:00.000Z`)
       : null;
   }
-  if (body.dueDate !== undefined) {
-    data.dueDate = body.dueDate ? new Date(`${body.dueDate}T00:00:00.000Z`) : null;
-  }
   if (body.conditions !== undefined) data.conditions = body.conditions;
   if (body.reminderPrefs !== undefined) data.reminderPrefs = body.reminderPrefs;
   if (body.contraceptionMethod !== undefined) data.contraceptionMethod = body.contraceptionMethod;
@@ -623,12 +1254,44 @@ async function applyProfileUpdate(req, res) {
   }
 
   await getOrCreateProfile(req.user.id);
-  if (Object.keys(data).length) {
-    await prisma.cycleProfile.update({
-      where: { userId: req.user.id },
-      data,
-    });
+  const current = await prisma.cycleProfile.findUnique({ where: { userId: req.user.id } });
+  const nextMode = body.mode ?? current?.mode;
+  const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+  const pregnancyWrite =
+    body.mode === 'PREGNANCY' ||
+    current?.mode === 'PREGNANCY' ||
+    body.pregnancyConfirm === true ||
+    Boolean(body.pregnancyReferenceDate);
+  if (body.dueDate !== undefined && !pregnancyWrite) {
+    data.dueDate = body.dueDate ? new Date(`${body.dueDate}T00:00:00.000Z`) : null;
   }
+
+  await prisma.$transaction(async (tx) => {
+    const side = await applyPregnancyEpisodeTransition(tx, {
+      userId: req.user.id,
+      currentMode: current?.mode,
+      nextMode,
+      body,
+      today: clock.today,
+    });
+    const postpartumSide = await applyPostpartumEpisodeTransition(tx, {
+      userId: req.user.id,
+      currentMode: current?.mode,
+      nextMode,
+      body,
+      today: clock.today,
+    });
+    Object.assign(data, forecastGateProfilePatch(postpartumSide));
+    if (side.dueDate) {
+      data.dueDate = new Date(`${side.dueDate}T00:00:00.000Z`);
+    }
+    if (Object.keys(data).length) {
+      await tx.cycleProfile.update({
+        where: { userId: req.user.id },
+        data,
+      });
+    }
+  });
 
   if (body.enablePartnerShare === true) {
     await createOwnerShare(req.user.id, body.sharePermissions);
@@ -640,7 +1303,6 @@ async function applyProfileUpdate(req, res) {
     await updateOwnerSharePermissions(req.user.id, body.sharePermissions);
   }
 
-  const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
   return respondWithBundle(req, res, {
     profile: { lastPeriodStart: body.lastPeriodStart ?? null },
     meta: { today: clock.today, timezone: clock.timezone },
@@ -944,22 +1606,29 @@ cycleRouter.put(
         caffeine: z.string().nullable().optional(),
         alcohol: z.string().nullable().optional(),
         customTagIds: z.array(z.string()).max(8).optional(),
+        observations: z.record(z.string(), z.unknown()).nullable().optional(),
+        energy: z.string().nullable().optional(),
+        observationAssessments: z.record(z.string(), z.unknown()).optional(),
       })
       .parse(req.body);
 
-    const observations = parseObservationWrite(body);
+    const existing = await prisma.cycleLog.findUnique({
+      where: { userId_date: { userId: req.user.id, date } },
+    });
+    const observations = parseObservationWrite(body, existing || {});
     if (observations.customTagIds) {
       await assertOwnedTagIds(req.user.id, observations.customTagIds);
     }
 
+    const stamp = await postpartumWriteStamp(req.user.id);
     const log = await prisma.cycleLog.upsert({
       where: { userId_date: { userId: req.user.id, date } },
       create: {
         userId: req.user.id,
         date,
         flow: body.flow ?? null,
-        symptoms: body.symptoms ?? [],
-        moods: body.moods ?? [],
+        symptoms: observations.symptoms ?? [],
+        moods: observations.moods ?? [],
         sexualActivity: body.sexualActivity ?? null,
         libido: body.libido ?? null,
         bbt: body.bbt ?? null,
@@ -974,11 +1643,15 @@ cycleRouter.put(
         caffeine: observations.caffeine ?? null,
         alcohol: observations.alcohol ?? null,
         customTagIds: observations.customTagIds ?? [],
+        observations: observations.observations ?? {},
+        observationSchemaVersion: observations.observationSchemaVersion ?? 1,
+        observationAssessments: observations.observationAssessments ?? {},
+        ...stamp,
       },
       update: {
         ...(body.flow !== undefined ? { flow: body.flow } : {}),
-        ...(body.symptoms !== undefined ? { symptoms: body.symptoms } : {}),
-        ...(body.moods !== undefined ? { moods: body.moods } : {}),
+        ...(observations.symptoms !== undefined ? { symptoms: observations.symptoms } : {}),
+        ...(observations.moods !== undefined ? { moods: observations.moods } : {}),
         ...(body.sexualActivity !== undefined ? { sexualActivity: body.sexualActivity } : {}),
         ...(body.libido !== undefined ? { libido: body.libido } : {}),
         ...(body.bbt !== undefined ? { bbt: body.bbt } : {}),
@@ -993,6 +1666,14 @@ cycleRouter.put(
         ...(observations.caffeine !== undefined ? { caffeine: observations.caffeine } : {}),
         ...(observations.alcohol !== undefined ? { alcohol: observations.alcohol } : {}),
         ...(observations.customTagIds !== undefined ? { customTagIds: observations.customTagIds } : {}),
+        ...(observations.observations !== undefined ? { observations: observations.observations } : {}),
+        ...(observations.observationSchemaVersion !== undefined
+          ? { observationSchemaVersion: observations.observationSchemaVersion }
+          : {}),
+        ...(observations.observationAssessments !== undefined
+          ? { observationAssessments: observations.observationAssessments }
+          : {}),
+        ...stamp,
       },
     });
 
@@ -1207,6 +1888,19 @@ cycleRouter.post(
       .parse(req.body ?? {});
 
     const bundle = await bundleFor(req);
+
+    if (!isCycleAiContextSupported(bundle.profile?.mode)) {
+      return res.json({
+        insights: {
+          ...bundle.localInsights,
+          source: 'local_fallback',
+          headline: bundle.localInsights.headline,
+        },
+        cached: false,
+        localInsights: bundle.localInsights,
+      });
+    }
+
     const cached = bundle.profile.aiInsights;
     const cachedAt = bundle.profile.aiInsightsAt
       ? new Date(bundle.profile.aiInsightsAt).getTime()
@@ -1237,6 +1931,7 @@ cycleRouter.post(
       today: bundle.meta?.today,
       contraception: bundle.contraception,
       analytics: bundle.analytics,
+      forecastEligibility: bundle.forecastEligibility,
     });
 
     const patientAiContext = await withPatientAiContext(req.user);
@@ -1245,7 +1940,8 @@ cycleRouter.post(
       mode: 'CYCLE_WELLNESS',
       userPrompt: prompt,
       fn: () =>
-        askEvidenceMd({
+        askAi({
+          user: req.user,
           mode: 'CYCLE_WELLNESS',
           context: patientAiContext,
           messages: [{ role: 'user', content: prompt }],
@@ -1276,7 +1972,7 @@ cycleRouter.post(
       insights,
       cached: false,
       model: answer.model,
-      engine: 'evidencemd',
+      engine: answer.engine ?? 'openrouter',
       interactionId: answer.interactionId,
       localInsights: bundle.localInsights,
       usage,

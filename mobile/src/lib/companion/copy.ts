@@ -9,7 +9,7 @@ function pick(map: LocStr, locale: string): string {
 }
 
 const UI = {
-  title: { ka: 'მედი', en: 'Medi', fr: 'Medi', ru: 'Medi' },
+  title: { ka: 'Medi', en: 'Medi', fr: 'Medi', ru: 'Medi' },
   subtitle: {
     ka: 'შენი თანამგზავრი',
     en: 'Your companion',
@@ -19,7 +19,7 @@ const UI = {
   stage: { ka: 'ეტაპი', en: 'Stage', fr: 'Étape', ru: 'Этап' },
   level: { ka: 'დონე', en: 'Level', fr: 'Niveau', ru: 'Уровень' },
   todaysQuest: {
-    ka: 'დღევანდელი ქვესტი',
+    ka: 'დღევანდელი მისია',
     en: "Today's Quest",
     fr: 'Quête du jour',
     ru: 'Квест сегодня',
@@ -39,7 +39,7 @@ const UI = {
   },
   style: { ka: 'სტილი', en: 'Style', fr: 'Style', ru: 'Стиль' },
   talk: {
-    ka: 'მედისთან საუბარი',
+    ka: 'Medi-სთან საუბარი',
     en: 'Talk to Medi',
     fr: 'Parler à Medi',
     ru: 'Поговорить с Medi',
@@ -87,7 +87,7 @@ const UI = {
     ru: 'Офлайн — последнее сохранённое состояние',
   },
   loadError: {
-    ka: 'მედი ვერ ჩაიტვირთა',
+    ka: 'Medi ვერ ჩაიტვირთა',
     en: "Couldn't load Medi",
     fr: 'Impossible de charger Medi',
     ru: 'Не удалось загрузить Medi',
@@ -136,7 +136,7 @@ const UI = {
     ru: 'ещё',
   },
   homeA11y: {
-    ka: 'მედისთან გადასვლა',
+    ka: 'Medi-სთან გადასვლა',
     en: 'Open Medi companion',
     fr: 'Ouvrir le compagnon Medi',
     ru: 'Открыть спутника Medi',
@@ -323,11 +323,11 @@ const MILESTONE_BODIES: LocStr[] = [
 const COSMETIC_DEFAULT: Record<string, { title: LocStr; description: LocStr }> = {
   'companion.cosmetic.default_accent.title': {
     title: { ka: 'თეალი ბირთვი', en: 'Teal core', fr: 'Cœur teal', ru: 'Бирюзовое ядро' },
-    description: { ka: 'მედის ბაზისური აქცენტი.', en: "Medi's base accent.", fr: 'Accent de base de Medi.', ru: 'Базовый акцент Medi.' },
+    description: { ka: 'Medi-ს ბაზისური აქცენტი.', en: "Medi's base accent.", fr: 'Accent de base de Medi.', ru: 'Базовый акцент Medi.' },
   },
   'companion.cosmetic.default_accent.description': {
     title: { ka: 'თეალი ბირთვი', en: 'Teal core', fr: 'Cœur teal', ru: 'Бирюзовое ядро' },
-    description: { ka: 'მედის ბაზისური აქცენტი.', en: "Medi's base accent.", fr: 'Accent de base de Medi.', ru: 'Базовый акцент Medi.' },
+    description: { ka: 'Medi-ს ბაზისური აქცენტი.', en: "Medi's base accent.", fr: 'Accent de base de Medi.', ru: 'Базовый акцент Medi.' },
   },
   'companion.cosmetic.default_bg.title': {
     title: { ka: 'მშვიდი ნეივი', en: 'Calm navy', fr: 'Bleu marine calme', ru: 'Спокойный navy' },

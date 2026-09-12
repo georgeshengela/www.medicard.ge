@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { getUsage } from '../lib/usage.js';
+import { getUsageSafe } from '../lib/usage.js';
 import { ensureFreePackageId } from '../lib/packages.js';
 import { getAppSettings } from '../lib/settings.js';
 import { birthDateSchema, genderSchema, publicHealthProfile, publicUser } from '../lib/patient.js';
@@ -149,7 +149,7 @@ authRouter.post(
     return res.status(201).json({
       token: signToken(confirmed),
       user: publicUser(confirmed),
-      usage: await getUsage(confirmed.id),
+      usage: await getUsageSafe(confirmed.id),
     });
   }),
 );
@@ -179,7 +179,7 @@ authRouter.post(
     return res.json({
       token: signToken(found),
       user: publicUser(found),
-      usage: await getUsage(found.id),
+      usage: await getUsageSafe(found.id),
     });
   }),
 );
@@ -300,7 +300,7 @@ authRouter.post(
     return res.json({
       token: signToken(user),
       user: publicUser(user),
-      usage: await getUsage(user.id),
+      usage: await getUsageSafe(user.id),
     });
   }),
 );
@@ -385,7 +385,7 @@ authRouter.get(
     void recordAppActivityFromRequest(req);
 
     const [usage, counts, healthProfile] = await Promise.all([
-      getUsage(req.user.id),
+      getUsageSafe(req.user.id),
       prisma.$transaction([
         prisma.medicalRecord.count({ where: { userId: req.user.id } }),
         prisma.chatSession.count({ where: { userId: req.user.id } }),
@@ -415,6 +415,7 @@ const updateProfileSchema = z
     fullName: z.string().trim().min(2, 'შეიყვანეთ სახელი და გვარი').max(120).optional(),
     gender: genderSchema.optional(),
     birthDate: birthDateSchema.optional(),
+    aiEngine: z.enum(['gemini_flash', 'ling_free', 'evidencemd']).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, 'განსაახლებელი ველი არ არის მითითებული');
 

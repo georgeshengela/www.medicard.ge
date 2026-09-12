@@ -1,0 +1,13 @@
+{
+  "id": "05-invalid-login",
+  "androidUi": "Tap on the login form hit forgot-password once; HTTP is the executed invalid-login evidence.",
+  "http": {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "body": { "email": "<throwaway>@medicard.test", "password": "wrong-password" },
+    "status": 401,
+    "tokenPresent": false,
+    "passwordHashLeaked": false,
+    "stackLeaked": false
+  }
+}

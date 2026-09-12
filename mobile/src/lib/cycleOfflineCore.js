@@ -291,7 +291,14 @@ function hasObservationExtras(body) {
     Boolean(body.exerciseLevel) ||
     Boolean(body.caffeine) ||
     Boolean(body.alcohol) ||
-    (Array.isArray(body.customTagIds) && body.customTagIds.length > 0)
+    (Array.isArray(body.customTagIds) && body.customTagIds.length > 0) ||
+    Boolean(body.energy) ||
+    (body.observations &&
+      typeof body.observations === 'object' &&
+      Object.values(body.observations).some((value) => value != null && value !== '')) ||
+    (body.observationAssessments &&
+      typeof body.observationAssessments === 'object' &&
+      Object.keys(body.observationAssessments).length > 0)
   );
 }
 
@@ -373,6 +380,18 @@ function upsertLogOnBundle(bundle, date, patch, userScope) {
     caffeine: patch.caffeine !== undefined ? patch.caffeine : prev?.caffeine ?? null,
     alcohol: patch.alcohol !== undefined ? patch.alcohol : prev?.alcohol ?? null,
     customTagIds: patch.customTagIds !== undefined ? patch.customTagIds : prev?.customTagIds || [],
+    observations:
+      patch.observations !== undefined ? patch.observations : prev?.observations || {},
+    energy:
+      patch.energy !== undefined
+        ? patch.energy
+        : patch.observations?.energy !== undefined
+          ? patch.observations.energy
+          : prev?.energy ?? prev?.observations?.energy ?? null,
+    observationAssessments:
+      patch.observationAssessments !== undefined
+        ? patch.observationAssessments
+        : prev?.observationAssessments || {},
   };
   if (idx >= 0) logs[idx] = next;
   else logs.push(next);
@@ -487,7 +506,20 @@ function overlayPendingOnBundle(bundle, queue, userScope) {
       patchCalendarObservation(next, date, { flow, logged: true, period: true });
       pendingDates.push(date);
     } else if (op === 'END_PERIOD') {
-      if (payload.date) pendingDates.push(payload.date);
+      const date = payload.date;
+      if (date) pendingDates.push(date);
+      if (date) {
+        const ranges = next.periodRanges || [];
+        const containing = ranges.find((r) => r.start <= date && date <= r.end);
+        const last = containing && containing.end >= date ? containing.end : date;
+        for (const key of eachYmd(date, last)) {
+          const existing = (next.logs || []).find((l) => l.date === key);
+          if (!isBleedFlow(existing?.flow)) continue;
+          upsertLogOnBundle(next, key, { flow: 'none' }, userScope);
+          patchCalendarObservation(next, key, { flow: 'none', logged: true, period: false });
+          pendingDates.push(key);
+        }
+      }
     } else if (op === 'FILL_PERIOD') {
       const days = eachYmd(payload.start, payload.end);
       const flow = isBleedFlow(payload.flow) ? payload.flow : 'medium';

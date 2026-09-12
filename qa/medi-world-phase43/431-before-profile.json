@@ -1,0 +1,17 @@
+﻿{
+  "userId": "34dfd803-541f-49b2-9b23-b1be8997ffb5",
+  "energyMovement": 10,
+  "foundationXp": 34336,
+  "foundationLevel": 50,
+  "periodKey": "2026-09-12",
+  "todayWorldXp": 36,
+  "todayMovementEnergy": 10,
+  "latest": {
+    "sourceType": "MOVEMENT_SESSION",
+    "energyType": "movement",
+    "energyAmount": 10,
+    "worldXp": 12,
+    "reasonCode": "PERSONAL_GOAL_COMPLETE",
+    "periodKey": "2026-09-12"
+  }
+}

@@ -16,6 +16,9 @@ import { addDaysToKey, daysBetween, parseDateKey } from '@/lib/cyclePhase';
 import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonical';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { isBleedFlow } from '@/lib/cycleLogSave';
+import { formatCycleDateKa } from '@/components/cycle/CycleUI';
+import { cycleModeCapabilities } from '@/lib/cycleModes';
+import { forecastPresentationAllowed, suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
 import { useAuth } from '@/store/AuthContext';
 
 const ROSE = '#E11D48';
@@ -222,9 +225,18 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
   );
 
   const cycleLen = bundle ? usedCycleLength(bundle) : 28;
+  const hideLengthChrome = suppressCycleLengthChrome(bundle);
   const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
-  const pregnancy = bundle?.profile.mode === 'PREGNANCY' ? bundle.pregnancy : null;
-  const setupNeeded = ready && Boolean(bundle) && !lastPeriod && !pregnancy;
+  const caps = cycleModeCapabilities(bundle?.profile.mode);
+  const pregnancy = caps.showPregnancyOverview ? bundle?.pregnancy ?? null : null;
+  const peri = caps.showPerimenopauseTracking;
+  const postpartum = caps.showPostpartumOverview;
+  const setupNeeded =
+    ready &&
+    Boolean(bundle) &&
+    !lastPeriod &&
+    !caps.showPregnancyOverview &&
+    !caps.showPostpartumOverview;
 
   const phase = bundle ? phaseFromBundle(bundle, today) : { day: null, phase: 'unknown' as const, phaseKa: '' };
 
@@ -240,9 +252,11 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
   const phaseColor = PHASE_COLOR[phase.phase] ?? ROSE;
   const progress = pregnancy?.age
     ? Math.min(1, pregnancy.age.dayOfPregnancy / 280)
-    : phase.day && cycleLen
-      ? phase.day / cycleLen
-      : 0;
+    : hideLengthChrome
+      ? 0
+      : phase.day && cycleLen
+        ? phase.day / cycleLen
+        : 0;
 
   const title = ka.modules.cycle.title;
   const cta = setupNeeded ? ka.home.cycleSetupCta : ka.home.cycleCta;
@@ -282,7 +296,16 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
         </Text>
       </View>
 
-      <TouchableOpacity accessibilityRole="button" accessibilityLabel={title} activeOpacity={0.92} onPress={onPress}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={
+          hideLengthChrome
+            ? `${title}. ${ka.cycle.postpartumReturnGathering}. ${ka.cycle.postpartumReturnLearning}`
+            : title
+        }
+        activeOpacity={0.92}
+        onPress={onPress}
+      >
         <View
           pointerEvents="none"
           style={{
@@ -326,14 +349,85 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                 {privacyLocked ? ka.cycle.privacyLockTitle : ka.home.cycleSetupBody}
               </Text>
             </View>
+          ) : postpartum ? (
+            <>
+              <View style={{ gap: 4 }}>
+                <Text
+                  style={{
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    fontSize: 16,
+                    lineHeight: 22,
+                    color: FIGMA_CHAT.textPrimary,
+                  }}
+                  numberOfLines={2}
+                >
+                  {ka.cycle.homePostpartumLabel}
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: 'NotoSansGeorgian_400Regular',
+                    fontSize: 13,
+                    lineHeight: 18,
+                    color: FIGMA_CHAT.textSecondary,
+                  }}
+                >
+                  {offline
+                    ? ka.cycle.offlineBanner
+                    : bundle.postpartum?.elapsed
+                      ? ka.cycle.postpartumElapsed(
+                          bundle.postpartum.elapsed.week,
+                          bundle.postpartum.elapsed.day,
+                        )
+                      : ka.cycle.postpartumNoReference}
+                </Text>
+              </View>
+            </>
+          ) : peri ? (
+            <>
+              <View style={{ gap: 4 }}>
+                <Text
+                  style={{
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    fontSize: 16,
+                    lineHeight: 22,
+                    color: FIGMA_CHAT.textPrimary,
+                  }}
+                  numberOfLines={2}
+                >
+                  {ka.cycle.homePeriLabel}
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: 'NotoSansGeorgian_400Regular',
+                    fontSize: 13,
+                    lineHeight: 18,
+                    color: FIGMA_CHAT.textSecondary,
+                  }}
+                >
+                  {offline
+                    ? ka.cycle.offlineBanner
+                    : bundle.perimenopause?.lastRecordedBleeding?.date
+                      ? ka.cycle.periLastBleeding(formatCycleDateKa(bundle.perimenopause.lastRecordedBleeding.date))
+                      : ka.cycle.periNoBleeding}
+                </Text>
+              </View>
+            </>
           ) : (
             <>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <MiniRing
                   progress={progress}
-                  color={pregnancy ? '#C026D3' : phaseColor}
-                  center={pregnancy?.age ? String(pregnancy.age.week) : phase.day != null ? String(phase.day) : '—'}
-                  caption={pregnancy ? ka.cycle.week : ka.cycle.day}
+                  color={pregnancy ? '#C026D3' : hideLengthChrome ? '#9CA3AF' : phaseColor}
+                  center={
+                    pregnancy?.age
+                      ? String(pregnancy.age.week)
+                      : hideLengthChrome
+                        ? '—'
+                        : phase.day != null
+                          ? String(phase.day)
+                          : '—'
+                  }
+                  caption={pregnancy ? ka.cycle.week : hideLengthChrome ? ' ' : ka.cycle.day}
                 />
                 <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
                   <Text
@@ -345,8 +439,10 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                     }}
                     numberOfLines={2}
                   >
-                    {pregnancy?.age
-                      ? ka.home.cyclePregnantLine(pregnancy.age.week, pregnancy.age.trimester)
+                    {pregnancy
+                      ? ka.cycle.pregnancyModeTitle
+                      : hideLengthChrome
+                        ? ka.cycle.postpartumReturnGathering
                       : phase.day != null
                         ? displayPhaseLabel(phase.phase, phase.phaseKa, {
                             loggedPeriod: isBleedFlow(bundle?.logs.find((l) => l.date === today)?.flow),
@@ -363,13 +459,29 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                   >
                     {offline
                       ? ka.cycle.offlineBanner
-                      : pregnancy?.dueDate
-                      ? ka.home.cycleDueIn(daysBetween(today, pregnancy.dueDate))
+                      : pregnancy?.age
+                      ? ka.cycle.pregnancyWeekDay(pregnancy.age.week, pregnancy.age.day)
+                      : pregnancy
+                        ? ka.cycle.pregnancyModeTitle
+                      : hideLengthChrome
+                        ? ka.cycle.postpartumReturnLearning
                       : phase.day != null
                         ? ka.home.cycleDayOf(phase.day, cycleLen)
                         : ka.modules.cycle.subtitle}
                   </Text>
-                  {pregnancy ? null : nextLine ? (
+                  {pregnancy ? null : caps.showTtcOverview ? (
+                    <Text
+                      style={{
+                        fontFamily: 'NotoSansGeorgian_500Medium',
+                        fontSize: 12,
+                        lineHeight: 17,
+                        color: FIGMA_CHAT.textSecondary,
+                      }}
+                    >
+                      {ka.cycle.homeTtcLabel}
+                    </Text>
+                  ) : null}
+                  {pregnancy || !caps.showNextPeriodForecast || !forecastPresentationAllowed(bundle) ? null : nextLine ? (
                     <Text
                       style={{
                         fontFamily: 'NotoSansGeorgian_600SemiBold',

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { ka } from '@/i18n/ka';
 import { useThemeColors } from '@/theme/colors';
 import { ApiError, api } from '@/lib/api';
+import { authErrorMessage } from '@/lib/authErrorMessage';
 import { useAuth } from '@/store/AuthContext';
 
 /**
@@ -41,7 +42,7 @@ export default function PhoneAuth() {
       setDevCode(response.devCode ?? null);
       setStep('code');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : ka.common.error);
+      setError(authErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -59,7 +60,7 @@ export default function PhoneAuth() {
       await signInWithPhone(normalised, code.trim());
       router.replace('/(tabs)/home');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : ka.common.error);
+      setError(authErrorMessage(err));
     } finally {
       setBusy(false);
     }

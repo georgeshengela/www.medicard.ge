@@ -4,6 +4,13 @@
  */
 
 import { formatCycleTestKa } from './cycleFertility.js';
+import {
+  OBSERVATION_CATEGORIES,
+  OBSERVATION_REGISTRY,
+  getObservationDef,
+  stripPainManagedSymptoms,
+} from './cycleObservationRegistry.js';
+import { parsePainEntries } from './cycleObservations.js';
 
 export const CYCLE_FIELD_CATEGORIES = Object.freeze({
   GENERAL_CYCLE: 'general_cycle',
@@ -21,85 +28,26 @@ export const CYCLE_FIELD_CATEGORIES = Object.freeze({
 });
 
 /** Sex chips currently stored inside CycleLog.symptoms. Never AI/partner-visible. */
-export const CYCLE_SEXUAL_SYMPTOM_KEYS = Object.freeze([
-  'protected',
-  'unprotected',
-  'high_drive',
-  'low_drive',
-  'orgasm',
-  'pain_sex',
-  'sex',
-  'intercourse',
-  'sexual',
-]);
+export const CYCLE_SEXUAL_SYMPTOM_KEYS = Object.freeze(
+  Object.values(OBSERVATION_REGISTRY)
+    .filter((item) => item.category === OBSERVATION_CATEGORIES.SEXUAL_HEALTH && item.storage === 'symptoms')
+    .map((item) => item.key),
+);
 
 const SEXUAL_SET = new Set(CYCLE_SEXUAL_SYMPTOM_KEYS);
 
 /** Physical / wellness chips that may enter CYCLE_WELLNESS. */
-export const CYCLE_AI_SYMPTOM_ALLOWLIST = Object.freeze([
-  'cramps',
-  'headache',
-  'migraine',
-  'bloating',
-  'acne',
-  'fatigue',
-  'back_pain',
-  'breast_tenderness',
-  'breast_swelling',
-  'nausea',
-  'vomiting',
-  'dizziness',
-  'insomnia',
-  'oversleep',
-  'appetite_up',
-  'appetite_down',
-  'cravings',
-  'hot_flashes',
-  'chills',
-  'sweating',
-  'constipation',
-  'diarrhea',
-  'gas',
-  'joint_pain',
-  'muscle_pain',
-  'pelvic_pain',
-  'ovulation_pain',
-  'leg_cramps',
-  'swelling',
-  'water_retention',
-  'dry_skin',
-  'itchy_skin',
-  'hair_loss',
-  'sensitive_smell',
-  'tinnitus',
-  'palpitations',
-  'short_breath',
-  'frequent_urination',
-  'uti_feel',
-  'fever',
-  'cold_symptoms',
-]);
+export const CYCLE_AI_SYMPTOM_ALLOWLIST = Object.freeze(
+  Object.values(OBSERVATION_REGISTRY)
+    .filter((item) => item.storage === 'symptoms' && item.aiDefaultAllowed)
+    .map((item) => item.key),
+);
 
-export const CYCLE_AI_MOOD_ALLOWLIST = Object.freeze([
-  'energetic',
-  'calm',
-  'happy',
-  'confident',
-  'sensitive',
-  'anxious',
-  'irritable',
-  'angry',
-  'sad',
-  'tearful',
-  'mood_swings',
-  'focused',
-  'unfocused',
-  'tired_mood',
-  'apathetic',
-  'stressed',
-  'romantic',
-  'lonely',
-]);
+export const CYCLE_AI_MOOD_ALLOWLIST = Object.freeze(
+  Object.values(OBSERVATION_REGISTRY)
+    .filter((item) => item.storage === 'moods' && item.aiDefaultAllowed)
+    .map((item) => item.key),
+);
 
 const SYMPTOM_SET = new Set(CYCLE_AI_SYMPTOM_ALLOWLIST);
 const MOOD_SET = new Set(CYCLE_AI_MOOD_ALLOWLIST);
@@ -127,10 +75,14 @@ export function isSexualSymptomKey(key) {
 export function classifyCycleSymptomKey(key) {
   const id = String(key || '');
   if (!id) return CYCLE_FIELD_CATEGORIES.UNKNOWN;
-  if (SEXUAL_SET.has(id)) return CYCLE_FIELD_CATEGORIES.SEXUAL_HEALTH;
-  if (SYMPTOM_SET.has(id)) return CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS;
-  if (MOOD_SET.has(id)) return CYCLE_FIELD_CATEGORIES.MOOD;
-  return CYCLE_FIELD_CATEGORIES.UNKNOWN;
+  const defn = getObservationDef(id);
+  if (!defn) return CYCLE_FIELD_CATEGORIES.UNKNOWN;
+  if (defn.category === OBSERVATION_CATEGORIES.SEXUAL_HEALTH) return CYCLE_FIELD_CATEGORIES.SEXUAL_HEALTH;
+  if (!defn.aiDefaultAllowed) return CYCLE_FIELD_CATEGORIES.UNKNOWN;
+  if (defn.storage === 'moods' || defn.category === OBSERVATION_CATEGORIES.MOOD) {
+    return CYCLE_FIELD_CATEGORIES.MOOD;
+  }
+  return CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS;
 }
 
 export function partnerSafeSymptomKeys(keys = []) {
@@ -166,7 +118,11 @@ export function serializeCycleLogForAi(log) {
   bits.push(`flow=${flow}`);
   addCat(included, CYCLE_FIELD_CATEGORIES.BLEEDING);
 
-  const rawSymptoms = Array.isArray(log.symptoms) ? log.symptoms.map(String) : [];
+  const painEntries = parsePainEntries(log.painEntries);
+  const rawSymptoms = stripPainManagedSymptoms(
+    Array.isArray(log.symptoms) ? log.symptoms.map(String) : [],
+    painEntries,
+  );
   const keptSymptoms = [];
   for (const key of rawSymptoms) {
     const cat = classifyCycleSymptomKey(key);
@@ -197,7 +153,7 @@ export function serializeCycleLogForAi(log) {
   bits.push(`სიმპტომები=${keptSymptoms.join(', ') || '—'}`);
   bits.push(`განწყობა=${keptMoods.join(', ') || '—'}`);
 
-  const pain = Array.isArray(log.painEntries) ? log.painEntries : [];
+  const pain = painEntries;
   if (pain.length) {
     const parts = pain
       .filter((p) => p && typeof p === 'object' && p.type && p.severity)
@@ -243,6 +199,9 @@ export function serializeCycleLogForAi(log) {
   }
   if (log.exerciseLevel || log.caffeine || log.alcohol) {
     addCat(excluded, CYCLE_FIELD_CATEGORIES.GENERAL_WELLNESS);
+  }
+  if (log.energy || log.observations?.energy) {
+    addCat(excluded, CYCLE_FIELD_CATEGORIES.UNKNOWN);
   }
 
   addCat(included, CYCLE_FIELD_CATEGORIES.GENERAL_CYCLE);

@@ -428,6 +428,7 @@ async function deliverCycleReminder(data: Record<string, unknown>): Promise<{
         fertileWindowStart: bundle.predictions.fertileWindow?.start ?? null,
         showFertilityMarkers: bundle.contraception?.presentation?.showFertilityMarkers !== false,
         logs: bundle.logs,
+        forecastAllowed: bundle.forecastEligibility?.allowed !== false,
       };
     } catch {
       /* prefs + mask still apply */
@@ -458,6 +459,77 @@ async function deliverCycleReminder(data: Record<string, unknown>): Promise<{
   );
 }
 
+async function deliverPregnancyCareReminder(data: Record<string, unknown>): Promise<{
+  ok: boolean;
+  reason: string | null;
+  rewriteMasked?: boolean;
+}> {
+  const { pregnancyCareReminderDeliveryDecision } = await import('./pregnancyCareReminderContract.js');
+  const { getEffectiveCycleMask } = await import('./cycleNotificationContract.js');
+  const { getCycleReminderPrefs } = await import('./cycleReminderPrefs');
+  const prefs = await getCycleReminderPrefs();
+  const engage = await loadEngagePrefs().catch(() => null);
+  const deviceToday = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+  let live: Record<string, unknown> = {
+    today: deviceToday,
+    now: new Date(),
+    privacyEnabled: false,
+    maskNotifications: prefs.maskNotifications,
+    discreet: Boolean(engage?.discreet),
+    mode: null,
+    pregnancyActive: false,
+    episodeStatus: 'ENDED',
+    items: [],
+  };
+  const userId = lastActor.user?.id;
+  if (userId) {
+    try {
+      const { loadCycleView } = await import('@/lib/cycleOffline');
+      const { cycleToday } = await import('@/lib/cycleCanonical');
+      const { api } = await import('@/lib/api');
+      const view = await loadCycleView(userId);
+      const bundle = view.canonical;
+      const today = cycleToday(bundle, deviceToday);
+      live.today = today;
+      live.userId = userId;
+      live.mode = bundle.profile.mode;
+      live.privacyEnabled = Boolean(bundle.profile.privacyEnabled);
+      if (bundle.profile.mode === 'PREGNANCY') {
+        const plan = await api.cycle.pregnancyCarePlan();
+        live.pregnancyActive = Boolean(plan.pregnancyActive);
+        live.episodeId = plan.pregnancyEpisodeId;
+        live.episodeStatus = plan.pregnancyActive ? 'ACTIVE' : 'ENDED';
+        live.items = plan.items;
+      }
+    } catch {
+      live.pregnancyActive = false;
+      live.episodeStatus = 'ENDED';
+    }
+  }
+  const mask = getEffectiveCycleMask({
+    privacyEnabled: Boolean(live.privacyEnabled),
+    maskNotifications: prefs.maskNotifications,
+    discreet: Boolean(engage?.discreet),
+  });
+  return pregnancyCareReminderDeliveryDecision(
+    {
+      type: 'pregnancy_care_plan',
+      careItemId: String(data.careItemId || ''),
+      episodeId: String(data.episodeId || ''),
+      userId: String(data.userId || ''),
+      plannedDate: String(data.plannedDate || ''),
+      plannedTime: data.plannedTime ? String(data.plannedTime) : null,
+      offset: Number(data.offset),
+      reminderMode: String(data.reminderMode || 'DATE_BASED'),
+      eventDate: String(data.eventDate || ''),
+      candidateId: String(data.candidateId || ''),
+      masked: Boolean(data.masked),
+    },
+    live,
+    mask,
+  );
+}
+
 export async function shouldDeliverNotification(data: Record<string, unknown> | undefined | null): Promise<{
   ok: boolean;
   reason: string | null;
@@ -468,6 +540,9 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
 
   if (data.type === 'quota_reset' || data.family === 'quotaReset') {
     return { ok: true, reason: null };
+  }
+  if (data.type === 'pregnancy_care_plan' || data.family === 'pregnancyCareReminder') {
+    return deliverPregnancyCareReminder(data);
   }
   if (data.type === 'cycle_reminder' || data.family === 'cycleReminder' || data.type === 'cycle_tip') {
     return deliverCycleReminder(data);

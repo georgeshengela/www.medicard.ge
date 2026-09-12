@@ -313,7 +313,7 @@
         <div class="v3-pharmacy-empty is-err">
           <strong>ჩატვირთვა ვერ მოხერხდა</strong>
           <p>${esc(e.message || 'უცნობი შეცდომა')}</p>
-          <button type="button" class="btn ghost compact" id="pharm-retry">${ico('refresh')} ხელახლა ცდა</button>
+          <button type="button" class="btn ghost compact" id="pharm-retry">${ico('refresh')} ხელახლა სცადე</button>
         </div>
       </div>`;
       $('pharm-retry')?.addEventListener('click', () => void renderPharmacyV3());

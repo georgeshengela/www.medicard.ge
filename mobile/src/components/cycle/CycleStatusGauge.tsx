@@ -119,6 +119,7 @@ function SegmentFill({
 type Props = {
   day: number | null;
   cycleLength: number;
+  hideLengthChrome?: boolean;
   phaseHint?: string;
   periodActive?: boolean;
   fertileDays?: { from: number; to: number } | null;
@@ -130,6 +131,7 @@ type Props = {
 export function CycleStatusGauge({
   day,
   cycleLength,
+  hideLengthChrome,
   phaseHint,
   periodActive,
   fertileDays,
@@ -140,13 +142,14 @@ export function CycleStatusGauge({
   const c = useCycleColors();
   const dark = useIsDark();
   const reduceMotion = usePrefersReducedMotion();
-  const { width: screenW, fontScale } = useWindowDimensions();
+  const { width: screenW, height: screenH, fontScale } = useWindowDimensions();
   const largeText = fontScale >= 1.25;
-  const width = Math.min(screenW - 24, largeText ? 240 : 316);
+  const shortScreen = screenH < 720;
+  const width = Math.min(screenW - 24, largeText || shortScreen ? 220 : 316);
   const height = width;
-  const phaseOutside = largeText;
-  const length = Math.max(14, Math.round(cycleLength) || 28);
-  const progress = day && length ? clamp01(day / length) : 0;
+  const phaseOutside = largeText || shortScreen;
+  const length = hideLengthChrome ? 0 : Math.max(14, Math.round(cycleLength) || 28);
+  const progress = hideLengthChrome || !day || !length ? 0 : clamp01(day / length);
   const anim = useSharedValue(reduceMotion ? progress : 0);
   const knob = knobOnTrack(progress);
   const segments = useMemo(() => Array.from({ length: SEGMENTS }, (_, i) => segmentPath(i)), []);
@@ -268,8 +271,9 @@ export function CycleStatusGauge({
                 fontVariant: ['tabular-nums'],
               }}
             >
-              {day ?? '—'}
+              {hideLengthChrome ? '—' : day ?? '—'}
             </Text>
+            {hideLengthChrome ? null : (
             <Text
               style={{
                 color: c.ink,
@@ -282,6 +286,7 @@ export function CycleStatusGauge({
             >
               {ka.cycle.outOf(length)}
             </Text>
+            )}
             {phaseHint && !phaseOutside ? (
               onInfo ? (
                 <Pressable

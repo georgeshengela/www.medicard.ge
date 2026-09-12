@@ -1,8 +1,8 @@
 # Cycle UI contract — frozen (Phase 6)
 
 **Status:** ANDROID FROZEN (calendar visual refinement). iOS QA deferred by product decision.  
-**Date:** 2026-09-08  
-**App version:** mobile `39.0.15`  
+**Date:** 2026-09-08 (calendar / prediction-history). Phase 12 More Tracking: 2026-09-09, `39.0.26`. Phase 13 Journal observation trends: 2026-09-09, `39.0.27`. Phase 14 doctor summary: 2026-09-09, `39.0.28`. Phase 16 TTC presentation: 2026-09-09, `40.0.0` — see `docs/CYCLE_TTC_CONTRACT.md`. TTC reuses Overview / Calendar / Journal; it does not add a fourth pane or client fertility math.  
+**App version:** mobile `39.0.15` (calendar freeze). More Tracking QA on `39.0.26`.  
 **Design source:** `docs/CYCLE_DESIGN.md`  
 **Engine / safety / notifications remain frozen:** `CYCLE_ENGINE.md`, `CYCLE_SAFETY_CONTRACT.md`, `CYCLE_NOTIFICATION_CONTRACT.md`
 
@@ -142,6 +142,10 @@ Offline: existing `persistCycleLog` / queue. The sheet must not appear frozen wh
 
 Private detailed fields live on the full log under `პირადი ჩანაწერები`. Lock icon must not imply encryption. Grouping is presentation only.
 
+**მეტის აღრიცხვა** (Phase 12, Android QA): progressive disclosure under Quick Log. Categories: სხეული, ენერგია, განწყობა, მონელება, კანი, ნაყოფიერების ნიშნები, პირადი. Default Quick Log must stay flow / pain / mood / common-or-recent symptoms — not a giant form. Fertility and private rows use a lock as grouping, not encryption. Energy is a five-level categorical chip (very low → very high), not a 1–10 scale; fatigue remains a separate symptom. Cervical mucus is not the general discharge chip. OPK / pregnancy test stay `negative | positive | unclear` observation chips — they do not confirm ovulation or switch Cycle mode. Recents: keys used on ≥2 days; sensitive/private chips excluded. Search is client-side filter only.
+
+Day Details groups logged facts by the same category titles (flow, სხეული, განწყობა, ენერგია, მონელება, კანი, ნაყოფიერების ნიშნები, პირადი) and keeps `სავარაუდო` separate. Never show raw keys (`oily_skin`, `very_low`, `ovulationTest`). Pain-managed chips are not listed again when a matching `painEntries` row exists. Headache canonical form is the pain type. Discharge and cervical mucus remain distinct facts.
+
 ---
 
 ## 8. Journal
@@ -150,6 +154,8 @@ Stats band from the engine (integers / ranges, no fake precision).
 History rows: actual derived / logged periods — mini-bars are **not** prediction bars.  
 Trends: empty-state copy until thresholds are met (cycle-length chart needs ≥3 gaps). No fake charts.  
 Phase 9/10 Journal block **პროგნოზების ისტორია** (Android presentation frozen): compact rows + optional first/final expand from `GET /api/cycle/prediction-history`. Difference language only — no accuracy %, score, or Journal redesign. Hidden on API failure. Empty copy still appears when Journal has no period logs. iOS QA deferred.
+
+**Phase 13 observation trends** (same `ტრენდები` section, not a second Trends title): compact rows from `GET /api/cycle/observation-trends`. Factual logged counts only — no percentages, no causal copy, no empty chart shells. At most 5 rows + `მეტის ნახვა`. API failure hides the rows without breaking Journal. PMS heatmap remains only when a real pattern exists. Cycle-length bars still need ≥3 lengths.
 
 ---
 
@@ -242,3 +248,28 @@ Layout-only. IA, semantics, and engine unchanged.
 - **Pull-to-refresh vs strip:** a long downward swipe that *ends* on a day cell can open that day. Normal short PTR from the hero does not. Not treated as a frequent accidental activation.
 - **iOS native QA:** deferred by product decision. Android Cycle UI is the freeze surface.
 - **Calendar day cells:** `getCycleCalendarDayVisualState` resolves fill / ring / micro-indicator. Selection is navigation only — circular, never a diamond, triangle, or octagon. Ovulation is a small outlined diamond under the date. iOS native QA is deferred by product decision.
+
+---
+
+## 16. Doctor summary (`/cycle/summary`) — Phase 14
+
+Clinician history, not diagnosis. Configuration is compact and document-scoped:
+
+- Always on: menstrual history, pain & symptoms, wellness logs. When mode is Pregnancy with an active episode: **Pregnancy tracking context** (factual header, not a diagnosis).
+- Default off: fertility tests, sexual health, private notes
+
+PDF is built on-device from `GET /api/cycle/doctor-summary`. Empty sections are omitted. Estimates stay in a separate labeled card and are not in the PDF.
+
+**Phase 20:** current Pregnancy tracking context header when mode is `PREGNANCY` and an ACTIVE episode exists. Catalog + contract: `docs/CYCLE_DOCTOR_SUMMARY_CONTRACT.md`. App version `43.0.0`.
+
+**Phase 25:** current Perimenopause tracking context when mode is `PERIMENOPAUSE`. Contract: `docs/CYCLE_DOCTOR_SUMMARY_CONTRACT.md`. App version `48.0.0`.
+
+**Phase 39:** current Postpartum tracking context when mode is `POSTPARTUM` and an ACTIVE episode exists (owner-entered reference only; not a pregnancy outcome). Contract: `docs/CYCLE_POSTPARTUM_DOCTOR_SUMMARY_CONTRACT.md`. App version `62.0.0`.
+
+**Phase 40:** POSTPARTUM Journal and `/cycle/summary` preview shell must not show menstruation empty/history copy. Interactive `CyclePeriodHistory` is hidden in POSTPARTUM. Phase 39 JSON/PDF unchanged. Contract: `docs/CYCLE_POSTPARTUM_COPY_ISOLATION_CONTRACT.md`. App version `63.0.0`.
+
+**Phase 41:** Owner may classify a postpartum bleed episode as their period. Forecast remains suppressed. Contract: `docs/CYCLE_POSTPARTUM_PERIOD_CLASSIFICATION_CONTRACT.md`. App version `64.0.0`.
+
+**Phase 21:** Pregnancy Overview may show a compact calendar-progress peek and `/cycle/pregnancy/timeline`. Not a doctor-summary, Home, or calendar-badge surface. Contract: `docs/PREGNANCY_TIMELINE_CONTRACT.md`. App version `44.0.0`.
+
+**Phase 15:** document-scoped KA / EN / FR / RU chips on this screen only. Default Georgian. Does not persist and does not change app language. Catalog: `docs/CYCLE_DOCTOR_SUMMARY_I18N.md`.

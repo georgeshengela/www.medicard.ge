@@ -2,6 +2,7 @@ import { ka } from '@/i18n/ka';
 import type { CycleCondition, CycleInsightCard, CycleLog, CycleMode } from '@/lib/api';
 import type { CyclePhaseInfo } from '@/lib/cycleCanonical';
 import { cycleHonestyFlags, fertileInsightCopy, type CycleHonestyConfidence } from '@/lib/cycleHonesty';
+import { supportsCycleCapability } from '@/lib/cycleModes';
 
 type AdviceCtx = {
   phase: CyclePhaseInfo;
@@ -21,6 +22,7 @@ export function buildCycleAdvice({
   confidence,
   isIrregular,
 }: AdviceCtx): CycleInsightCard[] {
+  if (supportsCycleCapability(mode, 'showPerimenopauseTracking')) return [];
   const cards: CycleInsightCard[] = [];
   const dayBit = phase.day != null ? ka.cycle.cycleDayBit(phase.day) : ka.cycle.thisDayBit;
   const flags = cycleHonestyFlags({ confidence, isIrregular, conditions });
@@ -48,7 +50,9 @@ export function buildCycleAdvice({
       tone: 'fertile',
       title: copy.title,
       body: `${dayBit}. ${copy.body}`,
-      action: mode === 'TRY_TO_CONCEIVE' ? 'აღრიცხე BBT ან ლორწო' : 'გახსენი დღის აღრიცხვა',
+      action: supportsCycleCapability(mode, 'showFertilityShortcuts')
+        ? 'აღრიცხე BBT ან ლორწო'
+        : 'გახსენი დღის აღრიცხვა',
     });
   } else if (phase.phase === 'luteal') {
     cards.push({
@@ -68,13 +72,13 @@ export function buildCycleAdvice({
     });
   }
 
-  if (mode === 'PREGNANCY') {
+  if (supportsCycleCapability(mode, 'showPregnancyOverview')) {
     cards.unshift({
       id: 'advice_pregnancy',
       tone: 'pregnancy',
       title: ka.cycle.advicePregnancyTitle,
       body: ka.cycle.advicePregnancyBody,
-      action: 'გახსენი ორსულობის ჩეკლისტი',
+      action: null,
     });
   }
 
@@ -122,7 +126,7 @@ export function buildCycleAdvice({
       tone: 'care',
       title: ka.cycle.adviceEndoTitle,
       body: ka.cycle.adviceEndoBody,
-      action: 'AI ექიმთან გაზიარება',
+      action: 'გააზიარე Medi-სთან',
     });
   }
   if (conditions.includes('perimenopause')) {

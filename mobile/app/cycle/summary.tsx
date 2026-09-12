@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Share, Switch, Text, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -8,7 +8,6 @@ import * as Sharing from 'expo-sharing';
 import { BarChart3, FileDown, MessageSquareText, Sparkles } from 'lucide-react-native';
 import { CyclePeriodHistory } from '@/components/cycle/CyclePeriodHistory';
 import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
-import { FLOW_OPTIONS, MOOD_OPTIONS, PHYSICAL_SYMPTOMS } from '@/constants/cycle';
 import {
   CycleAtmosphere,
   CycleCard,
@@ -18,20 +17,22 @@ import {
   formatCycleDateKa,
   cycleNavHeader,
 } from '@/components/cycle/CycleUI';
+import { DOCTOR_SUMMARY_LOCALES } from '@/i18n/cycle/doctorSummary.js';
 import { ka } from '@/i18n/ka';
-import { ApiError, type CycleBundle } from '@/lib/api';
+import { ApiError, api, type CycleBundle, type CycleDoctorSummary } from '@/lib/api';
+import { hasPmsPattern } from '@/lib/cycleAnalytics';
+import {
+  doctorSummaryCopy,
+  doctorSummaryEnumLabel,
+  formatDoctorCivilDate,
+  formatDoctorGestationalAge,
+  formatDoctorPregnancyReference,
+} from '@/lib/cycleDoctorSummaryI18n';
 import { loadCycleView } from '@/lib/cycleOffline';
-import { buildCycleReportHtml } from '@/lib/cycleReport';
+import { cycleHistoryPresentation } from '@/lib/cycleHistoryCopy';
+import { buildCycleReportHtmlFromSummary } from '@/lib/cycleReport';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
-
-function labelOf(id: string, lists: { id: string; label: string }[][]) {
-  for (const list of lists) {
-    const hit = list.find((x) => x.id === id);
-    if (hit) return hit.label;
-  }
-  return id;
-}
 
 export default function CycleSummary() {
   const { user } = useAuth();
@@ -40,15 +41,33 @@ export default function CycleSummary() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [bundle, setBundle] = useState<CycleBundle | null>(null);
-  const [reportBundle, setReportBundle] = useState<CycleBundle | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [includeFertility, setIncludeFertility] = useState(false);
+  const [includeSexual, setIncludeSexual] = useState(false);
+  const [includeNotes, setIncludeNotes] = useState(false);
+  const [reportLocale, setReportLocale] = useState<'ka' | 'en' | 'fr' | 'ru'>('ka');
+  const copy = doctorSummaryCopy(reportLocale);
+  const reportTitleFont = reportLocale === 'ka' ? 'NotoSansGeorgian_700Bold' : undefined;
+  const localeNames = {
+    ka: copy.localeKa,
+    en: copy.localeEn,
+    fr: copy.localeFr,
+    ru: copy.localeRu,
+  };
 
   useLayoutEffect(() => {
-    navigation.setOptions(cycleNavHeader(c, ka.cycle.summary));
-  }, [navigation, c]);
+    navigation.setOptions({
+      ...cycleNavHeader(c, copy.title),
+      headerTitleStyle: {
+        color: c.ink,
+        fontFamily: reportTitleFont,
+        fontSize: 17,
+      },
+    });
+  }, [navigation, c, copy.title, reportLocale, reportTitleFont]);
 
   const reload = () => {
     if (!user?.id) {
@@ -58,7 +77,6 @@ export default function CycleSummary() {
     loadCycleView(user.id)
       .then((view) => {
         setBundle(view.display);
-        setReportBundle(view.canonical);
         setPendingCount(view.pendingCount);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : ka.common.error))
@@ -71,35 +89,31 @@ export default function CycleSummary() {
 
   if (loading) return <CycleLoading />;
 
+  const history = cycleHistoryPresentation(bundle?.profile?.mode);
   const s = bundle?.summary;
-
   const fmt = (iso: string | null | undefined) =>
-    iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? formatCycleDateKa(iso) : '—';
+    iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? formatDoctorCivilDate(iso, reportLocale) : '—';
 
-  const context = s
+  const chatCopy = doctorSummaryCopy('ka');
+  const chatContext = s?.menstrualHistory?.episodes?.length
     ? [
-        'ციკლის შეჯამება (Medicard):',
-        `რეჟიმი: ${s.mode}`,
-        `საშუალო ციკლი: ${s.avgCycleLength} დღე, მენსტრუაცია: ${s.avgPeriodLength} დღე`,
-        s.isIrregular ? 'არარეგულარული ციკლი' : 'რეგულარული ციკლი',
-        `${ka.cycle.estimatedNextPeriod}: ${fmt(s.nextPeriodStart)}`,
-        `${ka.cycle.estimatedOvulationTitle}: ${fmt(s.ovulationDate)}`,
-        `ტოპ სიმპტომები: ${
-          s.topSymptoms
-            .map((t) => `${labelOf(t.key, [PHYSICAL_SYMPTOMS, FLOW_OPTIONS])} (${t.count})`)
-            .join(', ') || '—'
-        }`,
-        `ტოპ განწყობა: ${
-          s.topMoods.map((t) => `${labelOf(t.key, [MOOD_OPTIONS])} (${t.count})`).join(', ') || '—'
-        }`,
+        `${chatCopy.historyDisclaimer}`,
+        ...s.menstrualHistory.episodes.map(
+          (e) =>
+            `${formatDoctorCivilDate(e.start, 'ka')} – ${formatDoctorCivilDate(e.end, 'ka')} (${chatCopy.days(e.durationDays)})`,
+        ),
       ].join('\n')
-    : '';
+    : chatCopy.historyDisclaimer;
 
   const sharePdf = async () => {
-    if (!reportBundle) return;
     setPdfBusy(true);
     try {
-      const html = buildCycleReportHtml(reportBundle);
+      const payload: CycleDoctorSummary = await api.cycle.doctorSummary({
+        includeFertility,
+        includeSexual,
+        includeNotes,
+      });
+      const html = buildCycleReportHtmlFromSummary(payload, reportLocale);
       if (Platform.OS === 'web') {
         await Share.share({ message: html.replace(/<[^>]+>/g, ' ').slice(0, 4000) });
         return;
@@ -108,6 +122,8 @@ export default function CycleSummary() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
       }
+    } catch {
+      setError(copy.pdfFail);
     } finally {
       setPdfBusy(false);
     }
@@ -145,115 +161,370 @@ export default function CycleSummary() {
                   <Text
                     style={{
                       color: c.brand,
-                      fontFamily: 'NotoSansGeorgian_700Bold',
+                      fontFamily: reportTitleFont,
                       marginLeft: 8,
                       fontSize: 12,
                       letterSpacing: 0.4,
                     }}
                   >
-                    ექიმისთვის მზად
+                    {copy.title}
                   </Text>
                 </View>
                 <Text
                   style={{
                     color: c.ink,
                     fontSize: 22,
-                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    fontFamily: reportTitleFont,
+                    fontWeight: reportTitleFont ? undefined : '700',
                   }}
                 >
-                  ციკლის შეჯამება
+                  {copy.reportTitle}
                 </Text>
                 <Text style={{ color: c.muted, marginTop: 6, lineHeight: 20 }}>
-                  {s.loggedDays} დღის აღრიცხვა ·{' '}
-                  {s.isIrregular ? 'არარეგულარული' : 'რეგულარული'} ციკლი
+                  {copy.historyDisclaimer}
                 </Text>
               </View>
             </Animated.View>
 
-            <CycleSection title="ციკლი" delay={60}>
+            <CycleSection title={copy.preview} delay={40}>
               <CycleCard>
-                <Line c={c} k={ka.cycle.avgCycle} v={`${s.avgCycleLength} დღე`} />
-                <Line c={c} k={ka.cycle.avgPeriod} v={`${s.avgPeriodLength} დღე`} />
-                {s.shortestCycle != null ? (
-                  <Line c={c} k={ka.cycle.shortestCycle} v={`${s.shortestCycle} დღე`} />
+                <Text style={{ color: c.muted, fontSize: 13, lineHeight: 20, marginBottom: 12 }}>
+                  {copy.includeTitle}
+                </Text>
+                <Text style={{ color: c.muted, fontSize: 12, marginBottom: 8 }}>{copy.reportLocale}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                  {DOCTOR_SUMMARY_LOCALES.map((locale) => {
+                    const selected = reportLocale === locale;
+                    const chip = doctorSummaryCopy(locale).localeChip;
+                    return (
+                      <Pressable
+                        key={locale}
+                        onPress={() => setReportLocale(locale as 'ka' | 'en' | 'fr' | 'ru')}
+                        accessibilityLabel={`${copy.reportLocale}: ${localeNames[locale]}`}
+                        accessibilityState={{ selected }}
+                        style={{
+                          minHeight: 44,
+                          minWidth: 44,
+                          paddingHorizontal: 14,
+                          borderRadius: 14,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: selected ? c.brand : c.card,
+                          borderWidth: 1,
+                          borderColor: selected ? c.brand : c.border,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: selected ? '#fff' : c.ink,
+                            fontWeight: '700',
+                            fontSize: 13,
+                          }}
+                        >
+                          {chip}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <AlwaysOnRow
+                  c={c}
+                  label={copy.menstrualOn}
+                  alwaysOn={copy.alwaysOn}
+                />
+                {s.pregnancyContext ? (
+                  <AlwaysOnRow
+                    c={c}
+                    label={copy.pregnancyAlwaysOn}
+                    alwaysOn={copy.alwaysOn}
+                  />
                 ) : null}
-                {s.longestCycle != null ? (
-                  <Line c={c} k={ka.cycle.longestCycle} v={`${s.longestCycle} დღე`} />
+                {s.perimenopauseContext ? (
+                  <AlwaysOnRow
+                    c={c}
+                    label={copy.perimenopauseAlwaysOn}
+                    alwaysOn={copy.alwaysOn}
+                  />
                 ) : null}
-                {s.variability != null ? (
-                  <Line c={c} k={ka.cycle.cycleVariability} v={`${s.variability} დღე`} />
+                {s.postpartumContext ? (
+                  <AlwaysOnRow
+                    c={c}
+                    label={copy.postpartumAlwaysOn}
+                    alwaysOn={copy.alwaysOn}
+                  />
                 ) : null}
-                <Line c={c} k={ka.cycle.estimatedNextPeriod} v={fmt(s.nextPeriodStart)} />
-                <Line c={c} k={ka.cycle.ovulation} v={fmt(s.ovulationDate)} last />
-                {s.cycleCount ? (
-                  <Text style={{ color: c.muted, fontSize: 12, marginTop: 8 }}>
-                    {ka.cycle.basedOnCycles(s.cycleCount)}
-                    {' · '}
-                    {s.confidence === 'high'
-                      ? ka.cycle.confidenceHigh
-                      : s.confidence === 'medium'
-                        ? ka.cycle.confidenceMedium
-                        : ka.cycle.confidenceLow}
-                  </Text>
-                ) : (
-                  <Text style={{ color: c.muted, fontSize: 12, marginTop: 8 }}>{ka.cycle.confidenceLow}</Text>
-                )}
+                <AlwaysOnRow c={c} label={copy.painOn} alwaysOn={copy.alwaysOn} />
+                <AlwaysOnRow c={c} label={copy.wellnessOn} alwaysOn={copy.alwaysOn} />
+                <ToggleRow
+                  c={c}
+                  label={copy.fertilityToggle}
+                  value={includeFertility}
+                  onValueChange={setIncludeFertility}
+                />
+                <ToggleRow
+                  c={c}
+                  label={copy.sexualToggle}
+                  value={includeSexual}
+                  onValueChange={setIncludeSexual}
+                />
+                <ToggleRow
+                  c={c}
+                  label={copy.notesToggle}
+                  value={includeNotes}
+                  onValueChange={setIncludeNotes}
+                  last
+                />
               </CycleCard>
             </CycleSection>
 
-            {bundle ? (
-              <CycleSection title={ka.cycle.periodHistory} delay={80}>
-                <CyclePeriodHistory bundle={bundle} onChanged={reload} />
+            {s.pregnancyContext ? (
+              <CycleSection title={copy.pregnancyContextTitle} delay={40}>
+                <CycleCard>
+                  <Line
+                    c={c}
+                    k={copy.pregnancyTrackingMode}
+                    v={copy.pregnancyTrackingModeValue}
+                  />
+                  {formatDoctorPregnancyReference(s.pregnancyContext, reportLocale) ? (
+                    <Line
+                      c={c}
+                      k={copy.pregnancyDatingReference}
+                      v={formatDoctorPregnancyReference(s.pregnancyContext, reportLocale)}
+                    />
+                  ) : null}
+                  {s.pregnancyContext.reviewRequired ? (
+                    <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginTop: 8 }}>
+                      {copy.pregnancyReviewRequired}
+                    </Text>
+                  ) : (
+                    <>
+                      {s.pregnancyContext.estimatedGestationalAge ? (
+                        <Line
+                          c={c}
+                          k={
+                            s.pregnancyContext.referenceType === 'LMP'
+                              ? copy.pregnancyEstimatedAgeLmp
+                              : copy.pregnancyEstimatedAge
+                          }
+                          v={formatDoctorGestationalAge(
+                            s.pregnancyContext.estimatedGestationalAge,
+                            reportLocale,
+                          )}
+                          last={!s.pregnancyContext.estimatedDueDate?.date}
+                        />
+                      ) : null}
+                      {s.pregnancyContext.estimatedDueDate?.date ? (
+                        <Line
+                          c={c}
+                          k={copy.pregnancyEstimatedDue}
+                          v={fmt(s.pregnancyContext.estimatedDueDate.date)}
+                          last
+                        />
+                      ) : null}
+                    </>
+                  )}
+                </CycleCard>
               </CycleSection>
             ) : null}
 
-            <CycleSection title={ka.cycle.symptoms} delay={100}>
-              <CycleCard>
-                {s.topSymptoms.length === 0 ? (
-                  <Text style={{ color: c.muted }}>—</Text>
-                ) : (
-                  s.topSymptoms.map((t, i) => (
-                    <FreqRow
-                      key={t.key}
-                      c={c}
-                      label={labelOf(t.key, [PHYSICAL_SYMPTOMS])}
-                      count={t.count}
-                      max={s.topSymptoms[0]?.count || 1}
-                      last={i === s.topSymptoms.length - 1}
-                    />
-                  ))
-                )}
-              </CycleCard>
-            </CycleSection>
+            {s.perimenopauseContext ? (
+              <CycleSection title={copy.perimenopauseContextTitle} delay={40}>
+                <CycleCard>
+                  <Line
+                    c={c}
+                    k={copy.perimenopauseTrackingMode}
+                    v={copy.perimenopauseTrackingModeValue}
+                    last={!s.perimenopauseContext.variability}
+                  />
+                  {s.perimenopauseContext.variability ? (
+                    <>
+                      <Line
+                        c={c}
+                        k={copy.perimenopauseIntervalRangeLabel}
+                        v={copy.perimenopauseIntervalRange(
+                          s.perimenopauseContext.variability.shortestDays,
+                          s.perimenopauseContext.variability.longestDays,
+                        )}
+                      />
+                      <Line
+                        c={c}
+                        k={copy.perimenopauseIntervalCountLabel}
+                        v={copy.perimenopauseIntervalCount(s.perimenopauseContext.variability.intervalCount)}
+                        last
+                      />
+                    </>
+                  ) : null}
+                  <Text
+                    style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginTop: 10 }}
+                    accessibilityLabel={copy.perimenopauseCurrentNote}
+                  >
+                    {copy.perimenopauseCurrentNote}
+                  </Text>
+                </CycleCard>
+              </CycleSection>
+            ) : null}
 
-            <CycleSection title={ka.cycle.moods} delay={140}>
-              <CycleCard>
-                {s.topMoods.length === 0 ? (
-                  <Text style={{ color: c.muted }}>—</Text>
-                ) : (
-                  s.topMoods.map((t, i) => (
-                    <FreqRow
-                      key={t.key}
+            {s.postpartumContext ? (
+              <CycleSection title={copy.postpartumContextTitle} delay={40}>
+                <CycleCard>
+                  <Line
+                    c={c}
+                    k={copy.postpartumTrackingMode}
+                    v={copy.postpartumTrackingModeValue}
+                  />
+                  <Line
+                    c={c}
+                    k={copy.postpartumReferenceLabel}
+                    v={
+                      s.postpartumContext.referenceDate
+                        ? fmt(s.postpartumContext.referenceDate)
+                        : copy.postpartumReferenceMissing
+                    }
+                    last={!s.postpartumContext.elapsed}
+                  />
+                  {s.postpartumContext.elapsed ? (
+                    <Line
                       c={c}
-                      label={labelOf(t.key, [MOOD_OPTIONS])}
-                      count={t.count}
-                      max={s.topMoods[0]?.count || 1}
-                      last={i === s.topMoods.length - 1}
+                      k={copy.postpartumElapsedLabel}
+                      v={formatDoctorGestationalAge(s.postpartumContext.elapsed, reportLocale)}
+                      last
                     />
-                  ))
-                )}
-              </CycleCard>
-            </CycleSection>
+                  ) : null}
+                  <Text
+                    style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginTop: 10 }}
+                    accessibilityLabel={copy.postpartumCurrentNote}
+                  >
+                    {copy.postpartumCurrentNote}
+                  </Text>
+                </CycleCard>
+              </CycleSection>
+            ) : null}
 
-            {bundle ? (
-              <CycleSection title={ka.cycle.pmsPattern} delay={120}>
+            {s.menstrualHistory?.episodes?.length ? (
+              <CycleSection title={copy.menstrualOn} delay={60}>
+                <CycleCard>
+                  {s.menstrualHistory.episodes.map((e, i) => (
+                    <Line
+                      key={e.start}
+                      c={c}
+                      k={`${fmt(e.start)} – ${fmt(e.end)}`}
+                      v={copy.days(e.durationDays)}
+                      last={i === s.menstrualHistory!.episodes.length - 1 && !s.menstrualHistory!.cycleLengths.length}
+                    />
+                  ))}
+                  {s.menstrualHistory.cycleLengths.length ? (
+                    <Text style={{ color: c.muted, fontSize: 12, marginTop: 8, lineHeight: 18 }}>
+                      {copy.cycleLengths}: {s.menstrualHistory.cycleLengths.map((x) => x.lengthDays).join(', ')}
+                    </Text>
+                  ) : null}
+                  {s.menstrualHistory.spottingDates.length ? (
+                    <Text style={{ color: c.muted, fontSize: 12, marginTop: 8, lineHeight: 18 }}>
+                      {copy.spotting}: {s.menstrualHistory.spottingDates.map(fmt).join(', ')}
+                    </Text>
+                  ) : null}
+                  {s.contraception?.method ? (
+                    <Text style={{ color: c.muted, fontSize: 12, marginTop: 8, lineHeight: 18 }}>
+                      {copy.contraceptionTitle}:{' '}
+                      {doctorSummaryEnumLabel('contraception', s.contraception.method, reportLocale) || ''}
+                    </Text>
+                  ) : null}
+                </CycleCard>
+              </CycleSection>
+            ) : null}
+
+            {history.showPeriodHistory && bundle ? (
+              <CyclePeriodHistory bundle={bundle} onChanged={reload} />
+            ) : null}
+
+            {s.pain ? (
+              <CycleSection title={copy.pain} delay={80}>
+                <CycleCard>
+                  {s.pain.aggregates
+                    .map((p) => ({
+                      ...p,
+                      label: doctorSummaryEnumLabel('painType', p.type, reportLocale),
+                    }))
+                    .filter((p) => p.label)
+                    .map((p, i, rows) => (
+                    <Line
+                      key={p.type}
+                      c={c}
+                      k={p.label!}
+                      v={`${copy.loggedDays(p.dayCount)}${p.severityMode ? ` · ${doctorSummaryEnumLabel('painSeverity', p.severityMode, reportLocale) ?? ''}` : ''}`}
+                      last={i === rows.length - 1}
+                    />
+                  ))}
+                </CycleCard>
+              </CycleSection>
+            ) : null}
+
+            {s.symptoms?.rows?.length ? (
+              <CycleSection title={copy.symptoms} delay={100}>
+                <CycleCard>
+                  {s.symptoms.rows
+                    .map((row) => ({
+                      ...row,
+                      label: doctorSummaryEnumLabel('symptom', row.key, reportLocale),
+                    }))
+                    .filter((row) => row.label)
+                    .map((row, i, rows) => (
+                    <Line
+                      key={row.key}
+                      c={c}
+                      k={row.label!}
+                      v={copy.loggedDays(row.dayCount)}
+                      last={i === rows.length - 1}
+                    />
+                  ))}
+                </CycleCard>
+              </CycleSection>
+            ) : null}
+
+            {s.wellness ? (
+              <CycleSection title={copy.wellnessOn} delay={110}>
+                <CycleCard>
+                  {s.wellness.energy?.length ? (
+                    <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 8 }}>
+                      {copy.energyTitle}: {copy.loggedDays(s.wellness.energy.length)}
+                    </Text>
+                  ) : null}
+                  {s.wellness.sleep?.length ? (
+                    <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20, marginBottom: 8 }}>
+                      {copy.sleepTitle}: {copy.loggedDays(s.wellness.sleep.length)}
+                    </Text>
+                  ) : null}
+                  {s.wellness.stress?.length ? (
+                    <Text style={{ color: c.ink, fontSize: 13, lineHeight: 20 }}>
+                      {copy.stressTitle}: {copy.loggedDays(s.wellness.stress.length)}
+                    </Text>
+                  ) : null}
+                </CycleCard>
+              </CycleSection>
+            ) : null}
+
+            {bundle?.predictions?.nextPeriodStart &&
+            !s.pregnancyContext &&
+            !s.perimenopauseContext &&
+            !s.postpartumContext ? (
+              <CycleSection title={copy.estimatesTitle} delay={120}>
+                <CycleCard>
+                  <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginBottom: 8 }}>
+                    {copy.estimatesHint}
+                  </Text>
+                  <Line c={c} k={copy.estimatedNextPeriod} v={fmt(bundle.predictions.nextPeriodStart)} last />
+                </CycleCard>
+              </CycleSection>
+            ) : null}
+
+            {history.showPmsPattern && bundle && hasPmsPattern(bundle) ? (
+              <CycleSection title={ka.cycle.pmsPattern} delay={130}>
                 <CyclePmsHeatmap bundle={bundle} />
               </CycleSection>
             ) : null}
 
             <View style={{ marginTop: 8, gap: 10 }}>
               <CyclePrimaryButton
-                label={pdfBusy ? ka.cycle.pdfGenerating : ka.cycle.pdfShare}
+                label={pdfBusy ? copy.pdfGenerating : copy.pdfShare}
                 onPress={sharePdf}
                 icon={FileDown}
                 disabled={pdfBusy}
@@ -265,6 +536,7 @@ export default function CycleSummary() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   paddingVertical: 14,
+                  minHeight: 44,
                   borderRadius: 18,
                   backgroundColor: c.lavenderSoft,
                 }}
@@ -279,7 +551,7 @@ export default function CycleSummary() {
                 onPress={() =>
                   router.push({
                     pathname: '/chat/doctor',
-                    params: { prefill: context },
+                    params: { prefill: chatContext },
                   } as never)
                 }
                 icon={MessageSquareText}
@@ -291,6 +563,69 @@ export default function CycleSummary() {
         )}
       </ScrollView>
     </CycleAtmosphere>
+  );
+}
+
+function AlwaysOnRow({
+  c,
+  label,
+  alwaysOn,
+}: {
+  c: ReturnType<typeof useCycleColors>;
+  label: string;
+  alwaysOn: string;
+}) {
+  return (
+    <View
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={`${label}. ${alwaysOn}`}
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        minHeight: 44,
+        paddingVertical: 8,
+      }}
+    >
+      <Text style={{ color: c.ink, flex: 1, paddingRight: 12, fontSize: 14 }}>{label}</Text>
+      <Text style={{ color: c.muted, fontSize: 12 }}>{alwaysOn}</Text>
+    </View>
+  );
+}
+
+function ToggleRow({
+  c,
+  label,
+  value,
+  onValueChange,
+  last,
+}: {
+  c: ReturnType<typeof useCycleColors>;
+  label: string;
+  value: boolean;
+  onValueChange: (next: boolean) => void;
+  last?: boolean;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        minHeight: 44,
+        paddingVertical: 8,
+        borderBottomWidth: last ? 0 : 0,
+      }}
+    >
+      <Text style={{ color: c.ink, flex: 1, paddingRight: 12, fontSize: 14 }}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: c.border, true: c.brand }}
+        accessibilityLabel={label}
+      />
+    </View>
   );
 }
 
@@ -315,49 +650,8 @@ function Line({
         borderBottomColor: c.border,
       }}
     >
-      <Text style={{ color: c.muted, flex: 1, paddingRight: 12 }}>{k}</Text>
-      <Text style={{ color: c.ink, fontWeight: '700' }}>{v}</Text>
-    </View>
-  );
-}
-
-function FreqRow({
-  c,
-  label,
-  count,
-  max,
-  last,
-}: {
-  c: ReturnType<typeof useCycleColors>;
-  label: string;
-  count: number;
-  max: number;
-  last?: boolean;
-}) {
-  const pct = Math.max(0.12, count / Math.max(1, max));
-  return (
-    <View style={{ paddingVertical: 10, borderBottomWidth: last ? 0 : 1, borderBottomColor: c.border }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-        <Text style={{ color: c.ink, fontWeight: '600', flex: 1 }}>{label}</Text>
-        <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold' }}>{count}×</Text>
-      </View>
-      <View
-        style={{
-          height: 6,
-          borderRadius: 3,
-          backgroundColor: c.creamDeep,
-          overflow: 'hidden',
-        }}
-      >
-        <View
-          style={{
-            width: `${Math.round(pct * 100)}%`,
-            height: '100%',
-            backgroundColor: c.brand,
-            borderRadius: 3,
-          }}
-        />
-      </View>
+      <Text style={{ color: c.muted, flex: 1, paddingRight: 12, flexWrap: 'wrap' }}>{k}</Text>
+      <Text style={{ color: c.ink, fontWeight: '700', flex: 1, textAlign: 'right' }}>{v}</Text>
     </View>
   );
 }

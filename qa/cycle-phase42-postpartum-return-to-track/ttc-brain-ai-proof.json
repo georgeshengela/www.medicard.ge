@@ -1,0 +1,24 @@
+{
+  "ttcBypass": {
+    "mode": "TRY_TO_CONCEIVE",
+    "forecastAllowed": false,
+    "suppression": "FORECAST_GATE_SUPPRESSED",
+    "candidates": [],
+    "loggingFeaturesRemain": ["opk", "bbt", "mucus", "pregnancy_test"]
+  },
+  "notificationBrain": {
+    "period_soon": false,
+    "period_start": false,
+    "ovulation": false,
+    "fertile": false,
+    "pms": false,
+    "late": false,
+    "log_nudge": "unchanged if user enabled"
+  },
+  "ai": {
+    "postpartumBeforeTransition": "Phase 38 fail-closed unchanged",
+    "trackWhileGated": "ESTIMATED forecast lines omitted",
+    "noSyntheticNextPeriod": true,
+    "noDefault28Source": true
+  }
+}

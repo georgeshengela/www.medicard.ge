@@ -8,6 +8,7 @@ import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { Input } from '@/components/ui/Input';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { authErrorMessage } from '@/lib/authErrorMessage';
 import { useThemeColors } from '@/theme/colors';
 
 export default function ForgotPasswordEmail() {
@@ -33,7 +34,7 @@ export default function ForgotPasswordEmail() {
         params: { email: email.trim().toLowerCase(), devCode: result.devCode ?? '' },
       });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : ka.common.error);
+      setError(authErrorMessage(err));
     } finally {
       setBusy(false);
     }

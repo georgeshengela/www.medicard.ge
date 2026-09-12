@@ -1,0 +1,38 @@
+﻿{
+    "getMovement":  20,
+    "getWorldXp":  34348,
+    "getLevel":  50,
+    "getTodayXp":  {
+                       "used":  48,
+                       "cap":  60,
+                       "remaining":  12
+                   },
+    "getTodayMove":  {
+                         "used":  20,
+                         "cap":  20,
+                         "remaining":  0
+                     },
+    "getLatest":  {
+                      "reasonCode":  "PERSONAL_GOAL_COMPLETE",
+                      "energyType":  "movement",
+                      "energyAmount":  10,
+                      "worldXp":  12,
+                      "sourceType":  "MOVEMENT_SESSION",
+                      "createdAt":  "2026-09-12T16:00:03.036Z"
+                  },
+    "finishWorldMovement":  20,
+    "finishWorldTodayXp":  48,
+    "finishReward":  {
+                         "applied":  false,
+                         "duplicate":  true,
+                         "reasonCode":  "PERSONAL_GOAL_COMPLETE",
+                         "energyAmount":  10,
+                         "worldXp":  12
+                     },
+    "finishStatus":  "completed",
+    "afterGetMovement":  20,
+    "afterGetTodayXp":  48,
+    "afterGetWorldXp":  34348,
+    "currentOpen":  false,
+    "currentStatus":  null
+}

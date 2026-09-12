@@ -33,7 +33,7 @@ services:
       - key: OPENROUTER_BASE_URL
         value: https://openrouter.ai/api/v1
       - key: OPENROUTER_MODEL
-        value: openai/gpt-4o
+        value: google/gemini-3.8-flash
       - key: ANTHROPIC_MODEL
         value: claude-3-5-sonnet-latest
       - key: OPENAI_MODEL

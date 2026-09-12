@@ -1,0 +1,468 @@
+{
+  "version": "cycle.doctor-summary.v1",
+  "generatedAt": "2026-09-09T00:00:00.000Z",
+  "range": {
+    "from": "2026-03-14",
+    "to": "2026-09-09",
+    "queryDays": 180,
+    "loggedDays": 21
+  },
+  "inclusions": {
+    "menstrual": true,
+    "pain": true,
+    "symptoms": true,
+    "wellness": true,
+    "fertility": false,
+    "sexual": false,
+    "notes": false
+  },
+  "menstrualHistory": {
+    "episodes": [
+      {
+        "start": "2026-05-20",
+        "end": "2026-05-23",
+        "durationDays": 4,
+        "flowSequence": [
+          "medium",
+          "light"
+        ],
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      },
+      {
+        "start": "2026-06-17",
+        "end": "2026-06-20",
+        "durationDays": 4,
+        "flowSequence": [
+          "medium",
+          "light"
+        ],
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      },
+      {
+        "start": "2026-07-15",
+        "end": "2026-07-18",
+        "durationDays": 4,
+        "flowSequence": [
+          "medium",
+          "light"
+        ],
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      },
+      {
+        "start": "2026-08-12",
+        "end": "2026-08-15",
+        "durationDays": 4,
+        "flowSequence": [
+          "medium",
+          "light"
+        ],
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      }
+    ],
+    "spottingDates": [
+      "2026-08-22"
+    ],
+    "cycleLengths": [
+      {
+        "start": "2026-05-20",
+        "end": "2026-06-17",
+        "lengthDays": 28,
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      },
+      {
+        "start": "2026-06-17",
+        "end": "2026-07-15",
+        "lengthDays": 28,
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      },
+      {
+        "start": "2026-07-15",
+        "end": "2026-08-12",
+        "lengthDays": 28,
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      }
+    ],
+    "periodDayCount": 16
+  },
+  "pain": {
+    "rows": [
+      {
+        "date": "2026-09-08",
+        "type": "cramps",
+        "severity": "moderate",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-09-01",
+        "type": "headache",
+        "severity": "mild",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-08-15",
+        "type": "cramps",
+        "severity": "severe",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-08-14",
+        "type": "cramps",
+        "severity": "severe",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-08-13",
+        "type": "cramps",
+        "severity": "severe",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-08-12",
+        "type": "cramps",
+        "severity": "severe",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-07-18",
+        "type": "cramps",
+        "severity": "moderate",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-07-17",
+        "type": "cramps",
+        "severity": "moderate",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-07-16",
+        "type": "cramps",
+        "severity": "moderate",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-07-15",
+        "type": "cramps",
+        "severity": "moderate",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-06-20",
+        "type": "cramps",
+        "severity": "mild",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-06-19",
+        "type": "cramps",
+        "severity": "mild",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-06-18",
+        "type": "cramps",
+        "severity": "mild",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-06-17",
+        "type": "cramps",
+        "severity": "mild",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-05-23",
+        "type": "cramps",
+        "severity": "moderate",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-05-22",
+        "type": "cramps",
+        "severity": "moderate",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-05-21",
+        "type": "cramps",
+        "severity": "moderate",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-05-20",
+        "type": "cramps",
+        "severity": "moderate",
+        "source": "USER_LOGGED"
+      }
+    ],
+    "aggregates": [
+      {
+        "type": "cramps",
+        "dayCount": 17,
+        "severityMode": "moderate",
+        "source": "USER_LOGGED"
+      },
+      {
+        "type": "headache",
+        "dayCount": 1,
+        "severityMode": "mild",
+        "source": "USER_LOGGED"
+      }
+    ]
+  },
+  "symptoms": {
+    "rows": [
+      {
+        "key": "bloating",
+        "dayCount": 3,
+        "dates": [
+          "2026-09-08",
+          "2026-09-04",
+          "2026-09-01"
+        ],
+        "source": "USER_LOGGED"
+      },
+      {
+        "key": "acne",
+        "dayCount": 2,
+        "dates": [
+          "2026-09-08",
+          "2026-08-28"
+        ],
+        "source": "USER_LOGGED"
+      },
+      {
+        "key": "fatigue",
+        "dayCount": 1,
+        "dates": [
+          "2026-09-04"
+        ],
+        "source": "USER_LOGGED"
+      },
+      {
+        "key": "migraine",
+        "dayCount": 1,
+        "dates": [
+          "2026-09-01"
+        ],
+        "source": "USER_LOGGED"
+      },
+      {
+        "key": "nausea",
+        "dayCount": 1,
+        "dates": [
+          "2026-09-01"
+        ],
+        "source": "USER_LOGGED"
+      }
+    ]
+  },
+  "wellness": {
+    "energy": [
+      {
+        "date": "2026-09-01",
+        "value": "low",
+        "source": "USER_LOGGED"
+      },
+      {
+        "date": "2026-09-04",
+        "value": "low",
+        "source": "USER_LOGGED"
+      }
+    ],
+    "sleep": [
+      {
+        "date": "2026-09-01",
+        "value": "poor",
+        "label": "self_reported_quality",
+        "source": "USER_LOGGED"
+      }
+    ],
+    "stress": [
+      {
+        "date": "2026-09-01",
+        "value": "high",
+        "source": "USER_LOGGED"
+      }
+    ]
+  },
+  "contraception": null,
+  "fertilityObservations": null,
+  "privateObservations": null,
+  "disclaimer": "history_not_diagnosis",
+  "sourceLabels": [
+    "USER_LOGGED",
+    "DERIVED_FROM_LOGGED_PERIODS"
+  ],
+  "mode": "TRACK_PERIOD",
+  "avgCycleLength": 28,
+  "avgPeriodLength": 5,
+  "cycleCount": 3,
+  "shortestCycle": 28,
+  "longestCycle": 28,
+  "loggedDays": 21,
+  "periodDaysLogged": 16,
+  "painObservations": [
+    {
+      "date": "2026-09-08",
+      "type": "cramps",
+      "severity": "moderate",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-09-01",
+      "type": "headache",
+      "severity": "mild",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-08-15",
+      "type": "cramps",
+      "severity": "severe",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-08-14",
+      "type": "cramps",
+      "severity": "severe",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-08-13",
+      "type": "cramps",
+      "severity": "severe",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-08-12",
+      "type": "cramps",
+      "severity": "severe",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-07-18",
+      "type": "cramps",
+      "severity": "moderate",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-07-17",
+      "type": "cramps",
+      "severity": "moderate",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-07-16",
+      "type": "cramps",
+      "severity": "moderate",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-07-15",
+      "type": "cramps",
+      "severity": "moderate",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-06-20",
+      "type": "cramps",
+      "severity": "mild",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-06-19",
+      "type": "cramps",
+      "severity": "mild",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-06-18",
+      "type": "cramps",
+      "severity": "mild",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-06-17",
+      "type": "cramps",
+      "severity": "mild",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-05-23",
+      "type": "cramps",
+      "severity": "moderate",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-05-22",
+      "type": "cramps",
+      "severity": "moderate",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-05-21",
+      "type": "cramps",
+      "severity": "moderate",
+      "source": "USER_LOGGED"
+    },
+    {
+      "date": "2026-05-20",
+      "type": "cramps",
+      "severity": "moderate",
+      "source": "USER_LOGGED"
+    }
+  ],
+  "lifestyleSummary": {
+    "sleep": {
+      "poor": 1,
+      "okay": 0,
+      "good": 0
+    },
+    "stress": {
+      "low": 0,
+      "medium": 0,
+      "high": 1
+    },
+    "exercise": {
+      "none": 0,
+      "light": 0,
+      "moderate": 0,
+      "intense": 0
+    },
+    "caffeine": {
+      "none": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0
+    },
+    "alcohol": {
+      "none": 0,
+      "light": 0,
+      "moderate": 0,
+      "heavy": 0
+    }
+  },
+  "topSymptoms": [
+    {
+      "key": "bloating",
+      "count": 3
+    },
+    {
+      "key": "acne",
+      "count": 2
+    },
+    {
+      "key": "fatigue",
+      "count": 1
+    },
+    {
+      "key": "migraine",
+      "count": 1
+    },
+    {
+      "key": "nausea",
+      "count": 1
+    }
+  ],
+  "topMoods": []
+}

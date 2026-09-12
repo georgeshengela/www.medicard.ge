@@ -1,0 +1,25 @@
+{
+  "id": "RA00-001",
+  "afterFix": true,
+  "legacyPublicPath": {
+    "method": "GET",
+    "url": "/uploads/<uuid>.jpg",
+    "authorization": null,
+    "status": 401,
+    "fileBytesReturned": false,
+    "cacheControl": "private, no-store, no-cache, must-revalidate",
+    "contentType": "application/json"
+  },
+  "authenticatedPath": {
+    "method": "GET",
+    "url": "/api/files/<uuid>.jpg",
+    "ownerStatus": 200,
+    "unauthStatus": 401,
+    "wrongUserStatus": 404,
+    "deletedStatus": 404,
+    "cacheControl": "private, no-store, no-cache, must-revalidate",
+    "contentType": "image/jpeg",
+    "xContentTypeOptions": "nosniff"
+  },
+  "note": "Sanitized fixture only. No medical bytes captured."
+}

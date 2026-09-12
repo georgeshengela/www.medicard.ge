@@ -488,19 +488,20 @@ export function CyclePrimaryButton({
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center', maxWidth: '100%' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', maxWidth: '100%', flexShrink: 1 }}>
             {Icon ? (
               <View style={{ marginRight: 8 }}>
                 <Icon size={18} color="#fff" strokeWidth={2.4} />
               </View>
             ) : null}
             <Text
-              numberOfLines={1}
               style={{
                 color: '#fff',
                 fontFamily: 'NotoSansGeorgian_700Bold',
                 fontSize: 16,
                 includeFontPadding: false,
+                flexShrink: 1,
+                textAlign: 'center',
               }}
             >
               {label}
@@ -724,25 +725,7 @@ function withAlpha(hex: string, alpha: number) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-export function formatCycleDateKa(ymd: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd;
-  const [y, m, d] = ymd.split('-');
-  const months = [
-    'იანვარი',
-    'თებერვალი',
-    'მარტი',
-    'აპრილი',
-    'მაისი',
-    'ივნისი',
-    'ივლისი',
-    'აგვისტო',
-    'სექტემბერი',
-    'ოქტომბერი',
-    'ნოემბერი',
-    'დეკემბერი',
-  ];
-  return `${Number(d)} ${months[Number(m) - 1]} ${y}`;
-}
+export { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 
 export function cycleNavHeader(c: CyclePalette, title: string) {
   return {

@@ -56,7 +56,7 @@ export const CONDITION_CATALOG: ConditionEntry[] = [
   { id: 'fibromyalgia', ka: 'ფიბრომიალგია', aliases: ['fibromyalgia'] },
   { id: 'psoriasis', ka: 'ფსორიაზი', aliases: ['psoriasis'] },
   { id: 'eczema', ka: 'ეგზემა', aliases: ['eczema', 'atopic'] },
-  { id: 'pcos', ka: 'პოლიკისტოზური საკვერცხეები', aliases: ['pcos'] },
+  { id: 'pcos', ka: 'პოლიკისტოზური საკვერცხეების სინდრომი', aliases: ['pcos'] },
   { id: 'endometriosis', ka: 'ენდომეტრიოზი', aliases: ['endometriosis'] },
   { id: 'glaucoma', ka: 'გლაუკომა', aliases: ['glaucoma'] },
   { id: 'cataract', ka: 'კატარაქტა', aliases: ['cataract'] },

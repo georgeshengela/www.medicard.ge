@@ -48,6 +48,7 @@ function extraObservations() {
     alcohol: 'none',
     customTagIds: ['11111111-1111-4111-8111-111111111111'],
     notes: 'private journal — travel and cramps',
+    observations: { energy: 'low' },
   };
 }
 
@@ -237,6 +238,7 @@ describe('engine regression', () => {
     assert.equal(logHasExtras({ flow: 'none', painEntries: [{ type: 'headache', severity: 'mild' }] }), true);
     assert.equal(logHasExtras({ flow: 'none', sleepQuality: 'poor' }), true);
     assert.equal(logHasExtras({ flow: 'none', customTagIds: ['11111111-1111-4111-8111-111111111111'] }), true);
+    assert.equal(logHasExtras({ flow: 'none', observations: { energy: 'low' } }), true);
   });
 });
 
@@ -290,6 +292,7 @@ describe('partner and AI privacy', () => {
     assert.doesNotMatch(prompt, /private journal/);
     assert.doesNotMatch(prompt, /11111111-1111-4111-8111-111111111111/);
     assert.doesNotMatch(prompt, /Travel|მოგზაურობა/);
+    assert.doesNotMatch(prompt, /very_low|energy=low/);
     for (const rule of CYCLE_OBSERVATION_AI_RULES) {
       assert.match(prompt, new RegExp(rule.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     }

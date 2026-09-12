@@ -317,7 +317,7 @@
         : typeof opsError === 'function'
           ? opsError(err.message, 'quality-retry')
           : `<div class="v3-quality-empty is-err"><strong>ჩატვირთვა ვერ მოხერხდა</strong><p>${esc(err.message)}</p>
-              <button type="button" class="btn ghost compact" id="quality-retry">${ico('refresh')} ხელახლა ცდა</button></div>`;
+              <button type="button" class="btn ghost compact" id="quality-retry">${ico('refresh')} ხელახლა სცადე</button></div>`;
       $('quality-retry')?.addEventListener('click', () => void renderQualityOpsV3());
     }
   }

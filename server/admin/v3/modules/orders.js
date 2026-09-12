@@ -200,7 +200,7 @@
         <div class="v3-orders-empty is-err">
           <strong>რიგი ვერ ჩაიტვირთა</strong>
           <p>${esc(e.message || 'უცნობი შეცდომა')}</p>
-          <button type="button" class="btn ghost compact" id="ord-retry">${ico('refresh')} ხელახლა ცდა</button>
+          <button type="button" class="btn ghost compact" id="ord-retry">${ico('refresh')} ხელახლა სცადე</button>
         </div>
       </div>`;
       $('ord-retry')?.addEventListener('click', () => void renderOrdersV3());

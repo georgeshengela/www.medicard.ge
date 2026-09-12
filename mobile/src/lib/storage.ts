@@ -95,6 +95,9 @@ export async function setPreferenceStrict(key: string, value: string): Promise<v
     }
     return;
   }
+  if (!FileSystem.documentDirectory) {
+    throw new Error('preference_dir_unavailable');
+  }
   await FileSystem.makeDirectoryAsync(PREFS_DIR, { intermediates: true });
   await FileSystem.writeAsStringAsync(prefsPath(key), value);
   const readBack = await FileSystem.readAsStringAsync(prefsPath(key));

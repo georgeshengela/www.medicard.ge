@@ -1,0 +1,20 @@
+{
+  "energyAmount": 10,
+  "sourceType": "QUEST_COMPLETION",
+  "reasonCode": "PERSONAL_GOAL_COMPLETE",
+  "plant": {
+    "id": "6fb8a3b9-5a5c-4cb4-a078-e6015fe7563f",
+    "catalogKey": "pulse_fern",
+    "category": "movement",
+    "stage": "sprout",
+    "nurtureDays": 1,
+    "nextQualifyingDays": 2,
+    "plotIndex": 0,
+    "stored": false,
+    "plantedAt": "2026-09-12T17:12:59.604Z",
+    "catalogVersion": "medi-world-garden-v1",
+    "presentationKey": "pulse_fern",
+    "stagePresentationKey": "pulse_fern_sprout"
+  },
+  "atmosphere": "first_sprout"
+}

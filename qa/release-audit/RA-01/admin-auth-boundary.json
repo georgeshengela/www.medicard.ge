@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-09-11T21:10:00.000Z",
+  "adminUi": "/admin is a static SPA. UI hiding is not authorization.",
+  "adminLogin": "POST /api/admin/login — bcrypt compare, HS256 role=admin",
+  "unauthenticatedAdminApi": "requireAdmin 401 without Bearer",
+  "userTokenVsAdminApi": {
+    "test": "GET /api/admin/me with user JWT",
+    "result": "401 or 403",
+    "live": "PASS in ra01LiveAuth.http.test.js"
+  },
+  "adminTokenVsUserApi": "requireAuth returns 403 ადმინისტრატორის ტოკენი ამ ენდპოინტზე არ მოქმედებს.",
+  "partner": {
+    "userJwtDoesNotGrantPartner": true,
+    "sharePeek": "tokenized /api/cycle/share*; public GET /api/cycle/share/:code is closed (denyShareAuth)"
+  }
+}

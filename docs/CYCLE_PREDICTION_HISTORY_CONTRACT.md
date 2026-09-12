@@ -258,6 +258,8 @@ Footnote always when history is shown: `წინა პროგნოზებ
 
 Refresh when the Journal remounts or derived `periodStarts` change. Do not refetch on row expand. Do not send this history to Medi, partner, push, Quest, or product analytics.
 
+**Phase 42:** do not create `NEXT_PERIOD_START` snapshots while postpartum-return `forecastEligibility.allowed` is false. Contract: `docs/CYCLE_POSTPARTUM_RETURN_TO_TRACK_CONTRACT.md`.
+
 QA fixtures: `server/scripts/cycle-phase9-qa-seed.js` — labeled QA only, not product backfill. Native Android shots: `qa/cycle-phase10-prediction-history/`.
 
 ---

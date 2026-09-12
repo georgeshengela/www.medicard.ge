@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-09-11T21:10:00.000Z",
+  "mobile": {
+    "tokenStore": "SecureStore medicard.auth.token (WHEN_UNLOCKED_THIS_DEVICE_ONLY); web localStorage; in-memory cache",
+    "asyncStorage": "ABSENT for tokens",
+    "cookies": "N/A",
+    "sessionSnapshot": "medicard.session.snapshot preference; painted only if jwtSubject(token) matches snapshot.user.id",
+    "accountScope": "getScopedPreference prefixes accountId; wipeLegacyUnscopedHealthCaches on adopt/hydrate",
+    "apiClient": "Authorization Bearer via mobile/src/lib/api.ts request()"
+  },
+  "server": {
+    "userJwt": "HS256 jsonwebtoken, env.JWT_SECRET, default 30d, payload { sub, email }",
+    "adminJwt": "HS256, 7d, payload { sub, email, role: 'admin' }",
+    "refresh": "none",
+    "revocation": "none; logout is client clearToken; deleted user → requireAuth 401",
+    "requireAuth": "Bearer required; admin role 403 on user APIs; missing user 401; BLOCKED 403",
+    "requireAdmin": "role === 'admin' plus Admin row",
+    "partner": "cycle share token on /api/cycle/share*; public /api/cycle/share/:code closed"
+  },
+  "flows": [
+    { "id": "launch-hydration", "result": "PASS", "notes": "AuthGate blanks until ready; logged-out non-auth routes render blank then replace /(auth). Android cold start showed stored session Home for Cycle QA fixture." },
+    { "id": "login-happy", "result": "PASS", "notes": "Android cold start reached authenticated Home. Live HTTP issues JWT only after bcrypt compare." },
+    { "id": "login-invalid", "result": "PASS", "notes": "Live POST /api/auth/login wrong password → 401, no token, no hash leak." },
+    { "id": "login-malformed", "result": "PASS", "notes": "not-an-email → 400 Zod fields. Empty credentials 400 via errorHandler." },
+    { "id": "login-double-tap", "result": "PASS", "notes": "AuthPrimaryButton disabled while loading; sign-in submittingRef added." },
+    { "id": "otp-phone", "result": "PASS", "notes": "4-digit, 10m TTL, 5 attempts, 60s resend, usedAt single-use, bound to phone." },
+    { "id": "otp-email-reset", "result": "PASS", "notes": "6-digit, same TTL/attempts, forgot-password does not reveal whether email exists." },
+    { "id": "qa-otp", "result": "PASS", "notes": "AppSettings.qaOtpEnabled was true on the connected DB. isQaOtpEnabled() now returns false whenever NODE_ENV==='production'." },
+    { "id": "register", "result": "PASS", "notes": "Unique email/phone → 409. Password bcrypt 12." },
+    { "id": "onboarding", "result": "PASS", "notes": "health-profile upsert keyed by req.user.id; complete is upsert; analysis cached unless force." },
+    { "id": "protected-deeplink", "result": "PASS", "notes": "Android medicard://cycle while logged out stayed on auth welcome, no health flash." },
+    { "id": "logout", "result": "PASS", "notes": "Android logout confirm → welcome. Client clears token+snapshot+session." },
+    { "id": "account-switch", "result": "PASS", "notes": "adopt() clears snapshot, sets account id, wipes legacy unscoped caches. jwtSubject mismatch refuses to paint." },
+    { "id": "admin-boundary", "result": "PASS", "notes": "Live user JWT GET /api/admin/me → 401/403." },
+    { "id": "partner-boundary", "result": "PASS", "notes": "Partner access is share-token scoped; user JWT is not partner-privileged." }
+  ]
+}

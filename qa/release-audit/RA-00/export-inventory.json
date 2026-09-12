@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-09-11T20:32:26.155Z",
+  "items": [
+    {
+      "id": "cycle-json",
+      "name": "Cycle personal JSON export",
+      "api": "GET /api/cycle/export",
+      "privacy": "owner-only full journal",
+      "allowlist": "buildCycleExportPayload"
+    },
+    {
+      "id": "doctor-summary",
+      "name": "Doctor summary JSON+PDF",
+      "api": "GET /api/cycle/doctor-summary",
+      "privacy": "document-scoped opt-in observations; not partner/AI",
+      "allowlist": "cycleObservationRegistry doctorSummary"
+    },
+    {
+      "id": "cycle-wipe",
+      "name": "Cycle wipe",
+      "api": "POST /api/cycle/wipe",
+      "privacy": "destroys owner cycle rows + local queue",
+      "allowlist": "confirm DELETE_CYCLE_DATA"
+    },
+    {
+      "id": "partner-share",
+      "name": "Partner peek",
+      "api": "GET/POST /api/cycle/share*",
+      "privacy": "stripped OPK/BBT/mucus/intercourse",
+      "allowlist": "buildPartnerPayload"
+    },
+    {
+      "id": "calendar-ics",
+      "name": "OS Calendar export prenatal plannedDate",
+      "api": "device-local expo-calendar",
+      "privacy": "no plannedPlace; no OS alarms",
+      "allowlist": "PREGNANCY_CARE_CALENDAR_EXPORT_CONTRACT"
+    },
+    {
+      "id": "account-delete",
+      "name": "Delete account",
+      "api": "DELETE /api/auth/me",
+      "privacy": "cascades user health",
+      "allowlist": "deleteUser.js"
+    },
+    {
+      "id": "admin-csv",
+      "name": "Admin exports users/decisions/outcomes/audit",
+      "api": "GET /api/admin/export/*",
+      "privacy": "admin-only; claimed no chat text",
+      "allowlist": "admin analytics sanitize"
+    }
+  ]
+}

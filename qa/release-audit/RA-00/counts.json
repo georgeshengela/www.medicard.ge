@@ -1,0 +1,18 @@
+{
+  "mobileScreens": 114,
+  "mobileLayouts": 21,
+  "adminScreens": 15,
+  "mobileRoutes": 114,
+  "interactiveControls": 811,
+  "apiEndpoints": 207,
+  "dbModels": 69,
+  "aiPipelines": 13,
+  "notificationFamilies": 18,
+  "devicePermissions": 12,
+  "exports": 7,
+  "analyticsEvents": 27,
+  "automatedTestFiles": 113,
+  "masterAuditCases": 811,
+  "prismaMigrations": 13,
+  "phaseSqlFiles": 11
+}

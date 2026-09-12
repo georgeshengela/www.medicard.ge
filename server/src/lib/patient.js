@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { prisma } from './prisma.js';
 import { publicExtraAnswers } from './appState.js';
 import { resolvePackageAiLimit } from './packages.js';
+import { normalizeAiEngine } from './aiEngine.js';
+import { cycleModeForPatientAiContext } from './cycleModes.js';
 
 function packageIsExpired(user) {
   return Boolean(user?.packageExpiresAt && new Date(user.packageExpiresAt).getTime() < Date.now());
@@ -126,6 +128,7 @@ export function publicUser(user) {
     currentStreak: user.currentStreak ?? 0,
     longestStreak: user.longestStreak ?? 0,
     lastCheckInDate: toDateOnly(user.lastCheckInDate),
+    aiEngine: normalizeAiEngine(user.aiEngine),
   };
 }
 
@@ -284,7 +287,8 @@ export async function withPatientAiContext(user, extra) {
         ),
       ].join('\n')
     : null;
-  const cycle = bundle.cycleMode ? `ციკლის რეჟიმი: ${bundle.cycleMode}` : null;
+  const cycleMode = cycleModeForPatientAiContext(bundle.cycleMode);
+  const cycle = cycleMode ? `ციკლის რეჟიმი: ${cycleMode}` : null;
   const merged = [
     buildPatientProfile(enriched),
     buildTrackedMetricsBlock(bundle.metrics),

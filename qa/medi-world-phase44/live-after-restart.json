@@ -1,0 +1,28 @@
+{
+  "energy": {
+    "movement": 10,
+    "hydration": 10,
+    "calm": 0,
+    "care": 10,
+    "connection": 205
+  },
+  "planted": 0,
+  "stored": [
+    {
+      "key": "pulse_fern",
+      "stage": "radiant",
+      "days": 1
+    },
+    {
+      "key": "orbit_vine",
+      "stage": "seed",
+      "days": 0
+    },
+    {
+      "key": "orbit_vine",
+      "stage": "seed",
+      "days": 0
+    }
+  ],
+  "atmosphere": "radiant_garden"
+}

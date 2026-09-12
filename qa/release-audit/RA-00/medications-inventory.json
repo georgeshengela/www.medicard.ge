@@ -1,0 +1,14 @@
+{
+  "create": "POST /api/medications",
+  "edit": "PATCH /api/medications/:id (updateMany id+userId)",
+  "delete": "DELETE /api/medications/:id",
+  "list": "GET /api/medications + schedule array for local notifications",
+  "takenSkip": "LOCAL medicard.meds.doseLogs + POST /api/push/dose-events (IDs not names)",
+  "overdue": "client notification plan + hub NextDose",
+  "timezone": "device local times stored as HH:mm list; no server TZ on schedule",
+  "duplicates": "no unique on (userId, medName); duplicates possible",
+  "refill": "ABSENT as a first-class feature",
+  "archived": "active boolean; not a separate archive table",
+  "aiReview": "POST /api/ai/medication-review",
+  "screens": ["/(tabs)/medications", "/medications/add", "/medications/add/search", "/medications/add/setup", "/medications/[id]", "/medications/reminders", "/medications/reminders/calendar", "/medications/interaction"]
+}

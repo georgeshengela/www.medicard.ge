@@ -5,11 +5,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { Baby, Bell, CalendarPlus, Download, EyeOff, Heart, Link2, Lock, Sparkles, Trash2 } from 'lucide-react-native';
+import { Baby, Bell, CalendarPlus, Check, Download, EyeOff, Flame, Heart, HeartPulse, Link2, Lock, Sparkles, Trash2 } from 'lucide-react-native';
 import { CycleNotificationMaskPreview } from '@/components/cycle/CycleNotificationMaskPreview';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
 import { CycleHealthConnectCard } from '@/components/cycle/CycleHealthConnectCard';
 import { CyclePregnancyTransitionSheet } from '@/components/cycle/CyclePregnancyTransitionSheet';
+import { CycleTtcOnboarding } from '@/components/cycle/CycleTtcOnboarding';
+import { CyclePerimenopauseOnboarding } from '@/components/cycle/CyclePerimenopauseOnboarding';
+import { CyclePostpartumOnboarding } from '@/components/cycle/CyclePostpartumOnboarding';
+import { CyclePostpartumReturnSheet } from '@/components/cycle/CyclePostpartumReturnSheet';
 import {
   CycleAtmosphere,
   CycleCard,
@@ -17,6 +21,7 @@ import {
   CyclePrimaryButton,
   CycleSection,
   cycleNavHeader,
+  formatCycleDateKa,
 } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import { api, ApiError, type CycleBundle, type CycleCondition, type CycleContraceptionMethod, type CycleMode } from '@/lib/api';
@@ -38,6 +43,7 @@ import {
   maskStyleLabel,
 } from '@/lib/cycleNotificationMask';
 import { getEffectiveCycleMask } from '@/lib/cycleNotificationContract.js';
+import { isPostpartumReturnLearning } from '@/lib/cycleForecastEligibility';
 import { importLatestPeriodStart, syncPeriodStartToHealth } from '@/lib/healthSync';
 import { useCycleColors } from '@/theme/cycle';
 
@@ -60,6 +66,18 @@ const MODES: { id: CycleMode; label: string; hint: string; icon: typeof Heart }[
     hint: ka.cycle.modePregnancyHint,
     icon: Baby,
   },
+  {
+    id: 'PERIMENOPAUSE',
+    label: ka.cycle.modePeri,
+    hint: ka.cycle.modePeriHint,
+    icon: Flame,
+  },
+  {
+    id: 'POSTPARTUM',
+    label: ka.cycle.modePostpartum,
+    hint: ka.cycle.modePostpartumHint,
+    icon: HeartPulse,
+  },
 ];
 
 const CONDITIONS: { id: CycleCondition; label: string }[] = [
@@ -75,12 +93,14 @@ function applyProfile(data: CycleBundle) {
     avgCycle: String(profile.avgCycleLength ?? 28),
     avgPeriod: String(profile.avgPeriodLength ?? 5),
     lastPeriod: normalizeIsoDate(profile.lastPeriodStart),
-    dueDate: normalizeIsoDate(profile.dueDate),
+    dueDate: normalizeIsoDate(data?.pregnancy?.dueDate ?? profile.dueDate),
+    referenceDate: normalizeIsoDate(data?.pregnancy?.referenceDate),
     irregular: Boolean(profile.isIrregular),
     privacy: Boolean(profile.privacyEnabled),
     conditions: (profile.conditions ?? []) as CycleCondition[],
     contraceptionMethod: (profile.contraceptionMethod ?? null) as CycleContraceptionMethod | null,
     contraceptionStartedAt: normalizeIsoDate(profile.contraceptionStartedAt),
+    postpartumReference: normalizeIsoDate(data?.postpartum?.referenceDate),
   };
 }
 
@@ -114,6 +134,7 @@ export default function CycleSettings() {
   const [avgPeriod, setAvgPeriod] = useState('5');
   const [lastPeriod, setLastPeriod] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [referenceDate, setReferenceDate] = useState('');
   const [irregular, setIrregular] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [privacyLock, setPrivacyLock] = useState(false);
@@ -133,6 +154,11 @@ export default function CycleSettings() {
   const [contraceptionMethod, setContraceptionMethod] = useState<CycleContraceptionMethod | null>(null);
   const [contraceptionStartedAt, setContraceptionStartedAt] = useState('');
   const [ttcConflictOpen, setTtcConflictOpen] = useState(false);
+  const [ttcOnboarding, setTtcOnboarding] = useState(false);
+  const [periOnboarding, setPeriOnboarding] = useState(false);
+  const [postpartumOnboarding, setPostpartumOnboarding] = useState(false);
+  const [postpartumReference, setPostpartumReference] = useState('');
+  const [postpartumReturnSheet, setPostpartumReturnSheet] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions(cycleNavHeader(c, ka.cycle.settings));
@@ -155,11 +181,13 @@ export default function CycleSettings() {
         setAvgPeriod(next.avgPeriod);
         setLastPeriod(next.lastPeriod);
         setDueDate(next.dueDate);
+        setReferenceDate(next.referenceDate);
         setIrregular(next.irregular);
         setPrivacy(next.privacy);
         setConditions(next.conditions);
         setContraceptionMethod(next.contraceptionMethod);
         setContraceptionStartedAt(next.contraceptionStartedAt);
+        setPostpartumReference(next.postpartumReference);
         setReminders(remPrefs);
         setPrivacyLock(lockOn);
       })
@@ -183,7 +211,20 @@ export default function CycleSettings() {
         avgCycleLength: Math.min(45, Math.max(21, Number(avgCycle) || 28)),
         avgPeriodLength: Math.min(10, Math.max(2, Number(avgPeriod) || 5)),
         lastPeriodStart,
-        dueDate: mode === 'PREGNANCY' && /^\d{4}-\d{2}-\d{2}$/.test(dueDate) ? dueDate : null,
+        pregnancyReferenceDate:
+          mode === 'PREGNANCY' && /^\d{4}-\d{2}-\d{2}$/.test(referenceDate) ? referenceDate : undefined,
+        pregnancyReferenceType:
+          mode === 'PREGNANCY' && /^\d{4}-\d{2}-\d{2}$/.test(referenceDate)
+            ? referenceDate === lastPeriod
+              ? 'LMP'
+              : 'USER_SELECTED'
+            : undefined,
+        postpartumReferenceDate:
+          mode === 'POSTPARTUM'
+            ? /^\d{4}-\d{2}-\d{2}$/.test(postpartumReference)
+              ? postpartumReference
+              : null
+            : undefined,
         isIrregular: irregular,
         privacyEnabled: privacy,
         conditions,
@@ -206,6 +247,8 @@ export default function CycleSettings() {
       const next = applyProfile(data);
       setLastPeriod(next.lastPeriod);
       setDueDate(next.dueDate);
+      setReferenceDate(next.referenceDate);
+      setPostpartumReference(next.postpartumReference);
       if (/^\d{4}-\d{2}-\d{2}$/.test(next.lastPeriod)) {
         try {
           await syncPeriodStartToHealth(next.lastPeriod);
@@ -241,6 +284,22 @@ export default function CycleSettings() {
   const pickMode = (next: CycleMode) => {
     if (next === 'PREGNANCY' && mode !== 'PREGNANCY') {
       setPregnancySheet(true);
+      return;
+    }
+    if (next === 'TRY_TO_CONCEIVE' && mode !== 'TRY_TO_CONCEIVE') {
+      setTtcOnboarding(true);
+      return;
+    }
+    if (next === 'PERIMENOPAUSE' && mode !== 'PERIMENOPAUSE') {
+      setPeriOnboarding(true);
+      return;
+    }
+    if (next === 'POSTPARTUM' && mode !== 'POSTPARTUM') {
+      setPostpartumOnboarding(true);
+      return;
+    }
+    if (next === 'TRACK_PERIOD' && bundle?.profile.mode === 'POSTPARTUM') {
+      setPostpartumReturnSheet(true);
       return;
     }
     setMode(next);
@@ -321,7 +380,11 @@ export default function CycleSettings() {
                 void (async () => {
                   try {
                     const result = await api.cycle.wipeData();
-                    if (user?.id) await destroyCycleOfflineAccount(user.id);
+                    if (user?.id) {
+                      await destroyCycleOfflineAccount(user.id);
+                      const { wipePregnancyCareCalendarOwnership } = await import('@/lib/pregnancyCareCalendar');
+                      await wipePregnancyCareCalendarOwnership(user.id);
+                    }
                     const next = applyProfile(result.bundle);
                     setBundle(result.bundle);
                     setCanonical(result.bundle);
@@ -441,14 +504,18 @@ export default function CycleSettings() {
                 <Animated.View key={m.id} entering={FadeInUp.delay(60 + i * 40).duration(360)}>
                   <Pressable
                     onPress={() => pickMode(m.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={m.label}
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
                       backgroundColor: on ? c.cta : c.card,
                       borderRadius: 16,
                       padding: 16,
-                      borderWidth: on ? 0 : 1,
-                      borderColor: c.border,
+                      minHeight: 44,
+                      borderWidth: on ? 2 : 1,
+                      borderColor: on ? c.ink : c.border,
                     }}
                   >
                     <View
@@ -464,15 +531,19 @@ export default function CycleSettings() {
                       <Icon size={20} color={on ? '#fff' : c.brand} strokeWidth={2.1} />
                     </View>
                     <View style={{ marginLeft: 12, flex: 1 }}>
-                      <Text
-                        style={{
-                          color: on ? '#fff' : c.ink,
-                          fontFamily: 'NotoSansGeorgian_700Bold',
-                          fontSize: 15,
-                        }}
-                      >
-                        {m.label}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text
+                          style={{
+                            color: on ? '#fff' : c.ink,
+                            fontFamily: 'NotoSansGeorgian_700Bold',
+                            fontSize: 15,
+                            flex: 1,
+                          }}
+                        >
+                          {m.label}
+                        </Text>
+                        {on ? <Check size={16} color="#fff" strokeWidth={3} /> : null}
+                      </View>
                       <Text
                         style={{
                           color: on ? 'rgba(255,255,255,0.8)' : c.muted,
@@ -488,6 +559,11 @@ export default function CycleSettings() {
               );
             })}
           </View>
+          {mode === 'TRACK_PERIOD' && isPostpartumReturnLearning(bundle) ? (
+            <Text style={{ color: c.muted, fontSize: 13, lineHeight: 20, marginTop: 12 }}>
+              {ka.cycle.postpartumReturnExplain}
+            </Text>
+          ) : null}
         </CycleSection>
 
         {/* §45 — ჩემი ციკლი: cycle profile facts in one place. */}
@@ -562,13 +638,81 @@ export default function CycleSettings() {
         </CycleSection>
 
         {mode === 'PREGNANCY' ? (
-          <CycleSection title={ka.cycle.dueDate} subtitle={ka.cycle.dueDateHint} delay={110}>
+          <CycleSection
+            title={ka.cycle.pregnancySettingsReference}
+            subtitle={ka.cycle.pregnancySettingsDueHint}
+            delay={110}
+          >
             <CycleDateField
-              value={dueDate}
-              onChange={setDueDate}
-              placeholder={ka.cycle.pickDate}
-              range="due"
+              value={referenceDate}
+              onChange={setReferenceDate}
+              placeholder={ka.cycle.pregnancyPickReference}
+              range="past"
             />
+            {dueDate ? (
+              <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19, marginTop: 12 }}>
+                {ka.cycle.pregnancyEstimatedDue}: {formatCycleDateKa(dueDate)}
+              </Text>
+            ) : null}
+            <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 17, marginTop: 8 }}>
+              {bundle?.pregnancy?.referenceType === 'USER_SELECTED'
+                ? ka.cycle.pregnancySourceSelected
+                : ka.cycle.pregnancySourceLmp}
+            </Text>
+          </CycleSection>
+        ) : null}
+
+        {mode === 'POSTPARTUM' ? (
+          <CycleSection
+            title={ka.cycle.postpartumReferenceLabel}
+            subtitle={ka.cycle.postpartumReferenceHint}
+            delay={110}
+          >
+            <CycleDateField
+              value={postpartumReference}
+              onChange={setPostpartumReference}
+              placeholder={ka.cycle.postpartumAddReference}
+              range="past"
+            />
+            {postpartumReference ? (
+              <Pressable
+                onPress={() => setPostpartumReference('')}
+                accessibilityRole="button"
+                accessibilityLabel={ka.cycle.postpartumClearReference}
+                style={{ minHeight: 44, justifyContent: 'center', marginTop: 8 }}
+              >
+                <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>
+                  {ka.cycle.postpartumClearReference}
+                </Text>
+              </Pressable>
+            ) : null}
+            <Pressable
+              onPress={() => setPostpartumReturnSheet(true)}
+              accessibilityRole="button"
+              accessibilityLabel={ka.cycle.postpartumReturnAction}
+              style={{
+                minHeight: 48,
+                marginTop: 16,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: c.border,
+                backgroundColor: c.card,
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 14,
+              }}
+            >
+              <Text
+                style={{
+                  color: c.ink,
+                  fontFamily: 'NotoSansGeorgian_700Bold',
+                  fontSize: 14,
+                  textAlign: 'center',
+                }}
+              >
+                {ka.cycle.postpartumReturnAction}
+              </Text>
+            </Pressable>
           </CycleSection>
         ) : null}
 
@@ -1000,6 +1144,55 @@ export default function CycleSettings() {
               setCanonical(view.canonical);
               const next = applyProfile(view.display);
               setDueDate(next.dueDate);
+              setReferenceDate(next.referenceDate);
+            });
+          }
+        }}
+      />
+      <CycleTtcOnboarding
+        visible={ttcOnboarding}
+        onClose={() => setTtcOnboarding(false)}
+        onConfirm={() => {
+          setTtcOnboarding(false);
+          setMode('TRY_TO_CONCEIVE');
+        }}
+      />
+      <CyclePerimenopauseOnboarding
+        visible={periOnboarding}
+        onClose={() => setPeriOnboarding(false)}
+        onConfirm={() => {
+          setPeriOnboarding(false);
+          setMode('PERIMENOPAUSE');
+        }}
+      />
+      <CyclePostpartumOnboarding
+        visible={postpartumOnboarding}
+        fromMode={mode}
+        onClose={() => setPostpartumOnboarding(false)}
+        onComplete={() => {
+          setMode('POSTPARTUM');
+          if (user?.id) {
+            void loadCycleView(user.id).then((view) => {
+              setBundle(view.display);
+              setCanonical(view.canonical);
+              const next = applyProfile(view.display);
+              setPostpartumReference(next.postpartumReference);
+            });
+          }
+        }}
+      />
+      <CyclePostpartumReturnSheet
+        visible={postpartumReturnSheet}
+        onClose={() => setPostpartumReturnSheet(false)}
+        onComplete={() => {
+          setMode('TRACK_PERIOD');
+          if (user?.id) {
+            void loadCycleView(user.id).then((view) => {
+              setBundle(view.display);
+              setCanonical(view.canonical);
+              const next = applyProfile(view.display);
+              setPostpartumReference(next.postpartumReference);
+              void cacheCycleBundle(user.id, view.canonical).catch(() => undefined);
             });
           }
         }}

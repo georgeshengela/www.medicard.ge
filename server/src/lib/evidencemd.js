@@ -37,6 +37,15 @@ export class AiEngineError extends Error {
  * @param {string} [opts.context] Extra clinical context prepended as a system message.
  * @param {number} [opts.temperature]
  */
+function extractEvidenceDelta(chunk) {
+  const raw = chunk?.choices?.[0]?.delta?.content;
+  if (typeof raw === 'string') return raw;
+  if (Array.isArray(raw)) {
+    return raw.map((part) => (typeof part === 'string' ? part : part?.text || '')).join('');
+  }
+  return '';
+}
+
 export async function askEvidenceMd({
   mode = 'DOCTOR',
   messages,
@@ -44,6 +53,8 @@ export async function askEvidenceMd({
   temperature = 0.2,
   maxTokens = 2400,
   skipDisclaimer = false,
+  onDelta,
+  signal,
 }) {
   const systemPrompt = SYSTEM_PROMPTS[mode] ?? SYSTEM_PROMPTS.DOCTOR;
 
@@ -53,21 +64,68 @@ export async function askEvidenceMd({
     ...messages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
+  const extra = signal ? { signal } : undefined;
+
   try {
-    const completion = await client.chat.completions.create({
-      model: env.EVIDENCEMD_MODEL,
-      messages: payload,
-      temperature,
-      max_tokens: maxTokens,
-    });
+    if (typeof onDelta === 'function') {
+      let streamed = false;
+      try {
+        const stream = await client.chat.completions.create(
+          {
+            model: env.EVIDENCEMD_MODEL,
+            messages: payload,
+            temperature,
+            max_tokens: maxTokens,
+            stream: true,
+          },
+          extra,
+        );
+        let answer = '';
+        let usage = null;
+        let modelOut = env.EVIDENCEMD_MODEL;
+        for await (const chunk of stream) {
+          if (signal?.aborted) {
+            throw new AiEngineError('მოთხოვნა გაუქმდა.', { status: 499 });
+          }
+          if (chunk?.model) modelOut = chunk.model;
+          if (chunk?.usage) usage = chunk.usage;
+          const piece = extractEvidenceDelta(chunk);
+          if (!piece) continue;
+          streamed = true;
+          answer += piece;
+          onDelta(piece);
+        }
+        const trimmed = answer.trim();
+        if (!trimmed) throw new AiEngineError('EvidenceMD-მა ცარიელი პასუხი დააბრუნა.');
+        const content = skipDisclaimer ? trimmed : ensureDisclaimer(trimmed);
+        if (content.length > trimmed.length) onDelta(content.slice(trimmed.length));
+        return { content, model: modelOut, usage };
+      } catch (error) {
+        if (error instanceof AiEngineError || signal?.aborted || streamed) throw error;
+        console.warn('[medicard] EvidenceMD stream failed, retrying without stream', error?.message ?? error);
+      }
+    }
+
+    const completion = await client.chat.completions.create(
+      {
+        model: env.EVIDENCEMD_MODEL,
+        messages: payload,
+        temperature,
+        max_tokens: maxTokens,
+      },
+      extra,
+    );
 
     const answer = completion.choices?.[0]?.message?.content?.trim();
     if (!answer) {
       throw new AiEngineError('EvidenceMD-მა ცარიელი პასუხი დააბრუნა.');
     }
 
+    const content = skipDisclaimer ? answer : ensureDisclaimer(answer);
+    if (typeof onDelta === 'function') onDelta(content);
+
     return {
-      content: skipDisclaimer ? answer : ensureDisclaimer(answer),
+      content,
       model: completion.model ?? env.EVIDENCEMD_MODEL,
       usage: completion.usage ?? null,
     };
@@ -103,6 +161,6 @@ export async function askEvidenceMd({
 }
 
 /** The disclaimer is a product requirement, so we enforce it rather than trusting the model. */
-function ensureDisclaimer(text) {
+export function ensureDisclaimer(text) {
   return text.includes('არ არის საბოლოო დიაგნოზი') ? text : `${text}\n\n---\n⚠️ ${DISCLAIMER_KA}`;
 }

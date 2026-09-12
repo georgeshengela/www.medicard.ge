@@ -13,6 +13,8 @@ import {
   isBleedFlowValue,
   isSpottingFlowValue,
   journalCycleLengthReady,
+  mergeLoggedFlowOntoMarks,
+  mergeOwnerClassifiedPeriodOntoMarks,
   recentSymptomIds,
 } from './cyclePresentation.js';
 
@@ -26,6 +28,19 @@ const COPY = {
   ovulation: 'სავარაუდო ოვულაცია',
   symptoms: 'აღრიცხული',
 };
+
+test('display-log flow paints bleed cells even when engine calendar omitted the day', () => {
+  const merged = mergeLoggedFlowOntoMarks(
+    { '2026-09-20': { fertile: true, estimated: true } },
+    [{ date: '2026-09-11', flow: 'heavy' }],
+  );
+  assert.equal(merged['2026-09-11'].flow, 'heavy');
+  const layers = classifyCycleDay(merged['2026-09-11'], { showFertility: false, showPredicted: false });
+  assert.equal(layers.loggedPeriod, true);
+  assert.equal(layers.fertile, false);
+  assert.equal(layers.predictedPeriod, false);
+  assert.equal(merged['2026-09-20'].fertile, true);
+});
 
 test('logged period and predicted period are different classes', () => {
   const logged = classifyCycleDay({ period: true, predicted: false, flow: 'medium' });
@@ -61,7 +76,7 @@ test('fertile and ovulation are predicted provenance', () => {
   assert.equal(ovulation.ovulation, true);
 });
 
-test('low-confidence hides predicted layers but keeps logged period', () => {
+test('explicit showPredicted:false hides predicted layers but keeps logged period', () => {
   const layers = classifyCycleDay(
     { period: true, predicted: true, fertile: true, ovulation: true, flow: 'medium' },
     { showPredicted: false },
@@ -70,6 +85,14 @@ test('low-confidence hides predicted layers but keeps logged period', () => {
   assert.equal(layers.predictedPeriod, false);
   assert.equal(layers.fertile, false);
   assert.equal(layers.ovulation, false);
+});
+
+test('low confidence still paints estimated ovulation and next period', () => {
+  const showPredicted = !confidencePresentation('low').hidePredictedOverlays;
+  const ovulation = classifyCycleDay({ fertile: true, ovulation: true }, { showPredicted });
+  const nextPeriod = classifyCycleDay({ period: true, predicted: true }, { showPredicted });
+  assert.equal(ovulation.ovulation, true);
+  assert.equal(nextPeriod.predictedPeriod, true);
 });
 
 test('contraception suppression removes fertility layers entirely', () => {
@@ -161,6 +184,40 @@ test('calendar a11y label labels predicted as predicted, logged as fact', () => 
   assert.doesNotMatch(logged, /სავარაუდო მენსტრუაცია/);
 });
 
+test('postpartum calendar a11y uses bleed label, not menstruation', () => {
+  const postpartumCopy = { ...COPY, loggedPeriod: 'სისხლდენა' };
+  const label = calendarDayA11y({
+    dayLabel: '11 სექტემბერი',
+    isToday: false,
+    isSelected: true,
+    layers: classifyCycleDay({ flow: 'medium' }, { showPredicted: false, showFertility: false }),
+    copy: postpartumCopy,
+  });
+  assert.match(label, /სისხლდენა/);
+  assert.doesNotMatch(label, /მენსტრუაცია/);
+});
+
+test('owner-classified postpartum bleed is a fact badge, not prediction', () => {
+  const merged = mergeOwnerClassifiedPeriodOntoMarks(
+    { '2026-09-10': { flow: 'heavy' } },
+    ['2026-09-10'],
+  );
+  const layers = classifyCycleDay(merged['2026-09-10'], { showPredicted: false });
+  assert.equal(layers.loggedPeriod, true);
+  assert.equal(layers.ownerClassifiedPeriod, true);
+  assert.equal(layers.predictedPeriod, false);
+  const label = calendarDayA11y({
+    dayLabel: '10 სექტემბერი',
+    isToday: false,
+    isSelected: false,
+    layers,
+    copy: { ...COPY, loggedPeriod: 'სისხლდენა', classifiedPeriod: 'მენსტრუაციად მონიშნული სისხლდენა' },
+  });
+  assert.match(label, /სისხლდენა/);
+  assert.match(label, /მენსტრუაციად მონიშნული სისხლდენა/);
+  assert.doesNotMatch(label, /სავარაუდო მენსტრუაცია/);
+});
+
 test('gauge a11y summary is a concise sentence set', () => {
   const label = gaugeA11ySummary({
     dayLabel: 'ციკლის მე-18 დღე',
@@ -181,7 +238,7 @@ test('confidence is server-provided and never a danger tone', () => {
   assert.equal(confidencePresentation('high').softenPrediction, false);
   assert.equal(confidencePresentation('low').softenPrediction, true);
   assert.equal(confidencePresentation(undefined).level, 'low');
-  assert.equal(confidencePresentation('low').hidePredictedOverlays, true);
+  assert.equal(confidencePresentation('low').hidePredictedOverlays, false);
   assert.equal(confidencePresentation('high').hidePredictedOverlays, false);
 });
 

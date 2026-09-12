@@ -55,6 +55,8 @@ import { isAppVersionBelow } from '../lib/appVersion.js';
 import { loadPermissionRows } from '../lib/notificationPermission.js';
 import { parseAnalyticsRange } from '../lib/adminAnalyticsRange.js';
 import { listAdminAudit, writeAdminAudit } from '../lib/adminAudit.js';
+import { buildCycleQaBoard, resolveContractFile, resolveQaFile } from '../lib/cycleQaBoard.js';
+import { createReadStream, readFileSync } from 'node:fs';
 import { enrichDecisions } from '../lib/clientContext.js';
 import { getUserInvestigation } from '../lib/adminUserInvestigation.js';
 import { tbilisiYmd } from '../lib/checkIn.js';
@@ -704,13 +706,22 @@ adminRouter.patch(
       .object({
         maintenanceMode: z.boolean().optional(),
         maintenanceMessage: z.string().min(3).max(500).optional(),
-        minAppVersion: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
+        minAppVersion: z.string().regex(/^\d+\.\d+\.\d+(?:\.\d+){0,2}$/).optional(),
         forceUpdate: z.boolean().optional(),
         allowRegistrations: z.boolean().optional(),
         qaOtpEnabled: z.boolean().optional(),
         supportEmail: z.string().email().optional(),
       })
       .parse(req.body);
+
+    if (body.minAppVersion) {
+      const current = getMobileAppVersion();
+      if (current && isAppVersionBelow(current, body.minAppVersion)) {
+        return res.status(400).json({
+          error: `ეს მინიმუმი მიმდინარე აპს (${current}) დაბლოკავს. iOS 1.7.66 მინიმუმად არ გამოიყენო.`,
+        });
+      }
+    }
 
     const before = await getAppSettings();
     const settings = await prisma.appSettings.upsert({
@@ -1586,5 +1597,37 @@ adminRouter.get(
         q: req.query.q,
       }),
     );
+  }),
+);
+
+adminRouter.get(
+  '/cycle-qa',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json(buildCycleQaBoard());
+  }),
+);
+
+adminRouter.get(
+  '/cycle-qa/file/:folder/:file',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const resolved = resolveQaFile(req.params.folder, req.params.file);
+    if (!resolved) return res.status(404).json({ error: 'ფაილი ვერ მოიძებნა.' });
+    res.setHeader('Content-Type', resolved.mime);
+    res.setHeader('Cache-Control', 'private, max-age=120');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    createReadStream(resolved.abs).pipe(res);
+  }),
+);
+
+adminRouter.get(
+  '/cycle-qa/contract/:file',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const resolved = resolveContractFile(req.params.file);
+    if (!resolved) return res.status(404).json({ error: 'კონტრაქტი ვერ მოიძებნა.' });
+    const markdown = readFileSync(resolved.abs, 'utf8');
+    res.json({ file: resolved.file, markdown: markdown.slice(0, 80_000) });
   }),
 );

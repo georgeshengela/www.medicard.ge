@@ -1,0 +1,2 @@
+iOS QA — DEFERRED BY PRODUCT DECISION
+Phase 17 native evidence is Android (emulator-5554) only.

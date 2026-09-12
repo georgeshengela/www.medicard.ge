@@ -50,13 +50,13 @@ const REWARD_DESCRIPTIONS = {
     ru: 'Золотая рамка аватара профиля на 30 дней. Только косметика.',
   },
   'reward.mediPremiumDay.description': {
-    ka: '1 დღე MediCard Premium უფლება.',
+    ka: '1 დღე Medicard Premium.',
     en: '1 day of MediCard Premium access.',
     fr: '1 jour d’accès MediCard Premium.',
     ru: '1 день доступа MediCard Premium.',
   },
   'reward.mediPremium3d.description': {
-    ka: '3 დღე MediCard Premium უფლება.',
+    ka: '3 დღე Medicard Premium.',
     en: '3 days of MediCard Premium access.',
     fr: '3 jours d’accès MediCard Premium.',
     ru: '3 дня доступа MediCard Premium.',
@@ -105,7 +105,7 @@ const REWARD_TERMS = {
 const STORE = {
   ka: {
     title: 'ჯილდოები',
-    tagline: 'გამოიყენე Medi Coins MediCard-ის სარგებელზე.',
+    tagline: 'გამოიყენე Medi Coins Medicard-ის სარგებელზე.',
     featured: 'რჩეული',
     available: 'ხელმისაწვდომი',
     myRewards: 'ჩემი ჯილდოები',
@@ -285,7 +285,7 @@ const ERRORS = {
   REWARD_ALREADY_REDEEMED: { ka: 'უკვე გაცვლილია.', en: 'Already redeemed.', fr: 'Déjà échangé.', ru: 'Уже обменено.' },
   REWARD_CODE_UNAVAILABLE: { ka: 'კოდი მიუწვდომელია.', en: 'Code unavailable.', fr: 'Code indisponible.', ru: 'Код недоступен.' },
   REWARD_ENTITLEMENT_UNAVAILABLE: { ka: 'უფლება მიუწვდომელია.', en: 'Entitlement unavailable.', fr: 'Droit indisponible.', ru: 'Право недоступно.' },
-  REWARD_REDEMPTION_CONFLICT: { ka: 'გაცვლა კონფლიქტშია. სცადეთ თავიდან.', en: 'Redemption conflict. Try again.', fr: 'Conflit d’échange. Réessayez.', ru: 'Конфликт обмена. Повторите.' },
+  REWARD_REDEMPTION_CONFLICT: { ka: 'გაცვლა კონფლიქტშია. ხელახლა სცადე.', en: 'Redemption conflict. Try again.', fr: 'Conflit d’échange. Réessayez.', ru: 'Конфликт обмена. Повторите.' },
 };
 
 function pick(map, key, locale) {

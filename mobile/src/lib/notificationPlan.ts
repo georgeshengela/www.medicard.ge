@@ -114,6 +114,10 @@ export function routeFromNotificationData(data: Record<string, unknown> | undefi
     case 'cycle_reminder':
     case 'cycle_tip':
       return '/cycle';
+    case 'pregnancy_care_plan':
+      return typeof data.route === 'string' && data.route.startsWith('/')
+        ? data.route
+        : '/cycle/pregnancy/care-plan';
     case 'medi_engage':
       return engageDestination(typeof data.family === 'string' ? data.family : '');
     default:

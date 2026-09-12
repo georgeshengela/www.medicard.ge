@@ -1,0 +1,89 @@
+{
+  "energy": {
+    "movement": 10,
+    "hydration": 10,
+    "calm": 0,
+    "care": 10,
+    "connection": 205
+  },
+  "plots": [
+    {
+      "index": 0,
+      "unlocked": true,
+      "plant": null
+    },
+    {
+      "index": 1,
+      "unlocked": true,
+      "plant": null
+    },
+    {
+      "index": 2,
+      "unlocked": true,
+      "plant": null
+    },
+    {
+      "index": 3,
+      "unlocked": true,
+      "plant": null
+    },
+    {
+      "index": 4,
+      "unlocked": true,
+      "plant": null
+    },
+    {
+      "index": 5,
+      "unlocked": true,
+      "plant": null
+    }
+  ],
+  "stored": [
+    {
+      "id": "6fb8a3b9-5a5c-4cb4-a078-e6015fe7563f",
+      "catalogKey": "pulse_fern",
+      "category": "movement",
+      "stage": "radiant",
+      "nurtureDays": 1,
+      "nextQualifyingDays": 2,
+      "plotIndex": null,
+      "stored": true,
+      "plantedAt": "2026-09-12T17:12:59.604Z",
+      "catalogVersion": "medi-world-garden-v1",
+      "presentationKey": "pulse_fern",
+      "stagePresentationKey": "pulse_fern_radiant"
+    },
+    {
+      "id": "c26a4aa2-2033-46d9-b53e-1de4127d4df3",
+      "catalogKey": "orbit_vine",
+      "category": "connection",
+      "stage": "seed",
+      "nurtureDays": 0,
+      "nextQualifyingDays": 1,
+      "plotIndex": null,
+      "stored": true,
+      "plantedAt": "2026-09-12T17:13:56.811Z",
+      "catalogVersion": "medi-world-garden-v1",
+      "presentationKey": "orbit_vine",
+      "stagePresentationKey": "orbit_vine_seed"
+    },
+    {
+      "id": "f17b57d7-6d33-4ef5-97c7-71e90dfc8e10",
+      "catalogKey": "orbit_vine",
+      "category": "connection",
+      "stage": "seed",
+      "nurtureDays": 0,
+      "nextQualifyingDays": 1,
+      "plotIndex": null,
+      "stored": true,
+      "plantedAt": "2026-09-12T17:37:35.834Z",
+      "catalogVersion": "medi-world-garden-v1",
+      "presentationKey": "orbit_vine",
+      "stagePresentationKey": "orbit_vine_seed"
+    }
+  ],
+  "atmosphere": "radiant_garden",
+  "reaction": {
+    "key": "radiant"
+  }
+}

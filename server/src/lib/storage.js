@@ -15,9 +15,9 @@ const EXTENSIONS = {
 };
 
 /**
- * Persists an upload to local disk and returns the public URL path.
- * Swap this module for S3 / Cloudflare R2 before production — the rest of the app
- * only depends on the returned `/uploads/...` string.
+ * Persists an upload to local disk and returns the storage key (`/uploads/<uuid>.ext`).
+ * That key is not a public URL. Bytes are served only from `GET /api/files/:filename`
+ * after owner auth. Swap this module for S3 / R2 later — callers keep storing the key.
  */
 export async function saveUpload(buffer, mimeType) {
   await mkdir(UPLOAD_DIR, { recursive: true });

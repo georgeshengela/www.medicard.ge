@@ -11,6 +11,7 @@ import {
 } from '@/constants/assessmentSteps';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { authErrorMessage } from '@/lib/authErrorMessage';
 import {
   extraAnswersPayload,
   formFromProfile,
@@ -128,7 +129,7 @@ export default function AssessmentScreen() {
         if (!cancelled && e instanceof ApiError && e.isUnauthorized) {
           sessionDead.current = true;
           initialized.current = false;
-          setError(e.message);
+          setError(authErrorMessage(e));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -171,7 +172,7 @@ export default function AssessmentScreen() {
       } catch (error) {
         if (error instanceof ApiError && error.isUnauthorized) {
           sessionDead.current = true;
-          setError(error.message);
+          setError(authErrorMessage(error));
         }
       }
     },
@@ -266,7 +267,7 @@ export default function AssessmentScreen() {
       markSessionDead(e);
       setStepIndex(prevIndex);
       setForm(form);
-      setError(e instanceof ApiError ? e.message : ka.common.error);
+      setError(authErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -282,7 +283,7 @@ export default function AssessmentScreen() {
         await finishAssessmentPhase(form);
       } catch (e) {
         markSessionDead(e);
-        setError(e instanceof ApiError ? e.message : ka.common.error);
+        setError(authErrorMessage(e));
       } finally {
         setBusy(false);
       }
@@ -299,7 +300,7 @@ export default function AssessmentScreen() {
     } catch (e) {
       markSessionDead(e);
       setStepIndex(prevIndex);
-      setError(e instanceof ApiError ? e.message : ka.common.error);
+      setError(authErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -323,7 +324,7 @@ export default function AssessmentScreen() {
     } catch (e) {
       markSessionDead(e);
       setStepIndex(prevIndex);
-      setError(e instanceof ApiError ? e.message : ka.common.error);
+      setError(authErrorMessage(e));
     } finally {
       setBusy(false);
     }

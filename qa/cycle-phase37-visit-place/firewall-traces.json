@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-09-11",
+  "placeSample": "CHC MontLégia — Radiologie",
+  "exportIncludesPlace": true,
+  "partner": {
+    "detectorFlagsInjectedPlace": true,
+    "cleanHasKey": false,
+    "rawPlaceInEmptyPartner": false
+  },
+  "ai": {
+    "promptIncludesPlace": false
+  },
+  "doctor": {
+    "summaryIncludesPlace": false,
+    "detectorFlagsInjectedPlace": true
+  },
+  "reminder": {
+    "candidateId": "pregnancy_care:user-a:ep-a:anatomy_ultrasound:2026-09-22:1",
+    "candidateIdWithoutPlace": "pregnancy_care:user-a:ep-a:anatomy_ultrasound:2026-09-22:1",
+    "candidateHasPlaceField": false,
+    "maskedIncludesPlace": false,
+    "unmaskedIncludesPlace": false
+  },
+  "calendar": {
+    "notes": "Created from Medicard care planner.",
+    "notesIncludePlace": false,
+    "locationField": null,
+    "hasLocation": false,
+    "placeChangeMismatch": false
+  },
+  "nativeCalendar": {
+    "source": "qa/cycle-phase37-visit-place/native-events.txt",
+    "eventLocation": null,
+    "notes": "Created from Medicard care planner.",
+    "title": "Medicard — დაგეგმილი ვიზიტი",
+    "hasAlarm": 0
+  },
+  "analytics": {
+    "noRawPlaceContract": "planner writes and Brain candidates must not log plannedPlace"
+  }
+}

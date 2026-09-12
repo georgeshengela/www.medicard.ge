@@ -887,7 +887,7 @@
       root.innerHTML = shell(
         R.subtab,
         `<div class="rw-empty rw-empty-err"><strong>ჩატვირთვა ვერ მოხერხდა</strong><p>${esc(e.message || 'უცნობი შეცდომა')}</p>
-        <button type="button" class="btn ghost sm" id="rw-retry">ხელახლა ცდა</button></div>`,
+        <button type="button" class="btn ghost sm" id="rw-retry">ხელახლა სცადე</button></div>`,
       );
       bindSubnav(root);
       $('rw-retry')?.addEventListener('click', () => void renderRewards());

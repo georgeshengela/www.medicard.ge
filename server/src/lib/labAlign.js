@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
+import { withOpenRouterModelFallback } from './aiEngine.js';
 import { AiEngineError } from './evidencemd.js';
 
 const CATALOG = {
@@ -149,7 +150,7 @@ function parseMaps(raw) {
     .filter((row) => row.from && row.to && titleOf(row.to));
 }
 
-async function askOpenRouter(unknowns) {
+async function askOpenRouter(unknowns, model) {
   if (!openrouter) {
     throw new AiEngineError('სახელების შემოწმების სერვისი არ არის კონფიგურირებული.', { status: 503 });
   }
@@ -161,7 +162,7 @@ async function askOpenRouter(unknowns) {
     .join('\n');
 
   const completion = await openrouter.chat.completions.create({
-    model: env.OPENROUTER_MODEL,
+    model: model || env.OPENROUTER_MODEL,
     temperature: 0,
     max_tokens: 2500,
     messages: [
@@ -199,7 +200,7 @@ Rules:
   };
 }
 
-export async function alignLabAnalytes(rows) {
+export async function alignLabAnalytes(rows, { model } = {}) {
   const analytes = uniqueAnalytes(rows);
   const maps = [];
   const unknown = [];
@@ -218,14 +219,16 @@ export async function alignLabAnalytes(rows) {
     unknown.push(row);
   }
 
-  let model = env.OPENROUTER_MODEL;
+  let resolvedModel = model || env.OPENROUTER_MODEL;
   let engine = 'local';
   let raw = '';
   let tokenUsage = null;
 
   if (unknown.length) {
-    const ai = await askOpenRouter(unknown);
-    model = ai.model;
+    const ai = await withOpenRouterModelFallback(resolvedModel, (candidate) =>
+      askOpenRouter(unknown, candidate),
+    );
+    resolvedModel = ai.model;
     engine = 'openrouter';
     raw = ai.content;
     tokenUsage = ai.usage;
@@ -255,7 +258,7 @@ export async function alignLabAnalytes(rows) {
     already,
     leftover: leftover.map((row) => row.key),
     catalogSize: Object.keys(CATALOG).length,
-    model,
+    model: resolvedModel,
     engine,
     raw,
     tokenUsage,

@@ -1,0 +1,1017 @@
+{
+  "generatedAt": "2026-09-07T17:56:56.343Z",
+  "pass": "pass2",
+  "shots": [
+    "pass1/login-1440-light",
+    "pass1/overview-1440-light",
+    "pass1/overview-1440-dark",
+    "pass1/users-1440-light",
+    "pass1/users-1440-dark",
+    "pass1/users-1280-light",
+    "pass1/users-1920-light",
+    "pass1/users-2560-light",
+    "pass1/user-detail-1440-light",
+    "pass1/medi-1440-light",
+    "pass1/medi-1440-dark",
+    "pass1/health-1440-light",
+    "pass1/health-1440-dark",
+    "pass1/push-brain-1440-light",
+    "pass1/push-compose-1440-light",
+    "pass1/push-compose-1440-dark",
+    "pass1/push-compose-1280-light",
+    "pass1/push-compose-1920-light",
+    "pass1/push-compose-2560-light",
+    "pass1/orders-1440-light",
+    "pass1/orders-1440-dark",
+    "pass1/orders-1280-light",
+    "pass1/orders-1920-light",
+    "pass1/orders-2560-light",
+    "pass1/packages-1440-light",
+    "pass1/sms-1440-light",
+    "pass1/pharmacy-1440-light",
+    "pass1/rewards-1440-light",
+    "pass1/rewards-1440-dark",
+    "pass1/rewards-1280-light",
+    "pass1/rewards-1920-light",
+    "pass1/rewards-2560-light",
+    "pass1/campaigns-1440-light",
+    "pass1/campaign-create-1440-light",
+    "pass1/partners-1440-light",
+    "pass1/redemptions-1440-light",
+    "pass1/codes-1440-light",
+    "pass1/quality-1440-light",
+    "pass1/quality-1440-dark",
+    "pass1/quality-1280-light",
+    "pass1/quality-1920-light",
+    "pass1/quality-2560-light",
+    "pass1/audit-1440-light",
+    "pass1/settings-1440-light",
+    "pass1/settings-1440-dark",
+    "pass1/palette-1440-light",
+    "pass1/settings-height-720",
+    "pass2/login-1440-light",
+    "pass2/overview-1440-light",
+    "pass2/overview-1440-dark",
+    "pass2/users-1440-light",
+    "pass2/users-1440-dark",
+    "pass2/users-1280-light",
+    "pass2/users-1920-light",
+    "pass2/users-2560-light",
+    "pass2/user-detail-1440-light",
+    "pass2/medi-1440-light",
+    "pass2/medi-1440-dark",
+    "pass2/health-1440-light",
+    "pass2/health-1440-dark",
+    "pass2/push-brain-1440-light",
+    "pass2/push-compose-1440-light",
+    "pass2/push-compose-1440-dark",
+    "pass2/push-compose-1280-light",
+    "pass2/push-compose-1920-light",
+    "pass2/push-compose-2560-light",
+    "pass2/orders-1440-light",
+    "pass2/orders-1440-dark",
+    "pass2/orders-1280-light",
+    "pass2/orders-1920-light",
+    "pass2/orders-2560-light",
+    "pass2/packages-1440-light",
+    "pass2/sms-1440-light",
+    "pass2/pharmacy-1440-light",
+    "pass2/rewards-1440-light",
+    "pass2/rewards-1440-dark",
+    "pass2/rewards-1280-light",
+    "pass2/rewards-1920-light",
+    "pass2/rewards-2560-light",
+    "pass2/campaigns-1440-light",
+    "pass2/campaign-create-1440-light",
+    "pass2/partners-1440-light",
+    "pass2/redemptions-1440-light",
+    "pass2/codes-1440-light",
+    "pass2/quality-1440-light",
+    "pass2/quality-1440-dark",
+    "pass2/quality-1280-light",
+    "pass2/quality-1920-light",
+    "pass2/quality-2560-light",
+    "pass2/audit-1440-light",
+    "pass2/settings-1440-light",
+    "pass2/settings-1440-dark",
+    "pass2/palette-1440-light",
+    "pass2/settings-height-720"
+  ],
+  "classifications": {
+    "pass1": {
+      "login": {
+        "class": "V3_NATIVE",
+        "fragments": []
+      },
+      "overview": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/overview",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 2,
+          "textLen": 344,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "users": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/users?range=7d&grain=dau",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 12,
+          "textLen": 1282,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "user-detail": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/users/6c39eb30-6c11-451a-94b5-7624e5d9d7ae?range=7d",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 2,
+          "textLen": 264,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "medi": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/ai",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 9,
+          "textLen": 1939,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "health": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/health",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 7,
+          "textLen": 1195,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "push-brain": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/push?tab=brain&range=7d&grain=dau",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 4,
+          "textLen": 562,
+          "hasNotifPreview": true,
+          "hasCriticalStrip": true,
+          "inertPanels": 5,
+          "hiddenPanels": 5
+        }
+      },
+      "push-compose": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/push?tab=compose",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 7,
+          "textLen": 5929,
+          "hasNotifPreview": true,
+          "hasCriticalStrip": true,
+          "inertPanels": 5,
+          "hiddenPanels": 5
+        }
+      },
+      "orders": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/orders",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 3,
+          "textLen": 899,
+          "hasNotifPreview": true,
+          "hasCriticalStrip": true,
+          "inertPanels": 5,
+          "hiddenPanels": 5
+        }
+      },
+      "packages": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/packages",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 4,
+          "textLen": 897,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "sms": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/sms",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 6,
+          "textLen": 4505,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "pharmacy": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/pharmacy",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 7,
+          "textLen": 3773,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "rewards": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=overview",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 7,
+          "textLen": 337,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "campaigns": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=campaigns",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 3,
+          "textLen": 557,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "campaign-create": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=campaigns&edit=new",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 4,
+          "textLen": 957,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "partners": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=partners",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 2,
+          "textLen": 562,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "redemptions": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=redemptions",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 2,
+          "textLen": 803,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "codes": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=codes",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 3,
+          "textLen": 513,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "quality": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/quality",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 3,
+          "textLen": 324,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "audit": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/audit?range=7d&grain=dau",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 6,
+          "textLen": 3257,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "settings": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/settings",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 12,
+          "textLen": 1457,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "palette": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/settings",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 8,
+          "textLen": 1457,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      }
+    },
+    "pass2": {
+      "login": {
+        "class": "V3_NATIVE",
+        "fragments": []
+      },
+      "overview": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/overview",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 2,
+          "textLen": 344,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "users": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/users?range=7d&grain=dau",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 12,
+          "textLen": 1282,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "user-detail": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/users/6c39eb30-6c11-451a-94b5-7624e5d9d7ae?range=7d",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 2,
+          "textLen": 264,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "medi": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/ai",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 9,
+          "textLen": 1939,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "health": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/health",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 7,
+          "textLen": 1195,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "push-brain": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/push?tab=brain&range=7d&grain=dau",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 4,
+          "textLen": 562,
+          "hasNotifPreview": true,
+          "hasCriticalStrip": true,
+          "inertPanels": 5,
+          "hiddenPanels": 5
+        }
+      },
+      "push-compose": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/push?tab=compose",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 4,
+          "textLen": 562,
+          "hasNotifPreview": true,
+          "hasCriticalStrip": true,
+          "inertPanels": 5,
+          "hiddenPanels": 5
+        }
+      },
+      "orders": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/orders",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 3,
+          "textLen": 899,
+          "hasNotifPreview": true,
+          "hasCriticalStrip": true,
+          "inertPanels": 5,
+          "hiddenPanels": 5
+        }
+      },
+      "packages": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/packages",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 4,
+          "textLen": 897,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "sms": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/sms",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 6,
+          "textLen": 4505,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "pharmacy": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/pharmacy",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 7,
+          "textLen": 3773,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "rewards": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=overview",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 7,
+          "textLen": 337,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "campaigns": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=campaigns",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 3,
+          "textLen": 557,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "campaign-create": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=campaigns&edit=new",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 4,
+          "textLen": 957,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "partners": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=partners",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 2,
+          "textLen": 562,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "redemptions": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=redemptions",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 2,
+          "textLen": 803,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "codes": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/rewards?tab=codes",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 3,
+          "textLen": 513,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "quality": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/quality",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 3,
+          "textLen": 324,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": false,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "audit": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/audit?range=7d&grain=dau",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 6,
+          "textLen": 3257,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "settings": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/settings",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 12,
+          "textLen": 1457,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      },
+      "palette": {
+        "class": "V3_NATIVE",
+        "fragments": [],
+        "info": {
+          "hash": "#/settings",
+          "v3Chrome": true,
+          "opsKpisVisible": false,
+          "pushPhoneBezel": false,
+          "legacyCardShadow": false,
+          "v25OrdKpiRaw": false,
+          "helpCount": 8,
+          "textLen": 1457,
+          "hasNotifPreview": false,
+          "hasCriticalStrip": true,
+          "inertPanels": 0,
+          "hiddenPanels": 0
+        }
+      }
+    }
+  },
+  "legacyDom": {},
+  "functional": {
+    "users": true,
+    "push": true,
+    "rewards": true,
+    "sms": true,
+    "settings": true,
+    "audit": true
+  },
+  "rateLimit": {
+    "status429": 0,
+    "urls": []
+  },
+  "pageErrors": [],
+  "consoleErrors": [],
+  "networkFails": [],
+  "widths": {
+    "users-1280": {
+      "vw": 1280,
+      "contentW": 1068,
+      "formMax": 0
+    },
+    "users-1920": {
+      "vw": 1920,
+      "contentW": 1692,
+      "formMax": 0
+    },
+    "users-2560": {
+      "vw": 2560,
+      "contentW": 2332,
+      "formMax": 0
+    },
+    "push-compose-1280": {
+      "vw": 1280,
+      "contentW": 1068,
+      "formMax": 619.703125
+    },
+    "push-compose-1920": {
+      "vw": 1920,
+      "contentW": 1692,
+      "formMax": 1010.5625
+    },
+    "push-compose-2560": {
+      "vw": 2560,
+      "contentW": 2332,
+      "formMax": 1044
+    },
+    "orders-1280": {
+      "vw": 1280,
+      "contentW": 1068,
+      "formMax": 0
+    },
+    "orders-1920": {
+      "vw": 1920,
+      "contentW": 1692,
+      "formMax": 0
+    },
+    "orders-2560": {
+      "vw": 2560,
+      "contentW": 2332,
+      "formMax": 0
+    },
+    "rewards-1280": {
+      "vw": 1280,
+      "contentW": 1068,
+      "formMax": 0
+    },
+    "rewards-1920": {
+      "vw": 1920,
+      "contentW": 1692,
+      "formMax": 0
+    },
+    "rewards-2560": {
+      "vw": 2560,
+      "contentW": 2332,
+      "formMax": 0
+    },
+    "quality-1280": {
+      "vw": 1280,
+      "contentW": 1068,
+      "formMax": 0
+    },
+    "quality-1920": {
+      "vw": 1920,
+      "contentW": 1692,
+      "formMax": 0
+    },
+    "quality-2560": {
+      "vw": 2560,
+      "contentW": 2332,
+      "formMax": 0
+    }
+  },
+  "before": {
+    "overview": "V3_WITH_LEGACY_FRAGMENT",
+    "users": "V3_NATIVE",
+    "medi": "V3_WITH_LEGACY_FRAGMENT",
+    "health": "V3_WITH_LEGACY_FRAGMENT",
+    "push-compose": "V3_WITH_LEGACY_FRAGMENT",
+    "orders": "V3_WITH_LEGACY_FRAGMENT",
+    "packages": "V3_WITH_LEGACY_FRAGMENT",
+    "sms": "V3_WITH_LEGACY_FRAGMENT",
+    "pharmacy": "V3_WITH_LEGACY_FRAGMENT",
+    "rewards": "V3_WITH_LEGACY_FRAGMENT",
+    "quality": "V3_WITH_LEGACY_FRAGMENT",
+    "audit": "V3_NATIVE",
+    "settings": "V3_NATIVE",
+    "login": "V3_NATIVE"
+  },
+  "after": {
+    "login": "V3_NATIVE",
+    "overview": "V3_NATIVE",
+    "users": "V3_NATIVE",
+    "user-detail": "V3_NATIVE",
+    "medi": "V3_NATIVE",
+    "health": "V3_NATIVE",
+    "push-brain": "V3_NATIVE",
+    "push-compose": "V3_NATIVE",
+    "orders": "V3_NATIVE",
+    "packages": "V3_NATIVE",
+    "sms": "V3_NATIVE",
+    "pharmacy": "V3_NATIVE",
+    "rewards": "V3_NATIVE",
+    "campaigns": "V3_NATIVE",
+    "campaign-create": "V3_NATIVE",
+    "partners": "V3_NATIVE",
+    "redemptions": "V3_NATIVE",
+    "codes": "V3_NATIVE",
+    "quality": "V3_NATIVE",
+    "audit": "V3_NATIVE",
+    "settings": "V3_NATIVE",
+    "palette": "V3_NATIVE"
+  },
+  "heights": {
+    "stickyFound": true,
+    "bottom": 688,
+    "vh": 720,
+    "visible": true
+  },
+  "css": {
+    "importantTotal": 82,
+    "unifyLoaded": true
+  },
+  "acceptance": {
+    "visualYes": true,
+    "nonNative": []
+  }
+}

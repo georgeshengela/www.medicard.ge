@@ -309,12 +309,29 @@ describe('health mutations overlay (no local engine)', () => {
     assert.equal(bundle.predictions.nextPeriodStart, '2026-09-09');
   });
 
-  it('End Period does not synthesize flow', () => {
+  it('End Period clears bleed on the stop date without synthesizing flow', () => {
     const cached = sampleBundle();
     const q = [createMutation('user-a', 'END_PERIOD', { date: '2026-08-14' })];
     const { bundle } = overlayPendingOnBundle(cached, q, 'user-a');
     assert.equal(bundle.logs.length, cached.logs.length);
     assert.ok(!bundle.logs.some((l) => l.date === '2026-08-15' && l.flow === 'medium'));
+    assert.equal(true, snapshotEqualsDerived(cached, bundle));
+  });
+
+  it('End Period overlay clears today so the hub is no longer on period', () => {
+    const cached = sampleBundle({
+      meta: { today: '2026-08-16', timezone: 'Asia/Tbilisi' },
+      periodRanges: [{ start: '2026-08-12', end: '2026-08-16', lengthDays: 5, source: 'logged' }],
+      logs: [
+        { ...sampleBundle().logs[0], date: '2026-08-12', flow: 'medium' },
+        { ...sampleBundle().logs[0], id: 'log-16', date: '2026-08-16', flow: 'light' },
+      ],
+    });
+    const q = [createMutation('user-a', 'END_PERIOD', { date: '2026-08-16' })];
+    const { bundle } = overlayPendingOnBundle(cached, q, 'user-a');
+    assert.equal(bundle.logs.find((l) => l.date === '2026-08-16')?.flow, 'none');
+    assert.equal(bundle.logs.find((l) => l.date === '2026-08-12')?.flow, 'medium');
+    assert.equal(bundle.predictions.calendar['2026-08-16']?.period, false);
     assert.equal(true, snapshotEqualsDerived(cached, bundle));
   });
 
@@ -750,6 +767,18 @@ describe('TTC fertility observations stay on UPSERT_LOG', () => {
     assert.equal(bundle.logs.find((l) => l.date === '2026-08-30').bbt, 36.8);
   });
 
+  it('queues cervical mucus as UPSERT_LOG', () => {
+    const planned = planQueuedLogMutations({ date: '2026-08-30', cervicalMucus: 'eggwhite' }, {});
+    assert.equal(planned[0].operation, 'UPSERT_LOG');
+    const account = enqueueMutation(
+      emptyAccount('user-a'),
+      createMutation('user-a', 'UPSERT_LOG', { date: '2026-08-30', cervicalMucus: 'eggwhite' }),
+    );
+    const { bundle } = overlayPendingOnBundle(sampleBundle(), account.queue, 'user-a');
+    assert.equal(bundle.logs.find((l) => l.date === '2026-08-30').cervicalMucus, 'eggwhite');
+    assert.equal(bundle.predictions.ovulationDate, '2026-08-25');
+  });
+
   it('does not leak User A TTC observations into User B', () => {
     let a = enqueueMutation(
       emptyAccount('user-a'),
@@ -813,6 +842,112 @@ describe('Phase 9 daily observations stay on UPSERT_LOG', () => {
     const overlayA = overlayPendingOnBundle(sampleBundle(), a.queue, 'user-a').bundle;
     const overlayB = overlayPendingOnBundle(sampleBundle(), emptyAccount('user-b').queue, 'user-b').bundle;
     assert.equal(overlayA.logs.find((l) => l.date === '2026-08-30').notes, 'A only');
+    assert.equal(overlayB.logs.find((l) => l.date === '2026-08-30'), undefined);
+  });
+});
+
+describe('Phase 22 pregnancy observations stay on UPSERT_LOG', () => {
+  it('overlays heartburn, swelling, energy, and pain without changing predictions', () => {
+    const q = [
+      createMutation('user-a', 'UPSERT_LOG', {
+        date: '2026-08-30',
+        flow: 'spotting',
+        symptoms: ['nausea', 'heartburn', 'fatigue', 'swelling'],
+        painEntries: [{ type: 'lower_back', severity: 'moderate' }],
+        observations: { energy: 'low' },
+        energy: 'low',
+        sleepQuality: 'poor',
+        stressLevel: 'medium',
+      }),
+    ];
+    const { bundle } = overlayPendingOnBundle(sampleBundle(), q, 'user-a');
+    const log = bundle.logs.find((l) => l.date === '2026-08-30');
+    assert.equal(log.flow, 'spotting');
+    assert.ok(log.symptoms.includes('heartburn'));
+    assert.equal(log.painEntries[0].type, 'lower_back');
+    assert.equal(log.energy, 'low');
+    assert.equal(log.sleepQuality, 'poor');
+    assert.equal(bundle.predictions.ovulationDate, '2026-08-25');
+  });
+});
+
+describe('Phase 11 structured observations stay on UPSERT_LOG', () => {
+  it('overlays energy without changing predictions', () => {
+    const q = [
+      createMutation('user-a', 'UPSERT_LOG', {
+        date: '2026-08-30',
+        observations: { energy: 'low' },
+        energy: 'low',
+        symptoms: ['bloating'],
+      }),
+    ];
+    const { bundle } = overlayPendingOnBundle(sampleBundle(), q, 'user-a');
+    const log = bundle.logs.find((l) => l.date === '2026-08-30');
+    assert.equal(log.energy, 'low');
+    assert.equal(log.observations.energy, 'low');
+    assert.equal(bundle.predictions.ovulationDate, '2026-08-25');
+  });
+});
+
+describe('Phase 28 observation assessments stay on CycleLog UPSERT', () => {
+  it('overlays present, absent, and clear-to-unknown without changing predictions', () => {
+    const present = [
+      createMutation('user-a', 'UPSERT_LOG', {
+        date: '2026-08-30',
+        symptoms: ['hot_flashes'],
+        observationAssessments: {},
+      }),
+    ];
+    const afterPresent = overlayPendingOnBundle(sampleBundle(), present, 'user-a').bundle;
+    assert.deepEqual(afterPresent.logs.find((l) => l.date === '2026-08-30').symptoms, ['hot_flashes']);
+
+    const absent = [
+      createMutation('user-a', 'UPSERT_LOG', {
+        date: '2026-08-30',
+        symptoms: [],
+        observationAssessments: { hot_flashes: 'ABSENT' },
+      }),
+    ];
+    const afterAbsent = overlayPendingOnBundle(sampleBundle(), absent, 'user-a').bundle;
+    assert.equal(
+      afterAbsent.logs.find((l) => l.date === '2026-08-30').observationAssessments.hot_flashes,
+      'ABSENT',
+    );
+
+    const cleared = [
+      createMutation('user-a', 'UPSERT_LOG', {
+        date: '2026-08-30',
+        symptoms: [],
+        observationAssessments: {},
+      }),
+    ];
+    const afterClear = overlayPendingOnBundle(afterAbsent, cleared, 'user-a').bundle;
+    assert.deepEqual(afterClear.logs.find((l) => l.date === '2026-08-30').observationAssessments, {});
+    assert.equal(afterClear.predictions.ovulationDate, '2026-08-25');
+  });
+
+  it('ABSENT-only still queues UPSERT_LOG', () => {
+    const planned = planQueuedLogMutations(
+      { date: '2026-08-30', observationAssessments: { nausea: 'ABSENT' } },
+      {},
+    );
+    assert.equal(planned[0].operation, 'UPSERT_LOG');
+  });
+
+  it('does not leak User A assessments into User B', () => {
+    const a = enqueueMutation(
+      emptyAccount('user-a'),
+      createMutation('user-a', 'UPSERT_LOG', {
+        date: '2026-08-30',
+        observationAssessments: { night_sweats: 'ABSENT' },
+      }),
+    );
+    const overlayA = overlayPendingOnBundle(sampleBundle(), a.queue, 'user-a').bundle;
+    const overlayB = overlayPendingOnBundle(sampleBundle(), emptyAccount('user-b').queue, 'user-b').bundle;
+    assert.equal(
+      overlayA.logs.find((l) => l.date === '2026-08-30').observationAssessments.night_sweats,
+      'ABSENT',
+    );
     assert.equal(overlayB.logs.find((l) => l.date === '2026-08-30'), undefined);
   });
 });

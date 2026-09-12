@@ -25,6 +25,8 @@ export const EMPTY_CYCLE_LOG: CycleLogForm = {
   caffeine: null,
   alcohol: null,
   customTagIds: [],
+  energy: null,
+  observationAssessments: {},
 };
 
 export function parseBbt(raw: string): number | null {
@@ -56,6 +58,8 @@ export function formFromCycleLog(log: CycleLog | undefined): CycleLogForm {
     caffeine: log.caffeine ?? null,
     alcohol: log.alcohol ?? null,
     customTagIds: log.customTagIds ?? [],
+    energy: log.energy ?? log.observations?.energy ?? null,
+    observationAssessments: { ...(log.observationAssessments || {}) },
   };
 }
 
@@ -98,6 +102,9 @@ export async function persistCycleLog(
       caffeine: form.caffeine,
       alcohol: form.alcohol,
       customTagIds: form.customTagIds,
+      observations: { energy: form.energy },
+      energy: form.energy,
+      observationAssessments: form.observationAssessments || {},
     },
     { markStart: Boolean(options?.markStart && isBleedFlow(form.flow)) },
   );

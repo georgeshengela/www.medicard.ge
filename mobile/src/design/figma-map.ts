@@ -21,7 +21,7 @@ export const MEDICARD_FIGMA_MAP = [
   { route: '/(auth)/sign-up', figmaSection: 'Authentication', notes: 'Registration' },
   { route: '/(auth)/phone', figmaSection: 'Authentication', notes: 'Phone OTP' },
   { route: '/(tabs)/home', figmaSection: 'Home & Smart Health Metrics', notes: 'Main hub' },
-  { route: '/chat/doctor', figmaSection: 'Doctor Consultation', notes: 'AI doctor chat' },
+  { route: '/chat/doctor', figmaSection: 'Doctor Consultation', notes: 'Medi chat (Figma kit name: Doctor Consultation)' },
   { route: '/symptoms', figmaSection: 'AI Symptom Checker', notes: 'Nightingale body-map symptom checker' },
   { route: '/pharmacy', figmaSection: 'E-Pharmacy', notes: 'Price compare' },
   { route: '/(tabs)/medications', figmaSection: 'Medication Tracker', notes: 'Calendar + reminders' },

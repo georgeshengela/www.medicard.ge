@@ -1,0 +1,28 @@
+{
+  "asyncStorage": "ABSENT",
+  "secureStore": [
+    "medicard.auth.token",
+    "medicard.cycle.offline.dek.v1"
+  ],
+  "sqlite": "ABSENT",
+  "zustandPersist": "ABSENT",
+  "reactQueryPersist": "ABSENT",
+  "filePrefs": "mobile/src/lib/storage.ts documentDirectory/medicard-prefs/",
+  "scopedKeysExamples": [
+    "medicard.cycle.offline.v2",
+    "medicard.meds.doseLogs",
+    "medicard.lab.panels.v1",
+    "medicard.symptom-check-history",
+    "medicard.weight.*",
+    "medicard.hydration.*",
+    "medicard.health.metrics.cache",
+    "medicard.health.sync.enabled",
+    "medicard.push.lastToken",
+    "medicard.push.optedIn",
+    "medicard.pregnancy.careCalendar.v1.{userId}",
+    "medicard.cycle.privacy.lock",
+    "medicard.biometric.enabled",
+    "medicard.mapbox.token"
+  ],
+  "accountSwitch": "getScopedPreference prefixes accountId; wipeLegacyUnscopedHealthCaches on switch; logout keeps cycle offline queue; delete destroys it"
+}

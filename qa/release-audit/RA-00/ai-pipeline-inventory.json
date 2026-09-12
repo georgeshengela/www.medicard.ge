@@ -1,0 +1,225 @@
+{
+  "generatedAt": "2026-09-11T20:32:26.154Z",
+  "count": 13,
+  "engines": [
+    "gemini_flash (default)",
+    "ling_free",
+    "evidencemd"
+  ],
+  "visionFallback": [
+    "OpenRouter",
+    "Anthropic",
+    "OpenAI"
+  ],
+  "patientContext": "server/src/lib/patient.js withPatientAiContext",
+  "retention": "AiInteraction stores userPrompt + assistantReply; no purge job found",
+  "pipelines": [
+    {
+      "id": "AI-CHAT",
+      "name": "Medi chat",
+      "route": "POST /api/ai/query",
+      "providers": [
+        "OpenRouter gemini_flash",
+        "OpenRouter ling_free",
+        "EvidenceMD"
+      ],
+      "promptFile": "server/src/lib/prompts.js",
+      "context": "withPatientAiContext",
+      "dataSent": [
+        "health profile",
+        "14-day metrics",
+        "active meds",
+        "cycle mode"
+      ],
+      "persistentState": "ChatSession + AiInteraction",
+      "medicalClaimsPersist": true
+    },
+    {
+      "id": "AI-CONSILIUM",
+      "name": "Consilium",
+      "route": "POST /api/ai/query mode=CONSILIUM",
+      "providers": [
+        "OpenRouter",
+        "EvidenceMD"
+      ],
+      "promptFile": "server/src/lib/prompts.js",
+      "context": "withPatientAiContext",
+      "dataSent": [
+        "same as chat"
+      ],
+      "persistentState": "ChatSession + AiInteraction",
+      "medicalClaimsPersist": true
+    },
+    {
+      "id": "AI-CYCLE-INSIGHTS",
+      "name": "Cycle wellness tips",
+      "route": "POST /api/cycle/insights",
+      "providers": [
+        "EvidenceMD CYCLE_WELLNESS",
+        "local heuristic fallback"
+      ],
+      "promptFile": "server/src/lib/prompts.js",
+      "context": "cycle profile; POSTPARTUM fail-closed",
+      "dataSent": [
+        "cycle mode/context unless POSTPARTUM"
+      ],
+      "persistentState": "CycleProfile.aiInsights ~18h cache",
+      "medicalClaimsPersist": true
+    },
+    {
+      "id": "AI-LAB-EXTRACT",
+      "name": "Lab OCR/extract",
+      "route": "POST /api/ai/extract-lab",
+      "providers": [
+        "OpenRouter vision"
+      ],
+      "promptFile": "server/src/lib/prompts.js VISION",
+      "context": "images/PDF pages",
+      "dataSent": [
+        "lab images"
+      ],
+      "persistentState": "client lab panels + possible records",
+      "medicalClaimsPersist": true
+    },
+    {
+      "id": "AI-LAB-EXPLAIN",
+      "name": "Lab explain",
+      "route": "POST /api/ai/explain-lab",
+      "providers": [
+        "EvidenceMD/OpenRouter"
+      ],
+      "promptFile": "server/src/lib/prompts.js LAB",
+      "context": "withPatientAiContext + extracted values",
+      "dataSent": [
+        "lab values",
+        "patient context"
+      ],
+      "persistentState": "AiInteraction",
+      "medicalClaimsPersist": true
+    },
+    {
+      "id": "AI-LAB-ALIGN",
+      "name": "Lab name align",
+      "route": "POST /api/ai/align-lab",
+      "providers": [
+        "OpenAI/OpenRouter"
+      ],
+      "promptFile": "server/src/lib/labAlign.js",
+      "context": "OCR names",
+      "dataSent": [
+        "parameter names"
+      ],
+      "persistentState": "AiInteraction",
+      "medicalClaimsPersist": false
+    },
+    {
+      "id": "AI-IMAGE",
+      "name": "Analyze image (imaging/skin)",
+      "route": "POST /api/ai/analyze-image",
+      "providers": [
+        "OpenRouter vision",
+        "Anthropic",
+        "OpenAI GPT-4o"
+      ],
+      "promptFile": "server/src/lib/vision.js",
+      "context": "optional patient context",
+      "dataSent": [
+        "image bytes",
+        "kind prompt"
+      ],
+      "persistentState": "MedicalRecord.aiAnalysis",
+      "medicalClaimsPersist": true
+    },
+    {
+      "id": "AI-WEIGHT",
+      "name": "Weight advice",
+      "route": "POST /api/ai/weight-advice",
+      "providers": [
+        "OpenRouter"
+      ],
+      "promptFile": "server/src/lib/weightAdvice.js",
+      "context": "weight logs",
+      "dataSent": [
+        "weight history"
+      ],
+      "persistentState": "cached per day",
+      "medicalClaimsPersist": true
+    },
+    {
+      "id": "AI-SKINCARE",
+      "name": "Skincare",
+      "route": "POST /api/ai/skincare",
+      "providers": [
+        "OpenRouter/EvidenceMD"
+      ],
+      "promptFile": "server/src/lib/prompts.js SKINCARE",
+      "context": "withPatientAiContext",
+      "dataSent": [
+        "patient context"
+      ],
+      "persistentState": "AiInteraction",
+      "medicalClaimsPersist": true
+    },
+    {
+      "id": "AI-MED-REVIEW",
+      "name": "Medication review",
+      "route": "POST /api/ai/medication-review",
+      "providers": [
+        "OpenRouter/EvidenceMD"
+      ],
+      "promptFile": "server/src/lib/prompts.js MEDICATION",
+      "context": "schedules",
+      "dataSent": [
+        "medication names/doses"
+      ],
+      "persistentState": "AiInteraction",
+      "medicalClaimsPersist": true
+    },
+    {
+      "id": "AI-SYMPTOM",
+      "name": "Symptom check",
+      "route": "POST /api/ai/symptom-check",
+      "providers": [
+        "OpenRouter/EvidenceMD"
+      ],
+      "promptFile": "server/src/lib/prompts.js SYMPTOM_CHECKER",
+      "context": "structured symptoms",
+      "dataSent": [
+        "symptom payload",
+        "patient context"
+      ],
+      "persistentState": "MedicalRecord + AiInteraction",
+      "medicalClaimsPersist": true
+    },
+    {
+      "id": "AI-ONBOARDING",
+      "name": "Onboarding analysis",
+      "route": "POST /api/health-profile/onboarding-analysis",
+      "providers": [
+        "OpenRouter"
+      ],
+      "promptFile": "server/src/lib/onboardingAnalysis.js",
+      "context": "profile + extraAnswers + 14d metrics + meds + cycle",
+      "dataSent": [
+        "health profile"
+      ],
+      "persistentState": "heuristic score + AI nudge",
+      "medicalClaimsPersist": true
+    },
+    {
+      "id": "AI-ADMIN-SCAN",
+      "name": "Admin AI quality scan",
+      "route": "POST /api/admin/ai/scan",
+      "providers": [
+        "OpenRouter judge"
+      ],
+      "promptFile": "server/src/lib/aiQuality.js",
+      "context": "stored interactions",
+      "dataSent": [
+        "prompts/replies from AiInteraction"
+      ],
+      "persistentState": "AiEvalRun/Result",
+      "medicalClaimsPersist": false
+    }
+  ]
+}

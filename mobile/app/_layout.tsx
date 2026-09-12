@@ -9,7 +9,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { Notifications } from '@/lib/expoNotifications';
 import { enableFreeze, enableScreens } from 'react-native-screens';
-import Constants from 'expo-constants';
 import { AppChromeOverlay } from '@/components/navigation/AppChromeOverlay';
 import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
 import { useTabChromeHidden } from '@/components/navigation/tabChrome';
@@ -26,7 +25,9 @@ import { nextProfileSetupHref } from '@/lib/onboarding';
 import { FontsProvider } from '@/store/FontsContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
 import { api } from '@/lib/api';
+import { APP_VERSION } from '@/lib/appVersion';
 import { rememberMapboxToken } from '@/lib/run/mapbox';
+import { rememberMediWorldExploreServerEnabled, rememberMediWorldGardenServerEnabled, rememberMediWorldMovementServerEnabled, rememberMediWorldServerEnabled } from '@/lib/mediWorld/enabled';
 import { consumePendingCycleShare, isCycleShareCode, savePendingCycleShare } from '@/lib/cycleSharePending';
 import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -38,8 +39,6 @@ enableScreens(true);
 enableFreeze(true);
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
-
-const APP_VERSION = Constants.expoConfig?.version ?? '27.0.2';
 
 /** Redirects between the auth stack and the app shell as the session changes. */
 function AuthGate({ children }: { children: React.ReactNode }) {
@@ -65,6 +64,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       .status(APP_VERSION)
       .then((status) => {
         rememberMapboxToken(status.mapboxToken);
+        rememberMediWorldServerEnabled(status.settings.mediWorldEnabled);
+        rememberMediWorldExploreServerEnabled(status.settings.mediWorldExploreEnabled);
+        rememberMediWorldMovementServerEnabled(status.settings.mediWorldMovementEnabled);
+        rememberMediWorldGardenServerEnabled(status.settings.mediWorldGardenEnabled);
         if (status.settings.maintenanceMode) {
           setGate({ kind: 'maintenance', message: status.settings.maintenanceMessage });
           return;
@@ -155,6 +158,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!ready) return <View className="flex-1 bg-bg-100" />;
+
+  const inAuthGroup = segments[0] === '(auth)';
+  if (!user && !inAuthGroup) {
+    return <View className="flex-1 bg-bg-100" />;
+  }
+
   return <>{children}</>;
 }
 
@@ -291,6 +300,7 @@ function AppShell() {
               <Stack.Screen name="weather" options={{ headerShown: false }} />
               <Stack.Screen name="medi-quest" options={{ headerShown: false }} />
               <Stack.Screen name="medi-companion" options={{ headerShown: false }} />
+              <Stack.Screen name="medi-world" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="chat" options={{ headerShown: false }} />
               <Stack.Screen name="module" options={{ headerShown: false }} />

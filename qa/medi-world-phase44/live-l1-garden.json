@@ -1,0 +1,48 @@
+{
+  "email": "garden.l1.1789235321667@medicard.test",
+  "userId": "e403b3be-11b6-4300-9f08-5b1bb27fc096",
+  "worldLevel": 1,
+  "plots": [
+    {
+      "index": 0,
+      "unlocked": true,
+      "unlockLevel": 1,
+      "plant": null
+    },
+    {
+      "index": 1,
+      "unlocked": true,
+      "unlockLevel": 1,
+      "plant": null
+    },
+    {
+      "index": 2,
+      "unlocked": true,
+      "unlockLevel": 1,
+      "plant": null
+    },
+    {
+      "index": 3,
+      "unlocked": false,
+      "unlockLevel": 5,
+      "plant": null
+    },
+    {
+      "index": 4,
+      "unlocked": false,
+      "unlockLevel": 10,
+      "plant": null
+    },
+    {
+      "index": 5,
+      "unlocked": false,
+      "unlockLevel": 20,
+      "plant": null
+    }
+  ],
+  "unlockedCount": 3,
+  "atmosphere": "quiet_beginning",
+  "reaction": {
+    "key": "first_visit"
+  }
+}

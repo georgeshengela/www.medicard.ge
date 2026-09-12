@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'settings'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'cycleqa', 'settings'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -804,6 +804,7 @@ async function boot() {
     else if (tab === 'users' && userId !== state.userPageId) renderUsers();
     else if (tab === 'health' && typeof renderHealthOps === 'function') renderHealthOps();
     else if (tab === 'rewards' && typeof renderRewards === 'function') renderRewards();
+    else if (tab === 'cycleqa' && typeof renderCycleQa === 'function') renderCycleQa();
   });
   $('drawer-backdrop').addEventListener('click', async () => {
     if (window.AdminV3?.requestCloseOverlay) {
@@ -988,6 +989,7 @@ async function switchTab(tab, opts = {}) {
     health: ['Health & Medi', 'ჯანმრთელობა', 'რომელი ჯანმრთელობის ფიჩერები გამოიყენება და ინახება?', 'health.page'],
     audit: ['Production', 'აუდიტი', 'ვინ შეცვალა რა და როდის?', 'audit.page'],
     quality: ['Production', 'ხარისხი', 'ვერსიები, ტელემეტრია და მონაცემები სანდოა?', 'quality.page'],
+    cycleqa: ['Production', 'ფაზები', 'რა გაყინულია, როგორ მიდის QA და რა დაფიქსირდა თითო ფაზაზე?', 'cycleqa.page'],
     orders: ['Operations', 'შეკვეთები', 'რა საჭიროებს ოპერაციულ დამუშავებას?', 'orders.page'],
     users: ['People', 'მომხმარებლები', 'ვინ არის ბაზაში, რა ანგარიშის მდგომარეობა აქვს და ვისი გამოძიება გჭირდება.', 'users.registry'],
     packages: ['Commerce', 'პაკეტები', 'ტარიფები, ლიმიტები და უფლებები.', 'packages.page'],
@@ -1015,6 +1017,7 @@ async function switchTab(tab, opts = {}) {
   if (tab === 'health' && typeof renderHealthOps === 'function') await renderHealthOps();
   if (tab === 'audit' && typeof renderAuditLog === 'function') await renderAuditLog();
   if (tab === 'quality' && typeof renderQualityOps === 'function') await renderQualityOps();
+  if (tab === 'cycleqa' && typeof renderCycleQa === 'function') await renderCycleQa();
   if (tab === 'settings') await renderSettings();
   startAdminLive();
 }
@@ -2782,7 +2785,7 @@ async function renderUserPage(id, opts = {}) {
 window.editUser = editUser;
 
 const FEATURE_LABELS = {
-  doctorChat: 'ექიმის ჩატი',
+  doctorChat: 'Medi-სთან საუბარი',
   consilium: 'კონსილიუმი',
   labAnalysis: 'ლაბორატორია',
   imaging: 'რენტგენი / CT',
@@ -3631,7 +3634,7 @@ async function viewPushCampaign(id) {
 }
 
 const AI_MODE_LABELS = {
-  DOCTOR: 'AI ექიმი',
+  DOCTOR: 'Medi',
   CONSILIUM: 'კონსილიუმი',
   LAB: 'ლაბორატორია',
   IMAGING: 'იმიჯინგი',

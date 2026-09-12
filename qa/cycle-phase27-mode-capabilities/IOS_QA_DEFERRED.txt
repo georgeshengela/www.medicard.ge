@@ -1,0 +1,1 @@
+iOS Cycle QA is deferred by product decision. Phase 27 Android capture only.

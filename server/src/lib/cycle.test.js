@@ -226,9 +226,9 @@ describe('buildPredictions', () => {
       ]),
       predictions: pred,
     });
-    assert.equal(summary.cycleCount, 2);
-    assert.equal(summary.confidence, 'low');
-    assert.equal(summary.nextPeriodStart, '2026-04-02');
+    assert.ok(summary.menstrualHistory);
+    assert.equal(Object.hasOwn(summary, 'nextPeriodStart'), false);
+    assert.equal(Object.hasOwn(summary, 'confidence'), false);
   });
 });
 

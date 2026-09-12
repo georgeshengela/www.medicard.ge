@@ -1,0 +1,292 @@
+{
+  "generatedAt": "2026-09-07T17:42:31.532Z",
+  "shots": [
+    "global/login-after-auth-light",
+    "global/help-how-admin-works",
+    "overview/1440-light",
+    "overview/1440-dark",
+    "overview/1920-light",
+    "overview/1280-light",
+    "users/1440-light",
+    "users/1440-dark",
+    "users/1920-light",
+    "users/1280-light",
+    "medi/1440-light",
+    "medi/1440-dark",
+    "medi/1920-light",
+    "medi/1280-light",
+    "health/1440-light",
+    "health/1440-dark",
+    "health/1920-light",
+    "health/1280-light",
+    "push/1440-light",
+    "push/1440-dark",
+    "push/1920-light",
+    "push/1280-light",
+    "orders/1440-light",
+    "orders/1440-dark",
+    "orders/1920-light",
+    "orders/1280-light",
+    "packages/1440-light",
+    "packages/1440-dark",
+    "packages/1920-light",
+    "packages/1280-light",
+    "sms/1440-light",
+    "sms/1440-dark",
+    "sms/1920-light",
+    "sms/1280-light",
+    "pharmacy/1440-light",
+    "pharmacy/1440-dark",
+    "pharmacy/1920-light",
+    "pharmacy/1280-light",
+    "rewards/1440-light",
+    "rewards/1440-dark",
+    "rewards/1920-light",
+    "rewards/1280-light",
+    "quality/1440-light",
+    "quality/1440-dark",
+    "quality/1920-light",
+    "quality/1280-light",
+    "audit/1440-light",
+    "audit/1440-dark",
+    "audit/1920-light",
+    "audit/1280-light",
+    "settings/1440-light",
+    "settings/1440-dark",
+    "settings/1920-light",
+    "settings/1280-light",
+    "push/1920-dark",
+    "rewards/1920-dark",
+    "settings/1920-dark",
+    "quality/1920-dark",
+    "users/2560-light"
+  ],
+  "measures": {
+    "overview-1440": {
+      "hash": "#/overview",
+      "help": 2,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 134
+    },
+    "overview-1920": {
+      "panelW": 1628,
+      "vw": 1920
+    },
+    "overview-1280": {
+      "overflowX": false
+    },
+    "users-1440": {
+      "hash": "#/users?range=7d&grain=dau",
+      "help": 4,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 1072
+    },
+    "users-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "users-1280": {
+      "overflowX": false
+    },
+    "medi-1440": {
+      "hash": "#/ai",
+      "help": 7,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 1744
+    },
+    "medi-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "medi-1280": {
+      "overflowX": false
+    },
+    "health-1440": {
+      "hash": "#/health",
+      "help": 7,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 985
+    },
+    "health-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "health-1280": {
+      "overflowX": false
+    },
+    "push-1440": {
+      "hash": "#/push?tab=brain&range=7d&grain=dau",
+      "help": 4,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 464
+    },
+    "push-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "push-1280": {
+      "overflowX": false
+    },
+    "orders-1440": {
+      "hash": "#/orders",
+      "help": 6,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 689
+    },
+    "orders-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "orders-1280": {
+      "overflowX": false
+    },
+    "packages-1440": {
+      "hash": "#/packages",
+      "help": 4,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 687
+    },
+    "packages-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "packages-1280": {
+      "overflowX": false
+    },
+    "sms-1440": {
+      "hash": "#/sms",
+      "help": 5,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 4295
+    },
+    "sms-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "sms-1280": {
+      "overflowX": false
+    },
+    "pharmacy-1440": {
+      "hash": "#/pharmacy",
+      "help": 5,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 3563
+    },
+    "pharmacy-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "pharmacy-1280": {
+      "overflowX": false
+    },
+    "rewards-1440": {
+      "hash": "#/rewards?tab=overview",
+      "help": 3,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 127
+    },
+    "rewards-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "rewards-1280": {
+      "overflowX": false
+    },
+    "quality-1440": {
+      "hash": "#/quality",
+      "help": 3,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 212
+    },
+    "quality-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "quality-1280": {
+      "overflowX": false
+    },
+    "audit-1440": {
+      "hash": "#/audit?range=7d&grain=dau",
+      "help": 6,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 3047
+    },
+    "audit-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "audit-1280": {
+      "overflowX": false
+    },
+    "settings-1440": {
+      "hash": "#/settings",
+      "help": 9,
+      "v3Module": true,
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "textLen": 1247
+    },
+    "settings-1920": {
+      "panelW": 0,
+      "vw": 1920
+    },
+    "settings-1280": {
+      "overflowX": false
+    },
+    "users2560": {
+      "pageMax": "min(2000px, calc(100vw - 228px - 80px))",
+      "tableW": 1998
+    }
+  },
+  "functional": {
+    "overview": "WORKING",
+    "users": "WORKING",
+    "medi": "WORKING",
+    "health": "WORKING",
+    "push": "WORKING",
+    "orders": "WORKING",
+    "packages": "WORKING",
+    "sms": "WORKING",
+    "pharmacy": "WORKING",
+    "rewards": "WORKING",
+    "quality": "WORKING",
+    "audit": "WORKING",
+    "settings": "WORKING",
+    "pushTabUrl": true,
+    "rewardsTabUrl": true,
+    "settingsSticky": 1,
+    "campaignFullPage": 3
+  },
+  "pageErrors": [],
+  "consoleLogs": [
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  ],
+  "networkFails": []
+}

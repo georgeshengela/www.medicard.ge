@@ -1,0 +1,311 @@
+{
+  "shots": [
+    "overview-1440-light.png",
+    "users-1440-light.png",
+    "medi-1440-light.png",
+    "health-1440-light.png",
+    "push-brain-1440-light.png",
+    "push-compose-1440-light.png",
+    "orders-1440-light.png",
+    "packages-1440-light.png",
+    "sms-1440-light.png",
+    "pharmacy-1440-light.png",
+    "rewards-1440-light.png",
+    "campaigns-1440-light.png",
+    "campaign-create-1440-light.png",
+    "partners-1440-light.png",
+    "redemptions-1440-light.png",
+    "codes-1440-light.png",
+    "quality-1440-light.png",
+    "audit-1440-light.png",
+    "settings-1440-light.png"
+  ],
+  "classify": {
+    "overview": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/overview",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 0,
+        "loading": false
+      }
+    },
+    "users": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/users?range=7d&grain=dau",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 0,
+        "loading": false
+      }
+    },
+    "medi": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/ai",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 4,
+        "loading": false
+      }
+    },
+    "health": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/health",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 4,
+        "loading": false
+      }
+    },
+    "push-brain": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/push?tab=brain&range=7d&grain=dau",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": true,
+        "queue": false,
+        "critical": 7,
+        "loading": false
+      }
+    },
+    "push-compose": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/push?tab=compose&range=7d&grain=dau",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": true,
+        "preview": true,
+        "queue": false,
+        "critical": 7,
+        "loading": false
+      }
+    },
+    "orders": {
+      "class": "V3_WITH_LEGACY_FRAGMENT",
+      "info": {
+        "title": "Admin",
+        "hash": "#/orders",
+        "opsKpis": false,
+        "mosaic": true,
+        "phone": false,
+        "composeVisible": true,
+        "preview": true,
+        "queue": true,
+        "critical": 12,
+        "loading": false
+      }
+    },
+    "packages": {
+      "class": "V3_WITH_LEGACY_FRAGMENT",
+      "info": {
+        "title": "Admin",
+        "hash": "#/packages",
+        "opsKpis": false,
+        "mosaic": true,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": true,
+        "critical": 6,
+        "loading": false
+      }
+    },
+    "sms": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/sms",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 2,
+        "loading": false
+      }
+    },
+    "pharmacy": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/pharmacy",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 2,
+        "loading": false
+      }
+    },
+    "rewards": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/rewards?tab=overview",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 9,
+        "loading": false
+      }
+    },
+    "campaigns": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/rewards?tab=campaigns",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 0,
+        "loading": false
+      }
+    },
+    "campaign-create": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/rewards?tab=campaigns&edit=new",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 0,
+        "loading": false
+      }
+    },
+    "partners": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/rewards?tab=partners",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 0,
+        "loading": false
+      }
+    },
+    "redemptions": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/rewards?tab=redemptions",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 0,
+        "loading": false
+      }
+    },
+    "codes": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/rewards?tab=codes",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 0,
+        "loading": false
+      }
+    },
+    "quality": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/quality",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 0,
+        "loading": false
+      }
+    },
+    "audit": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/audit?range=7d&grain=dau",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 0,
+        "loading": false
+      }
+    },
+    "settings": {
+      "class": "V3_NATIVE",
+      "info": {
+        "title": "Admin",
+        "hash": "#/settings",
+        "opsKpis": false,
+        "mosaic": false,
+        "phone": false,
+        "composeVisible": false,
+        "preview": false,
+        "queue": false,
+        "critical": 5,
+        "loading": false
+      }
+    }
+  },
+  "contact": {}
+}

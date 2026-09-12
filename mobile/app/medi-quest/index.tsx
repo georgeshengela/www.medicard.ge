@@ -38,6 +38,8 @@ import {
   subscribeMediCoinBalance,
 } from '@/lib/quest/cache';
 import { trackQuestEvent } from '@/lib/productObservability';
+import { useMediWorldAvailable } from '@/lib/mediWorld/enabled';
+import { worldCopy } from '@/i18n/world/catalog.js';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { QUEST } from '@/theme/questTokens';
 
@@ -49,6 +51,7 @@ export default function MediQuestHub() {
   const { user } = useAuth();
   const offline = useOffline();
   const reduce = usePrefersReducedMotion();
+  const worldOn = useMediWorldAvailable();
   const weather = useWeather();
   const copy = q('ka');
   const { dashboard, loading, error, stale, refresh, claim, mood, fixtureOffline } = useQuestDashboard();
@@ -408,6 +411,13 @@ export default function MediQuestHub() {
               <NavTile icon={<History size={18} color={colors.primary200} strokeWidth={2.2} />} label={copy.history} onPress={openHistory} />
               <NavTile icon={<Wallet size={18} color={colors.primary200} strokeWidth={2.2} />} label={copy.wallet} onPress={openWallet} />
               <NavTile icon={<Gift size={18} color={colors.primary200} strokeWidth={2.2} />} label={copy.rewardsStore} onPress={openRewards} />
+              {worldOn ? (
+                <NavTile
+                  icon={<Sparkles size={18} color={colors.primary200} strokeWidth={2.2} />}
+                  label={worldCopy('ka').title}
+                  onPress={() => router.push('/medi-world' as never)}
+                />
+              ) : null}
             </Animated.View>
           </>
         ) : null}

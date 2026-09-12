@@ -273,7 +273,7 @@ function opsEmpty(title, body, ico = 'activity') {
 }
 
 function opsError(message, retryId) {
-  return `<div class="ops-empty ops-error"><strong>მონაცემების ჩატვირთვა ვერ მოხერხდა.</strong><p>${opsEscape(message)}</p>${retryId ? `<button type="button" class="btn tiny ghost" id="${retryId}">ხელახლა ცდა</button>` : ''}</div>`;
+  return `<div class="ops-empty ops-error"><strong>მონაცემების ჩატვირთვა ვერ მოხერხდა.</strong><p>${opsEscape(message)}</p>${retryId ? `<button type="button" class="btn tiny ghost" id="${retryId}">ხელახლა სცადე</button>` : ''}</div>`;
 }
 
 const SUPPRESS_KA = {
@@ -1535,6 +1535,7 @@ function renderCommandPalette() {
     { tab: 'health', label: 'ჯანმრთელობა' },
     { tab: 'push', label: 'შეტყობინებები / Push' },
     { tab: 'quality', label: 'ხარისხი / სისტემა' },
+    { tab: 'cycleqa', label: 'ფაზები / QA' },
     { tab: 'push', label: 'Brain' },
     { tab: 'audit', label: 'აუდიტი' },
     { tab: 'orders', label: 'შეკვეთები' },

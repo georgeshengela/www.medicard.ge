@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-09-11T21:10:00.000Z",
+  "authUploadP0": [],
+  "authUploadP1": [],
+  "queuedUnrelatedFromRA00": [
+    { "id": "RA00-002", "severity": "P1", "title": "Reward detail undeclared symbols" },
+    { "id": "RA00-003", "severity": "P1", "title": "CycleMoreTracking undeclared pregnancy" },
+    { "id": "RA00-004", "severity": "P1", "title": "alcoholLabel export mismatch" },
+    { "id": "RA00-005", "severity": "P1", "title": "AiInteraction stores prompts" },
+    { "id": "RA00-006", "severity": "P1", "title": "Prisma migration history drift" },
+    { "id": "RA00-007", "severity": "P1", "title": "123 baseline tsc errors" },
+    { "id": "RA00-008", "severity": "P1", "title": "Brain re-engage test" }
+  ],
+  "notes": [
+    "Cycle custom tag 403 vs 404 is an existence leak, not content IDOR — left as P3, not RA-01 blocking.",
+    "JWT has no server denylist; stolen tokens work until expiry. Existing architecture, not a new P0.",
+    "Browsers that cached /uploads under max-age=7d before the fix may retain copies until that cache expires."
+  ]
+}

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { generateOnboardingAnalysis } from '../lib/onboardingAnalysis.js';
+import { resolveOpenRouterModel } from '../lib/aiEngine.js';
 import { birthDateSchema, genderSchema, publicHealthProfile, publicUser } from '../lib/patient.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
@@ -153,6 +154,7 @@ healthProfileRouter.post(
       scheduledMeds: schedules.map((row) => `${row.medName}${row.dosage ? ` ${row.dosage}` : ''}`),
       cycleMode: cycle?.mode ?? null,
       previousScore: force ? previousScore : null,
+      model: resolveOpenRouterModel(req.user),
     });
     const mergedExtra = { ...extra, onboardingAnalysis: analysis };
 

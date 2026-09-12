@@ -6,6 +6,7 @@ import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { useFigmaProfileSetup } from '@/constants/figmaProfileSetupLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { authErrorMessage } from '@/lib/authErrorMessage';
 import { useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
 
@@ -51,9 +52,7 @@ export default function ProfileSetupPhoneScreen() {
       const taken = e instanceof ApiError && (e.code === 'PHONE_TAKEN' || e.status === 409);
       const message = taken
         ? ka.auth.phoneTakenBody
-        : e instanceof ApiError
-          ? e.message
-          : ka.common.error;
+        : authErrorMessage(e);
       setError(message);
       if (taken) {
         Alert.alert(ka.auth.phoneTakenTitle, ka.auth.phoneTakenBody, [{ text: ka.common.close }]);

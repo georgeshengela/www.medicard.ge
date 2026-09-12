@@ -1,0 +1,16 @@
+{
+  "phase": 41,
+  "classifiedPeriodFlowDates": "civil keys; accepts run.start/end and keep.bleedStart/bleedEnd",
+  "engineLogWhere": "unchanged — all trackingContext=POSTPARTUM excluded",
+  "filterLogsForEngine": "unchanged — unclassified and classified postpartum stamps excluded",
+  "forecastLogsForMode.POSTPARTUM": "engine-eligible only (no postpartum stamps)",
+  "filterLogsForMenstrualHistory": "engine-eligible UNION owner-classified PERIOD_FLOW dates",
+  "PERIOD_FLOWS": ["light", "medium", "heavy"],
+  "shouldObservePrediction.POSTPARTUM": false,
+  "capabilities.POSTPARTUM": {
+    "showNextPeriodForecast": false,
+    "showLatePeriod": false,
+    "showFertileEstimates": false,
+    "showOvulationEstimate": false
+  }
+}

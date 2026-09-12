@@ -5,6 +5,11 @@
 
 import { parsePainEntries } from './cycleObservations.js';
 import {
+  PAIN_MANAGED_SYMPTOM_IDS,
+  PAIN_TYPE_TO_SYMPTOM,
+  stripPainManagedSymptoms,
+} from './cycleObservationRegistry.js';
+import {
   BASIC_STATS_MIN_CYCLES,
   PATTERN_CYCLE_HORIZON,
   PMS_DAYS_BEFORE_MAX,
@@ -67,9 +72,14 @@ function rangeOf(nums) {
 }
 
 function logKeys(log) {
-  const symptoms = Array.isArray(log.symptoms) ? log.symptoms.map(String) : [];
+  const pain = parsePainEntries(log?.painEntries);
+  const symptoms = stripPainManagedSymptoms(
+    Array.isArray(log.symptoms) ? log.symptoms.map(String) : [],
+    pain,
+  );
   const moods = Array.isArray(log.moods) ? log.moods.map(String) : [];
-  return { symptoms, moods, keys: [...symptoms, ...moods] };
+  const painMapped = pain.map((entry) => PAIN_TYPE_TO_SYMPTOM[entry.type]).filter(Boolean);
+  return { symptoms, moods, keys: [...new Set([...symptoms, ...moods, ...painMapped])] };
 }
 
 function inCycle(date, cycle) {
@@ -276,7 +286,7 @@ export function buildHistoricalAnalytics({
   const symptomPatterns = buildRecurring(
     eligible,
     logs,
-    SYMPTOM_CANDIDATES,
+    SYMPTOM_CANDIDATES.filter((key) => !PAIN_MANAGED_SYMPTOM_IDS.includes(key)),
     (key) => (log) => logKeys(log).symptoms.includes(key),
     patternReady,
   );

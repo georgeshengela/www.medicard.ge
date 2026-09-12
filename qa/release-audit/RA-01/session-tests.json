@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-09-11T21:10:00.000Z",
+  "jwt": {
+    "alg": "HS256",
+    "secret": "env.JWT_SECRET (not rotated this audit)",
+    "userExpiry": "JWT_EXPIRES_IN default 30d",
+    "adminExpiry": "7d",
+    "refresh": false,
+    "serverRevocation": false,
+    "expired": "requireAuth TokenExpiredError → 401 TOKEN_EXPIRED",
+    "malformed": "401 TOKEN_INVALID without JWT parse details in the body"
+  },
+  "logout": {
+    "client": "clearToken + clearSessionSnapshot + resetSession",
+    "server": "token remains valid until expiry if stolen (no denylist)",
+    "android": "Logout confirm → welcome. Health Home gone."
+  },
+  "coldStart": {
+    "loggedOut": "AuthGate blank then /(auth); Android deeplink medicard://cycle stayed on auth welcome",
+    "loggedIn": "Android cold start restored Cycle QA fixture Home from stored token",
+    "mismatch": "snapshot ignored when jwt sub !== snapshot.user.id"
+  },
+  "expiredOpenApp": "Next protected API uses requireAuth; 401 TOKEN_EXPIRED. Client hydrate catch clears token on unauthorized."
+}

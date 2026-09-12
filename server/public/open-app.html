@@ -14,17 +14,38 @@
   <main class="hero" style="min-height:70vh;display:flex;align-items:center">
     <div class="wrap" style="max-width:560px">
       <p class="kicker">Medicard.GE</p>
-      <h1 style="max-width:none;font-size:32px">ეს ბმული იხსნება აპში</h1>
+      <h1 style="max-width:none;font-size:32px">გახსენით Medicard-ში</h1>
       <p class="lead">
-        პარტნიორის ციკლის ხედვა და სხვა პირადი გვერდები მხოლოდ მედიქარდის მობილურ აპშია.
-        ვებ-კაბინეტი არ არსებობს.
+        პარტნიორის ციკლის ხედვა მხოლოდ აპშია. დააყენეთ Medicard, შედით <strong>თქვენი</strong> ანგარიშით
+        (არა მისი), შემდეგ დააჭირეთ ღილაკს.
       </p>
       <div class="hero-actions">
-        <a class="btn btn-cta" href="/">საიტზე დაბრუნება</a>
-        <a class="btn btn-ghost" href="mailto:support@medicard.ge">დახმარება</a>
+        <a class="btn btn-cta" id="open-app" href="#">გახსენით Medicard-ში</a>
+        <a class="btn btn-ghost" href="/">საიტზე დაბრუნება</a>
       </div>
+      <p class="lead" id="open-hint" style="margin-top:18px;font-size:14px"></p>
     </div>
   </main>
   <script src="/landing.js"></script>
+  <script>
+    (function () {
+      var match = location.pathname.match(/\/share\/cycle\/([a-f0-9]{64})/i);
+      var code = match ? match[1].toLowerCase() : '';
+      var btn = document.getElementById('open-app');
+      var hint = document.getElementById('open-hint');
+      if (!code) {
+        btn.href = '/';
+        btn.textContent = 'საიტზე დაბრუნება';
+        hint.textContent = 'ბმული არასრულია. სთხოვეთ პარტნიორს ხელახლა გაგზავნას.';
+        return;
+      }
+      var deep = 'medicard://share/cycle/' + code;
+      var android = /android/i.test(navigator.userAgent);
+      btn.href = android
+        ? 'intent://share/cycle/' + code + '#Intent;scheme=medicard;package=ge.medicard.app;end'
+        : deep;
+      hint.textContent = 'თუ აპი არ გაიხსნა, გახსენით Medicard ხელით და ისევ დააჭირეთ ამ ღილაკს.';
+    })();
+  </script>
 </body>
 </html>

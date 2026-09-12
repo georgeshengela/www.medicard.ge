@@ -1,0 +1,12 @@
+{
+  "phase": 42,
+  "explicitReturn": true,
+  "automaticReturn": false,
+  "atomic": [
+    "end ACTIVE CyclePostpartumEpisode without outcome",
+    "set mode TRACK_PERIOD or requested non-postpartum mode",
+    "set forecastGateKind=POSTPARTUM_RETURN and forecastGateEpisodeId"
+  ],
+  "failure": "transaction rolls back; mode remains POSTPARTUM",
+  "offline": "online-required; no transition queue"
+}

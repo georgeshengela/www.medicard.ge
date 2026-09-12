@@ -875,7 +875,7 @@ export async function redeemReward(userId, rewardId, options = {}) {
         }
         // Serialization failure → deterministic conflict for client retry.
         if (error?.code === 'P2034' || /could not serialize|serialization/i.test(error?.message || '')) {
-          throw httpError('გაცვლა კონფლიქტშია. სცადეთ თავიდან.', 409, 'REWARD_REDEMPTION_CONFLICT');
+          throw httpError('გაცვლა კონფლიქტშია. ხელახლა სცადე.', 409, 'REWARD_REDEMPTION_CONFLICT');
         }
         throw error;
       });

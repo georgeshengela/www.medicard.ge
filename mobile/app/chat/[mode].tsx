@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { ChatBubbleAssistant, ChatBubbleUser, ChatTypingBubble } from '@/components/chat/ChatBubble';
+import { ChatBubbleAssistant, ChatBubbleUser } from '@/components/chat/ChatBubble';
 import { ChatEmptyHero, ChatSuggestionChip } from '@/components/chat/ChatExtras';
 import { ChatFeedbackRow } from '@/components/chat/ChatFeedbackRow';
 import { ChatInputBar } from '@/components/chat/ChatInputBar';
@@ -13,6 +13,7 @@ import { QuotaSheet } from '@/components/QuotaSheet';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type ChatMessage } from '@/lib/api';
+import { streamAiQuery } from '@/lib/aiQueryStream';
 import { getConversationalChatProfile } from '@/lib/chatUiConfig';
 import { usePlanUsage } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
@@ -74,28 +75,60 @@ export default function ChatScreen() {
       const message = text.trim();
       if (message.length < 2 || sending) return;
 
+      const userAt = new Date().toISOString();
       setDraft('');
       setError(null);
       setSending(true);
-      setMessages((prev) => [...prev, { role: 'user', content: message, timestamp: new Date().toISOString() }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: 'user', content: message, timestamp: userAt },
+        { role: 'assistant', content: '', timestamp: userAt, streaming: true },
+      ]);
       scrollToEnd();
 
+      const pending = { current: '' };
+      let flushTimer: ReturnType<typeof setTimeout> | null = null;
+      const flushDeltas = () => {
+        flushTimer = null;
+        const extra = pending.current;
+        pending.current = '';
+        if (!extra) return;
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role !== 'assistant' || !last.streaming) return prev;
+          next[next.length - 1] = { ...last, content: last.content + extra };
+          return next;
+        });
+      };
+      const onDelta = (chunk: string) => {
+        pending.current += chunk;
+        if (!flushTimer) flushTimer = setTimeout(flushDeltas, 40);
+      };
+
       try {
-        const response = await api.ai.query({ message, mode, sessionId });
+        const response = await streamAiQuery({ message, mode, sessionId }, { onDelta });
+        if (flushTimer) clearTimeout(flushTimer);
+        flushDeltas();
         setSessionId(response.sessionId);
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: response.answer,
-            timestamp: new Date().toISOString(),
-            interactionId: response.interactionId,
-          },
-        ]);
-        applyUsage(response.usage);
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === 'assistant') {
+            next[next.length - 1] = {
+              role: 'assistant',
+              content: response.answer,
+              timestamp: new Date().toISOString(),
+              interactionId: response.interactionId,
+            };
+          }
+          return next;
+        });
+        if (response.usage) applyUsage(response.usage);
         void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
       } catch (err) {
-        setMessages((prev) => prev.slice(0, -1));
+        if (flushTimer) clearTimeout(flushTimer);
+        setMessages((prev) => prev.slice(0, -2));
         setDraft(message);
 
         if (err instanceof ApiError && err.isQuotaExceeded) {
@@ -165,9 +198,11 @@ export default function ChatScreen() {
             item.role === 'user' ? (
               <ChatBubbleUser content={item.content} timestamp={item.timestamp} userInitials={initials} />
             ) : (
-              <ChatBubbleAssistant icon={profile.icon} timestamp={item.timestamp}>
-                <Markdown content={item.content} allowLinks={profile.allowMarkdownLinks} />
-                {item.interactionId ? (
+              <ChatBubbleAssistant icon={profile.icon} timestamp={item.timestamp} streaming={item.streaming}>
+                {item.content ? (
+                  <Markdown content={item.content} allowLinks={profile.allowMarkdownLinks} />
+                ) : null}
+                {item.interactionId && !item.streaming ? (
                   <ChatFeedbackRow
                     feedbackRating={item.feedbackRating}
                     onRate={(rating) => submitFeedback(index, rating)}
@@ -178,7 +213,6 @@ export default function ChatScreen() {
           }
           ListFooterComponent={
             <View style={{ gap: FIGMA_CHAT.messageGap, paddingTop: messages.length ? FIGMA_CHAT.messageGap : 0 }}>
-              {sending ? <ChatTypingBubble icon={profile.icon} /> : null}
               {error ? (
                 <View
                   style={{

@@ -1,0 +1,2147 @@
+{
+  "generatedAt": "2026-09-11T20:32:26.154Z",
+  "schema": "server/prisma/schema.prisma",
+  "modelCount": 69,
+  "prismaMigrationFolders": [
+    "20260830120000_cycle_fertility_tests",
+    "20260830123000_cycle_contraception",
+    "20260830130000_cycle_daily_observations",
+    "20260906160000_medi_quest",
+    "20260906180000_medi_quest_1_1",
+    "20260906190000_quest_hydration_pref",
+    "20260906193000_quest_phase3_capability",
+    "20260908220000_cycle_prediction_snapshots",
+    "20260909140000_cycle_observation_registry",
+    "20260909220000_cycle_pregnancy_episode",
+    "20260910120000_user_ai_engine",
+    "20260910140000_cycle_observation_assessments",
+    "20260911120000_cycle_postpartum_mode"
+  ],
+  "standalonePhaseSql": [
+    "server/prisma/phase32-pregnancy-care-plan.sql",
+    "server/prisma/phase33-pregnancy-care-reminder.sql",
+    "server/prisma/phase35-pregnancy-care-appointment-time.sql",
+    "server/prisma/phase36-pregnancy-care-exact-time-reminder.sql",
+    "server/prisma/phase37-pregnancy-care-visit-place.sql",
+    "server/prisma/phase4-achievements.sql",
+    "server/prisma/phase41-postpartum-bleed-classification.sql",
+    "server/prisma/phase42-postpartum-return-forecast-gate.sql",
+    "server/prisma/phase7-rewards-store.sql",
+    "server/prisma/phase8-partner-rewards.sql",
+    "server/prisma/phase9-medi-companion.sql"
+  ],
+  "models": [
+    {
+      "name": "User",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [
+        "email",
+        "passwordHash",
+        "fullName",
+        "phone",
+        "birthDate",
+        "adminNote",
+        "pushTokens",
+        "passwordResets"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [
+        "status",
+        "packageId",
+        "createdAt",
+        "lastCheckInDate"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "GET /api/admin/users",
+        "GET /api/admin/users/:id",
+        "PATCH /api/admin/users/:id",
+        "POST /api/admin/users/:id/block",
+        "POST /api/admin/users/:id/unblock",
+        "DELETE /api/admin/users/:id",
+        "POST /api/admin/users/:id/renew",
+        "POST /api/admin/users/:id/reset-usage",
+        "GET /api/admin/analytics/users",
+        "GET /api/admin/export/users"
+      ]
+    },
+    {
+      "name": "DailyCheckIn",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, date"
+      ],
+      "indexes": [
+        "userId",
+        "date"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "PointAward",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, kind, ref"
+      ],
+      "indexes": [
+        "userId"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "PasswordReset",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "email",
+        "codeHash"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [
+        "email",
+        "userId",
+        "expiresAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "POST /api/auth/password/forgot",
+        "POST /api/auth/password/reset"
+      ]
+    },
+    {
+      "name": "PhoneVerification",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "phone",
+        "codeHash"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [
+        "phone",
+        "userId",
+        "expiresAt",
+        "reference"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "nullableOwnership": true,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "SmsLog",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "destination",
+        "purpose",
+        "status",
+        "createdAt"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "nullableOwnership": true,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "HealthProfile",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "weightKg",
+        "bloodType",
+        "bloodPressureSystolic",
+        "bloodPressureDiastolic"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "HydrationIntakeEvent",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, clientEventId"
+      ],
+      "indexes": [
+        "userId, date"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "PUT /api/health-metrics/hydration/goal",
+        "GET /api/health-metrics/hydration/goal"
+      ]
+    },
+    {
+      "name": "StepTrackingCapability",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "HydrationPreference",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "PUT /api/health-metrics/hydration/goal",
+        "GET /api/health-metrics/hydration/goal"
+      ]
+    },
+    {
+      "name": "HealthMetricDaily",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "weightKg",
+        "bloodPressureSystolic",
+        "bloodPressureDiastolic"
+      ],
+      "uniqueConstraints": [
+        "userId, date"
+      ],
+      "indexes": [
+        "userId, date"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "syncedAt",
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "StepLog",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, recordedAt"
+      ],
+      "indexes": [
+        "userId, recordedAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "CycleProfile",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "CycleLog",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "flow",
+        "symptoms",
+        "bbt",
+        "cervicalMucus",
+        "notes"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "CycleCustomTag",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "userId, archivedAt",
+        "userId, nameNormalized"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "present",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "CyclePredictionSnapshot",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, type, cycleAnchorDate, predictedDate, confidence, engineVersion"
+      ],
+      "indexes": [
+        "userId, cycleAnchorDate",
+        "userId, snapshotDate",
+        "userId, type, createdAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "CyclePartnerShare",
+      "purpose": null,
+      "ownerRelation": "ownerUserId",
+      "sensitiveFields": [
+        "tokenHash"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [
+        "ownerUserId",
+        "partnerUserId"
+      ],
+      "foreignKeys": [
+        {
+          "field": "owner",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "owner",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "present",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "PregnancyLog",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "weightKg",
+        "symptoms",
+        "notes"
+      ],
+      "uniqueConstraints": [
+        "userId, date"
+      ],
+      "indexes": [
+        "userId, date"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "GET /api/cycle/${CYCLE_PREGNANCY_HTTP_PATH}/weeks/:week",
+        "PUT /api/cycle/${CYCLE_PREGNANCY_CARE_PLAN_HTTP_PATH}/:careItemId",
+        "PUT /api/cycle/pregnancy/:date"
+      ]
+    },
+    {
+      "name": "CyclePregnancyEpisode",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "userId, status",
+        "userId, startedAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "CyclePostpartumEpisode",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "userId, status",
+        "userId, startedAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "CyclePostpartumBleedClassification",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, postpartumEpisodeId, bleedStart"
+      ],
+      "indexes": [
+        "userId, postpartumEpisodeId"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "postpartumEpisode",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "postpartumEpisode",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "PregnancyCarePlanItemState",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "note"
+      ],
+      "uniqueConstraints": [
+        "pregnancyEpisodeId, careItemId"
+      ],
+      "indexes": [
+        "userId",
+        "pregnancyEpisodeId"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "episode",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "episode",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "GET /api/cycle/${CYCLE_PREGNANCY_HTTP_PATH}/weeks/:week",
+        "PUT /api/cycle/${CYCLE_PREGNANCY_CARE_PLAN_HTTP_PATH}/:careItemId",
+        "PUT /api/cycle/pregnancy/:date"
+      ]
+    },
+    {
+      "name": "Package",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "GET /api/admin/packages",
+        "PATCH /api/admin/packages/:code"
+      ]
+    },
+    {
+      "name": "Admin",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [
+        "email",
+        "passwordHash",
+        "fullName"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "POST /api/admin/login",
+        "GET /api/admin/me",
+        "GET /api/admin/stats",
+        "GET /api/admin/balances",
+        "GET /api/admin/users",
+        "GET /api/admin/users/:id",
+        "PATCH /api/admin/users/:id",
+        "POST /api/admin/users/:id/block",
+        "POST /api/admin/users/:id/unblock",
+        "DELETE /api/admin/users/:id",
+        "GET /api/admin/packages",
+        "POST /api/admin/users/:id/renew",
+        "POST /api/admin/users/:id/reset-usage",
+        "PATCH /api/admin/packages/:code",
+        "GET /api/admin/settings",
+        "PATCH /api/admin/settings",
+        "GET /api/admin/push/stats",
+        "GET /api/admin/push/campaigns",
+        "POST /api/admin/push/campaigns",
+        "GET /api/admin/push/templates",
+        "PUT /api/admin/push/templates/:key",
+        "DELETE /api/admin/push/templates/:key",
+        "GET /api/admin/push/events",
+        "GET /api/admin/ai/stats",
+        "GET /api/admin/ai/interactions",
+        "GET /api/admin/ai/interactions/:id",
+        "POST /api/admin/ai/scan",
+        "GET /api/admin/ai/eval-runs",
+        "GET /api/admin/ai/eval-runs/:id",
+        "GET /api/admin/pharmacy/stats",
+        "GET /api/admin/pharmacy/sync-runs",
+        "POST /api/admin/pharmacy/sync",
+        "GET /api/admin/sms/balance",
+        "GET /api/admin/sms/stats",
+        "GET /api/admin/sms/logs",
+        "POST /api/admin/sms/send",
+        "GET /api/admin/orders",
+        "GET /api/admin/analytics/overview",
+        "GET /api/admin/analytics/users",
+        "GET /api/admin/analytics/features",
+        "GET /api/admin/analytics/medi",
+        "GET /api/admin/analytics/notifications",
+        "GET /api/admin/analytics/retention",
+        "GET /api/admin/analytics/geo",
+        "GET /api/admin/system/health",
+        "GET /api/admin/notifications/decisions",
+        "GET /api/admin/notifications/decisions/:id",
+        "GET /api/admin/analytics/versions",
+        "GET /api/admin/analytics/quality",
+        "GET /api/admin/analytics/feature-retention",
+        "GET /api/admin/analytics/permissions",
+        "GET /api/admin/analytics/outcomes-extra",
+        "GET /api/admin/notifications/outcomes",
+        "GET /api/admin/export/users",
+        "GET /api/admin/export/decisions",
+        "GET /api/admin/export/outcomes",
+        "GET /api/admin/export/audit",
+        "GET /api/admin/audit",
+        "GET /api/admin/cycle-qa",
+        "GET /api/admin/cycle-qa/file/:folder/:file",
+        "GET /api/admin/cycle-qa/contract/:file",
+        "GET /api/admin/rewards/overview",
+        "GET /api/admin/rewards/partners",
+        "POST /api/admin/rewards/partners",
+        "PATCH /api/admin/rewards/partners/:id",
+        "GET /api/admin/rewards/campaigns",
+        "GET /api/admin/rewards/campaigns/:id/partner-view",
+        "POST /api/admin/rewards/campaigns",
+        "PATCH /api/admin/rewards/campaigns/:id",
+        "POST /api/admin/rewards/campaigns/:id/activate",
+        "POST /api/admin/rewards/campaigns/:id/pause",
+        "GET /api/admin/rewards/redemptions",
+        "GET /api/admin/rewards/redemptions/:id",
+        "POST /api/admin/rewards/redemptions/:id/mark-used",
+        "GET /api/admin/rewards/rewards/:rewardId/codes",
+        "POST /api/admin/rewards/rewards/:rewardId/codes/import",
+        "POST /api/admin/rewards/codes/:id/disable",
+        "POST /api/admin/rewards/rewards/:rewardId/inventory/adjust",
+        "POST /api/admin/rewards/definitions",
+        "GET /api/admin/rewards/definitions",
+        "GET /admin"
+      ]
+    },
+    {
+      "name": "AppSettings",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [
+        "maintenanceMessage",
+        "supportEmail"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "PeriodUsage",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, periodKey"
+      ],
+      "indexes": [
+        "userId"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "PushToken",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "token"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [
+        "userId, active"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "AiInteraction",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "errorMessage",
+        "promptVersion",
+        "userPrompt",
+        "assistantReply",
+        "tokenUsage"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [
+        "userId, createdAt",
+        "mode, createdAt",
+        "status, createdAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "AiFeedback",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "interactionId, userId"
+      ],
+      "indexes": [
+        "rating, createdAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "interaction",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "interaction",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "AiEvalRun",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "createdAt"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "AiEvalResult",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [
+        "notes"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [
+        "runId",
+        "score"
+      ],
+      "foreignKeys": [
+        {
+          "field": "run",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "run",
+          "onDelete": "Cascade"
+        }
+      ],
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "PushTemplate",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "PushEvent",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "createdAt",
+        "key"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "nullableOwnership": true,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "PushCampaign",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "createdAt"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "DailyUsage",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, date"
+      ],
+      "indexes": [],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "MedicalRecord",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "aiAnalysis"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [
+        "userId, createdAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "ChatSession",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "messages"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "MedicationSchedule",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "notes"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "POST /api/ai/medication-review",
+        "GET /api/medications",
+        "POST /api/medications",
+        "PATCH /api/medications/:id",
+        "DELETE /api/medications/:id"
+      ]
+    },
+    {
+      "name": "DoctorVisit",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "notes"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "PharmacySource",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "GET /api/admin/pharmacy/stats",
+        "GET /api/admin/pharmacy/sync-runs",
+        "POST /api/admin/pharmacy/sync",
+        "GET /api/pharmacy/categories",
+        "GET /api/pharmacy/products",
+        "GET /api/pharmacy/products/:id",
+        "GET /api/pharmacy/meta/sync"
+      ]
+    },
+    {
+      "name": "DrugCategory",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "parentId, sortOrder"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "SourceCategoryMap",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "source, sourceCategory"
+      ],
+      "indexes": [
+        "categoryId"
+      ],
+      "foreignKeys": [
+        {
+          "field": "category",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "category",
+          "onDelete": "Cascade"
+        }
+      ],
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "CatalogProduct",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "normalizedKey",
+        "categoryId",
+        "bestPriceGel",
+        "name"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "PharmacyOffer",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "sourceId, sourceProductId",
+        "catalogProductId, sourceId"
+      ],
+      "indexes": [
+        "catalogProductId, priceGel",
+        "syncedAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "catalogProduct",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "source",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "catalogProduct",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "source",
+          "onDelete": "Cascade"
+        }
+      ],
+      "timestamps": [
+        "syncedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "GET /api/admin/pharmacy/stats",
+        "GET /api/admin/pharmacy/sync-runs",
+        "POST /api/admin/pharmacy/sync",
+        "GET /api/pharmacy/categories",
+        "GET /api/pharmacy/products",
+        "GET /api/pharmacy/products/:id",
+        "GET /api/pharmacy/meta/sync"
+      ]
+    },
+    {
+      "name": "SyncRun",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "source, startedAt"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "AppActivity",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, date"
+      ],
+      "indexes": [
+        "date",
+        "lastAt",
+        "appVersion"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "NotificationOutcome",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "decisionId, outcome, actionKey"
+      ],
+      "indexes": [
+        "occurredAt",
+        "userId, occurredAt",
+        "outcome, occurredAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "syncedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "GET /api/admin/analytics/notifications",
+        "GET /api/admin/notifications/decisions",
+        "GET /api/admin/notifications/decisions/:id",
+        "GET /api/admin/notifications/outcomes"
+      ]
+    },
+    {
+      "name": "ProductEvent",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, kind, entityId"
+      ],
+      "indexes": [
+        "kind, occurredAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "MedicationDoseEvent",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, medicationId, date, time"
+      ],
+      "indexes": [
+        "date"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "POST /api/ai/medication-review",
+        "GET /api/medications",
+        "POST /api/medications",
+        "PATCH /api/medications/:id",
+        "DELETE /api/medications/:id"
+      ]
+    },
+    {
+      "name": "NotificationPermission",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "GET /api/admin/analytics/notifications",
+        "GET /api/admin/notifications/decisions",
+        "GET /api/admin/notifications/decisions/:id",
+        "GET /api/admin/notifications/outcomes"
+      ]
+    },
+    {
+      "name": "NotificationDecision",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "createdAt",
+        "result, createdAt",
+        "family, createdAt",
+        "userId, createdAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt",
+        "syncedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "GET /api/admin/analytics/notifications",
+        "GET /api/admin/notifications/decisions",
+        "GET /api/admin/notifications/decisions/:id",
+        "GET /api/admin/notifications/outcomes"
+      ]
+    },
+    {
+      "name": "QuestTemplate",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "UserQuest",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "QuestCompletion",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "userId, completedAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "userQuest",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "userQuest",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "RewardLedger",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, currency, sourceType, sourceId"
+      ],
+      "indexes": [
+        "userId, createdAt",
+        "userId, currency"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "UserQuestProfile",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "AchievementDefinition",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "isActive, sortOrder",
+        "family"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": [
+        "GET /api/achievements",
+        "POST /api/achievements/reconcile",
+        "POST /api/achievements/:id/claim"
+      ]
+    },
+    {
+      "name": "UserAchievement",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, achievementId"
+      ],
+      "indexes": [
+        "userId, status",
+        "userId, unlockedAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "AdminAuditLog",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [
+        "adminEmail"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [
+        "createdAt",
+        "action, createdAt",
+        "targetType, targetId"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "RewardPartner",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [
+        "contactEmail",
+        "notes"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "RewardDefinition",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "status, sortOrder",
+        "type, status",
+        "featured, status"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "RewardCampaign",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "partnerId, status",
+        "rewardDefinitionId, status",
+        "status, startsAt, endsAt"
+      ],
+      "foreignKeys": [],
+      "cascadeDeletes": [],
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "RewardRedemption",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, idempotencyKey"
+      ],
+      "indexes": [
+        "userId, redeemedAt",
+        "userId, status",
+        "rewardId, status",
+        "campaignId",
+        "partnerIdSnapshot",
+        "redeemedAt",
+        "status, redeemedAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "RewardCode",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "rewardId, code"
+      ],
+      "indexes": [
+        "rewardId, status",
+        "status, expiresAt",
+        "expiresAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "reward",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "reward",
+          "onDelete": "Cascade"
+        }
+      ],
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "RewardInventoryAdjustment",
+      "purpose": null,
+      "ownerRelation": null,
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "rewardId, createdAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "reward",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "reward",
+          "onDelete": "Cascade"
+        }
+      ],
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "UserRewardEntitlement",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [
+        "userId, entitlementKey, status",
+        "userId, endsAt",
+        "rewardRedemptionId"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "redemption",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "redemption",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "RewardRedemptionAudit",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [
+        "note"
+      ],
+      "uniqueConstraints": [],
+      "indexes": [
+        "redemptionId, createdAt",
+        "userId, createdAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "redemption",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "redemption",
+          "onDelete": "Cascade"
+        },
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "MediCompanionProfile",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    },
+    {
+      "name": "MediJourneyUnlock",
+      "purpose": null,
+      "ownerRelation": "userId",
+      "sensitiveFields": [],
+      "uniqueConstraints": [
+        "userId, milestoneKey"
+      ],
+      "indexes": [
+        "userId, unlockedAt"
+      ],
+      "foreignKeys": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "cascadeDeletes": [
+        {
+          "field": "user",
+          "onDelete": "Cascade"
+        }
+      ],
+      "nullableOwnership": false,
+      "timestamps": [
+        "createdAt"
+      ],
+      "softDelete": "none",
+      "migrations": [],
+      "apisTouching": []
+    }
+  ]
+}

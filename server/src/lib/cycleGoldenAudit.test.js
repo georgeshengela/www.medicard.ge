@@ -309,7 +309,7 @@ describe('golden P — period start/end edit', () => {
       logs: existing,
       endDate: '2025-03-03',
     });
-    assert.deepEqual(end.clear, ['2025-03-04', '2025-03-05']);
+    assert.deepEqual(end.clear, ['2025-03-03', '2025-03-04', '2025-03-05']);
     const fill = planFillRange('2025-03-01', '2025-03-05', existing, 'medium');
     assert.deepEqual(fill.fill, []);
   });

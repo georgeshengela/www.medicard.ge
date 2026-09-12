@@ -1,5 +1,6 @@
 import { prisma } from './prisma.js';
 import { revokeCycleShares } from './cycleLifecycle.js';
+import { unlinkStoredUpload } from './privateUploads.js';
 
 /**
  * Permanently remove a user and orphaned rows that are not FK-cascaded.
@@ -24,12 +25,19 @@ export async function deleteUserAccount(userId) {
 
   await revokeCycleShares(prisma, userId);
 
+  const uploadRows = await prisma.medicalRecord.findMany({
+    where: { userId, imageUrl: { not: null } },
+    select: { imageUrl: true },
+  });
+
   await prisma.$transaction([
     prisma.dailyUsage.deleteMany({ where: { userId } }),
     prisma.phoneVerification.deleteMany({ where: { userId } }),
     prisma.smsLog.updateMany({ where: { userId }, data: { userId: null } }),
     prisma.user.delete({ where: { id: userId } }),
   ]);
+
+  await Promise.all(uploadRows.map((row) => unlinkStoredUpload(row.imageUrl)));
 
   return {
     ok: true,

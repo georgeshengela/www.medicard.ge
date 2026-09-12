@@ -1,0 +1,77 @@
+{
+  "surfaces": [
+    {
+      "id": "medi-chat",
+      "kind": ["diagnosis-adjacent", "triage-adjacent"],
+      "source": "POST /api/ai/query + prompts.js DOCTOR",
+      "safeguards": ["prompt: no final diagnosis", "ensureDisclaimer", "quota"]
+    },
+    {
+      "id": "consilium",
+      "kind": ["diagnosis-adjacent"],
+      "source": "POST /api/ai/query CONSILIUM",
+      "safeguards": ["same as chat"]
+    },
+    {
+      "id": "symptom-check",
+      "kind": ["triage", "emergency-112"],
+      "source": "POST /api/ai/symptom-check + SYMPTOM_CHECKER",
+      "safeguards": ["urgency enum", "112 for emergency", "UI not-a-diagnosis copy"]
+    },
+    {
+      "id": "lab-explain",
+      "kind": ["lab-interpretation"],
+      "source": "POST /api/ai/explain-lab",
+      "safeguards": ["split from extract-lab credits", "disclaimer"]
+    },
+    {
+      "id": "lab-extract",
+      "kind": ["lab-interpretation"],
+      "source": "POST /api/ai/extract-lab",
+      "safeguards": ["OCR/structure; user can edit before explain"]
+    },
+    {
+      "id": "medication-review",
+      "kind": ["drug-guidance"],
+      "source": "POST /api/ai/medication-review",
+      "safeguards": ["prompt: no prescription dosing"]
+    },
+    {
+      "id": "imaging-skin",
+      "kind": ["diagnosis-adjacent"],
+      "source": "POST /api/ai/analyze-image",
+      "safeguards": ["vision + optional clinical handoff", "disclaimer"]
+    },
+    {
+      "id": "weight-advice",
+      "kind": ["symptom-guidance"],
+      "source": "POST /api/ai/weight-advice",
+      "safeguards": ["wellness copy; not diagnosis"]
+    },
+    {
+      "id": "cycle-insights",
+      "kind": ["cycle-prediction-adjacent", "fertility-information"],
+      "source": "POST /api/cycle/insights",
+      "safeguards": ["POSTPARTUM fail-closed", "local heuristic fallback", "OpenRouter Cycle AI out of product scope"]
+    },
+    {
+      "id": "cycle-forecast-ui",
+      "kind": ["cycle-prediction", "fertility-information"],
+      "source": "GET /api/cycle server engine",
+      "safeguards": ["forecastEligibility gate", "honesty copy", "spotting ≠ period"]
+    },
+    {
+      "id": "pregnancy-care-planner",
+      "kind": ["pregnancy-guidance"],
+      "source": "care planner catalog + episode state",
+      "safeguards": ["informational; not medical orders; not AI"]
+    },
+    {
+      "id": "onboarding-analysis",
+      "kind": ["triage-adjacent"],
+      "source": "POST /api/health-profile/onboarding-analysis",
+      "safeguards": ["heuristic score; AI nudge ±12"]
+    }
+  ],
+  "note": "RA-00 does not judge medical correctness. RA-03/04/06/07 execute safety."
+}

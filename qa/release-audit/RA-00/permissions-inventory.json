@@ -1,0 +1,89 @@
+{
+  "generatedAt": "2026-09-11T20:32:26.155Z",
+  "items": [
+    {
+      "capability": "notifications",
+      "request": "mobile/src/lib/notifications.ts + appPermissions.ts",
+      "denied": "Alert + openSettings",
+      "permanentDenied": "openSettings",
+      "retry": "permissions screen"
+    },
+    {
+      "capability": "camera",
+      "request": "appPermissions.ts / AnalysisModule.tsx",
+      "denied": "settings alert",
+      "permanentDenied": "settings",
+      "retry": "permissions screen"
+    },
+    {
+      "capability": "photos",
+      "request": "requestMediaLibraryPermissionsAsync",
+      "denied": "settings alert",
+      "permanentDenied": "settings",
+      "retry": "permissions screen"
+    },
+    {
+      "capability": "microphone",
+      "request": "DECLARED ONLY — no runtime request found",
+      "denied": "n/a",
+      "permanentDenied": "n/a",
+      "retry": "absent"
+    },
+    {
+      "capability": "location-foreground",
+      "request": "mobile/src/lib/userLocation.ts",
+      "denied": "settings if !canAskAgain",
+      "permanentDenied": "settings",
+      "retry": "permissions screen"
+    },
+    {
+      "capability": "location-background",
+      "request": "ABSENT",
+      "denied": "n/a",
+      "permanentDenied": "n/a",
+      "retry": "n/a"
+    },
+    {
+      "capability": "healthkit",
+      "request": "healthSyncPlatform.ios.ts",
+      "denied": "toast + settings",
+      "permanentDenied": "settings",
+      "retry": "permissions + CycleHealthConnectCard"
+    },
+    {
+      "capability": "health-connect",
+      "request": "healthSyncPlatform.android.ts",
+      "denied": "toast + Health Connect settings",
+      "permanentDenied": "settings",
+      "retry": "permissions"
+    },
+    {
+      "capability": "calendar",
+      "request": "pregnancyCareCalendar.ts explicit tap",
+      "denied": "permission_denied UI",
+      "permanentDenied": "permission_revoked UI",
+      "retry": "care-plan export"
+    },
+    {
+      "capability": "biometrics",
+      "request": "appPermissions.ts authenticateAsync",
+      "denied": "hardware/enrolled checks",
+      "permanentDenied": "settings hint",
+      "retry": "face-id / cycle lock"
+    },
+    {
+      "capability": "bluetooth",
+      "request": "ABSENT",
+      "denied": "n/a",
+      "permanentDenied": "n/a",
+      "retry": "n/a"
+    },
+    {
+      "capability": "activity-recognition",
+      "request": "implicit via Health Connect Steps",
+      "denied": "unknown",
+      "permanentDenied": "unknown",
+      "retry": "unknown"
+    }
+  ]
+}

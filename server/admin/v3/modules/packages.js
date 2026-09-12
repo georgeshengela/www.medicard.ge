@@ -8,7 +8,7 @@
   const $ = (id) => document.getElementById(id);
 
   const FEATURE_LABELS = {
-    doctorChat: 'ექიმის ჩატი',
+    doctorChat: 'Medi-სთან საუბარი',
     consilium: 'კონსილიუმი',
     labAnalysis: 'ლაბორატორია',
     imaging: 'რენტგენი / CT',
@@ -209,7 +209,7 @@
         <div class="v3-packages-empty is-err">
           <strong>ჩატვირთვა ვერ მოხერხდა</strong>
           <p>${esc(e.message || 'უცნობი შეცდომა')}</p>
-          <button type="button" class="btn ghost compact" id="pkg-retry">${ico('refresh')} ხელახლა ცდა</button>
+          <button type="button" class="btn ghost compact" id="pkg-retry">${ico('refresh')} ხელახლა სცადე</button>
         </div>
       </div>`;
       $('pkg-retry')?.addEventListener('click', () => void renderPackagesV3());

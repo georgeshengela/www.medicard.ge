@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-09-11T21:10:00.000Z",
+  "items": [
+    {
+      "id": "RA01-001",
+      "severity": "P0",
+      "title": "AppSettings.qaOtpEnabled=true on the connected database would accept 0000/000000 for any account",
+      "reproduction": "isQaOtpEnabled() returned true with empty QA_OTP_CODE because settings.qaOtpEnabled was true. matchesQaPhoneOtp('0000') would succeed in non-production. If the same row is read by a production NODE_ENV process, it was production-reachable before the code gate.",
+      "rootCause": "QA master OTP honored AppSettings without a production NODE_ENV hard stop.",
+      "status": "FIXED"
+    }
+  ]
+}

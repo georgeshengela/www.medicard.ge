@@ -32,17 +32,19 @@ adminRewardsRouter.use(requireAdmin);
 
 const mutateLimiter = rateLimit({
   windowMs: 60_000,
-  max: 40,
+  limit: 40,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
   message: { error: 'ძალიან ბევრი მოთხოვნა.', code: 'RATE_LIMITED' },
 });
 
 const importLimiter = rateLimit({
   windowMs: 60_000,
-  max: 10,
+  limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
   message: { error: 'ძალიან ბევრი იმპორტი.', code: 'RATE_LIMITED' },
 });
 

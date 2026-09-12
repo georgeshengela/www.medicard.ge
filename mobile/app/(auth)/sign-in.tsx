@@ -10,7 +10,7 @@ import { AuthErrorBanner } from '@/components/auth/AuthErrorBanner';
 import { Input } from '@/components/ui/Input';
 import { FIGMA_AUTH, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
-import { ApiError } from '@/lib/api';
+import { authErrorMessage } from '@/lib/authErrorMessage';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
 
@@ -26,8 +26,10 @@ export default function SignIn() {
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [busy, setBusy] = useState(false);
   const [bannerError, setBannerError] = useState<string | null>(null);
+  const submittingRef = React.useRef(false);
 
   const submit = async () => {
+    if (busy || submittingRef.current) return;
     const next: typeof errors = {};
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) next.email = ka.auth.invalidEmail;
     if (password.length < 1) next.password = ka.common.required;
@@ -36,14 +38,16 @@ export default function SignIn() {
     setBannerError(null);
     if (Object.keys(next).length > 0) return;
 
+    submittingRef.current = true;
     setBusy(true);
     try {
       await signIn(email.trim().toLowerCase(), password);
       router.replace('/(tabs)/home');
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : ka.common.error;
+      const message = authErrorMessage(error);
       setBannerError(message.includes('არასწორი') ? ka.auth.loginError : message);
     } finally {
+      submittingRef.current = false;
       setBusy(false);
     }
   };

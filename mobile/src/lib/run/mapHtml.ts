@@ -1,5 +1,8 @@
 import type { LatLng } from '@/lib/run/geo';
 
+/** Bump when chase-cam HTML changes so the WebView remounts on Fast Refresh. */
+export const RUN_MAP_HTML_REV = 7;
+
 /**
  * Mapbox GL JS (v3 Standard style, 3D buildings, night/day light presets) rendered inside a WebView.
  * RN → web: `window.__run(msg)` via injectJavaScript. Web → RN: `ReactNativeWebView.postMessage`.
@@ -132,8 +135,8 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
   var routePtr = 0;       // index of the last vertex already passed
   var lastHeading = 0;
 
-  // Chase camera tuning — racing-game navigation feel.
-  var CHASE = { zoom: 18.3, pitch: 67, durMs: 950 };
+  // Chase camera — Google Maps / Waze: course-up, puck glued screen-up.
+  var CHASE = { zoom: 18.3, pitch: 62, durMs: 700 };
 
   if (!TOKEN) { post({ type: 'error', message: 'no-token' }); return; }
   mapboxgl.accessToken = TOKEN;
@@ -180,6 +183,39 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
     var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
     return 2 * 6371008.8 * Math.asin(Math.min(1, Math.sqrt(h)));
   }
+  function bearingDeg(a, b) {
+    var la1 = a[1] * Math.PI / 180, la2 = b[1] * Math.PI / 180;
+    var dLng = (b[0] - a[0]) * Math.PI / 180;
+    var y = Math.sin(dLng) * Math.cos(la2);
+    var x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dLng);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+  /** Point ~30m down the remaining lane — camera looks along the route (GMaps/Waze). */
+  function lookaheadBearing(c) {
+    if (!fullRoute || fullRoute.length < 2) return null;
+    var bestD = 1e9, i = routePtr, n = Math.min(fullRoute.length, routePtr + 24);
+    for (var k = routePtr; k < n; k++) {
+      var d = distM(c, fullRoute[k]);
+      if (d < bestD) { bestD = d; i = k; }
+    }
+    if (bestD > 42) return null;
+    var need = 32, acc = 0, from = c;
+    for (; i < fullRoute.length; i++) {
+      var to = fullRoute[i];
+      var seg = distM(from, to);
+      if (acc + seg >= need) {
+        var t = (need - acc) / Math.max(seg, 0.001);
+        var p = [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t];
+        if (distM(c, p) < 5) return null;
+        return bearingDeg(c, p);
+      }
+      acc += seg;
+      from = to;
+    }
+    var last = fullRoute[fullRoute.length - 1];
+    if (distM(c, last) < 8) return null;
+    return bearingDeg(c, last);
+  }
 
   // Lane width scales with zoom so it reads as a road-lane up close.
   var laneWidth = ['interpolate', ['exponential', 1.6], ['zoom'], 13, 4, 16, 8, 18.5, 22];
@@ -201,8 +237,7 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
     map.addLayer(Object.assign({ id: 'trail-line', type: 'line', source: 'trail', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': COLORS.trail, 'line-width': ['interpolate', ['exponential', 1.6], ['zoom'], 13, 2, 16, 3.5, 18.5, 7] } }, slot));
   }
 
-  // ── User marker: puck stays visible until the 3D character canvas is ready ──
-  // Once window.__loadCharacter fires, the puck is hidden via id="user-puck".
+  // ── User marker: original teal puck + chevron (3D character parked) ──
   function userEl() {
     var el = document.createElement('div'); el.className = 'user';
     el.innerHTML =
@@ -219,7 +254,10 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
   function lerpAngle(a, b, t) { var d = ((b - a + 540) % 360) - 180; return a + d * t; }
   function snapUser(lng, lat, rot) {
     anim = null; curPos = [lng, lat]; if (typeof rot === 'number') curRot = rot;
-    if (userMarker) { userMarker.setLngLat(curPos); userMarker.setRotation(curRot); }
+    if (userMarker) {
+      userMarker.setLngLat(curPos);
+      userMarker.setRotation(follow ? 0 : curRot);
+    }
   }
   function glideUser(lng, lat, rot, dur) {
     if (!curPos) { snapUser(lng, lat, rot); return; }
@@ -238,7 +276,7 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
     curPos = [anim.fLng + (anim.tLng - anim.fLng) * t, anim.fLat + (anim.tLat - anim.fLat) * t];
     curRot = lerpAngle(anim.fRot, anim.tRot, t);
     userMarker.setLngLat(curPos);
-    userMarker.setRotation(curRot);
+    if (!follow) userMarker.setRotation(curRot);
     // Also expose the live interpolated position for the 3D canvas
     window.__curPos = curPos;
     if (t >= 1) { anim = null; rafOn = false; return; }
@@ -281,6 +319,19 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
   // ── Chase cam ─────────────────────────────────────────────────────────────
   function chasePadding() { return { top: 0, left: 0, right: 0, bottom: Math.round(window.innerHeight * 0.44) }; }
 
+  function syncPuckToPhone() {
+    if (!userMarker) return;
+    if (follow) {
+      userMarker.setRotationAlignment('viewport');
+      userMarker.setPitchAlignment('viewport');
+      userMarker.setRotation(0);
+    } else {
+      userMarker.setRotationAlignment('map');
+      userMarker.setPitchAlignment('viewport');
+      userMarker.setRotation(curRot);
+    }
+  }
+
   function engageChase(center, heading) {
     map.setPadding(chasePadding());
     map.easeTo({
@@ -291,6 +342,7 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
       duration: 800,
       essential: true
     });
+    syncPuckToPhone();
   }
 
   // Remaining lane ahead of the runner: advance a pointer along the route and
@@ -316,7 +368,13 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
         addLayers();
         var o = [msg.origin.lng, msg.origin.lat];
         window.__curPos = o;
-        if (!userMarker) { userMarker = new mapboxgl.Marker({ element: userEl(), rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat(o).addTo(map); }
+        if (!userMarker) {
+          userMarker = new mapboxgl.Marker({
+            element: userEl(),
+            rotationAlignment: 'viewport',
+            pitchAlignment: 'viewport'
+          }).setLngLat(o).addTo(map);
+        }
         snapUser(o[0], o[1]);
         if (msg.pin) {
           var p = [msg.pin.lng, msg.pin.lat];
@@ -327,25 +385,29 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
         if (msg.route && msg.route.length > 1) { fullRoute = msg.route; routePtr = 0; map.getSource('route').setData(line(fullRoute)); }
         else { fullRoute = null; map.getSource('route').setData(empty()); }
         map.getSource('trail').setData(empty());
+        syncPuckToPhone();
         if (msg.fit !== false) fit(msg);
         break;
       }
       case 'fix': {
         var c = [msg.lng, msg.lat];
-        if (typeof msg.heading === 'number') lastHeading = msg.heading;
-        glideUser(msg.lng, msg.lat, lastHeading, CHASE.durMs);
-        // Update 3D character heading
-        window.__curPos = c;
+        var course = typeof msg.heading === 'number' ? ((msg.heading % 360) + 360) % 360 : lastHeading;
+        var along = lookaheadBearing(c);
+        lastHeading = along != null ? along : course;
+        curRot = lastHeading;
+        var moved = !curPos || distM(curPos, c) > 0.45;
+        if (moved) glideUser(msg.lng, msg.lat, lastHeading, CHASE.durMs);
+        else window.__curPos = curPos || c;
         if (window.__setCharHeading) window.__setCharHeading(lastHeading);
-        updateAhead(c);
+        syncPuckToPhone();
+        if (moved) updateAhead(c);
         if (follow) {
           map.easeTo({
             center: c,
             bearing: lastHeading,
             zoom: CHASE.zoom,
             pitch: CHASE.pitch,
-            duration: CHASE.durMs,
-            easing: function (t) { return t; },
+            duration: moved ? CHASE.durMs : 180,
             essential: true
           });
         }
@@ -358,6 +420,7 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
       case 'fit': fit(msg); break;
       case 'follow': {
         follow = true; post({ type: 'follow', value: true });
+        syncPuckToPhone();
         if (userMarker) { var ll = userMarker.getLngLat(); engageChase([ll.lng, ll.lat], lastHeading); }
         break;
       }
@@ -378,6 +441,7 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
     if (pts.length < 2) { if (pts.length === 1) map.easeTo({ center: pts[0], zoom: 16.4, pitch: 62 }); return; }
     var b = pts.reduce(function (bb, c) { return bb.extend(c); }, new mapboxgl.LngLatBounds(pts[0], pts[0]));
     follow = false; post({ type: 'follow', value: false });
+    syncPuckToPhone();
     map.fitBounds(b, { padding: { top: 120, bottom: (msg && msg.bottom) || 300, left: 56, right: 56 }, pitch: 48, bearing: 0, duration: 1100, maxZoom: 17 });
   }
 
@@ -393,6 +457,7 @@ export function buildRunMapHtml(opts: { token: string; center: LatLng; dark: boo
     if (!e || !e.originalEvent || !follow) return;
     follow = false;
     map.setPadding({ top: 0, left: 0, right: 0, bottom: 0 });
+    syncPuckToPhone();
     post({ type: 'follow', value: false });
   }
   map.on('dragstart', userInterrupt);

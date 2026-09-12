@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { publicPackage } from '../lib/packages.js';
 import { getAppSettings } from '../lib/settings.js';
 import { toDateOnly, calculateAge } from '../lib/patient.js';
+import { normalizeAiEngine } from '../lib/aiEngine.js';
 
 export function signToken(user) {
   const id = typeof user?.id === 'string' ? user.id.trim() : '';
@@ -32,6 +33,7 @@ export function enrichPublicUser(user) {
     currentStreak: user.currentStreak ?? 0,
     longestStreak: user.longestStreak ?? 0,
     lastCheckInDate: toDateOnly(user.lastCheckInDate),
+    aiEngine: normalizeAiEngine(user.aiEngine),
   };
 }
 

@@ -1,0 +1,2 @@
+iOS native QA is deferred by product decision.
+This Phase 20 freeze is Android + HTML/PDF source only.

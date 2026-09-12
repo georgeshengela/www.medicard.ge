@@ -11,9 +11,13 @@ import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 export function CycleCalendarLegend({
   showFertility = true,
   showPredicted = true,
+  loggedBleedLabel,
+  showOwnerClassified = false,
 }: {
   showFertility?: boolean;
   showPredicted?: boolean;
+  loggedBleedLabel?: string;
+  showOwnerClassified?: boolean;
 }) {
   const c = useCycleColors();
 
@@ -23,9 +27,28 @@ export function CycleCalendarLegend({
       glyph: (
         <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: c.period }} />
       ),
-      label: ka.cycle.legendPeriod,
+      label: loggedBleedLabel || ka.cycle.legendPeriod,
     },
   ];
+
+  if (showOwnerClassified) {
+    items.push({
+      key: 'classified',
+      glyph: (
+        <View
+          style={{
+            width: 14,
+            height: 14,
+            borderRadius: 7,
+            backgroundColor: c.period,
+            borderWidth: 2,
+            borderColor: c.white,
+          }}
+        />
+      ),
+      label: ka.cycle.postpartumLegendClassified,
+    });
+  }
 
   if (showPredicted) {
     items.push({

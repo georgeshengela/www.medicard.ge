@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { CheckCheck } from 'lucide-react-native';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
@@ -43,13 +43,14 @@ export function ChatBubbleUser({ content, timestamp, userInitials, userAvatarUri
 type AssistantProps = {
   icon: React.ComponentProps<typeof ChatAiAvatar>['icon'];
   timestamp?: string;
+  streaming?: boolean;
   children: React.ReactNode;
   footer?: React.ReactNode;
 };
 
-export function ChatBubbleAssistant({ icon, timestamp, children, footer }: AssistantProps) {
+export function ChatBubbleAssistant({ icon, timestamp, streaming, children, footer }: AssistantProps) {
   const FIGMA_CHAT = useFigmaChat();
-  const time = timestamp ? formatChatTime(timestamp) : '';
+  const time = !streaming && timestamp ? formatChatTime(timestamp) : '';
 
   return (
     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
@@ -67,6 +68,7 @@ export function ChatBubbleAssistant({ icon, timestamp, children, footer }: Assis
           }}
         >
           {children}
+          {streaming ? <ChatStreamCursor /> : null}
           {footer}
           {time ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end' }}>
@@ -83,34 +85,41 @@ export function ChatBubbleAssistant({ icon, timestamp, children, footer }: Assis
 export function ChatTypingBubble({ icon }: { icon: React.ComponentProps<typeof ChatAiAvatar>['icon'] }) {
   const FIGMA_CHAT = useFigmaChat();
   return (
-    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
-      <ChatAiAvatar icon={icon} size="md" />
-      <View
-        style={{
-          backgroundColor: FIGMA_CHAT.white,
-          borderRadius: FIGMA_CHAT.bubbleRadius,
-          borderWidth: 1,
-          borderColor: FIGMA_CHAT.border,
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-          ...FIGMA_CHAT.shadowSm,
-        }}
-      >
-        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-          {[0, 1, 2].map((i) => (
-            <View
-              key={i}
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: FIGMA_CHAT.textMuted,
-                opacity: 0.45 + i * 0.2,
-              }}
-            />
-          ))}
-        </View>
+    <ChatBubbleAssistant icon={icon} streaming>
+      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', minHeight: 16 }}>
+        {[0, 1, 2].map((i) => (
+          <View
+            key={i}
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: FIGMA_CHAT.textMuted,
+              opacity: 0.45 + i * 0.2,
+            }}
+          />
+        ))}
       </View>
-    </View>
+    </ChatBubbleAssistant>
+  );
+}
+
+function ChatStreamCursor() {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    const id = setInterval(() => setOn((value) => !value), 530);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <View
+      style={{
+        width: 7,
+        height: 16,
+        borderRadius: 1.5,
+        marginTop: 2,
+        backgroundColor: '#0D9488',
+        opacity: on ? 1 : 0.18,
+      }}
+    />
   );
 }

@@ -1,0 +1,1 @@
+iOS native QA is deferred by product decision. Android artifacts in this folder are the Phase 26 freeze evidence.

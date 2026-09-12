@@ -1,8 +1,25 @@
 /**
- * Phase 9 daily observations — user-logged only.
+ * Phase 9/11 daily observations — user-logged only.
  * Must never change cycle length, period inference, ovulation, fertile window,
  * phase, confidence, or contraception presentation.
  */
+
+import {
+  ENERGY_LEVELS,
+  OBSERVATION_SCHEMA_VERSION,
+  PAIN_MANAGED_SYMPTOM_IDS as REGISTRY_PAIN_MANAGED,
+  STORAGE,
+  mergeObservationBag,
+  observationsHasValue,
+  parseKeyedList,
+  parseObservationBag,
+  stripPainManagedSymptoms,
+} from './cycleObservationRegistry.js';
+import {
+  applyAssessmentWrite,
+  parseObservationAssessments,
+  resolveDailyAssessments,
+} from './cycleObservationAssessment.js';
 
 export const PAIN_TYPES = [
   'cramps',
@@ -21,6 +38,7 @@ export const STRESS_LEVELS = ['low', 'medium', 'high'];
 export const EXERCISE_LEVELS = ['none', 'light', 'moderate', 'intense'];
 export const CAFFEINE_LEVELS = ['none', 'low', 'moderate', 'high'];
 export const ALCOHOL_LEVELS = ['none', 'light', 'moderate', 'heavy'];
+export { ENERGY_LEVELS, OBSERVATION_SCHEMA_VERSION, stripPainManagedSymptoms };
 
 export const CYCLE_NOTE_MAX = 2000;
 export const CYCLE_TAG_NAME_MAX = 48;
@@ -29,14 +47,7 @@ export const CYCLE_TAGS_PER_DAY_MAX = 8;
 export const CYCLE_PAIN_MAX = 7;
 export const OBSERVATION_PATTERN_MIN = 5;
 
-export const PAIN_MANAGED_SYMPTOM_IDS = [
-  'cramps',
-  'headache',
-  'back_pain',
-  'breast_tenderness',
-  'pelvic_pain',
-  'ovulation_pain',
-];
+export const PAIN_MANAGED_SYMPTOM_IDS = [...REGISTRY_PAIN_MANAGED];
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -143,6 +154,8 @@ export function foreignTagIds(requestedIds, ownedIds) {
 }
 
 export function shapeLogObservations(log) {
+  const observations = parseObservationBag(log?.observations);
+  const observationAssessments = parseObservationAssessments(log?.observationAssessments);
   return {
     painEntries: parsePainEntries(log?.painEntries),
     sleepQuality: parseEnumOrNull(log?.sleepQuality, SLEEP_QUALITIES),
@@ -152,6 +165,19 @@ export function shapeLogObservations(log) {
     alcohol: parseEnumOrNull(log?.alcohol, ALCOHOL_LEVELS),
     customTagIds: parseCustomTagIds(log?.customTagIds),
     notes: parseCycleNote(log?.notes),
+    observations,
+    energy: parseEnumOrNull(observations.energy, ENERGY_LEVELS),
+    observationSchemaVersion:
+      Number.isInteger(log?.observationSchemaVersion) && log.observationSchemaVersion > 0
+        ? log.observationSchemaVersion
+        : OBSERVATION_SCHEMA_VERSION,
+    observationAssessments,
+    dailyAssessments: resolveDailyAssessments({
+      ...log,
+      symptoms: log?.symptoms,
+      observationAssessments,
+      observations,
+    }),
   };
 }
 
@@ -165,7 +191,8 @@ export function logHasPhase9Extras(log) {
     Boolean(shaped.exerciseLevel) ||
     Boolean(shaped.caffeine) ||
     Boolean(shaped.alcohol) ||
-    shaped.customTagIds.length > 0
+    shaped.customTagIds.length > 0 ||
+    observationsHasValue(shaped.observations)
   );
 }
 
@@ -305,7 +332,7 @@ export function buildObservationInsights(logs = [], options = {}) {
   };
 }
 
-export function parseObservationWrite(body = {}) {
+export function parseObservationWrite(body = {}, existing = {}) {
   const out = {};
   if (body.painEntries !== undefined) {
     out.painEntries = parsePainEntries(body.painEntries, { strict: true });
@@ -345,6 +372,31 @@ export function parseObservationWrite(body = {}) {
   }
   if (body.notes !== undefined) {
     out.notes = parseCycleNote(body.notes, { strict: true });
+  }
+  if (body.symptoms !== undefined) {
+    const pain = out.painEntries ?? parsePainEntries(existing.painEntries);
+    out.symptoms = stripPainManagedSymptoms(
+      parseKeyedList(body.symptoms, STORAGE.SYMPTOMS, { strict: true }),
+      pain,
+    );
+  }
+  if (body.moods !== undefined) {
+    out.moods = parseKeyedList(body.moods, STORAGE.MOODS, { strict: true });
+  }
+  if (body.observations !== undefined || body.energy !== undefined) {
+    const incoming =
+      body.observations !== undefined
+        ? { ...(body.observations && typeof body.observations === 'object' ? body.observations : {}), ...(body.energy !== undefined ? { energy: body.energy } : {}) }
+        : { energy: body.energy };
+    out.observations = mergeObservationBag(existing.observations, incoming, { strict: true });
+    out.observationSchemaVersion = OBSERVATION_SCHEMA_VERSION;
+  }
+  if (out.painEntries && body.symptoms === undefined && Array.isArray(existing.symptoms)) {
+    out.symptoms = stripPainManagedSymptoms(existing.symptoms, out.painEntries);
+  }
+  const assessmentPatch = applyAssessmentWrite(body, existing, out);
+  if (assessmentPatch.observationAssessments !== undefined) {
+    out.observationAssessments = assessmentPatch.observationAssessments;
   }
   return out;
 }

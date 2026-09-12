@@ -70,6 +70,8 @@ export type UserPackage = {
   features: Record<string, boolean>;
 };
 
+export type AiEngineId = 'gemini_flash' | 'ling_free' | 'evidencemd';
+
 export type User = {
   id: string;
   email: string;
@@ -88,6 +90,7 @@ export type User = {
   currentStreak?: number;
   longestStreak?: number;
   lastCheckInDate?: string | null;
+  aiEngine?: AiEngineId;
 };
 
 export type CheckInDayStatus = 'completed' | 'skipped' | 'empty';
@@ -166,6 +169,7 @@ export type ChatMessage = {
   timestamp: string;
   interactionId?: string;
   feedbackRating?: 1 | -1;
+  streaming?: boolean;
 };
 
 export type ChatSummary = {
@@ -353,7 +357,7 @@ export class ApiError extends Error {
   }
 }
 
-export type CycleMode = 'TRACK_PERIOD' | 'TRY_TO_CONCEIVE' | 'PREGNANCY';
+export type CycleMode = 'TRACK_PERIOD' | 'TRY_TO_CONCEIVE' | 'PREGNANCY' | 'PERIMENOPAUSE' | 'POSTPARTUM';
 
 export type CycleInsightCard = {
   id: string;
@@ -499,6 +503,7 @@ export type CycleStressLevel = 'low' | 'medium' | 'high';
 export type CycleExerciseLevel = 'none' | 'light' | 'moderate' | 'intense';
 export type CycleCaffeineLevel = 'none' | 'low' | 'moderate' | 'high';
 export type CycleAlcoholLevel = 'none' | 'light' | 'moderate' | 'heavy';
+export type CycleEnergyLevel = 'very_low' | 'low' | 'normal' | 'high' | 'very_high';
 
 export type CycleCustomTag = {
   id: string;
@@ -512,6 +517,259 @@ export type CycleDailyMetric = {
   hydrationMl: number | null;
   steps: number | null;
   sleepHours: number | null;
+};
+
+export type CycleObservationTrendType =
+  | 'RECENT_OCCURRENCE'
+  | 'PERIOD_EPISODE_RECURRENCE'
+  | 'RECENT_SEVERITY_DISTRIBUTION';
+
+export type CycleObservationTrend = {
+  key: string;
+  category: string;
+  trendGroup: 'pain' | 'energy' | 'digestion' | 'skin' | 'physical' | string;
+  window: string;
+  occurrenceCount: number;
+  episodeCount: number;
+  lastLoggedDate: string | null;
+  summaryType: CycleObservationTrendType;
+  summaryArgs: Record<string, string | number | null | undefined>;
+  recentDates: string[];
+  severityCounts?: { mild: number; moderate: number; severe: number };
+  severityMode?: string | null;
+};
+
+export type CyclePregnancyObservationTrendType =
+  | 'RECENT_OCCURRENCE'
+  | 'RECENT_SEVERITY_DISTRIBUTION'
+  | 'RECENT_BLEEDING_OCCURRENCE';
+
+export type CycleObservationExposure = {
+  presentDays: number;
+  absentDays: number;
+  assessedDays: number;
+  availableDays: number;
+  ratePercent: number;
+  rateDisplayEligible: boolean;
+};
+
+export type CycleObservationExposureComparisonDirection = 'HIGHER' | 'LOWER';
+
+export type CycleObservationExposureComparisonWindow = {
+  presentDays: number;
+  absentDays: number;
+  assessedDays: number;
+  availableDays: number;
+  ratePercent: number | null;
+  from: string | null;
+  to: string | null;
+};
+
+export type CycleObservationExposureComparison = {
+  earlier: CycleObservationExposureComparisonWindow;
+  recent: CycleObservationExposureComparisonWindow;
+  direction: CycleObservationExposureComparisonDirection | null;
+};
+
+export type CycleObservationRateUnavailableReason =
+  | 'INSUFFICIENT_ASSESSED_DAYS'
+  | 'INSUFFICIENT_COVERAGE'
+  | 'INSUFFICIENT_OCCURRENCES'
+  | 'NO_PRESENT_OCCURRENCES'
+  | 'NOT_EXPOSURE_ELIGIBLE';
+
+export type CycleObservationComparisonUnavailableReason =
+  | 'EARLIER_WINDOW_INSUFFICIENT'
+  | 'RECENT_WINDOW_INSUFFICIENT'
+  | 'BOTH_WINDOWS_INSUFFICIENT'
+  | 'SHORT_AVAILABLE_HISTORY'
+  | 'NO_QUALIFIED_TWO_WINDOW_DATA';
+
+export type CycleObservationDirectionUnavailableReason =
+  | 'CHANGE_TOO_SMALL'
+  | 'COVERAGE_NOT_COMPARABLE'
+  | 'EVENT_COUNT_TOO_LOW'
+  | 'ZERO_BASELINE_NOT_QUALIFIED';
+
+export type CycleObservationRateExplainability = {
+  available: boolean;
+  reason: CycleObservationRateUnavailableReason | null;
+};
+
+export type CycleObservationComparisonExplainability = {
+  numbersAvailable: boolean;
+  directionAvailable: boolean;
+  numbersReason: CycleObservationComparisonUnavailableReason | null;
+  directionReason: CycleObservationDirectionUnavailableReason | null;
+};
+
+export type CycleObservationExplainability = {
+  rate: CycleObservationRateExplainability;
+  comparison: CycleObservationComparisonExplainability | null;
+};
+
+export type CyclePregnancyObservationTrend = {
+  key: string;
+  family: 'bleeding' | 'pain' | 'digestion' | 'energy' | 'body' | string;
+  summaryType: CyclePregnancyObservationTrendType;
+  occurrenceCount: number;
+  lastLoggedDate: string | null;
+  recentDates: string[];
+  summaryArgs: { days: number };
+  severityCounts?: { mild: number; moderate: number; severe: number };
+  flowCounts?: { spotting: number; light: number; medium: number; heavy: number };
+  exposure?: CycleObservationExposure;
+  comparison?: CycleObservationExposureComparison;
+  explainability?: CycleObservationExplainability;
+};
+
+export type CyclePregnancyObservationTrendsPayload = {
+  version: string;
+  window: {
+    from: string | null;
+    to: string | null;
+    recentDays: number;
+    episodeFrom: string | null;
+    queryCapDays: number;
+  };
+  trends: CyclePregnancyObservationTrend[];
+  generatedAt: string | null;
+};
+
+export type CyclePerimenopauseObservationSummaryType =
+  | 'RECENT_OCCURRENCE'
+  | 'RECENT_SEVERITY_DISTRIBUTION'
+  | 'RECENT_BLEEDING_OCCURRENCE'
+  | 'RECENT_CATEGORY_DISTRIBUTION';
+
+export type CyclePerimenopauseObservationSummary = {
+  key: string;
+  family: 'bleeding' | 'vasomotor' | 'wellness' | 'pain' | 'mood' | 'digestion' | 'body' | string;
+  summaryType: CyclePerimenopauseObservationSummaryType;
+  occurrenceCount: number;
+  lastLoggedDate: string | null;
+  recentDates: string[];
+  summaryArgs: { days: number };
+  severityCounts?: { mild: number; moderate: number; severe: number };
+  flowCounts?: { spotting: number; light: number; medium: number; heavy: number };
+  exposure?: CycleObservationExposure;
+  comparison?: CycleObservationExposureComparison;
+  explainability?: CycleObservationExplainability;
+};
+
+export type CyclePerimenopauseObservationSummariesPayload = {
+  version: string;
+  window: {
+    from: string | null;
+    to: string | null;
+    recentDays: number;
+    queryCapDays: number;
+  };
+  summaries: CyclePerimenopauseObservationSummary[];
+  generatedAt: string | null;
+};
+
+export type CycleDoctorSummaryInclusions = {
+  menstrual: boolean;
+  pain: boolean;
+  symptoms: boolean;
+  wellness: boolean;
+  fertility: boolean;
+  sexual: boolean;
+  notes: boolean;
+  pregnancyContext?: boolean;
+  perimenopauseContext?: boolean;
+  postpartumContext?: boolean;
+};
+
+export type CycleDoctorPregnancyContext = {
+  current: true;
+  trackingMode: 'PREGNANCY';
+  referenceDate: string | null;
+  referenceType: 'LMP' | 'USER_SELECTED' | null;
+  reviewRequired: boolean;
+  estimatedGestationalAge: { week: number; day: number } | null;
+  estimatedDueDate: { date: string; estimated: true } | null;
+};
+
+export type CycleDoctorPerimenopauseContext = {
+  current: true;
+  trackingMode: 'PERIMENOPAUSE';
+  userSelected: true;
+  variability: {
+    intervalCount: number;
+    shortestDays: number;
+    longestDays: number;
+    sourceWindow: string;
+  } | null;
+};
+
+export type CycleDoctorPostpartumContext = {
+  current: true;
+  trackingMode: 'POSTPARTUM';
+  referenceDate: string | null;
+  elapsed: { week: number; day: number } | null;
+};
+
+export type CycleDoctorSummary = {
+  version: string;
+  generatedAt: string;
+  range: { from: string; to: string; queryDays: number; loggedDays: number };
+  inclusions: CycleDoctorSummaryInclusions;
+  pregnancyContext?: CycleDoctorPregnancyContext | null;
+  perimenopauseContext?: CycleDoctorPerimenopauseContext | null;
+  postpartumContext?: CycleDoctorPostpartumContext | null;
+  menstrualHistory: {
+    episodes: {
+      start: string;
+      end: string;
+      durationDays: number;
+      flowSequence: string[];
+      source: string;
+    }[];
+    spottingDates: string[];
+    cycleLengths: { start: string; end: string; lengthDays: number; source: string }[];
+    periodDayCount: number;
+  } | null;
+  pain: {
+    rows: { date: string; type: string; severity: string | null; source: string }[];
+    aggregates: { type: string; dayCount: number; severityMode: string | null; source: string }[];
+  } | null;
+  symptoms: { rows: { key: string; dayCount: number; dates: string[]; source: string }[] } | null;
+  wellness: {
+    energy?: { date: string; value: string; source: string }[];
+    sleep?: { date: string; value: string; label?: string; source: string }[];
+    stress?: { date: string; value: string; source: string }[];
+  } | null;
+  contraception: { method: string; startedAt: string | null; source: string; label: string } | null;
+  fertilityObservations: {
+    ovulationTests: { date: string; result: string; source: string }[];
+    pregnancyTests: { date: string; result: string; source: string }[];
+    bbt: { date: string; temperature: number; unit: string; source: string }[];
+    cervicalMucus: { date: string; value: string; source: string }[];
+  } | null;
+  privateObservations: {
+    sexual: { date: string; key: string; value?: number; source: string }[];
+    notes: { date: string; text: string; source: string }[];
+  } | null;
+  disclaimer: 'history_not_diagnosis';
+  mode?: CycleMode | null;
+  avgCycleLength?: number | null;
+  avgPeriodLength?: number | null;
+  cycleCount?: number;
+  shortestCycle?: number | null;
+  longestCycle?: number | null;
+  loggedDays: number;
+  periodDaysLogged: number;
+  painObservations?: { date: string; type: string; severity: string | null }[];
+  topSymptoms: { key: string; count: number }[];
+  topMoods: { key: string; count: number }[];
+};
+
+export type CycleObservationTrendsPayload = {
+  window: { from: string | null; to: string | null; recentDays: number; queryDays: number };
+  trends: CycleObservationTrend[];
+  generatedAt: string | null;
 };
 
 export type CycleObservationPattern = {
@@ -566,6 +824,13 @@ export type CycleLog = {
   caffeine?: CycleCaffeineLevel | null;
   alcohol?: CycleAlcoholLevel | null;
   customTagIds?: string[];
+  observations?: { energy?: CycleEnergyLevel | null } | null;
+  energy?: CycleEnergyLevel | null;
+  observationSchemaVersion?: number;
+  observationAssessments?: Record<string, 'ABSENT'> | null;
+  dailyAssessments?: Record<string, 'PRESENT' | 'ABSENT'> | null;
+  trackingContext?: string | null;
+  postpartumEpisodeId?: string | null;
 };
 
 export type PregnancyLog = {
@@ -712,6 +977,7 @@ export type CycleDayMark = {
   logged?: boolean;
   hasNote?: boolean;
   flow?: string;
+  ownerClassifiedPeriod?: boolean;
   cycleDay?: number | null;
   phase?: CyclePhaseKind;
   phaseKa?: string;
@@ -751,6 +1017,391 @@ export type CyclePredictionHistory = {
   emptyReason: 'NO_SNAPSHOTS' | null;
 };
 
+export type CycleTtcPayload = {
+  version: string;
+  mode: CycleMode;
+  ttcActive: boolean;
+  capabilities: {
+    live: boolean;
+    showFertileEstimates: boolean;
+    showFertilityLogging: boolean;
+    showFertilityShortcuts: boolean;
+    showFertilityHistory: boolean;
+    showBbtHistory: boolean;
+    showOpkHistory: boolean;
+    showPregnancyTestLog: boolean;
+    showTtcOverview: boolean;
+  };
+  range: { from: string; to: string; queryDays: number };
+  cycleContext: {
+    confidence: 'low' | 'medium' | 'high';
+    softened: boolean;
+    nextPeriodStart: string | null;
+    estimated: true;
+  };
+  fertilityEstimate: {
+    estimated: true;
+    available: boolean;
+    softened: boolean;
+    fertileWindow: { start: string; end: string } | null;
+    ovulationDate: string | null;
+    unavailableReason?: string;
+  };
+  contraceptionConflict: boolean;
+  fertilityEstimatesUnavailable: boolean;
+  todayLogged: {
+    opk: 'negative' | 'positive' | 'unclear' | null;
+    bbt: number | null;
+    mucus: string | null;
+    pregnancyTest: 'negative' | 'positive' | 'unclear' | null;
+    sexualActivity: boolean;
+  };
+  timeline: Array<{
+    date: string;
+    items: Array<{
+      kind: 'opk' | 'bbt' | 'mucus' | 'pregnancyTest';
+      result?: 'negative' | 'positive' | 'unclear';
+      temperature?: number;
+      unit?: string;
+      value?: string;
+      estimated: false;
+    }>;
+  }>;
+  bbtHistory: Array<{ date: string; temperature: number; unit: string; source: string }>;
+  bbtChartEligible: boolean;
+  opkHistory: Array<{ date: string; result: 'negative' | 'positive' | 'unclear'; source: string }>;
+  mucusHistory: Array<{ date: string; value: string; source: string }>;
+  pregnancyTestHistory: Array<{ date: string; result: 'negative' | 'positive' | 'unclear'; source: string }>;
+  honesty: {
+    estimatesAreEstimates: boolean;
+    observationsAreUserLogged: boolean;
+    positiveOpkDoesNotConfirmOvulation: boolean;
+    bbtNotInterpreted: boolean;
+    mucusNotInterpreted: boolean;
+    noConceptionProbability: boolean;
+    pregnancyTestDoesNotChangeMode: true;
+  };
+};
+
+export type CyclePregnancyCarePlannerSummary = {
+  available: boolean;
+  personalized: boolean;
+  reviewRequired: boolean;
+  catalogVersion: string;
+  next: {
+    id: string;
+    titleKey: string;
+    startWeek: number;
+    endWeek: number;
+    relation: 'BEFORE_WINDOW' | 'IN_WINDOW' | 'AFTER_WINDOW' | null;
+    status: 'PLANNED' | 'COMPLETED' | 'DISMISSED' | 'NOT_APPLICABLE' | null;
+  } | null;
+};
+
+export type CyclePregnancyCarePlanItem = {
+  id: string;
+  category:
+    | 'APPOINTMENT'
+    | 'ULTRASOUND'
+    | 'LAB'
+    | 'SCREENING'
+    | 'VACCINATION_DISCUSSION'
+    | 'EDUCATION'
+    | 'BIRTH_PLANNING';
+  titleKey: string;
+  descriptionKey: string;
+  whyKey: string;
+  disclaimerKey: string | null;
+  optional: boolean;
+  regionalVariation: boolean;
+  timing: {
+    startWeek: number;
+    endWeek: number;
+    relation: 'BEFORE_WINDOW' | 'IN_WINDOW' | 'AFTER_WINDOW' | null;
+    type: string;
+  };
+  plannedDateOutsideWindow: boolean;
+  sources: Array<{
+    organization: string;
+    title: string;
+    reviewedAt: string;
+    url: string;
+  }>;
+  userState: {
+    status: 'PLANNED' | 'COMPLETED' | 'DISMISSED' | 'NOT_APPLICABLE';
+    plannedDate: string | null;
+    plannedTime: string | null;
+    plannedPlace: string | null;
+    completedDate: string | null;
+    note: string | null;
+    reminderEnabled: boolean;
+    reminderOffset: 0 | 1 | 3;
+    reminderMode: 'DATE_BASED' | 'EXACT_TIME';
+    exactReminderOffsetMinutes: 0 | 30 | 60 | 120 | null;
+    reminderPreview?: {
+      mode: 'DATE_BASED' | 'EXACT_TIME';
+      fireCivilDate: string;
+      fireClock: string;
+      past: boolean;
+    } | null;
+  } | null;
+};
+
+export type CyclePregnancyCarePlan = {
+  version: string;
+  reviewedAt: string;
+  sourceSet: string;
+  available: boolean;
+  personalized: boolean;
+  reviewRequired: boolean;
+  pregnancyActive: boolean;
+  pregnancyEpisodeId?: string | null;
+  offline?: boolean;
+  items: CyclePregnancyCarePlanItem[];
+};
+
+export type CyclePregnancyTimelineMilestone = {
+  id: string;
+  week: number;
+  weekRange: [number, number] | null;
+  category: 'PREGNANCY_STAGE' | 'GENERAL_DEVELOPMENT' | 'MATERNAL_CHANGE' | 'CLINICAL_WINDOW';
+  titleKey: string;
+  bodyKey: string;
+  sourceKey: string;
+  status: 'PAST' | 'CURRENT' | 'UPCOMING';
+};
+
+export type CyclePregnancyTimeline = {
+  version: string;
+  reviewDate: string;
+  sourceSet: string;
+  available: boolean;
+  reviewRequired: boolean;
+  currentWeek: number | null;
+  currentDay: number | null;
+  trimester: number | null;
+  progress: {
+    kind: 'gestational_calendar';
+    currentWeek: number;
+    currentDay: number;
+    ofWeeks: number;
+    fraction: number | null;
+  } | null;
+  currentMarker: {
+    week: number;
+    day: number;
+    railPosition: number | null;
+    betweenMilestones: boolean;
+  } | null;
+  currentMilestoneId: string | null;
+  nextMilestone: { id: string; week: number; titleKey: string; sourceKey: string } | null;
+  beyondStandardTerm: boolean;
+  estimatedDueDate: { date: string; estimated: true } | null;
+  trimesterBands: Array<{ trimester: number; fromWeek: number; toWeek: number }>;
+  milestones: CyclePregnancyTimelineMilestone[];
+};
+
+export type CyclePregnancyDayObservations = {
+  date: string;
+  spotting: boolean;
+  bleeding?: 'spotting' | 'light' | 'medium' | 'heavy';
+  pain: Array<{ type: CyclePainType; severity: CyclePainSeverity }>;
+  symptoms: string[];
+  wellness: {
+    energy?: string;
+    sleepQuality?: CycleSleepQuality;
+    stressLevel?: CycleStressLevel;
+  };
+};
+
+export type CyclePregnancyPayload = {
+  version: string;
+  mode: CycleMode;
+  pregnancyActive: boolean;
+  capabilities: {
+    live: boolean;
+    showFertileEstimates: boolean;
+    showFertilityLogging: boolean;
+    showFertilityShortcuts: boolean;
+    showFertilityHistory: boolean;
+    showBbtHistory: boolean;
+    showOpkHistory: boolean;
+    showPregnancyTestLog: boolean;
+    showTtcOverview: boolean;
+    showPregnancyOverview: boolean;
+    showLatePeriod: boolean;
+    showNextPeriodForecast: boolean;
+  };
+  range: { from: string; to: string; queryDays: number };
+  episode: {
+    id: string;
+    referenceDate: string;
+    referenceType: 'LMP' | 'USER_SELECTED';
+    status: 'ACTIVE' | 'ENDED';
+    startedAt: string | null;
+    endedAt: string | null;
+  } | null;
+  referenceDate: string | null;
+  referenceType: 'LMP' | 'USER_SELECTED' | null;
+  estimatedGestationalAge: {
+    week: number;
+    day: number;
+    dayOfPregnancy: number;
+    trimester: number;
+  } | null;
+  estimatedDueDate: { date: string; estimated: true } | null;
+  reviewRequired: boolean;
+  weekDevelopment: {
+    week: number;
+    kind: 'informational' | 'analogy' | 'catalog';
+    comparisonKey: string | null;
+    lengthCm: number | null;
+    weightGrams: number | null;
+    measurementType: 'CRL' | 'CHL' | null;
+    developmentFactKeys: string[];
+    illustrationKey: string | null;
+    beyondCatalog?: boolean;
+    requestedWeek?: number;
+    dataVersion: string;
+    sourceVersion: string;
+    reviewDate: string;
+  } | null;
+    timeline: CyclePregnancyTimeline | null;
+  carePlannerSummary?: CyclePregnancyCarePlannerSummary | null;
+  estimated: true;
+  honesty: {
+    notADiagnosis: true;
+    testIsNotMode: true;
+    estimated: true;
+    sourceExplicit: boolean;
+  };
+  todayLogged: {
+    flow: string | null;
+    spotting: boolean;
+    painEntries: CyclePainEntry[];
+    symptoms: string[];
+    pregnancyTest: 'negative' | 'positive' | 'unclear' | null;
+    hasNotes: boolean;
+  };
+  todayObservations: CyclePregnancyDayObservations | null;
+  spottingHistory: Array<{ date: string; flow: string; spotting: boolean; source: string }>;
+  pregnancyTestHistory: Array<{
+    date: string;
+    result: 'negative' | 'positive' | 'unclear';
+    source: string;
+    doesNotConfirmMode: true;
+  }>;
+  recentLogs: Array<{
+    date: string;
+    flow: string | null;
+    spotting: boolean;
+    symptoms: string[];
+    painEntries: CyclePainEntry[];
+    pregnancyTest: 'negative' | 'positive' | 'unclear' | null;
+    hasNotes: boolean;
+  }>;
+  recentObservations: CyclePregnancyDayObservations[];
+  observationRange: { from: string | null; to: string | null; queryDays: number };
+  observationTrends: CyclePregnancyObservationTrendsPayload;
+};
+
+export type CyclePostpartumPayload = {
+  version: string;
+  mode: CycleMode;
+  active: boolean;
+  capabilities: Record<string, boolean | string[] | undefined>;
+  episode: {
+    id: string | null;
+    referenceDate: string | null;
+    status: string | null;
+    startedAt: string | null;
+    endedAt: string | null;
+  } | null;
+  referenceDate: string | null;
+  elapsed: { days: number; week: number; day: number } | null;
+  todayObservations: {
+    flow: string | null;
+    painEntries: Array<{ type: CyclePainType; severity: CyclePainSeverity }>;
+    symptoms: string[];
+    moods: string[];
+    sleepQuality: CycleSleepQuality | null;
+    energy: string | null;
+  };
+  recentLogs: Array<{
+    date: string;
+    flow: string | null;
+    spotting: boolean;
+    symptoms: string[];
+    painEntries: Array<{ type: CyclePainType; severity: CyclePainSeverity }>;
+    moods: string[];
+    sleepQuality: CycleSleepQuality | null;
+    energy: string | null;
+    hasNotes: boolean;
+    classified?: boolean;
+  }>;
+  bleedEpisodes?: Array<{ start: string; end: string; classified: boolean }>;
+  classifiedDates?: string[];
+  latestClassified?: { start: string; end: string; source: 'OWNER' } | null;
+  honesty: {
+    notADiagnosis: boolean;
+    notAnOutcome: boolean;
+    referenceOwnerEntered: boolean;
+    referenceOptional: boolean;
+    elapsedNotRecovery: boolean;
+  };
+};
+
+export type CyclePerimenopausePayload = {
+  mode: 'PERIMENOPAUSE';
+  capabilities: {
+    live: boolean;
+    showFertileEstimates: boolean;
+    showFertilityLogging: boolean;
+    showFertilityShortcuts: boolean;
+    showFertilityHistory: boolean;
+    showBbtHistory: boolean;
+    showOpkHistory: boolean;
+    showPregnancyTestLog: boolean;
+    showTtcOverview: boolean;
+    showPregnancyOverview: boolean;
+    showLatePeriod: boolean;
+    showNextPeriodForecast: boolean;
+    showPerimenopauseTracking: boolean;
+    showVariabilityContext: boolean;
+  };
+  recentBleedingEpisodes: Array<{
+    start: string;
+    end: string;
+    durationDays: number | null;
+    intervalDays: number | null;
+    flowFacts: string[];
+  }>;
+  recentCycleIntervals: Array<{ from: string; to: string; days: number }>;
+  variabilitySummary: {
+    intervalCount: number;
+    shortestDays: number | null;
+    longestDays: number | null;
+    recentIntervalDays: number | null;
+    sourceWindow: string;
+  };
+  lastRecordedBleeding: { date: string; flow: string } | null;
+  recentObservations: Array<{
+    date: string;
+    symptoms: string[];
+    moods: string[];
+    energy: string | null;
+    sleepQuality: string | null;
+    pain: Array<{ type: string; severity: string }>;
+  }>;
+  forecast: {
+    showPreciseNextPeriod: boolean;
+    nextPeriodStart: string | null;
+    nextPeriodEnd: string | null;
+    confidence: 'low' | 'medium' | 'high';
+  };
+  observationSummaries?: CyclePerimenopauseObservationSummariesPayload | null;
+};
+
 export type CycleBundle = {
   meta: {
     today: string;
@@ -788,9 +1439,12 @@ export type CycleBundle = {
     }[];
   };
   pregnancy: {
-    dueDate: string;
+    dueDate: string | null;
     age: { week: number; day: number; dayOfPregnancy: number; trimester: number } | null;
-    insight: { week: number; size: string; note: string };
+    referenceDate: string | null;
+    referenceType: 'LMP' | 'USER_SELECTED' | null;
+    estimated: true;
+    reviewRequired: boolean;
   } | null;
   inferred: {
     avgCycleLength: number;
@@ -817,41 +1471,22 @@ export type CycleBundle = {
     action?: 'chat' | null;
     late?: { status?: string } | null;
   }[];
-  summary: {
-    mode: CycleMode;
-    avgCycleLength: number;
-    avgPeriodLength: number;
-    isIrregular: boolean;
-    loggedDays: number;
-    periodDaysLogged: number;
-    nextPeriodStart: string | null;
-    ovulationDate: string | null;
-    fertileWindow: { start: string; end: string } | null;
-    topSymptoms: { key: string; count: number }[];
-    topMoods: { key: string; count: number }[];
-    shortestCycle?: number | null;
-    longestCycle?: number | null;
-    variability?: number | null;
-    cycleCount?: number;
-    confidence?: 'low' | 'medium' | 'high';
-    generatedAt: string;
-    historical?: {
-      source: 'calculated_from_logged_history';
-      completeness: 'based_on_recorded_days';
-      completedCycleCount: number;
-      loggingCoverage: number;
-      insightDataQuality: CycleInsightDataQuality;
-      cycleLengthStats: CycleAnalytics['cycleLengthStats'];
-      bleedDurations: CycleAnalytics['bleedDurations'];
-      painPatterns: CyclePainPattern[];
-      symptomPatterns: CycleRecurringPattern[];
-    };
-    fertilityTests?: {
-      label: 'user_logged';
-      ovulationTests: { date: string; result: CycleTestResult; source: string }[];
-      pregnancyTests: { date: string; result: CycleTestResult; source: string }[];
-    };
+  perimenopause?: CyclePerimenopausePayload | null;
+  classifiedDates?: string[];
+  forecastEligibility?: {
+    allowed: boolean;
+    reason: 'STANDARD' | 'POSTPARTUM_HISTORY_INSUFFICIENT' | 'POSTPARTUM_HISTORY_READY';
   };
+  postpartum?: {
+    version: string;
+    active: boolean;
+    referenceDate: string | null;
+    elapsed: { days: number; week: number; day: number } | null;
+    capabilities?: Record<string, boolean | string[] | undefined>;
+    classifiedDates?: string[];
+    latestClassified?: { start: string; end: string; source: 'OWNER' } | null;
+  } | null;
+  summary: CycleDoctorSummary;
   localInsights?: CycleInsights;
 };
 
@@ -892,7 +1527,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if ((error as Error)?.name === 'AbortError') {
-      throw new ApiError('მოთხოვნის დრო ამოიწურა. სცადეთ ხელახლა.', 408);
+      throw new ApiError(ka.common.requestTimeout, 408);
     }
     console.warn('[api]', method, path, (error as Error)?.message ?? error);
     throw new ApiError(ka.common.networkError, 0);
@@ -998,6 +1633,10 @@ export const api = {
           forceUpdate: boolean;
           allowRegistrations: boolean;
           supportEmail: string;
+          mediWorldEnabled?: boolean;
+          mediWorldExploreEnabled?: boolean;
+          mediWorldMovementEnabled?: boolean;
+          mediWorldGardenEnabled?: boolean;
         };
         client: { version: string; needsUpdate: boolean; blockedByForceUpdate: boolean };
         packages?: UserPackage[];
@@ -1081,9 +1720,17 @@ export const api = {
         checkIn?: CheckInState | null;
         checkInAwarded?: boolean;
         pointsAwarded?: number;
-      }>('/api/auth/me', token !== undefined ? { token } : undefined),
+      }>('/api/auth/me', {
+        ...(token !== undefined ? { token } : {}),
+        timeoutMs: 15_000,
+      }),
 
-    updateProfile: (body: { fullName?: string; gender?: Gender; birthDate?: string }) =>
+    updateProfile: (body: {
+      fullName?: string;
+      gender?: Gender;
+      birthDate?: string;
+      aiEngine?: AiEngineId;
+    }) =>
       request<{ user: User }>('/api/auth/me', { method: 'PATCH', body }),
 
     deleteAccount: () => request<{ ok: boolean }>('/api/auth/me', { method: 'DELETE', timeoutMs: 20_000 }),
@@ -1281,6 +1928,17 @@ export const api = {
   },
 
   ai: {
+    engines: () =>
+      request<{
+        selected: AiEngineId;
+        engines: Array<{
+          id: AiEngineId;
+          provider: 'openrouter' | 'evidencemd';
+          model: string;
+          recommended: boolean;
+        }>;
+      }>('/api/ai/engines'),
+
     query: (body: { message: string; mode?: 'DOCTOR' | 'CONSILIUM'; sessionId?: string; context?: string }) =>
       request<{
         sessionId: string;
@@ -1288,6 +1946,7 @@ export const api = {
         mode: 'DOCTOR' | 'CONSILIUM';
         answer: string;
         model: string;
+        engine?: string;
         interactionId: string;
         usage: Usage;
       }>('/api/ai/query', { method: 'POST', body }),
@@ -1553,6 +2212,11 @@ export const api = {
       contraceptionStartedAt: string | null;
       isIrregular: boolean;
       dueDate: string | null;
+      pregnancyReferenceDate: string;
+      pregnancyReferenceType: 'LMP' | 'USER_SELECTED';
+      pregnancyConfirm: true;
+      postpartumConfirm: true;
+      postpartumReferenceDate: string | null;
       privacyEnabled: boolean;
       enablePartnerShare: boolean;
       sharePermissions: Partial<CycleSharePermissions>;
@@ -1588,6 +2252,9 @@ export const api = {
         caffeine: CycleCaffeineLevel | null;
         alcohol: CycleAlcoholLevel | null;
         customTagIds: string[];
+        observations: { energy?: CycleEnergyLevel | null } | null;
+        energy: CycleEnergyLevel | null;
+        observationAssessments: Record<string, 'ABSENT'>;
       }>,
       opts?: { timeoutMs?: number },
     ) =>
@@ -1654,6 +2321,70 @@ export const api = {
       }>('/api/cycle/insights', { method: 'POST', body: { refresh } }),
     predictionHistory: () =>
       request<CyclePredictionHistory>('/api/cycle/prediction-history', { cache: 'no-store' }),
+    observationTrends: () =>
+      request<CycleObservationTrendsPayload>('/api/cycle/observation-trends', { cache: 'no-store' }),
+    ttc: () => request<CycleTtcPayload>('/api/cycle/ttc', { cache: 'no-store' }),
+    pregnancy: () => request<CyclePregnancyPayload>('/api/cycle/pregnancy', { cache: 'no-store' }),
+    postpartum: () => request<CyclePostpartumPayload>('/api/cycle/postpartum', { cache: 'no-store' }),
+    updatePostpartumReference: (referenceDate: string | null) =>
+      request<CycleBundle>('/api/cycle/postpartum', { method: 'PUT', body: { referenceDate } }),
+    classifyPostpartumBleed: (date: string) =>
+      request<CycleBundle>('/api/cycle/postpartum/bleed-classifications', {
+        method: 'PUT',
+        body: { date },
+        timeoutMs: 30_000,
+      }),
+    unclassifyPostpartumBleed: (date: string) =>
+      request<CycleBundle>('/api/cycle/postpartum/bleed-classifications', {
+        method: 'DELETE',
+        body: { date },
+        timeoutMs: 30_000,
+      }),
+    pregnancyCarePlan: () =>
+      request<CyclePregnancyCarePlan>('/api/cycle/pregnancy/care-plan', { cache: 'no-store' }),
+    upsertPregnancyCareItem: (
+      careItemId: string,
+      body: {
+        status: 'PLANNED' | 'COMPLETED' | 'DISMISSED' | 'NOT_APPLICABLE' | 'CLEAR' | null;
+        plannedDate?: string | null;
+        plannedTime?: string | null;
+        plannedPlace?: string | null;
+        completedDate?: string | null;
+        note?: string | null;
+        reminderEnabled?: boolean;
+        reminderOffset?: 0 | 1 | 3;
+        reminderMode?: 'DATE_BASED' | 'EXACT_TIME';
+        exactReminderOffsetMinutes?: 0 | 30 | 60 | 120 | null;
+      },
+    ) =>
+      request<CyclePregnancyCarePlan>(
+        `/api/cycle/pregnancy/care-plan/${encodeURIComponent(careItemId)}`,
+        {
+          method: 'PUT',
+          body: {
+            ...body,
+            status: body.status === null ? 'CLEAR' : body.status,
+          },
+        },
+      ),
+    doctorSummary: (opts?: {
+      from?: string;
+      to?: string;
+      includeFertility?: boolean;
+      includeSexual?: boolean;
+      includeNotes?: boolean;
+    }) => {
+      const qs = new URLSearchParams();
+      if (opts?.from) qs.set('from', opts.from);
+      if (opts?.to) qs.set('to', opts.to);
+      if (opts?.includeFertility) qs.set('includeFertility', '1');
+      if (opts?.includeSexual) qs.set('includeSexual', '1');
+      if (opts?.includeNotes) qs.set('includeNotes', '1');
+      const q = qs.toString();
+      return request<CycleDoctorSummary>(`/api/cycle/doctor-summary${q ? `?${q}` : ''}`, {
+        cache: 'no-store',
+      });
+    },
   },
 
   quests: {
@@ -1753,7 +2484,198 @@ export const api = {
         units: number;
         newlyUnlockedKeys: string[];
         aggregateUnlockCount: number;
-      }>('/api/medi-companion/reconcile', { method: 'POST' }),
+      }>(      '/api/medi-companion/reconcile', { method: 'POST' }),
+  },
+
+  mediWorld: {
+    profile: () => request<import('@/lib/mediWorld/types').MediWorldProfileResponse>('/api/medi-world'),
+    ledger: (query?: { take?: number; cursor?: string | null }) => {
+      const qs = new URLSearchParams();
+      if (query?.take) qs.set('take', String(query.take));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const q = qs.toString();
+      return request<{
+        items: import('@/lib/mediWorld/types').MediWorldLedgerItem[];
+        nextCursor: string | null;
+      }>(`/api/medi-world/ledger${q ? `?${q}` : ''}`);
+    },
+    companion: () => request<import('@/lib/mediWorld/types').CompanionWorldState>('/api/medi-world/companion'),
+    renameCompanion: (displayName: string) =>
+      request<import('@/lib/mediWorld/types').CompanionWorldState>('/api/medi-world/companion', {
+        method: 'PATCH',
+        body: { displayName },
+      }),
+    careMoment: (interactionKey: string) =>
+      request<import('@/lib/mediWorld/types').CompanionWorldState>('/api/medi-world/companion/care-moment', {
+        method: 'POST',
+        body: { interactionKey },
+      }),
+    selectStage: (stageKey: string) =>
+      request<import('@/lib/mediWorld/types').CompanionWorldState>('/api/medi-world/companion/stage', {
+        method: 'POST',
+        body: { stageKey },
+      }),
+    equipCosmetic: (slot: string, catalogKey: string | null) =>
+      request<import('@/lib/mediWorld/types').CompanionWorldState>('/api/medi-world/companion/equipment', {
+        method: 'PUT',
+        body: { slot, catalogKey },
+      }),
+    unlockCosmetic: (catalogKey: string, idempotencyKey: string) =>
+      request<import('@/lib/mediWorld/types').CompanionWorldState>(
+        `/api/medi-world/companion/cosmetics/${encodeURIComponent(catalogKey)}/unlock`,
+        { method: 'POST', body: { idempotencyKey } },
+      ),
+    adventureToday: () =>
+      request<import('@/lib/mediWorld/types').AdventureResponse>('/api/medi-world/adventure/today'),
+    adventurePreferences: () =>
+      request<import('@/lib/mediWorld/types').AdventurePreferencesResponse>('/api/medi-world/adventure/preferences'),
+    updateAdventurePreferences: (body: Partial<import('@/lib/mediWorld/types').AdventurePreferences>) =>
+      request<import('@/lib/mediWorld/types').AdventurePreferencesResponse>('/api/medi-world/adventure/preferences', {
+        method: 'PUT',
+        body,
+      }),
+    adventureChoice: (optionKey: 'a' | 'b') =>
+      request<import('@/lib/mediWorld/types').AdventureResponse>('/api/medi-world/adventure/today/choice', {
+        method: 'POST',
+        body: { optionKey },
+      }),
+    adventureSwap: (slotKey: 'anchor' | 'balance', idempotencyKey: string) =>
+      request<import('@/lib/mediWorld/types').AdventureResponse>('/api/medi-world/adventure/today/swap', {
+        method: 'POST',
+        body: { slotKey, idempotencyKey },
+      }),
+    adventureRestDay: () =>
+      request<import('@/lib/mediWorld/types').AdventureResponse>('/api/medi-world/adventure/today/rest-day', {
+        method: 'POST',
+        body: {},
+      }),
+    exploreConfig: () =>
+      request<import('@/lib/mediWorld/types').ExploreConfigResponse>('/api/medi-world/explore/config'),
+    exploreArea: (coarseKey: string, locale?: 'ka' | 'en') => {
+      const qs = new URLSearchParams();
+      if (locale) qs.set('locale', locale);
+      const q = qs.toString();
+      return request<import('@/lib/mediWorld/types').ExploreAreaResponse>(
+        `/api/medi-world/explore/area/${encodeURIComponent(coarseKey)}${q ? `?${q}` : ''}`,
+      );
+    },
+    exploreSparks: (coarseKey: string, locale?: 'ka' | 'en') => {
+      const qs = new URLSearchParams({ coarseKey });
+      if (locale) qs.set('locale', locale);
+      return request<{ enabled: boolean; sparks: import('@/lib/mediWorld/types').ExploreSpark[] }>(
+        `/api/medi-world/explore/sparks?${qs.toString()}`,
+      );
+    },
+    collectSpark: (
+      spawnId: string,
+      body: {
+        idempotencyKey: string;
+        latitude: number;
+        longitude: number;
+        horizontalAccuracy: number;
+        locationTimestamp: string | number;
+        mockLocation?: boolean;
+        speedMps?: number;
+      },
+    ) =>
+      request<import('@/lib/mediWorld/types').ExploreCollectResponse>(
+        `/api/medi-world/explore/sparks/${encodeURIComponent(spawnId)}/collect`,
+        { method: 'POST', body },
+      ),
+    exploreCollections: (query?: { take?: number; cursor?: string | null; locale?: 'ka' | 'en' }) => {
+      const qs = new URLSearchParams();
+      if (query?.take) qs.set('take', String(query.take));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      if (query?.locale) qs.set('locale', query.locale);
+      const q = qs.toString();
+      return request<import('@/lib/mediWorld/types').ExploreCollectionsResponse>(
+        `/api/medi-world/explore/collections${q ? `?${q}` : ''}`,
+      );
+    },
+    movementPreferences: () =>
+      request<import('@/lib/mediWorld/types').MovementPreferencesResponse>('/api/medi-world/movement/preferences'),
+    updateMovementPreferences: (body: { movementMode: string; targetMinutes: number }) =>
+      request<import('@/lib/mediWorld/types').MovementPreferencesResponse>('/api/medi-world/movement/preferences', {
+        method: 'PUT',
+        body,
+      }),
+    movementCurrent: () =>
+      request<import('@/lib/mediWorld/types').MovementSessionResponse>('/api/medi-world/movement/current'),
+    startMovementSession: (body: Record<string, unknown>) =>
+      request<import('@/lib/mediWorld/types').MovementSessionResponse>('/api/medi-world/movement/sessions', {
+        method: 'POST',
+        body,
+      }),
+    submitMovementSegment: (id: string, body: Record<string, unknown>) =>
+      request<import('@/lib/mediWorld/types').MovementSessionResponse>(
+        `/api/medi-world/movement/sessions/${encodeURIComponent(id)}/segments`,
+        { method: 'POST', body },
+      ),
+    pauseMovementSession: (id: string, idempotencyKey: string) =>
+      request<import('@/lib/mediWorld/types').MovementSessionResponse>(
+        `/api/medi-world/movement/sessions/${encodeURIComponent(id)}/pause`,
+        { method: 'POST', body: { idempotencyKey } },
+      ),
+    resumeMovementSession: (id: string, body: Record<string, unknown>) =>
+      request<import('@/lib/mediWorld/types').MovementSessionResponse>(
+        `/api/medi-world/movement/sessions/${encodeURIComponent(id)}/resume`,
+        { method: 'POST', body },
+      ),
+    finishMovementSession: (id: string, idempotencyKey: string) =>
+      request<import('@/lib/mediWorld/types').MovementSessionResponse>(
+        `/api/medi-world/movement/sessions/${encodeURIComponent(id)}/finish`,
+        { method: 'POST', body: { idempotencyKey } },
+      ),
+    abandonMovementSession: (id: string, idempotencyKey: string) =>
+      request<import('@/lib/mediWorld/types').MovementSessionResponse>(
+        `/api/medi-world/movement/sessions/${encodeURIComponent(id)}/abandon`,
+        { method: 'POST', body: { idempotencyKey } },
+      ),
+    movementHistory: (query?: { take?: number; cursor?: string | null }) => {
+      const qs = new URLSearchParams();
+      if (query?.take) qs.set('take', String(query.take));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const q = qs.toString();
+      return request<import('@/lib/mediWorld/types').MovementHistoryResponse>(
+        `/api/medi-world/movement/history${q ? `?${q}` : ''}`,
+      );
+    },
+    garden: () => request<import('@/lib/mediWorld/types').GardenResponse>('/api/medi-world/garden'),
+    gardenCatalog: () => request<import('@/lib/mediWorld/types').GardenCatalogResponse>('/api/medi-world/garden/catalog'),
+    gardenPlant: (plotIndex: number, catalogKey: string, idempotencyKey: string) =>
+      request<import('@/lib/mediWorld/types').GardenResponse>(
+        `/api/medi-world/garden/plots/${plotIndex}/plant`,
+        { method: 'POST', body: { catalogKey, idempotencyKey } },
+      ),
+    gardenMove: (plantId: string, plotIndex: number, idempotencyKey: string) =>
+      request<import('@/lib/mediWorld/types').GardenResponse>(
+        `/api/medi-world/garden/plants/${encodeURIComponent(plantId)}/move`,
+        { method: 'POST', body: { plotIndex, idempotencyKey } },
+      ),
+    gardenStore: (plantId: string, idempotencyKey: string) =>
+      request<import('@/lib/mediWorld/types').GardenResponse>(
+        `/api/medi-world/garden/plants/${encodeURIComponent(plantId)}/store`,
+        { method: 'POST', body: { idempotencyKey } },
+      ),
+    gardenRestore: (plantId: string, plotIndex: number, idempotencyKey: string) =>
+      request<import('@/lib/mediWorld/types').GardenResponse>(
+        `/api/medi-world/garden/plants/${encodeURIComponent(plantId)}/restore`,
+        { method: 'POST', body: { plotIndex, idempotencyKey } },
+      ),
+    gardenHistory: (query?: { take?: number; cursor?: string | null }) => {
+      const qs = new URLSearchParams();
+      if (query?.take) qs.set('take', String(query.take));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const q = qs.toString();
+      return request<import('@/lib/mediWorld/types').GardenHistoryResponse>(
+        `/api/medi-world/garden/history${q ? `?${q}` : ''}`,
+      );
+    },
+    gardenQaStage: (plantId: string, body: { stage?: string; nurtureDays?: number }) =>
+      request<{ ok: boolean; fixture: boolean; stage: string; nurtureDays: number }>(
+        '/api/medi-world/garden/qa/stage',
+        { method: 'POST', body: { plantId, ...body } },
+      ),
   },
 };
 

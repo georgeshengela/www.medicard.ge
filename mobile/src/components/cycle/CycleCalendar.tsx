@@ -43,9 +43,11 @@ type Props = {
   showFertility?: boolean;
   /** Low server confidence — hide predicted period / fertile / ovulation marks. */
   showPredicted?: boolean;
+  /** Logged bleed a11y/legend. Postpartum uses neutral bleeding, not period. */
+  loggedBleedLabel?: string;
 };
 
-export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, onNext, embedded, today: todayProp, canSelect, showFertility = true, showPredicted = true }: Props) {
+export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, onNext, embedded, today: todayProp, canSelect, showFertility = true, showPredicted = true, loggedBleedLabel }: Props) {
   const c = useCycleColors();
   const reduceMotion = usePrefersReducedMotion();
   const today = todayProp || todayKey();
@@ -161,7 +163,8 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
             copy: {
               today: ka.cycle.jumpToday,
               selected: ka.cycle.selectedDay,
-              loggedPeriod: ka.cycle.legendPeriod,
+              loggedPeriod: loggedBleedLabel || ka.cycle.legendPeriod,
+              classifiedPeriod: layers.ownerClassifiedPeriod ? ka.cycle.postpartumClassifiedA11y : '',
               spotting: ka.cycle.legendSpotting,
               predictedPeriod: ka.cycle.legendPeriodPredicted,
               fertile: ka.cycle.legendFertile,
@@ -215,8 +218,12 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: innerBg,
-                    borderWidth: visual.showPredictedDash ? 1.5 : 0,
-                    borderColor: visual.showPredictedDash ? c.period : 'transparent',
+                    borderWidth: visual.showPredictedDash ? 1.5 : layers.ownerClassifiedPeriod ? 2 : 0,
+                    borderColor: visual.showPredictedDash
+                      ? c.period
+                      : layers.ownerClassifiedPeriod
+                        ? c.white
+                        : 'transparent',
                     borderStyle: visual.showPredictedDash ? 'dashed' : 'solid',
                   }}
                 >

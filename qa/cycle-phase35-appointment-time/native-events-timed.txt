@@ -1,0 +1,1 @@
+Row: 0 _id=2, title=Medicard — დაგეგმილი ვიზიტი, dtstart=1790080200000, dtend=1790082000000, allDay=0, hasAlarm=0, description=Created from Medicard care planner.

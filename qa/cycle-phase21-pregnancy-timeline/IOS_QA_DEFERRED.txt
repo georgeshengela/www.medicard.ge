@@ -1,0 +1,3 @@
+iOS native QA for Cycle Phase 21 is deferred by product decision.
+
+Not a production-safety blocker. Android 12 required screenshots are in this folder.

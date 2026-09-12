@@ -1,0 +1,155 @@
+{
+  "generatedAt": "2026-09-11",
+  "timezone": "Europe/Brussels",
+  "cases": {
+    "legacyDateBased": {
+      "schedule": {
+        "ok": true,
+        "mode": "DATE_BASED",
+        "plannedDate": "2026-09-22",
+        "plannedTime": null,
+        "offsetDays": 1,
+        "offsetMinutes": null,
+        "eventDate": "2026-09-21",
+        "fireCivilDate": "2026-09-21",
+        "fireClock": "09:00",
+        "fireAtMs": 1789974000000,
+        "usesPlannedTime": false
+      },
+      "candidates": [
+        {
+          "type": "pregnancy_care_plan",
+          "family": "pregnancyCareReminder",
+          "meaning": "USER_PLANNED_EVENT",
+          "careItemId": "anatomy_ultrasound",
+          "episodeId": "ep-a",
+          "userId": "user-a",
+          "plannedDate": "2026-09-22",
+          "plannedTime": null,
+          "offset": 1,
+          "reminderMode": "DATE_BASED",
+          "eventDate": "2026-09-21",
+          "fireClock": "09:00",
+          "fireAtMs": 1789974000000,
+          "usesPlannedTime": false,
+          "candidateId": "pregnancy_care:user-a:ep-a:anatomy_ultrasound:2026-09-22:1",
+          "templateKey": "pregnancy-care-plan",
+          "route": "/cycle/pregnancy/care-plan?item=anatomy_ultrasound",
+          "notifyEligible": true
+        }
+      ]
+    },
+    "atTime": {
+      "ok": true,
+      "mode": "EXACT_TIME",
+      "plannedDate": "2026-09-22",
+      "plannedTime": "14:30",
+      "offsetDays": null,
+      "offsetMinutes": 0,
+      "eventDate": "2026-09-22",
+      "fireCivilDate": "2026-09-22",
+      "fireClock": "14:30",
+      "fireAtMs": 1790080200000,
+      "usesPlannedTime": true
+    },
+    "min30": {
+      "ok": true,
+      "mode": "EXACT_TIME",
+      "plannedDate": "2026-09-22",
+      "plannedTime": "14:30",
+      "offsetDays": null,
+      "offsetMinutes": 30,
+      "eventDate": "2026-09-22",
+      "fireCivilDate": "2026-09-22",
+      "fireClock": "14:00",
+      "fireAtMs": 1790078400000,
+      "usesPlannedTime": true
+    },
+    "hour1": {
+      "ok": true,
+      "mode": "EXACT_TIME",
+      "plannedDate": "2026-09-22",
+      "plannedTime": "14:30",
+      "offsetDays": null,
+      "offsetMinutes": 60,
+      "eventDate": "2026-09-22",
+      "fireCivilDate": "2026-09-22",
+      "fireClock": "13:30",
+      "fireAtMs": 1790076600000,
+      "usesPlannedTime": true
+    },
+    "hour2": {
+      "ok": true,
+      "mode": "EXACT_TIME",
+      "plannedDate": "2026-09-22",
+      "plannedTime": "14:30",
+      "offsetDays": null,
+      "offsetMinutes": 120,
+      "eventDate": "2026-09-22",
+      "fireCivilDate": "2026-09-22",
+      "fireClock": "12:30",
+      "fireAtMs": 1790073000000,
+      "usesPlannedTime": true
+    },
+    "midnightCrossover": {
+      "ok": true,
+      "mode": "EXACT_TIME",
+      "plannedDate": "2026-09-22",
+      "plannedTime": "00:00",
+      "offsetDays": null,
+      "offsetMinutes": 60,
+      "eventDate": "2026-09-21",
+      "fireCivilDate": "2026-09-21",
+      "fireClock": "23:00",
+      "fireAtMs": 1790024400000,
+      "usesPlannedTime": true
+    },
+    "dstGap": {
+      "ok": false,
+      "reason": "NONEXISTENT_LOCAL_TIME"
+    },
+    "dstOverlapFirst": {
+      "ok": true,
+      "ms": 1792888200000,
+      "date": "2026-10-25T00:30:00.000Z"
+    }
+  },
+  "suppression": {
+    "changedTime": {
+      "ok": false,
+      "reason": "TIME_CHANGED"
+    },
+    "removedTime": 0,
+    "completed": 0,
+    "episodeEnded": 0,
+    "permissionPrefDistinct": "preference stored even if OS denied; Brain does not send without grant",
+    "dedupe": {
+      "dateBased": "pregnancy_care:user-a:ep-a:anatomy_ultrasound:2026-09-22:1",
+      "exact": "pregnancy_care:user-a:ep-a:anatomy_ultrasound:2026-09-22:14:30:EXACT:60"
+    },
+    "pastFire": 0
+  },
+  "reasons": {
+    "USER_DISABLED": "USER_DISABLED",
+    "NO_PLANNED_DATE": "NO_PLANNED_DATE",
+    "NO_PLANNED_TIME": "NO_PLANNED_TIME",
+    "NOT_PLANNED": "NOT_PLANNED",
+    "COMPLETED": "COMPLETED",
+    "DISMISSED": "DISMISSED",
+    "NOT_APPLICABLE": "NOT_APPLICABLE",
+    "CLEARED": "CLEARED",
+    "DATE_CHANGED": "DATE_CHANGED",
+    "TIME_CHANGED": "TIME_CHANGED",
+    "OFFSET_CHANGED": "OFFSET_CHANGED",
+    "MODE_CHANGED": "MODE_CHANGED",
+    "PAST_DATE": "PAST_DATE",
+    "LATE_CATCH_UP": "LATE_CATCH_UP",
+    "MODE_EXIT": "MODE_EXIT",
+    "EPISODE_ENDED": "EPISODE_ENDED",
+    "CROSS_USER": "CROSS_USER",
+    "ITEM_REMOVED": "ITEM_REMOVED",
+    "INVALID_OFFSET": "INVALID_OFFSET",
+    "NONEXISTENT_LOCAL_TIME": "NONEXISTENT_LOCAL_TIME",
+    "NOT_ELIGIBLE": "NOT_ELIGIBLE"
+  }
+}

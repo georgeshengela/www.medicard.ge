@@ -128,6 +128,7 @@ function questVisualAuthSnapshot() {
       currentStreak: 0,
       longestStreak: 0,
       lastCheckInDate: null,
+      aiEngine: 'gemini_flash',
     },
     usage: {
       date: '2026-09-06',

@@ -1,5 +1,6 @@
 import { ka } from '@/i18n/ka';
 import type { CycleCondition } from '@/lib/api';
+import { supportsCycleCapability } from '@/lib/cycleModes';
 
 export type CycleHonestyConfidence = 'low' | 'medium' | 'high';
 
@@ -53,7 +54,7 @@ export function fertileInsightCopy(flags: CycleHonestyFlags, mode: string) {
   if (flags.cautious) {
     return { title: ka.cycle.estimatedFertileTitle, body: ka.cycle.insightFertileBodyLow };
   }
-  if (mode === 'TRY_TO_CONCEIVE') {
+  if (supportsCycleCapability(mode, 'showTtcOverview')) {
     return { title: ka.cycle.estimatedFertileTitle, body: ka.cycle.insightFertileTtc };
   }
   return { title: ka.cycle.estimatedFertileTitle, body: ka.cycle.insightFertileBody };

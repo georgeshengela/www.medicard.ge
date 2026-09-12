@@ -37,6 +37,7 @@ type Props = {
   preview?: boolean;
   /** Pause idle loop when screen unfocused. */
   animate?: boolean;
+  accessibilityLabel?: string | null;
 };
 
 /**
@@ -52,6 +53,7 @@ export function MediCompanionFigure({
   accessoryKey,
   preview,
   animate = true,
+  accessibilityLabel: a11yLabel,
 }: Props) {
   const colors = useThemeColors();
   const dark = useIsDark();
@@ -159,8 +161,8 @@ export function MediCompanionFigure({
 
   return (
     <Animated.View
-      accessible
-      accessibilityLabel={`Medi, ${stage}, ${moodKey}`}
+      accessible={a11yLabel !== null}
+      accessibilityLabel={a11yLabel === null ? undefined : a11yLabel || `Medi, ${stage}, ${moodKey}`}
       accessibilityRole="image"
       style={[{ width: size, height: size, alignSelf: 'center' }, floatStyle]}
     >

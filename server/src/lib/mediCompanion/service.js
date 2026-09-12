@@ -54,15 +54,23 @@ export async function ensureMediCompanionProfile(userId, options = {}) {
       selectedEnvironmentKey: 'env.day',
     };
   }
-  return db.mediCompanionProfile.upsert({
-    where: { userId },
-    create: {
-      userId,
-      selectedCosmetics: { ...DEFAULT_EQUIPMENT },
-      selectedEnvironmentKey: 'env.day',
-    },
-    update: {},
-  });
+  try {
+    return await db.mediCompanionProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        selectedCosmetics: { ...DEFAULT_EQUIPMENT },
+        selectedEnvironmentKey: 'env.day',
+      },
+      update: {},
+    });
+  } catch (error) {
+    if (error?.code === 'P2002' && typeof db?.mediCompanionProfile?.findUnique === 'function') {
+      const existing = await db.mediCompanionProfile.findUnique({ where: { userId } });
+      if (existing) return existing;
+    }
+    throw error;
+  }
 }
 
 async function loadCompletionRows(userId, options = {}) {

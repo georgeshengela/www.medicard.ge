@@ -10,6 +10,7 @@ import { PasswordStrengthHint } from '@/components/auth/PasswordStrengthHint';
 import { Input } from '@/components/ui/Input';
 import { ka } from '@/i18n/ka';
 import { ApiError } from '@/lib/api';
+import { authErrorMessage } from '@/lib/authErrorMessage';
 import { isPasswordStrongEnough, scorePassword } from '@/lib/passwordStrength';
 import { useAuth } from '@/store/AuthContext';
 
@@ -98,11 +99,11 @@ export default function SignUp() {
           mapped.form = ka.auth.legacyServerRegister;
         } else if (extra.length > 0 || Object.keys(mapped).length === 0) {
           mapped.form =
-            extra.map((f) => f.message).join(' ') || error.message || ka.common.error;
+            extra.map((f) => f.message).join(' ') || authErrorMessage(error);
         }
         setErrors(mapped);
       } else {
-        setErrors({ form: error instanceof ApiError ? error.message : ka.common.error });
+        setErrors({ form: authErrorMessage(error) });
       }
       submittingRef.current = false;
       setBusy(false);

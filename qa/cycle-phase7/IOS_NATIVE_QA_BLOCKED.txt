@@ -1,0 +1,12 @@
+IOS NATIVE QA BLOCKED
+
+Host: Windows_NT (win32 10.0.26200)
+xcrun: not available
+Xcode / iOS Simulator: not available
+No attached iPhone that this session can drive
+
+Do not treat web or Android screenshots as iOS verification.
+
+Remaining gate: native iOS Cycle walkthrough on a Mac (Simulator or device)
+using the existing authenticated QA account (cycle.qa.phase6@medicard.ge)
+and server/scripts/cycle-phase6-qa-seed.js.

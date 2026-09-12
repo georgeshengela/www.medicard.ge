@@ -37,6 +37,7 @@ function liveFromBundle(bundle: CycleBundle, prefs: CycleReminderPrefs, today: s
     logs: bundle.logs,
     prefsEnabled: prefs.enabled,
     globalEnabled: true,
+    forecastAllowed: bundle.forecastEligibility?.allowed !== false,
     typeEnabled: {
       period_soon: prefs.periodDaysBefore > 0,
       period_start: true,
@@ -73,6 +74,7 @@ export async function syncCycleReminders(
     prefs,
     showFertilityMarkers: bundle.contraception?.presentation?.showFertilityMarkers !== false,
     lateStatus: lateAlert ? { status: 'late' } : null,
+    forecastAllowed: bundle.forecastEligibility?.allowed !== false,
   } as never);
   const live = liveFromBundle(bundle, prefs, today);
   const chosen = pickCycleScheduleSet(candidates, today);

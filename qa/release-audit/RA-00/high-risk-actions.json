@@ -1,0 +1,20 @@
+{
+  "highRiskActions": [
+    { "action": "GET unauthenticated /uploads/*", "module": "SECURITY_PRIVACY", "defect": "RA00-001" },
+    { "action": "Delete account", "api": "DELETE /api/auth/me", "module": "AUTH" },
+    { "action": "Admin delete user", "api": "DELETE /api/admin/users/:id", "module": "ADMIN" },
+    { "action": "Cycle wipe", "api": "POST /api/cycle/wipe", "module": "CYCLE" },
+    { "action": "Cycle mode change", "api": "PUT/PATCH /api/cycle/profile", "module": "CYCLE" },
+    { "action": "Postpartum bleed classification", "api": "PUT /api/cycle/postpartum/bleed-classifications", "module": "POSTPARTUM" },
+    { "action": "Partner share create/accept/revoke", "api": "/api/cycle/share*", "module": "CYCLE" },
+    { "action": "Doctor summary PDF share", "api": "GET /api/cycle/doctor-summary", "module": "EXPORTS" },
+    { "action": "Personal cycle JSON export", "api": "GET /api/cycle/export", "module": "EXPORTS" },
+    { "action": "Medi chat / image / lab / symptom AI", "api": "POST /api/ai/*", "module": "MEDI_AI" },
+    { "action": "Reward redeem", "api": "POST /api/rewards/:id/redeem", "module": "REWARDS" },
+    { "action": "Quest/achievement claim", "api": "POST /api/quests|achievements/:id/claim", "module": "QUEST" },
+    { "action": "Medication create/edit/delete/taken", "api": "/api/medications* + local dose log", "module": "MEDICATIONS" },
+    { "action": "Admin block/unblock/reset-usage/settings/QA OTP", "api": "/api/admin/*", "module": "ADMIN" },
+    { "action": "Send health context to OpenRouter/EvidenceMD", "api": "withPatientAiContext", "module": "MEDI_AI" }
+  ],
+  "clientAuthoritativeEconomy": "NOT FOUND as a write path. Quest progress rejected if client sends progress. Coins via RewardLedger unique constraints. Flag RA00-002 is a UI crash, not a mint exploit."
+}

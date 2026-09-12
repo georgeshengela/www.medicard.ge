@@ -243,7 +243,7 @@
         <div class="v3-settings-empty is-err">
           <strong>პარამეტრები ვერ ჩაიტვირთა</strong>
           <p>${esc(err.message || 'უცნობი შეცდომა')}</p>
-          <button type="button" class="btn ghost compact" id="set-retry">${ico('refresh')} ხელახლა ცდა</button>
+          <button type="button" class="btn ghost compact" id="set-retry">${ico('refresh')} ხელახლა სცადე</button>
         </div>
       </div>`;
       $('set-retry')?.addEventListener('click', () => void renderSettingsV3());

@@ -1,0 +1,83 @@
+{
+  "generatedAt": "2026-09-07T17:12:57.561Z",
+  "shots": [
+    "14-section-help-overview",
+    "15-full-width-overview-1920",
+    "01-users-light-1440",
+    "02-users-dark-1440",
+    "03-users-light-1920",
+    "16-full-width-users-1920",
+    "04-users-light-1280",
+    "05-users-filtered",
+    "06-users-empty-filter",
+    "13-section-help-users",
+    "07-user-detail-light",
+    "08-user-detail-dark",
+    "09-user-detail-1920",
+    "10-user-telemetry-empty",
+    "11-user-sticky-save",
+    "12-user-delete-confirm"
+  ],
+  "measures": {
+    "overview1440": {
+      "vw": 1440,
+      "panelW": 1156,
+      "ccMax": "min(1680px, 100%)",
+      "pageMax": "min(1780px, calc(100vw - 228px - (24px * 2) - 8px))",
+      "overflowX": false,
+      "helpBtns": 8,
+      "hasAdminV3": true,
+      "hasAdminHelp": true
+    },
+    "overview1920": {
+      "vw": 1920,
+      "panelW": 1628,
+      "pageMax": "min(1840px, calc(100vw - 228px - 64px))"
+    },
+    "users1440": {
+      "hasV3": true,
+      "tableW": 1154,
+      "panelW": 0,
+      "statusText": "შესვლა დაშვებულია",
+      "chips": 0,
+      "help": 11
+    },
+    "users1920": {
+      "vw": 1920,
+      "panelW": 0,
+      "tableW": 1626
+    },
+    "users1280": {
+      "overflowX": false,
+      "panelW": 0
+    }
+  },
+  "flows": {
+    "overviewHelp": 1,
+    "filterHash": "#/users?activity=today&range=7d&grain=dau",
+    "emptyClear": 2,
+    "clearedHash": "#/users?range=7d&grain=dau",
+    "notifTabHash": "#/users/6c39eb30-6c11-451a-94b5-7624e5d9d7ae?range=7d&profileTab=notifications",
+    "dirty": false,
+    "backHash": "#/users?range=7d&grain=dau",
+    "forwardHash": "#/users/6c39eb30-6c11-451a-94b5-7624e5d9d7ae?range=7d&profileTab=overview",
+    "smoke_#/push": {
+      "hash": "#/push",
+      "hasError": false,
+      "textLen": 1292
+    },
+    "smoke_#/rewards": {
+      "hash": "#/rewards",
+      "hasError": false,
+      "textLen": 1040
+    },
+    "smoke_#/quality": {
+      "hash": "#/quality",
+      "hasError": false,
+      "textLen": 160
+    }
+  },
+  "pageErrors": [],
+  "consoleLogs": [],
+  "networkFails": []
+}

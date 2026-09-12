@@ -14,8 +14,14 @@ import {
 } from '@/lib/cycleHonesty';
 import { addDaysToKey, daysBetween } from '@/lib/cyclePhase';
 import { isBleedFlow } from '@/lib/cycleLogSave';
+import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { bleedingIsUncertain, showFertilityUi } from '@/lib/cycleContraception';
 import { confidencePresentation, gaugeA11ySummary } from '@/lib/cyclePresentation.js';
+import {
+  forecastPresentationAllowed,
+  isPostpartumReturnLearning,
+  suppressCycleLengthChrome,
+} from '@/lib/cycleForecastEligibility';
 import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
@@ -49,6 +55,7 @@ export function CycleHero({
   onInfo,
 }: Props) {
   const c = useCycleColors();
+  const caps = cycleModeCapabilities(bundle.profile.mode);
   const next = bundle.predictions?.nextPeriodStart ?? null;
   const confidence = bundle.predictions?.confidence ?? 'low';
   const todayLog = bundle.logs.find((l) => l.date === today);
@@ -66,8 +73,12 @@ export function CycleHero({
   });
   const confidenceCopy = nextPeriodConfidenceCopy(flags);
   const predViz = confidencePresentation(confidence);
-  const hidePredicted = predViz.hidePredictedOverlays;
-  const phaseHint = displayPhaseLabel(phase ?? 'unknown', phaseKa, { loggedPeriod: onPeriod });
+  const hidePredicted = predViz.hidePredictedOverlays || !forecastPresentationAllowed(bundle);
+  const hideLengthChrome = suppressCycleLengthChrome(bundle);
+  const forecastLearning = isPostpartumReturnLearning(bundle);
+  const phaseHint = hideLengthChrome
+    ? ka.cycle.postpartumReturnGathering
+    : displayPhaseLabel(phase ?? 'unknown', phaseKa, { loggedPeriod: onPeriod });
   const [explain, setExplain] = useState<GaugeExplain | null>(null);
 
   const cycleStart = day != null && day > 0 ? addDaysToKey(today, -(day - 1)) : null;
@@ -110,33 +121,46 @@ export function CycleHero({
     if (onPeriod) {
       return uncertainBleed ? ka.cycle.loggedBleedingToday : ka.cycle.currentlyOnPeriod;
     }
+    if (caps.showPregnancyOverview) {
+      const age = bundle.pregnancy?.age;
+      if (bundle.pregnancy?.reviewRequired) return ka.cycle.pregnancyReviewRequired;
+      if (age) return ka.cycle.pregnancyWeekDay(age.week, age.day);
+      return ka.cycle.pregnancyModeTitle;
+    }
     if (hidePredicted) return null;
     if (predictedToday) return ka.cycle.predictedPeriodToday;
-    if (!next || bundle.profile.mode === 'PREGNANCY') return null;
+    if (!next || !caps.showNextPeriodForecast) return null;
     const inDays = daysBetween(today, next);
     if (inDays < 0) return null; // Late state is carried by the alerts banner.
     if (inDays === 0) return ka.cycle.predictedPeriodToday;
     return uncertainBleed
       ? ka.cycle.statusNextBleedingIn(inDays)
       : ka.cycle.statusNextPeriodIn(inDays);
-  }, [onPeriod, hidePredicted, predictedToday, next, bundle.profile.mode, today, uncertainBleed]);
+  }, [onPeriod, hidePredicted, predictedToday, next, caps, bundle.pregnancy, today, uncertainBleed]);
 
-  const gaugeA11y = gaugeA11ySummary({
-    dayLabel: day != null ? `${ka.cycle.cycleDay} ${day}` : null,
-    phaseLabel: phaseHint,
-    nextPeriodLabel: statusLine,
-  });
+  const gaugeA11y = hideLengthChrome
+    ? gaugeA11ySummary({
+        dayLabel: null,
+        phaseLabel: ka.cycle.postpartumReturnGathering,
+        nextPeriodLabel: ka.cycle.postpartumReturnLearning,
+      })
+    : gaugeA11ySummary({
+        dayLabel: day != null ? `${ka.cycle.cycleDay} ${day}` : null,
+        phaseLabel: phaseHint,
+        nextPeriodLabel: statusLine,
+      });
 
   return (
     <View style={{ paddingBottom: 8 }}>
       <CycleStatusGauge
-        day={day}
+        day={hideLengthChrome ? null : day}
         cycleLength={cycleLength}
+        hideLengthChrome={hideLengthChrome}
         phaseHint={phaseHint}
         periodActive={onPeriod}
         fertileDays={overlays.fertileDays}
         a11yLabel={gaugeA11y}
-        onInfo={onInfo}
+        onInfo={hideLengthChrome ? undefined : onInfo}
         onPressFertile={overlays.fertileDays ? openFertile : undefined}
       />
       <CycleGaugeExplainSheet visible={Boolean(explain)} explain={explain} onClose={() => setExplain(null)} />
@@ -150,11 +174,12 @@ export function CycleHero({
               fontSize: 18,
               lineHeight: 25,
               textAlign: 'center',
+              paddingHorizontal: 4,
             }}
           >
             {statusLine}
           </Text>
-        ) : next && bundle.profile.mode !== 'PREGNANCY' && !hidePredicted ? (
+        ) : next && caps.showNextPeriodForecast && !hidePredicted ? (
           <Text
             style={{
               color: c.ink,
@@ -177,7 +202,7 @@ export function CycleHero({
               textAlign: 'center',
             }}
           >
-            {ka.cycle.statusLearning}
+            {forecastLearning ? ka.cycle.postpartumReturnLearning : ka.cycle.statusLearning}
           </Text>
         )}
 
@@ -190,10 +215,10 @@ export function CycleHero({
             marginTop: 12,
           }}
         >
-          {next && bundle.profile.mode !== 'PREGNANCY' && !onPeriod && !hidePredicted ? (
+          {next && caps.showNextPeriodForecast && !onPeriod && !hidePredicted ? (
             <PredictionBadge date={next} />
           ) : null}
-          <ConfidenceHint label={confidenceCopy} />
+          {caps.showNextPeriodForecast && !hidePredicted ? <ConfidenceHint label={confidenceCopy} /> : null}
         </View>
 
         {flags.pcos && fertilityVisible ? (

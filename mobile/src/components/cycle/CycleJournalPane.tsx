@@ -2,12 +2,19 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FileText } from 'lucide-react-native';
+import { CycleObservationTrends } from '@/components/cycle/CycleObservationTrends';
 import { CyclePeriodHistory } from '@/components/cycle/CyclePeriodHistory';
 import { CyclePredictionHistoryCard } from '@/components/cycle/CyclePredictionHistoryCard';
 import { CycleTrendsCharts } from '@/components/cycle/CycleTrendsChart';
+import { CycleTtcJournalSection } from '@/components/cycle/CycleTtcJournalSection';
+import { CyclePregnancyJournalSection } from '@/components/cycle/CyclePregnancyJournalSection';
 import { CycleActionRow, CycleActionPanel, CycleSection } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
-import type { CycleBundle } from '@/lib/api';
+import type { CycleBundle, CyclePregnancyPayload, CyclePostpartumPayload, CycleTtcPayload } from '@/lib/api';
+import { cycleHistoryPresentation } from '@/lib/cycleHistoryCopy';
+import { cycleModeCapabilities } from '@/lib/cycleModes';
+import { CyclePerimenopauseJournalSection } from '@/components/cycle/CyclePerimenopauseJournalSection';
+import { CyclePostpartumJournalSection } from '@/components/cycle/CyclePostpartumJournalSection';
 import { useCycleColors } from '@/theme/cycle';
 
 /**
@@ -18,14 +25,36 @@ import { useCycleColors } from '@/theme/cycle';
 export function CycleJournalPane({
   bundle,
   canonical,
+  ttc,
+  ttcStatus,
+  ttcErrorKind,
+  pregnancy,
+  pregnancyStatus,
+  pregnancyErrorKind,
+  postpartum,
+  postpartumStatus,
   onChanged,
+  onLogFertility,
+  onClassifyPostpartumBleed,
 }: {
   bundle: CycleBundle;
   canonical: CycleBundle | null;
+  ttc?: CycleTtcPayload | null;
+  ttcStatus?: string;
+  ttcErrorKind?: string | null;
+  pregnancy?: CyclePregnancyPayload | null;
+  pregnancyStatus?: string;
+  pregnancyErrorKind?: string | null;
+  postpartum?: CyclePostpartumPayload | null;
+  postpartumStatus?: string;
   onChanged: () => void;
+  onLogFertility?: () => void;
+  onClassifyPostpartumBleed?: (date: string, classified: boolean) => void;
 }) {
   const c = useCycleColors();
   const router = useRouter();
+  const caps = cycleModeCapabilities(bundle.profile.mode);
+  const history = cycleHistoryPresentation(bundle.profile.mode);
   const s = bundle.summary;
   const hasCycles = Boolean(s?.cycleCount && s.cycleCount > 0);
   const hasAnyLog = (bundle.logs?.length ?? 0) > 0;
@@ -45,6 +74,25 @@ export function CycleJournalPane({
   if (!hasAnyLog) {
     return (
       <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 20 }}>
+        {caps.showPregnancyOverview ? (
+          <CyclePregnancyJournalSection
+            pregnancy={pregnancy ?? null}
+            status={pregnancyStatus}
+            errorKind={pregnancyErrorKind}
+          />
+        ) : null}
+        {caps.showPerimenopauseTracking ? (
+          <CyclePerimenopauseJournalSection peri={bundle.perimenopause} />
+        ) : null}
+        {caps.showPostpartumTracking ? (
+          <CyclePostpartumJournalSection
+            postpartum={postpartum ?? null}
+            status={postpartumStatus}
+            onAddLog={onLogFertility}
+            onClassifyEpisode={onClassifyPostpartumBleed}
+          />
+        ) : null}
+        {history.showClassicJournalEmpty ? (
         <View
           style={{
             borderRadius: 16,
@@ -61,17 +109,39 @@ export function CycleJournalPane({
             {ka.cycle.journalEmptyBody}
           </Text>
         </View>
-        <CyclePredictionHistoryCard
-          refreshKey={(bundle.inferred?.periodStarts || []).join('|')}
-        />
+        ) : null}
+        {history.showPredictionHistory ? (
+          <CyclePredictionHistoryCard
+            refreshKey={(bundle.inferred?.periodStarts || []).join('|')}
+          />
+        ) : null}
       </View>
     );
   }
 
   return (
     <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-      {/* Stats band — engine values, hidden below threshold (§9). */}
-      {stats.length ? (
+      {caps.showPregnancyOverview ? (
+        <CyclePregnancyJournalSection
+          pregnancy={pregnancy ?? null}
+          status={pregnancyStatus}
+          errorKind={pregnancyErrorKind}
+        />
+      ) : null}
+      {caps.showPerimenopauseTracking ? (
+        <CyclePerimenopauseJournalSection peri={bundle.perimenopause} />
+      ) : null}
+      {caps.showPostpartumTracking ? (
+        <CyclePostpartumJournalSection
+          postpartum={postpartum ?? null}
+          status={postpartumStatus}
+          onAddLog={onLogFertility}
+          onClassifyEpisode={onClassifyPostpartumBleed}
+        />
+      ) : null}
+
+      {/* Stats band — engine values, hidden below threshold (§9). Hidden in peri: unclamped variability is above. */}
+      {caps.showPerimenopauseTracking || caps.showPostpartumTracking ? null : stats.length ? (
         <View style={{ marginBottom: 20 }}>
           <View
             style={{
@@ -126,7 +196,7 @@ export function CycleJournalPane({
             </Text>
           ) : null}
         </View>
-      ) : (
+      ) : caps.showPerimenopauseTracking || caps.showPostpartumTracking ? null : (
         <View
           style={{
             borderRadius: 16,
@@ -143,32 +213,43 @@ export function CycleJournalPane({
         </View>
       )}
 
-      <CyclePredictionHistoryCard
-        refreshKey={(bundle.inferred?.periodStarts || []).join('|')}
-      />
+      {history.showPredictionHistory ? (
+        <CyclePredictionHistoryCard
+          refreshKey={(bundle.inferred?.periodStarts || []).join('|')}
+        />
+      ) : null}
 
+      {history.showPeriodHistory ? (
       <CycleSection title={ka.cycle.periodHistory} delay={40}>
         <CyclePeriodHistory bundle={bundle} onChanged={onChanged} />
       </CycleSection>
+      ) : null}
 
       <CycleSection title={ka.cycle.trendsTitle} delay={80}>
-        {canonical ? <CycleTrendsCharts bundle={canonical} /> : null}
-        {canonical &&
-        !canonical.analytics?.completedCycleCount &&
-        !canonical.trends?.cycleLengths?.length &&
-        !canonical.trends?.bbtPoints?.length ? (
-          <View
-            style={{
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: c.border,
-              backgroundColor: c.card,
-              padding: 16,
-            }}
-          >
-            <Text style={{ color: c.muted, fontSize: 13, lineHeight: 20 }}>
-              {ka.cycle.trendsLogCycles}
-            </Text>
+        <CycleObservationTrends
+          refreshKey={(bundle.logs || [])
+            .slice(-40)
+            .map(
+              (l) =>
+                `${l.date}:${(l.symptoms || []).join(',')}:${l.energy || l.observations?.energy || ''}:${(l.painEntries || []).map((p) => p.type).join(',')}`,
+            )
+            .join('|')}
+          excludePeriodAssociation={caps.showPregnancyOverview || caps.showPostpartumTracking}
+          showEmpty={
+            (canonical?.analytics?.completedCycleCount ?? 0) < 2 &&
+            !(canonical?.trends?.cycleLengths && canonical.trends.cycleLengths.length >= 3)
+          }
+        />
+        {canonical && !caps.showPostpartumTracking ? <CycleTrendsCharts bundle={canonical} /> : null}
+        {caps.showTtcOverview ? (
+          <View style={{ marginTop: 22 }}>
+            <CycleTtcJournalSection
+              ttc={ttc ?? null}
+              status={ttcStatus}
+              errorKind={ttcErrorKind}
+              onLog={() => onLogFertility?.()}
+              onRetry={onChanged}
+            />
           </View>
         ) : null}
       </CycleSection>

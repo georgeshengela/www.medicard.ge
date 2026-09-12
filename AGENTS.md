@@ -67,9 +67,10 @@ Dark is **cool gray-950 navy**, not teal charcoal. Keep `global.css` `.dark` and
 
 Filled dark CTAs use `#0D9488` (`FIGMA_AUTH_DARK.primaryBg`), not `#14B8A6`. Auth screens sit on `bg-surface`. Google on dark is a **white** fill with dark label. Do not invert the stack (page stays darker than cards).
 
-On every mobile change, update `mobile/app.json` `expo.version`:
+On every **store-facing** mobile change, update `mobile/app.json` `expo.version`. The public identity is Instagram-style **five-part** `G.0.0.B.R` (currently `1.0.0.7.79`). That string is Android `versionName`, in-app display, and `/api/app/status`. Apple rejects five-part marketing versions — set `expo.ios.version` to `G.B.R` (`1.7.79`) and keep plugin `withIosMarketingVersion` as last-write guard. Never put `1.7.72` in `minAppVersion` — that would block five-part clients. Native `ios.buildNumber` / `android.versionCode` in `app.json` are a local floor only. EAS production uses `appVersionSource: remote` + `autoIncrement` (remote was **2** on 2026-09-11) — never lower the remote counter. Cycle phase numbers stay in contracts / QA only.
 
-- **Small** feature/fix → bump patch (`x.y.Z` + 1)
-- **Big** feature / system → bump major (`X.0.0`)
+- **Small** feature/fix → revision + 1 (`1.0.0.7.78` → `1.0.0.7.79`)
+- **Native / store train** → train + 1 and bump `buildNumber` / `versionCode` (`1.0.0.7.77` → `1.0.0.8.0`)
+- **Rare product generation** → first number + 1 (`1.0.0.7.71` → `2.0.0.0.0`)
 
-See `MEMORY.md` for details.
+See `MEMORY.md` for details. Cycle phase numbers stay in contracts / QA only.

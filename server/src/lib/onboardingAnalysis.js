@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
+import { withOpenRouterModelFallback } from './aiEngine.js';
 import { calculateAge } from './patient.js';
+import { cycleModeForPatientAiContext } from './cycleModes.js';
 
 const openrouter = env.OPENROUTER_API_KEY
   ? new OpenAI({
@@ -353,12 +355,13 @@ export async function generateOnboardingAnalysis({
   scheduledMeds = [],
   cycleMode = null,
   previousScore = null,
+  model,
 }) {
   const extra = extras && typeof extras === 'object' ? extras : {};
   const heuristicScore = computeHeuristicScore(profile, user, extra, metrics);
   const bodyComposition = estimateBodyComposition({ ...profile, _gender: user?.gender });
   const band = bandForScore(heuristicScore);
-  const extrasContext = { metrics, scheduledMeds, cycleMode };
+  const extrasContext = { metrics, scheduledMeds, cycleMode: cycleModeForPatientAiContext(cycleMode) };
 
   const fallback = {
     score: heuristicScore,
@@ -391,56 +394,58 @@ export async function generateOnboardingAnalysis({
   if (!openrouter) return fallback;
 
   try {
-    const completion = await openrouter.chat.completions.create({
-      model: env.OPENROUTER_MODEL,
-      temperature: 0.35,
-      max_tokens: 3200,
-      messages: [
-        {
-          role: 'system',
-          content: `Clinical wellness analyst for Medicard.GE. Output ONLY valid JSON:\n${ANALYSIS_SCHEMA}\nAll user strings in Georgian.`,
-        },
-        {
-          role: 'user',
-          content: `Use ALL of this patient data. Score must move with the data, stay near baseline ${heuristicScore} (±12).\nPrevious score: ${previousScore ?? 'none'}\nProfile:\n${buildPatientContext(profile, user, extra, extrasContext)}`,
-        },
-      ],
+    return await withOpenRouterModelFallback(model || env.OPENROUTER_MODEL, async (candidate) => {
+      const completion = await openrouter.chat.completions.create({
+        model: candidate,
+        temperature: 0.35,
+        max_tokens: 3200,
+        messages: [
+          {
+            role: 'system',
+            content: `Clinical wellness analyst for Medicard.GE. Output ONLY valid JSON:\n${ANALYSIS_SCHEMA}\nAll user strings in Georgian.`,
+          },
+          {
+            role: 'user',
+            content: `Use ALL of this patient data. Score must move with the data, stay near baseline ${heuristicScore} (±12).\nPrevious score: ${previousScore ?? 'none'}\nProfile:\n${buildPatientContext(profile, user, extra, extrasContext)}`,
+          },
+        ],
+      });
+
+      const raw = completion.choices?.[0]?.message?.content?.trim();
+      if (!raw) throw new Error('empty onboarding analysis');
+
+      const jsonText = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
+      const parsed = JSON.parse(jsonText);
+      const score = clampToHeuristic(parsed.score, heuristicScore);
+      const resolvedBand = bandForScore(score);
+
+      return {
+        score,
+        label: resolvedBand.label,
+        labelKa: resolvedBand.labelKa,
+        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 96.2,
+        summaryTitleKa: parsed.summaryTitleKa ?? fallback.summaryTitleKa,
+        summaryBodyKa: parsed.summaryBodyKa ?? fallback.summaryBodyKa,
+        scoreRanges: SCORE_BANDS.map((b, i) => ({
+          min: b.min,
+          max: b.max,
+          label: b.label,
+          labelKa: b.labelKa,
+          color: b.color,
+          detailKa: parsed.scoreRanges?.[i]?.detailKa ?? b.detailKa,
+        })),
+        bodyComposition: { ...bodyComposition, ...parsed.bodyComposition },
+        recommendations: { ...fallback.recommendations, ...parsed.recommendations },
+        engine: 'openrouter',
+        model: completion.model ?? candidate,
+        previousScore,
+        scoreDelta: previousScore != null ? Math.round((score - previousScore) * 10) / 10 : null,
+        analyzedAt: new Date().toISOString(),
+      };
     });
-
-    const raw = completion.choices?.[0]?.message?.content?.trim();
-    if (!raw) return { ...fallback, model: env.OPENROUTER_MODEL };
-
-    const jsonText = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
-    const parsed = JSON.parse(jsonText);
-    const score = clampToHeuristic(parsed.score, heuristicScore);
-    const resolvedBand = bandForScore(score);
-
-    return {
-      score,
-      label: resolvedBand.label,
-      labelKa: resolvedBand.labelKa,
-      confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 96.2,
-      summaryTitleKa: parsed.summaryTitleKa ?? fallback.summaryTitleKa,
-      summaryBodyKa: parsed.summaryBodyKa ?? fallback.summaryBodyKa,
-      scoreRanges: SCORE_BANDS.map((b, i) => ({
-        min: b.min,
-        max: b.max,
-        label: b.label,
-        labelKa: b.labelKa,
-        color: b.color,
-        detailKa: parsed.scoreRanges?.[i]?.detailKa ?? b.detailKa,
-      })),
-      bodyComposition: { ...bodyComposition, ...parsed.bodyComposition },
-      recommendations: { ...fallback.recommendations, ...parsed.recommendations },
-      engine: 'openrouter',
-      model: completion.model ?? env.OPENROUTER_MODEL,
-      previousScore,
-      scoreDelta: previousScore != null ? Math.round((score - previousScore) * 10) / 10 : null,
-      analyzedAt: new Date().toISOString(),
-    };
   } catch (error) {
     console.error('[medicard] onboarding analysis failed:', error?.message ?? error);
-    return { ...fallback, model: env.OPENROUTER_MODEL };
+    return fallback;
   }
 }
 

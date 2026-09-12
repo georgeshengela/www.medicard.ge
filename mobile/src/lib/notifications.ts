@@ -33,6 +33,7 @@ export const QA_PREFIX = 'qa:';
 export const NOTIF_PREFIX = {
   med: 'med:',
   cycle: 'cycle:',
+  pregnancyCare: 'pregnancy_care:',
   visit: 'visit:',
   steps: 'steps:',
   weight: 'weight:',
@@ -44,6 +45,9 @@ Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = (notification.request.content.data ?? {}) as Record<string, unknown>;
     try {
+      if (data.qa === true) {
+        return { shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false };
+      }
       if (data.type === 'quota_reset' || data.family === 'quotaReset') {
         const resetKey = typeof data.resetKey === 'string' ? data.resetKey : null;
         const { wasQuotaResetShown, markQuotaResetShown } = await import('@/lib/quotaResetNotification');
@@ -60,15 +64,23 @@ Notifications.setNotificationHandler({
       const { shouldDeliverNotification } = await import('@/lib/mediNotificationBrain');
       const { patchEngageDecision } = await import('@/lib/mediEngagePrefs');
       const check = await shouldDeliverNotification(data);
-      if (check.rewriteMasked && data.type === 'cycle_reminder' && data.rewrite !== true) {
-        const discreet = applyPushCopy('cycle-masked');
+      if (check.rewriteMasked && (data.type === 'cycle_reminder' || data.type === 'pregnancy_care_plan') && data.rewrite !== true) {
+        const discreet =
+          data.type === 'pregnancy_care_plan'
+            ? applyPushCopy('pregnancy-care-masked')
+            : applyPushCopy('cycle-masked');
         void Notifications.scheduleNotificationAsync({
-          identifier: `cycle:mask-rewrite:${String(data.candidateId || Date.now())}`,
+          identifier: `${data.type === 'pregnancy_care_plan' ? 'pregnancy_care' : 'cycle'}:mask-rewrite:${String(data.candidateId || Date.now())}`,
           content: {
             title: discreet.title,
             body: discreet.body,
             sound: 'default',
-            data: { ...data, masked: true, rewrite: true, templateKey: 'cycle-masked' },
+            data: {
+              ...data,
+              masked: true,
+              rewrite: true,
+              templateKey: data.type === 'pregnancy_care_plan' ? 'pregnancy-care-masked' : 'cycle-masked',
+            },
           },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
         });
@@ -535,6 +547,10 @@ export async function cancelCycleReminders(): Promise<void> {
   await cancelNotificationsByPrefix(NOTIF_PREFIX.cycle);
 }
 
+export async function cancelPregnancyCareReminders(): Promise<void> {
+  await cancelNotificationsByPrefix(NOTIF_PREFIX.pregnancyCare);
+}
+
 type ScheduleCycleOpts = {
   identifier: string;
   title: string;
@@ -614,7 +630,58 @@ export async function scheduleCycleDateNotification(opts: ScheduleCycleOpts): Pr
   return true;
 }
 
-/** One-off cycle wellness reminder (water, breathing, walk, etc.). */
+type SchedulePregnancyCareOpts = {
+  identifier: string;
+  title: string;
+  body: string;
+  date: Date;
+  data?: Record<string, unknown>;
+  privacyEnabled?: boolean;
+};
+
+/** Date-only user-planned prenatal reminder. Brain revalidates at fire time. No catch-up. */
+export async function schedulePregnancyCareDateNotification(opts: SchedulePregnancyCareOpts): Promise<boolean> {
+  const granted = await getNotificationPermissionGranted();
+  if (!granted) return false;
+  if (opts.date.getTime() <= Date.now()) return false;
+
+  const content = await resolveCycleNotificationContent(opts.title, opts.body, opts.privacyEnabled);
+  const masked = content.masked;
+  const discreet = applyPushCopy('pregnancy-care-masked');
+  await Notifications.scheduleNotificationAsync({
+    identifier: `${NOTIF_PREFIX.pregnancyCare}${opts.identifier}`,
+    content: {
+      title: masked ? discreet.title : opts.title,
+      body: masked ? discreet.body : opts.body,
+      sound: 'default',
+      data: {
+        type: 'pregnancy_care_plan',
+        family: 'pregnancyCareReminder',
+        candidateId: String(opts.data?.candidateId || opts.identifier),
+        candidateType: 'pregnancy_care_plan',
+        careItemId: opts.data?.careItemId,
+        episodeId: opts.data?.episodeId,
+        userId: opts.data?.userId,
+        plannedDate: opts.data?.plannedDate,
+        plannedTime: opts.data?.plannedTime || null,
+        offset: opts.data?.offset,
+        reminderMode: opts.data?.reminderMode || 'DATE_BASED',
+        eventDate: String(opts.data?.eventDate || ''),
+        fireClock: opts.data?.fireClock || null,
+        templateKey: masked ? 'pregnancy-care-masked' : 'pregnancy-care-plan',
+        route: String(opts.data?.route || '/cycle/pregnancy/care-plan'),
+        masked,
+        rewrite: false,
+      },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: opts.date,
+      ...(Platform.OS === 'android' && content.channelId ? { channelId: content.channelId } : {}),
+    },
+  });
+  return true;
+}
 export async function scheduleCycleReminder(opts: {
   title: string;
   body: string;

@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-09-11T21:10:00.000Z",
+  "phase": "RA-01",
+  "storage": {
+    "write": "server/src/lib/storage.js saveUpload → server/uploads/{uuid}.{jpg|png|webp|gif|pdf|bin}",
+    "dbKey": "/uploads/{filename} stored on MedicalRecord.imageUrl",
+    "uuidIsNotAuthorization": true,
+    "physicalDir": "server/uploads/",
+    "legacyServe": "REMOVED express.static('/uploads', { maxAge: '7d' })",
+    "legacyStub": "denyLegacyPublicUploads → 401 JSON, never bytes",
+    "privateServe": "GET /api/files/:filename + requireAuth + owner MedicalRecord match",
+    "ownership": "medicalRecord.findFirst({ userId, imageUrl in [/uploads/fn, /api/files/fn] })",
+    "adminBytes": "denied (requireAuth rejects admin JWT on user APIs)",
+    "partnerBytes": "denied — no partner file contract",
+    "deleteRecord": "unlinks disk after owner deleteMany",
+    "deleteAccount": "collects imageUrls then unlinks after user cascade",
+    "thumbnails": "none",
+    "publicMarketing": "server/public and /admin static remain public; pharmacy CDN URLs untouched"
+  },
+  "consumers": {
+    "writers": ["POST /api/ai/analyze-image", "POST /api/ai/extract-lab"],
+    "readers": ["GET /api/records/:id", "mobile/app/record/[id].tsx privateFileImageSource + Bearer"],
+    "notPrivateUploads": ["pharmacy/med catalog imageUrl", "avatarId bundled assets"]
+  },
+  "legacyMigration": "Existing rows keep /uploads/{uuid}.ext keys. Serving requires /api/files with owner auth. Old public 7d caches may linger until expiry.",
+  "tests": "server/src/lib/privateUploads.test.js + server/src/lib/ra01LiveAuth.http.test.js"
+}

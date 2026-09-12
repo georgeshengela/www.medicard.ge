@@ -1,0 +1,41 @@
+# Phase 42.1 Android location diagnostics
+
+Date: 2026-09-12
+Emulator binary: `%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe`
+AVD: `Pixel_8` (untouched — not wiped, renamed, or replaced)
+System image: `system-images\android-35\google_apis_playstore\x86_64`
+Type: Google Play (`PlayStore.enabled=true`, `user/release-keys`)
+Android / API: 15 / 35
+Expo Go: `host.exp.exponent` versionName 57.0.9 (SDK 57.0.0 in-app)
+`expo-location`: ~57.0.16
+Location services: `location_mode=3`, `cmd location is-location-enabled` = true
+Foreground precise: `ACCESS_FINE_LOCATION granted=true` (ONE_TIME flag from the Play prompt; `pm grant` used for QA recovery)
+Background: `ACCESS_BACKGROUND_LOCATION granted=false`
+App-ops: FINE/COARSE foreground; GPS / MONITOR_HIGH_POWER_LOCATION allowed while Explore is focused
+Providers: gps, fused, network, passive — all enabled
+Installed Google APIs (non-Play) API 35 image: none. Dedicated `Medicard_QA_API35` was not created.
+Development build: not required; Expo Go delivered a sample after the High-accuracy fix.
+
+## Failing boundary (original PARTIAL)
+
+1. Emulator `geo fix` returned OK while GPS was idle (`mStarted=false`). dumpsys last-location timestamp did not change.
+2. Explore requested `Accuracy.Balanced`, so Fused did not start GPS (network last location null).
+3. `getCurrentPositionAsync` raced 8–12s and timed out.
+4. Failure was not “need a longer timeout”; it was accuracy option + idle GPS so injection never landed.
+
+## After High-accuracy fix
+
+While Explore was locating, dumpsys showed:
+`gps provider request = ProviderRequest[HIGH_ACCURACY, WorkSource{host.exp.exponent}]`
+`mStarted=true`
+
+Then `adb emu geo fix -122.0822 37.4238` updated last location to the QA park fixture.
+Expo probe (dev-only, no raw coordinates on the product chrome): `granted · svc on · sample yes · 5m · 0–1s`.
+
+Native collect used that sample. Collection row: `mockLocationSignal=false`, coarse key only, no lat/lng columns.
+
+Extended Controls (Studio UI) was not automatable here. Emulator-console `geo fix` is what delivered the sample once GPS was actually requested. GPX/KML playback was not required after the single-point path succeeded.
+
+## Closure (same day)
+
+Native too-far, native garden collect, API-restart persist, already-collected UI, and remaining visual states are under `qa/medi-world-phase42/`. Background `ACCESS_BACKGROUND_LOCATION granted=false`. No dedicated QA AVD. No development build.

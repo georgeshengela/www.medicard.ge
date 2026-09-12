@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { env } from '../config/env.js';
 import { VISION_PROMPTS } from './prompts.js';
 import { AiEngineError } from './evidencemd.js';
+import { openRouterFallbackModels } from './aiEngine.js';
 
 /**
  * Vision pre-processing layer.
@@ -44,13 +45,19 @@ export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', '
  * @param {string} [opts.patientContext]
  * @returns {Promise<{notes: string, provider: string, model: string}>}
  */
-export async function describeImages({ images, kind, patientContext }) {
+export async function describeImages({ images, kind, patientContext, model }) {
   const list = (images ?? []).filter((row) => row?.buffer?.length);
   if (!list.length) {
     throw new AiEngineError('ფოტო არ არის ატვირთული.', { status: 400 });
   }
   if (list.length === 1) {
-    return describeImage({ buffer: list[0].buffer, mimeType: list[0].mimeType, kind, patientContext });
+    return describeImage({
+      buffer: list[0].buffer,
+      mimeType: list[0].mimeType,
+      kind,
+      patientContext,
+      model,
+    });
   }
 
   const instruction = VISION_PROMPTS[kind] ?? VISION_PROMPTS.IMAGING;
@@ -66,23 +73,31 @@ export async function describeImages({ images, kind, patientContext }) {
 
   const errors = [];
   if (openrouter) {
-    try {
-      return await describeWithOpenAiCompatible({
-        client: openrouter,
-        model: env.OPENROUTER_MODEL,
-        provider: 'openrouter',
-        images: list,
-        prompt,
-        maxTokens: 4000,
-      });
-    } catch (error) {
-      errors.push(`openrouter-multi: ${error?.message ?? error}`);
+    for (const openRouterModel of openRouterFallbackModels(model || env.OPENROUTER_MODEL)) {
+      try {
+        return await describeWithOpenAiCompatible({
+          client: openrouter,
+          model: openRouterModel,
+          provider: 'openrouter',
+          images: list,
+          prompt,
+          maxTokens: 4000,
+        });
+      } catch (error) {
+        errors.push(`openrouter-multi:${openRouterModel}: ${error?.message ?? error}`);
+      }
     }
   }
 
   const parts = [];
   for (const [index, image] of list.entries()) {
-    const one = await describeImage({ buffer: image.buffer, mimeType: image.mimeType, kind, patientContext });
+    const one = await describeImage({
+      buffer: image.buffer,
+      mimeType: image.mimeType,
+      kind,
+      patientContext,
+      model,
+    });
     parts.push(`--- PAGE ${index + 1} ---\n${one.notes}`);
   }
   return {
@@ -93,24 +108,33 @@ export async function describeImages({ images, kind, patientContext }) {
   };
 }
 
-export async function structureLabText(text) {
+export async function structureLabText(text, { model } = {}) {
   const source = String(text ?? '').trim();
   if (!source || source.length < 24) return null;
   if (!openrouter) return null;
-  return describeWithOpenAiCompatible({
-    client: openrouter,
-    model: env.OPENROUTER_MODEL,
-    provider: 'openrouter',
-    prompt: [
-      VISION_PROMPTS.LAB,
-      'This is already-extracted text from a laboratory PDF. Structure every analyte. Do not invent values.',
-      source.slice(0, 12000),
-    ].join('\n\n'),
-    maxTokens: 4000,
-  });
+  let lastError = null;
+  for (const openRouterModel of openRouterFallbackModels(model || env.OPENROUTER_MODEL)) {
+    try {
+      return await describeWithOpenAiCompatible({
+        client: openrouter,
+        model: openRouterModel,
+        provider: 'openrouter',
+        prompt: [
+          VISION_PROMPTS.LAB,
+          'This is already-extracted text from a laboratory PDF. Structure every analyte. Do not invent values.',
+          source.slice(0, 12000),
+        ].join('\n\n'),
+        maxTokens: 4000,
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (lastError) throw lastError;
+  return null;
 }
 
-export async function describeImage({ buffer, mimeType, kind, patientContext }) {
+export async function describeImage({ buffer, mimeType, kind, patientContext, model }) {
   if (!openrouter && !anthropic && !openai) {
     throw new AiEngineError(
       'გამოსახულების ანალიზის სერვისი არ არის კონფიგურირებული. დაამატეთ OPENROUTER_API_KEY.',
@@ -127,18 +151,20 @@ export async function describeImage({ buffer, mimeType, kind, patientContext }) 
   const errors = [];
 
   if (openrouter) {
-    try {
-      return await describeWithOpenAiCompatible({
-        client: openrouter,
-        model: env.OPENROUTER_MODEL,
-        provider: 'openrouter',
-        base64,
-        mimeType,
-        prompt,
-        detail: kind === 'LAB' ? 'auto' : 'high',
-      });
-    } catch (error) {
-      errors.push(`openrouter: ${error?.message ?? error}`);
+    for (const openRouterModel of openRouterFallbackModels(model || env.OPENROUTER_MODEL)) {
+      try {
+        return await describeWithOpenAiCompatible({
+          client: openrouter,
+          model: openRouterModel,
+          provider: 'openrouter',
+          base64,
+          mimeType,
+          prompt,
+          detail: kind === 'LAB' ? 'auto' : 'high',
+        });
+      } catch (error) {
+        errors.push(`openrouter:${openRouterModel}: ${error?.message ?? error}`);
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import type { CycleDayMark, CycleLog } from '@/lib/api';
 import { cycleLogHasFacts } from '@/lib/cycleLogFacts';
+import { mergeLoggedFlowOntoMarks } from '@/lib/cyclePresentation';
 import { ka } from '@/i18n/ka';
 
 export const CYCLE_TEST_RESULTS = ['negative', 'positive', 'unclear'] as const;
@@ -21,7 +22,7 @@ export function mergeFertilityMarks(
   calendar: Record<string, CycleDayMark> | undefined,
   logs: CycleLog[] | undefined,
 ): Record<string, CycleFertilityMark> {
-  const next: Record<string, CycleFertilityMark> = { ...(calendar || {}) };
+  const next: Record<string, CycleFertilityMark> = mergeLoggedFlowOntoMarks(calendar, logs);
   for (const log of logs || []) {
     const prev = next[log.date] || {};
     next[log.date] = {
@@ -63,20 +64,19 @@ export function hasFertilityObservation(mark: CycleFertilityMark | undefined): b
   );
 }
 
-export type TtcActionKey = 'opk' | 'bbt' | 'mucus' | 'sex' | 'pregnancy';
+export type TtcActionKey = 'opk' | 'bbt' | 'mucus' | 'pregnancy';
 
 export function prioritizeTtcActions(log: CycleLog | undefined, mark?: CycleDayMark): TtcActionKey[] {
   const missing: TtcActionKey[] = [];
   if (!isCycleTestResult(log?.ovulationTest)) missing.push('opk');
   if (log?.bbt == null) missing.push('bbt');
   if (!log?.cervicalMucus) missing.push('mucus');
-  if (!log?.sexualActivity) missing.push('sex');
   if (!isCycleTestResult(log?.pregnancyTest)) missing.push('pregnancy');
   if (mark?.fertile || mark?.ovulation) {
-    const order: TtcActionKey[] = ['opk', 'bbt', 'mucus', 'sex', 'pregnancy'];
-    return order.filter((key) => missing.includes(key)).slice(0, 3);
+    const order: TtcActionKey[] = ['opk', 'bbt', 'mucus', 'pregnancy'];
+    return order.filter((key) => missing.includes(key)).slice(0, 4);
   }
-  return missing.slice(0, 3);
+  return missing.slice(0, 4);
 }
 
 export function fertilityTestHistory(logs: CycleLog[] | undefined) {

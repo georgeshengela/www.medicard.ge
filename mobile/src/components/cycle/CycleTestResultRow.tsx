@@ -34,8 +34,8 @@ export function CycleTestResultRow({ value, onChange, accent }: Props) {
               borderRadius: 14,
               justifyContent: 'center',
               backgroundColor: on ? color : c.cardSoft,
-              borderWidth: on ? 0 : 1,
-              borderColor: c.border,
+              borderWidth: 1,
+              borderColor: on ? c.ink : c.border,
             }}
           >
             <Text

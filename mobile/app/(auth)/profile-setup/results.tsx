@@ -204,7 +204,7 @@ export default function ProfileSetupResultsScreen() {
       const res = await api.healthProfile.onboardingAnalysis({ force: true });
       setHealthProfile(res.profile);
     } catch {
-      Alert.alert(ka.common.error, ka.common.networkError);
+      Alert.alert(ka.common.error, ka.auth.networkError);
     } finally {
       setReanalyzing(false);
     }

@@ -9,6 +9,7 @@ import { PasswordStrengthHint } from '@/components/auth/PasswordStrengthHint';
 import { Input } from '@/components/ui/Input';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { authErrorMessage } from '@/lib/authErrorMessage';
 import { isPasswordStrongEnough, scorePassword } from '@/lib/passwordStrength';
 
 export default function ForgotPasswordReset() {
@@ -37,7 +38,7 @@ export default function ForgotPasswordReset() {
         { text: ka.auth.signIn, onPress: () => router.replace('/(auth)/sign-in') },
       ]);
     } catch (err) {
-      setErrors({ form: err instanceof ApiError ? err.message : ka.common.error });
+      setErrors({ form: authErrorMessage(err) });
     } finally {
       setBusy(false);
     }

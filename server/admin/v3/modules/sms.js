@@ -217,7 +217,7 @@
         <div class="v3-sms-empty is-err">
           <strong>ჩატვირთვა ვერ მოხერხდა</strong>
           <p>${esc(e.message || 'უცნობი შეცდომა')}</p>
-          <button type="button" class="btn ghost compact" id="sms-retry">${ico('refresh')} ხელახლა ცდა</button>
+          <button type="button" class="btn ghost compact" id="sms-retry">${ico('refresh')} ხელახლა სცადე</button>
         </div>
       </div>`;
       $('sms-retry')?.addEventListener('click', () => void renderSmsV3());

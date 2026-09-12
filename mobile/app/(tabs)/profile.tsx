@@ -1,17 +1,16 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, Image, Linking, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import Constants from 'expo-constants';
 import {
   BellRing,
   FileText,
-  HeartPulse,
   LogOut,
   Mail,
   MessageSquareText,
   Pill,
   Save,
   Scale,
+  Sparkles,
   ShieldCheck,
   Trash2,
 } from 'lucide-react-native';
@@ -27,6 +26,7 @@ import { PlanDetailCard } from '@/components/PlanUsageCard';
 import { ProfileStreakCard } from '@/components/check-in/ProfilePointsCard';
 import { DeleteAccountModal } from '@/components/profile/DeleteAccountModal';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
+import { ProfileVersionCard } from '@/components/profile/ProfileVersionCard';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { SUPPORT_MAILTO } from '@/constants/legal';
@@ -58,8 +58,6 @@ const GENDER_LABELS: Record<Gender, string> = {
   FEMALE: ka.auth.genderFemale,
   OTHER: ka.auth.genderOther,
 };
-
-const APP_VERSION = Constants.expoConfig?.version ?? '27.0.2';
 
 function optionLabel(group: 'smokingStatus' | 'chronicConditions', key: string): string {
   if (group === 'chronicConditions') return resolveConditionLabel(key);
@@ -215,7 +213,7 @@ export default function Profile() {
                   style={{ width: 70, height: 70, borderRadius: 35 }}
                 />
               ) : (
-                <Text className="text-xl font-bold text-primary-100">{initials || '—'}</Text>
+                <Text className="text-xl font-bold text-primary-100">{initials || '�'}</Text>
               )}
             </View>
           </View>
@@ -303,7 +301,7 @@ export default function Profile() {
         {user?.gender && user?.birthDate && !editingMedical ? (
           <Card>
             <FactRow label={ka.auth.gender} value={GENDER_LABELS[user.gender]} />
-            <FactRow label={ka.profile.age} value={`${user.age ?? '—'} ${ka.profile.years}`} />
+            <FactRow label={ka.profile.age} value={`${user.age ?? '�'} ${ka.profile.years}`} />
             <FactRow label={ka.auth.birthDate} value={isoToDisplay(user.birthDate)} />
             {healthProfile?.heightCm != null ? (
               <FactRow
@@ -330,7 +328,7 @@ export default function Profile() {
             {bmi != null ? (
               <FactRow
                 label={ka.profile.bmi}
-                value={`${bmi.toFixed(1)} · ${ka.home.bmi.categories[bmiCategory(bmi)]}`}
+                value={`${bmi.toFixed(1)} � ${ka.home.bmi.categories[bmiCategory(bmi)]}`}
               />
             ) : null}
             {healthProfile?.bloodType ? (
@@ -388,6 +386,18 @@ export default function Profile() {
             onPress={() => router.push('/profile/permissions')}
           />
           <ProfileMenuRow
+            icon={Sparkles}
+            label={ka.profile.aiEngine}
+            value={
+              user?.aiEngine === 'ling_free'
+                ? ka.profile.aiEngineLing
+                : user?.aiEngine === 'evidencemd'
+                  ? ka.profile.aiEngineEvidence
+                  : ka.profile.aiEngineGemini
+            }
+            onPress={() => router.push('/profile/ai')}
+          />
+          <ProfileMenuRow
             icon={BellRing}
             label={ka.profile.notifications}
             value={
@@ -429,7 +439,7 @@ export default function Profile() {
       <View className="mt-5">
         <HomeSectionTitle title={ka.profile.about} />
         <Card padded={false}>
-          <ProfileMenuRow icon={HeartPulse} label={ka.profile.version} value={APP_VERSION} isLast />
+          <ProfileVersionCard />
         </Card>
       </View>
 

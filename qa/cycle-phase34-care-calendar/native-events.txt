@@ -1,0 +1,18 @@
+Phase 34 native Calendar provider proof (Pixel_8 emulator-5554)
+Query: content://com.android.calendar/events --projection _id:title:dtstart:dtend:allDay:hasAlarm:description
+
+CREATE (plannedDate 2026-09-19):
+Row: 0 _id=1, title=Medicard — დაგეგმილი ვიზიტი, dtstart=1789768800000, dtend=1789855200000, allDay=1, hasAlarm=0, description=Created from Medicard care planner.
+
+UPDATE (plannedDate 2026-09-22, same event id):
+Row: 0 _id=1, title=Medicard — დაგეგმილი ვიზიტი, dtstart=1790028000000, dtend=1790114400000, allDay=1, hasAlarm=0, description=Created from Medicard care planner.
+
+DELETE (Medicard remove owned event):
+No result found.
+
+Notes:
+- Generic privacy title (no pregnancy / ultrasound / GBS).
+- allDay=1, no invented 09:00 appointment clock.
+- hasAlarm=0 (Medicard did not add an OS calendar alarm).
+- description is the generic planner line; SECRET_PLANNER_NOTE never appeared.
+- One event only (duplicate prevention). Update mutated the owned row rather than inserting a second.

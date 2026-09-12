@@ -64,28 +64,36 @@ export function publicPackage(pkg) {
 export async function ensureFreePackageId() {
   const free = await prisma.package.findUnique({ where: { code: 'FREE' } });
   if (free) return free.id;
-  const created = await prisma.package.create({
-    data: {
-      code: 'FREE',
-      nameKa: 'უფასო',
-      nameEn: 'Free',
-      descriptionKa: '3 AI შეკითხვა დღეში. საბაზისო ჩატი და ძირითადი მოდულები.',
-      monthlyAiLimit: env.FREE_MONTHLY_AI_LIMIT,
-      dailyAiLimit: env.FREE_DAILY_AI_LIMIT,
-      priceGel: 0,
-      sortOrder: 1,
-      features: {
-        doctorChat: true,
-        consilium: false,
-        labAnalysis: true,
-        imaging: false,
-        skin: false,
-        skincare: false,
-        medicationReview: true,
+  try {
+    const created = await prisma.package.create({
+      data: {
+        code: 'FREE',
+        nameKa: 'უფასო',
+        nameEn: 'Free',
+        descriptionKa: '3 AI შეკითხვა დღეში. საბაზისო ჩატი და ძირითადი მოდულები.',
+        monthlyAiLimit: env.FREE_MONTHLY_AI_LIMIT,
+        dailyAiLimit: env.FREE_DAILY_AI_LIMIT,
+        priceGel: 0,
+        sortOrder: 1,
+        features: {
+          doctorChat: true,
+          consilium: false,
+          labAnalysis: true,
+          imaging: false,
+          skin: false,
+          skincare: false,
+          medicationReview: true,
+        },
       },
-    },
-  });
-  return created.id;
+    });
+    return created.id;
+  } catch (error) {
+    if (error?.code === 'P2002') {
+      const again = await prisma.package.findUnique({ where: { code: 'FREE' } });
+      if (again) return again.id;
+    }
+    throw error;
+  }
 }
 
 export async function getUserPackage(userId) {

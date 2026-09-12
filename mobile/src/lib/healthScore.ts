@@ -15,7 +15,7 @@ export const HEALTH_SCORE_BANDS: HealthScoreBand[] = [
     label: 'Critical',
     labelKa: 'კრიტიკული',
     color: '#F43F5E',
-    detailKa: 'საჭიროა დაუყოვნებლივი სამედიცინო კონსულტაცია და გეგმის შედგენა.',
+    detailKa: 'საჭიროა სასწრაფოდ ექიმს მიმართო და ერთად შეადგინო გეგმა.',
   },
   {
     min: 21,
@@ -23,7 +23,7 @@ export const HEALTH_SCORE_BANDS: HealthScoreBand[] = [
     label: 'Suboptimal',
     labelKa: 'არაოპტიმალური',
     color: '#F97316',
-    detailKa: 'რამდენიმე მაჩვენებელი საშუალო ნორმის ქვემოთაა — რეკომენდებულია ცვლილებები ყოველდღიურ ჩვევებში.',
+    detailKa: 'რამდენიმე მაჩვენებელი ჩვეულ ნორმაზე დაბალია — ყოველდღიური ჩვევების შეცვლა დაგეხმარება.',
   },
   {
     min: 51,
@@ -31,7 +31,7 @@ export const HEALTH_SCORE_BANDS: HealthScoreBand[] = [
     label: 'Mild Risk',
     labelKa: 'მსუბუქი რისკი',
     color: '#EAB308',
-    detailKa: 'მსუბუქი გადახრები ოპტიმალური ჯანმრთელობისგან — პრევენცია და მონიტორინგი დაგეხმარებათ.',
+    detailKa: 'მცირე გადახრები ოპტიმალური ჯანმრთელობისგან — პრევენცია და თვალყური დაგეხმარება.',
   },
   {
     min: 71,

@@ -8,6 +8,7 @@ import {
   CAFFEINE_LEVELS,
   CYCLE_NOTE_MAX,
   CYCLE_TAG_NAME_MAX,
+  ENERGY_LEVELS,
   EXERCISE_LEVELS,
   PAIN_SEVERITIES,
   PAIN_TYPES,
@@ -16,6 +17,7 @@ import {
   activeCustomTags,
   alcoholLabel,
   caffeineLabel,
+  energyLabel,
   exerciseLabel,
   formatPainEntry,
   painSeverityLabel,
@@ -53,7 +55,7 @@ function ChipRow<T extends string>({
             }}
             accessibilityRole="button"
             accessibilityState={{ selected: on }}
-            accessibilityLabel={labelFor(id)}
+            accessibilityLabel={on ? `${labelFor(id)}, ${ka.cycle.pregnancySelected}` : labelFor(id)}
             style={{
               minHeight: 44,
               paddingHorizontal: 14,
@@ -62,8 +64,12 @@ function ChipRow<T extends string>({
               backgroundColor: on ? c.cta : c.cardSoft,
               borderWidth: 1.5,
               borderColor: on ? c.ink : c.border,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
             }}
           >
+            {on ? <Check size={14} color={c.white} strokeWidth={3} /> : null}
             <Text
               style={{
                 color: on ? c.white : c.ink,
@@ -84,38 +90,59 @@ export function CyclePainEditor({
   entries,
   onChange,
   compact,
+  types,
+  typesFirst,
 }: {
   entries: CyclePainEntry[];
   onChange: (next: CyclePainEntry[]) => void;
   compact?: boolean;
+  types?: CyclePainType[];
+  typesFirst?: boolean;
 }) {
   const c = useCycleColors();
-  const [draftType, setDraftType] = useState<CyclePainType>('cramps');
+  const typeOptions = types?.length ? types : PAIN_TYPES;
+  const [draftType, setDraftType] = useState<CyclePainType>(typeOptions[0] ?? 'cramps');
 
   const setQuickSeverity = (severity: CyclePainSeverity | null) => {
     if (!severity) {
       onChange([]);
       return;
     }
-    const type = entries[0]?.type ?? 'cramps';
+    const type = entries[0]?.type ?? draftType;
     onChange([{ type, severity }]);
   };
 
   if (compact) {
     const current = entries[0] ?? null;
+    const selectedType = current?.type ?? draftType;
     return (
       <View>
+        {typesFirst ? (
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ color: c.muted, fontSize: 12, marginBottom: 8 }}>{ka.cycle.painLocation}</Text>
+            <ChipRow
+              options={typeOptions}
+              value={selectedType}
+              onChange={(type) => {
+                if (!type) return;
+                setDraftType(type);
+                if (current) onChange([{ type, severity: current.severity }]);
+              }}
+              labelFor={painTypeLabel}
+            />
+          </View>
+        ) : null}
         <ChipRow
           options={['none', ...PAIN_SEVERITIES] as const}
           value={current ? current.severity : 'none'}
           onChange={(next) => setQuickSeverity(next === 'none' || next == null ? null : next)}
           labelFor={(id) => (id === 'none' ? ka.cycle.painNone : painSeverityLabel(id))}
         />
-        {current ? (
+        {current && !typesFirst ? (
           <View style={{ marginTop: 10 }}>
             <Text style={{ color: c.muted, fontSize: 12, marginBottom: 8 }}>{ka.cycle.painLocation}</Text>
             <ChipRow
-              options={PAIN_TYPES}
+              options={typeOptions}
               value={current.type}
               onChange={(type) => {
                 if (!type) return;
@@ -178,7 +205,7 @@ export function CyclePainEditor({
         </View>
       ))}
       <Text style={{ color: c.muted, fontSize: 12, marginBottom: 8 }}>{ka.cycle.painAdd}</Text>
-      <ChipRow options={PAIN_TYPES} value={draftType} onChange={(type) => type && setDraftType(type)} labelFor={painTypeLabel} />
+      <ChipRow options={typeOptions} value={draftType} onChange={(type) => type && setDraftType(type)} labelFor={painTypeLabel} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
         {PAIN_SEVERITIES.map((severity) => (
           <Pressable
@@ -213,6 +240,7 @@ export function CycleLifestyleFields({
   exerciseLevel,
   caffeine,
   alcohol,
+  energy,
   onChange,
 }: {
   sleepQuality: string | null;
@@ -220,16 +248,19 @@ export function CycleLifestyleFields({
   exerciseLevel: string | null;
   caffeine: string | null;
   alcohol: string | null;
+  energy?: string | null;
   onChange: (patch: {
     sleepQuality?: string | null;
     stressLevel?: string | null;
     exerciseLevel?: string | null;
     caffeine?: string | null;
     alcohol?: string | null;
+    energy?: string | null;
   }) => void;
 }) {
   const c = useCycleColors();
   const rows = [
+    { key: 'energy' as const, title: ka.cycle.energy, options: ENERGY_LEVELS, value: energy ?? null, labelFor: energyLabel },
     { key: 'sleepQuality' as const, title: ka.cycle.sleep, options: SLEEP_QUALITIES, value: sleepQuality, labelFor: sleepLabel },
     { key: 'stressLevel' as const, title: ka.cycle.stress, options: STRESS_LEVELS, value: stressLevel, labelFor: stressLabel },
     { key: 'exerciseLevel' as const, title: ka.cycle.exercise, options: EXERCISE_LEVELS, value: exerciseLevel, labelFor: exerciseLabel },

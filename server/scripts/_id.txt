@@ -1,0 +1,20 @@
+﻿node : [eval]:1
+At C:\Users\User\AppData\Local\Temp\ps-script-4af0e115-7f8b-4f26-8b2f-cce5592495f9.ps1:89 char:49
++ ... rd\server"; node -e "import('./src/lib/prisma.js').then(async ({prism ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([eval]:1:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+import('./src/lib/prisma.js').then(async ({prisma})=>{ const r=await 
+prisma.rewardDefinition.findUnique({where:{key:'MEDI_PROFILE_STYLE_30D'}}); console.log(r.id); await prisma.\() })
+                                                                                                                       
+                                                          ^
+Expected ident
+
+SyntaxError: Invalid or unexpected token
+    at makeContextifyScript (node:internal/vm:194:14)
+    at compileScript (node:internal/process/execution:388:10)
+    at evalTypeScript (node:internal/process/execution:260:22)
+    at node:internal/main/eval_string:71:3
+
+Node.js v24.19.0

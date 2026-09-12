@@ -3,10 +3,10 @@ import bcrypt from 'bcryptjs';
 import { env } from '../config/env.js';
 import { prisma } from './prisma.js';
 import { isQaOtpEnabled, matchesQaPhoneOtp } from './qaOtp.js';
+import { evaluateOtpRow, unusedUnexpiredOtpWhere } from './otpContract.js';
 import { buildOtpMessage, normalizeSmsDestination, sendSms } from './sms.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
-const MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 
 function generateCode() {
@@ -141,18 +141,14 @@ export async function verifyPhoneOtp({ phone, code, purpose = 'AUTH' }) {
     where: {
       phone: normalized,
       purpose,
-      usedAt: null,
-      expiresAt: { gt: new Date() },
+      ...unusedUnexpiredOtpWhere(),
     },
     orderBy: { createdAt: 'desc' },
   });
 
-  if (!row) {
-    return { ok: false, status: 400, error: 'კოდი არასწორია ან ვადა გაუვიდა.' };
-  }
-
-  if (row.attempts >= MAX_ATTEMPTS) {
-    return { ok: false, status: 429, error: 'მეტისმეტი მცდელობა. მოითხოვეთ ახალი კოდი.' };
+  const gate = evaluateOtpRow(row);
+  if (!gate.ok) {
+    return { ok: false, status: gate.status, error: gate.error };
   }
 
   const valid = await compareCode(trimmed, row.codeHash);

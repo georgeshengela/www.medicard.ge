@@ -1,0 +1,30 @@
+{
+  "mismatches": [
+    {
+      "doc": "MEMORY.md daily login 5 points",
+      "code": "DAILY_LOGIN_POINTS = 0",
+      "defect": "RA00-024"
+    },
+    {
+      "doc": "MEMORY historical 39.0.13 / 65.0.x",
+      "code": "expo.version 1.0.0.7.66",
+      "defect": "RA00-028"
+    },
+    {
+      "doc": "mobile/package.json 3.3.0",
+      "code": "app.json 1.0.0.7.66 is public identity",
+      "defect": "RA00-023"
+    },
+    {
+      "doc": "Explore/README may say 217 HTTP routes",
+      "code": "RA-00 regex inventory 207 method+path; live stack ~217",
+      "defect": "RA00-020"
+    },
+    {
+      "doc": "Contracts claim OpenRouter Cycle AI out of scope",
+      "code": "POST /api/cycle/insights still uses EvidenceMD CYCLE_WELLNESS (not OpenRouter) + local fallback; POSTPARTUM fail-closed",
+      "defect": null,
+      "notes": "Not a contradiction if 'OpenRouter Cycle AI' is the out-of-scope item specifically"
+    }
+  ]
+}

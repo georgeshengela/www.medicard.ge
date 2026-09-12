@@ -26,8 +26,15 @@ import {
   CycleTagPicker,
 } from '@/components/cycle/CycleObservationFields';
 import { CycleCard, CycleScalePicker, formatCycleDateKa } from '@/components/cycle/CycleUI';
+import { CycleObservationAssessment } from '@/components/cycle/CycleObservationAssessment';
 import type { CycleCustomTag, CyclePainEntry } from '@/lib/api';
 import { PAIN_MANAGED_SYMPTOM_IDS } from '@/lib/cycleObservations';
+import { cycleModeCapabilities } from '@/lib/cycleModes';
+import {
+  applySymptomChipToggle,
+  PERIMENOPAUSE_DAILY_ASSESSMENT_KEYS,
+  PREGNANCY_DAILY_ASSESSMENT_KEYS,
+} from '@/lib/cycleObservationAssessment';
 import { ka } from '@/i18n/ka';
 import { cycleShadow, useCycleColors } from '@/theme/cycle';
 
@@ -53,6 +60,8 @@ export type CycleLogForm = {
   caffeine: string | null;
   alcohol: string | null;
   customTagIds: string[];
+  energy: string | null;
+  observationAssessments: Record<string, 'ABSENT'>;
 };
 
 type Props = {
@@ -111,11 +120,22 @@ export function CycleLogTabs({
   const [feelPane, setFeelPane] = useState<FeelPane>('symptoms');
   const [symQuery, setSymQuery] = useState('');
 
-  const showFertility = mode === 'TRY_TO_CONCEIVE';
+  const caps = cycleModeCapabilities(mode);
+  const showFertility = caps.showFertilityShortcuts;
+  const showPregnancyTest = caps.showPregnancyTestLog;
+  const assessmentKeys = caps.showPregnancyObservations
+    ? PREGNANCY_DAILY_ASSESSMENT_KEYS
+    : caps.showPerimenopauseTracking
+      ? PERIMENOPAUSE_DAILY_ASSESSMENT_KEYS
+      : [];
 
   const tabDone: Record<TabId, boolean> = {
     flow: Boolean(form.flow),
-    feel: form.symptoms.length > 0 || form.moods.length > 0 || form.painEntries.length > 0,
+    feel:
+      form.symptoms.length > 0 ||
+      form.moods.length > 0 ||
+      form.painEntries.length > 0 ||
+      Object.keys(form.observationAssessments || {}).length > 0,
     more:
       form.sexual ||
       form.libido != null ||
@@ -129,6 +149,7 @@ export function CycleLogTabs({
       Boolean(form.exerciseLevel) ||
       Boolean(form.caffeine) ||
       Boolean(form.alcohol) ||
+      Boolean(form.energy) ||
       form.customTagIds.length > 0,
   };
 
@@ -260,6 +281,9 @@ export function CycleLogTabs({
 
         {tab === 'feel' ? (
           <Animated.View entering={FadeInRight.duration(280)}>
+            {assessmentKeys.length ? (
+              <CycleObservationAssessment keys={assessmentKeys} form={form} onChange={onChange} ready />
+            ) : null}
             <View
               style={{
                 flexDirection: 'row',
@@ -327,7 +351,7 @@ export function CycleLogTabs({
                 <ToggleList
                   options={filteredSymptoms}
                   selected={form.symptoms}
-                  onToggle={(id) => onChange({ symptoms: toggle(form.symptoms, id) })}
+                  onToggle={(id) => onChange(applySymptomChipToggle(form, id))}
                   accent={c.brand}
                 />
               </>
@@ -351,6 +375,7 @@ export function CycleLogTabs({
                 exerciseLevel={form.exerciseLevel}
                 caffeine={form.caffeine}
                 alcohol={form.alcohol}
+                energy={form.energy}
                 onChange={onChange}
               />
             </Block>
@@ -514,6 +539,14 @@ export function CycleLogTabs({
                   />
                 </Block>
               </>
+            ) : showPregnancyTest ? (
+              <Block title={ka.cycle.pregnancyTest} hint={ka.cycle.pregnancyTestNotMode}>
+                <CycleTestResultRow
+                  value={form.pregnancyTest}
+                  onChange={(pregnancyTest) => onChange({ pregnancyTest })}
+                  accent={c.rose}
+                />
+              </Block>
             ) : null}
           </Animated.View>
         ) : null}

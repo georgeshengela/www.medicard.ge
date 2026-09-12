@@ -145,12 +145,12 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
     return {
       kind: 'open_chat',
       steps: [
-        'გახსენით AI ექიმთან საუბარი.',
-        'გაეცით AI-ს თქვენი სიმპტომები და კონტექსტი.',
-        'მიიღეთ პერსონალიზებული რჩევა და დააზუსტეთ კითხვები.',
+        'გახსენი საუბარი Medi-სთან.',
+        'გაუზიარე Medi-ს შენი სიმპტომები და კონტექსტი.',
+        'მიიღე რჩევა და დააზუსტე კითხვები. ეს არ ცვლის ექიმს.',
       ],
       manualLabel: action,
-      autoLabel: 'AI ექიმთან ავტომატური კითხვა',
+      autoLabel: 'ჰკითხე Medi-ს',
       chatPrefill: `ციკლის რჩევის შესახებ: „${card.title}“. ${card.body} რა გირჩევ?`,
     };
   }

@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildCycleCandidates,
+  CYCLE_CANDIDATE_TYPES,
   CYCLE_SUPPRESSION,
   cycleCandidateId,
   cycleDeliveryDecision,
@@ -128,6 +129,18 @@ describe('Cycle candidates', () => {
     assert.equal(rows.some((row) => row.type === 'ovulation' || row.type === 'period_start'), false);
   });
 
+  it('suppresses period predictions and late candidates in perimenopause mode', () => {
+    const rows = buildCycleCandidates({
+      today,
+      mode: 'PERIMENOPAUSE',
+      predictions: predictions(),
+      prefs: prefs(),
+      lateStatus: { status: 'late' },
+    });
+    assert.equal(rows.some((row) => ['period_start', 'period_soon', 'ovulation', 'fertile', 'late'].includes(row.type)), false);
+    assert.equal(CYCLE_CANDIDATE_TYPES.includes('perimenopause'), false);
+  });
+
   it('picks one candidate per civil day by priority', () => {
     const rows = buildCycleCandidates({
       today: '2026-09-01',
@@ -224,6 +237,55 @@ describe('Cycle candidate revalidation', () => {
     assert.equal(check.reason, CYCLE_SUPPRESSION.PREGNANCY_SUPPRESSED);
   });
 
+  it('E3: postpartum mode suppresses cycle predictions and does not add pushes', () => {
+    const check = revalidateCycleCandidate(
+      { type: 'period_start', eventDate: '2026-09-20' },
+      { ...live, mode: 'POSTPARTUM' },
+    );
+    assert.equal(check.reason, CYCLE_SUPPRESSION.POSTPARTUM_SUPPRESSED);
+    const candidates = buildCycleCandidates({
+      userId: 'u1',
+      mode: 'POSTPARTUM',
+      prefs: prefs(),
+      predictions: predictions(),
+      today,
+    });
+    assert.equal(
+      candidates.some((row) => row.type !== 'log_nudge'),
+      false,
+    );
+  });
+
+  it('Phase 42: TRACK with forecastAllowed false suppresses predictive cycle pushes', () => {
+    const check = revalidateCycleCandidate(
+      { type: 'period_start', eventDate: '2026-09-20' },
+      { ...live, mode: 'TRACK_PERIOD', forecastAllowed: false },
+    );
+    assert.equal(check.reason, CYCLE_SUPPRESSION.FORECAST_GATE_SUPPRESSED);
+    const ttc = revalidateCycleCandidate(
+      { type: 'ovulation', eventDate: '2026-09-06' },
+      { ...live, mode: 'TRY_TO_CONCEIVE', forecastAllowed: false },
+    );
+    assert.equal(ttc.reason, CYCLE_SUPPRESSION.FORECAST_GATE_SUPPRESSED);
+    const rows = buildCycleCandidates({
+      userId: 'u1',
+      mode: 'TRACK_PERIOD',
+      prefs: prefs(),
+      predictions: predictions(),
+      today,
+      forecastAllowed: false,
+    });
+    assert.equal(rows.some((row) => ['period_start', 'period_soon', 'ovulation', 'fertile', 'pms'].includes(row.type)), false);
+  });
+
+  it('E2: perimenopause mode suppresses cycle predictions', () => {
+    const check = revalidateCycleCandidate(
+      { type: 'period_start', eventDate: '2026-09-20' },
+      { ...live, mode: 'PERIMENOPAUSE' },
+    );
+    assert.equal(check.reason, CYCLE_SUPPRESSION.PERIMENOPAUSE_SUPPRESSED);
+  });
+
   it('F: disabled reminder preference is USER_DISABLED', () => {
     const check = revalidateCycleCandidate(
       { type: 'ovulation', eventDate: '2026-09-06' },
@@ -277,5 +339,13 @@ describe('Cycle candidate revalidation', () => {
       { ...live, sentCandidateIds: [id] },
     );
     assert.equal(check.reason, CYCLE_SUPPRESSION.DUPLICATE);
+  });
+
+  it('does not add a symptom-driven pregnancy candidate', () => {
+    assert.equal(CYCLE_CANDIDATE_TYPES.includes('heartburn'), false);
+    assert.equal(CYCLE_CANDIDATE_TYPES.includes('swelling'), false);
+    assert.equal(CYCLE_CANDIDATE_TYPES.includes('pregnancy_symptom'), false);
+    assert.equal(CYCLE_CANDIDATE_TYPES.includes('pregnancy_observation_trend'), false);
+    assert.equal(CYCLE_CANDIDATE_TYPES.includes('pregnancy_care_plan'), false);
   });
 });

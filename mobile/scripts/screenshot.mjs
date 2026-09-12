@@ -97,8 +97,8 @@ await shot('08-lab-upload');
 
 await page.goBack();
 await page.waitForTimeout(2000);
-await tap('AI ექიმი', 2500);
-await shot('09-ai-doctor');
+await tap('Medi-სთან საუბარი', 2500);
+await shot('09-medi-chat');
 
 await page.goBack();
 await page.waitForTimeout(2000);

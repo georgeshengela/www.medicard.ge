@@ -1,0 +1,14 @@
+{
+  "hub": "/lab",
+  "decodeStudio": "/module/lab",
+  "extract": "POST /api/ai/extract-lab (OpenRouter vision; 1 credit per day-read in product copy)",
+  "explain": "POST /api/ai/explain-lab (EvidenceMD write-up; separate credit)",
+  "align": "POST /api/ai/align-lab",
+  "storage": "client medicard.lab.panels.v1 by date; MedicalRecord for imaging path",
+  "camera": "expo-image-picker + HEIC→JPEG",
+  "manualValues": "present in lab UI after OCR",
+  "unitsRanges": "printed ranges from OCR; flags Normal/High/Low",
+  "history": "/lab/[date], /lab/param/[key] trend",
+  "deleteEdit": "needs RA-04 execution — inventory does not claim tested",
+  "share": "not a dedicated lab PDF exporter; doctor summary is cycle-scoped"
+}

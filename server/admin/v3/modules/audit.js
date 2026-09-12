@@ -270,7 +270,7 @@
       tbody.innerHTML = `<tr><td colspan="5"><div class="v3-audit-empty-inline is-err">
         <strong>აუდიტი ვერ ჩაიტვირთა</strong>
         <p>${esc(err.message || 'შეცდომა')}</p>
-        <button type="button" class="btn ghost compact" id="audit-retry">${ico('refresh')} ხელახლა ცდა</button>
+        <button type="button" class="btn ghost compact" id="audit-retry">${ico('refresh')} ხელახლა სცადე</button>
       </div></td></tr>`;
       $('audit-retry')?.addEventListener('click', () => void loadJournal());
     }

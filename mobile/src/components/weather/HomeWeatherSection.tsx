@@ -21,7 +21,7 @@ const LABELS = {
   tomorrow: 'ხვალის ფანჯარა',
   air: 'ჰაერი',
   rain: 'წვიმა',
-  feels: 'იგრძნობა',
+  feels: 'შეგრძნება',
   wind: 'ქარი',
 } as const;
 

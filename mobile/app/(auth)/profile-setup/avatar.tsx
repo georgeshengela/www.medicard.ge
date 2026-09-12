@@ -6,6 +6,7 @@ import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { defaultAvatarForGender, avatarsForGender, normalizeAvatarForGender, type AvatarId } from '@/constants/avatarAssets';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { authErrorMessage } from '@/lib/authErrorMessage';
 import { extraAnswersPayload, formFromProfile, fullProfilePayload } from '@/lib/assessmentForm';
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import { useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
@@ -63,7 +64,7 @@ export default function ProfileSetupAvatarScreen() {
       await refreshHealthProfile();
       router.push('/(auth)/profile-setup/phone');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : ka.common.error);
+      setError(authErrorMessage(e));
     } finally {
       setBusy(false);
     }

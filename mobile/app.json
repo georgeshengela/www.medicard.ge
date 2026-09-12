@@ -3,7 +3,7 @@
     "name": "MEDICARD",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "39.0.22",
+    "version": "1.0.0.7.80",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -14,18 +14,23 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
+      "version": "1.7.80",
+      "buildNumber": "66",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD",
         "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენისა და კანის ფოტოს გადასაღებად.",
         "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა სამედიცინო დოკუმენტებისა და ფოტოების ასატვირთად.",
         "NSMicrophoneUsageDescription": "მიკროფონი საჭიროა ხმის ანალიზისთვის, თუ ამ ნაბიჯს გაივლით.",
         "NSFaceIDUsageDescription": "Medicard-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად.",
-        "NSLocationWhenInUseUsageDescription": "Medicard-ს ლოკაცია სჭირდება თქვენი ქალაქისა და ქვეყნის ამოსაცნობად და პროფილზე საცხოვრებელი ადგილის საჩვენებლად.",
+        "NSLocationWhenInUseUsageDescription": "Medicard-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის, Medi World-ში ახლოს საჯარო ადგილებისთვის და წინა პლანის მოძრაობის სესიისთვის. ფონური წვდომა არ გამოიყენება.",
+        "NSCalendarsUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
+        "NSCalendarsFullAccessUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "ge.medicard.app",
+      "versionCode": 66,
       "adaptiveIcon": {
         "backgroundColor": "#14B8A6",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -39,6 +44,8 @@
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.RECORD_AUDIO",
         "android.permission.ACTIVITY_RECOGNITION",
@@ -92,6 +99,13 @@
         }
       ],
       [
+        "expo-calendar",
+        {
+          "calendarPermission": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
+          "remindersPermission": false
+        }
+      ],
+      [
         "@kingstinct/react-native-healthkit",
         {
           "NSHealthShareUsageDescription": "Medicard-ს Apple Health-ის წაკითხვა სჭირდება წონის, წნევის, პულსის, ძილისა და ჰიდრატაციის სინქრონიზაციისთვის.",
@@ -115,7 +129,9 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Medicard-ს ლოკაცია სჭირდება თქვენი ქალაქისა და ქვეყნის ამოსაცნობად და პროფილზე საცხოვრებელი ადგილის საჩვენებლად."
+          "locationWhenInUsePermission": "Medicard-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის, Medi World-ში ახლოს საჯარო ადგილებისთვის და წინა პლანის მოძრაობის სესიისთვის. ფონური წვდომა არ გამოიყენება.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
         }
       ],
       [
@@ -125,10 +141,13 @@
         }
       ],
       "expo-sharing",
-      "expo-status-bar"
+      "expo-status-bar",
+      "@react-native-community/datetimepicker",
+      "./plugins/withIosMarketingVersion"
     ],
     "extra": {
       "router": {},
+      "medicardInternalVersion": "1.0.0.7.80",
       "apiUrl": "https://medicard.ge",
       "privacyPolicyUrl": "https://medicard.ge/privacy",
       "termsOfServiceUrl": "https://medicard.ge/terms",

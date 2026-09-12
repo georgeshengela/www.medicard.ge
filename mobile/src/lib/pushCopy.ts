@@ -21,8 +21,8 @@ const FALLBACKS: Record<string, { title: string; body: string }> = {
     body: 'მგონი {name}-ის მარაგის შემოწმების დროა. გადაავლე თვალი, რომ საჭირო დროს ხელთ გქონდეს 💚',
   },
   'cycle-period-soon': {
-    title: 'პერიოდი ახლოვდება 🌸',
-    body: 'შენი ციკლის მიხედვით, მენსტრუაცია დაახლოებით {days} დღეშია მოსალოდნელი. პატარა heads-up Medi-სგან 💗',
+    title: 'სავარაუდო მენსტრუაცია ახლოვდება 🌸',
+    body: 'შენი ციკლის მიხედვით, მენსტრუაცია დაახლოებით {days} დღეშია მოსალოდნელი. ეს შეფასებაა — Medi მხოლოდ შეგახსენებს 💗',
   },
   'cycle-period-start': {
     title: 'დღეს შეიძლება დაიწყოს 🌷',
@@ -60,6 +60,14 @@ const FALLBACKS: Record<string, { title: string; body: string }> = {
     title: 'Medi-სგან შეხსენება',
     body: 'როცა დრო გექნება, შემომიარე 💚',
   },
+  'pregnancy-care-plan': {
+    title: 'შეხსენება',
+    body: 'შეგახსენებ: შენ დაგეგმე {item} {when}.',
+  },
+  'pregnancy-care-masked': {
+    title: 'Medi-სგან შეხსენება',
+    body: 'შენი დაგეგმილი მოვლის შეხსენება',
+  },
   visit: {
     title: 'ვიზიტი არ დაგავიწყდეს 🩺',
     body: 'დღეს {time}-ზე {doctor}-თან ვიზიტი გაქვს{place}. ყველაფერი მზად გაქვს? Medi უბრალოდ შეგახსენებს 💚',
@@ -69,7 +77,7 @@ const FALLBACKS: Record<string, { title: string; body: string }> = {
     body: 'დღეს უკვე {steps} ნაბიჯი გაქვს. პატარა გასეირნება და კიდევ უფრო მიუახლოვდები შენს მიზანს 💚',
   },
   weight: {
-    title: 'პატარა check-in? ⚖️',
+    title: 'წონის ჩანაწერი? ⚖️',
     body: 'თუ დღეს წონის დაფიქსირება გინდოდა, შეგიძლია Medi-ში ჩაინიშნო — ბოლო მონაცემი: {kg} კგ. არანაირი წნეხი 🤍',
   },
   'admin-push': {
@@ -157,6 +165,8 @@ export function previewPushCopy(key: string): { title: string; body: string } {
     place: ' — კლინიკა',
     steps: '6,200',
     kg: 70,
+    item: 'ანატომიის ულტრაბგერა',
+    when: 'ხვალ',
   });
 }
 

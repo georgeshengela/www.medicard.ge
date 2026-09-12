@@ -12,6 +12,7 @@ import { HomeHealthMetricsSection } from '@/components/home/HomeHealthMetricsSec
 import { HomeHydrationSection } from '@/components/home/HomeHydrationSection';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { HomeMediCompanionEntry } from '@/components/companion/HomeMediCompanionEntry';
+import { MediWorldHomeEntry } from '@/components/world/MediWorldHomeEntry';
 import { HomeWeatherSection } from '@/components/weather/HomeWeatherSection';
 import { HomeRunSection } from '@/components/run/HomeRunSection';
 import { HomeLabSection } from '@/components/home/HomeLabSection';
@@ -150,6 +151,7 @@ export default function Home() {
           <View key={id} style={{ position: 'relative' }}>
             <HomeMediCompanionEntry />
             <HomeMediQuestSection />
+            <MediWorldHomeEntry />
           </View>
         );
       case 'steps':

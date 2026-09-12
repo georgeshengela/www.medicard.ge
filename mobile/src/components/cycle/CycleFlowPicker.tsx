@@ -19,14 +19,17 @@ type Props = {
   value: string | null;
   onChange: (id: string) => void;
   disabled?: boolean;
+  options?: { id: string; label: string }[];
+  hint?: string;
 };
 
-export function CycleFlowPicker({ value, onChange, disabled }: Props) {
+export function CycleFlowPicker({ value, onChange, disabled, options, hint }: Props) {
   const c = useCycleColors();
+  const items = options || FLOW_OPTIONS;
   return (
     <CycleCard padded={false} style={{ padding: 12, overflow: 'hidden' }}>
-      <View style={{ flexDirection: 'row' }}>
-        {FLOW_OPTIONS.map((opt, index) => {
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        {items.map((opt, index) => {
           const selected = value === opt.id;
           const level = FLOW_LEVEL[opt.id] ?? 0;
           return (
@@ -119,7 +122,7 @@ export function CycleFlowPicker({ value, onChange, disabled }: Props) {
           fontFamily: 'NotoSansGeorgian_400Regular',
         }}
       >
-        {ka.cycle.flowPickerHint}
+        {hint ?? ka.cycle.flowPickerHint}
       </Text>
     </CycleCard>
   );

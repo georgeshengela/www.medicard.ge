@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-09-11T20:32:26.155Z",
+  "provider": "first-party ProductEvent table (no PostHog/Amplitude/Sentry)",
+  "clientKinds": [
+    "weekly_report_opened",
+    "insight_opened",
+    "insight_actioned",
+    "insight_dismissed",
+    "notification_permission",
+    "quest_hub_opened",
+    "quest_claim_tapped",
+    "quest_history_opened",
+    "quest_wallet_opened",
+    "step_setup_opened",
+    "hydration_setup_opened",
+    "achievements_opened",
+    "achievements_opened_from_hub",
+    "achievement_claim_tapped",
+    "quest_why_target_opened",
+    "medi_companion_opened",
+    "medi_journey_opened",
+    "medi_journey_milestone_viewed",
+    "medi_cosmetic_equipped",
+    "medi_talk_tapped"
+  ],
+  "serverOnlyKinds": [
+    "weekly_report_generated",
+    "insight_generated",
+    "quest_assigned",
+    "quest_completed",
+    "quest_claimed",
+    "smart_quest_assigned",
+    "medi_journey_milestone_unlocked"
+  ],
+  "droppedClientKinds": [
+    "weather_* kinds in weather/events.ts — not in PRODUCT_EVENT_KINDS"
+  ],
+  "consent": "no dedicated analytics SDK consent; privacy policy copy only",
+  "healthSensitive": false,
+  "userIdentifiers": "userId on server row; client sends kinds + entityId allowlisted"
+}

@@ -1,0 +1,543 @@
+{
+  "generatedAt": "2026-09-11T20:35:00.000Z",
+  "phase": "RA-00",
+  "statusNote": "Discovery-only. No product logic was changed. Severity is inventory classification for later execution, not a release freeze.",
+  "counts": { "P0": 1, "P1": 7, "P2": 15, "P3": 7, "total": 30 },
+  "items": [
+    {
+      "id": "RA00-001",
+      "severity": "P0",
+      "module": "SECURITY_PRIVACY",
+      "title": "User uploads served without authentication",
+      "evidence": [
+        "server/src/server.js mounts app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' })) with no requireAuth",
+        "Filenames are UUIDs (saveUpload) — secrecy of URL is the only control",
+        "MedicalRecord.imageUrl and lab/imaging/skin flows can persist upload paths"
+      ],
+      "reproduction": [
+        "Obtain any /uploads/<uuid> URL from a medical record, log, or leaked referrer",
+        "GET that URL without Authorization",
+        "Observe file bytes returned (PHI/images/PDFs)"
+      ],
+      "expected": "Owner-authenticated or signed short-lived URLs for health files",
+      "actual": "Public static mount; anyone with the URL can fetch",
+      "sourceFiles": ["server/src/server.js", "server/src/lib/storage.js"],
+      "affectedApi": ["GET /uploads/*"],
+      "privacyOrSafetyImpact": "Unauthenticated read of user-uploaded health files if URL is known or leaked",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-002",
+      "severity": "P1",
+      "module": "REWARDS",
+      "title": "Reward detail screen references undeclared identifiers (likely runtime crash)",
+      "evidence": [
+        "mobile/app/medi-quest/rewards/[id].tsx uses trackQuestEvent, ApiError, QUEST without importing them",
+        "tsc: Cannot find name 'trackQuestEvent' / 'QUEST' / 'ApiError'",
+        "trackQuestEvent is called on view (line 65) so crash is on screen open, not only on redeem"
+      ],
+      "reproduction": [
+        "Open /medi-quest/rewards/:id on a JS bundle that evaluates these identifiers",
+        "Expect ReferenceError"
+      ],
+      "expected": "Reward detail loads and redeem works with imported helpers",
+      "actual": "Missing bindings in source; typecheck fails; runtime crash likely",
+      "sourceFiles": ["mobile/app/medi-quest/rewards/[id].tsx"],
+      "affectedApi": ["GET /api/rewards/:id", "POST /api/rewards/:id/redeem"],
+      "privacyOrSafetyImpact": "Economy redeem UX broken; not a client-authoritative coin mint (server still authoritative)",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-003",
+      "severity": "P1",
+      "module": "CYCLE",
+      "title": "CycleMoreTracking references undeclared `pregnancy` identifier",
+      "evidence": [
+        "mobile/src/components/cycle/CycleMoreTracking.tsx line ~176 `{pregnancy ? (`",
+        "Props type has form, onChange, compact, mode — no pregnancy",
+        "tsc: Cannot find name 'pregnancy'"
+      ],
+      "reproduction": [
+        "Open cycle log more-tracking section",
+        "Component render evaluates `pregnancy`"
+      ],
+      "expected": "Pregnancy-test row gated by an in-scope capability/mode flag",
+      "actual": "Undeclared identifier in render",
+      "sourceFiles": ["mobile/src/components/cycle/CycleMoreTracking.tsx"],
+      "affectedApi": ["PUT /api/cycle/logs/:date"],
+      "privacyOrSafetyImpact": "Cycle rich-tracking UI may crash; fertility test logging path at risk",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-004",
+      "severity": "P1",
+      "module": "CYCLE",
+      "title": "CycleObservationFields imports alcoholLabel which is not exported",
+      "evidence": [
+        "mobile/src/components/cycle/CycleObservationFields.tsx imports alcoholLabel from @/lib/cycleObservations",
+        "mobile/src/lib/cycleObservations.ts exports caffeineLabel/energyLabel/exerciseLabel but not alcoholLabel",
+        "tsc: Module has no exported member 'alcoholLabel'"
+      ],
+      "reproduction": [
+        "Load any screen that imports CycleObservationFields",
+        "Metro/Hermes missing named export"
+      ],
+      "expected": "alcoholLabel exported or import removed",
+      "actual": "Broken named import",
+      "sourceFiles": [
+        "mobile/src/components/cycle/CycleObservationFields.tsx",
+        "mobile/src/lib/cycleObservations.ts"
+      ],
+      "affectedApi": ["PUT /api/cycle/logs/:date"],
+      "privacyOrSafetyImpact": "Cycle observation UI may fail to load",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-005",
+      "severity": "P1",
+      "module": "MEDI_AI",
+      "title": "AI telemetry persists full prompts and replies with no purge job",
+      "evidence": [
+        "server/src/lib/aiTelemetry.js logs userPrompt and assistantReply onto AiInteraction",
+        "withPatientAiContext injects health profile, 14-day metrics, medications, cycle mode",
+        "No automated retention/purge found in server jobs"
+      ],
+      "reproduction": [
+        "Send a Medi chat or lab explain",
+        "Inspect Prisma AiInteraction rows"
+      ],
+      "expected": "Documented retention + minimization; no unbounded PHI in prompts table unless required for quality and access-controlled",
+      "actual": "Unbounded storage of medical prompts/replies; admin can read via /api/admin/ai/interactions/:id",
+      "sourceFiles": [
+        "server/src/lib/aiTelemetry.js",
+        "server/src/lib/patient.js",
+        "server/prisma/schema.prisma"
+      ],
+      "affectedApi": ["POST /api/ai/*", "GET /api/admin/ai/interactions/:id"],
+      "privacyOrSafetyImpact": "PHI retained in operator-readable AI audit table; third-party providers also receive context",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-006",
+      "severity": "P1",
+      "module": "PLATFORM",
+      "title": "Prisma history is incomplete; phase SQL lives outside migrations",
+      "evidence": [
+        "Only 13 folders under server/prisma/migrations from 2026-08-30 onward; no baseline; no migration_lock.toml",
+        "11 phase*.sql files applied via prisma db execute",
+        "phase41/phase42 comments: live Neon may have no _prisma_migrations table"
+      ],
+      "reproduction": [
+        "Compare prisma migrate status vs schema.prisma vs production Neon"
+      ],
+      "expected": "Single source of schema truth with recorded migrations",
+      "actual": "Drift risk across environments; db push / execute historically used",
+      "sourceFiles": ["server/prisma/schema.prisma", "server/prisma/migrations/", "server/prisma/phase*.sql"],
+      "affectedApi": [],
+      "privacyOrSafetyImpact": "Environment schema mismatch can drop constraints (one-ACTIVE episodes) or omit tables",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-007",
+      "severity": "P1",
+      "module": "PLATFORM",
+      "title": "Mobile TypeScript check fails (123 errors) — inventory, not a green build",
+      "evidence": [
+        "npm --prefix mobile run typecheck exit 2",
+        "123 error TS* diagnostics including cycle, rewards, weather .ts extensions, profile, lab, notifications"
+      ],
+      "reproduction": ["npm --prefix mobile run typecheck"],
+      "expected": "tsc --noEmit clean for store-facing app",
+      "actual": "123 errors; Expo runtime may still bundle JS",
+      "sourceFiles": ["mobile/tsconfig.json", "mobile/app/", "mobile/src/"],
+      "affectedApi": [],
+      "privacyOrSafetyImpact": "Type unsafety can hide ownership/mode bugs; several errors map to likely runtime crashes (RA00-002/003/004)",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-008",
+      "severity": "P1",
+      "module": "NOTIFICATIONS",
+      "title": "Notification Brain unit test failing: re-engagement may fire while session is open",
+      "evidence": [
+        "npm --prefix mobile run test:engage — 37 pass, 1 fail",
+        "mediNotificationBrain.test.ts: 'always schedules future re-engagement instead of nagging an open session'",
+        "assert.ok(re.every((row) => row.fireAt.getTime() > Date.now())) was falsy"
+      ],
+      "reproduction": ["npm --prefix mobile run test:engage"],
+      "expected": "Re-engagement only scheduled in the future, not during an open session",
+      "actual": "Test asserts at least one candidate fireAt is not in the future",
+      "sourceFiles": [
+        "mobile/src/lib/mediNotificationBrain.ts",
+        "mobile/src/lib/mediNotificationBrain.test.ts"
+      ],
+      "affectedApi": [],
+      "privacyOrSafetyImpact": "Possible nagging push while user is in-app; not PHI leak",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-009",
+      "severity": "P2",
+      "module": "ANALYTICS",
+      "title": "Weather client analytics kinds are dropped by server allowlist",
+      "evidence": [
+        "mobile/src/lib/weather/events.ts emits weather_* kinds",
+        "server/src/lib/productEvents.js PRODUCT_EVENT_KINDS does not include weather_*",
+        "sanitizeProductEventInput returns null for unknown kinds"
+      ],
+      "reproduction": ["POST /api/push/events/product with kind weather_*", "Observe upsert skipped"],
+      "expected": "Either accept documented weather events or do not emit them",
+      "actual": "Client thinks it tracks weather; server drops",
+      "sourceFiles": ["mobile/src/lib/weather/events.ts", "server/src/lib/productEvents.js"],
+      "affectedApi": ["POST /api/push/events/product"],
+      "privacyOrSafetyImpact": "Observability gap; kinds themselves are not health values",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-010",
+      "severity": "P2",
+      "module": "PLATFORM",
+      "title": "DailyUsage, SmsLog, PhoneVerification lack User foreign keys",
+      "evidence": ["Prisma models have userId without @relation to User"],
+      "reproduction": ["Delete User; inspect leftover DailyUsage/SmsLog/PhoneVerification rows"],
+      "expected": "FK + cascade or documented orphan policy",
+      "actual": "Orphan userId possible",
+      "sourceFiles": ["server/prisma/schema.prisma"],
+      "affectedApi": ["DELETE /api/auth/me", "DELETE /api/admin/users/:id"],
+      "privacyOrSafetyImpact": "OTP/SMS audit rows may outlive the account (or dangle)",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-011",
+      "severity": "P2",
+      "module": "REWARDS",
+      "title": "UserRewardEntitlement allows duplicate ACTIVE rows for same key",
+      "evidence": ["No unique (userId, entitlementKey) WHERE status=ACTIVE"],
+      "reproduction": ["Adversarial double redeem/entitlement write if application guard fails"],
+      "expected": "Partial unique index for one ACTIVE entitlement per key",
+      "actual": "Duplicates possible at schema level",
+      "sourceFiles": ["server/prisma/schema.prisma"],
+      "affectedApi": ["POST /api/rewards/:id/redeem"],
+      "privacyOrSafetyImpact": "Value/economy integrity risk if application layer races",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-012",
+      "severity": "P2",
+      "module": "CYCLE",
+      "title": "CyclePartnerShare has no uniqueness for one non-revoked invite per owner",
+      "evidence": ["tokenHash unique only; product comment says one active invite"],
+      "reproduction": ["Create two shares without revoke if API allows"],
+      "expected": "At most one non-revoked share per owner if that is the contract",
+      "actual": "Schema does not enforce it",
+      "sourceFiles": ["server/prisma/schema.prisma", "server/src/routes/cycle.routes.js"],
+      "affectedApi": ["POST /api/cycle/share"],
+      "privacyOrSafetyImpact": "Multiple live partner tokens possible — later RA-15 must confirm API guard",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-013",
+      "severity": "P2",
+      "module": "CYCLE",
+      "title": "Cycle mode transition has TOCTOU window (read then transaction)",
+      "evidence": ["PUT/PATCH /api/cycle/profile reads current then $transaction for pregnancy/postpartum side effects"],
+      "reproduction": ["Two concurrent mode patches (PREGNANCY vs POSTPARTUM vs TRACK)"],
+      "expected": "Single transactional compare-and-set for mode + episode",
+      "actual": "Read-then-write; SQL partial unique on ACTIVE episode is the backstop",
+      "sourceFiles": ["server/src/routes/cycle.routes.js"],
+      "affectedApi": ["PUT /api/cycle/profile", "PATCH /api/cycle/profile"],
+      "privacyOrSafetyImpact": "Incorrect reproductive-health mode/episode if race wins past application checks",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-014",
+      "severity": "P2",
+      "module": "MEDICATIONS",
+      "title": "Mark-taken has no client debounce (local overwrite + sync fire)",
+      "evidence": ["saveDoseLog key medicationId|date|time overwrites; no in-flight lock found"],
+      "reproduction": ["Double-tap TAKE on a dose notification or hub row"],
+      "expected": "Idempotent single taken event per slot",
+      "actual": "Rapid taps rewrite local log and re-fire sync; DB unique helps server-side",
+      "sourceFiles": ["mobile/src/lib/medications.shared.ts"],
+      "affectedApi": ["POST /api/push/dose-events"],
+      "privacyOrSafetyImpact": "Misleading taken state / duplicate notifications possible",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-015",
+      "severity": "P2",
+      "module": "SECURITY_PRIVACY",
+      "title": "After-fetch ownership checks (quest, cycle tags) need adversarial RA-15",
+      "evidence": [
+        "loadQuestForUser: findUnique({ id }) then quest.userId !== userId → 404",
+        "cycle tags: findUnique({ id }) then taken.userId !== req.user.id → 403"
+      ],
+      "reproduction": ["Call claim/tag endpoints with another user's UUID while authenticated as self"],
+      "expected": "Owner always in WHERE or equivalent; 404 without existence leak if policy requires",
+      "actual": "Fetch-then-check (currently rejects foreign IDs if helper is used)",
+      "sourceFiles": ["server/src/lib/quest.js", "server/src/routes/cycle.routes.js"],
+      "affectedApi": ["POST /api/quests/:id/claim", "PATCH /api/cycle/tags/:id"],
+      "privacyOrSafetyImpact": "Candidate IDOR if any caller skips the helper; existence leak vs 404/403",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-016",
+      "severity": "P2",
+      "module": "ACCESSIBILITY",
+      "title": "Large share of Pressables lack accessibilityLabel",
+      "evidence": [
+        "Static scan ~666 Pressables, ~261 with accessibilityLabel, ~405 without",
+        "Master matrix 811 controls; 763 opening tags without accessibilityLabel attribute (includes admin mutations)"
+      ],
+      "reproduction": ["VoiceOver/TalkBack on health-metrics, lab, quest chrome, icon-only headers"],
+      "expected": "Every interactive control has an accessible name",
+      "actual": "Many icon-only / unlabeled Pressables",
+      "sourceFiles": ["mobile/app/", "mobile/src/components/"],
+      "affectedApi": [],
+      "privacyOrSafetyImpact": "Severe a11y blockers possible on primary flows — later RA must execute",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-017",
+      "severity": "P2",
+      "module": "DEVICE_INTEGRATIONS",
+      "title": "Microphone permission is declared but no runtime recorder request exists",
+      "evidence": [
+        "app.json NSMicrophoneUsageDescription and RECORD_AUDIO",
+        "No Audio.requestPermissionsAsync / recording API usage found",
+        "assessmentForm.ts has voiceRecorded flag without recorder"
+      ],
+      "reproduction": ["Walk assessment; observe no mic prompt despite store strings"],
+      "expected": "Request mic only if a feature records; otherwise omit permission",
+      "actual": "Store-facing permission without implementation",
+      "sourceFiles": ["mobile/app.json", "mobile/src/lib/assessmentForm.ts"],
+      "affectedApi": [],
+      "privacyOrSafetyImpact": "Store review / user-trust mismatch; not an active recording leak",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-018",
+      "severity": "P2",
+      "module": "CYCLE",
+      "title": "Partial unique one-ACTIVE episode indexes exist only in SQL migrations, not Prisma schema",
+      "evidence": [
+        "CyclePregnancyEpisode_one_active and CyclePostpartumEpisode_one_active in migration SQL",
+        "Not expressible in schema.prisma; db push could omit them"
+      ],
+      "reproduction": ["Fresh db push without running those migrations; insert two ACTIVE episodes"],
+      "expected": "Production always has partial unique; schema documents it as enforced",
+      "actual": "Enforcement depends on which SQL was executed",
+      "sourceFiles": [
+        "server/prisma/migrations/20260909220000_cycle_pregnancy_episode",
+        "server/prisma/migrations/20260911120000_cycle_postpartum_mode"
+      ],
+      "affectedApi": ["PUT /api/cycle/profile"],
+      "privacyOrSafetyImpact": "Two ACTIVE pregnancy/postpartum episodes would corrupt dating/forecast presentation",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-019",
+      "severity": "P2",
+      "module": "NAVIGATION",
+      "title": "Orphan / redirect-only mobile routes",
+      "evidence": [
+        "/cycle/journal has no inbound push/href; journal is CycleJournalPane on /cycle",
+        "/health-metrics/hydration/calendar never linked",
+        "/symptoms/conditions Redirect → /symptoms/results",
+        "/cycle/pregnancy Redirect → /cycle"
+      ],
+      "reproduction": ["Deep-link the orphan paths"],
+      "expected": "Every screen has a documented entry or is removed",
+      "actual": "Reachable only via typed URL / leftover files",
+      "sourceFiles": [
+        "mobile/app/cycle/journal.tsx",
+        "mobile/app/health-metrics/hydration/calendar.tsx",
+        "mobile/app/symptoms/conditions.tsx",
+        "mobile/app/cycle/pregnancy/index.tsx"
+      ],
+      "affectedApi": [],
+      "privacyOrSafetyImpact": null,
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-020",
+      "severity": "P2",
+      "module": "API",
+      "title": "API inventory method variance (regex 207 vs live Express stack ~217)",
+      "evidence": [
+        "qa/release-audit/RA-00/api-inventory.json count 207",
+        "Independent router.stack walk reported 217 including array paths and duplicate registrations"
+      ],
+      "reproduction": ["Dump Express router.stack in a running process vs JSON artifact"],
+      "expected": "Single canonical live dump",
+      "actual": "Two counts; ~10 routes may be array-registered or unconventional",
+      "sourceFiles": ["server/src/server.js", "server/src/routes/"],
+      "affectedApi": [],
+      "privacyOrSafetyImpact": "Audit completeness risk if a handler is unlisted",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-021",
+      "severity": "P2",
+      "module": "WEATHER",
+      "title": "Typecheck: weather modules import .ts extensions (allowImportingTsExtensions)",
+      "evidence": ["Multiple TS5097 in mobile/src/lib/weather/*.ts"],
+      "reproduction": ["npm --prefix mobile run typecheck"],
+      "expected": "Extension-less imports or tsconfig that matches Metro",
+      "actual": "tsc fails; Metro may still resolve",
+      "sourceFiles": ["mobile/src/lib/weather/"],
+      "affectedApi": [],
+      "privacyOrSafetyImpact": null,
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-022",
+      "severity": "P2",
+      "module": "OFFLINE",
+      "title": "Most mutations are online-required; optimistic UI can look saved",
+      "evidence": [
+        "Cycle offline queue covers UPSERT_LOG/START/END/FILL only",
+        "Mode change, wipe, rewards, quest claim, care-plan, partner, account delete require network",
+        "Med doses and hydration are local-first without cycle-style encrypted replay"
+      ],
+      "reproduction": ["Toggle airplane mode and use save/claim/mode"],
+      "expected": "Honest failed-write UX; no fake persistence",
+      "actual": "Mixed; later RA-16 must execute per mutation",
+      "sourceFiles": ["mobile/src/lib/cycleOffline.ts", "mobile/src/lib/hydration.ts"],
+      "affectedApi": [],
+      "privacyOrSafetyImpact": "User may believe health data saved when it is not",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-023",
+      "severity": "P3",
+      "module": "PLATFORM",
+      "title": "mobile/package.json version 3.3.0 disagrees with public identity 1.0.0.7.66",
+      "evidence": ["mobile/package.json version 3.3.0", "mobile/app.json expo.version 1.0.0.7.66"],
+      "reproduction": ["Read both manifests"],
+      "expected": "One documented public version source (app.json)",
+      "actual": "npm package version is a different number",
+      "sourceFiles": ["mobile/package.json", "mobile/app.json"],
+      "affectedApi": ["GET /api/app/status"],
+      "privacyOrSafetyImpact": null,
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-024",
+      "severity": "P3",
+      "module": "DOCS",
+      "title": "MEMORY.md claims daily login awards 5 points; code awards 0",
+      "evidence": [
+        "MEMORY.md: Daily login awards 5 points inside GET /api/auth/me",
+        "server/src/lib/checkIn.js DAILY_LOGIN_POINTS = 0"
+      ],
+      "reproduction": ["Read both files"],
+      "expected": "Docs match implementation",
+      "actual": "Stale agent memory",
+      "sourceFiles": ["MEMORY.md", "server/src/lib/checkIn.js"],
+      "affectedApi": ["GET /api/auth/me", "POST /api/check-in/claim"],
+      "privacyOrSafetyImpact": null,
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-025",
+      "severity": "P3",
+      "module": "AUTH",
+      "title": "Phone OTP login screen has no production entry from sign-in/sign-up",
+      "evidence": ["/(auth)/phone only referenced from onboardingDevPreview / figma map"],
+      "reproduction": ["Open sign-in; look for phone path"],
+      "expected": "Document as DEV-only or wire it",
+      "actual": "Soft-orphan",
+      "sourceFiles": ["mobile/app/(auth)/phone.tsx"],
+      "affectedApi": ["POST /api/auth/phone/start", "POST /api/auth/phone/verify"],
+      "privacyOrSafetyImpact": null,
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-026",
+      "severity": "P3",
+      "module": "ADMIN",
+      "title": "Admin SPA shell is public; default example admin password in .env.example",
+      "evidence": [
+        "GET /admin serves index.html without auth (API is requireAdmin)",
+        "server/.env.example ADMIN_PASSWORD=MedicardAdmin1!"
+      ],
+      "reproduction": ["Open /admin unauthenticated; login still required for data"],
+      "expected": "Example secrets clearly non-prod; SPA public is OK if APIs are locked",
+      "actual": "Example password is a guessable default if seed is not rotated",
+      "sourceFiles": ["server/.env.example", "server/src/server.js"],
+      "affectedApi": ["POST /api/admin/login"],
+      "privacyOrSafetyImpact": "If production seed kept the example password, that would be P0 — not verified in RA-00 against live prod",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-027",
+      "severity": "P3",
+      "module": "FEATURE_FLAGS",
+      "title": "QA OTP (0000/000000) exists and is dangerous if enabled in production",
+      "evidence": [
+        "QA_OTP_CODE commented in .env.example",
+        "AppSettings.qaOtpEnabled admin toggle",
+        "Documented off by default"
+      ],
+      "reproduction": ["Enable QA OTP in admin settings; login with 0000"],
+      "expected": "Off in production; RA-01 must verify live AppSettings",
+      "actual": "Code path present; default documented off",
+      "sourceFiles": ["server/src/lib/qaOtp.js", "server/src/lib/settings.js"],
+      "affectedApi": ["POST /api/auth/phone/verify", "POST /api/auth/password/reset"],
+      "privacyOrSafetyImpact": "If enabled in prod: account takeover of QA-pattern phones/emails",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-028",
+      "severity": "P3",
+      "module": "DOCS",
+      "title": "Agent memory contains stale version ledgers (39.x / 65.x) beside current 1.0.0.7.66",
+      "evidence": ["MEMORY.md historical crumbs vs app.json 1.0.0.7.66"],
+      "reproduction": ["Read MEMORY.md"],
+      "expected": "Current identity only, history clearly archived",
+      "actual": "Mixed ledgers",
+      "sourceFiles": ["MEMORY.md"],
+      "affectedApi": [],
+      "privacyOrSafetyImpact": null,
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-029",
+      "severity": "P3",
+      "module": "PLATFORM",
+      "title": "No Sentry, no OTA, no GitHub Actions CI",
+      "evidence": [
+        "No sentry DSN usage found",
+        "No expo-updates",
+        "No .github/workflows",
+        "Deploy is Render Blueprint + EAS only"
+      ],
+      "reproduction": ["Glob .github, grep sentry, expo-updates"],
+      "expected": "Documented crash reporting and CI for release trains",
+      "actual": "Absent",
+      "sourceFiles": ["render.yaml", "mobile/eas.json"],
+      "affectedApi": [],
+      "privacyOrSafetyImpact": "Production crashes may go unseen",
+      "status": "OPEN"
+    },
+    {
+      "id": "RA00-030",
+      "severity": "P2",
+      "module": "MEDI_AI",
+      "title": "Hallucinated medical claims can persist in ChatSession and MedicalRecord",
+      "evidence": [
+        "POST /api/ai/query writes ChatSession.messages",
+        "analyze-image / symptom-check persist aiAnalysis on MedicalRecord",
+        "Disclaimers exist (ensureDisclaimer, SYMPTOM 112) but model output is stored as-is"
+      ],
+      "reproduction": ["Complete symptom check or imaging; reopen history"],
+      "expected": "Stored AI text clearly labeled non-diagnosis; no silent promotion to fact",
+      "actual": "Persisted assistant text becomes user history; later RA-03/04 must execute safety",
+      "sourceFiles": ["server/src/routes/ai.routes.js", "server/src/lib/prompts.js"],
+      "affectedApi": ["POST /api/ai/query", "POST /api/ai/analyze-image", "POST /api/ai/symptom-check"],
+      "privacyOrSafetyImpact": "Generated medical claims enter persistent state",
+      "status": "OPEN"
+    }
+  ]
+}

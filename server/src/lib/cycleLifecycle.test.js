@@ -23,6 +23,7 @@ function mockPrisma() {
     cycleCustomTag: { deleteMany: async () => ({ count: 3 }) },
     pregnancyLog: { deleteMany: async () => ({ count: 1 }) },
     cyclePredictionSnapshot: { deleteMany: async () => ({ count: 4 }) },
+    cyclePregnancyEpisode: { deleteMany: async () => ({ count: 2 }) },
     $transaction: async (ops) => Promise.all(ops),
   };
 }
@@ -73,6 +74,7 @@ describe('cycle wipe', () => {
     assert.equal(deleted.pregnancyLogs, 1);
     assert.equal(deleted.shares, 2);
     assert.equal(deleted.predictionSnapshots, 4);
+    assert.equal(deleted.pregnancyEpisodes, 2);
     assert.equal(deleted.profiles, 1);
   });
 });

@@ -1,0 +1,219 @@
+{
+  "garden": {
+    "enabled": true,
+    "rulesetId": "medi-world-garden-v1",
+    "catalogVersion": "medi-world-garden-v1",
+    "atmosphere": "quiet_beginning",
+    "mediReaction": {
+      "key": "first_visit"
+    },
+    "worldLevel": 50,
+    "plots": [
+      {
+        "index": 0,
+        "unlocked": true,
+        "unlockLevel": 1,
+        "plant": null
+      },
+      {
+        "index": 1,
+        "unlocked": true,
+        "unlockLevel": 1,
+        "plant": null
+      },
+      {
+        "index": 2,
+        "unlocked": true,
+        "unlockLevel": 1,
+        "plant": null
+      },
+      {
+        "index": 3,
+        "unlocked": true,
+        "unlockLevel": 5,
+        "plant": null
+      },
+      {
+        "index": 4,
+        "unlocked": true,
+        "unlockLevel": 10,
+        "plant": null
+      },
+      {
+        "index": 5,
+        "unlocked": true,
+        "unlockLevel": 20,
+        "plant": null
+      }
+    ],
+    "stored": [],
+    "world": {
+      "profile": {
+        "userId": "34dfd803-541f-49b2-9b23-b1be8997ffb5",
+        "rulesetId": "medi-world-economy-v2",
+        "rulesetVersion": 2,
+        "currentRulesetVersion": 2,
+        "worldLevel": 50,
+        "worldXp": 34348,
+        "foundation": {
+          "level": 50,
+          "xp": 34348,
+          "worldXp": 34348,
+          "worldLevel": 50,
+          "levelStartXp": 34300,
+          "nextLevelXp": 34348,
+          "xpIntoLevel": 48,
+          "xpRequiredForNextLevel": 0,
+          "xpNeededForNextLevel": 0,
+          "progressBps": 10000,
+          "progressPercent": 100,
+          "atCap": true
+        },
+        "careEnergy": {
+          "movement": 20,
+          "hydration": 10,
+          "calm": 0,
+          "care": 10,
+          "connection": 245
+        },
+        "companionRef": {
+          "owned": true,
+          "profileId": "6d9b9645-ba6e-44c4-b449-c2b199d67c49"
+        },
+        "coarseCommunityKey": null,
+        "unlocks": {
+          "liveMap": false,
+          "healthTree": false,
+          "social": false,
+          "storms": false,
+          "shop": false,
+          "pois": false
+        },
+        "awakening": true,
+        "createdAt": "2026-09-12T10:46:00.314Z",
+        "updatedAt": "2026-09-12T17:12:59.515Z"
+      }
+    },
+    "stale": false
+  },
+  "catalog": {
+    "enabled": true,
+    "rulesetId": "medi-world-garden-v1",
+    "catalogVersion": "medi-world-garden-v1",
+    "items": [
+      {
+        "key": "pulse_fern",
+        "category": "movement",
+        "price": 20,
+        "active": true,
+        "catalogVersion": "medi-world-garden-v1",
+        "presentationKey": "pulse_fern",
+        "nameKey": "pulse_fern_name",
+        "descriptionKey": "pulse_fern_desc",
+        "a11yKey": "pulse_fern_a11y",
+        "growthPresentation": {
+          "seed": "pulse_fern_seed",
+          "sprout": "pulse_fern_sprout",
+          "bloom": "pulse_fern_bloom",
+          "radiant": "pulse_fern_radiant"
+        },
+        "rulesetId": "medi-world-garden-v1"
+      },
+      {
+        "key": "dew_lily",
+        "category": "hydration",
+        "price": 20,
+        "active": true,
+        "catalogVersion": "medi-world-garden-v1",
+        "presentationKey": "dew_lily",
+        "nameKey": "dew_lily_name",
+        "descriptionKey": "dew_lily_desc",
+        "a11yKey": "dew_lily_a11y",
+        "growthPresentation": {
+          "seed": "dew_lily_seed",
+          "sprout": "dew_lily_sprout",
+          "bloom": "dew_lily_bloom",
+          "radiant": "dew_lily_radiant"
+        },
+        "rulesetId": "medi-world-garden-v1"
+      },
+      {
+        "key": "moon_moss",
+        "category": "calm",
+        "price": 20,
+        "active": true,
+        "catalogVersion": "medi-world-garden-v1",
+        "presentationKey": "moon_moss",
+        "nameKey": "moon_moss_name",
+        "descriptionKey": "moon_moss_desc",
+        "a11yKey": "moon_moss_a11y",
+        "growthPresentation": {
+          "seed": "moon_moss_seed",
+          "sprout": "moon_moss_sprout",
+          "bloom": "moon_moss_bloom",
+          "radiant": "moon_moss_radiant"
+        },
+        "rulesetId": "medi-world-garden-v1"
+      },
+      {
+        "key": "heart_bloom",
+        "category": "care",
+        "price": 20,
+        "active": true,
+        "catalogVersion": "medi-world-garden-v1",
+        "presentationKey": "heart_bloom",
+        "nameKey": "heart_bloom_name",
+        "descriptionKey": "heart_bloom_desc",
+        "a11yKey": "heart_bloom_a11y",
+        "growthPresentation": {
+          "seed": "heart_bloom_seed",
+          "sprout": "heart_bloom_sprout",
+          "bloom": "heart_bloom_bloom",
+          "radiant": "heart_bloom_radiant"
+        },
+        "rulesetId": "medi-world-garden-v1"
+      },
+      {
+        "key": "orbit_vine",
+        "category": "connection",
+        "price": 20,
+        "active": true,
+        "catalogVersion": "medi-world-garden-v1",
+        "presentationKey": "orbit_vine",
+        "nameKey": "orbit_vine_name",
+        "descriptionKey": "orbit_vine_desc",
+        "a11yKey": "orbit_vine_a11y",
+        "growthPresentation": {
+          "seed": "orbit_vine_seed",
+          "sprout": "orbit_vine_sprout",
+          "bloom": "orbit_vine_bloom",
+          "radiant": "orbit_vine_radiant"
+        },
+        "rulesetId": "medi-world-garden-v1"
+      }
+    ]
+  },
+  "evidence": {
+    "userId": "34dfd803-541f-49b2-9b23-b1be8997ffb5",
+    "worldLevel": 50,
+    "unlocked": 6,
+    "atmosphere": "quiet_beginning",
+    "mediReaction": {
+      "key": "first_visit"
+    },
+    "careEnergy": {
+      "movement": 20,
+      "hydration": 10,
+      "calm": 0,
+      "care": 10,
+      "connection": 245
+    },
+    "catalogKeys": [
+      "pulse_fern",
+      "dew_lily",
+      "moon_moss",
+      "heart_bloom",
+      "orbit_vine"
+    ]
+  }
+}

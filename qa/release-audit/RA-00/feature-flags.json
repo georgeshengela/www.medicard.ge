@@ -1,0 +1,19 @@
+{
+  "remoteAppSettings": {
+    "source": "server AppSettings + GET /api/app/status public subset",
+    "flags": ["maintenanceMode", "minAppVersion", "forceUpdate", "allowRegistrations", "qaOtpEnabled", "supportEmail"],
+    "defaultQaOtp": "off (documented)"
+  },
+  "env": ["QA_OTP_CODE", "FREE_DAILY_AI_LIMIT", "NODE_ENV"],
+  "compileTime": [
+    { "name": "SHOW_DEV_UI", "file": "mobile/src/lib/devUi.ts", "default": false },
+    { "name": "__DEV__", "uses": ["preview=1 AuthGate", "dev-launcher", "quest/weather/companion fixtures"] }
+  ],
+  "hiddenRoutes": [
+    "/(auth)/profile-setup/dev-launcher",
+    "/(auth)/phone (soft)",
+    "/cycle/journal (orphan)",
+    "/health-metrics/hydration/calendar (orphan)"
+  ],
+  "impersonation": "ABSENT"
+}

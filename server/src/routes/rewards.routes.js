@@ -22,9 +22,10 @@ rewardsRouter.use((_req, res, next) => {
 
 const redeemLimiter = rateLimit({
   windowMs: 60_000,
-  max: 20,
+  limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
   message: { error: 'ძალიან ბევრი მოთხოვნა.', code: 'REWARD_REDEMPTION_CONFLICT' },
 });
 

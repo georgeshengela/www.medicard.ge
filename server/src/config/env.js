@@ -14,11 +14,10 @@ const schema = z.object({
   EVIDENCEMD_BASE_URL: z.string().url().default('https://evidencemd.ai/api/v1'),
   EVIDENCEMD_MODEL: z.string().default('evidencemd-pro'),
 
-  // Vision: OpenRouter first (X-ray / labs / derm). Chat stays on EvidenceMD.
+  // Vision + default chat: OpenRouter. User can switch to Ling or EvidenceMD in Profile.
   OPENROUTER_API_KEY: z.string().default(''),
   OPENROUTER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
-  // GPT-4o: strong medical-image description before EvidenceMD reasoning.
-  OPENROUTER_MODEL: z.string().default('openai/gpt-4o'),
+  OPENROUTER_MODEL: z.string().default('google/gemini-3.8-flash'),
 
   ANTHROPIC_API_KEY: z.string().default(''),
   ANTHROPIC_MODEL: z.string().default('claude-3-5-sonnet-latest'),
@@ -46,6 +45,14 @@ const schema = z.object({
 
   /** Mapbox public token (pk.*) for the admin user-country map. */
   MAPBOX_PUBLIC_TOKEN: z.string().default(''),
+  /** Medi World Phase 38. Unset: on in development/test, off in production. */
+  MEDI_WORLD_ENABLED: z.string().optional().default(''),
+  /** Medi World Phase 42 Explore. Unset: follows Medi World (off in production). */
+  MEDI_WORLD_EXPLORE_ENABLED: z.string().optional().default(''),
+  /** Medi World Phase 43 Movement. Unset: follows Medi World (off in production). */
+  MEDI_WORLD_MOVEMENT_ENABLED: z.string().optional().default(''),
+  /** Medi World Phase 44 Garden. Unset: follows Medi World (off in production). */
+  MEDI_WORLD_GARDEN_ENABLED: z.string().optional().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveQaCodes } from './qaOtpCodes.js';
+import { qaMasterCodeAllowed, qaOtpEnabledForEnv } from './qaOtp.js';
 
 describe('resolveQaCodes', () => {
   it('defaults to 0000 / 000000 when env is empty', () => {
@@ -27,5 +28,25 @@ describe('resolveQaCodes', () => {
   it('ignores non-digit values', () => {
     assert.equal(resolveQaCodes('abcd').enabledByEnv, false);
     assert.equal(resolveQaCodes('12').enabledByEnv, false);
+  });
+});
+
+describe('qaOtpEnabledForEnv production fail-closed', () => {
+  it('is false in production even when DB flag and env code are set', () => {
+    assert.equal(qaOtpEnabledForEnv('production', true, true), false);
+    assert.equal(qaOtpEnabledForEnv('production', false, true), false);
+    assert.equal(qaOtpEnabledForEnv('production', true, false), false);
+  });
+
+  it('allows non-production when the DB flag or env code is on', () => {
+    assert.equal(qaOtpEnabledForEnv('development', false, true), true);
+    assert.equal(qaOtpEnabledForEnv('development', true, false), true);
+    assert.equal(qaOtpEnabledForEnv('development', false, false), false);
+  });
+
+  it('never matches master codes when the switch is off', () => {
+    assert.equal(qaMasterCodeAllowed(false, '0000', '0000'), false);
+    assert.equal(qaMasterCodeAllowed(false, '000000', '000000'), false);
+    assert.equal(qaMasterCodeAllowed(true, '0000', '0000'), true);
   });
 });

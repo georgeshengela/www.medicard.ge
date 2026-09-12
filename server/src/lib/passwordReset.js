@@ -3,9 +3,9 @@ import bcrypt from 'bcryptjs';
 import { prisma } from './prisma.js';
 import { sendPasswordResetCode } from './email.js';
 import { isQaOtpEnabled, matchesQaEmailOtp } from './qaOtp.js';
+import { evaluateOtpRow, unusedUnexpiredOtpWhere } from './otpContract.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
-const MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 
 function generateCode() {
@@ -108,18 +108,14 @@ export async function resetPasswordWithCode({ email, code, password }) {
   const reset = await prisma.passwordReset.findFirst({
     where: {
       userId: user.id,
-      usedAt: null,
-      expiresAt: { gt: new Date() },
+      ...unusedUnexpiredOtpWhere(),
     },
     orderBy: { createdAt: 'desc' },
   });
 
-  if (!reset) {
-    return { ok: false, status: 400, error: 'კოდი არასწორია ან ვადა გაუვიდა.' };
-  }
-
-  if (reset.attempts >= MAX_ATTEMPTS) {
-    return { ok: false, status: 429, error: 'მეტისმეტი მცდელობა. მოითხოვეთ ახალი კოდი.' };
+  const gate = evaluateOtpRow(reset);
+  if (!gate.ok) {
+    return { ok: false, status: gate.status, error: gate.error };
   }
 
   const valid = await compareCode(code.trim(), reset.codeHash);

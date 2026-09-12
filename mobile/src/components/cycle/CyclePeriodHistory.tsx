@@ -8,6 +8,7 @@ import { FLOW_OPTIONS } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
 import type { CycleBundle, CyclePeriodRange } from '@/lib/api';
 import { saveCycleObservation, queueApplyPeriod } from '@/lib/cycleOffline';
+import { cycleHistoryPresentation } from '@/lib/cycleHistoryCopy';
 import { addDaysToKey } from '@/lib/cyclePhase';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
@@ -33,6 +34,19 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
   const { user } = useAuth();
   const c = useCycleColors();
   const router = useRouter();
+  const [openStart, setOpenStart] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [start, setStart] = useState('');
+  const [days, setDays] = useState(5);
+  const [fillFlow, setFillFlow] = useState<'light' | 'medium' | 'heavy'>('medium');
+  const [addDayFor, setAddDayFor] = useState<string | null>(null);
+  const [extraDay, setExtraDay] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const history = cycleHistoryPresentation(bundle.profile?.mode);
+  if (!history.showPeriodHistory) return null;
+
   const ranges = [
     ...(bundle.periodRanges?.length
       ? bundle.periodRanges
@@ -44,16 +58,6 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
         }))),
   ].reverse();
   const logsByDate = new Map((bundle.logs ?? []).map((log) => [log.date, log]));
-  const [openStart, setOpenStart] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [start, setStart] = useState('');
-  const [days, setDays] = useState(5);
-  const [fillFlow, setFillFlow] = useState<'light' | 'medium' | 'heavy'>('medium');
-  const [addDayFor, setAddDayFor] = useState<string | null>(null);
-  const [extraDay, setExtraDay] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-
   const addMissed = async () => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return;
     Alert.alert(ka.cycle.missedPeriodFillTitle, ka.cycle.missedPeriodFillConfirm, [

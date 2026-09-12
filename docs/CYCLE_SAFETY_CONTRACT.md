@@ -9,7 +9,7 @@ Cycle is a calendar tracker. It is not fertility-awareness contraception, not a 
 5. **AI does not calculate authoritative cycle dates.** EvidenceMD (`CYCLE_WELLNESS`) comments on allowlisted context. Forecast math stays in `server/src/lib/cycle.js`.
 6. **AI receives allowlisted Cycle data only.** `serializeCycleLogForAi` / `buildCycleWellnessContext` are the only Cycle → EvidenceMD serializers.
 7. **Sexual and private fields are excluded by default.** Sex chips (`unprotected`, `protected`, intercourse tags), `sexualActivity`, `libido`, journal notes, custom tags, and free text do not enter AI or partner payloads.
-8. **Unknown new fields are excluded by default.** New symptom keys and undeclared object fields are not AI-visible or partner-visible until explicitly allowlisted.
+8. **Unknown new fields are excluded by default.** New symptom keys and undeclared object fields are not AI-visible or partner-visible until explicitly allowlisted. Phase 11 structured observations (`docs/CYCLE_OBSERVATION_CONTRACT.md`) keep this rule: registry unknown keys are rejected on write; new keys default AI/partner DENY.
 9. **Confidence reflects history quantity and typical variability.** Labels stay `low` / `medium` / `high`. HIGH needs ≥6 in-band gaps and **trimmed** range ≤7 days (drop one min and one max). Below 6 gaps, full range is used. Irregular flag or spread >14 days is LOW. One isolated outlier among ≥6 regular gaps does not collapse HIGH. Missing lengths never produce HIGH.
 10. **User-facing copy must preserve uncertainty.** In-app and lock-screen fertility wording must stay predicted/estimated. Discreet lock-screen copy already exists (`cycle-masked` / `maskNotifications`); do not invent a second privacy system.
 

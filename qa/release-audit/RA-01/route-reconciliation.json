@@ -1,0 +1,125 @@
+{
+  "generatedAt": "2026-09-11T21:07:21.853Z",
+  "ra00StaticCount": 207,
+  "ra00ReportedLiveApprox": 217,
+  "ra01UniqueLiveCount": 215,
+  "canonicalRouteCount": 215,
+  "unknownCount": 0,
+  "liveMissingFromStaticCount": 11,
+  "staticMissingLiveCount": 2,
+  "liveMissingFromStatic": [
+    {
+      "method": "GET",
+      "path": "/api/cycle/postpartum",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY",
+      "reasonMissed": "RA-00 regex captured source template literals; live dump uses resolved paths."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cycle/postpartum",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY",
+      "reasonMissed": "RA-00 regex captured source template literals; live dump uses resolved paths."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/cycle/postpartum/bleed-classifications",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY",
+      "reasonMissed": "RA-00 regex captured source template literals; live dump uses resolved paths."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cycle/postpartum/bleed-classifications",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY",
+      "reasonMissed": "RA-00 regex captured source template literals; live dump uses resolved paths."
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/pregnancy",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY",
+      "reasonMissed": "RA-00 regex captured source template literals; live dump uses resolved paths."
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/pregnancy/care-plan",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY",
+      "reasonMissed": "RA-00 regex captured source template literals; live dump uses resolved paths."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cycle/pregnancy/care-plan/:careItemId",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY",
+      "reasonMissed": "RA-00 regex captured source template literals; live dump uses resolved paths."
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/pregnancy/weeks/:week",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY",
+      "reasonMissed": "RA-00 regex captured source template literals; live dump uses resolved paths."
+    },
+    {
+      "method": "GET",
+      "path": "/api/cycle/ttc",
+      "mount": "/api/cycle",
+      "source": "server/src/routes/cycle.routes.js",
+      "securityClass": "OWNER_ONLY",
+      "reasonMissed": "RA-00 regex captured source template literals; live dump uses resolved paths."
+    },
+    {
+      "method": "GET",
+      "path": "/api/files/:filename",
+      "mount": "/api/files",
+      "source": "server/src/routes/files.routes.js",
+      "securityClass": "OWNER_ONLY",
+      "reasonMissed": "Added in RA-01 as the authenticated private-file route."
+    },
+    {
+      "method": "HEAD",
+      "path": "/uploads/*",
+      "mount": "/uploads",
+      "source": "server/src/server.js",
+      "securityClass": "PUBLIC",
+      "reasonMissed": "Legacy upload mount answers all methods; RA-00 listed GET only."
+    }
+  ],
+  "staticMissingLive": [
+    {
+      "method": "GET",
+      "path": "/api/cycle/${CYCLE_PREGNANCY_HTTP_PATH}/weeks/:week",
+      "sourceFile": "server/src/routes/cycle.routes.js",
+      "reason": "Static regex captured the source template literal, not the resolved route."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cycle/${CYCLE_PREGNANCY_CARE_PLAN_HTTP_PATH}/:careItemId",
+      "sourceFile": "server/src/routes/cycle.routes.js",
+      "reason": "Static regex captured the source template literal, not the resolved route."
+    }
+  ],
+  "securityClassCounts": {
+    "PUBLIC": 18,
+    "OWNER_ONLY": 111,
+    "ADMIN_ONLY": 80,
+    "PARTNER_SCOPED": 6
+  },
+  "notes": [
+    "Canonical count is unique HTTP method+path after walking mounted routers plus app-level routes in server.js.",
+    "RA-00 ~217 included duplicate registrations and array-path expansions.",
+    "GET /uploads/* is classified PUBLIC as a deny stub: unauthenticated callers receive 401 JSON and never file bytes."
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "generatedAt": "2026-09-11T20:35:00.000Z",
+  "claim": "Subset of automated tests executed. Do not treat this as full-app pass.",
+  "suites": [
+    {
+      "command": "npm --prefix server test",
+      "ran": true,
+      "passed": 1565,
+      "failed": 0,
+      "skipped": 0,
+      "suites": 394,
+      "duration_ms": 6654.5572,
+      "notes": "Includes many mobile/src/lib tests listed in server/package.json test script"
+    },
+    {
+      "command": "npm --prefix mobile run test:offline",
+      "ran": true,
+      "passed": 57,
+      "failed": 0,
+      "skipped": 0,
+      "duration_ms": 95.0361
+    },
+    {
+      "command": "npm --prefix mobile run test:lab",
+      "ran": true,
+      "passed": true,
+      "failed": 0,
+      "notes": "labExtract/chart/filter/explain/names/merge all passed in combined mobile script run"
+    },
+    {
+      "command": "npm --prefix mobile run test:geo",
+      "ran": true,
+      "passed": 5,
+      "failed": 0,
+      "duration_ms": 82.192
+    },
+    {
+      "command": "npm --prefix mobile run test:weather",
+      "ran": true,
+      "passed": 27,
+      "failed": 0,
+      "duration_ms": 141.751
+    },
+    {
+      "command": "npm --prefix mobile run test:quest",
+      "ran": true,
+      "passed": 65,
+      "failed": 0,
+      "duration_ms": 94.6226
+    },
+    {
+      "command": "npm --prefix mobile run test:home",
+      "ran": true,
+      "passed": 10,
+      "failed": 0,
+      "duration_ms": 88.2463
+    },
+    {
+      "command": "npm --prefix mobile run test:engage",
+      "ran": true,
+      "passed": 37,
+      "failed": 1,
+      "skipped": 0,
+      "duration_ms": 153.2833,
+      "failing": ["always schedules future re-engagement instead of nagging an open session"]
+    },
+    {
+      "command": "npm --prefix mobile run typecheck",
+      "ran": true,
+      "passed": 0,
+      "failed": 123,
+      "exitCode": 2,
+      "notes": "tsc --noEmit; not a unit test suite"
+    },
+    {
+      "command": "npx prisma validate (cwd server)",
+      "ran": true,
+      "passed": true,
+      "failed": 0,
+      "notes": "Schema valid. Does not prove production DB matches."
+    },
+    {
+      "command": "npm run test:api",
+      "ran": false,
+      "reason": "Requires a running API + credentials; not started in RA-00 to avoid mutating a live environment"
+    },
+    {
+      "command": "npm run test:ai",
+      "ran": false,
+      "reason": "Hits EvidenceMD/OpenRouter; spend + network; not run in discovery"
+    },
+    {
+      "command": "Maestro / Playwright E2E",
+      "ran": false,
+      "reason": "No Maestro project; Playwright used ad hoc in QA scripts, not a CI suite"
+    },
+    {
+      "command": "EAS/Android native build",
+      "ran": false,
+      "reason": "Out of band for RA-00; would require EAS credentials"
+    },
+    {
+      "command": "Admin UI tests",
+      "ran": false,
+      "reason": "No dedicated admin browser E2E; only server unit tests touching admin libs"
+    }
+  ],
+  "overlapNote": "server test already executed most mobile cycle/quest tests. Mobile scripts re-ran a subset. Do not add pass counts together as unique tests."
+}

@@ -32,19 +32,7 @@ export function CyclePmsHeatmap({ bundle, compact }: Props) {
     return top.map((r) => r.daysBefore).sort((a, b) => b - a).join('–');
   }, [rows]);
 
-  if (!show) {
-    if (compact) return null;
-    return (
-      <CycleCard>
-        <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
-          {ka.cycle.pmsPattern}
-        </Text>
-        <Text style={{ color: c.muted, fontSize: 13, marginTop: 8, lineHeight: 20 }}>
-          {ka.cycle.trendsNeedMoreCycles}
-        </Text>
-      </CycleCard>
-    );
-  }
+  if (!show) return null;
 
   return (
     <CycleCard>

@@ -1,0 +1,24 @@
+Phase 35 native Calendar provider proof — Pixel_8 emulator-5554
+Device timezone during QA: GMT+0200 (device-local; not a clinic timezone)
+
+1) DATE-ONLY CREATE (plannedDate=2026-09-22, plannedTime=null)
+Row: 0 _id=2, title=Medicard — დაგეგმილი ვიზიტი, dtstart=1790028000000, dtend=1790114400000, allDay=1, hasAlarm=0, description=Created from Medicard care planner.
+Decoded: start Tue Sep 22 2026 00:00:00 local, end Wed Sep 23 2026 00:00:00 (next civil day). Generic title. No SECRET_PLANNER_NOTE. hasAlarm=0.
+
+2) AFTER OWNER ADDED 14:30 — NO SILENT MUTATION
+Same row still allDay=1 / _id=2 until explicit განახლება.
+
+3) EXPLICIT UPDATE ALL-DAY → TIMED (same event id)
+Row: 0 _id=2, title=Medicard — დაგეგმილი ვიზიტი, dtstart=1790080200000, dtend=1790082000000, allDay=0, hasAlarm=0, description=Created from Medicard care planner.
+Decoded: start Tue Sep 22 2026 14:30:00 local, end 15:00:00 (30-minute technical display duration only; not shown in care-plan UI). hasAlarm=0. One row. No duplicate.
+
+4) TIME CHANGE 14:30 → 16:00 — NO SILENT MUTATION
+Provider still 14:30 timed (_id=2) until explicit Update. UI showed mismatch copy.
+
+5) REMOVE TIME — TIMED EVENT REMAINS until explicit Update (still _id=2, allDay=0, 14:30).
+
+6) EXPLICIT UPDATE TIMED → ALL-DAY (same event id)
+Row: 0 _id=2, title=Medicard — დაგეგმილი ვიზიტი, dtstart=1790028000000, dtend=1790114400000, allDay=1, hasAlarm=0, description=Created from Medicard care planner.
+Same _id=2. No duplicate rows.
+
+Google Calendar app does not list the local Medicard calendar without Google sign-in. Provider dump is the OS proof.

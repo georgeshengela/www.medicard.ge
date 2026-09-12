@@ -1,0 +1,98 @@
+{
+  "version": "cycle.doctor-summary.v1",
+  "generatedAt": "2026-09-11T00:00:00.000Z",
+  "range": {
+    "from": "2026-03-16",
+    "to": "2026-09-11",
+    "queryDays": 180,
+    "loggedDays": 1
+  },
+  "inclusions": {
+    "menstrual": true,
+    "pain": true,
+    "symptoms": true,
+    "wellness": true,
+    "fertility": false,
+    "sexual": false,
+    "notes": false,
+    "pregnancyContext": false,
+    "perimenopauseContext": false,
+    "postpartumContext": true
+  },
+  "pregnancyContext": null,
+  "perimenopauseContext": null,
+  "postpartumContext": {
+    "current": true,
+    "trackingMode": "POSTPARTUM",
+    "referenceDate": null,
+    "elapsed": null
+  },
+  "menstrualHistory": {
+    "episodes": [
+      {
+        "start": "2026-09-11",
+        "end": "2026-09-11",
+        "durationDays": 1,
+        "flowSequence": [
+          "heavy"
+        ],
+        "source": "DERIVED_FROM_LOGGED_PERIODS"
+      }
+    ],
+    "spottingDates": [],
+    "cycleLengths": [],
+    "periodDayCount": 1
+  },
+  "pain": null,
+  "symptoms": null,
+  "wellness": null,
+  "contraception": null,
+  "fertilityObservations": null,
+  "privateObservations": null,
+  "disclaimer": "history_not_diagnosis",
+  "sourceLabels": [
+    "USER_LOGGED",
+    "DERIVED_FROM_LOGGED_PERIODS"
+  ],
+  "mode": "POSTPARTUM",
+  "avgCycleLength": 28,
+  "avgPeriodLength": 5,
+  "cycleCount": 0,
+  "shortestCycle": null,
+  "longestCycle": null,
+  "loggedDays": 1,
+  "periodDaysLogged": 1,
+  "painObservations": [],
+  "lifestyleSummary": {
+    "sleep": {
+      "poor": 0,
+      "okay": 0,
+      "good": 0
+    },
+    "stress": {
+      "low": 0,
+      "medium": 0,
+      "high": 0
+    },
+    "exercise": {
+      "none": 0,
+      "light": 0,
+      "moderate": 0,
+      "intense": 0
+    },
+    "caffeine": {
+      "none": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0
+    },
+    "alcohol": {
+      "none": 0,
+      "light": 0,
+      "moderate": 0,
+      "heavy": 0
+    }
+  },
+  "topSymptoms": [],
+  "topMoods": []
+}

@@ -50,9 +50,10 @@ export function planStartPeriod(date, existingFlow, defaultFlow = DEFAULT_BLEED_
 }
 
 /**
- * End Period = bleeding stopped as of `endDate`.
+ * End Period = bleeding stopped as of `endDate` (that civil day is no longer a period day).
  * Never synthesize CycleLog.flow for unlogged days — intensity is a user observation.
  * Schema cannot represent "bled, intensity unknown" (only none|spotting|light|medium|heavy).
+ * Future days cannot be logged, so clearing only *after* endDate made the hub CTA a no-op.
  */
 export function planEndPeriod({ ranges = [], logs = [], endDate }) {
   const map = logsByDate(logs);
@@ -63,15 +64,10 @@ export function planEndPeriod({ ranges = [], logs = [], endDate }) {
   const start = range?.start || endDate;
   const oldEnd = range?.end || endDate;
   const span = eachDateKey(start, endDate);
-  if (span.length > MAX_PERIOD_SPAN_DAYS) {
-    const err = new Error('მენსტრუაციის დიაპაზონი ძალიან გრძელია.');
-    err.status = 400;
-    throw err;
-  }
   const unlogged = span.filter((key) => !isPeriodFlow(map[key]?.flow));
   const clear =
-    oldEnd > endDate
-      ? eachDateKey(addDays(endDate, 1), oldEnd).filter((key) => isPeriodFlow(map[key]?.flow))
+    oldEnd >= endDate
+      ? eachDateKey(endDate, oldEnd).filter((key) => isPeriodFlow(map[key]?.flow))
       : [];
   return { start, end: endDate, fill: [], clear, unlogged };
 }
@@ -143,6 +139,8 @@ export function logHasExtras(log) {
     Boolean(log.exerciseLevel) ||
     Boolean(log.caffeine) ||
     Boolean(log.alcohol) ||
-    (Array.isArray(log.customTagIds) && log.customTagIds.length > 0)
+    (Array.isArray(log.customTagIds) && log.customTagIds.length > 0) ||
+    (log.observations && typeof log.observations === 'object' && Object.keys(log.observations).length > 0) ||
+    Boolean(log.energy)
   );
 }

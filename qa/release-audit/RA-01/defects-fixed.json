@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-09-11T21:10:00.000Z",
+  "items": [
+    {
+      "id": "RA00-001",
+      "severity": "P0",
+      "title": "Unauthenticated GET /uploads/* served health files",
+      "reproduction": "See evidence/ra00-001-before.json — status 200, file bytes, Cache-Control public max-age=604800, no Authorization.",
+      "rootCause": "express.static(UPLOAD_DIR, { maxAge: '7d' }) mounted at /uploads before auth. UUID filename treated as access control.",
+      "fix": "denyLegacyPublicUploads on /uploads; GET /api/files/:filename with requireAuth + MedicalRecord owner check; private no-store headers; mobile Image uses Bearer; unlink on record/account delete.",
+      "tests": "privateUploads.test.js, ra01LiveAuth.http.test.js, privateFile.test.js",
+      "regression": "PASS",
+      "status": "CLOSED"
+    },
+    {
+      "id": "RA01-001",
+      "severity": "P0",
+      "title": "Universal QA OTP reachable whenever AppSettings.qaOtpEnabled is true",
+      "fix": "isQaOtpEnabled() returns false when NODE_ENV==='production' regardless of env code or settings. qaOtpEnabledForEnv unit-tested.",
+      "tests": "ra01AuthIsolation.test.js",
+      "regression": "PASS",
+      "status": "CLOSED"
+    }
+  ]
+}

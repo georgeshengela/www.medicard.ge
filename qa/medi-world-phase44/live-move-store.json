@@ -1,0 +1,57 @@
+{
+  "movedPlantId": "f17b57d7-6d33-4ef5-97c7-71e90dfc8e10",
+  "storedPlantId": "c26a4aa2-2033-46d9-b53e-1de4127d4df3",
+  "storedStage": {
+    "id": "c26a4aa2-2033-46d9-b53e-1de4127d4df3",
+    "catalogKey": "orbit_vine",
+    "category": "connection",
+    "stage": "seed",
+    "nurtureDays": 0,
+    "nextQualifyingDays": 1,
+    "plotIndex": null,
+    "stored": true,
+    "plantedAt": "2026-09-12T17:13:56.811Z",
+    "catalogVersion": "medi-world-garden-v1",
+    "presentationKey": "orbit_vine",
+    "stagePresentationKey": "orbit_vine_seed"
+  },
+  "energy": {
+    "movement": 10,
+    "hydration": 10,
+    "calm": 0,
+    "care": 10,
+    "connection": 205
+  },
+  "plots": [
+    {
+      "i": 0,
+      "key": "pulse_fern",
+      "stage": "sprout"
+    },
+    {
+      "i": 1
+    },
+    {
+      "i": 2,
+      "key": "orbit_vine",
+      "stage": "seed"
+    },
+    {
+      "i": 3
+    },
+    {
+      "i": 4
+    },
+    {
+      "i": 5
+    }
+  ],
+  "stored": [
+    {
+      "id": "c26a4aa2-2033-46d9-b53e-1de4127d4df3",
+      "key": "orbit_vine",
+      "stage": "seed",
+      "days": 0
+    }
+  ]
+}

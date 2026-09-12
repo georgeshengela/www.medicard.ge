@@ -1,0 +1,55 @@
+{
+  "ordinaryTrack": { "allowed": true, "reason": "STANDARD" },
+  "zeroClassified": { "allowed": false, "reason": "POSTPARTUM_HISTORY_INSUFFICIENT" },
+  "oneClassified": { "allowed": false, "reason": "POSTPARTUM_HISTORY_INSUFFICIENT" },
+  "twoStartsOneInterval": { "allowed": false, "reason": "POSTPARTUM_HISTORY_INSUFFICIENT" },
+  "threeStartsTwoValidIntervals": { "allowed": true, "reason": "POSTPARTUM_HISTORY_READY" },
+  "invalidInterval": { "allowed": false, "reason": "POSTPARTUM_HISTORY_INSUFFICIENT" },
+  "storedAverageDoesNotSatisfy": true,
+  "default28DoesNotSatisfy": true,
+  "prePregnancyHistoryDoesNotSatisfy": true,
+  "otherEpisodeDoesNotCount": true,
+  "unclassifiedDoesNotCount": true,
+  "threshold": { "validIntervals": 2, "matchesInferCycleStats": true },
+  "liveGet": {
+    "api": "http://localhost:4000",
+    "account": "cycle.qa.phase6@medicard.ge",
+    "profileOmitsGateFields": true,
+    "zero": {
+      "mode": "TRACK_PERIOD",
+      "forecastEligibility": { "allowed": false, "reason": "POSTPARTUM_HISTORY_INSUFFICIENT" },
+      "phase": "unknown",
+      "nextPeriodStart": null,
+      "ovulationDate": null,
+      "fertileWindow": null,
+      "late": false
+    },
+    "one": {
+      "mode": "TRACK_PERIOD",
+      "forecastEligibility": { "allowed": false, "reason": "POSTPARTUM_HISTORY_INSUFFICIENT" },
+      "phase": "unknown",
+      "nextPeriodStart": null,
+      "ovulationDate": null,
+      "fertileWindow": null,
+      "late": false
+    },
+    "two": {
+      "mode": "TRACK_PERIOD",
+      "forecastEligibility": { "allowed": false, "reason": "POSTPARTUM_HISTORY_INSUFFICIENT" },
+      "phase": "unknown",
+      "nextPeriodStart": null,
+      "ovulationDate": null,
+      "fertileWindow": null,
+      "late": false
+    },
+    "three": {
+      "mode": "TRACK_PERIOD",
+      "forecastEligibility": { "allowed": true, "reason": "POSTPARTUM_HISTORY_READY" },
+      "phase": "period",
+      "nextPeriodStart": "2026-09-11",
+      "ovulationDate": "2026-08-28",
+      "fertileWindow": { "start": "2026-08-23", "end": "2026-08-29" },
+      "late": false
+    }
+  }
+}

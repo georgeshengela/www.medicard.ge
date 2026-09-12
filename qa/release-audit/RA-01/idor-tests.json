@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-09-11T21:10:00.000Z",
+  "convention": "Owner miss → 404 without record body (Medicard privacy convention).",
+  "cases": [
+    {
+      "id": "RA01-IDOR-001",
+      "endpoint": "GET /api/records/:id",
+      "result": "VERIFIED SAFE",
+      "evidence": "Live: owner 200, other user 404, body has no SANITIZED analysis text.",
+      "pattern": "findFirst({ id, userId: req.user.id })"
+    },
+    {
+      "id": "RA01-IDOR-002",
+      "endpoint": "GET /api/files/:filename",
+      "result": "VERIFIED SAFE",
+      "evidence": "Live+unit: owner 200 bytes, other 404 no bytes, unauth 401.",
+      "pattern": "owner MedicalRecord match before sendFile"
+    },
+    {
+      "id": "RA01-IDOR-003",
+      "endpoint": "GET/PATCH/DELETE /api/auth/me",
+      "result": "VERIFIED SAFE",
+      "evidence": "No foreign user id in path; identity is JWT sub."
+    },
+    {
+      "id": "RA01-IDOR-004",
+      "endpoint": "PUT/POST /api/health-profile",
+      "result": "VERIFIED SAFE",
+      "evidence": "All writes use req.user.id. Identifier substitution in body cannot retarget another user."
+    },
+    {
+      "id": "RA01-FTC-001",
+      "endpoint": "loadQuestForUser",
+      "result": "VERIFIED SAFE",
+      "evidence": "findUnique then quest.userId !== userId throws 404 before return. decideFetchThenCheck unit test withholds body.",
+      "note": "Fetch-then-check is not automatically vulnerable; content is withheld."
+    },
+    {
+      "id": "RA01-FTC-002",
+      "endpoint": "POST cycle custom tags with body.id",
+      "result": "VERIFIED SAFE",
+      "evidence": "findUnique then taken.userId !== req.user.id → 403, no tag body. Existence may leak via 403 vs 404 (P3, not content IDOR)."
+    }
+  ]
+}

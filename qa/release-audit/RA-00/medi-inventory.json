@@ -1,0 +1,8 @@
+{
+  "visibleModes": ["DOCTOR chat /chat/doctor", "CONSILIUM /chat/consilium", "lab decode", "imaging", "skin", "skincare", "medication review", "symptom checker", "weight advice", "cycle tips", "onboarding analysis"],
+  "enginePicker": "/profile/ai — user aiEngine gemini_flash | ling_free | evidencemd",
+  "stream": "mobile/src/lib/aiQueryStream.js → POST /api/ai/query",
+  "quota": "FREE 3/day Tbilisi; STANDARD 50; ULTIMATE unlimited; lock + refill ping",
+  "uiImpliesMissingBackend": "Microphone assessment voiceRecorded without recorder (RA00-017). Hidden Google sign-in noted in MEMORY — confirm in RA-01. Cycle OpenRouter AI out of scope while cycle tips still call EvidenceMD.",
+  "naming": "User-facing AI is Medi, never Nightingale"
+}

@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-09-11T21:10:00.000Z",
+  "added": [
+    "server/src/lib/privateUploads.test.js",
+    "server/src/lib/ra01AuthIsolation.test.js",
+    "server/src/lib/ra01LiveAuth.http.test.js",
+    "mobile/src/lib/privateFile.test.js",
+    "mobile/src/lib/jwtSubject.test.js"
+  ],
+  "commands": {
+    "focused": "node --test src/lib/privateUploads.test.js src/lib/ra01AuthIsolation.test.js src/lib/ra01LiveAuth.http.test.js src/lib/qaOtp.test.js ../mobile/src/lib/privateFile.test.js ../mobile/src/lib/jwtSubject.test.js ../mobile/src/lib/medicardVersion.test.js",
+    "focusedResult": "PASS (live HTTP included)",
+    "fullServerSuite": "not re-run in full this session after the focused PASS; RA-00 baseline was 1565 pass. RA-01 added files are on the npm test script."
+  },
+  "maestro": {
+    "file": ".maestro/ra01-auth-smoke.yaml",
+    "executed": false,
+    "reason": "maestro CLI not installed on PATH"
+  }
+}

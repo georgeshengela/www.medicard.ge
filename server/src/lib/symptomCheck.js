@@ -1,20 +1,5 @@
-import OpenAI from 'openai';
-import { env } from '../config/env.js';
-import { DISCLAIMER_KA, SYSTEM_PROMPTS } from './prompts.js';
-import { askEvidenceMd } from './evidencemd.js';
-
-const openrouter = env.OPENROUTER_API_KEY
-  ? new OpenAI({
-      apiKey: env.OPENROUTER_API_KEY,
-      baseURL: env.OPENROUTER_BASE_URL,
-      timeout: 120_000,
-      maxRetries: 1,
-      defaultHeaders: {
-        'HTTP-Referer': 'https://medicard.ge',
-        'X-Title': 'Medicard.GE',
-      },
-    })
-  : null;
+import { DISCLAIMER_KA } from './prompts.js';
+import { askAi } from './aiEngine.js';
 
 function parseJsonLoose(raw) {
   if (!raw) return null;
@@ -151,41 +136,22 @@ export function buildSymptomPrompt({
     .join('\n');
 }
 
-export async function runSymptomCheck({ prompt, patientContext, symptoms = [], bodyPartKa = null, notes = null }) {
+export async function runSymptomCheck({
+  user,
+  prompt,
+  patientContext,
+  symptoms = [],
+  bodyPartKa = null,
+  notes = null,
+}) {
   const inputHints = {
     symptoms,
     bodyPartKa,
     notes,
   };
-
-  if (openrouter) {
-    try {
-      const completion = await openrouter.chat.completions.create({
-        model: env.OPENROUTER_MODEL,
-        temperature: 0.25,
-        max_tokens: 3600,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPTS.SYMPTOM_CHECKER },
-          ...(patientContext ? [{ role: 'system', content: `დამატებითი კლინიკური კონტექსტი:\n${patientContext}` }] : []),
-          { role: 'user', content: prompt },
-        ],
-      });
-      const parsed = parseJsonLoose(completion.choices?.[0]?.message?.content);
-      if (parsed) {
-        return {
-          ...normalizeResult(parsed, inputHints),
-          engine: 'openrouter',
-          model: completion.model ?? env.OPENROUTER_MODEL,
-          usage: completion.usage ?? null,
-        };
-      }
-    } catch (error) {
-      console.error('[medicard] symptom checker openrouter failed:', error?.message ?? error);
-    }
-  }
-
   try {
-    const evidence = await askEvidenceMd({
+    const evidence = await askAi({
+      user,
       mode: 'SYMPTOM_CHECKER',
       context: patientContext,
       messages: [{ role: 'user', content: `${prompt}\n\nდააბრუნე მხოლოდ JSON.` }],
@@ -196,12 +162,12 @@ export async function runSymptomCheck({ prompt, patientContext, symptoms = [], b
     const parsed = parseJsonLoose(evidence.content);
     return {
       ...normalizeResult(parsed, inputHints),
-      engine: 'evidencemd',
+      engine: evidence.engine ?? 'openrouter',
       model: evidence.model,
       usage: evidence.usage,
     };
   } catch (error) {
-    console.error('[medicard] symptom checker evidencemd failed:', error?.message ?? error);
+    console.error('[medicard] symptom checker failed:', error?.message ?? error);
     return {
       ...fallbackResult(inputHints),
       model: null,

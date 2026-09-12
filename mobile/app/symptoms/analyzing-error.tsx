@@ -31,7 +31,7 @@ export default function SymptomAnalyzingErrorScreen() {
           <SymptomCta label={ka.usage.upsellCta} onPress={() => router.push('/package' as never)} />
         ) : (
           <SymptomCta
-            label={ka.common.retry}
+            label={ka.symptoms.retry}
             onPress={() => {
               updateSymptomChecker({ lastError: null });
               router.replace('/symptoms/analyzing' as never);

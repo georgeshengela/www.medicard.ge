@@ -6,7 +6,7 @@ const PASS_SCORE = 72;
 const JUDGE_TIMEOUT_MS = 45_000;
 
 const MODE_LABELS = {
-  DOCTOR: 'AI ექიმი',
+  DOCTOR: 'Medi',
   CONSILIUM: 'კონსილიუმი',
   LAB: 'ლაბორატორია',
   IMAGING: 'იმიჯინგი',

@@ -32,6 +32,33 @@ export function isSpottingFlowValue(flow) {
 }
 
 /**
+ * Copy display-log flow onto calendar marks.
+ *
+ * Engine calendar overlay uses engine-eligible logs only, so postpartum-stamped
+ * bleeds never become menstrual history. Presentation still needs the owner's
+ * logged flow to paint factual bleed/spotting cells.
+ */
+export function mergeLoggedFlowOntoMarks(calendar, logs) {
+  const next = { ...(calendar || {}) };
+  for (const log of logs || []) {
+    if (!log?.date) continue;
+    const prev = next[log.date] || {};
+    next[log.date] = log.flow ? { ...prev, flow: log.flow } : prev;
+  }
+  return next;
+}
+
+export function mergeOwnerClassifiedPeriodOntoMarks(calendar, classifiedDates) {
+  const next = { ...(calendar || {}) };
+  for (const date of classifiedDates || []) {
+    if (!date) continue;
+    const prev = next[date] || {};
+    next[date] = { ...prev, ownerClassifiedPeriod: true };
+  }
+  return next;
+}
+
+/**
  * Classify one calendar day into presentation layers.
  *
  * @param {object|undefined} mark  CycleDayMark from server predictions.calendar
@@ -40,8 +67,9 @@ export function isSpottingFlowValue(flow) {
  * @param {object} [opts]
  * @param {boolean} [opts.showFertility=true] engine contraception presentation
  *   (`showFertilityMarkers`); when false, fertility layers are omitted entirely.
- * @param {boolean} [opts.showPredicted=true] when false (low server confidence),
- *   predicted period / fertile / ovulation layers are omitted. Logged facts stay.
+ * @param {boolean} [opts.showPredicted=true] when false, predicted period /
+ *   fertile / ovulation layers are omitted. Logged facts stay. Low server
+ *   confidence does NOT flip this — estimates stay visible as dashed/სავარაუდო.
  * @returns {{
  *   loggedPeriod: boolean,
  *   spotting: boolean,
@@ -49,6 +77,7 @@ export function isSpottingFlowValue(flow) {
  *   fertile: boolean,
  *   ovulation: boolean,
  *   symptomDot: boolean,
+ *   ownerClassifiedPeriod: boolean,
  * }}
  */
 export function classifyCycleDay(mark, opts) {
@@ -62,7 +91,8 @@ export function classifyCycleDay(mark, opts) {
   const fertile = showPredicted && showFertility && Boolean(m.fertile && !m.ovulation);
   const ovulation = showPredicted && showFertility && Boolean(m.ovulation);
   const symptomDot = Boolean(m.logged) && !loggedPeriod && !spotting;
-  return { loggedPeriod, spotting, predictedPeriod, fertile, ovulation, symptomDot };
+  const ownerClassifiedPeriod = Boolean(m.ownerClassifiedPeriod) && loggedPeriod;
+  return { loggedPeriod, spotting, predictedPeriod, fertile, ovulation, symptomDot, ownerClassifiedPeriod };
 }
 
 /**
@@ -155,6 +185,7 @@ export function calendarDayA11y(input) {
   if (isToday) bits.push(copy.today);
   if (isSelected) bits.push(copy.selected);
   if (layers.loggedPeriod) bits.push(copy.loggedPeriod);
+  if (layers.ownerClassifiedPeriod && copy.classifiedPeriod) bits.push(copy.classifiedPeriod);
   if (layers.spotting) bits.push(copy.spotting);
   if (layers.predictedPeriod) bits.push(copy.predictedPeriod);
   if (layers.fertile) bits.push(copy.fertile);
@@ -187,7 +218,11 @@ export function confidencePresentation(confidence) {
     level,
     tone: 'neutral', // by contract there is no danger tone for confidence
     softenPrediction: level !== 'high',
-    hidePredictedOverlays: level === 'low',
+    // A new woman with only lastPeriodStart is always confidence=low
+    // (needs ≥2 logged cycle gaps for medium). Hiding overlays blanked
+    // ovulation + next period after onboarding. Uncertainty is copy +
+    // dashed glyphs (CYCLE_DESIGN.md §12), not an empty calendar.
+    hidePredictedOverlays: false,
   };
 }
 

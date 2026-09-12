@@ -1,13 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
 import { ka } from '@/i18n/ka';
-import { api } from '@/lib/api';
-import { addDaysToKey } from '@/lib/cyclePhase';
-import { todayKey } from '@/components/cycle/CycleCalendar';
+import { api, ApiError } from '@/lib/api';
 import { cycleShadow, useCycleColors } from '@/theme/cycle';
 
 type Props = {
@@ -20,25 +17,39 @@ type Props = {
 export function CyclePregnancyTransitionSheet({ visible, lastPeriod, onClose, onComplete }: Props) {
   const c = useCycleColors();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const suggestedDue = useMemo(() => {
-    const lmp = /^\d{4}-\d{2}-\d{2}$/.test(lastPeriod) ? lastPeriod : todayKey();
-    return addDaysToKey(lmp, 280);
-  }, [lastPeriod]);
-
-  const [dueDate, setDueDate] = useState(suggestedDue);
+  const suggested = useMemo(
+    () => (/^\d{4}-\d\d-\d\d$/.test(lastPeriod) ? lastPeriod : ''),
+    [lastPeriod],
+  );
+  const [referenceDate, setReferenceDate] = useState(suggested);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    setReferenceDate(/^\d{4}-\d{2}-\d{2}$/.test(lastPeriod) ? lastPeriod : '');
+    setError(null);
+    setSaving(false);
+  }, [visible, lastPeriod]);
 
   const confirm = async () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(referenceDate)) {
+      setError(ka.cycle.pregnancyPickReference);
+      return;
+    }
     setSaving(true);
+    setError(null);
     try {
       await api.cycle.updateProfile({
         mode: 'PREGNANCY',
-        dueDate: /^\d{4}-\d{2}-\d{2}$/.test(dueDate) ? dueDate : null,
+        pregnancyConfirm: true,
+        pregnancyReferenceDate: referenceDate,
+        pregnancyReferenceType: referenceDate === lastPeriod ? 'LMP' : 'USER_SELECTED',
       });
       onComplete();
       onClose();
-      router.push('/cycle/pregnancy' as never);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : ka.common.error);
     } finally {
       setSaving(false);
     }
@@ -46,82 +57,101 @@ export function CyclePregnancyTransitionSheet({ visible, lastPeriod, onClose, on
 
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <View style={styles.root}>
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
+          style={{ flex: 1, backgroundColor: c.overlay }}
+          onPress={onClose}
           accessibilityRole="button"
           accessibilityLabel={ka.common.close}
-          onPress={onClose}
-          style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]}
         />
         <View
           style={{
             backgroundColor: c.card,
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
-            paddingHorizontal: 20,
-            paddingTop: 12,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingHorizontal: 22,
+            paddingTop: 18,
             paddingBottom: Math.max(insets.bottom, 16) + 8,
             borderTopWidth: 1,
             borderColor: c.border,
+            maxHeight: '90%',
           }}
         >
-          <View
-            style={{
-              width: 40,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: c.creamDeep,
-              alignSelf: 'center',
-              marginBottom: 16,
-            }}
-          />
-          <Text style={{ color: c.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.3 }}>
-            {ka.cycle.pregnancyTransitionTitle}
-          </Text>
-          <Text style={{ color: c.muted, fontSize: 13, lineHeight: 18, marginTop: 6, marginBottom: 16 }}>
-            {ka.cycle.pregnancyTransitionHint}
-          </Text>
-          <CycleDateField
-            value={dueDate}
-            onChange={setDueDate}
-            placeholder={ka.cycle.dueDate}
-            range="due"
-          />
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Text
+              style={{
+                color: c.ink,
+                fontFamily: 'NotoSansGeorgian_700Bold',
+                fontSize: 20,
+                lineHeight: 28,
+              }}
+            >
+              {ka.cycle.pregnancyOnboardTitle}
+            </Text>
+            <Text style={{ color: c.muted, fontSize: 14, lineHeight: 22, marginTop: 12 }}>
+              {ka.cycle.pregnancyOnboardWhat}
+            </Text>
+            <Text style={{ color: c.muted, fontSize: 14, lineHeight: 22, marginTop: 10 }}>
+              {ka.cycle.pregnancyOnboardHistory}
+            </Text>
+            <Text style={{ color: c.muted, fontSize: 14, lineHeight: 22, marginTop: 10 }}>
+              {ka.cycle.pregnancyOnboardEstimates}
+            </Text>
+            <Text style={{ color: c.muted, fontSize: 14, lineHeight: 22, marginTop: 10 }}>
+              {ka.cycle.pregnancyOnboardTest}
+            </Text>
+            <Text style={{ color: c.muted, fontSize: 14, lineHeight: 22, marginTop: 10 }}>
+              {ka.cycle.pregnancyOnboardPrivacy}
+            </Text>
+            <View style={{ marginTop: 16 }}>
+              <CycleDateField
+                label={ka.cycle.pregnancyReference}
+                value={referenceDate}
+                onChange={setReferenceDate}
+                placeholder={ka.cycle.pregnancyPickReference}
+                range="past"
+              />
+            </View>
+            <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 17, marginTop: 10 }}>
+              {ka.cycle.pregnancyOnboardDisclaimer}
+            </Text>
+            {error ? (
+              <Text style={{ color: c.danger, fontSize: 13, lineHeight: 18, marginTop: 10 }}>{error}</Text>
+            ) : null}
+          </ScrollView>
           <Pressable
+            onPress={() => void confirm()}
             disabled={saving}
-            onPress={confirm}
-            className="active:opacity-90"
+            accessibilityRole="button"
+            accessibilityLabel={ka.cycle.pregnancyOnboardConfirm}
             style={{
-              marginTop: 16,
-              minHeight: 52,
+              minHeight: 48,
+              borderRadius: 16,
               backgroundColor: c.cta,
-              borderRadius: 20,
-              paddingVertical: 16,
               alignItems: 'center',
               justifyContent: 'center',
+              marginTop: 16,
               ...cycleShadow.soft,
             }}
           >
             {saving ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>
-                {ka.cycle.pregnancyTransitionCta}
+              <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
+                {ka.cycle.pregnancyOnboardConfirm}
               </Text>
             )}
           </Pressable>
           <Pressable
             onPress={onClose}
-            style={{ alignItems: 'center', justifyContent: 'center', minHeight: 44, marginTop: 4 }}
+            accessibilityRole="button"
+            accessibilityLabel={ka.common.cancel}
+            style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 8 }}
           >
-            <Text style={{ color: c.muted, fontWeight: '700' }}>{ka.common.cancel}</Text>
+            <Text style={{ color: c.muted, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{ka.common.cancel}</Text>
           </Pressable>
         </View>
       </View>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, justifyContent: 'flex-end' },
-});

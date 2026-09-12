@@ -101,6 +101,15 @@ describe('Phase 8 observation eligibility', () => {
       cycleAnchorDate: '2026-09-01',
     }), false);
   });
+
+  it('does not observe while postpartum-return forecast is gated', () => {
+    assert.equal(shouldObservePrediction({
+      predictedDate: '2026-09-29',
+      cycleAnchorDate: '2026-09-01',
+      mode: 'TRACK_PERIOD',
+      forecastAllowed: false,
+    }), false);
+  });
 });
 
 describe('snapshot creation + dedup', () => {
@@ -502,6 +511,7 @@ describe('privacy + deletion + partner/AI isolation', () => {
       cycleCustomTag: { deleteMany: async () => ({ count: 0 }) },
       pregnancyLog: { deleteMany: async () => ({ count: 0 }) },
       cyclePredictionSnapshot: { deleteMany: async () => ({ count: 4 }) },
+      cyclePregnancyEpisode: { deleteMany: async () => ({ count: 0 }) },
       $transaction: async (ops) => {
         const out = await Promise.all(ops);
         snapCount = out[4].count;

@@ -36,6 +36,10 @@ const SENSITIVE_KEYS = [
   'libido',
   'bbt',
   'cervicalMucus',
+  'observations',
+  'energy',
+  'pregnancyTest',
+  'ovulationTest',
 ];
 
 function civilKey(value) {
@@ -63,8 +67,11 @@ export function shouldObservePrediction({
   mode,
   predictedDate,
   cycleAnchorDate,
+  forecastAllowed,
 } = {}) {
+  if (forecastAllowed === false) return false;
   if (mode === 'PREGNANCY') return false;
+  if (mode === 'POSTPARTUM') return false;
   if (!civilKey(predictedDate) || !civilKey(cycleAnchorDate)) return false;
   return true;
 }
@@ -109,6 +116,7 @@ export async function observeNextPeriodPrediction(prisma, input = {}) {
     mode: input.mode,
     predictedDate,
     cycleAnchorDate,
+    forecastAllowed: input.forecastAllowed,
   }) || !snapshotDate) {
     return { created: false, reason: 'ineligible' };
   }

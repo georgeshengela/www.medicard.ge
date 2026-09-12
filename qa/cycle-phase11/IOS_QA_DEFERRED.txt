@@ -1,0 +1,19 @@
+iOS native QA is deferred by product decision (same as Phases 6–10).
+
+Android visual capture for Phase 11 Quick Log → More Tracking was not completed in-session: Expo Go on emulator-5554 was a blank activity despite Metro :8081 and API :4000. Re-capture on a live Cycle session after `prisma migrate deploy` / client generate and an Expo reload:
+
+01-quick-log-base
+02-more-tracking
+03-physical
+04-energy
+05-digestion
+06-skin
+07-fertility-observations
+08-private
+09-day-details-rich
+10-large-text
+11-dark
+12-small-screen
+
+Seed: `node server/scripts/cycle-phase11-qa-seed.js`
+Account: cycle.qa.phase6@medicard.ge

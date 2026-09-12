@@ -200,7 +200,11 @@ async function persistRootStore(root: CycleOfflineStore): Promise<void> {
     await decryptStore(verify, dek);
   } catch (error) {
     if (error instanceof CyclePersistError) throw error;
-    throw new CyclePersistError('cycle_offline_persist_failed');
+    const code =
+      error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : 'cycle_offline_persist_failed';
+    throw new CyclePersistError(code.startsWith('cycle_offline_') ? code : 'cycle_offline_persist_failed');
   }
 }
 
@@ -410,7 +414,11 @@ function logBodyFromPayload(form: {
   caffeine?: string | null;
   alcohol?: string | null;
   customTagIds?: string[];
+  observations?: { energy?: string | null } | null;
+  energy?: string | null;
+  observationAssessments?: Record<string, 'ABSENT'> | null;
 }) {
+  const energy = form.energy ?? form.observations?.energy ?? null;
   return {
     flow: form.flow ?? null,
     symptoms: form.symptoms ?? [],
@@ -429,6 +437,9 @@ function logBodyFromPayload(form: {
     caffeine: form.caffeine ?? null,
     alcohol: form.alcohol ?? null,
     customTagIds: form.customTagIds ?? [],
+    observations: energy ? { energy } : form.observations ?? {},
+    energy,
+    observationAssessments: form.observationAssessments || {},
   };
 }
 
@@ -470,36 +481,69 @@ async function afterEnqueue(userId: string): Promise<PersistResult> {
   };
 }
 
+function viewFromLiveBundle(bundle: CycleBundle): CycleView {
+  return {
+    display: bundle,
+    canonical: bundle,
+    stale: false,
+    reachable: true,
+    cachedAt: new Date().toISOString(),
+    pendingCount: 0,
+    pendingDates: [],
+    syncState: 'synced',
+    lastError: null,
+    persistedLocally: false,
+    attention: [],
+  };
+}
+
+async function persistPlannedOnline(
+  userId: string,
+  planned: { operation: CycleOfflineOperation; payload: Record<string, unknown> }[],
+): Promise<PersistResult> {
+  let bundle: CycleBundle | null = null;
+  for (const step of planned) {
+    bundle = await playMutation(createMutation(userId, step.operation, step.payload));
+  }
+  if (!bundle) return { view: null, synced: false, persistedLocally: false };
+  try {
+    await cacheCycleBundle(userId, bundle);
+  } catch {
+    /* Device queue is broken; the server write already succeeded. */
+  }
+  return { view: viewFromLiveBundle(bundle), synced: true, persistedLocally: false };
+}
+
+async function commitPlanned(
+  userId: string,
+  planned: { operation: CycleOfflineOperation; payload: Record<string, unknown> }[],
+): Promise<PersistResult> {
+  try {
+    for (const step of planned) {
+      await enqueueCycleOp(userId, step.operation, step.payload);
+    }
+    return await afterEnqueue(userId);
+  } catch (error) {
+    if (!(error instanceof CyclePersistError)) throw error;
+    try {
+      return await persistPlannedOnline(userId, planned);
+    } catch {
+      return { view: null, synced: false, persistedLocally: false };
+    }
+  }
+}
+
 export async function saveCycleObservation(
   userId: string,
   date: string,
   body: Partial<ReturnType<typeof logBodyFromPayload>>,
   options?: { markStart?: boolean },
 ): Promise<PersistResult> {
-  try {
-    const planned = planQueuedLogMutations({ date, ...body }, options);
-    for (const step of planned) {
-      await enqueueCycleOp(userId, step.operation, step.payload);
-    }
-    return afterEnqueue(userId);
-  } catch (error) {
-    if (error instanceof CyclePersistError) {
-      return { view: null, synced: false, persistedLocally: false };
-    }
-    throw error;
-  }
+  return commitPlanned(userId, planQueuedLogMutations({ date, ...body }, options));
 }
 
 export async function queueRemoveCycleLog(userId: string, date: string): Promise<PersistResult> {
-  try {
-    await enqueueCycleOp(userId, 'REMOVE_LOG', { date });
-    return afterEnqueue(userId);
-  } catch (error) {
-    if (error instanceof CyclePersistError) {
-      return { view: null, synced: false, persistedLocally: false };
-    }
-    throw error;
-  }
+  return commitPlanned(userId, [{ operation: 'REMOVE_LOG', payload: { date } }]);
 }
 
 export async function queueApplyPeriod(
@@ -512,25 +556,20 @@ export async function queueApplyPeriod(
     flow?: 'light' | 'medium' | 'heavy';
   },
 ): Promise<PersistResult> {
-  try {
-    if (body.action === 'start') {
-      await enqueueCycleOp(userId, 'START_PERIOD', { date: body.date, flow: body.flow ?? 'medium' });
-    } else if (body.action === 'end') {
-      await enqueueCycleOp(userId, 'END_PERIOD', { date: body.date });
-    } else {
-      await enqueueCycleOp(userId, 'FILL_PERIOD', {
-        start: body.start,
-        end: body.end,
-        flow: body.flow ?? 'medium',
-      });
-    }
-    return afterEnqueue(userId);
-  } catch (error) {
-    if (error instanceof CyclePersistError) {
-      return { view: null, synced: false, persistedLocally: false };
-    }
-    throw error;
+  if (body.action === 'start') {
+    return commitPlanned(userId, [
+      { operation: 'START_PERIOD', payload: { date: body.date, flow: body.flow ?? 'medium' } },
+    ]);
   }
+  if (body.action === 'end') {
+    return commitPlanned(userId, [{ operation: 'END_PERIOD', payload: { date: body.date } }]);
+  }
+  return commitPlanned(userId, [
+    {
+      operation: 'FILL_PERIOD',
+      payload: { start: body.start, end: body.end, flow: body.flow ?? 'medium' },
+    },
+  ]);
 }
 
 export async function loadCycleView(userId: string): Promise<CycleView> {

@@ -9,6 +9,7 @@
  */
 
 import { addDays } from './cycle.js';
+import { engineExcludePostpartumClause, isEngineEligibleLog } from './cyclePostpartum.js';
 
 export const CYCLE_ENGINE_HISTORY_DAYS = 365 * 5;
 export const CYCLE_DISPLAY_LOG_LIMIT = 400;
@@ -19,7 +20,7 @@ export function engineHistoryCutoff(today) {
 
 export function filterLogsForEngine(logs, today) {
   const cutoff = engineHistoryCutoff(today);
-  return (logs || []).filter((log) => log?.date >= cutoff);
+  return (logs || []).filter((log) => log?.date >= cutoff && isEngineEligibleLog(log));
 }
 
 /** What the previous take:400 query kept — newest rows, any flow. */
@@ -31,5 +32,6 @@ export function engineLogWhere(userId, today) {
   return {
     userId,
     date: { gte: engineHistoryCutoff(today) },
+    ...engineExcludePostpartumClause(),
   };
 }

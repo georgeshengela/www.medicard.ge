@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-09-11T21:10:00.000Z",
+  "endpoint": "DELETE /api/auth/me",
+  "android": "NOT EXECUTED on the Cycle QA fixture account. UI shows ანგარიშის წაშლა on profile (screenshot 12).",
+  "server": {
+    "transaction": "dailyUsage, phoneVerification, smsLog.userId null, user.delete (FK cascades records/chats/meds/cycle)",
+    "files": "RA-01 collects MedicalRecord.imageUrl then unlinkStoredUpload after commit",
+    "sessions": "JWT not denylisted; requireAuth findUnique miss → 401",
+    "partialFailure": "If unlink fails after DB delete, disk orphans are not retrievable via API (no owner row). UI success follows DB success.",
+    "smsLog": "retained with userId cleared"
+  },
+  "live": "ra01LiveAuth.http.test.js created throwaway users and deleted them via deleteUserAccount in finally."
+}
