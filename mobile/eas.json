@@ -11,13 +11,21 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://medicard.ge"
+        "EXPO_PUBLIC_API_URL": "https://medicard.ge",
+        "EXPO_PUBLIC_MEDI_WORLD": "1",
+        "EXPO_PUBLIC_MEDI_WORLD_EXPLORE": "1",
+        "EXPO_PUBLIC_MEDI_WORLD_MOVEMENT": "1",
+        "EXPO_PUBLIC_MEDI_WORLD_GARDEN": "1"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://medicard.ge"
+        "EXPO_PUBLIC_API_URL": "https://medicard.ge",
+        "EXPO_PUBLIC_MEDI_WORLD": "1",
+        "EXPO_PUBLIC_MEDI_WORLD_EXPLORE": "1",
+        "EXPO_PUBLIC_MEDI_WORLD_MOVEMENT": "1",
+        "EXPO_PUBLIC_MEDI_WORLD_GARDEN": "1"
       }
     }
   },

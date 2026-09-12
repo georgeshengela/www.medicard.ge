@@ -8,8 +8,8 @@ function parseFlag(raw) {
 }
 
 /**
- * Medi World is on in development/test unless explicitly disabled.
- * Production stays off unless MEDI_WORLD_ENABLED=1.
+ * Medi World is on unless explicitly disabled (`0` / `false` / `off`).
+ * Expo, local, and production share this default so there is one environment.
  */
 export function isMediWorldEnabled({
   nodeEnv = env.NODE_ENV,
@@ -17,7 +17,7 @@ export function isMediWorldEnabled({
 } = {}) {
   const parsed = parseFlag(flag);
   if (parsed != null) return parsed;
-  return nodeEnv !== 'production';
+  return true;
 }
 
 /** Client/test activity path — internal only. Never an HTTP route. Never in production. */
@@ -42,7 +42,7 @@ export function isMediWorldExploreEnabled({
   if (!isMediWorldEnabled({ nodeEnv, flag })) return false;
   const parsed = parseFlag(exploreFlag);
   if (parsed != null) return parsed;
-  return nodeEnv !== 'production';
+  return true;
 }
 
 export function canLoadExploreFixtures({
@@ -66,7 +66,7 @@ export function isMediWorldMovementEnabled({
   if (!isMediWorldEnabled({ nodeEnv, flag })) return false;
   const parsed = parseFlag(movementFlag);
   if (parsed != null) return parsed;
-  return nodeEnv !== 'production';
+  return true;
 }
 
 export function movementDisabledError() {
@@ -84,7 +84,7 @@ export function isMediWorldGardenEnabled({
   if (!isMediWorldEnabled({ nodeEnv, flag })) return false;
   const parsed = parseFlag(gardenFlag);
   if (parsed != null) return parsed;
-  return nodeEnv !== 'production';
+  return true;
 }
 
 export function canLoadGardenFixtures({

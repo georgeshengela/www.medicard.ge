@@ -62,6 +62,14 @@ services:
         value: MEDICARD
       - key: MAPBOX_PUBLIC_TOKEN
         sync: false
+      - key: MEDI_WORLD_ENABLED
+        value: "1"
+      - key: MEDI_WORLD_EXPLORE_ENABLED
+        value: "1"
+      - key: MEDI_WORLD_MOVEMENT_ENABLED
+        value: "1"
+      - key: MEDI_WORLD_GARDEN_ENABLED
+        value: "1"
 
   - type: cron
     name: medicard-pharmacy-sync

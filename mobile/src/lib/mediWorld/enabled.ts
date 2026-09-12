@@ -3,9 +3,9 @@ import { useSyncExternalStore } from 'react';
 /**
  * Medi World client gate.
  *
- * Compile-time: production store builds stay off unless EXPO_PUBLIC_MEDI_WORLD is on.
+ * Compile-time: on unless EXPO_PUBLIC_MEDI_WORLD is explicitly off.
  * Runtime: GET /api/app/status settings.mediWorldEnabled is authoritative.
- * Development may show the entry before status loads; production never does.
+ * Expo Go and store builds share this default.
  */
 let serverEnabled: boolean | null = null;
 let exploreServerEnabled: boolean | null = null;
@@ -54,7 +54,7 @@ export function isMediWorldClientEnabled(): boolean {
   const fromEnv = String(process.env.EXPO_PUBLIC_MEDI_WORLD || '').trim().toLowerCase();
   if (fromEnv === '1' || fromEnv === 'true' || fromEnv === 'on') return true;
   if (fromEnv === '0' || fromEnv === 'false' || fromEnv === 'off') return false;
-  return typeof __DEV__ !== 'undefined' && __DEV__;
+  return true;
 }
 
 export function isMediWorldExploreClientEnabled(): boolean {
@@ -75,7 +75,7 @@ export function isMediWorldAvailable(): boolean {
   if (!isMediWorldClientEnabled()) return false;
   if (serverEnabled === true) return true;
   if (serverEnabled === false) return false;
-  return typeof __DEV__ !== 'undefined' && __DEV__;
+  return true;
 }
 
 export function isMediWorldExploreAvailable(): boolean {
@@ -83,7 +83,7 @@ export function isMediWorldExploreAvailable(): boolean {
   if (!isMediWorldExploreClientEnabled()) return false;
   if (exploreServerEnabled === true) return true;
   if (exploreServerEnabled === false) return false;
-  return typeof __DEV__ !== 'undefined' && __DEV__;
+  return true;
 }
 
 export function isMediWorldMovementAvailable(): boolean {
@@ -91,7 +91,7 @@ export function isMediWorldMovementAvailable(): boolean {
   if (!isMediWorldMovementClientEnabled()) return false;
   if (movementServerEnabled === true) return true;
   if (movementServerEnabled === false) return false;
-  return typeof __DEV__ !== 'undefined' && __DEV__;
+  return true;
 }
 
 export function useMediWorldAvailable(): boolean {
@@ -118,7 +118,7 @@ export function isMediWorldGardenAvailable(): boolean {
   if (!isMediWorldGardenClientEnabled()) return false;
   if (gardenServerEnabled === true) return true;
   if (gardenServerEnabled === false) return false;
-  return typeof __DEV__ !== 'undefined' && __DEV__;
+  return true;
 }
 
 export function useMediWorldGardenAvailable(): boolean {

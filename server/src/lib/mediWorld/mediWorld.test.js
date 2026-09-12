@@ -62,20 +62,20 @@ function questByKey(rows, key) {
 }
 
 describe('Medi World flags', () => {
-  it('is off in production unless the env flag is on', () => {
-    assert.equal(isMediWorldEnabled({ nodeEnv: 'production', flag: '' }), false);
+  it('is on unless explicitly disabled', () => {
+    assert.equal(isMediWorldEnabled({ nodeEnv: 'production', flag: '' }), true);
     assert.equal(isMediWorldEnabled({ nodeEnv: 'production', flag: '1' }), true);
     assert.equal(isMediWorldEnabled({ nodeEnv: 'development', flag: '' }), true);
     assert.equal(isMediWorldEnabled({ nodeEnv: 'test', flag: '0' }), false);
-    assert.equal(isMediWorldExploreEnabled({ nodeEnv: 'production', flag: '1', exploreFlag: '' }), false);
+    assert.equal(isMediWorldExploreEnabled({ nodeEnv: 'production', flag: '1', exploreFlag: '' }), true);
     assert.equal(isMediWorldExploreEnabled({ nodeEnv: 'production', flag: '1', exploreFlag: '1' }), true);
     assert.equal(isMediWorldExploreEnabled({ nodeEnv: 'development', flag: '1', exploreFlag: '' }), true);
     assert.equal(isMediWorldExploreEnabled({ nodeEnv: 'test', flag: '1', exploreFlag: '0' }), false);
-    assert.equal(isMediWorldMovementEnabled({ nodeEnv: 'production', flag: '1', movementFlag: '' }), false);
+    assert.equal(isMediWorldMovementEnabled({ nodeEnv: 'production', flag: '1', movementFlag: '' }), true);
     assert.equal(isMediWorldMovementEnabled({ nodeEnv: 'production', flag: '1', movementFlag: '1' }), true);
     assert.equal(isMediWorldMovementEnabled({ nodeEnv: 'development', flag: '1', movementFlag: '' }), true);
     assert.equal(isMediWorldMovementEnabled({ nodeEnv: 'test', flag: '1', movementFlag: '0' }), false);
-    assert.equal(isMediWorldGardenEnabled({ nodeEnv: 'production', flag: '1', gardenFlag: '' }), false);
+    assert.equal(isMediWorldGardenEnabled({ nodeEnv: 'production', flag: '1', gardenFlag: '' }), true);
     assert.equal(isMediWorldGardenEnabled({ nodeEnv: 'production', flag: '1', gardenFlag: '1' }), true);
     assert.equal(isMediWorldGardenEnabled({ nodeEnv: 'development', flag: '1', gardenFlag: '' }), true);
     assert.equal(isMediWorldGardenEnabled({ nodeEnv: 'test', flag: '1', gardenFlag: '0' }), false);
@@ -454,7 +454,7 @@ describe('authorization and ledger paging', () => {
   it('returns 404 when Medi World is disabled', async () => {
     const db = createQuestFakeDb();
     await assert.rejects(
-      () => getMediWorldProfile(USER, { db, flags: { nodeEnv: 'production', flag: '' } }),
+      () => getMediWorldProfile(USER, { db, flags: { nodeEnv: 'production', flag: '0' } }),
       (err) => err.status === 404,
     );
   });

@@ -666,7 +666,7 @@ describe('preferences, history, flags, routes', () => {
       (error) => error.code === 'MOVEMENT_DISABLED',
     );
     await assert.rejects(
-      () => startWalk(db, { nodeEnv: 'production', flag: '1', movementFlag: '' }),
+      () => startWalk(db, { nodeEnv: 'production', flag: '1', movementFlag: '0' }),
       (error) => error.code === 'MOVEMENT_DISABLED',
     );
     const paths = [];
