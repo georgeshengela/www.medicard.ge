@@ -2,6 +2,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
+import { apiTrafficKey } from '../lib/rateLimitKey.js';
 import { asyncHandler } from '../middleware/error.js';
 import { applyPrivateCache } from '../lib/cycleShare.js';
 import { clientTimezoneFromReq } from '../lib/cycleCivilDate.js';
@@ -33,8 +34,9 @@ function worldOptions(req) {
 }
 
 const exploreQaBody = z.object({
-  scenario: z.enum(['arm_inaccurate', 'arm_map_fail', 'clear', 'expire_active', 'fill_daily_cap']),
+  scenario: z.enum(['arm_inaccurate', 'arm_map_fail', 'clear', 'expire_active', 'expire_soon', 'fill_daily_cap']),
   placeId: z.string().trim().min(1).max(80).optional(),
+  inMs: z.number().int().min(5000).max(60_000).optional(),
 }).strict();
 
 const exploreCollectLimiter = rateLimit({
@@ -212,9 +214,17 @@ const exploreAreaParams = z.object({
   coarseKey: z.string().trim().min(3).max(40).regex(/^[A-Za-z0-9._:-]+$/),
 }).strict();
 
+const exploreAreaQuery = z.object({
+  locale: z.enum(['ka', 'en']).optional(),
+  lat: z.coerce.number().gte(-90).lte(90).optional(),
+  lng: z.coerce.number().gte(-180).lte(180).optional(),
+}).strict();
+
 const exploreSparkQuery = z.object({
   coarseKey: z.string().trim().min(3).max(40).regex(/^[A-Za-z0-9._:-]+$/),
   locale: z.enum(['ka', 'en']).optional(),
+  lat: z.coerce.number().gte(-90).lte(90).optional(),
+  lng: z.coerce.number().gte(-180).lte(180).optional(),
 }).strict();
 
 const exploreCollectBody = z.object({
@@ -245,9 +255,14 @@ mediWorldRouter.get(
   '/explore/area/:coarseKey',
   asyncHandler(async (req, res) => {
     const params = exploreAreaParams.parse(req.params);
-    const query = z.object({ locale: z.enum(['ka', 'en']).optional() }).strict().parse(req.query ?? {});
+    const query = exploreAreaQuery.parse(req.query ?? {});
     const { getExploreArea } = await import('../lib/mediWorld/explore/service.js');
-    res.json(await getExploreArea(req.user.id, params.coarseKey, { ...worldOptions(req), locale: query.locale || worldOptions(req).locale }));
+    res.json(await getExploreArea(req.user.id, params.coarseKey, {
+      ...worldOptions(req),
+      locale: query.locale || worldOptions(req).locale,
+      latitude: query.lat,
+      longitude: query.lng,
+    }));
   }),
 );
 
@@ -256,7 +271,12 @@ mediWorldRouter.get(
   asyncHandler(async (req, res) => {
     const query = exploreSparkQuery.parse(req.query ?? {});
     const { getExploreSparks } = await import('../lib/mediWorld/explore/service.js');
-    res.json(await getExploreSparks(req.user.id, query.coarseKey, worldOptions(req)));
+    res.json(await getExploreSparks(req.user.id, query.coarseKey, {
+      ...worldOptions(req),
+      locale: query.locale || worldOptions(req).locale,
+      latitude: query.lat,
+      longitude: query.lng,
+    }));
   }),
 );
 
@@ -305,6 +325,7 @@ mediWorldRouter.post(
     res.json(await applyExploreQaScenario(req.user.id, body.scenario, {
       ...worldOptions(req),
       placeId: body.placeId,
+      inMs: body.inMs,
     }));
   }),
 );
@@ -577,3 +598,370 @@ mediWorldRouter.post(
     res.json(await applyGardenQaStage(req.user.id, body, worldOptions(req)));
   }),
 );
+
+const socialLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: false,
+  keyGenerator: apiTrafficKey,
+  message: { error: 'ძალიან ბევრი მოთხოვნა.', code: 'SOCIAL_RATE_LIMIT' },
+});
+
+const friendLookupLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: false,
+  keyGenerator: apiTrafficKey,
+  message: { error: 'ძალიან ბევრი მოთხოვნა.', code: 'SOCIAL_RATE_LIMIT' },
+});
+
+const socialMeBody = z.object({
+  displayName: z.string().max(40).optional(),
+  bio: z.string().max(120).optional(),
+  socialEnabled: z.boolean().optional(),
+}).strict();
+
+const socialPrivacyBody = z.object({
+  showWorldLevel: z.boolean().optional(),
+  showBondLevel: z.boolean().optional(),
+  showGardenPreview: z.boolean().optional(),
+  wavesMuted: z.boolean().optional(),
+}).strict();
+
+const socialEligibilityBody = z.object({
+  confirmAdult: z.literal(true),
+}).strict();
+
+const socialFriendRequestBody = z.object({
+  friendCode: z.string().trim().min(8).max(24),
+  idempotencyKey: z.string().trim().min(8).max(180).optional(),
+}).strict();
+
+const socialRelationshipParams = z.object({
+  relationshipId: z.string().uuid(),
+}).strict();
+
+const socialBlockBody = z.object({
+  publicId: z.string().uuid(),
+}).strict();
+
+const socialBlockParams = z.object({
+  blockId: z.string().uuid(),
+}).strict();
+
+const socialReportBody = z.object({
+  targetPublicId: z.string().uuid(),
+  category: z.enum(['harassment', 'impersonation', 'inappropriate_profile', 'spam', 'privacy_concern', 'other']),
+  description: z.string().max(280).optional(),
+}).strict();
+
+const socialWaveBody = z.object({
+  publicId: z.string().uuid(),
+  waveType: z.enum(['hello', 'cheer', 'proud_of_you', 'gentle_support', 'garden_love']),
+  idempotencyKey: z.string().trim().min(8).max(180).optional(),
+}).strict();
+
+const socialCircleBody = z.object({
+  name: z.string().max(40).optional(),
+}).strict();
+
+const socialCircleJoinBody = z.object({
+  inviteCode: z.string().trim().min(6).max(24),
+  confirm: z.literal(true),
+}).strict();
+
+const socialCircleMemberBody = z.object({
+  publicId: z.string().uuid(),
+}).strict();
+
+const socialCircleConfirmBody = z.object({
+  confirm: z.literal(true),
+  publicId: z.string().uuid().optional(),
+}).strict();
+
+const socialInboxQuery = z.object({
+  take: z.coerce.number().int().min(1).max(50).optional(),
+  cursor: z.string().trim().min(1).max(80).optional(),
+}).strict();
+
+const socialInboxParams = z.object({
+  itemId: z.string().uuid(),
+}).strict();
+
+mediWorldRouter.get(
+  '/social/me',
+  asyncHandler(async (req, res) => {
+    const { getSocialMe } = await import('../lib/mediWorld/social/service.js');
+    res.json(await getSocialMe(req.user.id, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.put(
+  '/social/me',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialMeBody.parse(req.body ?? {});
+    const { updateSocialMe } = await import('../lib/mediWorld/social/service.js');
+    res.json(await updateSocialMe(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.put(
+  '/social/privacy',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialPrivacyBody.parse(req.body ?? {});
+    const { updateSocialPrivacy } = await import('../lib/mediWorld/social/service.js');
+    res.json(await updateSocialPrivacy(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/eligibility',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialEligibilityBody.parse(req.body ?? {});
+    const { confirmSocialEligibility } = await import('../lib/mediWorld/social/service.js');
+    res.json(await confirmSocialEligibility(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/friend-code/rotate',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const { rotateFriendCode } = await import('../lib/mediWorld/social/service.js');
+    res.json(await rotateFriendCode(req.user.id, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.get(
+  '/social/me/preview',
+  asyncHandler(async (req, res) => {
+    const { getOwnerPreview } = await import('../lib/mediWorld/social/service.js');
+    res.json(await getOwnerPreview(req.user.id, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/friends/request',
+  friendLookupLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialFriendRequestBody.parse(req.body ?? {});
+    const { requestFriend } = await import('../lib/mediWorld/social/service.js');
+    res.json(await requestFriend(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/friends/:relationshipId/accept',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const params = socialRelationshipParams.parse(req.params);
+    const { acceptFriend } = await import('../lib/mediWorld/social/service.js');
+    res.json(await acceptFriend(req.user.id, params.relationshipId, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/friends/:relationshipId/decline',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const params = socialRelationshipParams.parse(req.params);
+    const { declineFriend } = await import('../lib/mediWorld/social/service.js');
+    res.json(await declineFriend(req.user.id, params.relationshipId, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/friends/:relationshipId/cancel',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const params = socialRelationshipParams.parse(req.params);
+    const { cancelFriend } = await import('../lib/mediWorld/social/service.js');
+    res.json(await cancelFriend(req.user.id, params.relationshipId, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.delete(
+  '/social/friends/:relationshipId',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const params = socialRelationshipParams.parse(req.params);
+    const { removeFriend } = await import('../lib/mediWorld/social/service.js');
+    res.json(await removeFriend(req.user.id, params.relationshipId, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.get(
+  '/social/friends',
+  asyncHandler(async (req, res) => {
+    const { listFriends } = await import('../lib/mediWorld/social/service.js');
+    res.json(await listFriends(req.user.id, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.get(
+  '/social/friends/:relationshipId/profile',
+  asyncHandler(async (req, res) => {
+    const params = socialRelationshipParams.parse(req.params);
+    const { getFriendProfile } = await import('../lib/mediWorld/social/service.js');
+    res.json(await getFriendProfile(req.user.id, params.relationshipId, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/block',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialBlockBody.parse(req.body ?? {});
+    const { blockUser } = await import('../lib/mediWorld/social/service.js');
+    res.json(await blockUser(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.delete(
+  '/social/block/:blockId',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const params = socialBlockParams.parse(req.params);
+    const { unblockUser } = await import('../lib/mediWorld/social/service.js');
+    res.json(await unblockUser(req.user.id, params.blockId, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.get(
+  '/social/blocks',
+  asyncHandler(async (req, res) => {
+    const { listBlocks } = await import('../lib/mediWorld/social/service.js');
+    res.json(await listBlocks(req.user.id, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/reports',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialReportBody.parse(req.body ?? {});
+    const { createReport } = await import('../lib/mediWorld/social/service.js');
+    res.json(await createReport(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/waves',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialWaveBody.parse(req.body ?? {});
+    const { sendWave } = await import('../lib/mediWorld/social/service.js');
+    res.json(await sendWave(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.get(
+  '/social/waves',
+  asyncHandler(async (req, res) => {
+    const { listWaves } = await import('../lib/mediWorld/social/service.js');
+    res.json(await listWaves(req.user.id, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/circles',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialCircleBody.parse(req.body ?? {});
+    const { createCircle } = await import('../lib/mediWorld/social/service.js');
+    res.json(await createCircle(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.get(
+  '/social/circles/current',
+  asyncHandler(async (req, res) => {
+    const { getCurrentCircle } = await import('../lib/mediWorld/social/service.js');
+    res.json(await getCurrentCircle(req.user.id, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/circles/invite',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const { inviteToCircle } = await import('../lib/mediWorld/social/service.js');
+    res.json(await inviteToCircle(req.user.id, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/circles/join',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialCircleJoinBody.parse(req.body ?? {});
+    const { joinCircle } = await import('../lib/mediWorld/social/service.js');
+    res.json(await joinCircle(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/circles/leave',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const { leaveCircle } = await import('../lib/mediWorld/social/service.js');
+    res.json(await leaveCircle(req.user.id, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/circles/remove',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialCircleMemberBody.parse(req.body ?? {});
+    const { removeCircleMember } = await import('../lib/mediWorld/social/service.js');
+    res.json(await removeCircleMember(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/circles/transfer',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialCircleConfirmBody.parse(req.body ?? {});
+    const { transferCircle } = await import('../lib/mediWorld/social/service.js');
+    res.json(await transferCircle(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.delete(
+  '/social/circles/current',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const body = socialCircleConfirmBody.parse(req.body ?? {});
+    const { deleteCircle } = await import('../lib/mediWorld/social/service.js');
+    res.json(await deleteCircle(req.user.id, body, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.get(
+  '/social/inbox',
+  asyncHandler(async (req, res) => {
+    const query = socialInboxQuery.parse(req.query ?? {});
+    const { listInbox } = await import('../lib/mediWorld/social/service.js');
+    res.json(await listInbox(req.user.id, query, worldOptions(req)));
+  }),
+);
+
+mediWorldRouter.post(
+  '/social/inbox/:itemId/read',
+  socialLimiter,
+  asyncHandler(async (req, res) => {
+    const params = socialInboxParams.parse(req.params);
+    const { readInboxItem } = await import('../lib/mediWorld/social/service.js');
+    res.json(await readInboxItem(req.user.id, params.itemId, worldOptions(req)));
+  }),
+);
+

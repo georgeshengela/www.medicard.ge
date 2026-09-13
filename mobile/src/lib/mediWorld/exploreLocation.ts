@@ -1,3 +1,13 @@
+/**
+ * Location watchers — ownership and cleanup
+ *
+ * - Explore/Medi World map: `startExploreWatch` / `stopExploreWatch` in this file.
+ *   Started from Explore `useFocusEffect`; stopped on blur, unmount, background, and logout (owner change).
+ *   Area API calls are coalesced on coarse cell change, not every GPS sample.
+ * - Running: `mobile/src/lib/run/store.ts` owns its own `watchPositionAsync` for the chase-cam session.
+ * - Movement: the existing Movement screen owns the canonical session watcher. The map must not start a second timer/GPS engine.
+ * Do not run Explore + Running watches at once for the same product action; leaving a screen must stop its watcher.
+ */
 import * as Location from 'expo-location';
 import { AppState, type AppStateStatus } from 'react-native';
 import { ACCURACY_MAX_M, MOTORIZED_MPS, isValidLatitude, isValidLongitude } from '@/lib/mediWorld/exploreGeo';
@@ -188,7 +198,6 @@ export function startExploreWatch(
       onState?.('services_off');
       return;
     }
-    onState?.('locating');
     watch = await Location.watchPositionAsync(
       {
         accuracy: HIGH,

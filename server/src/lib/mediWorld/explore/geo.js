@@ -67,6 +67,18 @@ export function coarseAreaKey(latitude, longitude) {
   return `g${glat.toFixed(2)}_${glng.toFixed(2)}`;
 }
 
+export function parseCoarseAreaKey(key) {
+  const match = String(key || '').match(/^g(-?\d+\.\d+)_(-?\d+\.\d+)$/);
+  if (!match) return null;
+  return { latitude: Number(match[1]), longitude: Number(match[2]) };
+}
+
+export function coarseAreaCentroid(key) {
+  const origin = parseCoarseAreaKey(key);
+  if (!origin) return null;
+  return { latitude: origin.latitude + GRID / 2, longitude: origin.longitude + GRID / 2 };
+}
+
 export function isValidLatitude(value) {
   return Number.isFinite(value) && value >= -90 && value <= 90;
 }

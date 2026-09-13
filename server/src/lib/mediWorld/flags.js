@@ -99,3 +99,26 @@ export function gardenDisabledError() {
   error.code = 'GARDEN_DISABLED';
   return error;
 }
+
+/**
+ * Social is off in production unless MEDI_WORLD_SOCIAL_ENABLED=1.
+ * Unset: on in development/test (local disposable QA), off in production.
+ * Malformed values never enable Social.
+ */
+export function isMediWorldSocialEnabled({
+  nodeEnv = env.NODE_ENV,
+  flag = process.env.MEDI_WORLD_ENABLED,
+  socialFlag = process.env.MEDI_WORLD_SOCIAL_ENABLED,
+} = {}) {
+  if (!isMediWorldEnabled({ nodeEnv, flag })) return false;
+  const trimmed = socialFlag == null ? '' : String(socialFlag).trim();
+  if (!trimmed) return nodeEnv !== 'production';
+  return parseFlag(trimmed) === true;
+}
+
+export function socialDisabledError() {
+  const error = new Error('მოთხოვნილი მისამართი ვერ მოიძებნა.');
+  error.status = 404;
+  error.code = 'SOCIAL_DISABLED';
+  return error;
+}

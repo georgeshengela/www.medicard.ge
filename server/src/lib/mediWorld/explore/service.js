@@ -14,6 +14,7 @@ import {
   MOTORIZED_MPS,
   accuracyBand,
   categoryForPlaceWindow,
+  coarseAreaCentroid,
   coarseAreaKey,
   distanceBand,
   geodesicMeters,
@@ -24,8 +25,9 @@ import {
   spawnWindow,
 } from './geo.js';
 import { DEVELOPMENT_PLACES, SPARK_DEFINITIONS, assertFixturesAllowed, developmentPlaceRows } from './fixtures.js';
+import { ensureNearbyPresence, NEARBY_PRESENCE_SOURCE } from './nearbyPresence.js';
 import { logExploreSafe } from './privacy.js';
-import { consumeInaccurateArm, peekExploreQaFlags } from './qa.js';
+import { consumeInaccurateArm, peekExploreQaFlags, takeExpireSoon } from './qa.js';
 
 function dbOf(options = {}) {
   return options.db || defaultPrisma;
@@ -153,6 +155,7 @@ async function ensureSpawnsForPlaces(db, places, now) {
 
 function publicPlace(place, spawn, collected, locale = 'ka') {
   const fixture = place.source === 'development_fixture';
+  const presence = place.source === NEARBY_PRESENCE_SOURCE;
   return {
     id: place.id,
     name: locale === 'en' ? place.nameEn : place.nameKa,
@@ -166,6 +169,7 @@ function publicPlace(place, spawn, collected, locale = 'ka') {
     accessibilityNote: place.accessibility === 'unknown' ? null : place.accessibilityNote || null,
     safeHoursPolicy: place.safeHoursPolicy || null,
     developmentFixture: fixture,
+    presenceSpark: presence,
     spark: spawn
       ? {
           spawnId: spawn.id,
@@ -217,8 +221,43 @@ export async function getExploreArea(userId, coarseKey, options = {}) {
       where: { coarseAreaKey: coarseKey, status: 'approved', active: true },
       take: AREA_RESULT_LIMIT,
     });
-    const allowed = (places || []).filter((place) => isAllowedPlaceType(place.placeType));
+    const catalog = (places || []).filter(
+      (place) => place.source !== NEARBY_PRESENCE_SOURCE && isAllowedPlaceType(place.placeType),
+    );
+    let spawnLat = Number(options.latitude);
+    let spawnLng = Number(options.longitude);
+    if (isValidLatitude(spawnLat) && isValidLongitude(spawnLng)) {
+      if (coarseAreaKey(spawnLat, spawnLng) !== coarseKey) {
+        spawnLat = Number.NaN;
+        spawnLng = Number.NaN;
+      }
+    }
+    if (!isValidLatitude(spawnLat) || !isValidLongitude(spawnLng)) {
+      const centroid = coarseAreaCentroid(coarseKey);
+      if (centroid) {
+        spawnLat = centroid.latitude;
+        spawnLng = centroid.longitude;
+      }
+    }
+    let allowed = catalog;
+    if (!allowed.length && isValidLatitude(spawnLat) && isValidLongitude(spawnLng)) {
+      const nearby = await ensureNearbyPresence(db, spawnLat, spawnLng, now);
+      allowed = nearby.filter((place) => isAllowedPlaceType(place.placeType));
+    }
     const spawns = await ensureSpawnsForPlaces(db, allowed, now);
+    const soon = canLoadExploreFixtures(options.flags || {}) ? takeExpireSoon(userId, now) : null;
+    if (soon) {
+      const expiresAt = new Date(soon.expiresAt);
+      if (typeof db.careSparkSpawn.updateMany === 'function') {
+        await db.careSparkSpawn.updateMany({
+          where: { placeId: soon.placeId, status: 'active' },
+          data: { expiresAt },
+        });
+      }
+      for (const spawn of spawns) {
+        if (spawn.placeId === soon.placeId) spawn.expiresAt = expiresAt;
+      }
+    }
     const spawnByPlace = new Map(spawns.map((row) => [row.placeId, row]));
     const collected = await db.careSparkCollection.findMany({
       where: { userId, spawnId: { in: spawns.map((row) => row.id) }, verificationOutcome: 'SPARK_COLLECTED' },

@@ -302,6 +302,50 @@ describe('Explore service', () => {
     assert.equal(await db.worldPlace.count(), 0);
   });
 
+  it('spawns nearby presence sparks so empty cities can still play', async () => {
+    const db = createExploreFakeDb();
+    const here = { latitude: 41.7151, longitude: 44.8271 };
+    const cell = coarseAreaKey(here.latitude, here.longitude);
+    const area = await getExploreArea(USER, cell, {
+      ...opts(db, { nodeEnv: 'production', flag: '1', exploreFlag: '1' }),
+      latitude: here.latitude,
+      longitude: here.longitude,
+    });
+    assert.ok(area.places.length >= 4);
+    assert.equal(area.places.every((place) => place.presenceSpark), true);
+    assert.equal(area.places.every((place) => place.developmentFixture), false);
+    assert.equal(area.places.some((place) => /ბაღი|პარკი|მოედანი|Googleplex/i.test(place.nameKa)), false);
+    const closest = area.places
+      .map((place) => ({
+        place,
+        meters: geodesicMeters(here, { latitude: place.publicLat, longitude: place.publicLng }),
+      }))
+      .sort((a, b) => a.meters - b.meters)[0];
+    assert.ok(closest.meters < COLLECTION_RADIUS_M);
+    const collected = await collectSpark(
+      USER,
+      closest.place.spark.spawnId,
+      sample({
+        latitude: here.latitude,
+        longitude: here.longitude,
+        idempotencyKey: 'nearby-tbilisi',
+      }),
+      opts(db, { nodeEnv: 'production', flag: '1', exploreFlag: '1' }),
+    );
+    assert.equal(collected.outcome, 'SPARK_COLLECTED');
+  });
+
+  it('keeps catalog places when a cell already has approved destinations', async () => {
+    const db = createExploreFakeDb();
+    const area = await getExploreArea(USER, AREA, {
+      ...opts(db),
+      latitude: 37.422,
+      longitude: -122.084,
+    });
+    assert.equal(area.places.some((place) => place.id === 'place.qa.garden.alpha'), true);
+    assert.equal(area.places.every((place) => place.presenceSpark), false);
+  });
+
   it('hides inactive places and keeps accessibility unknown without a verified note', async () => {
     const db = createExploreFakeDb();
     const area = await getExploreArea(USER, AREA, opts(db));
@@ -509,5 +553,31 @@ describe('Explore QA scenarios', () => {
     const cfg = await getExploreConfig(USER, opts(db));
     assert.equal(cfg.mapUnavailable, true);
     assert.equal(cfg.discoveryCount, 5);
+  });
+
+  it('expire_soon shortens the next area expiresAt until that timestamp, and is forbidden in production', async () => {
+    resetExploreQaState();
+    const db = createExploreFakeDb();
+    await assert.rejects(
+      () => applyExploreQaScenario(USER, 'expire_soon', { db, flags: { nodeEnv: 'production' }, inMs: 15000 }),
+      (error) => error.code === 'EXPLORE_QA_FORBIDDEN',
+    );
+    await getExploreArea(USER, AREA, opts(db));
+    const armed = await applyExploreQaScenario(USER, 'expire_soon', {
+      ...opts(db),
+      placeId: 'place.qa.garden.alpha',
+      inMs: 15000,
+    });
+    assert.equal(armed.ok, true);
+    assert.equal(armed.fixture, true);
+    const area = await getExploreArea(USER, AREA, opts(db));
+    const garden = area.places.find((row) => row.id === 'place.qa.garden.alpha');
+    assert.equal(Date.parse(garden.spark.expiresAt), NOW.getTime() + 15_000);
+    const still = await getExploreArea(USER, AREA, opts(db));
+    const stillGarden = still.places.find((row) => row.id === 'place.qa.garden.alpha');
+    assert.equal(Date.parse(stillGarden.spark.expiresAt), NOW.getTime() + 15_000);
+    const later = await getExploreArea(USER, AREA, opts(db, { now: new Date(NOW.getTime() + 16_000) }));
+    const laterGarden = later.places.find((row) => row.id === 'place.qa.garden.alpha');
+    assert.ok(Date.parse(laterGarden.spark.expiresAt) > NOW.getTime() + 60_000);
   });
 });

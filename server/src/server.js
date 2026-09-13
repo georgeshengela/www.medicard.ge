@@ -10,6 +10,13 @@ import rateLimit from 'express-rate-limit';
 
 import { env, hasVisionProvider } from './config/env.js';
 import { prisma } from './lib/prisma.js';
+import {
+  apiTrafficKey,
+  attachRateLimitHandler,
+  authWriteKey,
+  isAuthWriteRequest,
+  RATE_LIMIT_VALIDATE,
+} from './lib/rateLimitKey.js';
 import { denyLegacyPublicUploads } from './lib/privateUploads.js';
 import { shutdownOcr } from './lib/ocr.js';
 import { errorHandler, notFound } from './middleware/error.js';
@@ -129,7 +136,24 @@ app.use(
     limit: 120,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    message: { error: 'ძალიან ბევრი მოთხოვნა. გთხოვთ, დაელოდოთ ერთ წუთს.' },
+    validate: RATE_LIMIT_VALIDATE,
+    keyGenerator: apiTrafficKey,
+    skip: isAuthWriteRequest,
+    handler: attachRateLimitHandler('api-global'),
+  }),
+);
+
+app.use(
+  '/api/auth',
+  rateLimit({
+    windowMs: 60_000,
+    limit: 20,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    validate: RATE_LIMIT_VALIDATE,
+    keyGenerator: authWriteKey,
+    skip: (req) => !isAuthWriteRequest(req),
+    handler: attachRateLimitHandler('auth-write'),
   }),
 );
 
@@ -140,7 +164,8 @@ app.use(
     limit: 20,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    message: { error: 'ძალიან ბევრი მოთხოვნა. გთხოვთ, დაელოდოთ ერთ წუთს.' },
+    validate: RATE_LIMIT_VALIDATE,
+    handler: attachRateLimitHandler('cycle-share'),
   }),
   (req, res, next) => {
     applyPrivateCache(res);

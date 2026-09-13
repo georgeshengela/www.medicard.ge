@@ -11,6 +11,7 @@ let serverEnabled: boolean | null = null;
 let exploreServerEnabled: boolean | null = null;
 let movementServerEnabled: boolean | null = null;
 let gardenServerEnabled: boolean | null = null;
+let socialServerEnabled: boolean | null = null;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -42,6 +43,23 @@ export function rememberMediWorldGardenServerEnabled(value?: boolean | null) {
   if (typeof value !== 'boolean') return;
   if (gardenServerEnabled === value) return;
   gardenServerEnabled = value;
+  emit();
+}
+
+export function rememberMediWorldSocialServerEnabled(value?: boolean | null) {
+  if (typeof value !== 'boolean') return;
+  if (socialServerEnabled === value) return;
+  socialServerEnabled = value;
+  emit();
+}
+
+/** Fail-closed until the next /api/app/status. Call on logout so a prior host cannot leak Social. */
+export function resetMediWorldServerFlags() {
+  serverEnabled = null;
+  exploreServerEnabled = null;
+  movementServerEnabled = null;
+  gardenServerEnabled = null;
+  socialServerEnabled = null;
   emit();
 }
 
@@ -123,4 +141,21 @@ export function isMediWorldGardenAvailable(): boolean {
 
 export function useMediWorldGardenAvailable(): boolean {
   return useSyncExternalStore(subscribeMediWorldAvailability, isMediWorldGardenAvailable, isMediWorldGardenAvailable);
+}
+
+export function isMediWorldSocialClientEnabled(): boolean {
+  const fromEnv = String(process.env.EXPO_PUBLIC_MEDI_WORLD_SOCIAL || '').trim().toLowerCase();
+  if (fromEnv === '1' || fromEnv === 'true' || fromEnv === 'on') return true;
+  if (fromEnv === '0' || fromEnv === 'false' || fromEnv === 'off') return false;
+  return isMediWorldClientEnabled();
+}
+
+export function isMediWorldSocialAvailable(): boolean {
+  if (!isMediWorldAvailable()) return false;
+  if (!isMediWorldSocialClientEnabled()) return false;
+  return socialServerEnabled === true;
+}
+
+export function useMediWorldSocialAvailable(): boolean {
+  return useSyncExternalStore(subscribeMediWorldAvailability, isMediWorldSocialAvailable, isMediWorldSocialAvailable);
 }

@@ -1,5 +1,9 @@
 import { getPreference, setPreference } from '@/lib/storage';
 import type { ExploreAreaResponse } from '@/lib/mediWorld/types';
+import {
+  fromPersistedExploreArea,
+  toPersistedExploreArea,
+} from '@/lib/mediWorld/exploreAreaCache.js';
 
 const INTRO_KEY = 'medicard.explore.introSeen';
 const PERM_KEY = 'medicard.explore.permExplained';
@@ -7,6 +11,15 @@ const VIEW_KEY = 'medicard.explore.viewPref';
 const CACHE_KEY = 'medicard.explore.areaCache';
 
 export type ExploreViewPref = 'map' | 'list';
+
+export type ExploreAreaCacheRecord = {
+  ownerId: string;
+  fetchedAt: number;
+  enabled: boolean;
+  rulesetId: string;
+  coarseAreaKey: string;
+  places: ExploreAreaResponse['places'];
+};
 
 export async function getExploreIntroSeen() {
   return (await getPreference(INTRO_KEY)) === '1';
@@ -36,49 +49,41 @@ export async function setExploreViewPref(view: ExploreViewPref) {
   await setPreference(VIEW_KEY, view);
 }
 
-export async function readExploreAreaCache(): Promise<ExploreAreaResponse | null> {
+export async function readExploreAreaCacheRecord(): Promise<ExploreAreaCacheRecord | null> {
   const raw = await getPreference(CACHE_KEY);
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as ExploreAreaResponse;
-    if (!parsed || !Array.isArray(parsed.places)) return null;
-    return { ...parsed, stale: true };
+    return fromPersistedExploreArea(JSON.parse(raw));
   } catch {
     return null;
   }
 }
 
-export async function writeExploreAreaCache(area: ExploreAreaResponse) {
-  const safe = {
-    enabled: area.enabled,
-    rulesetId: area.rulesetId,
-    coarseAreaKey: area.coarseAreaKey,
+/** @deprecated Use readExploreAreaCacheRecord + resolveExploreAreaCacheUse. Legacy unscoped payloads are ignored. */
+export async function readExploreAreaCache(): Promise<ExploreAreaResponse | null> {
+  const record = await readExploreAreaCacheRecord();
+  if (!record) return null;
+  return {
+    enabled: record.enabled,
+    rulesetId: record.rulesetId,
+    coarseAreaKey: record.coarseAreaKey,
     stale: true,
-    places: area.places.map((place) => ({
-      id: place.id,
-      name: place.name,
-      nameKa: place.nameKa,
-      nameEn: place.nameEn,
-      placeType: place.placeType,
-      publicLat: place.publicLat,
-      publicLng: place.publicLng,
-      coarseAreaKey: place.coarseAreaKey,
-      accessibility: place.accessibility,
-      accessibilityNote: place.accessibilityNote,
-      safeHoursPolicy: place.safeHoursPolicy,
-      developmentFixture: place.developmentFixture,
-      spark: place.spark
-        ? {
-            spawnId: place.spark.spawnId,
-            category: place.spark.category,
-            locKey: place.spark.locKey,
-            expiresAt: place.spark.expiresAt,
-            collected: place.spark.collected,
-          }
-        : null,
-    })),
+    snapshotOnly: true,
+    places: record.places,
   };
-  await setPreference(CACHE_KEY, JSON.stringify(safe));
+}
+
+export async function writeExploreAreaCache(
+  area: ExploreAreaResponse,
+  meta: { ownerId: string; fetchedAt?: number },
+) {
+  const record = toPersistedExploreArea({
+    ownerId: meta.ownerId,
+    fetchedAt: meta.fetchedAt ?? Date.now(),
+    area,
+  });
+  if (!record) return;
+  await setPreference(CACHE_KEY, JSON.stringify(record));
 }
 
 export async function clearExploreAreaCache() {

@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
+import { publicApiErrorMessage } from './rateLimitCopy.js';
 import { getToken } from './storage';
 
 /**
@@ -1557,11 +1558,18 @@ function headerLookup(headers: Record<string, string> | undefined, name: string)
 function parseJsonBody<T>(status: number, text: string, retryRaw?: string | null): T {
   const payload = text ? safeParse(text) : {};
   if (status < 200 || status >= 300) {
-    const serverError =
-      (typeof payload?.error === 'string' && payload.error) ||
-      (typeof payload?.detail === 'string' && payload.detail) ||
-      `${ka.common.error} (${status})`;
-    throw new ApiError(serverError, status, payload as Record<string, unknown>, retryAfterSeconds(retryRaw));
+    const serverError = publicApiErrorMessage(
+      status,
+      payload as Record<string, unknown>,
+      retryRaw,
+      `${ka.common.error} (${status})`,
+    );
+    const wait =
+      retryAfterSeconds(retryRaw) ??
+      (typeof (payload as { retryAfterSeconds?: number })?.retryAfterSeconds === 'number'
+        ? Math.floor((payload as { retryAfterSeconds: number }).retryAfterSeconds)
+        : undefined);
+    throw new ApiError(serverError, status, payload as Record<string, unknown>, wait);
   }
   return payload as T;
 }
@@ -1637,6 +1645,7 @@ export const api = {
           mediWorldExploreEnabled?: boolean;
           mediWorldMovementEnabled?: boolean;
           mediWorldGardenEnabled?: boolean;
+          mediWorldSocialEnabled?: boolean;
         };
         client: { version: string; needsUpdate: boolean; blockedByForceUpdate: boolean };
         packages?: UserPackage[];
@@ -2551,9 +2560,13 @@ export const api = {
       }),
     exploreConfig: () =>
       request<import('@/lib/mediWorld/types').ExploreConfigResponse>('/api/medi-world/explore/config'),
-    exploreArea: (coarseKey: string, locale?: 'ka' | 'en') => {
+    exploreArea: (coarseKey: string, locale?: 'ka' | 'en', coords?: { latitude: number; longitude: number }) => {
       const qs = new URLSearchParams();
       if (locale) qs.set('locale', locale);
+      if (coords && Number.isFinite(coords.latitude) && Number.isFinite(coords.longitude)) {
+        qs.set('lat', String(coords.latitude));
+        qs.set('lng', String(coords.longitude));
+      }
       const q = qs.toString();
       return request<import('@/lib/mediWorld/types').ExploreAreaResponse>(
         `/api/medi-world/explore/area/${encodeURIComponent(coarseKey)}${q ? `?${q}` : ''}`,
@@ -2675,6 +2688,121 @@ export const api = {
       request<{ ok: boolean; fixture: boolean; stage: string; nurtureDays: number }>(
         '/api/medi-world/garden/qa/stage',
         { method: 'POST', body: { plantId, ...body } },
+      ),
+    socialMe: () => request<import('@/lib/mediWorld/types').SocialMe>('/api/medi-world/social/me'),
+    socialUpdateMe: (body: { displayName?: string; bio?: string; socialEnabled?: boolean }) =>
+      request<import('@/lib/mediWorld/types').SocialMe>('/api/medi-world/social/me', { method: 'PUT', body }),
+    socialPrivacy: (body: {
+      showWorldLevel?: boolean;
+      showBondLevel?: boolean;
+      showGardenPreview?: boolean;
+      wavesMuted?: boolean;
+    }) => request<import('@/lib/mediWorld/types').SocialMe>('/api/medi-world/social/privacy', { method: 'PUT', body }),
+    socialEligibility: () =>
+      request<import('@/lib/mediWorld/types').SocialMe>('/api/medi-world/social/eligibility', {
+        method: 'POST',
+        body: { confirmAdult: true },
+      }),
+    socialRotateCode: () =>
+      request<import('@/lib/mediWorld/types').SocialMe>('/api/medi-world/social/friend-code/rotate', { method: 'POST', body: {} }),
+    socialPreview: () =>
+      request<import('@/lib/mediWorld/types').SocialFriendProjection>('/api/medi-world/social/me/preview'),
+    socialFriends: () =>
+      request<{ socialEnabled: boolean; items: import('@/lib/mediWorld/types').SocialFriendItem[] }>(
+        '/api/medi-world/social/friends',
+      ),
+    socialFriendRequest: (friendCode: string, idempotencyKey: string) =>
+      request<{ relationshipId: string; state: string }>('/api/medi-world/social/friends/request', {
+        method: 'POST',
+        body: { friendCode, idempotencyKey },
+      }),
+    socialFriendAccept: (relationshipId: string) =>
+      request<{ relationshipId: string; state: string }>(
+        `/api/medi-world/social/friends/${encodeURIComponent(relationshipId)}/accept`,
+        { method: 'POST', body: {} },
+      ),
+    socialFriendDecline: (relationshipId: string) =>
+      request<{ relationshipId: string; state: string }>(
+        `/api/medi-world/social/friends/${encodeURIComponent(relationshipId)}/decline`,
+        { method: 'POST', body: {} },
+      ),
+    socialFriendCancel: (relationshipId: string) =>
+      request<{ relationshipId: string; state: string }>(
+        `/api/medi-world/social/friends/${encodeURIComponent(relationshipId)}/cancel`,
+        { method: 'POST', body: {} },
+      ),
+    socialFriendRemove: (relationshipId: string) =>
+      request<{ relationshipId: string; state: string }>(
+        `/api/medi-world/social/friends/${encodeURIComponent(relationshipId)}`,
+        { method: 'DELETE' },
+      ),
+    socialFriendProfile: (relationshipId: string) =>
+      request<import('@/lib/mediWorld/types').SocialFriendProjection>(
+        `/api/medi-world/social/friends/${encodeURIComponent(relationshipId)}/profile`,
+      ),
+    socialBlock: (publicId: string) =>
+      request<{ blockId: string }>('/api/medi-world/social/block', { method: 'POST', body: { publicId } }),
+    socialUnblock: (blockId: string) =>
+      request<{ ok: boolean }>(`/api/medi-world/social/block/${encodeURIComponent(blockId)}`, { method: 'DELETE' }),
+    socialBlocks: () =>
+      request<{ items: Array<{ blockId: string; publicId: string | null; displayName: string }> }>(
+        '/api/medi-world/social/blocks',
+      ),
+    socialReport: (body: { targetPublicId: string; category: string; description?: string }) =>
+      request<{ reportId: string; offerBlock: boolean }>('/api/medi-world/social/reports', { method: 'POST', body }),
+    socialWave: (publicId: string, waveType: string, idempotencyKey: string) =>
+      request<{ waveId: string; waveType: string; when: string }>('/api/medi-world/social/waves', {
+        method: 'POST',
+        body: { publicId, waveType, idempotencyKey },
+      }),
+    socialWaves: () =>
+      request<{ items: Array<{ waveId: string; waveType: string; when: string; publicId: string | null; displayName: string }>; types: string[] }>(
+        '/api/medi-world/social/waves',
+      ),
+    socialCircleCreate: (name?: string) =>
+      request<{ circle: import('@/lib/mediWorld/types').SocialCircle }>('/api/medi-world/social/circles', {
+        method: 'POST',
+        body: { name },
+      }),
+    socialCircleCurrent: () =>
+      request<{ circle: import('@/lib/mediWorld/types').SocialCircle | null }>('/api/medi-world/social/circles/current'),
+    socialCircleInvite: () =>
+      request<{ inviteCode: string; expiresInHours: number }>('/api/medi-world/social/circles/invite', {
+        method: 'POST',
+        body: {},
+      }),
+    socialCircleJoin: (inviteCode: string) =>
+      request<{ circle: import('@/lib/mediWorld/types').SocialCircle }>('/api/medi-world/social/circles/join', {
+        method: 'POST',
+        body: { inviteCode, confirm: true },
+      }),
+    socialCircleLeave: () =>
+      request<{ ok: boolean }>('/api/medi-world/social/circles/leave', { method: 'POST', body: {} }),
+    socialCircleRemove: (publicId: string) =>
+      request<{ circle: import('@/lib/mediWorld/types').SocialCircle }>('/api/medi-world/social/circles/remove', {
+        method: 'POST',
+        body: { publicId },
+      }),
+    socialCircleTransfer: (publicId: string) =>
+      request<{ circle: import('@/lib/mediWorld/types').SocialCircle }>('/api/medi-world/social/circles/transfer', {
+        method: 'POST',
+        body: { confirm: true, publicId },
+      }),
+    socialCircleDelete: () =>
+      request<{ ok: boolean }>('/api/medi-world/social/circles/current', { method: 'DELETE', body: { confirm: true } }),
+    socialInbox: (query?: { take?: number; cursor?: string | null }) => {
+      const qs = new URLSearchParams();
+      if (query?.take) qs.set('take', String(query.take));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const q = qs.toString();
+      return request<{ items: import('@/lib/mediWorld/types').SocialInboxItem[]; nextCursor: string | null }>(
+        `/api/medi-world/social/inbox${q ? `?${q}` : ''}`,
+      );
+    },
+    socialInboxRead: (itemId: string) =>
+      request<{ itemId: string; read: boolean }>(
+        `/api/medi-world/social/inbox/${encodeURIComponent(itemId)}/read`,
+        { method: 'POST', body: {} },
       ),
   },
 };

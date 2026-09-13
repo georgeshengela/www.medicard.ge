@@ -70,6 +70,8 @@ services:
         value: "1"
       - key: MEDI_WORLD_GARDEN_ENABLED
         value: "1"
+      - key: MEDI_WORLD_SOCIAL_ENABLED
+        value: "0"
 
   - type: cron
     name: medicard-pharmacy-sync

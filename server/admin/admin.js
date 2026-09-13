@@ -128,8 +128,20 @@ async function api(path, options = {}) {
   let data = {};
   try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text }; }
   if (!res.ok) {
+    const retryRaw = res.headers.get('Retry-After');
+    const retryAfterSeconds = Number(
+      (Number.isFinite(Number(retryRaw)) && Number(retryRaw) >= 0 ? retryRaw : null) ??
+        data.retryAfterSeconds ??
+        60,
+    );
     const err = new Error(data.error || 'შეცდომა');
     err.status = res.status;
+    if (res.status === 429) {
+      err.retryAfterSeconds = Math.max(1, Math.floor(retryAfterSeconds) || 60);
+      err.code = data.code || 'RATE_LIMITED';
+      adminRateLimitedUntil = Date.now() + err.retryAfterSeconds * 1000;
+      err.message = `ძალიან ბევრი მოთხოვნა. გთხოვთ, დაელოდოთ ${err.retryAfterSeconds} წამს.`;
+    }
     if ((res.status === 401 || res.status === 403) && path !== '/login' && state.token) {
       logout('სესია ამოიწურა. თავიდან შეხვიდე.');
     }
@@ -138,6 +150,9 @@ async function api(path, options = {}) {
   return data;
 }
 
+let adminRateLimitedUntil = 0;
+let lastAdminRateToastAt = 0;
+
 async function apiRetry(path, tries = 3) {
   let last;
   for (let i = 0; i < tries; i += 1) {
@@ -145,7 +160,7 @@ async function apiRetry(path, tries = 3) {
       return await api(path);
     } catch (err) {
       last = err;
-      if (err.status === 401 || err.status === 403) throw err;
+      if (err.status === 401 || err.status === 403 || err.status === 429) throw err;
       await new Promise((resolve) => setTimeout(resolve, 350 * (i + 1)));
     }
   }
@@ -153,6 +168,10 @@ async function apiRetry(path, tries = 3) {
 }
 
 function toast(message, kind = 'ok', opts) {
+  if (kind === 'bad' && /ძალიან ბევრი მოთხოვნა/.test(String(message || ''))) {
+    if (Date.now() - lastAdminRateToastAt < 8000) return;
+    lastAdminRateToastAt = Date.now();
+  }
   if (window.AdminV3?.toast) return window.AdminV3.toast(message, kind, opts);
   const el = document.createElement('div');
   el.className = `toast ${kind}`;
@@ -1036,8 +1055,11 @@ function startAdminLive() {
   if (adminLiveTimer) return;
   adminLiveTimer = setInterval(() => {
     if (document.hidden || adminIsTyping() || !state.token) return;
+    if (Date.now() < adminRateLimitedUntil) return;
     if (Date.now() - adminLastScrollAt < 4000) return;
-    refreshAdminLive().catch(() => {});
+    refreshAdminLive().catch((err) => {
+      if (err?.status === 429) return;
+    });
   }, ADMIN_LIVE_MS);
 }
 

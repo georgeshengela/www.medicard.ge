@@ -256,6 +256,7 @@ export type ExplorePlace = {
   accessibilityNote: string | null;
   safeHoursPolicy: string | null;
   developmentFixture: boolean;
+  presenceSpark?: boolean;
   spark: ExploreSpark | null;
 };
 
@@ -277,6 +278,7 @@ export type ExploreAreaResponse = {
   rulesetId: string;
   coarseAreaKey: string;
   stale?: boolean;
+  snapshotOnly?: boolean;
   places: ExplorePlace[];
 };
 
@@ -454,4 +456,65 @@ export type GardenHistoryResponse = {
     createdAt: string;
   }>;
 };
+
+export type SocialPrivacy = {
+  version: number;
+  profileVisibility: 'friends_only';
+  showWorldLevel: boolean;
+  showBondLevel: boolean;
+  showGardenPreview: boolean;
+  wavesMuted: boolean;
+};
+
+export type SocialMe = {
+  rulesetId: string;
+  publicId: string;
+  displayName: string;
+  bio: string;
+  friendCode: string;
+  socialEnabled: boolean;
+  eligibility: 'unknown' | 'adult_confirmed';
+  eligibilityPolicyVersion: string | null;
+  privacy: SocialPrivacy;
+};
+
+export type SocialFriendProjection = {
+  publicId: string;
+  displayName: string;
+  bio: string;
+  mediPresentationKey: string;
+  companionStage: string;
+  cosmetics: { aura: string | null; trail: string | null; charm: string | null };
+  worldLevel: number | null;
+  bondLevel: number | null;
+  garden: {
+    atmosphereKey: string;
+    plots: Array<{ plotIndex: number; presentationKey: string; stage: string }>;
+  } | null;
+};
+
+export type SocialFriendItem = {
+  relationshipId: string;
+  state: string;
+  direction: 'incoming' | 'outgoing';
+  publicId: string | null;
+  displayName: string;
+};
+
+export type SocialInboxItem = {
+  itemId: string;
+  kind: string;
+  payload: Record<string, unknown>;
+  read: boolean;
+  when: string;
+};
+
+export type SocialCircle = {
+  circleId: string;
+  name: string;
+  memberCount: number;
+  memberCap: number;
+  members: Array<{ publicId: string | null; displayName: string; role: string; viewer: boolean }>;
+};
+
 

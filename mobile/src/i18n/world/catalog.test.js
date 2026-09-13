@@ -15,7 +15,9 @@ describe('Medi World i18n parity', () => {
   it('returns Georgian and English product copy', () => {
     assert.match(worldCopy('ka').productLine, /ქალაქ/);
     assert.match(worldCopy('en').productLine, /city back to life/i);
-    assert.equal(worldCopy('ka').title, 'Medi World');
+    assert.equal(worldCopy('ka').title, 'მედის სამყარო');
+    assert.match(worldCopy('ka').hubSupport, /სამყარო/);
+    assert.match(worldCopy('en').hubSupport, /world/i);
     assert.equal(worldCopy('en').awakening.toLowerCase().includes('awaken'), true);
   });
 
