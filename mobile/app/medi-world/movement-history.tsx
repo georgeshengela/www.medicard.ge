@@ -1,21 +1,22 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { WorldHeader, useWorldLocale } from '@/components/world/WorldChrome';
 import { movementCopy } from '@/i18n/world/movement.js';
 import { mediWorldApi } from '@/lib/mediWorld/api';
 import { useMediWorldMovementAvailable } from '@/lib/mediWorld/enabled';
 import type { MovementSession } from '@/lib/mediWorld/types';
 import { QUEST } from '@/theme/questTokens';
 import { useThemeColors } from '@/theme/colors';
+import { useWorldStitch } from '@/theme/worldStitch';
 
 export default function MovementHistoryScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const t = useWorldStitch();
   const enabled = useMediWorldMovementAvailable();
-  const [locale, setLocale] = useState<'ka' | 'en'>('ka');
+  const { locale } = useWorldLocale();
   const copy = useMemo(() => movementCopy(locale), [locale]);
   const [items, setItems] = useState<MovementSession[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,15 +41,12 @@ export default function MovementHistoryScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+    <View style={{ flex: 1, backgroundColor: t.surface }}>
+      <WorldHeader title={copy.history} backLabel={copy.back} />
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load()} tintColor={colors.primary200} />}
       >
-        <Pressable accessibilityRole="button" accessibilityLabel={copy.back} onPress={() => router.back()} className="active:opacity-75" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <Text accessibilityRole="header" maxFontSizeMultiplier={1.3} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, color: colors.text100, marginTop: 16 }}>{copy.history}</Text>
         {items.map((row) => (
           <View key={row.id} style={{ marginTop: 12, borderRadius: QUEST.radius, borderWidth: 1, borderColor: colors.bg300, backgroundColor: colors.surface, padding: QUEST.pad }}>
             <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: colors.text100 }}>{row.movementMode} · {row.status}</Text>

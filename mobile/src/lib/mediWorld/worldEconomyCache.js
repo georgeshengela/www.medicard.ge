@@ -11,9 +11,13 @@ let profileSnapshot = null;
 let companionSnapshot = null;
 let companionEpoch = 0;
 let gardenSnapshot = null;
+let socialSnapshot = null;
+let socialOwnerId = null;
+const friendProjections = new Map();
 const profileListeners = new Set();
 const companionListeners = new Set();
 const gardenListeners = new Set();
+const socialListeners = new Set();
 
 function emit(listeners) {
   listeners.forEach((listener) => listener());
@@ -31,9 +35,13 @@ function resetWorldEconomyCache() {
   companionSnapshot = null;
   companionEpoch = 0;
   gardenSnapshot = null;
+  socialSnapshot = null;
+  socialOwnerId = null;
+  friendProjections.clear();
   emit(profileListeners);
   emit(companionListeners);
   emit(gardenListeners);
+  emit(socialListeners);
 }
 
 function subscribeWorldProfile(listener) {
@@ -124,6 +132,50 @@ function rememberGarden(payload) {
   return true;
 }
 
+function subscribeSocial(listener) {
+  return subscribe(socialListeners)(listener);
+}
+
+function getSocialSnapshot(userId) {
+  if (!socialSnapshot) return null;
+  if (userId && socialOwnerId && socialOwnerId !== userId) return null;
+  return socialSnapshot;
+}
+
+function rememberSocial(payload, ownerUserId) {
+  if (!payload || typeof payload !== 'object') return false;
+  socialSnapshot = payload;
+  socialOwnerId = ownerUserId || null;
+  emit(socialListeners);
+  return true;
+}
+
+function rememberFriendProjection(ownerUserId, relationshipId, payload) {
+  if (!ownerUserId || !relationshipId || !payload || typeof payload !== 'object') return false;
+  friendProjections.set(`${ownerUserId}:${relationshipId}`, payload);
+  return true;
+}
+
+function getFriendProjection(ownerUserId, relationshipId) {
+  if (!ownerUserId || !relationshipId) return null;
+  return friendProjections.get(`${ownerUserId}:${relationshipId}`) || null;
+}
+
+function revokeFriendProjection(ownerUserId, relationshipId) {
+  if (!ownerUserId) return false;
+  if (relationshipId) {
+    return friendProjections.delete(`${ownerUserId}:${relationshipId}`);
+  }
+  let removed = false;
+  for (const key of [...friendProjections.keys()]) {
+    if (key.startsWith(`${ownerUserId}:`)) {
+      friendProjections.delete(key);
+      removed = true;
+    }
+  }
+  return removed;
+}
+
 module.exports = {
   resetWorldEconomyCache,
   subscribeWorldProfile,
@@ -139,4 +191,10 @@ module.exports = {
   subscribeGarden,
   getGardenSnapshot,
   rememberGarden,
+  subscribeSocial,
+  getSocialSnapshot,
+  rememberSocial,
+  rememberFriendProjection,
+  getFriendProjection,
+  revokeFriendProjection,
 };

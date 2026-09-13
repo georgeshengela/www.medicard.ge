@@ -13,7 +13,7 @@ describe('Movement i18n parity', () => {
   });
 
   it('keeps Georgian and English copy non-medical and non-shameful', () => {
-    assert.match(movementCopy('ka').introTitle, /Medi/);
+    assert.match(movementCopy('ka').introTitle, /მედი/);
     assert.match(movementCopy('en').safetyNotPrescription, /not prescribing exercise/i);
     assert.equal(movementCopy('en').mediNone.toLowerCase().includes('fail'), true);
     assert.equal(movementCopy('en').noShame.toLowerCase().includes('fail'), false);

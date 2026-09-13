@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { WorldHeader, useWorldLocale } from '@/components/world/WorldChrome';
 import { exploreCopy } from '@/i18n/world/explore.js';
 import { clearExploreAreaCache, clearExploreIntroSeen, getExploreViewPref, setExploreViewPref } from '@/lib/mediWorld/exploreCache';
 import { getExplorePermission, type ExplorePermission } from '@/lib/mediWorld/exploreLocation';
@@ -10,15 +10,16 @@ import { useMediWorldExploreAvailable } from '@/lib/mediWorld/enabled';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { QUEST } from '@/theme/questTokens';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { useWorldStitch } from '@/theme/worldStitch';
 
 export default function ExploreSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
-  const dark = useIsDark();
+  const t = useWorldStitch();
   const reduce = usePrefersReducedMotion();
   const enabled = useMediWorldExploreAvailable();
-  const [locale, setLocale] = useState<'ka' | 'en'>('ka');
+  const { locale } = useWorldLocale();
   const copy = useMemo(() => exploreCopy(locale), [locale]);
   const [permission, setPermission] = useState<ExplorePermission>('undetermined');
   const [view, setView] = useState<'map' | 'list'>('map');
@@ -32,13 +33,9 @@ export default function ExploreSettingsScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={copy.back} onPress={() => router.back()} className="active:opacity-75" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, color: colors.text100, marginTop: 12 }}>{copy.settings}</Text>
-
+    <View style={{ flex: 1, backgroundColor: t.surface }}>
+      <WorldHeader title={copy.settings} backLabel={copy.back} kaLabel={copy.langKa} enLabel={copy.langEn} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}>
         <Card title={copy.permStatus} body={permission === 'granted' || permission === 'granted_approximate' ? copy.granted : copy.notGranted} />
         <Card title={copy.preciseStatus} body={permission === 'granted' ? copy.precise : permission === 'granted_approximate' ? copy.approximate : copy.notGranted} />
         <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: colors.text200, marginTop: 8 }}>{copy.locationExplain}</Text>
@@ -63,7 +60,7 @@ export default function ExploreSettingsScreen() {
           accessibilityRole="button"
           onPress={() => {
             void clearExploreIntroSeen();
-            router.replace('/medi-world/explore' as never);
+            router.replace('/medi-world/explore?safety=1' as never);
           }}
           className="active:opacity-75"
           style={{ marginTop: 20, minHeight: 48, justifyContent: 'center' }}

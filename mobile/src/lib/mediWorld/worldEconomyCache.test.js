@@ -139,3 +139,52 @@ describe('World economy cache after garden planting', () => {
     assert.equal(getWorldProfileSnapshot().profile.careEnergy.movement, 0);
   });
 });
+
+describe('World economy cache social snapshot', () => {
+  beforeEach(() => resetWorldEconomyCache());
+
+  it('stores a social me payload without inventing friends', () => {
+    const { rememberSocial, getSocialSnapshot } = require('./worldEconomyCache.js');
+    assert.equal(rememberSocial(null), false);
+    assert.equal(rememberSocial({ publicId: 'p1', displayName: 'Ava', socialEnabled: true }, 'user-a'), true);
+    assert.equal(getSocialSnapshot().displayName, 'Ava');
+    assert.equal(getSocialSnapshot('user-a').displayName, 'Ava');
+    assert.equal(getSocialSnapshot().items, undefined);
+  });
+
+  it('isolates Social memory across A logout B offline then B logout A', () => {
+    const {
+      rememberSocial,
+      getSocialSnapshot,
+      rememberFriendProjection,
+      getFriendProjection,
+      revokeFriendProjection,
+      resetWorldEconomyCache,
+    } = require('./worldEconomyCache.js');
+    rememberSocial({ publicId: 'p-a', displayName: 'Ava', friendCode: 'AAAAA-BBBBB' }, 'user-a');
+    rememberFriendProjection('user-a', 'rel-1', { displayName: 'Bea', garden: { plots: [{ presentationKey: 'pulse_fern' }] } });
+    resetWorldEconomyCache();
+    assert.equal(getSocialSnapshot('user-b'), null);
+    assert.equal(getFriendProjection('user-a', 'rel-1'), null);
+    rememberSocial({ publicId: 'p-b', displayName: 'Bea' }, 'user-b');
+    rememberFriendProjection('user-b', 'rel-2', { displayName: 'Ava' });
+    assert.equal(getSocialSnapshot('user-a'), null);
+    assert.equal(getSocialSnapshot('user-b').displayName, 'Bea');
+    assert.equal(getFriendProjection('user-a', 'rel-1'), null);
+    resetWorldEconomyCache();
+    rememberSocial({ publicId: 'p-a', displayName: 'Ava' }, 'user-a');
+    assert.equal(getSocialSnapshot('user-b'), null);
+    assert.equal(getSocialSnapshot('user-a').displayName, 'Ava');
+    revokeFriendProjection('user-a');
+    assert.equal(getFriendProjection('user-a', 'rel-1'), null);
+  });
+
+  it('clears a blocked projection so it cannot be read until a later authorized remember', () => {
+    const { rememberFriendProjection, getFriendProjection, revokeFriendProjection } = require('./worldEconomyCache.js');
+    rememberFriendProjection('user-b', 'rel-open', { displayName: 'Ava', garden: { plots: [{ presentationKey: 'pulse_fern' }] } });
+    revokeFriendProjection('user-b', 'rel-open');
+    assert.equal(getFriendProjection('user-b', 'rel-open'), null);
+    rememberFriendProjection('user-b', 'rel-open', { displayName: 'Ava', garden: null });
+    assert.equal(getFriendProjection('user-b', 'rel-open').garden, null);
+  });
+});

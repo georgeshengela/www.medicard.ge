@@ -217,6 +217,25 @@ function modelApi(state, name, { uniques, idField = 'id', defaults }) {
       }
       return { count };
     },
+    async delete({ where } = {}) {
+      const current = findByUnique(where);
+      if (!current) {
+        const error = new Error('Record not found');
+        error.code = 'P2025';
+        throw error;
+      }
+      table().delete(current[idField]);
+      return clone(current);
+    },
+    async deleteMany({ where } = {}) {
+      let count = 0;
+      for (const row of [...table().values()]) {
+        if (!matchWhere(row, where)) continue;
+        table().delete(row[idField]);
+        count += 1;
+      }
+      return { count };
+    },
     async upsert({ where, create, update, include } = {}) {
       const existing = findByUnique(where);
       if (existing) return this.update({ where, data: update, include });
@@ -266,6 +285,16 @@ export function createQuestFakeDb(seed = {}) {
     careGardenNurtureEvent: new Map(),
     careGardenEvent: new Map(),
     careGardenMutation: new Map(),
+    socialProfile: new Map(),
+    socialFriendship: new Map(),
+    socialBlock: new Map(),
+    socialCareWave: new Map(),
+    socialCircle: new Map(),
+    socialCircleMember: new Map(),
+    socialCircleInvite: new Map(),
+    socialInboxItem: new Map(),
+    socialReport: new Map(),
+    socialMutation: new Map(),
     queryCount: 0,
     queryByModel: {},
   };
@@ -555,6 +584,71 @@ export function createQuestFakeDb(seed = {}) {
         plantId: null,
       }),
     }),
+    socialProfile: modelApi(state, 'socialProfile', {
+      idField: 'userId',
+      uniques: [
+        { name: 'userId', fields: ['userId'] },
+        { name: 'publicId', fields: ['publicId'] },
+        { name: 'friendCodeNormalized', fields: ['friendCodeNormalized'] },
+      ],
+      defaults: () => ({
+        displayName: '',
+        bio: '',
+        socialEnabled: false,
+        adultConfirmedAt: null,
+        eligibilityPolicyVersion: null,
+        participationDisabledAt: null,
+        privacyVersion: 1,
+        profileVisibility: 'friends_only',
+        showWorldLevel: false,
+        showBondLevel: false,
+        showGardenPreview: false,
+        wavesMuted: false,
+        mediPresentationKey: 'present.spark',
+      }),
+    }),
+    socialFriendship: modelApi(state, 'socialFriendship', {
+      uniques: [{ name: 'pairKey', fields: ['pairKey'] }],
+      defaults: () => ({
+        state: 'pending',
+        idempotencyKey: null,
+      }),
+    }),
+    socialBlock: modelApi(state, 'socialBlock', {
+      uniques: [{ name: 'blockerId_blockedUserId', fields: ['blockerId', 'blockedUserId'] }],
+    }),
+    socialCareWave: modelApi(state, 'socialCareWave', {
+      uniques: [
+        { name: 'senderId_recipientId_waveType_periodKey', fields: ['senderId', 'recipientId', 'waveType', 'periodKey'] },
+        { name: 'senderId_idempotencyKey', fields: ['senderId', 'idempotencyKey'] },
+      ],
+    }),
+    socialCircle: modelApi(state, 'socialCircle', {
+      uniques: [
+        { name: 'publicId', fields: ['publicId'] },
+        { name: 'ownerUserId', fields: ['ownerUserId'] },
+      ],
+      defaults: () => ({ name: '' }),
+    }),
+    socialCircleMember: modelApi(state, 'socialCircleMember', {
+      uniques: [{ name: 'circleId_userId', fields: ['circleId', 'userId'] }],
+    }),
+    socialCircleInvite: modelApi(state, 'socialCircleInvite', {
+      uniques: [{ name: 'codeNormalized', fields: ['codeNormalized'] }],
+      defaults: () => ({ usedAt: null, usedByUserId: null, revokedAt: null }),
+    }),
+    socialInboxItem: modelApi(state, 'socialInboxItem', {
+      uniques: [{ name: 'recipientId_dedupeKey', fields: ['recipientId', 'dedupeKey'] }],
+      defaults: () => ({ readAt: null, payload: {} }),
+    }),
+    socialReport: modelApi(state, 'socialReport', {
+      uniques: [],
+      defaults: () => ({ description: '' }),
+    }),
+    socialMutation: modelApi(state, 'socialMutation', {
+      uniques: [{ name: 'userId_idempotencyKey', fields: ['userId', 'idempotencyKey'] }],
+      defaults: () => ({ resultJson: null }),
+    }),
     _txTail: Promise.resolve(),
     async $executeRaw() {
       return 0;
@@ -605,6 +699,16 @@ export function createQuestFakeDb(seed = {}) {
         careGardenNurtureEvent: clone([...state.careGardenNurtureEvent.entries()]),
         careGardenEvent: clone([...state.careGardenEvent.entries()]),
         careGardenMutation: clone([...state.careGardenMutation.entries()]),
+        socialProfile: clone([...state.socialProfile.entries()]),
+        socialFriendship: clone([...state.socialFriendship.entries()]),
+        socialBlock: clone([...state.socialBlock.entries()]),
+        socialCareWave: clone([...state.socialCareWave.entries()]),
+        socialCircle: clone([...state.socialCircle.entries()]),
+        socialCircleMember: clone([...state.socialCircleMember.entries()]),
+        socialCircleInvite: clone([...state.socialCircleInvite.entries()]),
+        socialInboxItem: clone([...state.socialInboxItem.entries()]),
+        socialReport: clone([...state.socialReport.entries()]),
+        socialMutation: clone([...state.socialMutation.entries()]),
       };
       try {
         return await fn(db);
@@ -648,6 +752,16 @@ export function createQuestFakeDb(seed = {}) {
         state.careGardenNurtureEvent = new Map(snap.careGardenNurtureEvent);
         state.careGardenEvent = new Map(snap.careGardenEvent);
         state.careGardenMutation = new Map(snap.careGardenMutation);
+        state.socialProfile = new Map(snap.socialProfile);
+        state.socialFriendship = new Map(snap.socialFriendship);
+        state.socialBlock = new Map(snap.socialBlock);
+        state.socialCareWave = new Map(snap.socialCareWave);
+        state.socialCircle = new Map(snap.socialCircle);
+        state.socialCircleMember = new Map(snap.socialCircleMember);
+        state.socialCircleInvite = new Map(snap.socialCircleInvite);
+        state.socialInboxItem = new Map(snap.socialInboxItem);
+        state.socialReport = new Map(snap.socialReport);
+        state.socialMutation = new Map(snap.socialMutation);
         throw error;
       }
       });

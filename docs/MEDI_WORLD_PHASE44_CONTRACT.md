@@ -4,7 +4,7 @@
 **Product phase number:** Medi World 44.  
 **Not Cycle Phase 44.** Cycle postpartum (Cycle Phase 38) remains frozen and unchanged.
 
-Phases 38–43.1 remain accepted `PASS`. Phase 45 is not started.
+Phases 38–43.1 remain accepted `PASS`. Phase 45 is implemented in this working tree.
 
 ## Promise
 

@@ -27,7 +27,7 @@ import { ThemeProvider, useTheme } from '@/store/ThemeContext';
 import { api } from '@/lib/api';
 import { APP_VERSION } from '@/lib/appVersion';
 import { rememberMapboxToken } from '@/lib/run/mapbox';
-import { rememberMediWorldExploreServerEnabled, rememberMediWorldGardenServerEnabled, rememberMediWorldMovementServerEnabled, rememberMediWorldServerEnabled } from '@/lib/mediWorld/enabled';
+import { rememberMediWorldExploreServerEnabled, rememberMediWorldGardenServerEnabled, rememberMediWorldMovementServerEnabled, rememberMediWorldSocialServerEnabled, rememberMediWorldServerEnabled } from '@/lib/mediWorld/enabled';
 import { consumePendingCycleShare, isCycleShareCode, savePendingCycleShare } from '@/lib/cycleSharePending';
 import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -68,6 +68,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         rememberMediWorldExploreServerEnabled(status.settings.mediWorldExploreEnabled);
         rememberMediWorldMovementServerEnabled(status.settings.mediWorldMovementEnabled);
         rememberMediWorldGardenServerEnabled(status.settings.mediWorldGardenEnabled);
+        rememberMediWorldSocialServerEnabled(status.settings.mediWorldSocialEnabled);
         if (status.settings.maintenanceMode) {
           setGate({ kind: 'maintenance', message: status.settings.maintenanceMessage });
           return;
@@ -82,7 +83,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         setGate({ kind: 'ok' });
       })
       .catch(() => setGate({ kind: 'ok' }));
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!ready || gate.kind !== 'ok') return;

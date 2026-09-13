@@ -35,6 +35,7 @@ import { NotificationsDevLauncher } from '@/components/dev/NotificationsDevLaunc
 import { QuestDevLauncher } from '@/components/dev/QuestDevLauncher';
 import { useAuth } from '@/store/AuthContext';
 import { useHydration } from '@/hooks/useHydration';
+import { requestHealthRefresh } from '@/lib/healthDataSync';
 import { requestQuestRefresh } from '@/lib/quest/cache';
 import { healthScoreLabelKa } from '@/lib/healthScore';
 import { analysisFromProfile } from '@/types/onboardingAnalysis';
@@ -75,7 +76,7 @@ export default function Home() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([load(), refresh(), Promise.resolve(requestQuestRefresh())]);
+    await Promise.all([load(), refresh(), Promise.resolve(requestQuestRefresh()), Promise.resolve(requestHealthRefresh())]);
     setRefreshing(false);
   }, [load, refresh]);
 

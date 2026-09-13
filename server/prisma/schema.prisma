@@ -90,6 +90,18 @@ model User {
   worldMovementPreference      WorldMovementPreference?
   worldMovementSessions        WorldMovementSession[]
   careGarden                   CareGarden?
+  socialProfile                SocialProfile?
+  socialFriendshipsRequested    SocialFriendship[] @relation("SocialFriendshipRequester")
+  socialFriendshipsAddressed   SocialFriendship[] @relation("SocialFriendshipAddressee")
+  socialBlocksMade              SocialBlock[] @relation("SocialBlocker")
+  socialBlocksReceived          SocialBlock[] @relation("SocialBlocked")
+  socialWavesSent               SocialCareWave[] @relation("SocialWaveSender")
+  socialWavesReceived           SocialCareWave[] @relation("SocialWaveRecipient")
+  socialCircleOwned             SocialCircle?
+  socialCircleMemberships      SocialCircleMember[]
+  socialInboxItems              SocialInboxItem[]
+  socialReportsFiled            SocialReport[]
+  socialMutations               SocialMutation[]
 
   @@index([status])
   @@index([packageId])
@@ -1893,5 +1905,152 @@ model CareGardenMutation {
   createdAt      DateTime   @default(now())
 
   @@unique([gardenUserId, idempotencyKey])
+}
+
+/// Medi World Phase 45 — private game profile. Never copies legal name or health fields.
+model SocialProfile {
+  userId                    String    @id
+  user                      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publicId                  String   @unique
+  displayName               String   @default("")
+  bio                       String   @default("")
+  friendCode                String
+  friendCodeNormalized      String   @unique
+  socialEnabled             Boolean   @default(false)
+  adultConfirmedAt          DateTime?
+  eligibilityPolicyVersion  String?
+  participationDisabledAt   DateTime?
+  privacyVersion            Int      @default(1)
+  profileVisibility         String   @default("friends_only")
+  showWorldLevel            Boolean   @default(false)
+  showBondLevel             Boolean   @default(false)
+  showGardenPreview         Boolean   @default(false)
+  wavesMuted                Boolean   @default(false)
+  mediPresentationKey       String   @default("present.spark")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}
+
+model SocialFriendship {
+  id             String   @id @default(uuid())
+  pairKey        String   @unique
+  requesterId    String
+  requester      User     @relation("SocialFriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId    String
+  addressee      User      @relation("SocialFriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  state          String
+  idempotencyKey String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([requesterId])
+  @@index([addresseeId])
+  @@index([state])
+}
+
+model SocialBlock {
+  id            String   @id @default(uuid())
+  blockerId     String
+  blocker       User      @relation("SocialBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedUserId String
+  blocked       User      @relation("SocialBlocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+
+  @@unique([blockerId, blockedUserId])
+  @@index([blockedUserId])
+}
+
+model SocialCareWave {
+  id             String   @id @default(uuid())
+  senderId       String
+  sender         User      @relation("SocialWaveSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId    String
+  recipient      User      @relation("SocialWaveRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  waveType       String
+  periodKey      String
+  idempotencyKey String
+  createdAt      DateTime @default(now())
+
+  @@unique([senderId, recipientId, waveType, periodKey])
+  @@unique([senderId, idempotencyKey])
+  @@index([recipientId, periodKey])
+  @@index([senderId, periodKey])
+}
+
+model SocialCircle {
+  id          String               @id @default(uuid())
+  publicId    String               @unique
+  ownerUserId String               @unique
+  owner       User                 @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  name        String               @default("")
+  members     SocialCircleMember[]
+  invites     SocialCircleInvite[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model SocialCircleMember {
+  id        String       @id @default(uuid())
+  circleId  String
+  circle    SocialCircle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String
+  createdAt DateTime     @default(now())
+
+  @@unique([circleId, userId])
+  @@index([userId])
+}
+
+model SocialCircleInvite {
+  id             String       @id @default(uuid())
+  circleId       String
+  circle         SocialCircle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  codeNormalized String       @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  usedByUserId   String?
+  revokedAt      DateTime?
+  createdAt      DateTime @default(now())
+}
+
+model SocialInboxItem {
+  id          String    @id @default(uuid())
+  recipientId String
+  recipient   User      @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  kind        String
+  dedupeKey   String
+  payload     Json
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([recipientId, dedupeKey])
+  @@index([recipientId, createdAt])
+}
+
+model SocialReport {
+  id             String   @id @default(uuid())
+  reporterId     String
+  reporter       User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  targetPublicId String
+  category       String
+  description    String   @default("")
+  createdAt      DateTime @default(now())
+
+  @@index([reporterId, createdAt])
+  @@index([targetPublicId])
+}
+
+model SocialMutation {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idempotencyKey String
+  operation      String
+  fingerprint    String
+  resultJson     Json?
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, idempotencyKey])
 }
 

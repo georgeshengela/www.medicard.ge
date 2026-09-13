@@ -1,22 +1,23 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { WorldHeader, useWorldLocale } from '@/components/world/WorldChrome';
 import { exploreCopy } from '@/i18n/world/explore.js';
 import { mediWorldApi } from '@/lib/mediWorld/api';
 import { useMediWorldExploreAvailable } from '@/lib/mediWorld/enabled';
 import type { ExploreCollectionItem } from '@/lib/mediWorld/types';
 import { QUEST } from '@/theme/questTokens';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { useWorldStitch } from '@/theme/worldStitch';
 
 export default function ExploreHistoryScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const t = useWorldStitch();
   const dark = useIsDark();
   const enabled = useMediWorldExploreAvailable();
-  const [locale, setLocale] = useState<'ka' | 'en'>('ka');
+  const { locale } = useWorldLocale();
   const copy = useMemo(() => exploreCopy(locale), [locale]);
   const [items, setItems] = useState<ExploreCollectionItem[]>([]);
   const [count, setCount] = useState(0);
@@ -45,15 +46,12 @@ export default function ExploreHistoryScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+    <View style={{ flex: 1, backgroundColor: t.surface }}>
+      <WorldHeader title={copy.history} backLabel={copy.back} kaLabel={copy.langKa} enLabel={copy.langEn} />
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={colors.primary200} />}
       >
-        <Pressable accessibilityRole="button" accessibilityLabel={copy.back} onPress={() => router.back()} className="active:opacity-75" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, color: colors.text100, marginTop: 12 }}>{copy.history}</Text>
         <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 15, color: colors.text200, marginTop: 8 }}>
           {copy.foundCount}: {count}
         </Text>

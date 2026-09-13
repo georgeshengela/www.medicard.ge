@@ -51,6 +51,7 @@ export async function connectDeviceHealth(): Promise<HealthConnectResult> {
 export async function fetchHealthMetrics(
 
   profile: HealthProfile | null | undefined,
+  opts?: { force?: boolean },
 
 ): Promise<HealthMetricsBundle> {
 
@@ -88,7 +89,7 @@ export async function fetchHealthMetrics(
 
 
 
-  const stored = await pullStoredHealth();
+  const stored = await pullStoredHealth(undefined, undefined, opts);
 
   const mergedRaw = mergeMetricPoints(nativeRaw, storedDailyToRaw(stored.daily));
 

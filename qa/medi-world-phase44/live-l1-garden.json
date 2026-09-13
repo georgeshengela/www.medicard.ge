@@ -1,7 +1,8 @@
 {
-  "email": "garden.l1.1789235321667@medicard.test",
-  "userId": "e403b3be-11b6-4300-9f08-5b1bb27fc096",
+  "email": "garden.l1.1789239537737@medicard.test",
+  "userId": "b2fdda25-0b36-4898-8ccb-1100de3cc897",
   "worldLevel": 1,
+  "note": "Pre-plant L1 lock snapshot. Post-plant plots 0–1 pulse_fern:seed are in qa/medi-world-phase45/engine-closure/android-plant-hub-api.json",
   "plots": [
     {
       "index": 0,

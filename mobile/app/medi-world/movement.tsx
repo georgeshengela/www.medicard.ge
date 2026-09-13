@@ -3,8 +3,8 @@ import { AppState, Modal, Pressable, ScrollView, Text, View } from 'react-native
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { ArrowLeft } from 'lucide-react-native';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { WorldButton, WorldHeader, useWorldLocale } from '@/components/world/WorldChrome';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { movementCopy, movementMediLine } from '@/i18n/world/movement.js';
 import { ApiError } from '@/lib/api';
@@ -24,8 +24,8 @@ import {
   stopMovementWatch,
   type MovementFix,
 } from '@/lib/mediWorld/movementLocation';
-import { QUEST } from '@/theme/questTokens';
 import { useThemeColors } from '@/theme/colors';
+import { useWorldStitch } from '@/theme/worldStitch';
 
 /** Duration chips shown before start. Frozen after the server session exists. */
 const TARGETS: Record<MovementMode, number[]> = {
@@ -47,9 +47,10 @@ export default function MovementSessionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const t = useWorldStitch();
   const reduce = usePrefersReducedMotion();
   const enabled = useMediWorldMovementAvailable();
-  const [locale, setLocale] = useState<'ka' | 'en'>('ka');
+  const { locale } = useWorldLocale();
   const copy = useMemo(() => movementCopy(locale), [locale]);
   const [step, setStep] = useState<Step>('intro');
   const [mode, setMode] = useState<MovementMode>('walk');
@@ -330,16 +331,9 @@ export default function MovementSessionScreen() {
   const progress = Math.min(100, Math.round((session?.completionRatioBps || 0) / 100));
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: 16, paddingBottom: insets.bottom + 36 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={copy.back} onPress={() => router.back()} className="active:opacity-75" style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-          <Chip label="ქარ" active={locale === 'ka'} onPress={() => setLocale('ka')} />
-          <Chip label="EN" active={locale === 'en'} onPress={() => setLocale('en')} />
-        </View>
-        <Text accessibilityRole="header" maxFontSizeMultiplier={1.3} style={{ ...fontTitle, fontSize: 28, lineHeight: 34, color: colors.text100, marginTop: 16 }}>{copy.title}</Text>
+    <View style={{ flex: 1, backgroundColor: t.surface }}>
+      <WorldHeader title={copy.title} backLabel={copy.back} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 36 }}>
         {!enabled ? <Text style={{ ...fontBody, fontSize: 15, color: colors.text200, marginTop: 12 }}>{copy.featureOff}</Text> : null}
 
         {step === 'intro' ? (
@@ -347,7 +341,7 @@ export default function MovementSessionScreen() {
             <Text style={{ ...fontTitle, fontSize: 22, color: colors.text100, marginTop: 20 }}>{copy.introTitle}</Text>
             <Text style={{ ...fontBody, fontSize: 16, lineHeight: 24, color: colors.text200, marginTop: 10 }}>{copy.introLead}</Text>
             <Text style={{ ...fontBody, fontSize: 15, lineHeight: 22, color: colors.text200, marginTop: 10 }}>{copy.introPrivacy}</Text>
-            <Primary label={copy.continue} onPress={() => setStep('setup')} />
+            <WorldButton label={copy.continue} onPress={() => setStep('setup')} />
           </>
         ) : null}
 
@@ -365,7 +359,7 @@ export default function MovementSessionScreen() {
               ))}
             </View>
             <Text style={{ ...fontBody, fontSize: 14, lineHeight: 20, color: colors.text300, marginTop: 14 }}>{copy.clinicianHint}</Text>
-            <Primary label={copy.continue} onPress={() => setStep('safety')} />
+            <WorldButton label={copy.continue} onPress={() => setStep('safety')} />
           </>
         ) : null}
 
@@ -375,7 +369,7 @@ export default function MovementSessionScreen() {
             {[copy.safetyAware, copy.safetyPaths, copy.safetyDriving, copy.safetyStop, copy.safetyNotPrescription, copy.safetyForeground].map((line) => (
               <Text key={line} style={{ ...fontBody, fontSize: 15, lineHeight: 22, color: colors.text200, marginTop: 8 }}>{line}</Text>
             ))}
-            <Primary label={copy.confirmSafety} onPress={() => { void prepareStart(); }} />
+            <WorldButton label={copy.confirmSafety} onPress={() => { void prepareStart(); }} />
           </>
         ) : null}
 
@@ -384,7 +378,7 @@ export default function MovementSessionScreen() {
             <Text style={{ ...fontTitle, fontSize: 22, color: colors.text100, marginTop: 18 }}>{copy.locating}</Text>
             {bannerText ? <Text style={{ ...fontBody, fontSize: 15, lineHeight: 22, color: colors.text100, marginTop: 12 }}>{bannerText}</Text> : null}
             <Text style={{ ...fontBody, fontSize: 15, lineHeight: 22, color: colors.text200, marginTop: 10 }}>{copy.foregroundOnly}</Text>
-            {banner === 'denied' ? <Primary label={copy.grantLocation} onPress={() => { void prepareStart(); }} /> : <Primary label={copy.continue} onPress={() => { void prepareStart(); }} />}
+            {banner === 'denied' ? <WorldButton label={copy.grantLocation} onPress={() => { void prepareStart(); }} /> : <WorldButton label={copy.continue} onPress={() => { void prepareStart(); }} />}
           </>
         ) : null}
 
@@ -393,7 +387,7 @@ export default function MovementSessionScreen() {
             <Text style={{ ...fontTitle, fontSize: 22, color: colors.text100, marginTop: 18 }}>{copy.gpsReady}</Text>
             <Text style={{ ...fontMed, fontSize: 16, color: colors.text200, marginTop: 12 }}>{movementMediLine(locale, 'start')}</Text>
             <Text style={{ ...fontBody, fontSize: 15, lineHeight: 22, color: colors.text200, marginTop: 10 }}>{copy.safetyForeground}</Text>
-            <Primary label={copy.start} onPress={() => { void begin(); }} />
+            <WorldButton label={copy.start} onPress={() => { void begin(); }} />
           </>
         ) : null}
 
@@ -418,14 +412,14 @@ export default function MovementSessionScreen() {
             </Pressable>
             <Text style={{ ...fontBody, fontSize: 13, color: colors.text300, marginTop: 6 }}>{copy.noShame} {copy.noPace}</Text>
             {banner === 'lowgps' || banner === 'reanchor' ? (
-              <Primary label={copy.retryLocation} onPress={() => void retryGps()} />
+              <WorldButton label={copy.retryLocation} onPress={() => void retryGps()} />
             ) : null}
             {session?.status === 'paused' || offline || banner === 'background' || banner === 'motorized' ? (
-              <Primary label={copy.resume} onPress={() => void resume()} />
+              <WorldButton label={copy.resume} onPress={() => void resume()} />
             ) : (
-              <Primary label={copy.pause} onPress={() => void pause()} />
+              <WorldButton label={copy.pause} onPress={() => void pause()} />
             )}
-            <Primary label={copy.finish} onPress={() => void finish()} />
+            <WorldButton label={copy.finish} onPress={() => void finish()} />
             <Pressable accessibilityRole="button" onPress={() => setAbandonOpen(true)} className="active:opacity-75" style={{ minHeight: 48, justifyContent: 'center', marginTop: 8 }}>
               <Text style={{ ...fontMed, fontSize: 16, color: colors.text300 }}>{copy.abandon}</Text>
             </Pressable>
@@ -444,7 +438,7 @@ export default function MovementSessionScreen() {
             {session?.reward ? (
               <Text style={{ ...fontBody, fontSize: 15, color: colors.text200, marginTop: 8 }}>{copy.rewardNote}</Text>
             ) : null}
-            <Primary label={copy.history} onPress={() => router.push('/medi-world/movement-history' as never)} />
+            <WorldButton label={copy.history} onPress={() => router.push('/medi-world/movement-history' as never)} />
           </>
         ) : null}
       </ScrollView>
@@ -454,7 +448,7 @@ export default function MovementSessionScreen() {
           <Pressable accessibilityRole="button" onPress={() => setAbandonOpen(false)} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: APP_MODAL_OVERLAY }} />
           <View style={{ backgroundColor: colors.surface, padding: 20, paddingBottom: Math.max(insets.bottom, 20) + 12, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
             <Text style={{ ...fontTitle, fontSize: 20, color: colors.text100 }}>{copy.abandonConfirm}</Text>
-            <Primary label={copy.abandon} onPress={() => void abandon()} />
+            <WorldButton label={copy.abandon} onPress={() => void abandon()} danger />
             <Pressable accessibilityRole="button" onPress={() => setAbandonOpen(false)} style={{ minHeight: 48, justifyContent: 'center' }}>
               <Text style={{ ...fontMed, fontSize: 16, color: colors.primary200 }}>{copy.keepGoing}</Text>
             </Pressable>
@@ -474,11 +468,3 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
   );
 }
 
-function Primary({ label, onPress }: { label: string; onPress: () => void }) {
-  const colors = useThemeColors();
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} className="active:opacity-75" style={{ marginTop: 18, minHeight: 52, borderRadius: QUEST.radius, backgroundColor: colors.primary200, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: '#042F2E' }}>{label}</Text>
-    </Pressable>
-  );
-}

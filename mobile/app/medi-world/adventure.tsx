@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
-import { CareMediFigure } from '@/components/world/CareMediFigure';
+import { Heart } from 'lucide-react-native';
+import { WorldHeader, useWorldLocale } from '@/components/world/WorldChrome';
+import { MEDI_WORLD_ART } from '@/lib/mediWorld/art';
+import { useWorldStitch } from '@/theme/worldStitch';
 import { useTodayAdventure } from '@/hooks/useTodayAdventure';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { adventureCopy } from '@/i18n/world/adventure.js';
@@ -37,14 +39,14 @@ export default function TodayAdventureScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const dark = useIsDark();
+  const t = useWorldStitch();
   const reduce = usePrefersReducedMotion();
   const { payload, loading, error, offline, stale, expired, refreshing, refresh, mutate, enabled } = useTodayAdventure();
-  const [locale, setLocale] = useState<'ka' | 'en'>('ka');
+  const { locale } = useWorldLocale();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const copy = useMemo(() => adventureCopy(locale), [locale]);
   const adventure = payload?.adventure;
-  const fontTitle = { fontFamily: 'NotoSansGeorgian_700Bold' as const };
   const fontBody = { fontFamily: 'NotoSansGeorgian_400Regular' as const };
   const fontMed = { fontFamily: 'NotoSansGeorgian_500Medium' as const };
   const canMutate = !offline && !busy && !stale && !expired && enabled;
@@ -79,22 +81,14 @@ export default function TodayAdventureScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 220,
-          opacity: dark ? 0.35 : 0.18,
-          backgroundColor: adventure?.completion.complete ? '#0D9488' : colors.primary200,
-        }}
+    <View style={{ flex: 1, backgroundColor: t.surface }}>
+      <WorldHeader
+        title={copy.title}
+        subtitle={enabled ? narrative : copy.featureOff}
+        backLabel={copy.back}
       />
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + 8,
           paddingBottom: Math.max(insets.bottom, 24) + 32,
           paddingHorizontal: 16,
         }}
@@ -102,33 +96,6 @@ export default function TodayAdventureScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => void refresh(true)} tintColor={colors.primary200} />
         }
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={copy.back}
-          onPress={() => router.back()}
-          className="active:opacity-75"
-          style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-          <LangChip label="ქარ" active={locale === 'ka'} onPress={() => setLocale('ka')} />
-          <LangChip label="EN" active={locale === 'en'} onPress={() => setLocale('en')} />
-        </View>
-
-        <Text accessibilityRole="header" maxFontSizeMultiplier={FONT} style={{ ...fontTitle, fontSize: 28, lineHeight: 34, color: colors.text100, marginTop: 16 }}>
-          {copy.title}
-        </Text>
-        {enabled ? (
-          <Text maxFontSizeMultiplier={FONT} style={{ ...fontBody, fontSize: 16, lineHeight: 24, color: colors.text200, marginTop: 8 }}>
-            {narrative}
-          </Text>
-        ) : (
-          <Text maxFontSizeMultiplier={FONT} style={{ ...fontBody, fontSize: 16, lineHeight: 24, color: colors.text200, marginTop: 8 }}>
-            {copy.featureOff}
-          </Text>
-        )}
 
         {enabled && expired ? (
           <Text maxFontSizeMultiplier={FONT} style={{ ...fontBody, fontSize: 13, lineHeight: 20, color: colors.text300, marginTop: 10 }}>
@@ -140,12 +107,10 @@ export default function TodayAdventureScreen() {
           </Text>
         ) : null}
 
-        <View style={{ alignItems: 'center', marginTop: 20 }}>
-          <CareMediFigure
-            stageKey={adventure?.companionStageKey || 'spark'}
-            size={reduce ? 88 : 112}
-            reducedMotion={reduce}
-          />
+        <View style={{ alignItems: 'center', marginTop: 12 }}>
+          <View style={{ width: '100%', height: 180, borderRadius: 24, overflow: 'hidden', backgroundColor: t.surfaceLow }}>
+            <Image source={MEDI_WORLD_ART.stitchPathway} accessibilityLabel={copy.title} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+          </View>
         </View>
 
         {enabled && loading && !adventure ? (
@@ -235,11 +200,34 @@ export default function TodayAdventureScreen() {
         {enabled ? (
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={copy.careSpace}
             onPress={() => router.push('/medi-world/care-space' as never)}
             className="active:opacity-75"
-            style={{ marginTop: 20 }}
+            style={{
+              marginTop: 20,
+              borderRadius: QUEST.radius,
+              borderWidth: 1,
+              borderColor: colors.bg300,
+              backgroundColor: colors.surface,
+              padding: QUEST.pad,
+              flexDirection: 'row',
+              gap: 12,
+              alignItems: 'center',
+            }}
           >
-            <Text style={{ ...fontMed, fontSize: 15, color: colors.primary200 }}>{copy.careSpace}</Text>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Heart size={20} color={colors.primary200} strokeWidth={2.2} />
+            </View>
+            <Text style={{ ...fontMed, fontSize: 15, color: colors.text100, flex: 1 }}>{copy.careSpace}</Text>
           </Pressable>
         ) : null}
       </ScrollView>
@@ -380,22 +368,3 @@ function MissionCard({
   );
 }
 
-function LangChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const colors = useThemeColors();
-  return (
-    <Pressable
-      onPress={onPress}
-      className="active:opacity-75"
-      style={{
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 999,
-        backgroundColor: active ? colors.bg200 : 'transparent',
-        borderWidth: 1,
-        borderColor: active ? colors.primary200 : colors.bg300,
-      }}
-    >
-      <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, color: colors.text100 }}>{label}</Text>
-    </Pressable>
-  );
-}

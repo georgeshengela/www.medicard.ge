@@ -20,6 +20,7 @@ export default function MediWorldLayout() {
       <Stack.Screen name="movement" />
       <Stack.Screen name="movement-history" />
       <Stack.Screen name="garden" />
+      <Stack.Screen name="social" />
     </Stack>
   );
 }

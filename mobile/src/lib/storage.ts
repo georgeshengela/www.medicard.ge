@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
+import { notifyProtectedTokenReplace } from '@/lib/protectedTokenChange.js';
 
 const TOKEN_KEY = 'medicard.auth.token';
 const PREFS_DIR = `${FileSystem.documentDirectory ?? ''}medicard-prefs/`;
@@ -28,14 +29,17 @@ export async function getToken(): Promise<string | null> {
 }
 
 export async function setToken(token: string): Promise<void> {
+  const previous = memoryToken;
   memoryToken = token;
   if (Platform.OS === 'web') {
     webStorage.setItem(TOKEN_KEY, token);
+    notifyProtectedTokenReplace(previous, token);
     return;
   }
   await SecureStore.setItemAsync(TOKEN_KEY, token, {
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   });
+  notifyProtectedTokenReplace(previous, token);
 }
 
 export async function clearToken(): Promise<void> {

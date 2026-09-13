@@ -1,25 +1,27 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { Sparkles } from 'lucide-react-native';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { WorldButton, WorldHeader, useWorldLocale } from '@/components/world/WorldChrome';
 import { useCompanionWorld } from '@/hooks/useCompanionWorld';
 import { companionCopy } from '@/i18n/world/companion.js';
 import { worldCopy } from '@/i18n/world/catalog.js';
 import { mediWorldApi } from '@/lib/mediWorld/api';
 import { ApiError } from '@/lib/api';
+import { QUEST } from '@/theme/questTokens';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { useWorldStitch } from '@/theme/worldStitch';
 
 const FONT = 1.3;
 
 export default function CompanionCollectionScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const t = useWorldStitch();
   const dark = useIsDark();
   const { payload, offline, refreshing, refresh, mutate } = useCompanionWorld();
-  const [locale, setLocale] = useState<'ka' | 'en'>('ka');
+  const { locale } = useWorldLocale();
   const copy = useMemo(() => companionCopy(locale), [locale]);
   const energyCopy = useMemo(() => worldCopy(locale), [locale]);
   const [picked, setPicked] = useState<string | null>(null);
@@ -53,30 +55,15 @@ export default function CompanionCollectionScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+    <View style={{ flex: 1, backgroundColor: t.surface }}>
+      <WorldHeader title={copy.collection} subtitle={offline ? copy.offline : undefined} backLabel={copy.back} />
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + 8,
           paddingBottom: Math.max(insets.bottom, 24) + 24,
           paddingHorizontal: 16,
         }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh(true, { spinner: true })} tintColor={colors.primary200} />}
       >
-        <Pressable accessibilityRole="button" accessibilityLabel={copy.back} onPress={() => router.back()} style={{ width: 44, height: 44, justifyContent: 'center' }}>
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-          <Lang label="ქარ" active={locale === 'ka'} onPress={() => setLocale('ka')} />
-          <Lang label="EN" active={locale === 'en'} onPress={() => setLocale('en')} />
-        </View>
-        <Text accessibilityRole="header" maxFontSizeMultiplier={FONT} style={{ ...fontTitle, fontSize: 28, color: colors.text100, marginTop: 16 }}>
-          {copy.collection}
-        </Text>
-        {offline ? (
-          <Text maxFontSizeMultiplier={FONT} style={{ ...fontBody, color: colors.text200, marginTop: 8 }}>
-            {copy.offline}
-          </Text>
-        ) : null}
         {(payload?.catalog || []).map((row) => {
           const slotLabel = (copy as Record<string, string>)[`slot_${row.slot}`] || row.slot;
           const isOn = equipped?.[row.slot] === row.key;
@@ -89,20 +76,39 @@ export default function CompanionCollectionScreen() {
               style={{
                 marginTop: 12,
                 minHeight: 72,
-                borderRadius: 18,
-                padding: 16,
+                borderRadius: QUEST.radius,
+                borderWidth: 1,
+                borderColor: colors.bg300,
+                padding: QUEST.pad,
                 backgroundColor: colors.surface,
+                flexDirection: 'row',
+                gap: 12,
+                alignItems: 'flex-start',
                 opacity: row.owned || row.eligible ? 1 : 0.7,
               }}
             >
-              <Text maxFontSizeMultiplier={FONT} style={{ ...fontTitle, fontSize: 16, color: colors.text100 }}>
-                {(copy as Record<string, string>)[row.nameKey] || row.fallbackLabel}
-              </Text>
-              <Text maxFontSizeMultiplier={FONT} style={{ ...fontBody, fontSize: 14, color: colors.text200, marginTop: 4 }}>
-                {slotLabel}
-                {row.owned ? ` · ${copy.owned}` : row.eligible ? ` · ${row.price}` : ` · ${copy.lockedLevel} ${row.worldLevel}`}
-                {isOn ? ` · ${copy.equipped}` : ''}
-              </Text>
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Sparkles size={20} color={colors.primary200} strokeWidth={2.2} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text maxFontSizeMultiplier={FONT} style={{ ...fontTitle, fontSize: 16, color: colors.text100 }}>
+                  {(copy as Record<string, string>)[row.nameKey] || row.fallbackLabel}
+                </Text>
+                <Text maxFontSizeMultiplier={FONT} style={{ ...fontBody, fontSize: 14, color: colors.text200, marginTop: 4 }}>
+                  {slotLabel}
+                  {row.owned ? ` · ${copy.owned}` : row.eligible ? ` · ${row.price}` : ` · ${copy.lockedLevel} ${row.worldLevel}`}
+                  {isOn ? ` · ${copy.equipped}` : ''}
+                </Text>
+              </View>
             </Pressable>
           );
         })}
@@ -135,25 +141,15 @@ export default function CompanionCollectionScreen() {
                   <Text style={{ ...fontMed, fontSize: 14, color: colors.text200, marginTop: 4 }}>
                     {copy.remainingAfter}: {Math.max(0, balance - item.price)} {energyLabel}
                   </Text>
-                  <Pressable
+                  <WorldButton
+                    label={!item.eligible ? `${copy.lockedLevel} ${item.worldLevel}` : balance < item.price ? copy.insufficient : copy.unlockConfirm}
                     disabled={!canMutate || !item.eligible || balance < item.price}
                     onPress={() => void run(() => mediWorldApi.unlockCosmetic(item.key, `unlock:${item.key}`))}
-                    style={{
-                      marginTop: 14,
-                      minHeight: 48,
-                      borderRadius: 16,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: canMutate && item.eligible && balance >= item.price ? (dark ? '#0D9488' : colors.primary200) : colors.bg200,
-                    }}
-                  >
-                    <Text style={{ ...fontTitle, color: canMutate && item.eligible && balance >= item.price ? '#FFFFFF' : colors.text100 }}>
-                      {!item.eligible ? `${copy.lockedLevel} ${item.worldLevel}` : balance < item.price ? copy.insufficient : copy.unlockConfirm}
-                    </Text>
-                  </Pressable>
+                  />
                 </>
               ) : (
-                <Pressable
+                <WorldButton
+                  label={equipped?.[item.slot] === item.key ? copy.unequip : copy.equip}
                   disabled={!canMutate}
                   onPress={() =>
                     void run(() =>
@@ -163,12 +159,7 @@ export default function CompanionCollectionScreen() {
                       ),
                     )
                   }
-                  style={{ marginTop: 14, minHeight: 48, borderRadius: 16, backgroundColor: dark ? '#0D9488' : colors.primary200, alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Text style={{ ...fontTitle, color: '#FFFFFF' }}>
-                    {equipped?.[item.slot] === item.key ? copy.unequip : copy.equip}
-                  </Text>
-                </Pressable>
+                />
               )}
             </View>
           ) : null}
@@ -185,22 +176,10 @@ export default function CompanionCollectionScreen() {
                 {copy.remainingAfter}: {payload?.unlock?.resultingBalance ?? payload?.world.careEnergy[item.energyType]} {energyLabel}
               </Text>
             ) : null}
-            <Pressable onPress={() => setCelebrating(false)} style={{ marginTop: 16, minHeight: 48, borderRadius: 16, backgroundColor: dark ? '#0D9488' : colors.primary200, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ ...fontTitle, color: '#FFFFFF' }}>{copy.close}</Text>
-            </Pressable>
+            <WorldButton label={copy.close} onPress={() => setCelebrating(false)} />
           </View>
         </View>
       </Modal>
     </View>
-  );
-}
-
-function Lang({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const colors = useThemeColors();
-  const dark = useIsDark();
-  return (
-    <Pressable onPress={onPress} style={{ minHeight: 36, paddingHorizontal: 12, borderRadius: 14, justifyContent: 'center', backgroundColor: active ? (dark ? '#0D9488' : colors.primary200) : colors.bg200 }}>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', color: active ? '#FFFFFF' : colors.text100 }}>{label}</Text>
-    </Pressable>
   );
 }

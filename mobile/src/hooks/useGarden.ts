@@ -10,7 +10,8 @@ import {
 } from '@/lib/mediWorld/worldEconomyCache.js';
 import type { GardenResponse } from '@/lib/mediWorld/types';
 import { useOffline } from '@/hooks/useOffline';
-import { getPreference, setPreference } from '@/lib/storage';
+import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
+import { deletePreference } from '@/lib/storage';
 
 export const GARDEN_CACHE_KEY = 'medicard.mediWorld.gardenCache';
 export const GARDEN_INTRO_KEY = 'medicard.mediWorld.gardenIntroSeen';
@@ -35,7 +36,7 @@ export function useGarden() {
     else if (spinner) setRefreshing(true);
     try {
       if (!getGardenSnapshot()) {
-        const cachedRaw = await getPreference(GARDEN_CACHE_KEY);
+        const cachedRaw = await getScopedPreference(GARDEN_CACHE_KEY);
         if (cachedRaw) {
           try {
             const cached = JSON.parse(cachedRaw) as GardenResponse;
@@ -55,7 +56,8 @@ export function useGarden() {
       }
       const next = await mediWorldApi.garden();
       rememberGarden({ ...next, stale: false });
-      await setPreference(GARDEN_CACHE_KEY, JSON.stringify(next));
+      await setScopedPreference(GARDEN_CACHE_KEY, JSON.stringify(next));
+      await deletePreference(GARDEN_CACHE_KEY);
       setStale(false);
       setError(false);
     } catch {
@@ -73,13 +75,15 @@ export function useGarden() {
     }
     const next = await fn();
     rememberGarden({ ...next, stale: false });
-    await setPreference(GARDEN_CACHE_KEY, JSON.stringify(next));
+    await setScopedPreference(GARDEN_CACHE_KEY, JSON.stringify(next));
+    await deletePreference(GARDEN_CACHE_KEY);
     return next;
   }, [offline]);
 
   useEffect(() => {
     if (!payload) return;
-    void setPreference(GARDEN_CACHE_KEY, JSON.stringify(payload));
+    void setScopedPreference(GARDEN_CACHE_KEY, JSON.stringify(payload));
+    void deletePreference(GARDEN_CACHE_KEY);
   }, [payload]);
 
   useFocusEffect(

@@ -24,7 +24,7 @@ import {
   WORLD_TRANSACTION_CREDIT,
   WORLD_TRANSACTION_DEBIT,
 } from './economy.js';
-import { isMediWorldEnabled, isMediWorldExploreEnabled, isMediWorldFoundationTestPathEnabled, isMediWorldMovementEnabled, isMediWorldGardenEnabled } from './flags.js';
+import { isMediWorldEnabled, isMediWorldExploreEnabled, isMediWorldFoundationTestPathEnabled, isMediWorldMovementEnabled, isMediWorldGardenEnabled, isMediWorldSocialEnabled } from './flags.js';
 import { processWorldActivity, ensureMediWorldProfile, publicWorldProfile } from './engine.js';
 import { getMediWorldLedger, getMediWorldProfile, processFoundationTestActivity } from './service.js';
 import { sanitizeWorldMetadata } from './privacy.js';
@@ -79,6 +79,14 @@ describe('Medi World flags', () => {
     assert.equal(isMediWorldGardenEnabled({ nodeEnv: 'production', flag: '1', gardenFlag: '1' }), true);
     assert.equal(isMediWorldGardenEnabled({ nodeEnv: 'development', flag: '1', gardenFlag: '' }), true);
     assert.equal(isMediWorldGardenEnabled({ nodeEnv: 'test', flag: '1', gardenFlag: '0' }), false);
+    assert.equal(isMediWorldSocialEnabled({ nodeEnv: 'production', flag: '1', socialFlag: '' }), false);
+    assert.equal(isMediWorldSocialEnabled({ nodeEnv: 'production', flag: '1' }), false);
+    assert.equal(isMediWorldSocialEnabled({ nodeEnv: 'production', flag: '1', socialFlag: '0' }), false);
+    assert.equal(isMediWorldSocialEnabled({ nodeEnv: 'production', flag: '1', socialFlag: 'false' }), false);
+    assert.equal(isMediWorldSocialEnabled({ nodeEnv: 'production', flag: '1', socialFlag: 'maybe' }), false);
+    assert.equal(isMediWorldSocialEnabled({ nodeEnv: 'production', flag: '1', socialFlag: '1' }), true);
+    assert.equal(isMediWorldSocialEnabled({ nodeEnv: 'development', flag: '1', socialFlag: '' }), true);
+    assert.equal(isMediWorldSocialEnabled({ nodeEnv: 'development', flag: '1', socialFlag: 'banana' }), false);
   });
 
   it('never enables the internal foundation-test path in production', () => {
@@ -406,6 +414,9 @@ describe('authorization and ledger paging', () => {
     assert.ok(routes.some((layer) => layer.route.path === '/companion/cosmetics/:catalogKey/unlock' && layer.route.methods.post));
     assert.ok(routes.some((layer) => layer.route.path === '/adventure/today' && layer.route.methods.get));
     assert.ok(routes.some((layer) => layer.route.path === '/adventure/today/swap' && layer.route.methods.post));
+    assert.ok(routes.some((layer) => layer.route.path === '/social/me' && layer.route.methods.get));
+    assert.ok(routes.some((layer) => layer.route.path === '/social/friends/request' && layer.route.methods.post));
+    assert.ok(!routes.some((layer) => /social\/qa/.test(layer.route.path)));
     assert.ok(!routes.some((layer) => layer.route.path === '/adventure/today/complete'));
     assert.ok(!routes.some((layer) => layer.route.path === '/foundation-activity'));
     assert.ok(!routes.some((layer) => layer.route.path === '/spend'));

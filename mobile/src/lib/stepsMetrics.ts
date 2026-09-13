@@ -32,7 +32,7 @@ export async function fetchStepsSamples(since: Date): Promise<StepSample[]> {
   return impl.fetchStepsNative(since);
 }
 
-export async function fetchStepsMetrics(period: StepChartPeriod = '1d'): Promise<StepsMetricsBundle> {
+export async function fetchStepsMetrics(period: StepChartPeriod = '1d', opts?: { force?: boolean }): Promise<StepsMetricsBundle> {
   const deviceConnected = (await isHealthSyncEnabled()) && !isExpoGo();
   const since = sinceDateForPeriod(period);
   const sinceTs = since.getTime();
@@ -46,7 +46,7 @@ export async function fetchStepsMetrics(period: StepChartPeriod = '1d'): Promise
     void syncNativeHealthToServer({}, nativeSamples);
   }
 
-  const stored = await pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate());
+  const stored = await pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate(), opts);
   const storedSamples = storedStepLogsToSamples(stored.stepLogs).filter(
     (s) => new Date(s.at).getTime() >= sinceTs,
   );

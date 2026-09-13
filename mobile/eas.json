@@ -15,7 +15,8 @@
         "EXPO_PUBLIC_MEDI_WORLD": "1",
         "EXPO_PUBLIC_MEDI_WORLD_EXPLORE": "1",
         "EXPO_PUBLIC_MEDI_WORLD_MOVEMENT": "1",
-        "EXPO_PUBLIC_MEDI_WORLD_GARDEN": "1"
+        "EXPO_PUBLIC_MEDI_WORLD_GARDEN": "1",
+        "EXPO_PUBLIC_MEDI_WORLD_SOCIAL": "1"
       }
     },
     "production": {
@@ -25,7 +26,8 @@
         "EXPO_PUBLIC_MEDI_WORLD": "1",
         "EXPO_PUBLIC_MEDI_WORLD_EXPLORE": "1",
         "EXPO_PUBLIC_MEDI_WORLD_MOVEMENT": "1",
-        "EXPO_PUBLIC_MEDI_WORLD_GARDEN": "1"
+        "EXPO_PUBLIC_MEDI_WORLD_GARDEN": "1",
+        "EXPO_PUBLIC_MEDI_WORLD_SOCIAL": "1"
       }
     }
   },

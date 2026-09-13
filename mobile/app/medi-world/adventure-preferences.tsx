@@ -1,25 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { Accessibility, Footprints, PersonStanding } from 'lucide-react-native';
+import { WorldHeader, useWorldLocale } from '@/components/world/WorldChrome';
 import { adventureCopy } from '@/i18n/world/adventure.js';
 import { mediWorldApi } from '@/lib/mediWorld/api';
 import type { AdventurePreferences } from '@/lib/mediWorld/types';
 import { QUEST } from '@/theme/questTokens';
-import { useThemeColors } from '@/theme/colors';
-
-const FONT = 1.3;
+import { useIsDark, useThemeColors } from '@/theme/colors';
+import { useWorldStitch } from '@/theme/worldStitch';
 
 export default function AdventurePreferencesScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
-  const [locale, setLocale] = useState<'ka' | 'en'>('ka');
+  const t = useWorldStitch();
+  const dark = useIsDark();
+  const { locale } = useWorldLocale();
   const copy = useMemo(() => adventureCopy(locale), [locale]);
   const [prefs, setPrefs] = useState<AdventurePreferences | null>(null);
   const [busy, setBusy] = useState(false);
-  const fontTitle = { fontFamily: 'NotoSansGeorgian_700Bold' as const };
   const fontBody = { fontFamily: 'NotoSansGeorgian_400Regular' as const };
   const fontMed = { fontFamily: 'NotoSansGeorgian_500Medium' as const };
 
@@ -39,28 +38,15 @@ export default function AdventurePreferencesScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+    <View style={{ flex: 1, backgroundColor: t.surface }}>
+      <WorldHeader title={copy.preferences} backLabel={copy.back} />
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + 8,
           paddingBottom: Math.max(insets.bottom, 24) + 32,
           paddingHorizontal: 16,
         }}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={copy.back}
-          onPress={() => router.back()}
-          className="active:opacity-75"
-          style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <ArrowLeft size={22} color={colors.text100} strokeWidth={2.2} />
-        </Pressable>
-        <Text accessibilityRole="header" maxFontSizeMultiplier={FONT} style={{ ...fontTitle, fontSize: 26, lineHeight: 32, color: colors.text100, marginTop: 16 }}>
-          {copy.preferences}
-        </Text>
-
-        <Text style={{ ...fontMed, fontSize: 14, color: colors.text300, marginTop: 20 }}>{copy.intensity}</Text>
+        <Text style={{ ...fontMed, fontSize: 14, color: colors.text300, marginTop: 8 }}>{copy.intensity}</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
           {(['gentle', 'balanced', 'active'] as const).map((key) => (
             <Pressable
@@ -101,10 +87,10 @@ export default function AdventurePreferencesScreen() {
         <Text style={{ ...fontMed, fontSize: 14, color: colors.text300, marginTop: 20 }}>{copy.movementMode}</Text>
         <View style={{ gap: 8, marginTop: 8 }}>
           {([
-            ['default', copy.movementDefault],
-            ['wheelchair', copy.wheelchair],
-            ['low_mobility', copy.lowMobility],
-          ] as const).map(([key, label]) => (
+            ['default', copy.movementDefault, <Footprints key="d" size={20} color={colors.primary200} strokeWidth={2.2} />],
+            ['wheelchair', copy.wheelchair, <Accessibility key="w" size={20} color={colors.primary200} strokeWidth={2.2} />],
+            ['low_mobility', copy.lowMobility, <PersonStanding key="l" size={20} color={colors.primary200} strokeWidth={2.2} />],
+          ] as const).map(([key, label, icon]) => (
             <Pressable
               key={key}
               onPress={() => void save({ movementMode: key })}
@@ -115,9 +101,24 @@ export default function AdventurePreferencesScreen() {
                 borderColor: prefs?.movementMode === key ? colors.primary200 : colors.bg300,
                 backgroundColor: colors.surface,
                 padding: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
               }}
             >
-              <Text style={{ ...fontBody, fontSize: 15, color: colors.text100 }}>{label}</Text>
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: dark ? QUEST.wash.dark : QUEST.wash.light,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {icon}
+              </View>
+              <Text style={{ ...fontBody, fontSize: 15, color: colors.text100, flex: 1 }}>{label}</Text>
             </Pressable>
           ))}
         </View>

@@ -53,6 +53,8 @@ const schema = z.object({
   MEDI_WORLD_MOVEMENT_ENABLED: z.string().optional().default(''),
   /** Medi World Garden. Unset: follows Medi World. */
   MEDI_WORLD_GARDEN_ENABLED: z.string().optional().default(''),
+  /** Medi World Social (Phase 45). Unset: on in development/test, off in production. */
+  MEDI_WORLD_SOCIAL_ENABLED: z.string().optional().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

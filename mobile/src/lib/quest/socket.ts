@@ -23,6 +23,7 @@ type UsageResetPayload = {
 };
 
 const seen = new Set<string>();
+let lastSocketToken: string | null = null;
 let socket: Socket | null = null;
 let lastCompleted: CompletedPayload | null = null;
 const completedListeners = new Set<(payload: CompletedPayload) => void>();
@@ -47,10 +48,26 @@ export function markQuestCelebration(kind: string, questId: string, stamp?: stri
   return shouldCelebrate(seen, celebrationKey(kind, questId, stamp));
 }
 
+const socialInvalidateListeners = new Set<() => void>();
+
+export function onSocialInvalidate(listener: () => void) {
+  socialInvalidateListeners.add(listener);
+  return () => {
+    socialInvalidateListeners.delete(listener);
+  };
+}
+
+const SOCIAL_SIGNALS = new Set(['inbox', 'friendship', 'privacy']);
+
 export async function connectQuestSocket() {
   const token = await getToken();
-  if (!token) return;
-  if (socket?.connected) return;
+  if (!token) {
+    disconnectQuestSocket();
+    return;
+  }
+  if (socket?.connected && lastSocketToken === token) return;
+  if (socket) disconnectQuestSocket();
+  lastSocketToken = token;
   socket = io(QUEST_SOCKET_URL, {
     path: '/socket.io',
     transports: ['websocket', 'polling'],
@@ -103,11 +120,16 @@ export async function connectQuestSocket() {
   socket.on('usage:reset', (payload: UsageResetPayload) => {
     usageResetListeners.forEach((fn) => fn(payload || {}));
   });
+  socket.on('social:invalidate', (payload: { signal?: string }) => {
+    if (typeof payload?.signal !== 'string' || !SOCIAL_SIGNALS.has(payload.signal)) return;
+    socialInvalidateListeners.forEach((listener) => listener());
+  });
 }
 
 export function disconnectQuestSocket() {
   socket?.disconnect();
   socket = null;
+  lastSocketToken = null;
 }
 
 export function lastSocketCompletion() {

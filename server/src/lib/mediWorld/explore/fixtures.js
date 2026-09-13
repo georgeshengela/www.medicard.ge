@@ -13,8 +13,8 @@ export const SPARK_DEFINITIONS = Object.freeze([
 export const DEVELOPMENT_PLACES = Object.freeze([
   {
     id: 'place.qa.garden.alpha',
-    nameKa: 'QA საჯარო ბაღი (ფიქსტურა)',
-    nameEn: 'QA public garden (fixture)',
+    nameKa: 'სავარჯიშო საჯარო ბაღი',
+    nameEn: 'Practice public garden',
     placeType: 'public_garden',
     latitude: 37.422,
     longitude: -122.084,
@@ -23,8 +23,8 @@ export const DEVELOPMENT_PLACES = Object.freeze([
   },
   {
     id: 'place.qa.park.beta',
-    nameKa: 'QA პარკი (ფიქსტურა)',
-    nameEn: 'QA park (fixture)',
+    nameKa: 'სავარჯიშო პარკი',
+    nameEn: 'Practice park',
     placeType: 'park',
     latitude: 37.4238,
     longitude: -122.0822,
@@ -33,8 +33,8 @@ export const DEVELOPMENT_PLACES = Object.freeze([
   },
   {
     id: 'place.qa.square.gamma',
-    nameKa: 'QA მოედანი (ფიქსტურა)',
-    nameEn: 'QA public square (fixture)',
+    nameKa: 'სავარჯიშო მოედანი',
+    nameEn: 'Practice public square',
     placeType: 'public_square',
     latitude: 37.4215,
     longitude: -122.0845,

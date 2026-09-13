@@ -1,7 +1,7 @@
 import { prisma } from './prisma.js';
 import { getMobileAppVersion } from './mobileAppVersion.js';
 import { parseAppVersion } from './appVersion.js';
-import { isMediWorldEnabled, isMediWorldExploreEnabled, isMediWorldMovementEnabled, isMediWorldGardenEnabled } from './mediWorld/flags.js';
+import { isMediWorldEnabled, isMediWorldExploreEnabled, isMediWorldMovementEnabled, isMediWorldGardenEnabled, isMediWorldSocialEnabled } from './mediWorld/flags.js';
 
 const DEFAULTS = {
   id: 'default',
@@ -78,6 +78,7 @@ export function publicAppSettings(settings) {
     mediWorldExploreEnabled: isMediWorldExploreEnabled(),
     mediWorldMovementEnabled: isMediWorldMovementEnabled(),
     mediWorldGardenEnabled: isMediWorldGardenEnabled(),
+    mediWorldSocialEnabled: isMediWorldSocialEnabled(),
     updatedAt: settings.updatedAt,
   };
 }

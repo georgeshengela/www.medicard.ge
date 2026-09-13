@@ -224,11 +224,18 @@ describe('Medi World Phase 44 planting', () => {
     const first = await plantInPlot(USER, 0, { catalogKey: 'heart_bloom', idempotencyKey: 'same-key' }, opts(db));
     const retry = await plantInPlot(USER, 0, { catalogKey: 'heart_bloom', idempotencyKey: 'same-key' }, opts(db));
     assert.equal(retry.duplicate, true);
+    assert.equal(retry.applied, false);
     assert.equal(retry.plant.id, first.plant.id);
+    assert.equal(retry.plant.catalogKey, 'heart_bloom');
     assert.equal(await db.mediWorldLedger.count({ where: { userId: USER, reasonCode: 'GARDEN_PLANT' } }), 1);
+    assert.equal(await db.careGardenPlant.count({ where: { gardenUserId: USER } }), 1);
     await assert.rejects(
       () => plantInPlot(USER, 1, { catalogKey: 'orbit_vine', idempotencyKey: 'same-key' }, opts(db)),
       (e) => e.code === 'WORLD_IDEMPOTENCY_CONFLICT',
+    );
+    await assert.rejects(
+      () => plantInPlot(USER, 0, { catalogKey: 'dew_lily', idempotencyKey: 'new-key-occupied' }, opts(db)),
+      (e) => e.code === 'GARDEN_PLOT_OCCUPIED',
     );
   });
 

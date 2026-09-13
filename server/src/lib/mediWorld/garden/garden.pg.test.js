@@ -74,6 +74,16 @@ describe('Medi World Phase 44 PostgreSQL', { skip }, () => {
       const afterDebit = planted.world.profile.careEnergy.movement;
       assert.equal(afterDebit, 0);
       assert.equal(await db.mediWorldLedger.count({ where: { userId: user.id, reasonCode: 'GARDEN_PLANT' } }), 1);
+      const lostRetry = await plantInPlot(
+        user.id,
+        0,
+        { catalogKey: 'pulse_fern', idempotencyKey: `pg-plant-${stamp}` },
+        opts(db),
+      );
+      assert.equal(lostRetry.duplicate, true);
+      assert.equal(lostRetry.plant.id, planted.plant.id);
+      assert.equal(await db.mediWorldLedger.count({ where: { userId: user.id, reasonCode: 'GARDEN_PLANT' } }), 1);
+      assert.equal(await db.careGardenPlant.count({ where: { gardenUserId: user.id } }), 1);
 
       await processWorldActivity(
         user.id,

@@ -8,7 +8,17 @@ import {
   type StoredHealthDaily,
   type StoredStepLog,
 } from '@/lib/healthMetricsStorage';
+import {
+  canReuseHealthPull,
+  cancelledHealthPull,
+  isHealthPullCancelled,
+  makeHealthPullKey,
+  shouldCommitHealthPull,
+  shouldJoinHealthPull,
+} from '@/lib/healthPullCache.js';
+import { jwtSubject } from '@/lib/jwtSubject';
 import { getScopedPreference, localAccountId, setLocalAccountId, setScopedPreference } from '@/lib/localAccount';
+import { subscribeProtectedTokenChange } from '@/lib/protectedTokenChange.js';
 import { loadSessionSnapshot } from '@/lib/sessionSnapshot';
 import { getToken } from '@/lib/storage';
 
@@ -72,22 +82,104 @@ export async function cacheLocalHealthSync(payload: HealthMetricsSyncPayload): P
   });
 }
 
-export async function pullStoredHealth(from?: string, to?: string): Promise<StoredHealthBundle> {
+let pullGeneration = 0;
+let pullInflight: { key: string; promise: Promise<StoredHealthBundle>; generation: number } | null = null;
+let pullCache: { key: string; at: number; data: StoredHealthBundle } | null = null;
+const healthRefreshListeners = new Set<() => void>();
+
+function pullIdentity(token: string | null) {
+  return localAccountId() || jwtSubject(token) || '';
+}
+
+export function resetHealthPullCache() {
+  pullGeneration += 1;
+  pullInflight = null;
+  pullCache = null;
+}
+
+subscribeProtectedTokenChange(() => {
+  resetHealthPullCache();
+});
+
+export function subscribeHealthRefresh(listener: () => void) {
+  healthRefreshListeners.add(listener);
+  return () => {
+    healthRefreshListeners.delete(listener);
+  };
+}
+
+export function requestHealthRefresh() {
+  pullCache = null;
+  healthRefreshListeners.forEach((listener) => listener());
+}
+
+export async function pullStoredHealth(
+  from?: string,
+  to?: string,
+  opts?: { force?: boolean },
+): Promise<StoredHealthBundle> {
+  const fromKey = from ?? defaultSyncFromDate();
+  const toKey = to ?? defaultSyncToDate();
+  const startedGeneration = pullGeneration;
   const token = await getToken();
+  if (startedGeneration !== pullGeneration) {
+    throw cancelledHealthPull();
+  }
   if (!token) {
-    return (await loadHealthCache()) ?? { daily: [], stepLogs: [] };
+    throw cancelledHealthPull();
   }
 
-  try {
-    const data = await api.healthMetrics.get({
-      from: from ?? defaultSyncFromDate(),
-      to: to ?? defaultSyncToDate(),
-    });
-    await saveHealthCache(data);
-    return data;
-  } catch {
-    return (await loadHealthCache()) ?? { daily: [], stepLogs: [] };
+  const identity = pullIdentity(token);
+  if (!identity) {
+    throw cancelledHealthPull();
   }
+
+  const key = makeHealthPullKey(identity, fromKey, toKey);
+  if (shouldJoinHealthPull(pullInflight, key, fromKey, toKey, startedGeneration)) {
+    return pullInflight!.promise;
+  }
+
+  const now = Date.now();
+  if (canReuseHealthPull(pullCache, key, now, Boolean(opts?.force))) {
+    return pullCache!.data;
+  }
+
+  const promise = (async () => {
+    try {
+      const data = await api.healthMetrics.get({ from: fromKey, to: toKey });
+      const currentKey = makeHealthPullKey(pullIdentity(await getToken()), fromKey, toKey);
+      if (!shouldCommitHealthPull({
+        startedGeneration,
+        currentGeneration: pullGeneration,
+        startedKey: key,
+        currentKey,
+      })) {
+        throw cancelledHealthPull();
+      }
+      await saveHealthCache(data);
+      pullCache = { key, at: Date.now(), data };
+      return data;
+    } catch (err) {
+      if (isHealthPullCancelled(err)) {
+        throw err;
+      }
+      if (!shouldCommitHealthPull({
+        startedGeneration,
+        currentGeneration: pullGeneration,
+        startedKey: key,
+        currentKey: makeHealthPullKey(pullIdentity(await getToken()), fromKey, toKey),
+      })) {
+        throw cancelledHealthPull();
+      }
+      return (await loadHealthCache()) ?? { daily: [], stepLogs: [] };
+    } finally {
+      if (pullInflight?.generation === startedGeneration && pullInflight?.key === key) {
+        pullInflight = null;
+      }
+    }
+  })();
+  pullInflight = { key, promise, generation: startedGeneration };
+  return promise;
 }
 
 export async function pushHealthToServer(payload: HealthMetricsSyncPayload): Promise<void> {

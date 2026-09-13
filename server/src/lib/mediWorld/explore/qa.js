@@ -15,7 +15,7 @@ function forbidden() {
 }
 
 function flagsOf(userId) {
-  if (!arms.has(userId)) arms.set(userId, { inaccurate: false, mapFail: false });
+  if (!arms.has(userId)) arms.set(userId, { inaccurate: false, mapFail: false, expireSoon: null });
   return arms.get(userId);
 }
 
@@ -24,7 +24,19 @@ export function resetExploreQaState() {
 }
 
 export function peekExploreQaFlags(userId) {
-  return { ...(arms.get(userId) || { inaccurate: false, mapFail: false }) };
+  const flags = arms.get(userId) || { inaccurate: false, mapFail: false, expireSoon: null };
+  return { inaccurate: Boolean(flags.inaccurate), mapFail: Boolean(flags.mapFail) };
+}
+
+export function takeExpireSoon(userId, now = new Date()) {
+  const flags = arms.get(userId);
+  if (!flags?.expireSoon) return null;
+  const arm = flags.expireSoon;
+  if (new Date(arm.expiresAt).getTime() <= new Date(now).getTime()) {
+    flags.expireSoon = null;
+    return null;
+  }
+  return arm;
 }
 
 export function consumeInaccurateArm(userId) {
@@ -63,6 +75,13 @@ export async function applyExploreQaScenario(userId, scenario, options = {}) {
       data: { status: 'expired', expiresAt: new Date(now.getTime() - 60_000) },
     });
     return { ok: true, scenario, fixture: true, updated: updated?.count || 0, placeId };
+  }
+  if (scenario === 'expire_soon') {
+    const placeId = options.placeId || 'place.qa.garden.alpha';
+    const inMs = Math.min(60_000, Math.max(5_000, Number(options.inMs) || 15_000));
+    const expiresAt = new Date(now.getTime() + inMs);
+    flagsOf(userId).expireSoon = { placeId, expiresAt: expiresAt.toISOString(), inMs };
+    return { ok: true, scenario, fixture: true, placeId, inMs, expiresAt: expiresAt.toISOString() };
   }
   if (scenario === 'fill_daily_cap') {
     const timezone = getEffectiveQuestTimezone(options.user || {}, {
