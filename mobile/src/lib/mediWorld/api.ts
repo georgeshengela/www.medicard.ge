@@ -35,7 +35,11 @@ export const mediWorldApi = {
     api.mediWorld.adventureSwap(slotKey, idempotencyKey),
   adventureRestDay: () => api.mediWorld.adventureRestDay(),
   exploreConfig: () => api.mediWorld.exploreConfig(),
-  exploreArea: (coarseKey: string, locale?: 'ka' | 'en') => api.mediWorld.exploreArea(coarseKey, locale),
+  exploreArea: (
+    coarseKey: string,
+    locale?: 'ka' | 'en',
+    coords?: { latitude: number; longitude: number },
+  ) => api.mediWorld.exploreArea(coarseKey, locale, coords),
   exploreSparks: (coarseKey: string, locale?: 'ka' | 'en') => api.mediWorld.exploreSparks(coarseKey, locale),
   collectSpark: (
     spawnId: string,
@@ -72,6 +76,44 @@ export const mediWorldApi = {
   gardenRestore: (plantId: string, plotIndex: number, idempotencyKey: string) =>
     api.mediWorld.gardenRestore(plantId, plotIndex, idempotencyKey),
   gardenHistory: (query?: { take?: number; cursor?: string | null }) => api.mediWorld.gardenHistory(query),
+  socialMe: () => api.mediWorld.socialMe(),
+  socialUpdateMe: (body: { displayName?: string; bio?: string; socialEnabled?: boolean }) =>
+    api.mediWorld.socialUpdateMe(body),
+  socialPrivacy: (body: {
+    showWorldLevel?: boolean;
+    showBondLevel?: boolean;
+    showGardenPreview?: boolean;
+    wavesMuted?: boolean;
+  }) => api.mediWorld.socialPrivacy(body),
+  socialEligibility: () => api.mediWorld.socialEligibility(),
+  socialRotateCode: () => api.mediWorld.socialRotateCode(),
+  socialPreview: () => api.mediWorld.socialPreview(),
+  socialFriends: () => api.mediWorld.socialFriends(),
+  socialFriendRequest: (friendCode: string, idempotencyKey: string) =>
+    api.mediWorld.socialFriendRequest(friendCode, idempotencyKey),
+  socialFriendAccept: (relationshipId: string) => api.mediWorld.socialFriendAccept(relationshipId),
+  socialFriendDecline: (relationshipId: string) => api.mediWorld.socialFriendDecline(relationshipId),
+  socialFriendCancel: (relationshipId: string) => api.mediWorld.socialFriendCancel(relationshipId),
+  socialFriendRemove: (relationshipId: string) => api.mediWorld.socialFriendRemove(relationshipId),
+  socialFriendProfile: (relationshipId: string) => api.mediWorld.socialFriendProfile(relationshipId),
+  socialBlock: (publicId: string) => api.mediWorld.socialBlock(publicId),
+  socialUnblock: (blockId: string) => api.mediWorld.socialUnblock(blockId),
+  socialBlocks: () => api.mediWorld.socialBlocks(),
+  socialReport: (body: { targetPublicId: string; category: string; description?: string }) =>
+    api.mediWorld.socialReport(body),
+  socialWave: (publicId: string, waveType: string, idempotencyKey: string) =>
+    api.mediWorld.socialWave(publicId, waveType, idempotencyKey),
+  socialWaves: () => api.mediWorld.socialWaves(),
+  socialCircleCreate: (name?: string) => api.mediWorld.socialCircleCreate(name),
+  socialCircleCurrent: () => api.mediWorld.socialCircleCurrent(),
+  socialCircleInvite: () => api.mediWorld.socialCircleInvite(),
+  socialCircleJoin: (inviteCode: string) => api.mediWorld.socialCircleJoin(inviteCode),
+  socialCircleLeave: () => api.mediWorld.socialCircleLeave(),
+  socialCircleRemove: (publicId: string) => api.mediWorld.socialCircleRemove(publicId),
+  socialCircleTransfer: (publicId: string) => api.mediWorld.socialCircleTransfer(publicId),
+  socialCircleDelete: () => api.mediWorld.socialCircleDelete(),
+  socialInbox: (query?: { take?: number; cursor?: string | null }) => api.mediWorld.socialInbox(query),
+  socialInboxRead: (itemId: string) => api.mediWorld.socialInboxRead(itemId),
 };
 
 export type {
