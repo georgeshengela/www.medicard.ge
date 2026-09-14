@@ -1,7 +1,7 @@
 export { attachAirQuality, bandFromEuropeanAqi } from './airQuality.ts';
 export { conditionFromWeatherCode } from './conditions.ts';
 export { weatherCopyText, weatherConditionLabel, WEATHER_UI, weekdayShort } from './copy.ts';
-export { loadWeatherSnapshot, locationChangedMeaningfully, readWeatherCache } from './cache.ts';
+export { clearWeatherCache, loadWeatherSnapshot, locationChangedMeaningfully, readWeatherCache } from './cache.ts';
 export { loadWeatherWellnessContext, weatherCityFromProfile, weatherCoordsFromProfile } from './context.ts';
 export { logWeatherEvent } from './events.ts';
 export { findBestOutdoorWindow, rainArrivingSoon, scoreOutdoorHour } from './outdoorWindow.ts';

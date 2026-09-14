@@ -1,5 +1,5 @@
 import { metersBetween } from '@/lib/geoPlace';
-import { getPreference, setPreference } from '@/lib/storage';
+import { deletePreference, getPreference, setPreference } from '@/lib/storage';
 import { fetchOpenMeteoSnapshot } from './openMeteo.ts';
 import {
   WEATHER_CACHE_TTL_MS,
@@ -44,6 +44,11 @@ export async function readWeatherCache(): Promise<WeatherCacheRecord | null> {
 export async function writeWeatherCache(record: WeatherCacheRecord): Promise<void> {
   memory = record;
   await setPreference(CACHE_KEY, JSON.stringify(record));
+}
+
+export async function clearWeatherCache(): Promise<void> {
+  memory = null;
+  await deletePreference(CACHE_KEY);
 }
 
 export function peekWeatherMemory(): WeatherCacheRecord | null {

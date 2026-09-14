@@ -3,7 +3,7 @@
     "name": "MEDICARD",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.8.24",
+    "version": "1.0.0.8.28",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -14,12 +14,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
-      "version": "1.8.24",
+      "version": "1.8.28",
       "buildNumber": "67",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD",
-        "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენისა და კანის ფოტოსთვის.",
-        "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა სამედიცინო დოკუმენტებისა და ფოტოების ასატვირთად.",
+        "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის.",
+        "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა სამედიცინო დოკუმენტების, ანალიზებისა და ცხოველის ფოტოების ასატვირთად.",
         "NSMicrophoneUsageDescription": "მიკროფონი საჭიროა ხმის ანალიზისთვის, თუ ამ ნაბიჯს გაივლით.",
         "NSFaceIDUsageDescription": "Medicard-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად.",
         "NSLocationWhenInUseUsageDescription": "Medicard-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის. ფონური წვდომა არ გამოიყენება.",
@@ -92,14 +92,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Medicard-ს სჭირდება კამერაზე წვდომა სამედიცინო ფოტოსთვის."
+          "cameraPermission": "Medicard-ს სჭირდება კამერაზე წვდომა სამედიცინო და ცხოველის ფოტოსთვის."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Medicard-ს სჭირდება გალერეაზე წვდომა ანალიზებისა და ფოტოების ასატვირთად.",
-          "cameraPermission": "Medicard-ს სჭირდება კამერაზე წვდომა სამედიცინო ფოტოს გადასაღებად."
+          "photosPermission": "Medicard-ს სჭირდება გალერეაზე წვდომა ანალიზების, დოკუმენტებისა და ცხოველის ფოტოების ასატვირთად.",
+          "cameraPermission": "Medicard-ს სჭირდება კამერაზე წვდომა სამედიცინო და ცხოველის ფოტოს გადასაღებად."
         }
       ],
       [
@@ -119,7 +119,7 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Medicard-ს Apple Health-ის წაკითხვა სჭირდება წონის, წნევის, პულსის, ძილისა და ჰიდრატაციის სინქრონიზაციისთვის.",
+      "NSHealthShareUsageDescription": "Medicard-ს Apple Health-ის წაკითხვა სჭირდება ნაბიჯების, წონის, წნევის, პულსის, ძილისა და ჰიდრატაციის სინქრონიზაციისთვის.",
           "NSHealthUpdateUsageDescription": "Medicard-ს Apple Health-ში ციკლისა და ჯანმრთელობის ჩანაწერების შენახვა სჭირდება.",
           "background": false
         }
@@ -158,7 +158,7 @@
     ],
     "extra": {
       "router": {},
-      "medicardInternalVersion": "1.0.0.8.24",
+      "medicardInternalVersion": "1.0.0.8.28",
       "apiUrl": "https://medicard.ge",
       "privacyPolicyUrl": "https://medicard.ge/privacy",
       "termsOfServiceUrl": "https://medicard.ge/terms",

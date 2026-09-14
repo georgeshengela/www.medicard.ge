@@ -293,9 +293,9 @@ export async function resetAllConnectionsAndPermissions(): Promise<void> {
   ]);
 }
 
-export async function enableLocationConnection(): Promise<{ granted: boolean }> {
+export async function enableLocationConnection(): Promise<{ granted: boolean; hasFix: boolean }> {
   const result = await grantUserLocation();
-  return { granted: result.granted };
+  return { granted: result.granted, hasFix: result.hasFix };
 }
 
 export async function disableLocationConnection(): Promise<void> {

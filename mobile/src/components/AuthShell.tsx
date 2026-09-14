@@ -32,7 +32,7 @@ export function AuthShell({
     <KeyboardAvoidingView
       className="flex-1 font-sans"
       style={{ flex: 1, backgroundColor: colors.surface }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior="padding"
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
     >
       <View className="flex-1">

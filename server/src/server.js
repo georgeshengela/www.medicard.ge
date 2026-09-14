@@ -23,9 +23,12 @@ import { chatsRouter } from './routes/chats.routes.js';
 import { recordsRouter } from './routes/records.routes.js';
 import { medicationsRouter } from './routes/medications.routes.js';
 import { visitsRouter } from './routes/visits.routes.js';
+import { petsRouter } from './routes/pets.routes.js';
 import { usageRouter } from './routes/usage.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { adminRewardsRouter } from './routes/adminRewards.routes.js';
+import { tbilisiMovesRouter } from './routes/tbilisiMoves.routes.js';
+import { adminTbilisiMovesRouter } from './routes/adminTbilisiMoves.routes.js';
 import { appRouter } from './routes/app.routes.js';
 import { accountRouter } from './routes/account.routes.js';
 import { cycleRouter, partnerShareClosedHandler } from './routes/cycle.routes.js';
@@ -195,6 +198,8 @@ app.use('/api/records', recordsRouter);
 app.use('/api/files', filesRouter);
 app.use('/api/medications', medicationsRouter);
 app.use('/api/visits', visitsRouter);
+app.use('/api/pets', petsRouter);
+app.use('/api/tbilisi-moves', tbilisiMovesRouter);
 app.use('/api/cycle', cycleRouter);
 app.get('/api/cycle/share/:code', partnerShareClosedHandler);
 app.use('/api/usage', usageRouter);
@@ -209,6 +214,7 @@ app.use('/api/medi-companion', mediCompanionRouter);
 app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/rewards', adminRewardsRouter);
+app.use('/api/admin/tbilisi-moves', adminTbilisiMovesRouter);
 
 if (serveAdmin) {
   // Must be registered before the marketing-site fallback, otherwise /admin becomes the landing page.

@@ -47,6 +47,14 @@ describe('notificationPlan', () => {
     assert.equal(routeFromNotificationData({ type: 'admin_push', route: '/(tabs)/home' }), '/(tabs)/home');
     assert.equal(routeFromNotificationData({ type: 'medi_engage', route: '/week' }), '/week');
     assert.equal(routeFromNotificationData({ type: 'medi_engage', family: 'hydration' }), '/health-metrics/hydration');
+    assert.equal(
+      routeFromNotificationData({
+        type: 'pet_care',
+        route: '/pets/abc/care/complete?scheduleId=s',
+      }),
+      '/pets/abc/care/complete?scheduleId=s',
+    );
+    assert.equal(routeFromNotificationData({ type: 'pet_care', petId: 'abc' }), '/pets/abc/care');
   });
 
   it('classifies scheduled identifiers', () => {
@@ -55,5 +63,6 @@ describe('notificationPlan', () => {
     assert.equal(prefixForNotificationId('engage:weekly:2026-09-06'), 'engage');
     assert.equal(prefixForNotificationId('quota:reset'), 'quota');
     assert.equal(prefixForNotificationId('qa:medication:1'), 'qa');
+    assert.equal(prefixForNotificationId('pets:user:pet:sched:r1|2026-09-20|date|0:due'), 'pets');
   });
 });

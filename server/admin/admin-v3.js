@@ -746,6 +746,7 @@
       health: 'activity',
       quality: 'check',
       cycleqa: 'layers',
+      'tbilisi-moves': 'activity',
       audit: 'shield',
       settings: 'settings',
     };
@@ -793,6 +794,7 @@
       { group: 'People', tab: 'users', label: 'მომხმარებლები' },
       { group: 'Engagement', tab: 'push', label: 'Push · Brain', hash: '#/push?tab=brain' },
       { group: 'Engagement', tab: 'push', label: 'Push · გაგზავნა', hash: '#/push?tab=compose' },
+      { group: 'Engagement', tab: 'tbilisi-moves', label: 'თბილისი მოძრაობს' },
       { group: 'Health & Medi', tab: 'health', label: 'ჯანმრთელობა' },
       { group: 'Health & Medi', tab: 'ai', label: 'Medi' },
       { group: 'Commerce', tab: 'rewards', label: 'ჯილდოები' },

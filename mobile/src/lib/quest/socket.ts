@@ -7,6 +7,7 @@ import {
   requestQuestRefresh,
   type AchievementUnlockShow,
 } from './cache';
+import { celebrationKey, shouldCelebrate } from './logic';
 
 type CompletedPayload = {
   questId: string;

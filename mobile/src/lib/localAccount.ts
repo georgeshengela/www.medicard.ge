@@ -43,6 +43,12 @@ export async function setScopedPreferenceStrict(base: string, value: string): Pr
   await setPreferenceStrict(key, value);
 }
 
+export async function deleteScopedPreference(base: string): Promise<void> {
+  const key = scopedPrefKey(base);
+  if (!key) return;
+  await deletePreference(key);
+}
+
 export async function wipeLegacyUnscopedHealthCaches(): Promise<void> {
   await Promise.all(LEGACY_UNSCOPED.map((key) => deletePreference(key)));
 }

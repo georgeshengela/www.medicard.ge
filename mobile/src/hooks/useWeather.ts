@@ -61,12 +61,12 @@ export function useWeather() {
   useEffect(() => {
     let alive = true;
     void readWeatherCache().then((cached) => {
-      if (!alive || !cached?.snapshot) return;
+      if (!alive || !cached?.snapshot || !city) return;
       setState((prev) => {
         if (prev.snapshot) return prev;
         const snapshot = {
           ...cached.snapshot,
-          location: { ...cached.snapshot.location, city: city ?? cached.snapshot.location.city },
+          location: { ...cached.snapshot.location, city },
         };
         return applySnapshot(snapshot, { loading: true, fromCache: true, stale: true }, { locale: 'ka', userKey: user?.id ?? null });
       });
@@ -79,15 +79,10 @@ export function useWeather() {
   const refresh = useCallback(
     async (force = false) => {
       if (!ready || lat == null || lng == null) {
-        setState((prev) => ({
+        setState({
           ...EMPTY,
-          snapshot: prev.snapshot,
-          recommendation: prev.recommendation,
-          fromCache: prev.fromCache,
-          stale: prev.stale,
-          loading: (!ready || awaitingFix) && !prev.snapshot,
-          unavailable: false,
-        }));
+          loading: (!ready || awaitingFix),
+        });
         return;
       }
       const ticket = ++seq.current;

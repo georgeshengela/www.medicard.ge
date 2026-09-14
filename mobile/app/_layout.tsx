@@ -22,6 +22,7 @@ import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { QuotaReadyHost } from '@/components/QuotaReadyHost';
 import { LocationAskHost } from '@/components/location/LocationAskHost';
 import { QuestHost } from '@/components/quest/QuestHost';
+import { TbilisiMovesHost } from '@/components/tbilisiMoves/TbilisiMovesHost';
 import { useThemeColors } from '@/theme/colors';
 import { AuthProvider, useAuth, needsHealthAssessment, needsProfileSetup } from '@/store/AuthContext';
 import { routeFromNotificationData } from '@/lib/notificationPlan';
@@ -242,6 +243,11 @@ function AppShell() {
           body: content.body ?? '',
         }),
       );
+      if (data.type === 'pet_care') {
+        void import('@/lib/petCareReminders').then(({ recordPetCareReceivedCallback }) =>
+          recordPetCareReceivedCallback(data),
+        );
+      }
       if (data.type === 'medi_engage') {
         const now = new Date();
         const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -292,6 +298,7 @@ function AppShell() {
                 ...stackMotion,
               }}
             >
+              <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="package" options={{ headerShown: false }} />
@@ -305,6 +312,8 @@ function AppShell() {
               <Stack.Screen name="cycle" options={{ headerShown: false }} />
               <Stack.Screen name="share" options={{ headerShown: false }} />
               <Stack.Screen name="visits" options={{ headerShown: false }} />
+              <Stack.Screen name="pets" options={{ headerShown: false }} />
+              <Stack.Screen name="tbilisi-moves" options={{ headerShown: false }} />
               <Stack.Screen name="medications" options={{ headerShown: false }} />
               <Stack.Screen name="lab" options={{ headerShown: false }} />
               <Stack.Screen name="symptoms" options={{ headerShown: false }} />
@@ -321,6 +330,7 @@ function AppShell() {
           <QuotaReadyHost />
           <LocationAskHost />
           <QuestHost />
+          <TbilisiMovesHost />
           <OfflineBanner />
         </View>
       </AuthGate>

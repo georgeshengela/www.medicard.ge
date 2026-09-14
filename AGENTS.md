@@ -4,6 +4,14 @@
 
 The in-app AI is **Medi**. Never write Nightingale in user-facing copy (chat titles, CTAs, bubbles, share toggles). Nightingale is only the Figma UI kit name.
 
+## Pets / Medi Vet
+
+Hub copy is **ჩემი ცხოველები**. The pet assistant is **Medi Vet**. Phase 5 local care reminders are implemented on the Notification Brain (`pets:`). Phase 6 Medi Vet is isolated OpenRouter chat (`/api/pets/:petId/chat/query`, never EvidenceMD / `withPatientAiContext`). Phase 7 local SQL/HTTP verification ran against disposable Postgres `127.0.0.1:55432` / `medicard_pets_phase7`. Phase 7.1: bird/unsupported-species is a bounded COMPLETE (not 502); COMPLETE+quota are one transaction; Pixel_8 development APK talked to isolated `:4010`; **OS notification banners and the full in-app care/Medi Vet loop were not finished**. Neon SQL is **not** applied until an operator runs phase2 → phase3 → phase4 → phase5 → phase6 → phase7. Care requests 503 until Phase 4 tables exist; chat 503 until Phase 6 tables exist. Missing Phase 5 disables reminder **telemetry only**. Handoff: `docs/PETS_ARCHITECTURE.md`. Verification: `docs/PETS_PHASE7_VERIFICATION.md`. Do not hang pets on `HealthProfile`, `ChatSession`, `MedicationSchedule`, `DoctorVisit`, or Home. Do not add a fifth bottom tab.
+
+## თბილისი მოძრაობს / Tbilisi Moves
+
+District walking competition (activity, not a medical ranking). Never “healthiest district.” Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Validation: `docs/TBILISI_MOVES_PILOT_VALIDATION.md`. Owner runbook: `docs/TBILISI_MOVES_OWNER_PILOT.md`. **Phase 5 isolated Postgres verification ran** (`127.0.0.1:55433` / `medicard_tbilisi_moves_test`). **Phase 6 owner-pilot** uses persistent `medicard_tbilisi_moves_pilot` on the same cluster (`node scripts/tbilisi-moves-pilot.mjs`, API `:4011`). Feature/SQL still disabled by default on hosted Neon; Neon SQL is **not** applied. Runner exists but is **not** scheduled. Native HealthKit/Health Connect still pending a development-build device. Competition sensor files must stay `healthKitSensor.ts` / `healthConnectSensor.ts` (lazy-imported, Expo Go skipped) — never `sensor.ios.ts` / `sensor.android.ts` beside `sensor.ts`, or Metro loads HealthKit on every Expo Go boot and the app red-screens. Do not use `HealthMetricDaily` as the competition ledger. Do not auto-select district from GPS/`UserLocation`. Do not hang it on Home or a fifth tab. Do not revive Medi Hunt. Map polygons must be licensed (OSM ODbL or operator shapefile), never invented. No version bump for this phase.
+
 ## Expo Router app directory
 
 Routes live in `mobile/app/`. **Never create `mobile/src/app`** (even empty). Expo Router prefers `src/app` if that folder exists and shows the stock “Welcome to Expo” screen instead of Medicard.
@@ -71,7 +79,7 @@ Dark is **cool gray-950 navy**, not teal charcoal. Keep `global.css` `.dark` and
 
 Filled dark CTAs use `#0D9488` (`FIGMA_AUTH_DARK.primaryBg`), not `#14B8A6`. Auth screens sit on `bg-surface`. Google on dark is a **white** fill with dark label. Do not invert the stack (page stays darker than cards).
 
-On every **store-facing** mobile change, update `mobile/app.json` `expo.version`. The public identity is Instagram-style **five-part** `G.0.0.B.R` (currently `1.0.0.8.24`). That string is Android `versionName`, in-app display, and `/api/app/status`. Apple rejects five-part marketing versions — set `expo.ios.version` to `G.B.R` (`1.8.24`) and keep plugin `withIosMarketingVersion` as last-write guard. Never put `1.7.72` in `minAppVersion` — that would block five-part clients. Native `ios.buildNumber` / `android.versionCode` in `app.json` are a local floor only. EAS production uses `appVersionSource: remote` + `autoIncrement` (remote was **2** on 2026-09-11) — never lower the remote counter. Cycle phase numbers stay in contracts / QA only.
+On every **store-facing** mobile change, update `mobile/app.json` `expo.version`. The public identity is Instagram-style **five-part** `G.0.0.B.R` (currently `1.0.0.8.28`). That string is Android `versionName`, in-app display, and `/api/app/status`. Apple rejects five-part marketing versions — set `expo.ios.version` to `G.B.R` (`1.8.28`) and keep plugin `withIosMarketingVersion` as last-write guard. Never put `1.7.72` in `minAppVersion` — that would block five-part clients. Native `ios.buildNumber` / `android.versionCode` in `app.json` are a local floor only. EAS production uses `appVersionSource: remote` + `autoIncrement` (remote was **2** on 2026-09-11) — never lower the remote counter. Cycle phase numbers stay in contracts / QA only.
 
 - **Small** feature/fix → revision + 1 (`1.0.0.7.78` → `1.0.0.7.79`)
 - **Native / store train** → train + 1 and bump `buildNumber` / `versionCode` (`1.0.0.7.77` → `1.0.0.8.0`)

@@ -3,7 +3,7 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
-import { useFigmaAuth } from '@/constants/figmaAuthLayout';
+import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { Button } from './Button';
 import { ka } from '@/i18n/ka';
 import {
@@ -23,38 +23,110 @@ type Props = {
   onChangeText: (digits: string) => void;
   error?: string | null;
   hint?: string;
+  placeholder?: string;
+  /** Birth-date screens show years-old. Measurement dates should pass false. */
+  showAge?: boolean;
+  /** Nightingale InputFieldBase — Figma 11358:72329. */
+  figma?: boolean;
 };
 
 const DEFAULT_AGE = 25;
 
-export function DateField({ label, value, onChangeText, error, hint }: Props) {
+export function DateField({
+  label,
+  value,
+  onChangeText,
+  error,
+  hint,
+  placeholder,
+  showAge = true,
+  figma = false,
+}: Props) {
   const colors = useThemeColors();
+  const auth = useFigmaAuth();
   const [open, setOpen] = useState(false);
   const display = formatBirthDateInput(value);
   const parsed = parseBirthDate(value);
 
   return (
     <View className="w-full">
-      {label ? <Text className="mb-1.5 text-sm font-semibold text-text-200">{label}</Text> : null}
+      {label ? (
+        <Text
+          style={
+            figma
+              ? {
+                  marginBottom: 8,
+                  fontFamily: 'NotoSansGeorgian_600SemiBold',
+                  fontSize: 14,
+                  lineHeight: 20,
+                  color: auth.labelColor,
+                }
+              : undefined
+          }
+          className={figma ? undefined : 'mb-1.5 text-sm font-semibold text-text-200'}
+        >
+          {label}
+        </Text>
+      ) : null}
 
       <Pressable
         testID="birth-date-field"
         accessibilityRole="button"
         accessibilityLabel={label ?? ka.auth.birthDate}
         onPress={() => setOpen(true)}
-        className={`flex-row items-center rounded-2xl border bg-bg-200 px-4 py-3.5 active:opacity-80 ${
-          error ? 'border-state-danger' : 'border-bg-300'
-        }`}
+        className={
+          figma
+            ? undefined
+            : `flex-row items-center rounded-2xl border bg-bg-200 px-4 py-3.5 active:opacity-80 ${
+                error ? 'border-state-danger' : 'border-bg-300'
+              }`
+        }
+        style={
+          figma
+            ? {
+                minHeight: auth.inputMinHeight,
+                borderRadius: auth.inputRadius,
+                backgroundColor: auth.inputBg,
+                borderWidth: 1,
+                borderColor: error ? colors.danger : auth.inputBorder,
+                paddingHorizontal: auth.inputPaddingX,
+                paddingVertical: auth.inputPaddingY,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                ...FIGMA_AUTH_SHADOW,
+              }
+            : undefined
+        }
       >
-        <CalendarDays size={18} color={display ? colors.primary200 : colors.text300} strokeWidth={2} />
-        <Text className={`ml-3 flex-1 text-base ${display ? 'text-text-100' : 'text-text-300'}`}>
-          {display || ka.auth.birthDatePlaceholder}
+        <CalendarDays
+          size={figma ? 20 : 18}
+          color={display ? colors.primary200 : figma ? auth.iconMuted : colors.text300}
+          strokeWidth={2}
+        />
+        <Text
+          className={figma ? undefined : `ml-3 flex-1 text-base ${display ? 'text-text-100' : 'text-text-300'}`}
+          style={
+            figma
+              ? {
+                  flex: 1,
+                  fontFamily: 'NotoSansGeorgian_400Regular',
+                  fontSize: 16,
+                  lineHeight: 22,
+                  color: display ? auth.fieldText : auth.placeholder,
+                }
+              : undefined
+          }
+        >
+          {display || placeholder || ka.auth.birthDatePlaceholder}
         </Text>
-        {parsed.ok ? (
+        {showAge && parsed.ok ? (
           <View className="rounded-full bg-accent-100 px-2.5 py-1">
             <Text className="text-xs font-bold text-primary-100">{ka.auth.yearsOld(parsed.age)}</Text>
           </View>
-        ) : null}
+        ) : (
+          figma ? <ChevronDown size={20} color={auth.iconMuted} strokeWidth={2} /> : null
+        )}
       </Pressable>
 
       {error ? (

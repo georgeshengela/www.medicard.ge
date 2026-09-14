@@ -210,7 +210,7 @@ export default function PermissionsScreen() {
         }
         await refreshHealthProfile();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-        showToast(ka.permissions.locationEnabledToast);
+        showToast(result.hasFix ? ka.permissions.locationEnabledToast : ka.permissions.locationFixFailed);
       }).catch(() => undefined);
       return;
     }

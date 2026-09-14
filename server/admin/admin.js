@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'cycleqa', 'settings'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'cycleqa', 'tbilisi-moves', 'settings'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -824,6 +824,7 @@ async function boot() {
     else if (tab === 'health' && typeof renderHealthOps === 'function') renderHealthOps();
     else if (tab === 'rewards' && typeof renderRewards === 'function') renderRewards();
     else if (tab === 'cycleqa' && typeof renderCycleQa === 'function') renderCycleQa();
+    else if (tab === 'tbilisi-moves' && typeof renderTbilisiMoves === 'function') renderTbilisiMoves();
   });
   $('drawer-backdrop').addEventListener('click', async () => {
     if (window.AdminV3?.requestCloseOverlay) {
@@ -1009,6 +1010,7 @@ async function switchTab(tab, opts = {}) {
     audit: ['Production', 'აუდიტი', 'ვინ შეცვალა რა და როდის?', 'audit.page'],
     quality: ['Production', 'ხარისხი', 'ვერსიები, ტელემეტრია და მონაცემები სანდოა?', 'quality.page'],
     cycleqa: ['Production', 'ფაზები', 'რა გაყინულია, როგორ მიდის QA და რა დაფიქსირდა თითო ფაზაზე?', 'cycleqa.page'],
+    'tbilisi-moves': ['Engagement', 'თბილისი მოძრაობს', 'რაიონული სიარულის შეჯიბრის კონფიგურაცია და მიმოხილვა.', ''],
     orders: ['Operations', 'შეკვეთები', 'რა საჭიროებს ოპერაციულ დამუშავებას?', 'orders.page'],
     users: ['People', 'მომხმარებლები', 'ვინ არის ბაზაში, რა ანგარიშის მდგომარეობა აქვს და ვისი გამოძიება გჭირდება.', 'users.registry'],
     packages: ['Commerce', 'პაკეტები', 'ტარიფები, ლიმიტები და უფლებები.', 'packages.page'],
@@ -1040,6 +1042,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'audit' && typeof renderAuditLog === 'function') await renderAuditLog();
     if (tab === 'quality' && typeof renderQualityOps === 'function') await renderQualityOps();
     if (tab === 'cycleqa' && typeof renderCycleQa === 'function') await renderCycleQa();
+    if (tab === 'tbilisi-moves' && typeof renderTbilisiMoves === 'function') await renderTbilisiMoves();
     if (tab === 'settings') await renderSettings();
   }
   startAdminLive();

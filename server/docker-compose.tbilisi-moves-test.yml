@@ -1,0 +1,21 @@
+services:
+  tbilisi-moves-pg:
+    image: postgres:17
+    container_name: medicard-tbilisi-moves-test
+    ports:
+      - "55433:5432"
+    environment:
+      POSTGRES_USER: medicard_tm_test
+      POSTGRES_PASSWORD: medicard_tm_test
+      POSTGRES_DB: medicard_tbilisi_moves_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medicard_tm_test -d medicard_tbilisi_moves_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+# Disposable only. Never use this compose file against hosted Neon.
+#   docker compose -f server/docker-compose.tbilisi-moves-test.yml up -d
+#   cd server && node scripts/tbilisi-moves-isolated-pg.mjs

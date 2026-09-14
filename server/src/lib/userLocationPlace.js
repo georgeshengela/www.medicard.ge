@@ -21,6 +21,23 @@ export function isLiveLocationPing(source) {
   return source === 'heartbeat' || source === 'watch' || source == null;
 }
 
+export function shouldClearStoredPlace(source, hasCoords) {
+  return source === 'revoke' || source === 'skip' || (source === 'grant' && !hasCoords);
+}
+
+/** Last-known Tbilisi while the phone timezone is already in Europe/America. */
+export function isInGeorgiaBox(lat, lng) {
+  return lat >= 41 && lat <= 43.7 && lng >= 39.5 && lng <= 46.8;
+}
+
+export function isCachedCaucasusFix(lat, lng, timeZone) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !isInGeorgiaBox(lat, lng)) return false;
+  const tz = String(timeZone || '');
+  if (!tz) return false;
+  if (tz === 'Asia/Tbilisi' || tz === 'Asia/Yerevan' || tz === 'Asia/Baku') return false;
+  return /^(Europe|America|Africa|Australia|Pacific)\//.test(tz);
+}
+
 export function didMoveFar(row, lat, lng) {
   if (!row || !Number.isFinite(row.lat) || !Number.isFinite(row.lng)) return false;
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;

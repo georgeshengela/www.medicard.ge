@@ -78,6 +78,25 @@ model User {
   /// Phase 9 — Medi Companion
   mediCompanionProfile  MediCompanionProfile?
   mediJourneyUnlocks    MediJourneyUnlock[]
+  /// Phase 2 — My Pets identity
+  pets                 Pet[]
+  petWeightLogs        PetWeightLog[]
+  petAllergies         PetAllergy[]
+  petConditions        PetCondition[]
+  petProducts          PetProduct[]
+  petCareSchedules     PetCareSchedule[]
+  petCareOccurrences    PetCareOccurrence[]
+  petCareEvents        PetCareEvent[]
+  petReminderDeliveries PetReminderDelivery[]
+  /// Phase 6 — Medi Vet (isolated from human ChatSession)
+  petChatSessions      PetChatSession[]
+  petChatMessages       PetChatMessage[]
+  /// Phase 2 — თბილისი მოძრაობს (competition, not HealthMetricDaily)
+  tbilisiMovesMembership TbilisiMovesMembership?
+  tbilisiMovesPeriods    TbilisiMovesMembershipPeriod[]
+  tbilisiMovesCredits    TbilisiMovesCredit[]
+  tbilisiMovesObservations TbilisiMovesObservation[]
+  tbilisiMovesAwards     TbilisiMovesAward[]
 
   @@index([status])
   @@index([packageId])
@@ -610,6 +629,10 @@ model PeriodUsage {
   /// Billing period key — rolling daily (roll:daily), calendar month (cal:YYYY-MM), or subscription (sub:start:end).
   periodKey String
   count     Int      @default(0)
+  /// In-flight AI reservations. Shared by human Medi and Medi Vet. Not a Prisma-only field: SQL and runtime ALTER also add it.
+  reserved  Int      @default(0)
+  /// When the current in-flight reservation was taken. Stale reserved > 20m is released.
+  reservedAt DateTime?
   /// Unlock instant. Under the cap this is the next Tbilisi midnight; after a 0/N hit it is now + 24h.
   resetAt   DateTime?
   /// Quiet-hours-aware ping after a refill. Cleared once the user is notified.
@@ -1481,4 +1504,606 @@ model MediJourneyUnlock {
 
   @@unique([userId, milestoneKey])
   @@index([userId, unlockedAt])
+}
+
+/// Phase 2 — My Pets identity. Not HealthProfile. Care/chat tables come in later phases.
+model Pet {
+  id                  String    @id @default(uuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                String
+  speciesId           String
+  /// Catalog breed id, or sentinel mixed | unknown | custom
+  breedId             String
+  customBreed         String?
+  /// MALE | FEMALE | UNKNOWN
+  sex                 String    @default("UNKNOWN")
+  /// null = unknown; never default false
+  neutered            Boolean?
+  /// EXACT | APPROXIMATE | UNKNOWN
+  ageKind             String
+  birthDate           DateTime? @db.Date
+  approxAgeYears      Int?
+  approxAgeMonths     Int?
+  /// Civil YYYY-MM-DD when the approximate age was stated
+  approxAgeRecordedOn String?
+  /// Storage key /uploads/<uuid>.ext — not a public URL
+  photoUrl            String?
+  vetClinicName       String?
+  vetName             String?
+  vetPhone            String?
+  vetAddress          String?
+  vetNotes            String?
+  archivedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  weightLogs          PetWeightLog[]
+  allergies           PetAllergy[]
+  conditions          PetCondition[]
+  products            PetProduct[]
+  careSchedules       PetCareSchedule[]
+  careOccurrences     PetCareOccurrence[]
+  careEvents          PetCareEvent[]
+  reminderDeliveries  PetReminderDelivery[]
+  chatSessions         PetChatSession[]
+  chatMessages         PetChatMessage[]
+
+  @@index([userId, archivedAt])
+  @@index([userId, createdAt])
+}
+
+/// Phase 3 — pet weight history. Never HealthMetricDaily / medicard.weight.logs.v1.
+model PetWeightLog {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petId           String
+  pet             Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  /// Civil YYYY-MM-DD
+  recordedOn      String
+  /// Normalized kilograms. Decimal so small animals round-trip.
+  weightKg        Decimal  @db.Decimal(10, 5)
+  /// Value the owner typed (for honest display).
+  inputValue      Decimal  @db.Decimal(12, 4)
+  /// kg | g | lb
+  inputUnit       String
+  note            String?
+  /// Optional idempotency key for create retries. Multiple NULLs allowed.
+  clientRequestId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([petId, clientRequestId])
+  @@index([petId, recordedOn, createdAt])
+  @@index([userId, petId])
+}
+
+/// Phase 3 — owner-recorded pet allergy. Not human allergyCatalog.
+model PetAllergy {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petId           String
+  pet             Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  name            String
+  /// medication | food | environmental | other | unknown
+  category        String    @default("unknown")
+  reaction        String?
+  /// suspected | veterinarian_confirmed
+  reportedStatus  String
+  /// Optional civil YYYY-MM-DD when observed / recorded
+  notedOn         String?
+  notes           String?
+  clientRequestId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([petId, clientRequestId])
+  @@index([userId, petId])
+}
+
+/// Phase 3 — owner-recorded pet condition. Not a diagnosis engine.
+model PetCondition {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petId           String
+  pet             Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  name            String
+  /// active | resolved | unknown
+  status          String
+  /// owner_reported | veterinarian_confirmed
+  reportedBasis   String
+  /// Optional civil YYYY-MM-DD — onset or diagnosis if the owner knows it
+  onsetOn         String?
+  /// Optional civil YYYY-MM-DD — only when status is resolved
+  resolvedOn      String?
+  notes           String?
+  clientRequestId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([petId, clientRequestId])
+  @@index([petId, status])
+  @@index([userId, petId])
+}
+
+/// Phase 4 — owner-held care product. Not a pharmacy catalog. expiresOn never computes next due.
+model PetProduct {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petId           String
+  pet             Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+  /// VACCINATION | FLEA_TICK | DEWORMING | MEDICATION | OTHER
+  kind            String
+  name            String
+  formulation     String?
+  batchId         String?
+  notes           String?
+  /// Civil YYYY-MM-DD — expiry only
+  expiresOn       String?
+  archivedAt      DateTime?
+  clientRequestId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  schedules       PetCareSchedule[]
+  events          PetCareEvent[]
+
+  @@unique([petId, clientRequestId])
+  @@index([userId, petId, archivedAt])
+}
+
+/// Phase 4 — planned care. Recurrence intent is stored; nextDueOn is derived for listing / Phase 5.
+model PetCareSchedule {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petId               String
+  pet                 Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  productId           String?
+  product             PetProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  kind                String
+  title               String
+  dose                String?
+  doseUnit            String?
+  route               String?
+  /// Civil first due / start
+  startOn             String
+  dueTime             String?
+  /// Explicit local times for DAILY_COURSE, e.g. ["08:00","20:00"]
+  times               Json?
+  /// ONCE | EVERY_N_DAYS | EVERY_N_WEEKS | EVERY_N_MONTHS | DAILY_COURSE
+  recurrenceKind      String
+  intervalCount       Int?
+  /// NONE | FIXED_CALENDAR | FROM_ADMINISTRATION
+  recurrenceBasis     String
+  /// VETERINARIAN | PRODUCT_INSTRUCTIONS | USER_ENTERED
+  source              String
+  sourceNote          String?
+  courseEndsOn        String?
+  occurrenceLimit     Int?
+  /// Original day-of-month for month-end anchoring
+  anchorDay           Int?
+  /// ACTIVE | COMPLETED | CANCELLED
+  status              String    @default("ACTIVE")
+  revision            Int      @default(1)
+  nextDueOn           String?
+  nextDueTime         String?
+  nextSequence        Int?
+  reminderEnabled     Boolean   @default(false)
+  reminderOffsetsDays Json      @default("[0]")
+  /// DATE_BASED | EXACT_TIME
+  timeMode            String    @default("DATE_BASED")
+  timezone            String?
+  clientRequestId     String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  occurrences         PetCareOccurrence[]
+  events              PetCareEvent[]
+  reminderDeliveries  PetReminderDelivery[]
+
+  @@unique([petId, clientRequestId])
+  @@index([userId, petId, status])
+  @@index([petId, nextDueOn])
+}
+
+/// Phase 4 architecture adjustment — stable occurrence identity for Phase 5 reminders.
+/// Virtual until complete/skip; then persisted. Skip is not an administration event.
+model PetCareOccurrence {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petId           String
+  pet             Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  scheduleId      String
+  schedule        PetCareSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  revision        Int
+  plannedOn       String
+  plannedTime     String?
+  sequence        Int
+/// r{revision}|{plannedOn}|{plannedTime||date}|{sequence}
+  occurrenceKey   String
+  /// OPEN | ADMINISTERED | SKIPPED | CANCELLED
+  status          String    @default("OPEN")
+  eventId         String?   @unique
+  event           PetCareEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  skipNote        String?
+  skippedAt       DateTime?
+  clientRequestId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([scheduleId, occurrenceKey])
+  @@unique([petId, clientRequestId])
+  @@index([petId, plannedOn])
+  @@index([scheduleId, status])
+}
+
+/// Phase 4 — what actually happened. Snapshots survive later product/schedule edits.
+model PetCareEvent {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petId               String
+  pet                 Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  kind                String
+  productId           String?
+  product             PetProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  scheduleId          String?
+  schedule            PetCareSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  titleSnapshot       String
+  productNameSnapshot String?
+  doseSnapshot        String?
+  doseUnitSnapshot    String?
+  routeSnapshot       String?
+  administeredOn      String
+  administeredTime   String?
+  timezone            String?
+  utcOffsetMinutes    Int?
+  notes               String?
+  /// RECORDED | VOIDED
+  status              String    @default("RECORDED")
+  voidedAt            DateTime?
+  voidReason          String?
+  correctionMeta      Json?
+  previousNextDueOn   String?
+  /// app | notification (Phase 5)
+  source              String    @default("app")
+  idempotencyHash     String?
+  clientRequestId     String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  occurrence          PetCareOccurrence?
+
+  @@unique([petId, clientRequestId])
+  @@index([userId, petId, administeredOn])
+  @@index([scheduleId])
+}
+
+/// Phase 5 — honest local-reminder telemetry. Not proof of OS banner display.
+model PetReminderDelivery {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petId         String
+  pet           Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+  scheduleId    String
+  schedule      PetCareSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  occurrenceKey String
+  alertKind     String
+  identity      String
+  installId     String
+  /// SCHEDULED_LOCAL | SCHEDULE_FAILED | CANCELLED | RECEIVED_CALLBACK | USER_RESPONSE | COMPLETION_CONFIRMED
+  status        String
+  fireAtMs      BigInt?
+  createdAt     DateTime @default(now())
+
+  @@index([userId, identity])
+  @@index([petId, createdAt])
+  @@index([userId, status, createdAt])
+}
+
+/// Phase 6 — Medi Vet conversation. Isolated from human ChatSession JSON.
+model PetChatSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petId     String
+  pet       Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  title     String   @default("ახალი საუბარი")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages  PetChatMessage[]
+
+  @@index([userId, petId, updatedAt])
+  @@index([petId, updatedAt])
+}
+
+/// Phase 6 — per-turn storage. Roles are server-controlled. Never store client system/assistant fabrications.
+model PetChatMessage {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petId           String
+  pet             Pet            @relation(fields: [petId], references: [id], onDelete: Cascade)
+  sessionId       String
+  session         PetChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  /// user | assistant
+  role            String
+  content         String         @default("")
+  /// PENDING | PARTIAL | COMPLETE | FAILED | CANCELLED
+  status          String         @default("COMPLETE")
+  clientRequestId String?
+  citations       Json?
+  draft           Json?
+  grounding       Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([sessionId, clientRequestId])
+  @@index([sessionId, createdAt])
+  @@index([petId, createdAt])
+  @@index([userId, petId, status])
+}
+
+/// თბილისი მოძრაობს Phase 2 — singleton scoring + operational controls. Not AppSettings.
+model TbilisiMovesConfig {
+  id                     String   @id @default("default")
+  featureEnabled         Boolean  @default(false)
+  enrollmentOpen         Boolean  @default(false)
+  /// Immediate operational pause. Not a scoring snapshot.
+  ingestionPaused        Boolean  @default(false)
+  competitionPaused      Boolean  @default(false)
+  /// Cosmetic reward policy. Snapshotted onto each round at open. Issuance is Phase 4.
+  rewardsEnabled         Boolean  @default(true)
+  leaderRecognitionEnabled Boolean @default(true)
+  /// Dense ranks 1..N in each district. Ties at a rewarded rank all qualify.
+  leaderRewardedRanks    Int      @default(3)
+  districtGoalBadgeEnabled Boolean @default(true)
+  /// Always true for this ingestion. Admin cannot flip this into “verified”.
+  pilotMode              Boolean  @default(true)
+  defaultDailyTarget     Int      @default(100000)
+  competitiveCap         Int      @default(10000)
+  cooldownDays           Int      @default(30)
+  minParticipantsForRank Int      @default(5)
+  lateSyncGraceHours     Int      @default(8)
+  sanityMaxRawSteps      Int      @default(80000)
+  correctionDropFlagPct  Int      @default(40)
+  geometryAssetVersion   String?
+  revision               Int      @default(1)
+  updatedAt              DateTime @updatedAt
+}
+
+/// Ten Tbilisi raioni. Never hard-delete once credits/periods exist.
+model TbilisiMovesDistrict {
+  id                  String   @id @default(uuid())
+  slug                String   @unique
+  nameKa              String
+  sortOrder           Int
+  /// ACTIVE | ARCHIVED
+  status              String   @default("ACTIVE")
+  dailyTargetOverride Int?
+  geometryVersion     String?
+  revision            Int      @default(1)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  memberships         TbilisiMovesMembership[]
+  pendingMemberships  TbilisiMovesMembership[] @relation("TbilisiMovesPendingDistrict")
+  periods             TbilisiMovesMembershipPeriod[]
+  credits             TbilisiMovesCredit[]
+  districtDays        TbilisiMovesDistrictDay[]
+  awards              TbilisiMovesAward[]
+
+  @@index([status, sortOrder])
+}
+
+/// Current membership + at most one pending midnight switch.
+model TbilisiMovesMembership {
+  userId               String    @id
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// ACTIVE | LEFT
+  status               String    @default("ACTIVE")
+  optedInAt            DateTime
+  publicBoardConsentAt DateTime
+  districtId           String
+  district             TbilisiMovesDistrict @relation(fields: [districtId], references: [id])
+  publicHandle         String
+  publicAvatarId       String?
+  enrolledAt           DateTime
+  /// First Tbilisi date a new change may be requested.
+  lockUntilDate        String
+  pendingDistrictId    String?
+  pendingDistrict      TbilisiMovesDistrict? @relation("TbilisiMovesPendingDistrict", fields: [pendingDistrictId], references: [id])
+  pendingEffectiveDate String?
+  pendingRequestedAt   DateTime?
+  leftAt               DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([districtId, status])
+  @@index([pendingEffectiveDate])
+}
+
+/// Inclusive startDate, exclusive endDate (null = current). Historical credits never move.
+model TbilisiMovesMembershipPeriod {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  districtId String
+  district   TbilisiMovesDistrict @relation(fields: [districtId], references: [id])
+  startDate  String
+  endDate    String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, startDate])
+  @@index([districtId, startDate])
+}
+
+/// One Tbilisi civil day. Snapshots freeze scoring + reward rules.
+model TbilisiMovesRound {
+  id                      String   @id @default(uuid())
+  date                    String   @unique
+  /// PROVISIONAL | FINALIZED
+  status                  String   @default("PROVISIONAL")
+  rulesSnapshot           Json
+  districtTargetsSnapshot Json
+  openedAt                DateTime
+  graceEndsAt             DateTime
+  lastObservationAt       DateTime?
+  lastAggregatedAt        DateTime?
+  finalizedAt             DateTime?
+  /// 0 = no published result yet.
+  resultRevision          Int      @default(0)
+  latestResultId          String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  credits                 TbilisiMovesCredit[]
+  observations            TbilisiMovesObservation[]
+  districtDays            TbilisiMovesDistrictDay[]
+  results                 TbilisiMovesResultRevision[]
+  awards                  TbilisiMovesAward[]
+}
+
+model TbilisiMovesDistrictDay {
+  id               String   @id @default(uuid())
+  roundId          String
+  round            TbilisiMovesRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  districtId       String
+  district         TbilisiMovesDistrict @relation(fields: [districtId], references: [id])
+  target           Int
+  eligibleStepsSum Int      @default(0)
+  contributorCount Int      @default(0)
+  enrolledCount    Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  @@unique([roundId, districtId])
+  @@index([roundId])
+}
+
+/// Competition ledger. Unique user/day. Never written by /api/health-metrics.
+model TbilisiMovesCredit {
+  id                     String    @id @default(uuid())
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date                   String
+  roundId                String
+  round                  TbilisiMovesRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  districtId             String
+  district               TbilisiMovesDistrict @relation(fields: [districtId], references: [id])
+  rawObservedSteps       Int
+  eligibleSteps          Int
+  capSnapshot            Int
+  authoritativeProvider  String
+  sourceInstallationId   String
+  lastRecordedAt         DateTime
+  lastClientSequence     Int       @default(0)
+  lastObservationId      String
+  publicHandleSnapshot   String
+  publicAvatarIdSnapshot String?
+  excludedAt             DateTime?
+  excludedReason         String?
+  flaggedAt              DateTime?
+  flagReason             String?
+  correctionCount        Int       @default(0)
+  acceptedAt             DateTime
+  updatedAt              DateTime  @updatedAt
+
+  @@unique([userId, date])
+  @@index([date, districtId, eligibleSteps])
+  @@index([date, eligibleSteps])
+}
+
+/// Append-only observation log. Unique clientObservationId per user.
+model TbilisiMovesObservation {
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientObservationId  String
+  roundId              String
+  round                TbilisiMovesRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  date                 String
+  provider             String
+  sourceInstallationId String
+  intervalStart        DateTime
+  intervalEnd          DateTime
+  cumulativeSteps      Int
+  recordedAt           DateTime
+  clientSequence       Int      @default(0)
+  payloadHash          String
+  receivedAt           DateTime
+  applied              Boolean  @default(true)
+  ignoreReason         String?
+
+  @@unique([userId, clientObservationId])
+  @@index([userId, date, receivedAt])
+  @@index([roundId, receivedAt])
+}
+
+/// Immediate ingest pause windows. Full-day cumulatives that overlap a hold are rejected.
+model TbilisiMovesIngestHold {
+  id        String    @id @default(uuid())
+  startedAt DateTime
+  endedAt   DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([startedAt, endedAt])
+}
+
+/// Immutable published result. Correction inserts a new revision; previous rows stay.
+model TbilisiMovesResultRevision {
+  id              String   @id @default(uuid())
+  roundId         String
+  round           TbilisiMovesRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  date            String
+  revision        Int
+  /// INITIAL | CORRECTION
+  kind            String
+  previewHash     String
+  rulesSnapshot   Json
+  districtResults Json
+  peopleResults   Json
+  awardPlan       Json
+  eligibleCreditCount Int  @default(0)
+  awardCount      Int      @default(0)
+  reason          String?
+  createdByAdminId String?
+  publishedAt     DateTime
+  createdAt       DateTime @default(now())
+
+  @@unique([roundId, revision])
+  @@index([date, revision])
+  @@index([previewHash])
+}
+
+/// Cosmetic entitlement only. Not coins, cash, or redeemable currency.
+model TbilisiMovesAward {
+  id                     String    @id @default(uuid())
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date                   String
+  roundId                String
+  round                  TbilisiMovesRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  districtId             String
+  district               TbilisiMovesDistrict @relation(fields: [districtId], references: [id])
+  /// DISTRICT_LEADER | DISTRICT_GOAL
+  awardKey               String
+  rank                   Int?
+  resultRevision         Int
+  /// ACTIVE | REVOKED
+  status                 String    @default("ACTIVE")
+  titleKa                String
+  reasonKa               String
+  publicHandleSnapshot   String
+  publicAvatarIdSnapshot String?
+  entitledAt             DateTime
+  revokedAt              DateTime?
+  revokedReason          String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@unique([userId, date, awardKey, districtId])
+  @@index([userId, date])
+  @@index([date, awardKey, status])
+  @@index([roundId, status])
 }

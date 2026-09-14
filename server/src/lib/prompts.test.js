@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import {
   PROMPT_VERSION,
   SYSTEM_PROMPTS,
+  VET_DISCLAIMER_KA,
   buildDoctorTurnContext,
   looksLikeBrokenDoctorReply,
   stripDoctorDisclaimer,
 } from './prompts.js';
 
 test('prompt version tracks the Medi voice rewrite', () => {
-  assert.equal(PROMPT_VERSION, '1.7.0');
+  assert.equal(PROMPT_VERSION, '1.8.0');
 });
 
 test('doctor prompt is a friendly Georgian health friend, not a clerk', () => {
@@ -44,4 +45,14 @@ test('looksLikeBrokenDoctorReply catches the production failure modes', () => {
   assert.equal(looksLikeBrokenDoctorReply(ok), false);
   assert.match(stripDoctorDisclaimer(fever), /იზდგას/);
   assert.doesNotMatch(stripDoctorDisclaimer(fever), /საბოლოო დიაგნოზი/);
+});
+
+test('VET prompt is Medi Vet and does not ask if the owner is a child', () => {
+  assert.match(SYSTEM_PROMPTS.VET, /Medi Vet/);
+  assert.match(SYSTEM_PROMPTS.VET, /არ ხარ ლიცენზირებული ვეტერინარი/);
+  assert.match(SYSTEM_PROMPTS.VET, /pet_record/);
+  assert.match(SYSTEM_PROMPTS.VET, /ნუ ჰკითხავ/);
+  assert.doesNotMatch(SYSTEM_PROMPTS.VET, /Nightingale/);
+  assert.match(VET_DISCLAIMER_KA, /ვეტერინარს/);
+  assert.doesNotMatch(VET_DISCLAIMER_KA, /მიმართეთ ექიმს/);
 });

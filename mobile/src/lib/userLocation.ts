@@ -1,8 +1,16 @@
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 import { api, type HealthProfile, type UserLocationSnapshot } from '@/lib/api';
 import { formatPlaceLine, resolvePlace } from '@/lib/geoPlace';
-import { isFreshLocationTimestamp } from '@/lib/locationFix';
+import {
+  isFreshLocationTimestamp,
+  isInGeorgiaBox,
+  pickLiveLocationFix,
+  type LocationFixSample,
+} from '@/lib/locationFix';
 import { getPreference, setPreference } from '@/lib/storage';
+
+const LIVE_FIX_WAIT_MS = 12_000;
 
 const PROMPTED_PREF = 'medicard.location.prompted';
 
@@ -72,7 +80,7 @@ export async function hydrateLocationPromptedPref(): Promise<boolean> {
 
 export function livingPlaceLine(profile: HealthProfile | null | undefined): string {
   const loc = locationFromProfile(profile);
-  if (!loc) return '';
+  if (!loc?.enabled) return '';
   return formatPlaceLine({
     countryCode: loc.countryCode,
     countryKa: loc.countryKa,
@@ -125,27 +133,81 @@ export async function requestLocationPermission(): Promise<LocationPermissionSta
   return mapPermission(next.status);
 }
 
-async function readCurrentCoords(): Promise<{
-  lat: number;
-  lng: number;
-  accuracy: number | null;
-  fixAt: number;
-} | null> {
+function deviceTimeZone(): string {
   try {
-    const fix = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    });
-    const lat = fix.coords.latitude;
-    const lng = fix.coords.longitude;
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    const stamp = Number(fix.timestamp);
-    if (!isFreshLocationTimestamp(stamp)) return null;
-    return {
-      lat,
-      lng,
-      accuracy: Number.isFinite(fix.coords.accuracy) ? fix.coords.accuracy : null,
-      fixAt: stamp,
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  } catch {
+    return '';
+  }
+}
+
+function sampleFromFix(fix: Location.LocationObject | null | undefined): LocationFixSample | null {
+  if (!fix) return null;
+  const lat = fix.coords.latitude;
+  const lng = fix.coords.longitude;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const stamp = Number(fix.timestamp);
+  if (!isFreshLocationTimestamp(stamp)) return null;
+  return {
+    lat,
+    lng,
+    accuracy: Number.isFinite(fix.coords.accuracy) ? fix.coords.accuracy : null,
+    fixAt: stamp,
+  };
+}
+
+async function waitForLiveCoords(): Promise<LocationFixSample | null> {
+  const timeZone = deviceTimeZone();
+  const samples: LocationFixSample[] = [];
+  if (Platform.OS === 'android') {
+    try {
+      await Location.enableNetworkProviderAsync();
+    } catch {
+      /* user declined the accuracy dialog */
+    }
+  }
+
+  await new Promise<void>((resolve) => {
+    let sub: Location.LocationSubscription | null = null;
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      sub?.remove();
+      resolve();
     };
+    const timer = setTimeout(finish, LIVE_FIX_WAIT_MS);
+    Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.Highest,
+        distanceInterval: 0,
+        timeInterval: 800,
+        mayShowUserSettingsDialog: true,
+      },
+      (fix) => {
+        const sample = sampleFromFix(fix);
+        if (!sample) return;
+        samples.push(sample);
+        if (!isInGeorgiaBox(sample.lat, sample.lng)) finish();
+      },
+    )
+      .then((subscription) => {
+        sub = subscription;
+        if (settled) sub.remove();
+      })
+      .catch(() => finish());
+  });
+
+  const watched = pickLiveLocationFix(samples, timeZone);
+  if (watched) return watched;
+
+  try {
+    const fallback = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+      mayShowUserSettingsDialog: true,
+    });
+    return pickLiveLocationFix([sampleFromFix(fallback)].filter(Boolean) as LocationFixSample[], timeZone);
   } catch {
     return null;
   }
@@ -201,16 +263,52 @@ async function pingServer(
   }
 }
 
+async function forgetWeatherPlace() {
+  try {
+    const { clearWeatherCache } = await import('@/lib/weather/cache');
+    await clearWeatherCache();
+  } catch {
+    /* weather cache is optional */
+  }
+}
+
 async function persistSnapshot(
   snapshot: UserLocationSnapshot,
   pingBody?: Parameters<typeof api.location.ping>[0],
 ): Promise<{ snapshot: UserLocationSnapshot; profile: HealthProfile | null }> {
   markLocationPromptedLocal();
   optedIn = snapshot.enabled;
-  const live = pingBody ? await pingServer(pingBody) : null;
-  const next = live?.location ?? snapshot;
-  const profile = live?.profile ?? (await persistSnapshotOnProfile(next));
+  const live = pingBody
+    ? await pingServer({
+        ...pingBody,
+        timeZone: pingBody.timeZone || deviceTimeZone(),
+      })
+    : null;
+  const next = preferLivePlace(live?.location, snapshot);
+  const profile =
+    next !== live?.location
+      ? (await persistSnapshotOnProfile(next)) ?? live?.profile ?? null
+      : live?.profile ?? (await persistSnapshotOnProfile(next));
+  await forgetWeatherPlace();
   return { snapshot: next, profile };
+}
+
+function preferLivePlace(
+  server: UserLocationSnapshot | null | undefined,
+  client: UserLocationSnapshot,
+): UserLocationSnapshot {
+  if (!server) return client;
+  const clientLive =
+    typeof client.lat === 'number' &&
+    typeof client.lng === 'number' &&
+    !isInGeorgiaBox(client.lat, client.lng);
+  const serverTbilisi =
+    server.cityKa === 'თბილისი' ||
+    (typeof server.lat === 'number' &&
+      typeof server.lng === 'number' &&
+      isInGeorgiaBox(server.lat, server.lng));
+  if (clientLive && serverTbilisi) return client;
+  return server;
 }
 
 export async function persistLocationConsent(input: {
@@ -234,6 +332,7 @@ export async function persistLocationConsent(input: {
 
 export async function grantUserLocation(): Promise<{
   granted: boolean;
+  hasFix: boolean;
   snapshot: UserLocationSnapshot;
   profile: HealthProfile | null;
 }> {
@@ -249,10 +348,10 @@ export async function grantUserLocation(): Promise<{
       },
       { enabled: false, prompted: true, source: 'skip' },
     );
-    return { granted: false, snapshot: saved.snapshot, profile: saved.profile };
+    return { granted: false, hasFix: false, snapshot: saved.snapshot, profile: saved.profile };
   }
 
-  const coords = await readCurrentCoords();
+  const coords = await waitForLiveCoords();
   const place = coords ? await reverseGeocodePlace(coords.lat, coords.lng) : null;
   const snapshot: UserLocationSnapshot = {
     prompted: true,
@@ -270,8 +369,9 @@ export async function grantUserLocation(): Promise<{
     enabled: true,
     prompted: true,
     source: 'grant',
+    timeZone: deviceTimeZone(),
   });
-  return { granted: true, snapshot: saved.snapshot, profile: saved.profile };
+  return { granted: true, hasFix: Boolean(coords), snapshot: saved.snapshot, profile: saved.profile };
 }
 
 export async function skipUserLocation(): Promise<UserLocationSnapshot> {

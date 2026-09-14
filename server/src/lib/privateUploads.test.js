@@ -13,6 +13,7 @@ import {
   authorizePrivateUpload,
   servePrivateUpload,
   unlinkStoredUpload,
+  findOwnedPetUpload,
 } from './privateUploads.js';
 
 const OWNER_ID = '11111111-1111-4111-8111-111111111111';
@@ -245,5 +246,24 @@ describe('authorizePrivateUpload', () => {
       });
       assert.equal(missingUser.status, 401);
     });
+  });
+});
+
+describe('pet photo ownership finder', () => {
+  it('matches the owner photoUrl and 404s another user', async () => {
+    const db = {
+      pet: {
+        findFirst: async ({ where }) => {
+          if (where.userId === OWNER_ID && where.photoUrl.in.includes(`/uploads/${FILE}`)) {
+            return { id: 'pet-owner' };
+          }
+          return null;
+        },
+      },
+    };
+    const owner = await findOwnedPetUpload(OWNER_ID, FILE, db);
+    const other = await findOwnedPetUpload(OTHER_ID, FILE, db);
+    assert.equal(owner?.id, 'pet-owner');
+    assert.equal(other, null);
   });
 });

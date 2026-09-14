@@ -26,6 +26,8 @@ import { PlanDetailCard } from '@/components/PlanUsageCard';
 import { ProfileStreakCard } from '@/components/check-in/ProfilePointsCard';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { HomeMediCompanionEntry } from '@/components/companion/HomeMediCompanionEntry';
+import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
+import { ProfileTbilisiMovesSection } from '@/components/tbilisiMoves/ProfileTbilisiMovesSection';
 import { DeleteAccountModal } from '@/components/profile/DeleteAccountModal';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { ProfileVersionCard } from '@/components/profile/ProfileVersionCard';
@@ -287,6 +289,9 @@ export default function Profile() {
         <HomeMediCompanionEntry edgeInset={0} />
         <HomeMediQuestSection edgeInset={0} />
       </View>
+
+      <ProfilePetsSection />
+      <ProfileTbilisiMovesSection />
 
       <View className="mt-5">
         <HomeSectionTitle title={ka.profile.appearance} />

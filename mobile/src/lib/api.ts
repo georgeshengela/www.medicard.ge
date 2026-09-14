@@ -4,6 +4,18 @@ import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { publicApiErrorMessage } from './rateLimitCopy.js';
 import { getToken } from './storage';
+import type {
+  TbilisiMovesAward,
+  TbilisiMovesCatalog,
+  TbilisiMovesDayResults,
+  TbilisiMovesDistrictBoard,
+  TbilisiMovesHistory,
+  TbilisiMovesMe,
+  TbilisiMovesObservationBody,
+  TbilisiMovesObservationResult,
+  TbilisiMovesPeopleBoard,
+  TbilisiMovesStatus,
+} from '@/lib/tbilisiMoves/types';
 
 /**
  * Resolves the API base URL.
@@ -246,6 +258,358 @@ export type GeocodeResult = {
   lng: number;
 };
 
+export type PetAgeKind = 'EXACT' | 'APPROXIMATE' | 'UNKNOWN';
+export type PetSex = 'MALE' | 'FEMALE' | 'UNKNOWN';
+
+export type PetAgeDisplay = {
+  kind: PetAgeKind;
+  years: number | null;
+  months: number | null;
+};
+
+export type Pet = {
+  id: string;
+  name: string;
+  speciesId: string;
+  breedId: string;
+  customBreed: string | null;
+  sex: PetSex;
+  neutered: boolean | null;
+  ageKind: PetAgeKind;
+  birthDate: string | null;
+  approxAgeYears: number | null;
+  approxAgeMonths: number | null;
+  approxAgeRecordedOn: string | null;
+  age: PetAgeDisplay;
+  photoUrl: string | null;
+  vetClinicName: string | null;
+  vetName: string | null;
+  vetPhone: string | null;
+  vetAddress: string | null;
+  vetNotes: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetWriteBody = {
+  name: string;
+  speciesId: string;
+  breedId?: string;
+  customBreed?: string | null;
+  sex?: PetSex;
+  neutered?: boolean | null;
+  ageKind?: PetAgeKind;
+  birthDate?: string | null;
+  approxAgeYears?: number | null;
+  approxAgeMonths?: number | null;
+  approxAgeRecordedOn?: string | null;
+  vetClinicName?: string | null;
+  vetName?: string | null;
+  vetPhone?: string | null;
+  vetAddress?: string | null;
+  vetNotes?: string | null;
+};
+
+export type PetWeightUnit = 'kg' | 'g' | 'lb';
+
+export type PetWeightLog = {
+  id: string;
+  petId: string;
+  recordedOn: string;
+  weightKg: number;
+  inputValue: number;
+  inputUnit: PetWeightUnit;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetWeightWrite = {
+  recordedOn: string;
+  inputValue: number;
+  inputUnit: PetWeightUnit;
+  note?: string | null;
+  clientRequestId?: string;
+};
+
+export type PetAllergyCategory = 'medication' | 'food' | 'environmental' | 'other' | 'unknown';
+export type PetAllergyStatus = 'suspected' | 'veterinarian_confirmed';
+
+export type PetAllergy = {
+  id: string;
+  petId: string;
+  name: string;
+  category: PetAllergyCategory;
+  reaction: string | null;
+  reportedStatus: PetAllergyStatus;
+  notedOn: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetAllergyWrite = {
+  name: string;
+  category?: PetAllergyCategory;
+  reaction?: string | null;
+  reportedStatus: PetAllergyStatus;
+  notedOn?: string | null;
+  notes?: string | null;
+  clientRequestId?: string;
+};
+
+export type PetConditionStatus = 'active' | 'resolved' | 'unknown';
+export type PetConditionBasis = 'owner_reported' | 'veterinarian_confirmed';
+
+export type PetCondition = {
+  id: string;
+  petId: string;
+  name: string;
+  status: PetConditionStatus;
+  reportedBasis: PetConditionBasis;
+  onsetOn: string | null;
+  resolvedOn: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetConditionWrite = {
+  name: string;
+  status: PetConditionStatus;
+  reportedBasis: PetConditionBasis;
+  onsetOn?: string | null;
+  resolvedOn?: string | null;
+  notes?: string | null;
+  clientRequestId?: string;
+};
+
+export type PetCareKind = 'VACCINATION' | 'FLEA_TICK' | 'DEWORMING' | 'MEDICATION' | 'OTHER';
+export type PetRecurrenceKind = 'ONCE' | 'EVERY_N_DAYS' | 'EVERY_N_WEEKS' | 'EVERY_N_MONTHS' | 'DAILY_COURSE';
+export type PetRecurrenceBasis = 'NONE' | 'FIXED_CALENDAR' | 'FROM_ADMINISTRATION';
+export type PetCareSource = 'VETERINARIAN' | 'PRODUCT_INSTRUCTIONS' | 'USER_ENTERED';
+export type PetCareRoute = 'oral' | 'topical' | 'injection' | 'other' | 'unknown';
+export type PetScheduleStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+export type PetOccurrenceStatus = 'OPEN' | 'ADMINISTERED' | 'SKIPPED' | 'CANCELLED';
+export type PetCareEventStatus = 'RECORDED' | 'VOIDED';
+
+export type PetProduct = {
+  id: string;
+  petId: string;
+  kind: PetCareKind;
+  name: string;
+  formulation: string | null;
+  batchId: string | null;
+  notes: string | null;
+  expiresOn: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetProductWrite = {
+  kind: PetCareKind;
+  name: string;
+  formulation?: string | null;
+  batchId?: string | null;
+  notes?: string | null;
+  expiresOn?: string | null;
+  clientRequestId?: string;
+};
+
+export type PetCareSchedule = {
+  id: string;
+  petId: string;
+  productId: string | null;
+  kind: PetCareKind;
+  title: string;
+  dose: string | null;
+  doseUnit: string | null;
+  route: PetCareRoute | null;
+  startOn: string;
+  dueTime: string | null;
+  times: string[] | null;
+  recurrenceKind: PetRecurrenceKind;
+  intervalCount: number | null;
+  recurrenceBasis: PetRecurrenceBasis;
+  source: PetCareSource;
+  sourceNote: string | null;
+  courseEndsOn: string | null;
+  occurrenceLimit: number | null;
+  anchorDay: number | null;
+  status: PetScheduleStatus;
+  revision: number;
+  nextDueOn: string | null;
+  nextDueTime: string | null;
+  nextSequence: number | null;
+  reminderEnabled: boolean;
+  reminderOffsetsDays: number[];
+  timeMode: 'DATE_BASED' | 'EXACT_TIME';
+  timezone: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetCareScheduleWrite = {
+  kind: PetCareKind;
+  title: string;
+  productId?: string | null;
+  dose?: string | null;
+  doseUnit?: string | null;
+  route?: PetCareRoute | null;
+  startOn: string;
+  dueTime?: string | null;
+  times?: string[] | null;
+  recurrenceKind: PetRecurrenceKind;
+  intervalCount?: number | null;
+  recurrenceBasis?: PetRecurrenceBasis;
+  source: PetCareSource;
+  sourceNote?: string | null;
+  courseEndsOn?: string | null;
+  occurrenceLimit?: number | null;
+  timeMode?: 'DATE_BASED' | 'EXACT_TIME';
+  timezone?: string | null;
+  clientRequestId?: string;
+};
+
+export type PetCareOccurrence = {
+  scheduleId: string;
+  revision: number;
+  plannedOn: string;
+  plannedTime: string | null;
+  sequence: number;
+  occurrenceKey: string;
+  status: PetOccurrenceStatus;
+  eventId: string | null;
+  reminderIdentity: string | null;
+  reminderEnabled: boolean;
+  kind: PetCareKind | null;
+  title: string | null;
+};
+
+export type PetCareEvent = {
+  id: string;
+  petId: string;
+  kind: PetCareKind;
+  productId: string | null;
+  scheduleId: string | null;
+  occurrenceId: string | null;
+  occurrenceKey: string | null;
+  titleSnapshot: string;
+  productNameSnapshot: string | null;
+  doseSnapshot: string | null;
+  doseUnitSnapshot: string | null;
+  routeSnapshot: string | null;
+  administeredOn: string;
+  administeredTime: string | null;
+  timezone: string | null;
+  utcOffsetMinutes: number | null;
+  notes: string | null;
+  status: PetCareEventStatus;
+  voidedAt: string | null;
+  voidReason: string | null;
+  correctionMeta: Record<string, unknown> | null;
+  previousNextDueOn: string | null;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetCareEventWrite = {
+  kind: PetCareKind;
+  title: string;
+  productId?: string | null;
+  scheduleId?: string | null;
+  dose?: string | null;
+  doseUnit?: string | null;
+  route?: PetCareRoute | null;
+  administeredOn: string;
+  administeredTime?: string | null;
+  timezone?: string | null;
+  utcOffsetMinutes?: number | null;
+  notes?: string | null;
+  clientRequestId?: string;
+};
+
+export type PetChatCitation = {
+  id: string;
+  title: string;
+  publisher: string;
+  url: string;
+  version?: string;
+  retrievedOn?: string;
+};
+
+export type PetCareDraft = {
+  petId: string;
+  kind: PetCareKind | null;
+  title: string | null;
+  productId: string | null;
+  dose: string | null;
+  doseUnit: string | null;
+  startOn: string | null;
+  dueTime: string | null;
+  recurrenceKind: PetRecurrenceKind;
+  intervalCount: number | null;
+  source: string;
+  provenance: string;
+  incomplete: boolean;
+  missingFields: string[];
+  reminderEnabled: boolean;
+};
+
+export type PetChatMessage = {
+  id?: string;
+  sessionId?: string;
+  petId?: string;
+  role: 'user' | 'assistant';
+  content: string;
+  status?: 'PENDING' | 'PARTIAL' | 'COMPLETE' | 'FAILED' | 'CANCELLED';
+  clientRequestId?: string | null;
+  citations?: PetChatCitation[];
+  draft?: PetCareDraft | null;
+  grounding?: { status?: string; sourceIds?: string[] } | null;
+  createdAt?: string;
+  timestamp?: string;
+  streaming?: boolean;
+};
+
+export type PetChatSession = {
+  id: string;
+  petId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetCareCompleteWrite = {
+  occurrenceKey: string;
+  revision: number;
+  administeredOn: string;
+  administeredTime?: string | null;
+  timezone?: string | null;
+  utcOffsetMinutes?: number | null;
+  notes?: string | null;
+  dose?: string | null;
+  doseUnit?: string | null;
+  route?: PetCareRoute | null;
+  clientRequestId?: string;
+};
+
+export type PetsCatalog = {
+  version: string;
+  coverageNotes: Record<string, unknown>;
+  species: Array<{
+    id: string;
+    labelKa: string;
+    coverage: string;
+    allowsMixed: boolean;
+    breeds: Array<{ id: string; label: string }>;
+    sentinels: string[];
+  }>;
+};
+
 export type ScheduledDose = {
   medicationId: string;
   medName: string;
@@ -329,6 +693,10 @@ export class ApiError extends Error {
   usage?: Usage;
   upsell?: Upsell;
   retryAfterSeconds?: number;
+  schemaReady?: boolean;
+  healthSchemaReady?: boolean;
+  careSchemaReady?: boolean;
+  chatSchemaReady?: boolean;
 
   constructor(
     message: string,
@@ -344,6 +712,10 @@ export class ApiError extends Error {
     this.usage = payload?.usage as Usage | undefined;
     this.upsell = payload?.upsell as Upsell | undefined;
     this.retryAfterSeconds = retryAfterSeconds;
+    if (payload && 'schemaReady' in payload) this.schemaReady = payload.schemaReady as boolean;
+    if (payload && 'healthSchemaReady' in payload) this.healthSchemaReady = payload.healthSchemaReady as boolean;
+    if (payload && 'careSchemaReady' in payload) this.careSchemaReady = payload.careSchemaReady as boolean;
+    if (payload && 'chatSchemaReady' in payload) this.chatSchemaReady = payload.chatSchemaReady as boolean;
   }
 
   get isQuotaExceeded() {
@@ -355,6 +727,18 @@ export class ApiError extends Error {
 
   get isUnauthorized() {
     return this.status === 401;
+  }
+
+  get isSchemaUnavailable() {
+    return this.status === 503 && this.schemaReady === false;
+  }
+
+  get isCareSchemaUnavailable() {
+    return this.status === 503 && this.careSchemaReady === false;
+  }
+
+  get isChatSchemaUnavailable() {
+    return this.status === 503 && this.chatSchemaReady === false;
   }
 }
 
@@ -1925,6 +2309,7 @@ export const api = {
       enabled?: boolean;
       prompted?: boolean;
       source?: 'grant' | 'skip' | 'heartbeat' | 'watch' | 'revoke';
+      timeZone?: string;
     }) =>
       request<{ ok: boolean; location: UserLocationSnapshot; profile: HealthProfile | null }>('/api/location', {
         method: 'POST',
@@ -2160,6 +2545,351 @@ export const api = {
     remove: (id: string) => request<{ deleted: boolean }>(`/api/visits/${id}`, { method: 'DELETE' }),
     geocode: (q: string) =>
       request<{ results: GeocodeResult[] }>(`/api/visits/geocode?q=${encodeURIComponent(q)}`),
+  },
+
+  tbilisiMoves: {
+    status: () =>
+      request<TbilisiMovesStatus>('/api/tbilisi-moves/status', { token: null }),
+    catalog: () => request<TbilisiMovesCatalog>('/api/tbilisi-moves/catalog'),
+    me: () => request<TbilisiMovesMe>('/api/tbilisi-moves/me'),
+    patchMe: (body: { publicHandle?: string; publicAvatarId?: string | null }) =>
+      request<{ membership: TbilisiMovesMe['membership'] }>('/api/tbilisi-moves/me', { method: 'PATCH', body }),
+    enroll: (body: {
+      districtId: string;
+      publicHandle: string;
+      publicAvatarId?: string | null;
+      acceptLock: true;
+      acceptPublicBoard: true;
+    }) => request<{ membership: TbilisiMovesMe['membership'] }>('/api/tbilisi-moves/enroll', { method: 'POST', body }),
+    districtChange: (body: { districtId: string; acceptLock: true }) =>
+      request<{ membership: TbilisiMovesMe['membership'] }>('/api/tbilisi-moves/district-change', {
+        method: 'POST',
+        body,
+      }),
+    cancelDistrictChange: () =>
+      request<{ membership: TbilisiMovesMe['membership'] }>('/api/tbilisi-moves/district-change/cancel', {
+        method: 'POST',
+      }),
+    leave: () => request<{ membership: TbilisiMovesMe['membership'] }>('/api/tbilisi-moves/leave', { method: 'POST' }),
+    putObservation: (body: TbilisiMovesObservationBody) =>
+      request<TbilisiMovesObservationResult>('/api/tbilisi-moves/observations', { method: 'PUT', body }),
+    districts: (date: string) =>
+      request<TbilisiMovesDistrictBoard>(`/api/tbilisi-moves/rounds/${date}/districts`),
+    people: (date: string, districtId: string, params?: { limit?: number; offset?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.limit) qs.set('limit', String(params.limit));
+      if (params?.offset) qs.set('offset', String(params.offset));
+      const query = qs.toString();
+      return request<TbilisiMovesPeopleBoard>(
+        `/api/tbilisi-moves/rounds/${date}/districts/${districtId}/people${query ? `?${query}` : ''}`,
+      );
+    },
+    history: (params?: { limit?: number; before?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.limit) qs.set('limit', String(params.limit));
+      if (params?.before) qs.set('before', params.before);
+      const query = qs.toString();
+      return request<TbilisiMovesHistory>(`/api/tbilisi-moves/history${query ? `?${query}` : ''}`);
+    },
+    results: (date: string) => request<TbilisiMovesDayResults>(`/api/tbilisi-moves/results/${date}`),
+    awards: (params?: { limit?: number; offset?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.limit) qs.set('limit', String(params.limit));
+      if (params?.offset) qs.set('offset', String(params.offset));
+      const query = qs.toString();
+      return request<{ total: number; awards: TbilisiMovesAward[] }>(
+        `/api/tbilisi-moves/awards${query ? `?${query}` : ''}`,
+      );
+    },
+  },
+
+  pets: {
+    catalog: () => request<PetsCatalog>('/api/pets/catalog'),
+    list: () => request<{ schemaReady: boolean; pets: Pet[] }>('/api/pets'),
+    create: (body: PetWriteBody) => request<{ schemaReady: boolean; pet: Pet }>('/api/pets', { method: 'POST', body }),
+    get: (id: string) => request<{ schemaReady: boolean; pet: Pet }>(`/api/pets/${id}`),
+    update: (id: string, body: Partial<PetWriteBody>) =>
+      request<{ schemaReady: boolean; pet: Pet }>(`/api/pets/${id}`, { method: 'PATCH', body }),
+    archive: (id: string) => request<{ schemaReady: boolean; archived: boolean }>(`/api/pets/${id}/archive`, { method: 'POST' }),
+    uploadPhoto: (id: string, file: UploadFile) =>
+      uploadNativeMultipart<{ schemaReady: boolean; pet: Pet }>(`/api/pets/${id}/photo`, file, 'file'),
+    removePhoto: (id: string) =>
+      request<{ schemaReady: boolean; pet: Pet }>(`/api/pets/${id}/photo`, { method: 'DELETE' }),
+    weight: {
+      list: (petId: string, params?: { limit?: number; offset?: number }) => {
+        const qs = new URLSearchParams();
+        if (params?.limit) qs.set('limit', String(params.limit));
+        if (params?.offset) qs.set('offset', String(params.offset));
+        const query = qs.toString();
+        return request<{
+          schemaReady: boolean;
+          healthSchemaReady: boolean;
+          latest: PetWeightLog | null;
+          items: PetWeightLog[];
+          total: number;
+          limit: number;
+          offset: number;
+        }>(`/api/pets/${petId}/weight${query ? `?${query}` : ''}`);
+      },
+      create: (petId: string, body: PetWeightWrite) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; replayed?: boolean; log: PetWeightLog }>(
+          `/api/pets/${petId}/weight`,
+          { method: 'POST', body },
+        ),
+      get: (petId: string, logId: string) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; log: PetWeightLog }>(
+          `/api/pets/${petId}/weight/${logId}`,
+        ),
+      update: (petId: string, logId: string, body: Partial<PetWeightWrite>) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; log: PetWeightLog }>(
+          `/api/pets/${petId}/weight/${logId}`,
+          { method: 'PATCH', body },
+        ),
+      remove: (petId: string, logId: string) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; deleted: boolean; latest: PetWeightLog | null }>(
+          `/api/pets/${petId}/weight/${logId}`,
+          { method: 'DELETE' },
+        ),
+    },
+    allergies: {
+      list: (petId: string) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; items: PetAllergy[] }>(
+          `/api/pets/${petId}/allergies`,
+        ),
+      create: (petId: string, body: PetAllergyWrite) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; replayed?: boolean; allergy: PetAllergy }>(
+          `/api/pets/${petId}/allergies`,
+          { method: 'POST', body },
+        ),
+      get: (petId: string, allergyId: string) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; allergy: PetAllergy }>(
+          `/api/pets/${petId}/allergies/${allergyId}`,
+        ),
+      update: (petId: string, allergyId: string, body: Partial<PetAllergyWrite>) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; allergy: PetAllergy }>(
+          `/api/pets/${petId}/allergies/${allergyId}`,
+          { method: 'PATCH', body },
+        ),
+      remove: (petId: string, allergyId: string) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; deleted: boolean }>(
+          `/api/pets/${petId}/allergies/${allergyId}`,
+          { method: 'DELETE' },
+        ),
+    },
+    conditions: {
+      list: (petId: string) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; items: PetCondition[] }>(
+          `/api/pets/${petId}/conditions`,
+        ),
+      create: (petId: string, body: PetConditionWrite) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; replayed?: boolean; condition: PetCondition }>(
+          `/api/pets/${petId}/conditions`,
+          { method: 'POST', body },
+        ),
+      get: (petId: string, conditionId: string) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; condition: PetCondition }>(
+          `/api/pets/${petId}/conditions/${conditionId}`,
+        ),
+      update: (petId: string, conditionId: string, body: Partial<PetConditionWrite>) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; condition: PetCondition }>(
+          `/api/pets/${petId}/conditions/${conditionId}`,
+          { method: 'PATCH', body },
+        ),
+      remove: (petId: string, conditionId: string) =>
+        request<{ schemaReady: boolean; healthSchemaReady: boolean; deleted: boolean }>(
+          `/api/pets/${petId}/conditions/${conditionId}`,
+          { method: 'DELETE' },
+        ),
+    },
+    products: {
+      list: (petId: string) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; items: PetProduct[] }>(`/api/pets/${petId}/products`),
+      create: (petId: string, body: PetProductWrite) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; replayed?: boolean; product: PetProduct }>(
+          `/api/pets/${petId}/products`,
+          { method: 'POST', body },
+        ),
+      get: (petId: string, productId: string) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; product: PetProduct }>(
+          `/api/pets/${petId}/products/${productId}`,
+        ),
+      update: (petId: string, productId: string, body: Partial<PetProductWrite>) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; product: PetProduct }>(
+          `/api/pets/${petId}/products/${productId}`,
+          { method: 'PATCH', body },
+        ),
+      archive: (petId: string, productId: string) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; archived: boolean; product: PetProduct }>(
+          `/api/pets/${petId}/products/${productId}/archive`,
+          { method: 'POST' },
+        ),
+    },
+    schedules: {
+      list: (petId: string) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; items: PetCareSchedule[] }>(
+          `/api/pets/${petId}/schedules`,
+        ),
+      create: (petId: string, body: PetCareScheduleWrite) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; replayed?: boolean; schedule: PetCareSchedule }>(
+          `/api/pets/${petId}/schedules`,
+          { method: 'POST', body },
+        ),
+      get: (petId: string, scheduleId: string) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; schedule: PetCareSchedule }>(
+          `/api/pets/${petId}/schedules/${scheduleId}`,
+        ),
+      update: (petId: string, scheduleId: string, body: Partial<PetCareScheduleWrite>) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; schedule: PetCareSchedule }>(
+          `/api/pets/${petId}/schedules/${scheduleId}`,
+          { method: 'PATCH', body },
+        ),
+      cancel: (petId: string, scheduleId: string) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; schedule: PetCareSchedule }>(
+          `/api/pets/${petId}/schedules/${scheduleId}/cancel`,
+          { method: 'POST' },
+        ),
+      complete: (petId: string, scheduleId: string, body: PetCareCompleteWrite) =>
+        request<{
+          schemaReady: boolean;
+          careSchemaReady: boolean;
+          replayed?: boolean;
+          event: PetCareEvent;
+          schedule: PetCareSchedule;
+          occurrence: PetCareOccurrence;
+        }>(`/api/pets/${petId}/schedules/${scheduleId}/complete`, { method: 'POST', body }),
+      skip: (petId: string, scheduleId: string, body: { occurrenceKey: string; revision: number; clientRequestId?: string; note?: string }) =>
+        request<{
+          schemaReady: boolean;
+          careSchemaReady: boolean;
+          replayed?: boolean;
+          occurrence: PetCareOccurrence;
+          schedule: PetCareSchedule;
+        }>(`/api/pets/${petId}/schedules/${scheduleId}/skip`, { method: 'POST', body }),
+      reminders: (petId: string, scheduleId: string, body: { reminderEnabled: boolean; reminderOffsetsDays?: number[] }) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; revisionUnchanged?: boolean; schedule: PetCareSchedule }>(
+          `/api/pets/${petId}/schedules/${scheduleId}/reminders`,
+          { method: 'PATCH', body },
+        ),
+    },
+    care: {
+      upcoming: (petId: string) =>
+        request<{
+          schemaReady: boolean;
+          careSchemaReady: boolean;
+          overdue: PetCareOccurrence[];
+          due: PetCareOccurrence[];
+          upcoming: PetCareOccurrence[];
+          plannedDisclaimer: boolean;
+        }>(`/api/pets/${petId}/care/upcoming`),
+    },
+    reminders: {
+      feed: () =>
+        request<{
+          schemaReady: boolean;
+          careSchemaReady: boolean;
+          items: Array<{
+            petId: string;
+            petName: string;
+            petArchived?: boolean;
+            schedule: PetCareSchedule;
+            occurrence: PetCareOccurrence;
+          }>;
+          fetchedAt?: string;
+        }>('/api/pets/reminders/feed'),
+      delivery: (
+        petId: string,
+        scheduleId: string,
+        body: {
+          occurrenceKey: string;
+          alertKind: string;
+          identity: string;
+          installId: string;
+          status: string;
+          fireAtMs?: number;
+        },
+      ) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; reminderSchemaReady?: boolean; accepted?: boolean }>(
+          `/api/pets/${petId}/schedules/${scheduleId}/reminder-delivery`,
+          { method: 'POST', body },
+        ),
+    },
+    events: {
+      list: (petId: string, params?: { limit?: number; offset?: number }) => {
+        const qs = new URLSearchParams();
+        if (params?.limit) qs.set('limit', String(params.limit));
+        if (params?.offset) qs.set('offset', String(params.offset));
+        const query = qs.toString();
+        return request<{
+          schemaReady: boolean;
+          careSchemaReady: boolean;
+          items: PetCareEvent[];
+          total: number;
+          limit: number;
+          offset: number;
+        }>(`/api/pets/${petId}/events${query ? `?${query}` : ''}`);
+      },
+      create: (petId: string, body: PetCareEventWrite) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; replayed?: boolean; event: PetCareEvent }>(
+          `/api/pets/${petId}/events`,
+          { method: 'POST', body },
+        ),
+      get: (petId: string, eventId: string) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; event: PetCareEvent }>(
+          `/api/pets/${petId}/events/${eventId}`,
+        ),
+      update: (petId: string, eventId: string, body: Partial<PetCareEventWrite> & { confirmRecalculate?: boolean }) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; event: PetCareEvent }>(
+          `/api/pets/${petId}/events/${eventId}`,
+          { method: 'PATCH', body },
+        ),
+      void: (petId: string, eventId: string, body?: { reason?: string; confirmRecalculate?: boolean }) =>
+        request<{ schemaReady: boolean; careSchemaReady: boolean; event: PetCareEvent }>(
+          `/api/pets/${petId}/events/${eventId}/void`,
+          { method: 'POST', body },
+        ),
+    },
+    chats: {
+      list: (petId: string) =>
+        request<{ schemaReady: boolean; chatSchemaReady: boolean; sessions: PetChatSession[] }>(`/api/pets/${petId}/chats`),
+      create: (petId: string) =>
+        request<{ schemaReady: boolean; chatSchemaReady: boolean; session: PetChatSession }>(`/api/pets/${petId}/chats`, {
+          method: 'POST',
+        }),
+      get: (petId: string, sessionId: string) =>
+        request<{ schemaReady: boolean; chatSchemaReady: boolean; session: PetChatSession }>(
+          `/api/pets/${petId}/chats/${sessionId}`,
+        ),
+      messages: (petId: string, sessionId: string, params?: { limit?: number; before?: string }) => {
+        const qs = new URLSearchParams();
+        if (params?.limit) qs.set('limit', String(params.limit));
+        if (params?.before) qs.set('before', params.before);
+        const query = qs.toString();
+        return request<{ schemaReady: boolean; chatSchemaReady: boolean; messages: PetChatMessage[] }>(
+          `/api/pets/${petId}/chats/${sessionId}/messages${query ? `?${query}` : ''}`,
+        );
+      },
+      remove: (petId: string, sessionId: string) =>
+        request<{ schemaReady: boolean; chatSchemaReady: boolean; deleted: boolean }>(
+          `/api/pets/${petId}/chats/${sessionId}`,
+          { method: 'DELETE' },
+        ),
+      query: (
+        petId: string,
+        body: { message: string; sessionId?: string; clientRequestId: string; stream?: boolean },
+      ) =>
+        request<{
+          schemaReady: boolean;
+          chatSchemaReady: boolean;
+          replayed?: boolean;
+          sessionId: string;
+          answer: string;
+          status: string;
+          citations?: PetChatCitation[];
+          draft?: PetCareDraft | null;
+          grounding?: { status?: string; sourceIds?: string[] } | null;
+          usage: Usage;
+        }>(`/api/pets/${petId}/chat/query`, { method: 'POST', body }),
+    },
   },
 
   pharmacy: {

@@ -30,6 +30,16 @@ export async function deleteUserAccount(userId) {
     select: { imageUrl: true },
   });
 
+  let petPhotos = [];
+  try {
+    petPhotos = await prisma.pet.findMany({
+      where: { userId, photoUrl: { not: null } },
+      select: { photoUrl: true },
+    });
+  } catch (error) {
+    if (!(error?.code === 'P2021' || /does not exist/i.test(error?.message || ''))) throw error;
+  }
+
   await prisma.$transaction([
     prisma.dailyUsage.deleteMany({ where: { userId } }),
     prisma.phoneVerification.deleteMany({ where: { userId } }),
@@ -37,7 +47,10 @@ export async function deleteUserAccount(userId) {
     prisma.user.delete({ where: { id: userId } }),
   ]);
 
-  await Promise.all(uploadRows.map((row) => unlinkStoredUpload(row.imageUrl)));
+  await Promise.all([
+    ...uploadRows.map((row) => unlinkStoredUpload(row.imageUrl)),
+    ...petPhotos.map((row) => unlinkStoredUpload(row.photoUrl)),
+  ]);
 
   return {
     ok: true,

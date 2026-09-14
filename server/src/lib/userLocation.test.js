@@ -3,12 +3,14 @@ import { describe, it } from 'node:test';
 import {
   didMoveFar,
   geocodeAppliesToRow,
+  isCachedCaucasusFix,
   isHomePlaceWrite,
   isImplausibleJump,
   isLiveLocationPing,
   isStaleLocationFixAt,
   MAX_LOCATION_FIX_AGE_MS,
   resolveStoredPlace,
+  shouldClearStoredPlace,
   snapshotFromRow,
 } from './userLocationPlace.js';
 
@@ -85,5 +87,14 @@ describe('user location place writes', () => {
     assert.equal(isLiveLocationPing('grant'), false);
     assert.equal(isLiveLocationPing('skip'), false);
     assert.equal(isLiveLocationPing('revoke'), false);
+  });
+
+  it('drops a Tbilisi last-known when the phone timezone is already Brussels', () => {
+    assert.equal(isCachedCaucasusFix(TBILISI.lat, TBILISI.lng, 'Europe/Brussels'), true);
+    assert.equal(isCachedCaucasusFix(LIEGE.lat, LIEGE.lng, 'Europe/Brussels'), false);
+    assert.equal(isCachedCaucasusFix(TBILISI.lat, TBILISI.lng, 'Asia/Tbilisi'), false);
+    assert.equal(shouldClearStoredPlace('revoke', false), true);
+    assert.equal(shouldClearStoredPlace('grant', false), true);
+    assert.equal(shouldClearStoredPlace('grant', true), false);
   });
 });

@@ -9,6 +9,10 @@ export function notFound(req, res) {
 
 // eslint-disable-next-line no-unused-vars -- Express identifies error handlers by arity.
 export function errorHandler(error, req, res, next) {
+  if (res.headersSent) {
+    console.error('[medicard] Unhandled error after response started:', error?.message || error);
+    return;
+  }
   if (error instanceof ZodError) {
     return res.status(400).json({
       error: 'შევსებული მონაცემები არასწორია.',

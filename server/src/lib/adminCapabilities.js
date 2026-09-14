@@ -14,6 +14,13 @@ export const REWARDS_CAPABILITIES = Object.freeze([
   'REWARDS_ANALYTICS_VIEW',
 ]);
 
+export const TBILISI_MOVES_CAPABILITIES = Object.freeze([
+  'TBILISI_MOVES_VIEW',
+  'TBILISI_MOVES_MANAGE',
+  'TBILISI_MOVES_REVIEW',
+  'TBILISI_MOVES_CORRECT',
+]);
+
 export function normalizeCapabilities(raw) {
   if (raw == null) return null; // full access
   if (Array.isArray(raw)) {
@@ -41,5 +48,21 @@ export function requireAdminCapability(capability) {
       });
     }
     return next();
+  };
+}
+
+export function requireAnyAdminCapability(...capabilities) {
+  return function capabilityGuard(req, res, next) {
+    if (!req.admin) {
+      return res.status(401).json({ error: 'ადმინისტრატორის ავტორიზაცია საჭიროა.' });
+    }
+    if (capabilities.some((capability) => adminHasCapability(req.admin, capability))) {
+      return next();
+    }
+    return res.status(403).json({
+      error: 'არ გაქვთ ამ მოქმედების უფლება.',
+      code: 'ADMIN_CAPABILITY_DENIED',
+      capability: capabilities[0],
+    });
   };
 }

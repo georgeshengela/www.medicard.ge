@@ -8,14 +8,16 @@ import type { WeatherLang, WeatherWellnessContext } from './types.ts';
 
 export function weatherCityFromProfile(profile: HealthProfile | null | undefined): string | null {
   const loc = locationFromProfile(profile);
-  return cityNameKa(loc?.cityKa) || loc?.cityKa || null;
+  if (!loc?.enabled) return null;
+  return cityNameKa(loc.cityKa) || loc.cityKa || null;
 }
 
 export function weatherCoordsFromProfile(
   profile: HealthProfile | null | undefined,
 ): { lat: number; lng: number } | null {
   const loc = locationFromProfile(profile);
-  if (typeof loc?.lat === 'number' && typeof loc?.lng === 'number') {
+  if (!loc?.enabled) return null;
+  if (typeof loc.lat === 'number' && typeof loc.lng === 'number') {
     return { lat: loc.lat, lng: loc.lng };
   }
   return null;

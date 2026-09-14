@@ -14,6 +14,7 @@ type Props = {
   onMicPress?: () => void;
   onCameraPress?: () => void;
   multiline?: boolean;
+  showTools?: boolean;
 };
 
 export function ChatInputBar({
@@ -25,6 +26,7 @@ export function ChatInputBar({
   onMicPress,
   onCameraPress,
   multiline = true,
+  showTools = true,
 }: Props) {
   const insets = useSafeAreaInsets();
   const FIGMA_CHAT = useFigmaChat();
@@ -73,23 +75,25 @@ export function ChatInputBar({
               paddingVertical: 8,
             }}
           />
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: FIGMA_CHAT.brandQuaternary,
-              borderWidth: 1,
-              borderColor: FIGMA_CHAT.brandBorderLight,
-              borderRadius: 999,
-            }}
-          >
-            <Pressable onPress={onMicPress} hitSlop={8} style={{ padding: 8 }}>
-              <Mic size={24} color={FIGMA_CHAT.brand} strokeWidth={2} />
-            </Pressable>
-            <Pressable onPress={onCameraPress} hitSlop={8} style={{ padding: 8 }}>
-              <Camera size={24} color={FIGMA_CHAT.brand} strokeWidth={2} />
-            </Pressable>
-          </View>
+            {showTools ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: FIGMA_CHAT.brandQuaternary,
+                borderWidth: 1,
+                borderColor: FIGMA_CHAT.brandBorderLight,
+                borderRadius: 999,
+              }}
+            >
+              <Pressable onPress={onMicPress} hitSlop={8} style={{ padding: 8 }}>
+                <Mic size={24} color={FIGMA_CHAT.brand} strokeWidth={2} />
+              </Pressable>
+              <Pressable onPress={onCameraPress} hitSlop={8} style={{ padding: 8 }}>
+                <Camera size={24} color={FIGMA_CHAT.brand} strokeWidth={2} />
+              </Pressable>
+            </View>
+            ) : null}
         </View>
 
         <Pressable

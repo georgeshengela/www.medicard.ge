@@ -51,6 +51,21 @@ export function getConversationalChatProfile(mode: string | undefined): ChatUiPr
   };
 }
 
+export function getPetVetChatProfile(petName?: string): ChatUiProfile {
+  return {
+    key: 'vet',
+    title: ka.pets.vetName,
+    subtitle: petName || ka.pets.vetDescription,
+    icon: Bot,
+    inputPlaceholder: ka.pets.vetInputPh,
+    emptyTitle: ka.pets.vetEmptyTitle,
+    emptyBody: ka.pets.vetEmptyBody,
+    suggestions: [ka.pets.vetStarterSummary, ka.pets.vetStarterVisit, ka.pets.vetStarterCare],
+    thinkingLabel: ka.common.analyzing,
+    allowMarkdownLinks: true,
+  };
+}
+
 export function getAnalysisChatProfile(kind: AnalysisChatKind): ChatUiProfile {
   if (kind === 'IMAGING') {
     return {

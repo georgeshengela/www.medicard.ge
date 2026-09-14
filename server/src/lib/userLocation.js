@@ -8,6 +8,8 @@ import {
   isStaleLocationFixAt,
   isHomePlaceWrite,
   isLiveLocationPing,
+  isCachedCaucasusFix,
+  shouldClearStoredPlace,
   PLACE_MOVE_METERS,
   resolveStoredPlace,
   snapshotFromRow,
@@ -16,12 +18,14 @@ import {
 export {
   didMoveFar,
   geocodeAppliesToRow,
+  isCachedCaucasusFix,
   isStaleLocationFixAt,
   isHomePlaceWrite,
   isLiveLocationPing,
   MAX_LOCATION_FIX_AGE_MS,
   PLACE_MOVE_METERS,
   resolveStoredPlace,
+  shouldClearStoredPlace,
   snapshotFromRow,
 } from './userLocationPlace.js';
 
@@ -212,6 +216,9 @@ async function upsertUserLocationUnlocked(userId, input = {}) {
   if (hasCoords && isImplausibleJump(row, input.lat, input.lng, now.getTime())) {
     hasCoords = false;
   }
+  if (hasCoords && isCachedCaucasusFix(input.lat, input.lng, input.timeZone)) {
+    hasCoords = false;
+  }
   if (hasCoords && !isHomePlaceWrite(source)) {
     hasCoords = false;
   }
@@ -219,23 +226,32 @@ async function upsertUserLocationUnlocked(userId, input = {}) {
   const prompted = input.prompted === true || current.prompted || hasCoords || input.enabled === true;
   const enabled =
     input.enabled != null ? input.enabled : hasCoords ? true : current.enabled;
+  const clearPlace = shouldClearStoredPlace(source, hasCoords);
 
   const movedFar = hasCoords ? didMoveFar(row, input.lat, input.lng) : false;
-  const nextPlace = resolveStoredPlace({
-    current,
-    geocoded: null,
-    movedFar,
-  });
+  const nextPlace = clearPlace
+    ? { countryCode: null, countryKa: null, cityKa: null }
+    : resolveStoredPlace({
+        current,
+        geocoded: null,
+        movedFar,
+      });
 
   let countryCode = nextPlace.countryCode;
   let countryKa = nextPlace.countryKa;
   let cityKa = nextPlace.cityKa;
-  let placeUpdatedAt = movedFar ? now : row?.placeUpdatedAt ? new Date(row.placeUpdatedAt) : null;
+  let placeUpdatedAt = clearPlace || movedFar ? now : row?.placeUpdatedAt ? new Date(row.placeUpdatedAt) : null;
 
   const nextRow = {
-    lat: hasCoords ? input.lat : row?.lat ?? null,
-    lng: hasCoords ? input.lng : row?.lng ?? null,
-    accuracy: hasCoords ? (Number.isFinite(input.accuracy) ? input.accuracy : null) : row?.accuracy ?? null,
+    lat: clearPlace ? null : hasCoords ? input.lat : row?.lat ?? null,
+    lng: clearPlace ? null : hasCoords ? input.lng : row?.lng ?? null,
+    accuracy: clearPlace
+      ? null
+      : hasCoords
+        ? Number.isFinite(input.accuracy)
+          ? input.accuracy
+          : null
+        : row?.accuracy ?? null,
     countryCode,
     countryKa,
     cityKa,

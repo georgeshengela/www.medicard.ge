@@ -1,5 +1,34 @@
 # Medicard.GE — agent memory
 
+## თბილისი მოძრაობს (Phase 6 owner-pilot prep)
+
+Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Runbook: `docs/TBILISI_MOVES_OWNER_PILOT.md`. Evidence: `docs/TBILISI_MOVES_PILOT_VALIDATION.md`. Persistent isolated DB `medicard_tbilisi_moves_pilot` on `127.0.0.1:55433`; API `:4011`. Phase 5 backend evidence stands. Native HealthKit/Health Connect **not** run (no device). No Neon SQL, flags, scheduler, push, or version bump (`1.0.0.8.25`). Next owner action: development-build phone against the LAN API. Next product phase after that: licensed Mapbox district map.
+
+## თბილისი მოძრაობს (Phase 5 isolated verification)
+
+Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Evidence: `docs/TBILISI_MOVES_PILOT_VALIDATION.md`. User-space Postgres 17 on `127.0.0.1:55433` / `medicard_tbilisi_moves_test` (not Windows services, not Neon). Migration A/B + HTTP + races + synthetic pilot **passed**. Native device still pending. Flags off on hosted DB. Runner not scheduled. No map, coins, version bump, or deploy. Next product phase after a human device pilot: licensed Mapbox district map.
+
+## თბილისი მოძრაობს (Phase 4 finalization)
+
+Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Phase 4: daily finalization, cosmetic awards, history, admin review/correct, runner command. Flags still off; **Neon SQL not applied**. Runner **not** scheduled. Isolated Postgres still unavailable here. No map, coins, version bump, or deploy. Next: isolated DB verification + controlled pilot; map only with licensed geometry.
+
+## თბილისი მოძრაობს (Phase 3 mobile)
+
+Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Phase 3: dedicated HealthKit/Health Connect adapter, Profile entry, enrollment, membership, real-data boards. Flags still off; **Neon SQL not applied**. No map, version bump, or deploy. Isolated Postgres was unavailable here (no Docker/WSL); HTTP isolation still skipped.
+
+## თბილისი მოძრაობს (Phase 2 foundation)
+
+Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Runtime + Prisma models + operator SQL are in the tree; **Neon not applied**. Feature/enrollment default off. Dedicated observation API; personal `HealthMetricDaily` is not the ledger. Admin `#/tbilisi-moves`.
+
+## Pets / Medi Vet (Phase 7.1 Android smoke)
+
+Handoff: `docs/PETS_ARCHITECTURE.md`. Evidence: `docs/PETS_PHASE7_VERIFICATION.md`. Screenshots: `qa/pets-phase7.1/`. Isolated Postgres `127.0.0.1:55432` / `medicard_pets_phase7`. Bird 502 → bounded COMPLETE `policy/unsupported-species`. COMPLETE+quota one transaction. Pixel_8 development APK installed; talks to local `:4010`. OS notification banners **not** observed. In-app two-pet/care/Medi Vet loop **not** finished. Neon **not** applied. No deploy. Pets screens restyled to Medicard fields/cards; care/record are one form, not wizards. Add pet is a full page, default species ძაღლი. Version `1.0.0.8.28`. Next: operator SQL on confirmed non-prod, then finish device reminder + create/care QA.
+
+
+## Pets / Medi Vet (Phase 6 Medi Vet in code)
+
+Handoff: `docs/PETS_ARCHITECTURE.md`. Identity + health facts + care ledger + local Notification Brain under `pets:` + isolated Medi Vet (`SYSTEM_PROMPTS.VET`, OpenRouter only). Neon SQL **not** applied. HTTP 200 on pets list is not proof care or chat works. Phase 7 local verification is recorded in `docs/PETS_PHASE7_VERIFICATION.md`.
+
 ## Mobile app versioning (mandatory)
 
 `expo.version` is the **public five-part identity**: Instagram-style `G.0.0.B.R`, currently **`1.0.0.8.22`**. Same string is Android `versionName`, in-app wordmark, and `/api/app/status`. Apple `CFBundleShortVersionString` is **`expo.ios.version` = `1.8.22`** (`G.B.R`); plugin `withIosMarketingVersion` is the last-write guard. Never set admin `minAppVersion` to `1.7.72` or `1.7.77`. Native integers in `app.json` (`67`) are a local floor only — EAS production `appVersionSource: remote` + `autoIncrement` is the uploaded counter (remote was **2** on 2026-09-11; first production build will be 3 unless remote is raised). Cycle phase numbers stay in contracts / QA only.

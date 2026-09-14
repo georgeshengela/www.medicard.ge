@@ -20,7 +20,7 @@ export function ChatScreenShell({ header, footer, children, style }: Props) {
       {header}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 4 : 0}
       >
         {children}

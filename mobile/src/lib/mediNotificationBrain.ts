@@ -530,6 +530,40 @@ async function deliverPregnancyCareReminder(data: Record<string, unknown>): Prom
   );
 }
 
+async function deliverPetCareReminder(data: Record<string, unknown>): Promise<{
+  ok: boolean;
+  reason: string | null;
+  rewriteMasked?: boolean;
+}> {
+  const { petCareReminderDeliveryDecision } = await import('./petCareReminderContract.js');
+  const { localAccountId } = await import('@/lib/localAccount');
+  const { loadPetCareReminderPrefs } = await import('@/lib/petCareReminderPrefs');
+  const { getNotificationPermissionGranted } = await import('@/lib/notifications');
+  const engage = await loadEngagePrefs().catch(() => null);
+  const prefs = await loadPetCareReminderPrefs().catch(() => null);
+  const userId = lastActor.user?.id || localAccountId();
+  const permissionGranted = await getNotificationPermissionGranted();
+  const live = {
+    userId,
+    permissionGranted,
+    globalOptIn: prefs?.globalOptIn !== false,
+    reminderEnabled: true,
+    revision: typeof data.revision === 'number' ? data.revision : Number(data.revision || 0) || undefined,
+  };
+  const decision = petCareReminderDeliveryDecision(
+    {
+      type: 'pet_care',
+      family: 'petCareReminder',
+      userId: data.userId,
+      revision: data.revision,
+      masked: Boolean(data.masked),
+    },
+    live,
+    Boolean(engage?.discreet),
+  );
+  return { ok: decision.ok && decision.deliver !== false, reason: decision.reason, rewriteMasked: decision.rewriteMasked };
+}
+
 export async function shouldDeliverNotification(data: Record<string, unknown> | undefined | null): Promise<{
   ok: boolean;
   reason: string | null;
@@ -543,6 +577,9 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
   }
   if (data.type === 'pregnancy_care_plan' || data.family === 'pregnancyCareReminder') {
     return deliverPregnancyCareReminder(data);
+  }
+  if (data.type === 'pet_care' || data.family === 'petCareReminder') {
+    return deliverPetCareReminder(data);
   }
   if (data.type === 'cycle_reminder' || data.family === 'cycleReminder' || data.type === 'cycle_tip') {
     return deliverCycleReminder(data);

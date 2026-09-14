@@ -68,6 +68,14 @@ const FALLBACKS: Record<string, { title: string; body: string }> = {
     title: 'Medi-სგან შეხსენება',
     body: 'შენი დაგეგმილი მოვლის შეხსენება',
   },
+  'pet-care': {
+    title: '{pet} · {item}',
+    body: 'დაგეგმილი მოვლის დღეა. გახსენი და დაადასტურე.',
+  },
+  'pet-care-masked': {
+    title: 'Medi-სგან შეხსენება',
+    body: 'შენი დაგეგმილი მოვლის შეხსენება',
+  },
   visit: {
     title: 'ვიზიტი არ დაგავიწყდეს 🩺',
     body: 'დღეს {time}-ზე {doctor}-თან ვიზიტი გაქვს{place}. ყველაფერი მზად გაქვს? Medi უბრალოდ შეგახსენებს 💚',

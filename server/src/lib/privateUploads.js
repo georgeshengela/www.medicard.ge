@@ -95,10 +95,31 @@ export async function findOwnedMedicalUpload(userId, filename, db = prisma) {
   });
 }
 
+export async function findOwnedPetUpload(userId, filename, db = prisma) {
+  const urls = storedUrlCandidates(filename);
+  if (!userId || urls.length === 0) return null;
+  try {
+    return await db.pet.findFirst({
+      where: { userId, photoUrl: { in: urls } },
+      select: { id: true },
+    });
+  } catch (error) {
+    if (error?.code === 'P2021' || /does not exist/i.test(error?.message || '')) return null;
+    throw error;
+  }
+}
+
+/** Medical records or pet photos. UUID secrecy is not authorization. */
+export async function findOwnedPrivateUpload(userId, filename, db = prisma) {
+  const medical = await findOwnedMedicalUpload(userId, filename, db);
+  if (medical) return medical;
+  return findOwnedPetUpload(userId, filename, db);
+}
+
 export async function authorizePrivateUpload({
   userId,
   filename,
-  findOwner = findOwnedMedicalUpload,
+  findOwner = findOwnedPrivateUpload,
   uploadDir = UPLOAD_DIR,
 }) {
   const parsed = parseUploadFilename(filename);

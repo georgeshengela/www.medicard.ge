@@ -75,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetHealthPullCache();
     });
     void import('@/lib/quest/socket').then(({ disconnectQuestSocket }) => disconnectQuestSocket());
+    void import('@/lib/tbilisiMoves/sync').then(({ cancelTbilisiMovesWork }) => cancelTbilisiMovesWork());
   }, []);
 
   const applyVisualSession = useCallback(() => {
@@ -137,6 +138,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
         runMediNotificationBrain(me.user, me.healthProfile ?? null),
       );
+      void import('@/lib/petCareReminders').then(({ reconcilePetCareReminders, flushPendingPetCareConfirms }) => {
+        void flushPendingPetCareConfirms();
+        void reconcilePetCareReminders({ reason: 'login' });
+      });
       void import('@/lib/accountSync').then(({ pullAccountState }) =>
         pullAccountState().catch(() => undefined),
       );
@@ -173,6 +178,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
         runMediNotificationBrain(user, healthProfile),
       );
+      if (user) {
+        void import('@/lib/petCareReminders').then(({ reconcilePetCareReminders, flushPendingPetCareConfirms }) => {
+          void flushPendingPetCareConfirms();
+          void reconcilePetCareReminders({ reason: 'foreground' });
+        });
+      }
     });
     return () => sub.remove();
   }, [user, healthProfile]);
@@ -211,6 +222,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
           runMediNotificationBrain(user, healthProfile),
         );
+        void import('@/lib/petCareReminders').then(({ reconcilePetCareReminders, flushPendingPetCareConfirms }) => {
+          void flushPendingPetCareConfirms();
+          void reconcilePetCareReminders({ reason: 'login' });
+        });
         void import('@/lib/accountSync').then(({ pullAccountState }) =>
           pullAccountState().catch(() => undefined),
         );
@@ -294,7 +309,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       signInWithPhone: async (phone, code, fullName) => adopt(await api.auth.phoneVerify({ phone, code, fullName })),
       signOut: async () => {
+        const userId = user?.id;
         setQuestVisualSession(false);
+        try {
+          const { onPetCareLogout } = await import('@/lib/petCareReminders');
+          await onPetCareLogout(userId);
+        } catch {
+          /* local reminder cleanup is best-effort */
+        }
         await clearToken();
         await clearSessionSnapshot();
         resetSession();

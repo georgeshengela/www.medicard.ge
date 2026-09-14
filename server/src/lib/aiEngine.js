@@ -190,6 +190,15 @@ function mapOpenRouterError(error) {
   });
 }
 
+export function setAskOpenRouterPreparedForTests(fn) {
+  globalThis.__medicardAskOpenRouterPrepared = typeof fn === 'function' ? fn : null;
+}
+
+export function hasOpenRouter() {
+  if (typeof globalThis.__medicardAskOpenRouterPrepared === 'function') return true;
+  return Boolean(openrouter);
+}
+
 export function buildClinicalMessages({ mode = 'DOCTOR', messages, context }) {
   const systemPrompt = SYSTEM_PROMPTS[mode] ?? SYSTEM_PROMPTS.DOCTOR;
   return [
@@ -201,17 +210,26 @@ export function buildClinicalMessages({ mode = 'DOCTOR', messages, context }) {
   ];
 }
 
-export async function askOpenRouterChat({
+export async function askOpenRouterPrepared({
   model,
-  mode = 'DOCTOR',
   messages,
-  context,
   temperature = 0.2,
   maxTokens = 2400,
   skipDisclaimer = false,
   onDelta,
   signal,
 }) {
+  if (typeof globalThis.__medicardAskOpenRouterPrepared === 'function') {
+    return globalThis.__medicardAskOpenRouterPrepared({
+      model,
+      messages,
+      temperature,
+      maxTokens,
+      skipDisclaimer,
+      onDelta,
+      signal,
+    });
+  }
   if (!openrouter) {
     throw new AiEngineError('OpenRouter არ არის კონფიგურირებული.', { status: 503 });
   }
@@ -220,7 +238,7 @@ export async function askOpenRouterChat({
     const extra = signal ? { signal } : undefined;
     const payload = buildOpenRouterChatPayload({
       model,
-      messages: buildClinicalMessages({ mode, messages, context }),
+      messages,
       temperature,
       maxTokens,
       stream,
@@ -271,6 +289,28 @@ export async function askOpenRouterChat({
   }
 }
 
+export async function askOpenRouterChat({
+  model,
+  mode = 'DOCTOR',
+  messages,
+  context,
+  temperature = 0.2,
+  maxTokens = 2400,
+  skipDisclaimer = false,
+  onDelta,
+  signal,
+}) {
+  return askOpenRouterPrepared({
+    model,
+    messages: buildClinicalMessages({ mode, messages, context }),
+    temperature,
+    maxTokens,
+    skipDisclaimer,
+    onDelta,
+    signal,
+  });
+}
+
 /**
  * Default Gemini Flash: OpenRouter Gemini → EvidenceMD. Ling only if the user picked it.
  */
@@ -293,7 +333,7 @@ export async function askAi({
     return { ...result, engine: 'evidencemd', engineId: engine.id };
   }
 
-  if (!openrouter) {
+  if (!hasOpenRouter()) {
     const result = await askEvidenceMd(opts);
     return { ...result, engine: 'evidencemd', engineId: engine.id, fallback: true };
   }
@@ -335,10 +375,6 @@ export async function askAi({
     if (lastError) throw lastError;
     throw new AiEngineError('სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', { status: 502 });
   }
-}
-
-export function hasOpenRouter() {
-  return Boolean(openrouter);
 }
 
 export { openrouter as openRouterClient };

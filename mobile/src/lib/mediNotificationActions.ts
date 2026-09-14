@@ -11,6 +11,7 @@ export const NOTIF_CATEGORY = {
   checkin: 'medi-checkin',
   visit: 'medi-visit',
   quota: 'medi-quota',
+  petCare: 'medi-pet-care',
 } as const;
 
 export const NOTIF_ACTION = {
@@ -20,6 +21,8 @@ export const NOTIF_ACTION = {
   ok: 'OK',
   chat: 'CHAT',
   open: 'OPEN',
+  petDone: 'PET_DONE',
+  petSkip: 'PET_SKIP',
 } as const;
 
 export function categoryForNotification(type?: string, family?: string): string | undefined {
@@ -28,6 +31,7 @@ export function categoryForNotification(type?: string, family?: string): string 
   if (family === 'hydration') return NOTIF_CATEGORY.hydration;
   if (family === 'checkin' || family === 'morning' || family === 'sleep') return NOTIF_CATEGORY.checkin;
   if (type === 'quota_reset' || family === 'quotaReset') return NOTIF_CATEGORY.quota;
+  if (type === 'pet_care' || family === 'petCareReminder') return NOTIF_CATEGORY.petCare;
   return undefined;
 }
 
@@ -51,6 +55,11 @@ export async function registerNotificationCategories(): Promise<void> {
     ]);
     await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.quota, [
       { identifier: NOTIF_ACTION.chat, buttonTitle: 'ჰკითხე Medi-ს', options: { opensAppToForeground: true } },
+    ]);
+    await Notifications.setNotificationCategoryAsync(NOTIF_CATEGORY.petCare, [
+      { identifier: NOTIF_ACTION.petDone, buttonTitle: 'დადასტურება', options: { opensAppToForeground: true } },
+      { identifier: NOTIF_ACTION.snooze, buttonTitle: 'გადადება', options: { opensAppToForeground: false } },
+      { identifier: NOTIF_ACTION.petSkip, buttonTitle: 'გამოტოვება', options: { opensAppToForeground: true } },
     ]);
   } catch {
     /* categories are best-effort on Expo Go */
@@ -139,8 +148,33 @@ export async function handleNotificationAction(
   }
 
   if (action === NOTIF_ACTION.snooze) {
+    if (data.type === 'pet_care' || data.family === 'petCareReminder') {
+      void import('@/lib/petCareReminders').then(({ snoozePetCareCandidate, recordPetCareUserResponse }) => {
+        void recordPetCareUserResponse(data);
+        void snoozePetCareCandidate(data);
+      });
+      return { navigate: false };
+    }
     await snooze(content);
     return { navigate: false };
+  }
+
+  if (action === NOTIF_ACTION.petDone || action === NOTIF_ACTION.petSkip) {
+    void import('@/lib/petCareReminders').then(({ recordPetCareUserResponse }) => recordPetCareUserResponse(data));
+    const petId = typeof data.petId === 'string' ? data.petId : '';
+    const scheduleId = typeof data.scheduleId === 'string' ? data.scheduleId : '';
+    const occurrenceKey = typeof data.occurrenceKey === 'string' ? data.occurrenceKey : '';
+    const revision = data.revision;
+    if (petId && scheduleId && occurrenceKey) {
+      const qs = new URLSearchParams({
+        scheduleId,
+        occurrenceKey,
+        revision: String(revision ?? ''),
+        action: action === NOTIF_ACTION.petSkip ? 'skip' : 'complete',
+      });
+      return { navigate: true, route: `/pets/${petId}/care/complete?${qs.toString()}` };
+    }
+    return { navigate: true };
   }
 
   if (action === NOTIF_ACTION.ok) {

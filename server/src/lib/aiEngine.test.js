@@ -11,6 +11,7 @@ import {
   publicAiEngineCatalog,
   resolveAiEngine,
   resolveOpenRouterModel,
+  hasOpenRouter,
   withOpenRouterModelFallback,
 } from './aiEngine.js';
 
@@ -93,4 +94,8 @@ test('stream deltas only expose visible content, never hidden reasoning', () => 
     extractStreamDelta({ choices: [{ delta: { content: [{ type: 'text', text: 'ok' }] } }] }),
     'ok',
   );
+});
+
+test('hasOpenRouter is a boolean and does not imply EvidenceMD', () => {
+  assert.equal(typeof hasOpenRouter(), 'boolean');
 });

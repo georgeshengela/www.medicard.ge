@@ -28,6 +28,7 @@ export const STEPS_CHANNEL_ID = 'steps-reminders';
 export const WEIGHT_CHANNEL_ID = 'weight-reminders';
 export const VISIT_CHANNEL_ID = 'doctor-visit-reminders';
 export const ENGAGE_CHANNEL_ID = 'medi-engage';
+export const PET_CARE_CHANNEL_ID = 'pet-care-reminders';
 export const QA_PREFIX = 'qa:';
 
 export const NOTIF_PREFIX = {
@@ -39,6 +40,7 @@ export const NOTIF_PREFIX = {
   weight: 'weight:',
   engage: 'engage:',
   quota: 'quota:',
+  pets: 'pets:',
 } as const;
 
 Notifications.setNotificationHandler({
@@ -64,13 +66,15 @@ Notifications.setNotificationHandler({
       const { shouldDeliverNotification } = await import('@/lib/mediNotificationBrain');
       const { patchEngageDecision } = await import('@/lib/mediEngagePrefs');
       const check = await shouldDeliverNotification(data);
-      if (check.rewriteMasked && (data.type === 'cycle_reminder' || data.type === 'pregnancy_care_plan') && data.rewrite !== true) {
+      if (check.rewriteMasked && (data.type === 'cycle_reminder' || data.type === 'pregnancy_care_plan' || data.type === 'pet_care') && data.rewrite !== true) {
         const discreet =
           data.type === 'pregnancy_care_plan'
             ? applyPushCopy('pregnancy-care-masked')
-            : applyPushCopy('cycle-masked');
+            : data.type === 'pet_care'
+              ? applyPushCopy('pet-care-masked')
+              : applyPushCopy('cycle-masked');
         void Notifications.scheduleNotificationAsync({
-          identifier: `${data.type === 'pregnancy_care_plan' ? 'pregnancy_care' : 'cycle'}:mask-rewrite:${String(data.candidateId || Date.now())}`,
+          identifier: `${data.type === 'pregnancy_care_plan' ? 'pregnancy_care' : data.type === 'pet_care' ? 'pets' : 'cycle'}:mask-rewrite:${String(data.candidateId || Date.now())}`,
           content: {
             title: discreet.title,
             body: discreet.body,
@@ -79,7 +83,12 @@ Notifications.setNotificationHandler({
               ...data,
               masked: true,
               rewrite: true,
-              templateKey: data.type === 'pregnancy_care_plan' ? 'pregnancy-care-masked' : 'cycle-masked',
+              templateKey:
+                data.type === 'pregnancy_care_plan'
+                  ? 'pregnancy-care-masked'
+                  : data.type === 'pet_care'
+                    ? 'pet-care-masked'
+                    : 'cycle-masked',
             },
           },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
@@ -172,6 +181,13 @@ async function ensureAndroidChannels(): Promise<void> {
     name: 'Medi',
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 160, 100, 160],
+    lightColor: '#14B8A6',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync(PET_CARE_CHANNEL_ID, {
+    name: 'ცხოველის მოვლის შეხსენებები',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 220, 120, 220],
     lightColor: '#14B8A6',
     sound: 'default',
   });
@@ -381,6 +397,7 @@ export type ScheduledReminderCounts = {
   engage: number;
   quota: number;
   qa: number;
+  pets: number;
   other: number;
   total: number;
 };
@@ -395,6 +412,7 @@ export async function getScheduledReminderCounts(): Promise<ScheduledReminderCou
     engage: 0,
     quota: 0,
     qa: 0,
+    pets: 0,
     other: 0,
     total: 0,
   };
@@ -682,6 +700,54 @@ export async function schedulePregnancyCareDateNotification(opts: SchedulePregna
   });
   return true;
 }
+
+type SchedulePetCareOpts = {
+  identifier: string;
+  title: string;
+  body: string;
+  date: Date;
+  data?: Record<string, unknown>;
+};
+
+/** Date-only or exact-time pet care reminder. Brain revalidates at fire time. No catch-up. */
+export async function schedulePetCareDateNotification(opts: SchedulePetCareOpts): Promise<boolean> {
+  const granted = await getNotificationPermissionGranted();
+  if (!granted) return false;
+  if (opts.date.getTime() <= Date.now()) return false;
+  if (!canScheduleNotifications()) return false;
+
+  const masked = Boolean(opts.data?.masked);
+  const discreet = applyPushCopy('pet-care-masked');
+  const identifier = opts.identifier.startsWith(NOTIF_PREFIX.pets)
+    ? opts.identifier
+    : `${NOTIF_PREFIX.pets}${opts.identifier}`;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: {
+        title: masked ? discreet.title : opts.title,
+        body: masked ? discreet.body : opts.body,
+        sound: 'default',
+        categoryIdentifier: 'medi-pet-care',
+        data: {
+          type: 'pet_care',
+          family: 'petCareReminder',
+          ...(opts.data || {}),
+          masked,
+        },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: opts.date,
+        ...(Platform.OS === 'android' ? { channelId: PET_CARE_CHANNEL_ID } : {}),
+      },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function scheduleCycleReminder(opts: {
   title: string;
   body: string;

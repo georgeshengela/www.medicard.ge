@@ -14,6 +14,7 @@
     '#/quality': 'ხარისხი',
     '#/cycleqa': 'ფაზები',
     '#/push': 'Push & Brain',
+    '#/tbilisi-moves': 'თბილისი მოძრაობს',
     '#/settings': 'რეჟიმი',
     '#/sms': 'SMS',
     '#/pharmacy': 'ფარმაცია',
