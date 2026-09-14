@@ -2,6 +2,7 @@ import * as Location from 'expo-location';
 import { AppState } from 'react-native';
 import { api, type HealthProfile, type UserLocationSnapshot } from '@/lib/api';
 import { formatPlaceLine, resolvePlace } from '@/lib/geoPlace';
+import { isFreshLocationTimestamp } from '@/lib/locationFix';
 import { getPreference, setPreference } from '@/lib/storage';
 
 const WATCH_DISTANCE_M = 40;
@@ -13,7 +14,7 @@ export type LocationPermissionState = 'granted' | 'denied' | 'undetermined';
 
 let watchSub: Location.LocationSubscription | null = null;
 let lastPingAt = 0;
-let lastFix: { lat: number; lng: number; accuracy: number | null } | null = null;
+let lastFix: { lat: number; lng: number; accuracy: number | null; fixAt: number } | null = null;
 let optedIn = false;
 let pinging = false;
 let localPrompted = false;
@@ -109,9 +110,6 @@ export function hydrateLocationFromProfile(profile: HealthProfile | null | undef
     localPrompted = true;
   }
   optedIn = loc?.enabled === true;
-  if (Number.isFinite(loc?.lat) && Number.isFinite(loc?.lng)) {
-    lastFix = { lat: loc!.lat!, lng: loc!.lng!, accuracy: loc!.accuracy };
-  }
 }
 
 function mapPermission(status: Location.PermissionStatus): LocationPermissionState {
@@ -133,7 +131,12 @@ export async function requestLocationPermission(): Promise<LocationPermissionSta
   return mapPermission(next.status);
 }
 
-async function readCurrentCoords(): Promise<{ lat: number; lng: number; accuracy: number | null } | null> {
+async function readCurrentCoords(): Promise<{
+  lat: number;
+  lng: number;
+  accuracy: number | null;
+  fixAt: number;
+} | null> {
   try {
     const fix = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced,
@@ -141,10 +144,12 @@ async function readCurrentCoords(): Promise<{ lat: number; lng: number; accuracy
     const lat = fix.coords.latitude;
     const lng = fix.coords.longitude;
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (!isFreshLocationTimestamp(fix.timestamp)) return null;
     const next = {
       lat,
       lng,
       accuracy: Number.isFinite(fix.coords.accuracy) ? fix.coords.accuracy : null,
+      fixAt: Number.isFinite(fix.timestamp) ? Number(fix.timestamp) : Date.now(),
     };
     lastFix = next;
     return next;
@@ -306,6 +311,7 @@ export async function pingLiveLocation(source: 'heartbeat' | 'watch' = 'heartbea
 
   const coords = lastFix && source === 'watch' ? lastFix : await readCurrentCoords();
   if (!coords) return;
+  if (!isFreshLocationTimestamp(coords.fixAt)) return;
   await pingServer({ ...coords, enabled: true, source });
 }
 
@@ -325,10 +331,12 @@ export async function startLiveLocationWatch(): Promise<void> {
         const lat = fix.coords.latitude;
         const lng = fix.coords.longitude;
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        if (!isFreshLocationTimestamp(fix.timestamp)) return;
         lastFix = {
           lat,
           lng,
           accuracy: Number.isFinite(fix.coords.accuracy) ? fix.coords.accuracy : null,
+          fixAt: Number.isFinite(fix.timestamp) ? Number(fix.timestamp) : Date.now(),
         };
         void pingLiveLocation('watch');
       },

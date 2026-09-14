@@ -10,13 +10,7 @@ import rateLimit from 'express-rate-limit';
 
 import { env, hasVisionProvider } from './config/env.js';
 import { prisma } from './lib/prisma.js';
-import {
-  apiTrafficKey,
-  attachRateLimitHandler,
-  authWriteKey,
-  isAuthWriteRequest,
-  RATE_LIMIT_VALIDATE,
-} from './lib/rateLimitKey.js';
+import { attachRateLimitHandler, RATE_LIMIT_VALIDATE } from './lib/rateLimitKey.js';
 import { denyLegacyPublicUploads } from './lib/privateUploads.js';
 import { shutdownOcr } from './lib/ocr.js';
 import { errorHandler, notFound } from './middleware/error.js';
@@ -32,6 +26,8 @@ import { visitsRouter } from './routes/visits.routes.js';
 import { usageRouter } from './routes/usage.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { adminRewardsRouter } from './routes/adminRewards.routes.js';
+import { huntRouter } from './routes/hunt.routes.js';
+import { adminHuntRouter } from './routes/adminHunt.routes.js';
 import { appRouter } from './routes/app.routes.js';
 import { accountRouter } from './routes/account.routes.js';
 import { cycleRouter, partnerShareClosedHandler } from './routes/cycle.routes.js';
@@ -44,7 +40,6 @@ import { questsRouter } from './routes/quests.routes.js';
 import { achievementsRouter } from './routes/achievements.routes.js';
 import { rewardsRouter } from './routes/rewards.routes.js';
 import { mediCompanionRouter } from './routes/mediCompanion.routes.js';
-import { mediWorldRouter } from './routes/mediWorld.routes.js';
 import { filesRouter } from './routes/files.routes.js';
 import { PRIVACY_HTML, TERMS_HTML } from './lib/legalPages.js';
 import { attachAdminRealtime } from './lib/adminRealtime.js';
@@ -129,33 +124,9 @@ app.use(
   }),
 );
 
-app.use(
-  '/api/',
-  rateLimit({
-    windowMs: 60_000,
-    limit: 120,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    validate: RATE_LIMIT_VALIDATE,
-    keyGenerator: apiTrafficKey,
-    skip: isAuthWriteRequest,
-    handler: attachRateLimitHandler('api-global'),
-  }),
-);
-
-app.use(
-  '/api/auth',
-  rateLimit({
-    windowMs: 60_000,
-    limit: 20,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    validate: RATE_LIMIT_VALIDATE,
-    keyGenerator: authWriteKey,
-    skip: (req) => !isAuthWriteRequest(req),
-    handler: attachRateLimitHandler('auth-write'),
-  }),
-);
+// Do not request-count /api or /api/auth. A 120/min (or 20/min register)
+// bucket 429s real onboarding: Expo retries, /auth/me, assessment, home.
+// Scale the Render instance instead of making users wait.
 
 app.use(
   '/api/cycle/share',
@@ -237,10 +208,11 @@ app.use('/api/quests', questsRouter);
 app.use('/api/achievements', achievementsRouter);
 app.use('/api/rewards', rewardsRouter);
 app.use('/api/medi-companion', mediCompanionRouter);
-app.use('/api/medi-world', mediWorldRouter);
+app.use('/api/hunt', huntRouter);
 app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/rewards', adminRewardsRouter);
+app.use('/api/admin/hunt', adminHuntRouter);
 
 if (serveAdmin) {
   // Must be registered before the marketing-site fallback, otherwise /admin becomes the landing page.

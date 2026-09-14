@@ -37,7 +37,6 @@ import {
   resolveSmartQuestAssignment,
   smartQuestAnalyticsCategory,
 } from './smartQuestEngine.js';
-import { applyQuestCompletionToMediWorld } from './mediWorld/questAdapter.js';
 
 export {
   SMART_QUEST_ENGINE_VERSION,
@@ -781,7 +780,6 @@ async function completeQuestInTx(tx, userId, userQuestId, options = {}) {
   });
 
   await applyQuestStreak(tx, userId, updated);
-  await applyQuestCompletionToMediWorld(tx, userId, updated, options);
   return { completed: true, alreadyCompleted: false, quest: updated };
 }
 
@@ -803,15 +801,6 @@ async function reconcileCompanionAfterQuest(userId, options) {
   }
 }
 
-async function reconcileAdventureAfterQuest(userId, options) {
-  try {
-    const { syncAdventureAfterCanonicalChange } = await import('./mediWorld/adventure/service.js');
-    await syncAdventureAfterCanonicalChange(userId, options);
-  } catch (error) {
-    console.warn('[quest] medi world adventure hook failed', error?.message);
-  }
-}
-
 export async function completeQuest(userId, userQuestId, options = {}) {
   try {
     const result = await withQuestTx(options, (tx) => completeQuestInTx(tx, userId, userQuestId, options));
@@ -819,7 +808,6 @@ export async function completeQuest(userId, userQuestId, options = {}) {
       notifyQuestCompleted(userId, result.quest, options);
       await evaluateAchievementsAfterQuest(userId, options);
       await reconcileCompanionAfterQuest(userId, options);
-      await reconcileAdventureAfterQuest(userId, options);
     }
     return result;
   } catch (error) {

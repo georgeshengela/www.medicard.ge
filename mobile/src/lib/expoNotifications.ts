@@ -62,11 +62,39 @@ function expoGoStub() {
   };
 }
 
+function rewriteScheduleRequest(request) {
+  if (request?.content?.sound !== 'default') return request;
+  return {
+    ...request,
+    content: {
+      ...request.content,
+      // SDK 57 treats the string "default" as a missing custom asset.
+      sound: true,
+    },
+  };
+}
+
+function rewriteChannel(channel) {
+  if (!channel || channel.sound !== 'default') return channel;
+  const next = { ...channel };
+  delete next.sound;
+  return next;
+}
+
 function loadNotifications() {
   if (skipNative) return expoGoStub();
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('expo-notifications');
+    const loaded = require('expo-notifications');
+    const schedule = loaded.scheduleNotificationAsync?.bind(loaded);
+    if (typeof schedule === 'function') {
+      loaded.scheduleNotificationAsync = (request) => schedule(rewriteScheduleRequest(request));
+    }
+    const setChannel = loaded.setNotificationChannelAsync?.bind(loaded);
+    if (typeof setChannel === 'function') {
+      loaded.setNotificationChannelAsync = (id, channel) => setChannel(id, rewriteChannel(channel));
+    }
+    return loaded;
   } catch {
     return expoGoStub();
   }

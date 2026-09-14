@@ -74,15 +74,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void import('@/lib/healthDataSync').then(({ resetHealthPullCache }) => {
       resetHealthPullCache();
     });
-    void import('@/lib/mediWorld/worldEconomyCache.js').then(({ resetWorldEconomyCache }) => {
-      resetWorldEconomyCache();
-    });
-    void import('@/lib/mediWorld/exploreCache').then(({ clearExploreAreaCache }) => {
-      void clearExploreAreaCache();
-    });
-    void import('@/lib/mediWorld/enabled').then(({ resetMediWorldServerFlags }) => {
-      resetMediWorldServerFlags();
-    });
     void import('@/lib/quest/socket').then(({ disconnectQuestSocket }) => disconnectQuestSocket());
   }, []);
 
@@ -194,14 +185,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       await clearSessionSnapshot();
-      const { resetWorldEconomyCache } = await import('@/lib/mediWorld/worldEconomyCache.js');
-      resetWorldEconomyCache();
-      const { clearExploreAreaCache } = await import('@/lib/mediWorld/exploreCache');
-      await clearExploreAreaCache();
       const { resetHealthPullCache } = await import('@/lib/healthDataSync');
       resetHealthPullCache();
-      const { resetMediWorldServerFlags } = await import('@/lib/mediWorld/enabled');
-      resetMediWorldServerFlags();
       const { disconnectQuestSocket } = await import('@/lib/quest/socket');
       disconnectQuestSocket();
       setLocalAccountId(result.user.id);

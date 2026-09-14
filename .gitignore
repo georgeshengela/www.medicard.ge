@@ -28,14 +28,14 @@ mobile/.expo-export-check/
 mobile/.expo-tmp-check/
 mobile/store/_qa-*/
 server/scripts/_v25-shots/
+server/scripts/_v26-shots/
+qa-artifacts/
+tmp/
 
 # Scraping / debug probes (local only)
 tmp-*.js
+tmp-*.json
 pd-*.js
-gpc.html
-tmp-figma*.json
-tmp-auth.json
-tmp-light.json
 mobile/assets/Untitled-1.txt
 server/*-test.html
 mobile/design-references/

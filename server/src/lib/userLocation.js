@@ -1,12 +1,44 @@
 import { prisma } from './prisma.js';
 import { publicHealthProfile } from './patient.js';
 import { metersBetween, resolveNominatimAddress } from './geoPlace.js';
+import {
+  didMoveFar,
+  geocodeAppliesToRow,
+  isImplausibleJump,
+  isStaleLocationFixAt,
+  PLACE_MOVE_METERS,
+  resolveStoredPlace,
+  snapshotFromRow,
+} from './userLocationPlace.js';
 
-const PLACE_MOVE_METERS = 2000;
+export {
+  didMoveFar,
+  geocodeAppliesToRow,
+  isStaleLocationFixAt,
+  MAX_LOCATION_FIX_AGE_MS,
+  PLACE_MOVE_METERS,
+  resolveStoredPlace,
+  snapshotFromRow,
+} from './userLocationPlace.js';
+
 const NOMINATIM_GAP_MS = 1100;
 
 let tableReady = false;
 let lastNominatimAt = 0;
+const upsertChains = new Map();
+
+function withUserLocationLock(userId, fn) {
+  const prev = upsertChains.get(userId) || Promise.resolve();
+  const run = prev.then(fn, fn);
+  upsertChains.set(
+    userId,
+    run.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return run;
+}
 
 export function emptyLocationSnapshot() {
   return {
@@ -19,22 +51,6 @@ export function emptyLocationSnapshot() {
     lng: null,
     accuracy: null,
     updatedAt: null,
-  };
-}
-
-export function snapshotFromRow(row, extra = {}) {
-  if (!row && !extra.location && extra.locationPrompted !== true) return emptyLocationSnapshot();
-  const stored = extra.location && typeof extra.location === 'object' ? extra.location : {};
-  return {
-    prompted: extra.locationPrompted === true || stored.prompted === true || Boolean(row),
-    enabled: row ? row.enabled !== false : stored.enabled === true,
-    countryCode: row?.countryCode ?? stored.countryCode ?? null,
-    countryKa: row?.countryKa ?? stored.countryKa ?? null,
-    cityKa: row?.cityKa ?? stored.cityKa ?? null,
-    lat: row?.lat ?? stored.lat ?? null,
-    lng: row?.lng ?? stored.lng ?? null,
-    accuracy: row?.accuracy ?? stored.accuracy ?? null,
-    updatedAt: (row?.updatedAt ? new Date(row.updatedAt).toISOString() : null) || stored.updatedAt || null,
   };
 }
 
@@ -131,12 +147,12 @@ async function persistRow(userId, next) {
       "lat" = EXCLUDED."lat",
       "lng" = EXCLUDED."lng",
       "accuracy" = EXCLUDED."accuracy",
-      "countryCode" = COALESCE(EXCLUDED."countryCode", "UserLocation"."countryCode"),
-      "countryKa" = COALESCE(EXCLUDED."countryKa", "UserLocation"."countryKa"),
-      "cityKa" = COALESCE(EXCLUDED."cityKa", "UserLocation"."cityKa"),
+      "countryCode" = EXCLUDED."countryCode",
+      "countryKa" = EXCLUDED."countryKa",
+      "cityKa" = EXCLUDED."cityKa",
       "enabled" = EXCLUDED."enabled",
       "updatedAt" = EXCLUDED."updatedAt",
-      "placeUpdatedAt" = COALESCE(EXCLUDED."placeUpdatedAt", "UserLocation"."placeUpdatedAt")
+      "placeUpdatedAt" = EXCLUDED."placeUpdatedAt"
   `;
 }
 
@@ -170,35 +186,39 @@ export async function getUserLocationSnapshot(userId) {
 }
 
 export async function upsertUserLocation(userId, input = {}) {
+  return withUserLocationLock(userId, () => upsertUserLocationUnlocked(userId, input));
+}
+
+async function upsertUserLocationUnlocked(userId, input = {}) {
   const now = new Date();
   const row = await loadUserLocationRow(userId);
   const profile = await prisma.healthProfile.findUnique({ where: { userId } });
   const extra = profile?.extraAnswers && typeof profile.extraAnswers === 'object' ? profile.extraAnswers : {};
   const current = snapshotFromRow(row, extra);
 
-  const hasCoords = Number.isFinite(input.lat) && Number.isFinite(input.lng);
+  let hasCoords = Number.isFinite(input.lat) && Number.isFinite(input.lng);
+  if (hasCoords && isStaleLocationFixAt(input.fixAt, now.getTime())) {
+    hasCoords = false;
+  }
+  if (hasCoords && isImplausibleJump(row, input.lat, input.lng, now.getTime())) {
+    hasCoords = false;
+  }
+
   const prompted = input.prompted === true || current.prompted || hasCoords || input.enabled === true;
   const enabled =
     input.enabled != null ? input.enabled : hasCoords ? true : current.enabled;
 
-  let countryCode = current.countryCode;
-  let countryKa = current.countryKa;
-  let cityKa = current.cityKa;
-  let placeUpdatedAt = row?.placeUpdatedAt ? new Date(row.placeUpdatedAt) : null;
+  const movedFar = hasCoords ? didMoveFar(row, input.lat, input.lng) : false;
+  const nextPlace = resolveStoredPlace({
+    current,
+    geocoded: null,
+    movedFar,
+  });
 
-  if (hasCoords && enabled && shouldRefreshPlace(row, input.lat, input.lng, input.source)) {
-    try {
-      const place = await reverseGeocode(input.lat, input.lng);
-      if (place?.countryCode || place?.cityKa) {
-        countryCode = place.countryCode || countryCode;
-        countryKa = place.countryKa || countryKa;
-        cityKa = place.cityKa || cityKa;
-        placeUpdatedAt = now;
-      }
-    } catch (error) {
-      console.warn('[location] reverse geocode failed', error?.message);
-    }
-  }
+  let countryCode = nextPlace.countryCode;
+  let countryKa = nextPlace.countryKa;
+  let cityKa = nextPlace.cityKa;
+  let placeUpdatedAt = movedFar ? now : row?.placeUpdatedAt ? new Date(row.placeUpdatedAt) : null;
 
   const nextRow = {
     lat: hasCoords ? input.lat : row?.lat ?? null,
@@ -221,6 +241,34 @@ export async function upsertUserLocation(userId, input = {}) {
       } else {
         console.warn('[location] upsert failed', error?.message);
       }
+    }
+  }
+
+  if (hasCoords && enabled && shouldRefreshPlace(row, input.lat, input.lng, input.source)) {
+    try {
+      const geocoded = await reverseGeocode(input.lat, input.lng);
+      const latest = await loadUserLocationRow(userId);
+      if (geocodeAppliesToRow(latest, input.lat, input.lng)) {
+        const placed = resolveStoredPlace({
+          current: { countryCode, countryKa, cityKa },
+          geocoded,
+          movedFar,
+        });
+        countryCode = placed.countryCode;
+        countryKa = placed.countryKa;
+        cityKa = placed.cityKa;
+        if (geocoded?.countryCode || geocoded?.cityKa) placeUpdatedAt = new Date();
+        await persistRow(userId, {
+          ...nextRow,
+          countryCode,
+          countryKa,
+          cityKa,
+          placeUpdatedAt,
+          updatedAt: new Date(),
+        });
+      }
+    } catch (error) {
+      console.warn('[location] reverse geocode failed', error?.message);
     }
   }
 

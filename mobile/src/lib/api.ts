@@ -1641,11 +1641,14 @@ export const api = {
           forceUpdate: boolean;
           allowRegistrations: boolean;
           supportEmail: string;
-          mediWorldEnabled?: boolean;
-          mediWorldExploreEnabled?: boolean;
-          mediWorldMovementEnabled?: boolean;
-          mediWorldGardenEnabled?: boolean;
-          mediWorldSocialEnabled?: boolean;
+        };
+        hunt?: {
+          enabled: boolean;
+          rewardsEnabled: boolean;
+          playAreaM: number;
+          captureRadiusM: number;
+          modelKey: string;
+          attribution: string;
         };
         client: { version: string; needsUpdate: boolean; blockedByForceUpdate: boolean };
         packages?: UserPackage[];
@@ -1926,6 +1929,7 @@ export const api = {
       lat?: number;
       lng?: number;
       accuracy?: number | null;
+      fixAt?: number;
       enabled?: boolean;
       prompted?: boolean;
       source?: 'grant' | 'skip' | 'heartbeat' | 'watch' | 'revoke';
@@ -2496,315 +2500,50 @@ export const api = {
       }>(      '/api/medi-companion/reconcile', { method: 'POST' }),
   },
 
-  mediWorld: {
-    profile: () => request<import('@/lib/mediWorld/types').MediWorldProfileResponse>('/api/medi-world'),
-    ledger: (query?: { take?: number; cursor?: string | null }) => {
-      const qs = new URLSearchParams();
-      if (query?.take) qs.set('take', String(query.take));
-      if (query?.cursor) qs.set('cursor', query.cursor);
-      const q = qs.toString();
-      return request<{
-        items: import('@/lib/mediWorld/types').MediWorldLedgerItem[];
-        nextCursor: string | null;
-      }>(`/api/medi-world/ledger${q ? `?${q}` : ''}`);
-    },
-    companion: () => request<import('@/lib/mediWorld/types').CompanionWorldState>('/api/medi-world/companion'),
-    renameCompanion: (displayName: string) =>
-      request<import('@/lib/mediWorld/types').CompanionWorldState>('/api/medi-world/companion', {
-        method: 'PATCH',
-        body: { displayName },
-      }),
-    careMoment: (interactionKey: string) =>
-      request<import('@/lib/mediWorld/types').CompanionWorldState>('/api/medi-world/companion/care-moment', {
+  hunt: {
+    status: () =>
+      request<{
+        enabled: boolean;
+        rewardsEnabled: boolean;
+        playAreaM: number;
+        captureRadiusM: number;
+        modelKey: string;
+        attribution: string;
+        schemaReady?: boolean;
+      }>('/api/hunt/status'),
+    progress: () => request<{ viruses: number; titles: unknown[] }>('/api/hunt/progress'),
+    start: (body: {
+      lat: number;
+      lng: number;
+      accuracy?: number;
+      mode?: 'default' | 'gentle';
+      simulation?: boolean;
+    }) => request<import('@/lib/hunt/types').HuntSnapshot>('/api/hunt/sessions', { method: 'POST', body }),
+    get: (id: string) => request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}`),
+    ping: (id: string, body: { samples: Array<{ lat: number; lng: number; accuracy: number; at: number; seq?: number }> }) =>
+      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/ping`, { method: 'POST', body }),
+    pause: (id: string) =>
+      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/pause`, { method: 'POST' }),
+    resume: (id: string) =>
+      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/resume`, { method: 'POST' }),
+    end: (id: string) =>
+      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/end`, { method: 'POST' }),
+    capsule: (id: string, capsuleId: string) =>
+      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/capsules/${capsuleId}`, { method: 'POST' }),
+    encounter: (id: string, enemyId: string) =>
+      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/encounters`, {
         method: 'POST',
-        body: { interactionKey },
+        body: { enemyId },
       }),
-    selectStage: (stageKey: string) =>
-      request<import('@/lib/mediWorld/types').CompanionWorldState>('/api/medi-world/companion/stage', {
+    completeEncounter: (id: string, token: string) =>
+      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/encounters/complete`, {
         method: 'POST',
-        body: { stageKey },
+        body: { token },
       }),
-    equipCosmetic: (slot: string, catalogKey: string | null) =>
-      request<import('@/lib/mediWorld/types').CompanionWorldState>('/api/medi-world/companion/equipment', {
-        method: 'PUT',
-        body: { slot, catalogKey },
-      }),
-    unlockCosmetic: (catalogKey: string, idempotencyKey: string) =>
-      request<import('@/lib/mediWorld/types').CompanionWorldState>(
-        `/api/medi-world/companion/cosmetics/${encodeURIComponent(catalogKey)}/unlock`,
-        { method: 'POST', body: { idempotencyKey } },
-      ),
-    adventureToday: () =>
-      request<import('@/lib/mediWorld/types').AdventureResponse>('/api/medi-world/adventure/today'),
-    adventurePreferences: () =>
-      request<import('@/lib/mediWorld/types').AdventurePreferencesResponse>('/api/medi-world/adventure/preferences'),
-    updateAdventurePreferences: (body: Partial<import('@/lib/mediWorld/types').AdventurePreferences>) =>
-      request<import('@/lib/mediWorld/types').AdventurePreferencesResponse>('/api/medi-world/adventure/preferences', {
-        method: 'PUT',
-        body,
-      }),
-    adventureChoice: (optionKey: 'a' | 'b') =>
-      request<import('@/lib/mediWorld/types').AdventureResponse>('/api/medi-world/adventure/today/choice', {
-        method: 'POST',
-        body: { optionKey },
-      }),
-    adventureSwap: (slotKey: 'anchor' | 'balance', idempotencyKey: string) =>
-      request<import('@/lib/mediWorld/types').AdventureResponse>('/api/medi-world/adventure/today/swap', {
-        method: 'POST',
-        body: { slotKey, idempotencyKey },
-      }),
-    adventureRestDay: () =>
-      request<import('@/lib/mediWorld/types').AdventureResponse>('/api/medi-world/adventure/today/rest-day', {
-        method: 'POST',
-        body: {},
-      }),
-    exploreConfig: () =>
-      request<import('@/lib/mediWorld/types').ExploreConfigResponse>('/api/medi-world/explore/config'),
-    exploreArea: (coarseKey: string, locale?: 'ka' | 'en', coords?: { latitude: number; longitude: number }) => {
-      const qs = new URLSearchParams();
-      if (locale) qs.set('locale', locale);
-      if (coords && Number.isFinite(coords.latitude) && Number.isFinite(coords.longitude)) {
-        qs.set('lat', String(coords.latitude));
-        qs.set('lng', String(coords.longitude));
-      }
-      const q = qs.toString();
-      return request<import('@/lib/mediWorld/types').ExploreAreaResponse>(
-        `/api/medi-world/explore/area/${encodeURIComponent(coarseKey)}${q ? `?${q}` : ''}`,
-      );
-    },
-    exploreSparks: (coarseKey: string, locale?: 'ka' | 'en') => {
-      const qs = new URLSearchParams({ coarseKey });
-      if (locale) qs.set('locale', locale);
-      return request<{ enabled: boolean; sparks: import('@/lib/mediWorld/types').ExploreSpark[] }>(
-        `/api/medi-world/explore/sparks?${qs.toString()}`,
-      );
-    },
-    collectSpark: (
-      spawnId: string,
-      body: {
-        idempotencyKey: string;
-        latitude: number;
-        longitude: number;
-        horizontalAccuracy: number;
-        locationTimestamp: string | number;
-        mockLocation?: boolean;
-        speedMps?: number;
-      },
-    ) =>
-      request<import('@/lib/mediWorld/types').ExploreCollectResponse>(
-        `/api/medi-world/explore/sparks/${encodeURIComponent(spawnId)}/collect`,
-        { method: 'POST', body },
-      ),
-    exploreCollections: (query?: { take?: number; cursor?: string | null; locale?: 'ka' | 'en' }) => {
-      const qs = new URLSearchParams();
-      if (query?.take) qs.set('take', String(query.take));
-      if (query?.cursor) qs.set('cursor', query.cursor);
-      if (query?.locale) qs.set('locale', query.locale);
-      const q = qs.toString();
-      return request<import('@/lib/mediWorld/types').ExploreCollectionsResponse>(
-        `/api/medi-world/explore/collections${q ? `?${q}` : ''}`,
-      );
-    },
-    movementPreferences: () =>
-      request<import('@/lib/mediWorld/types').MovementPreferencesResponse>('/api/medi-world/movement/preferences'),
-    updateMovementPreferences: (body: { movementMode: string; targetMinutes: number }) =>
-      request<import('@/lib/mediWorld/types').MovementPreferencesResponse>('/api/medi-world/movement/preferences', {
-        method: 'PUT',
-        body,
-      }),
-    movementCurrent: () =>
-      request<import('@/lib/mediWorld/types').MovementSessionResponse>('/api/medi-world/movement/current'),
-    startMovementSession: (body: Record<string, unknown>) =>
-      request<import('@/lib/mediWorld/types').MovementSessionResponse>('/api/medi-world/movement/sessions', {
-        method: 'POST',
-        body,
-      }),
-    submitMovementSegment: (id: string, body: Record<string, unknown>) =>
-      request<import('@/lib/mediWorld/types').MovementSessionResponse>(
-        `/api/medi-world/movement/sessions/${encodeURIComponent(id)}/segments`,
-        { method: 'POST', body },
-      ),
-    pauseMovementSession: (id: string, idempotencyKey: string) =>
-      request<import('@/lib/mediWorld/types').MovementSessionResponse>(
-        `/api/medi-world/movement/sessions/${encodeURIComponent(id)}/pause`,
-        { method: 'POST', body: { idempotencyKey } },
-      ),
-    resumeMovementSession: (id: string, body: Record<string, unknown>) =>
-      request<import('@/lib/mediWorld/types').MovementSessionResponse>(
-        `/api/medi-world/movement/sessions/${encodeURIComponent(id)}/resume`,
-        { method: 'POST', body },
-      ),
-    finishMovementSession: (id: string, idempotencyKey: string) =>
-      request<import('@/lib/mediWorld/types').MovementSessionResponse>(
-        `/api/medi-world/movement/sessions/${encodeURIComponent(id)}/finish`,
-        { method: 'POST', body: { idempotencyKey } },
-      ),
-    abandonMovementSession: (id: string, idempotencyKey: string) =>
-      request<import('@/lib/mediWorld/types').MovementSessionResponse>(
-        `/api/medi-world/movement/sessions/${encodeURIComponent(id)}/abandon`,
-        { method: 'POST', body: { idempotencyKey } },
-      ),
-    movementHistory: (query?: { take?: number; cursor?: string | null }) => {
-      const qs = new URLSearchParams();
-      if (query?.take) qs.set('take', String(query.take));
-      if (query?.cursor) qs.set('cursor', query.cursor);
-      const q = qs.toString();
-      return request<import('@/lib/mediWorld/types').MovementHistoryResponse>(
-        `/api/medi-world/movement/history${q ? `?${q}` : ''}`,
-      );
-    },
-    garden: () => request<import('@/lib/mediWorld/types').GardenResponse>('/api/medi-world/garden'),
-    gardenCatalog: () => request<import('@/lib/mediWorld/types').GardenCatalogResponse>('/api/medi-world/garden/catalog'),
-    gardenPlant: (plotIndex: number, catalogKey: string, idempotencyKey: string) =>
-      request<import('@/lib/mediWorld/types').GardenResponse>(
-        `/api/medi-world/garden/plots/${plotIndex}/plant`,
-        { method: 'POST', body: { catalogKey, idempotencyKey } },
-      ),
-    gardenMove: (plantId: string, plotIndex: number, idempotencyKey: string) =>
-      request<import('@/lib/mediWorld/types').GardenResponse>(
-        `/api/medi-world/garden/plants/${encodeURIComponent(plantId)}/move`,
-        { method: 'POST', body: { plotIndex, idempotencyKey } },
-      ),
-    gardenStore: (plantId: string, idempotencyKey: string) =>
-      request<import('@/lib/mediWorld/types').GardenResponse>(
-        `/api/medi-world/garden/plants/${encodeURIComponent(plantId)}/store`,
-        { method: 'POST', body: { idempotencyKey } },
-      ),
-    gardenRestore: (plantId: string, plotIndex: number, idempotencyKey: string) =>
-      request<import('@/lib/mediWorld/types').GardenResponse>(
-        `/api/medi-world/garden/plants/${encodeURIComponent(plantId)}/restore`,
-        { method: 'POST', body: { plotIndex, idempotencyKey } },
-      ),
-    gardenHistory: (query?: { take?: number; cursor?: string | null }) => {
-      const qs = new URLSearchParams();
-      if (query?.take) qs.set('take', String(query.take));
-      if (query?.cursor) qs.set('cursor', query.cursor);
-      const q = qs.toString();
-      return request<import('@/lib/mediWorld/types').GardenHistoryResponse>(
-        `/api/medi-world/garden/history${q ? `?${q}` : ''}`,
-      );
-    },
-    gardenQaStage: (plantId: string, body: { stage?: string; nurtureDays?: number }) =>
-      request<{ ok: boolean; fixture: boolean; stage: string; nurtureDays: number }>(
-        '/api/medi-world/garden/qa/stage',
-        { method: 'POST', body: { plantId, ...body } },
-      ),
-    socialMe: () => request<import('@/lib/mediWorld/types').SocialMe>('/api/medi-world/social/me'),
-    socialUpdateMe: (body: { displayName?: string; bio?: string; socialEnabled?: boolean }) =>
-      request<import('@/lib/mediWorld/types').SocialMe>('/api/medi-world/social/me', { method: 'PUT', body }),
-    socialPrivacy: (body: {
-      showWorldLevel?: boolean;
-      showBondLevel?: boolean;
-      showGardenPreview?: boolean;
-      wavesMuted?: boolean;
-    }) => request<import('@/lib/mediWorld/types').SocialMe>('/api/medi-world/social/privacy', { method: 'PUT', body }),
-    socialEligibility: () =>
-      request<import('@/lib/mediWorld/types').SocialMe>('/api/medi-world/social/eligibility', {
-        method: 'POST',
-        body: { confirmAdult: true },
-      }),
-    socialRotateCode: () =>
-      request<import('@/lib/mediWorld/types').SocialMe>('/api/medi-world/social/friend-code/rotate', { method: 'POST', body: {} }),
-    socialPreview: () =>
-      request<import('@/lib/mediWorld/types').SocialFriendProjection>('/api/medi-world/social/me/preview'),
-    socialFriends: () =>
-      request<{ socialEnabled: boolean; items: import('@/lib/mediWorld/types').SocialFriendItem[] }>(
-        '/api/medi-world/social/friends',
-      ),
-    socialFriendRequest: (friendCode: string, idempotencyKey: string) =>
-      request<{ relationshipId: string; state: string }>('/api/medi-world/social/friends/request', {
-        method: 'POST',
-        body: { friendCode, idempotencyKey },
-      }),
-    socialFriendAccept: (relationshipId: string) =>
-      request<{ relationshipId: string; state: string }>(
-        `/api/medi-world/social/friends/${encodeURIComponent(relationshipId)}/accept`,
-        { method: 'POST', body: {} },
-      ),
-    socialFriendDecline: (relationshipId: string) =>
-      request<{ relationshipId: string; state: string }>(
-        `/api/medi-world/social/friends/${encodeURIComponent(relationshipId)}/decline`,
-        { method: 'POST', body: {} },
-      ),
-    socialFriendCancel: (relationshipId: string) =>
-      request<{ relationshipId: string; state: string }>(
-        `/api/medi-world/social/friends/${encodeURIComponent(relationshipId)}/cancel`,
-        { method: 'POST', body: {} },
-      ),
-    socialFriendRemove: (relationshipId: string) =>
-      request<{ relationshipId: string; state: string }>(
-        `/api/medi-world/social/friends/${encodeURIComponent(relationshipId)}`,
-        { method: 'DELETE' },
-      ),
-    socialFriendProfile: (relationshipId: string) =>
-      request<import('@/lib/mediWorld/types').SocialFriendProjection>(
-        `/api/medi-world/social/friends/${encodeURIComponent(relationshipId)}/profile`,
-      ),
-    socialBlock: (publicId: string) =>
-      request<{ blockId: string }>('/api/medi-world/social/block', { method: 'POST', body: { publicId } }),
-    socialUnblock: (blockId: string) =>
-      request<{ ok: boolean }>(`/api/medi-world/social/block/${encodeURIComponent(blockId)}`, { method: 'DELETE' }),
-    socialBlocks: () =>
-      request<{ items: Array<{ blockId: string; publicId: string | null; displayName: string }> }>(
-        '/api/medi-world/social/blocks',
-      ),
-    socialReport: (body: { targetPublicId: string; category: string; description?: string }) =>
-      request<{ reportId: string; offerBlock: boolean }>('/api/medi-world/social/reports', { method: 'POST', body }),
-    socialWave: (publicId: string, waveType: string, idempotencyKey: string) =>
-      request<{ waveId: string; waveType: string; when: string }>('/api/medi-world/social/waves', {
-        method: 'POST',
-        body: { publicId, waveType, idempotencyKey },
-      }),
-    socialWaves: () =>
-      request<{ items: Array<{ waveId: string; waveType: string; when: string; publicId: string | null; displayName: string }>; types: string[] }>(
-        '/api/medi-world/social/waves',
-      ),
-    socialCircleCreate: (name?: string) =>
-      request<{ circle: import('@/lib/mediWorld/types').SocialCircle }>('/api/medi-world/social/circles', {
-        method: 'POST',
-        body: { name },
-      }),
-    socialCircleCurrent: () =>
-      request<{ circle: import('@/lib/mediWorld/types').SocialCircle | null }>('/api/medi-world/social/circles/current'),
-    socialCircleInvite: () =>
-      request<{ inviteCode: string; expiresInHours: number }>('/api/medi-world/social/circles/invite', {
-        method: 'POST',
-        body: {},
-      }),
-    socialCircleJoin: (inviteCode: string) =>
-      request<{ circle: import('@/lib/mediWorld/types').SocialCircle }>('/api/medi-world/social/circles/join', {
-        method: 'POST',
-        body: { inviteCode, confirm: true },
-      }),
-    socialCircleLeave: () =>
-      request<{ ok: boolean }>('/api/medi-world/social/circles/leave', { method: 'POST', body: {} }),
-    socialCircleRemove: (publicId: string) =>
-      request<{ circle: import('@/lib/mediWorld/types').SocialCircle }>('/api/medi-world/social/circles/remove', {
-        method: 'POST',
-        body: { publicId },
-      }),
-    socialCircleTransfer: (publicId: string) =>
-      request<{ circle: import('@/lib/mediWorld/types').SocialCircle }>('/api/medi-world/social/circles/transfer', {
-        method: 'POST',
-        body: { confirm: true, publicId },
-      }),
-    socialCircleDelete: () =>
-      request<{ ok: boolean }>('/api/medi-world/social/circles/current', { method: 'DELETE', body: { confirm: true } }),
-    socialInbox: (query?: { take?: number; cursor?: string | null }) => {
-      const qs = new URLSearchParams();
-      if (query?.take) qs.set('take', String(query.take));
-      if (query?.cursor) qs.set('cursor', query.cursor);
-      const q = qs.toString();
-      return request<{ items: import('@/lib/mediWorld/types').SocialInboxItem[]; nextCursor: string | null }>(
-        `/api/medi-world/social/inbox${q ? `?${q}` : ''}`,
-      );
-    },
-    socialInboxRead: (itemId: string) =>
-      request<{ itemId: string; read: boolean }>(
-        `/api/medi-world/social/inbox/${encodeURIComponent(itemId)}/read`,
-        { method: 'POST', body: {} },
-      ),
+    cancelEncounter: (id: string) =>
+      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/encounters/cancel`, { method: 'POST' }),
   },
+
 };
 
 export function absoluteUrl(path: string | null): string | null {

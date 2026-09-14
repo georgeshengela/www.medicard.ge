@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'cycleqa', 'settings'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'hunt', 'ai', 'health', 'audit', 'quality', 'cycleqa', 'settings'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -823,6 +823,7 @@ async function boot() {
     else if (tab === 'users' && userId !== state.userPageId) renderUsers();
     else if (tab === 'health' && typeof renderHealthOps === 'function') renderHealthOps();
     else if (tab === 'rewards' && typeof renderRewards === 'function') renderRewards();
+    else if (tab === 'hunt' && typeof renderHunt === 'function') renderHunt();
     else if (tab === 'cycleqa' && typeof renderCycleQa === 'function') renderCycleQa();
   });
   $('drawer-backdrop').addEventListener('click', async () => {
@@ -1016,6 +1017,7 @@ async function switchTab(tab, opts = {}) {
     sms: ['Operations', 'SMS', 'გაგზავნა, ბალანსი და ჟურნალი.', 'sms.page'],
     pharmacy: ['Operations', 'ფარმაცია', 'სინქი, მდგომარეობა და შეცდომები.', 'pharmacy.page'],
     rewards: ['Commerce', 'ჯილდოები', 'მუშაობს თუ არა ჯილდოების სისტემა ნორმალურად?', 'rewards.page'],
+    hunt: ['Play', 'Medi Hunt', 'ქუჩის ნადირობის წესები, სესიები და QA.', 'hunt.page'],
     ai: ['Health & Medi', 'Medi', 'მუშაობს თუ არა Medi საიმედოდ და უსაფრთხოდ?', 'medi.page'],
     settings: ['Production', 'აპის რეჟიმი', 'რა წარმოების ქცევაა ჩართული?', 'settings.page'],
   };
@@ -1032,6 +1034,7 @@ async function switchTab(tab, opts = {}) {
   if (tab === 'sms') await renderSms();
   if (tab === 'pharmacy') await renderPharmacy();
   if (tab === 'rewards' && typeof renderRewards === 'function') await renderRewards();
+  if (tab === 'hunt' && typeof renderHunt === 'function') await renderHunt();
   if (tab === 'ai') await renderAi();
   if (tab === 'health' && typeof renderHealthOps === 'function') await renderHealthOps();
   if (tab === 'audit' && typeof renderAuditLog === 'function') await renderAuditLog();

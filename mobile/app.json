@@ -3,7 +3,7 @@
     "name": "MEDICARD",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.7.90",
+    "version": "1.0.0.8.6",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -14,15 +14,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
-      "version": "1.7.90",
-      "buildNumber": "66",
+      "version": "1.8.6",
+      "buildNumber": "67",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD",
-        "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენისა და კანის ფოტოს გადასაღებად.",
+        "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენისა და კანის ფოტოსთვის.",
         "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა სამედიცინო დოკუმენტებისა და ფოტოების ასატვირთად.",
         "NSMicrophoneUsageDescription": "მიკროფონი საჭიროა ხმის ანალიზისთვის, თუ ამ ნაბიჯს გაივლით.",
         "NSFaceIDUsageDescription": "Medicard-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად.",
-        "NSLocationWhenInUseUsageDescription": "Medicard-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის, Medi World-ში ახლოს საჯარო ადგილებისთვის და წინა პლანის მოძრაობის სესიისთვის. ფონური წვდომა არ გამოიყენება.",
+        "NSLocationWhenInUseUsageDescription": "Medicard-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის. ფონური წვდომა არ გამოიყენება.",
         "NSCalendarsUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
         "NSCalendarsFullAccessUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
         "ITSAppUsesNonExemptEncryption": false
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "ge.medicard.app",
-      "versionCode": 66,
+      "versionCode": 67,
       "adaptiveIcon": {
         "backgroundColor": "#14B8A6",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -85,6 +85,12 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Medicard-ს სჭირდება კამერაზე წვდომა სამედიცინო ფოტოსთვის."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Medicard-ს სჭირდება გალერეაზე წვდომა ანალიზებისა და ფოტოების ასატვირთად.",
@@ -129,7 +135,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Medicard-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის, Medi World-ში ახლოს საჯარო ადგილებისთვის და წინა პლანის მოძრაობის სესიისთვის. ფონური წვდომა არ გამოიყენება.",
+          "locationWhenInUsePermission": "Medicard-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის. ფონური წვდომა არ გამოიყენება.",
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false
         }
@@ -147,7 +153,7 @@
     ],
     "extra": {
       "router": {},
-      "medicardInternalVersion": "1.0.0.7.90",
+      "medicardInternalVersion": "1.0.0.8.6",
       "apiUrl": "https://medicard.ge",
       "privacyPolicyUrl": "https://medicard.ge/privacy",
       "termsOfServiceUrl": "https://medicard.ge/terms",

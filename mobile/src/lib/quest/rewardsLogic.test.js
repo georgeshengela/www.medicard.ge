@@ -13,6 +13,7 @@ const COPY = {
   mission: 'მისია',
   ledgerAchievement: 'მიღწევა',
   ledgerRedeem: 'Medi ჯილდო',
+  ledgerHunt: 'Medi Hunt',
   ledgerSystem: 'სისტემური კორექტირება',
   ledgerAdmin: 'ადმინისტრაციული კორექტირება',
   ledgerUnknown: 'ბალანსის კორექტირება',
@@ -47,7 +48,7 @@ describe('phase 7 rewardsLogic', () => {
     assert.equal(walletSourceLabel('SYSTEM', COPY), COPY.ledgerSystem);
     assert.equal(walletSourceLabel('ADMIN_ADJUSTMENT', COPY), COPY.ledgerAdmin);
     assert.equal(walletSourceLabel('REWARD_REDEMPTION', COPY), COPY.ledgerRedeem);
-    assert.equal(walletSourceLabel('ACHIEVEMENT', COPY), COPY.ledgerAchievement);
+    assert.equal(walletSourceLabel('HUNT', COPY), COPY.ledgerHunt);
   });
 
   it('uses neutral fallback for unknown sourceType (never Mission)', () => {

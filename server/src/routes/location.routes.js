@@ -10,6 +10,7 @@ const pingSchema = z.object({
   lat: z.number().gte(-90).lte(90).optional(),
   lng: z.number().gte(-180).lte(180).optional(),
   accuracy: z.number().min(0).max(100_000).optional().nullable(),
+  fixAt: z.number().finite().optional(),
   enabled: z.boolean().optional(),
   prompted: z.boolean().optional(),
   source: z.enum(['grant', 'skip', 'heartbeat', 'watch', 'revoke']).optional(),

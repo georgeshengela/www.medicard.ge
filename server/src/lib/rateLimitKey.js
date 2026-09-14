@@ -1,9 +1,10 @@
 /**
- * Rate-limit buckets must not collapse every user onto one key.
+ * Request-count limiters are not mounted on /api or /api/auth (see server.js).
+ * These helpers stay for cycle-share and for tests of key isolation.
  *
- * JWT access tokens share the same base64 header (`eyJhbGciOi…`). Slicing the
- * first 20 characters after "Bearer " put every authenticated session — app
- * and admin — in one 120/min bucket, so ordinary reads 429'd registration.
+ * JWT access tokens share the same base64 header (`eyJhbGciOi…`). Never slice
+ * the first 20 characters after "Bearer " — that collapsed every session into
+ * one bucket and 429'd registration.
  *
  * Authenticated traffic is keyed by a hash of the full presented token (the
  * session), never a client-supplied user id and never an unverified JWT claim.

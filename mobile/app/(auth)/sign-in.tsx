@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Keyboard, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Mail, Lock } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { SignInSwitchLink } from '@/components/auth/AuthSwitchLink';
 import { AuthCheckbox } from '@/components/auth/AuthCheckbox';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
-import { AuthErrorBanner } from '@/components/auth/AuthErrorBanner';
 import { Input } from '@/components/ui/Input';
 import { FIGMA_AUTH, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
+
+function cleanEmail(value: string) {
+  return value.replace(/\u00a0/g, ' ').trim().toLowerCase();
+}
 
 export default function SignIn() {
   const { signIn } = useAuth();
@@ -25,27 +28,29 @@ export default function SignIn() {
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [busy, setBusy] = useState(false);
-  const [bannerError, setBannerError] = useState<string | null>(null);
   const submittingRef = React.useRef(false);
 
   const submit = async () => {
     if (busy || submittingRef.current) return;
+    Keyboard.dismiss();
     const next: typeof errors = {};
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) next.email = ka.auth.invalidEmail;
-    if (password.length < 1) next.password = ka.common.required;
+    const emailValue = cleanEmail(email);
+    const passwordValue = password.replace(/\u00a0/g, ' ').trim();
+    if (!/^\S+@\S+\.\S+$/.test(emailValue)) next.email = ka.auth.invalidEmail;
+    if (passwordValue.length < 1) next.password = ka.common.required;
 
     setErrors(next);
-    setBannerError(null);
     if (Object.keys(next).length > 0) return;
 
     submittingRef.current = true;
     setBusy(true);
     try {
-      await signIn(email.trim().toLowerCase(), password);
+      await signIn(emailValue, passwordValue);
       router.replace('/(tabs)/home');
     } catch (error) {
       const message = authErrorMessage(error);
-      setBannerError(message.includes('არასწორი') ? ka.auth.loginError : message);
+      const shown = message.includes('არასწორი') ? ka.auth.loginError : message;
+      setErrors({ form: shown });
     } finally {
       submittingRef.current = false;
       setBusy(false);
@@ -54,7 +59,11 @@ export default function SignIn() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <AuthShell hero heroSubtitle={ka.auth.signInHero}>
+      <AuthShell
+        hero
+        heroSubtitle={ka.auth.signInHero}
+        footer={<AuthPrimaryButton label={ka.auth.signIn} loading={busy} onPress={() => void submit()} />}
+      >
         <View style={{ gap: FIGMA_AUTH.sectionGap, paddingTop: 32 }}>
           <View style={{ gap: 16 }}>
             <View style={{ gap: FIGMA_AUTH.formFieldGap }}>
@@ -65,7 +74,7 @@ export default function SignIn() {
                 value={email}
                 onChangeText={(v) => {
                   setEmail(v);
-                  setBannerError(null);
+                  setErrors((prev) => ({ ...prev, email: undefined, form: undefined }));
                 }}
                 error={errors.email}
                 autoCapitalize="none"
@@ -82,14 +91,14 @@ export default function SignIn() {
                 value={password}
                 onChangeText={(v) => {
                   setPassword(v);
-                  setBannerError(null);
+                  setErrors((prev) => ({ ...prev, password: undefined, form: undefined }));
                 }}
                 error={errors.password}
                 secure
                 autoCapitalize="none"
                 autoComplete="current-password"
                 returnKeyType="go"
-                onSubmitEditing={submit}
+                onSubmitEditing={() => void submit()}
                 figma
               />
             </View>
@@ -134,15 +143,9 @@ export default function SignIn() {
             </View>
           ) : null}
 
-          <View style={{ gap: FIGMA_AUTH.actionsGap }}>
-            <AuthPrimaryButton label={ka.auth.signIn} loading={busy} onPress={submit} />
-          </View>
-
           <SignInSwitchLink />
         </View>
       </AuthShell>
-
-      {bannerError ? <AuthErrorBanner message={bannerError} onDismiss={() => setBannerError(null)} /> : null}
     </View>
   );
 }

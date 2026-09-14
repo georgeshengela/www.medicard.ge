@@ -45,16 +45,6 @@ const schema = z.object({
 
   /** Mapbox public token (pk.*) for the admin user-country map. */
   MAPBOX_PUBLIC_TOKEN: z.string().default(''),
-  /** Medi World. Unset: on. Set `0` to hide. */
-  MEDI_WORLD_ENABLED: z.string().optional().default(''),
-  /** Medi World Explore. Unset: follows Medi World. */
-  MEDI_WORLD_EXPLORE_ENABLED: z.string().optional().default(''),
-  /** Medi World Movement. Unset: follows Medi World. */
-  MEDI_WORLD_MOVEMENT_ENABLED: z.string().optional().default(''),
-  /** Medi World Garden. Unset: follows Medi World. */
-  MEDI_WORLD_GARDEN_ENABLED: z.string().optional().default(''),
-  /** Medi World Social (Phase 45). Unset: on in development/test, off in production. */
-  MEDI_WORLD_SOCIAL_ENABLED: z.string().optional().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

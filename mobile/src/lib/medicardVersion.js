@@ -1,9 +1,9 @@
-/** Public Medicard version: Instagram-style `G.0.0.B.R` (currently 1.0.0.7.90). */
+/** Public Medicard version: Instagram-style `G.0.0.B.R` (currently 1.0.0.8.6). */
 
 const FIVE = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
 const THREE = /^(\d+)\.(\d+)\.(\d+)$/;
 
-const DEFAULT_FIVE = '1.0.0.7.90';
+const DEFAULT_FIVE = '1.0.0.8.6';
 
 /**
  * @param {unknown} raw
@@ -56,7 +56,7 @@ export function formatMedicardVersion(raw, fallback = DEFAULT_FIVE) {
  * Apple `CFBundleShortVersionString` — three numbers only.
  * Compress `G.0.0.B.R` → `G.B.R` (1.0.0.7.66 → 1.7.66).
  */
-export function iosMarketingVersion(raw, fallback = '1.7.78') {
+export function iosMarketingVersion(raw, fallback = '1.8.6') {
   const parsed = parseMedicardVersion(raw);
   if (!parsed) return fallback;
   return `${parsed.generation}.${parsed.train}.${parsed.revision}`;

@@ -1540,6 +1540,7 @@ function renderCommandPalette() {
     { tab: 'audit', label: 'აუდიტი' },
     { tab: 'orders', label: 'შეკვეთები' },
     { tab: 'rewards', label: 'ჯილდოები' },
+    { tab: 'hunt', label: 'Medi Hunt' },
     { tab: 'packages', label: 'პაკეტები' },
     { tab: 'sms', label: 'SMS' },
     { tab: 'pharmacy', label: 'ფარმაცია' },

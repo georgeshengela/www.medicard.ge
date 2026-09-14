@@ -21,9 +21,18 @@ const paths = [
   'mobile/screenshots',
   'mobile/dist',
   'mobile/web-build',
+  'mobile/design-references',
+  'mobile/qa',
   'server/uploads',
   'server/generated',
   'server/psp-test.html',
+  'server/qa',
+  'server/inspect-pg.mjs',
+  'qa-artifacts',
+  'tmp',
+  'scripts/qa',
+  'docs/qa-phase5',
+  'docs/qa-phase9',
   'mobile/LICENSE',
 ];
 

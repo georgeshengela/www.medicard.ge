@@ -27,7 +27,6 @@ import { questsRouter } from '../src/routes/quests.routes.js';
 import { achievementsRouter } from '../src/routes/achievements.routes.js';
 import { rewardsRouter } from '../src/routes/rewards.routes.js';
 import { mediCompanionRouter } from '../src/routes/mediCompanion.routes.js';
-import { mediWorldRouter } from '../src/routes/mediWorld.routes.js';
 
 function joinPath(mount, routePath) {
   const left = String(mount || '').replace(/\/$/, '');
@@ -106,7 +105,6 @@ const routers = [
   ['/api/achievements', achievementsRouter, 'server/src/routes/achievements.routes.js'],
   ['/api/rewards', rewardsRouter, 'server/src/routes/rewards.routes.js'],
   ['/api/medi-companion', mediCompanionRouter, 'server/src/routes/mediCompanion.routes.js'],
-  ['/api/medi-world', mediWorldRouter, 'server/src/routes/mediWorld.routes.js'],
   ['/api/app', appRouter, 'server/src/routes/app.routes.js'],
   ['/api/account', accountRouter, 'server/src/routes/account.routes.js'],
   ['/api/admin', adminRouter, 'server/src/routes/admin.routes.js'],

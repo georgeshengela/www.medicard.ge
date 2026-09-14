@@ -14,10 +14,8 @@ const config = getDefaultConfig(__dirname);
  */
 config.resolver.useWatchman = true;
 
-// GLB / GLTF 3D models + vendored Three.js UMD scripts (.bin so Metro won't parse as JS)
-config.resolver.assetExts = [...new Set([...config.resolver.assetExts, 'glb', 'gltf', 'bin'])];
-
 const withCss = withNativeWind(config, { input: './global.css' });
+withCss.resolver.assetExts = [...new Set([...(withCss.resolver.assetExts || []), 'bin', 'glb'])];
 
 /**
  * Expo/Metro package-exports picks engine.io-client's ESM build, then fails

@@ -4,6 +4,7 @@ import { isAppVersionBelow } from '../lib/appVersion.js';
 import { mapboxPublicToken } from '../lib/adminUserGeo.js';
 import { publicPackage } from '../lib/packages.js';
 import { prisma } from '../lib/prisma.js';
+import { publicHuntForApp } from '../lib/hunt/session.js';
 import { asyncHandler } from '../middleware/error.js';
 
 export const appRouter = Router();
@@ -23,6 +24,7 @@ appRouter.get(
 
     res.json({
       settings: publicAppSettings(settings),
+      hunt: await publicHuntForApp(),
       packages: packages.map(publicPackage),
       mapboxToken: mapboxPublicToken(),
       client: {

@@ -1,7 +1,11 @@
 import '../global.css';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { LogBox, Text, View } from 'react-native';
+
+// Expo SDK 57 treats sound: 'default' as a missing custom file in the native client.
+// The repeating LogBox toast covers Home chrome; ignore only that known message.
+LogBox.ignoreLogs(["Custom sound 'default' not found"]);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, useGlobalSearchParams, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -27,7 +31,6 @@ import { ThemeProvider, useTheme } from '@/store/ThemeContext';
 import { api } from '@/lib/api';
 import { APP_VERSION } from '@/lib/appVersion';
 import { rememberMapboxToken } from '@/lib/run/mapbox';
-import { rememberMediWorldExploreServerEnabled, rememberMediWorldGardenServerEnabled, rememberMediWorldMovementServerEnabled, rememberMediWorldSocialServerEnabled, rememberMediWorldServerEnabled } from '@/lib/mediWorld/enabled';
 import { consumePendingCycleShare, isCycleShareCode, savePendingCycleShare } from '@/lib/cycleSharePending';
 import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -64,11 +67,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       .status(APP_VERSION)
       .then((status) => {
         rememberMapboxToken(status.mapboxToken);
-        rememberMediWorldServerEnabled(status.settings.mediWorldEnabled);
-        rememberMediWorldExploreServerEnabled(status.settings.mediWorldExploreEnabled);
-        rememberMediWorldMovementServerEnabled(status.settings.mediWorldMovementEnabled);
-        rememberMediWorldGardenServerEnabled(status.settings.mediWorldGardenEnabled);
-        rememberMediWorldSocialServerEnabled(status.settings.mediWorldSocialEnabled);
         if (status.settings.maintenanceMode) {
           setGate({ kind: 'maintenance', message: status.settings.maintenanceMessage });
           return;
@@ -301,7 +299,6 @@ function AppShell() {
               <Stack.Screen name="weather" options={{ headerShown: false }} />
               <Stack.Screen name="medi-quest" options={{ headerShown: false }} />
               <Stack.Screen name="medi-companion" options={{ headerShown: false }} />
-              <Stack.Screen name="medi-world" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="chat" options={{ headerShown: false }} />
               <Stack.Screen name="module" options={{ headerShown: false }} />
