@@ -36,7 +36,8 @@ import { featureShareOfActive } from './adminCommandCenter.js';
 export { METRIC_DEFINITIONS, RATE_DEFINITIONS };
 export { getVersionAnalytics, getDataQuality, getFeatureRetentionAnalytics, getPermissionAnalytics, getWeeklyInsightMedication };
 
-const CACHE_MS = 8_000;
+/** Keep longer than the 8s admin live poll so health/overview hits cache instead of Neon. */
+const CACHE_MS = 30_000;
 const cache = new Map();
 let indexesReady = false;
 

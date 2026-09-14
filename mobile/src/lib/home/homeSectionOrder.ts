@@ -3,16 +3,15 @@
  * Does not render UI. Does not invent medical priority.
  *
  * Canonical groups (primary job of each section):
- * IMMEDIATE → TODAY → MEDI_ENGAGEMENT → HEALTH_CONTEXT → WELLNESS → DISCOVERY → HISTORY → LEGAL
+ * IMMEDIATE → TODAY → HEALTH_CONTEXT → WELLNESS → DISCOVERY → HISTORY → LEGAL
  *
- * Quest is MEDI_ENGAGEMENT (gamification), not "MEDI identity" just because Companion overlays it.
- * Companion remains visually attached to Quest; placement moves the pair together.
+ * Medi Quest + Companion live on Profile, not Home.
+ * Lab lives on Records, not Home.
  */
 
 export const HOME_PRIORITY = {
   IMMEDIATE: 'immediate',
   TODAY: 'today',
-  MEDI_ENGAGEMENT: 'medi_engagement',
   HEALTH_CONTEXT: 'health_context',
   WELLNESS: 'wellness',
   DISCOVERY: 'discovery',
@@ -28,11 +27,8 @@ export type HomeSectionId =
   | 'steps'
   | 'hydration'
   | 'weight'
-  | 'mediQuest'
   | 'cycle'
-  | 'lab'
   | 'weather'
-  | 'run'
   | 'symptom'
   | 'analysis'
   | 'consilium'
@@ -64,11 +60,8 @@ const SECTION_PRIORITY: Record<HomeSectionId, HomePriority> = {
   steps: HOME_PRIORITY.TODAY,
   hydration: HOME_PRIORITY.TODAY,
   weight: HOME_PRIORITY.TODAY,
-  mediQuest: HOME_PRIORITY.MEDI_ENGAGEMENT,
   cycle: HOME_PRIORITY.HEALTH_CONTEXT,
-  lab: HOME_PRIORITY.HEALTH_CONTEXT,
   weather: HOME_PRIORITY.WELLNESS,
-  run: HOME_PRIORITY.WELLNESS,
   symptom: HOME_PRIORITY.DISCOVERY,
   analysis: HOME_PRIORITY.DISCOVERY,
   consilium: HOME_PRIORITY.DISCOVERY,
@@ -78,8 +71,7 @@ const SECTION_PRIORITY: Record<HomeSectionId, HomePriority> = {
 
 /**
  * Stable fixed order.
- * TODAY (steps/hydration/weight) before Quest — health state before gamification.
- * Quest stays prominent (right after the Today block), not buried.
+ * TODAY (steps/hydration/weight) before Health Context — health state first.
  */
 const FIXED_ORDER: HomeSectionId[] = [
   'dashboard',
@@ -87,11 +79,8 @@ const FIXED_ORDER: HomeSectionId[] = [
   'steps',
   'hydration',
   'weight',
-  'mediQuest',
   'cycle',
-  'lab',
   'weather',
-  'run',
   'symptom',
   'analysis',
   'consilium',
@@ -101,7 +90,7 @@ const FIXED_ORDER: HomeSectionId[] = [
 
 /**
  * Deterministic Home section order.
- * IMMEDIATE → TODAY → MEDI_ENGAGEMENT → HEALTH_CONTEXT → WELLNESS → DISCOVERY → HISTORY → LEGAL
+ * IMMEDIATE → TODAY → HEALTH_CONTEXT → WELLNESS → DISCOVERY → HISTORY → LEGAL
  */
 export function buildHomeSectionOrder(ctx: HomeSectionContext = {}): HomeSectionId[] {
   const mountNextDoseSlot = ctx.mountNextDoseSlot ?? true;

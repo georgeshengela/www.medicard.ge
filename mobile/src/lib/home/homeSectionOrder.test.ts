@@ -13,11 +13,8 @@ const LIVE_ORDER = [
   'steps',
   'hydration',
   'weight',
-  'mediQuest',
   'cycle',
-  'lab',
   'weather',
-  'run',
   'symptom',
   'analysis',
   'consilium',
@@ -26,7 +23,7 @@ const LIVE_ORDER = [
 ] as const;
 
 describe('homeSectionOrder', () => {
-  it('canonical live order: Today before Quest, Quest before Health Context', () => {
+  it('canonical live order: Today before Health Context', () => {
     const order = buildHomeSectionOrder({
       mountNextDoseSlot: true,
       includeConsilium: true,
@@ -35,25 +32,18 @@ describe('homeSectionOrder', () => {
     assert.deepEqual(order, [...LIVE_ORDER]);
   });
 
-  it('puts core Today metrics before Quest (health-first)', () => {
+  it('puts core Today metrics before Health Context (health-first)', () => {
     const order = buildHomeSectionOrder({ includeCycle: true });
-    assert.ok(order.indexOf('steps') < order.indexOf('mediQuest'));
-    assert.ok(order.indexOf('hydration') < order.indexOf('mediQuest'));
-    assert.ok(order.indexOf('weight') < order.indexOf('mediQuest'));
-  });
-
-  it('keeps Quest prominent after Today (not buried in discovery)', () => {
-    const order = buildHomeSectionOrder({ includeCycle: true });
-    assert.ok(order.indexOf('mediQuest') < order.indexOf('cycle'));
-    assert.ok(order.indexOf('mediQuest') < order.indexOf('weather'));
-    assert.ok(order.indexOf('mediQuest') < order.indexOf('run'));
-    assert.ok(order.indexOf('mediQuest') < order.indexOf('symptom'));
+    assert.ok(order.indexOf('steps') < order.indexOf('cycle'));
+    assert.ok(order.indexOf('hydration') < order.indexOf('cycle'));
+    assert.ok(order.indexOf('weight') < order.indexOf('cycle'));
+    assert.ok(order.indexOf('weight') < order.indexOf('weather'));
+    assert.ok(order.indexOf('weight') < order.indexOf('symptom'));
   });
 
   it('puts nextDose before Today when mounted', () => {
     const order = buildHomeSectionOrder();
     assert.ok(order.indexOf('nextDose') < order.indexOf('steps'));
-    assert.ok(order.indexOf('nextDose') < order.indexOf('mediQuest'));
   });
 
   it('medicationDue includes nextDose; noAttention / new / normal omit it', () => {
@@ -77,11 +67,8 @@ describe('homeSectionOrder', () => {
       'steps',
       'hydration',
       'weight',
-      'mediQuest',
       'cycle',
-      'lab',
       'weather',
-      'run',
       'symptom',
       'analysis',
       'consilium',
@@ -90,16 +77,13 @@ describe('homeSectionOrder', () => {
     ]);
   });
 
-  it('classifies Quest as MEDI_ENGAGEMENT, not IMMEDIATE/TODAY', () => {
-    assert.equal(homeSectionPriority('mediQuest'), HOME_PRIORITY.MEDI_ENGAGEMENT);
+  it('classifies Today vs Health Context / Wellness / Discovery', () => {
     assert.equal(homeSectionPriority('steps'), HOME_PRIORITY.TODAY);
     assert.equal(homeSectionPriority('hydration'), HOME_PRIORITY.TODAY);
     assert.equal(homeSectionPriority('weight'), HOME_PRIORITY.TODAY);
     assert.equal(homeSectionPriority('nextDose'), HOME_PRIORITY.IMMEDIATE);
     assert.equal(homeSectionPriority('cycle'), HOME_PRIORITY.HEALTH_CONTEXT);
-    assert.equal(homeSectionPriority('lab'), HOME_PRIORITY.HEALTH_CONTEXT);
     assert.equal(homeSectionPriority('weather'), HOME_PRIORITY.WELLNESS);
-    assert.equal(homeSectionPriority('run'), HOME_PRIORITY.WELLNESS);
     assert.equal(homeSectionPriority('symptom'), HOME_PRIORITY.DISCOVERY);
     assert.equal(homeSectionPriority('disclaimer'), HOME_PRIORITY.LEGAL);
   });

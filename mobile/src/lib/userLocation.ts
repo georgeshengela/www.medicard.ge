@@ -1,20 +1,14 @@
 import * as Location from 'expo-location';
-import { AppState } from 'react-native';
 import { api, type HealthProfile, type UserLocationSnapshot } from '@/lib/api';
 import { formatPlaceLine, resolvePlace } from '@/lib/geoPlace';
 import { isFreshLocationTimestamp } from '@/lib/locationFix';
 import { getPreference, setPreference } from '@/lib/storage';
 
-const WATCH_DISTANCE_M = 40;
-const WATCH_INTERVAL_MS = 20_000;
-const PING_GAP_MS = 12_000;
 const PROMPTED_PREF = 'medicard.location.prompted';
 
 export type LocationPermissionState = 'granted' | 'denied' | 'undetermined';
 
 let watchSub: Location.LocationSubscription | null = null;
-let lastPingAt = 0;
-let lastFix: { lat: number; lng: number; accuracy: number | null; fixAt: number } | null = null;
 let optedIn = false;
 let pinging = false;
 let localPrompted = false;
@@ -139,20 +133,19 @@ async function readCurrentCoords(): Promise<{
 } | null> {
   try {
     const fix = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
+      accuracy: Location.Accuracy.High,
     });
     const lat = fix.coords.latitude;
     const lng = fix.coords.longitude;
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    if (!isFreshLocationTimestamp(fix.timestamp)) return null;
-    const next = {
+    const stamp = Number(fix.timestamp);
+    if (!isFreshLocationTimestamp(stamp)) return null;
+    return {
       lat,
       lng,
       accuracy: Number.isFinite(fix.coords.accuracy) ? fix.coords.accuracy : null,
-      fixAt: Number.isFinite(fix.timestamp) ? Number(fix.timestamp) : Date.now(),
+      fixAt: stamp,
     };
-    lastFix = next;
-    return next;
   } catch {
     return null;
   }
@@ -197,7 +190,6 @@ async function pingServer(
   pinging = true;
   try {
     const result = await api.location.ping(body);
-    lastPingAt = Date.now();
     if (result.location.enabled) optedIn = true;
     if (result.location.enabled === false) optedIn = false;
     if (result.profile && profileListener) profileListener(result.profile);
@@ -279,7 +271,6 @@ export async function grantUserLocation(): Promise<{
     prompted: true,
     source: 'grant',
   });
-  await startLiveLocationWatch();
   return { granted: true, snapshot: saved.snapshot, profile: saved.profile };
 }
 
@@ -294,58 +285,6 @@ export async function revokeUserLocation(): Promise<UserLocationSnapshot> {
   return persistLocationConsent({ enabled: false, prompted: true, source: 'revoke' });
 }
 
-export async function pingLiveLocation(source: 'heartbeat' | 'watch' = 'heartbeat'): Promise<void> {
-  if (!optedIn) return;
-  if (AppState.currentState !== 'active') return;
-  const now = Date.now();
-  if (now - lastPingAt < PING_GAP_MS) return;
-
-  const permission = await getLocationPermissionState();
-  if (permission !== 'granted') {
-    if (source === 'heartbeat') {
-      optedIn = false;
-      stopLiveLocationWatch();
-    }
-    return;
-  }
-
-  const coords = lastFix && source === 'watch' ? lastFix : await readCurrentCoords();
-  if (!coords) return;
-  if (!isFreshLocationTimestamp(coords.fixAt)) return;
-  await pingServer({ ...coords, enabled: true, source });
-}
-
-export async function startLiveLocationWatch(): Promise<void> {
-  if (watchSub || !optedIn) return;
-  const permission = await getLocationPermissionState();
-  if (permission !== 'granted') return;
-
-  try {
-    watchSub = await Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.Balanced,
-        timeInterval: WATCH_INTERVAL_MS,
-        distanceInterval: WATCH_DISTANCE_M,
-      },
-      (fix) => {
-        const lat = fix.coords.latitude;
-        const lng = fix.coords.longitude;
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-        if (!isFreshLocationTimestamp(fix.timestamp)) return;
-        lastFix = {
-          lat,
-          lng,
-          accuracy: Number.isFinite(fix.coords.accuracy) ? fix.coords.accuracy : null,
-          fixAt: Number.isFinite(fix.timestamp) ? Number(fix.timestamp) : Date.now(),
-        };
-        void pingLiveLocation('watch');
-      },
-    );
-  } catch {
-    watchSub = null;
-  }
-}
-
 export function stopLiveLocationWatch() {
   watchSub?.remove();
   watchSub = null;
@@ -353,10 +292,5 @@ export function stopLiveLocationWatch() {
 
 export async function startLiveLocationIfEnabled(profile?: HealthProfile | null) {
   if (profile) hydrateLocationFromProfile(profile);
-  if (!optedIn) {
-    stopLiveLocationWatch();
-    return;
-  }
-  await startLiveLocationWatch();
-  void pingLiveLocation('heartbeat');
+  stopLiveLocationWatch();
 }

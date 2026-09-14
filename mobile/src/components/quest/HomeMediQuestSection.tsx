@@ -34,7 +34,7 @@ import { useIsDark, useThemeColors } from '@/theme/colors';
 
 const LOCALE = 'ka';
 
-export function HomeMediQuestSection() {
+export function HomeMediQuestSection({ edgeInset = 16 }: { edgeInset?: number }) {
   const router = useRouter();
   const colors = useThemeColors();
   const dark = useIsDark();
@@ -78,7 +78,7 @@ export function HomeMediQuestSection() {
 
   if (view.kind === 'loading') {
     return (
-      <Section title={copy.section}>
+      <Section title={copy.section} edgeInset={edgeInset}>
         <Shell>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <Bone width={QUEST.ringHome} height={QUEST.ringHome} radius={999} />
@@ -100,7 +100,7 @@ export function HomeMediQuestSection() {
 
   if (view.kind === 'error') {
     return (
-      <Section title={copy.section}>
+      <Section title={copy.section} edgeInset={edgeInset}>
         <Shell>
           <QuestMediLine text={copy.loadError} />
           <Pressable
@@ -123,7 +123,7 @@ export function HomeMediQuestSection() {
   // sentence is the Medi line under those stats, same as the hub.
   if (view.kind === 'empty' || !dashboard?.profile) {
     return (
-      <Section title={copy.section}>
+      <Section title={copy.section} edgeInset={edgeInset}>
         <Shell onPress={openHub}>
           <QuestMediLine text={copy.empty} />
         </Shell>
@@ -171,7 +171,7 @@ export function HomeMediQuestSection() {
   ].join('. ');
 
   return (
-    <Section title={copy.section}>
+    <Section title={copy.section} edgeInset={edgeInset}>
         <Shell onPress={openHub} accessibilityLabel={a11y}>
           <Wash />
 
@@ -321,11 +321,11 @@ export function HomeMediQuestSection() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, edgeInset }: { title: string; children: React.ReactNode; edgeInset: number }) {
   return (
     <View style={{ paddingVertical: 4, gap: 8, minHeight: QUEST.homeMinHeight, position: 'relative' }}>
-      <HomeSectionTitle title={title} style={{ marginHorizontal: 16, marginBottom: 0 }} />
-      <View style={{ marginHorizontal: 16 }}>{children}</View>
+      <HomeSectionTitle title={title} style={{ marginHorizontal: edgeInset, marginBottom: 0 }} />
+      <View style={{ marginHorizontal: edgeInset }}>{children}</View>
     </View>
   );
 }

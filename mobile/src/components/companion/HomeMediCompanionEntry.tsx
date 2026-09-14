@@ -10,10 +10,10 @@ import { QUEST } from '@/theme/questTokens';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
 /**
- * Subtle Medi head near the Quest home block — opens /medi-companion.
+ * Subtle Medi head near the Quest block — opens /medi-companion.
  * Not a second dashboard card.
  */
-export function HomeMediCompanionEntry({ locale = 'ka' }: { locale?: string }) {
+export function HomeMediCompanionEntry({ locale = 'ka', edgeInset = 16 }: { locale?: string; edgeInset?: number }) {
   const router = useRouter();
   const colors = useThemeColors();
   const dark = useIsDark();
@@ -49,7 +49,7 @@ export function HomeMediCompanionEntry({ locale = 'ka' }: { locale?: string }) {
       pointerEvents="box-none"
       style={{
         position: 'absolute',
-        right: 16,
+        right: edgeInset,
         top: 0,
         zIndex: 4,
       }}

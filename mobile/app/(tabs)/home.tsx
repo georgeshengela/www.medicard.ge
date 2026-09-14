@@ -10,11 +10,7 @@ import { HomeBmiWeightSection } from '@/components/home/HomeBmiWeightSection';
 import { HomeNextDoseSection } from '@/components/home/HomeNextDoseSection';
 import { HomeHealthMetricsSection } from '@/components/home/HomeHealthMetricsSection';
 import { HomeHydrationSection } from '@/components/home/HomeHydrationSection';
-import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
-import { HomeMediCompanionEntry } from '@/components/companion/HomeMediCompanionEntry';
 import { HomeWeatherSection } from '@/components/weather/HomeWeatherSection';
-import { HomeRunSection } from '@/components/run/HomeRunSection';
-import { HomeLabSection } from '@/components/home/HomeLabSection';
 import { HomeCyclePreviewCard } from '@/components/home/HomeCyclePreviewCard';
 import { HomeSymptomAssistantCard } from '@/components/home/HomeSymptomAssistantCard';
 import { HomeAnalysisSection } from '@/components/home/HomeAnalysisSection';
@@ -35,7 +31,6 @@ import { QuestDevLauncher } from '@/components/dev/QuestDevLauncher';
 import { useAuth } from '@/store/AuthContext';
 import { useHydration } from '@/hooks/useHydration';
 import { requestHealthRefresh } from '@/lib/healthDataSync';
-import { requestQuestRefresh } from '@/lib/quest/cache';
 import { healthScoreLabelKa } from '@/lib/healthScore';
 import { analysisFromProfile } from '@/types/onboardingAnalysis';
 
@@ -75,7 +70,7 @@ export default function Home() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([load(), refresh(), Promise.resolve(requestQuestRefresh()), Promise.resolve(requestHealthRefresh())]);
+    await Promise.all([load(), refresh(), Promise.resolve(requestHealthRefresh())]);
     setRefreshing(false);
   }, [load, refresh]);
 
@@ -146,13 +141,6 @@ export default function Home() {
         );
       case 'nextDose':
         return <HomeNextDoseSection key={id} refreshing={refreshing} />;
-      case 'mediQuest':
-        return (
-          <View key={id} style={{ position: 'relative' }}>
-            <HomeMediCompanionEntry />
-            <HomeMediQuestSection />
-          </View>
-        );
       case 'steps':
         return <HomeHealthMetricsSection key={id} profile={healthProfile} />;
       case 'hydration':
@@ -165,12 +153,8 @@ export default function Home() {
             <HomeCyclePreviewCard onPress={() => router.push(cycleTile.href as never)} />
           </View>
         ) : null;
-      case 'lab':
-        return <HomeLabSection key={id} />;
       case 'weather':
         return <HomeWeatherSection key={id} />;
-      case 'run':
-        return <HomeRunSection key={id} />;
       case 'symptom':
         return doctorTile ? (
           <View key={id} className="px-4" style={{ marginTop: S.sectionTop }}>

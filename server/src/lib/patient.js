@@ -132,6 +132,13 @@ export function publicUser(user) {
   };
 }
 
+export function accountFirstName(fullName) {
+  const first = String(fullName || '').trim().split(/\s+/).filter(Boolean)[0];
+  if (!first || first.length < 2 || first.includes('@')) return null;
+  if (!/[ა-ჰA-Za-z]/.test(first)) return null;
+  return first;
+}
+
 /**
  * Georgian demographics block prepended to EvidenceMD prompts. Returns null when the
  * profile is incomplete so that legacy and phone-only accounts simply get no block
@@ -139,6 +146,9 @@ export function publicUser(user) {
  */
 export function buildPatientProfile(user) {
   const lines = [];
+
+  const firstName = accountFirstName(user?.fullName);
+  if (firstName) lines.push(`- სახელი: ${firstName}`);
 
   const gender = GENDER_KA[user?.gender];
   if (gender) lines.push(`- სქესი: ${gender}`);
@@ -178,9 +188,11 @@ export function buildPatientProfile(user) {
   if (lines.length === 0) return null;
 
   return [
-    'პაციენტის დემოგრაფიული მონაცემები:',
+    'ანგარიშის მფლობელის პროფილი (არა აუცილებლად ამ შეტყობინების პაციენტი):',
     ...lines,
-    'გაითვალისწინე პაციენტის სქესი და ასაკი ნორმის საზღვრების, დიფერენციული დიაგნოზის, დოზირებისა და რისკების შეფასებისას.',
+    'თუ მომხმარებელი საუბრობს ბავშვზე, შვილზე ან სხვა ადამიანზე — პროფილის ასაკი და სქესი ამ შემთხვევაზე არ გადაიტანო.',
+    'გაითვალისწინე ეს მონაცემები მხოლოდ მაშინ, როცა მომხმარებელი საკუთარ თავზე საუბრობს.',
+    'სახელით მიმართე მხოლოდ ერთხელ და მხოლოდ თუ ბუნებრივია.',
   ].join('\n');
 }
 

@@ -4,6 +4,10 @@
 
 The in-app AI is **Medi**. Never write Nightingale in user-facing copy (chat titles, CTAs, bubbles, share toggles). Nightingale is only the Figma UI kit name.
 
+## Expo Router app directory
+
+Routes live in `mobile/app/`. **Never create `mobile/src/app`** (even empty). Expo Router prefers `src/app` if that folder exists and shows the stock “Welcome to Expo” screen instead of Medicard.
+
 ## Admin tab shell width (mandatory)
 
 Tab selector and active tab content must share the **same left/right edges** — identical width. Never add horizontal padding only on the pane/body while the tablist stays full-bleed (and never max-width the content narrower than the tabs).
@@ -67,7 +71,7 @@ Dark is **cool gray-950 navy**, not teal charcoal. Keep `global.css` `.dark` and
 
 Filled dark CTAs use `#0D9488` (`FIGMA_AUTH_DARK.primaryBg`), not `#14B8A6`. Auth screens sit on `bg-surface`. Google on dark is a **white** fill with dark label. Do not invert the stack (page stays darker than cards).
 
-On every **store-facing** mobile change, update `mobile/app.json` `expo.version`. The public identity is Instagram-style **five-part** `G.0.0.B.R` (currently `1.0.0.7.79`). That string is Android `versionName`, in-app display, and `/api/app/status`. Apple rejects five-part marketing versions — set `expo.ios.version` to `G.B.R` (`1.7.79`) and keep plugin `withIosMarketingVersion` as last-write guard. Never put `1.7.72` in `minAppVersion` — that would block five-part clients. Native `ios.buildNumber` / `android.versionCode` in `app.json` are a local floor only. EAS production uses `appVersionSource: remote` + `autoIncrement` (remote was **2** on 2026-09-11) — never lower the remote counter. Cycle phase numbers stay in contracts / QA only.
+On every **store-facing** mobile change, update `mobile/app.json` `expo.version`. The public identity is Instagram-style **five-part** `G.0.0.B.R` (currently `1.0.0.8.24`). That string is Android `versionName`, in-app display, and `/api/app/status`. Apple rejects five-part marketing versions — set `expo.ios.version` to `G.B.R` (`1.8.24`) and keep plugin `withIosMarketingVersion` as last-write guard. Never put `1.7.72` in `minAppVersion` — that would block five-part clients. Native `ios.buildNumber` / `android.versionCode` in `app.json` are a local floor only. EAS production uses `appVersionSource: remote` + `autoIncrement` (remote was **2** on 2026-09-11) — never lower the remote counter. Cycle phase numbers stay in contracts / QA only.
 
 - **Small** feature/fix → revision + 1 (`1.0.0.7.78` → `1.0.0.7.79`)
 - **Native / store train** → train + 1 and bump `buildNumber` / `versionCode` (`1.0.0.7.77` → `1.0.0.8.0`)

@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import {
   DEFAULT_AI_ENGINE,
   OPENROUTER_MODELS,
+  buildOpenRouterChatPayload,
   extractStreamDelta,
   normalizeAiEngine,
   openRouterFallbackModels,
+  openRouterReasoningFor,
   publicAiEngineCatalog,
   resolveAiEngine,
   resolveOpenRouterModel,
@@ -35,10 +37,9 @@ test('EvidenceMD remains the clinical high-risk path', () => {
   assert.equal(resolveOpenRouterModel({ aiEngine: 'evidencemd' }), OPENROUTER_MODELS.gemini_flash);
 });
 
-test('Gemini failures fall back to Ling, never skip Gemini first', () => {
+test('Gemini failures do not fall back to Ling', () => {
   assert.deepEqual(openRouterFallbackModels(OPENROUTER_MODELS.gemini_flash), [
     'google/gemini-3.8-flash',
-    'inclusionai/ling-3.0-flash-sante:free',
   ]);
   assert.deepEqual(openRouterFallbackModels(OPENROUTER_MODELS.ling_free), [
     'inclusionai/ling-3.0-flash-sante:free',
@@ -46,18 +47,32 @@ test('Gemini failures fall back to Ling, never skip Gemini first', () => {
   ]);
 });
 
-test('OpenRouter helper tries Ling after Gemini fails', async () => {
+test('OpenRouter helper has no Ling after Gemini', async () => {
   const tried = [];
-  const result = await withOpenRouterModelFallback(OPENROUTER_MODELS.gemini_flash, async (model) => {
-    tried.push(model);
-    if (model === OPENROUTER_MODELS.gemini_flash) throw new Error('gemini down');
-    return model;
+  await assert.rejects(
+    () =>
+      withOpenRouterModelFallback(OPENROUTER_MODELS.gemini_flash, async (model) => {
+        tried.push(model);
+        throw new Error('gemini down');
+      }),
+    /gemini down/,
+  );
+  assert.deepEqual(tried, ['google/gemini-3.8-flash']);
+});
+
+test('Gemini 3 chat uses medium reasoning inside a 2400-token budget', () => {
+  assert.deepEqual(openRouterReasoningFor(OPENROUTER_MODELS.gemini_flash), {
+    effort: 'medium',
+    exclude: true,
   });
-  assert.deepEqual(tried, [
-    'google/gemini-3.8-flash',
-    'inclusionai/ling-3.0-flash-sante:free',
-  ]);
-  assert.equal(result, OPENROUTER_MODELS.ling_free);
+  assert.equal(openRouterReasoningFor(OPENROUTER_MODELS.ling_free), undefined);
+  const payload = buildOpenRouterChatPayload({
+    model: OPENROUTER_MODELS.gemini_flash,
+    messages: [{ role: 'user', content: 'hi' }],
+    maxTokens: 2400,
+  });
+  assert.equal(payload.max_tokens, 2400);
+  assert.deepEqual(payload.reasoning, { effort: 'medium', exclude: true });
 });
 
 test('catalog is allowlisted and starts with the default', () => {

@@ -2,8 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, Flame, Footprints, MapPin, Play, Route, Sparkles, Target, Timer } from 'lucide-react-native';
-import { h } from '@/lib/hunt/copy';
+import { ArrowLeft, ChevronRight, Flame, Footprints, MapPin, Play, Route, Target, Timer } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { BetaPill } from '@/components/run/HomeRunSection';
@@ -25,7 +24,6 @@ export default function RunHubScreen() {
   const { healthProfile } = useAuth();
   const [history, setHistory] = useState<RunSummary[]>([]);
   const [sheet, setSheet] = useState(false);
-  const hunt = h('ka');
 
   useFocusEffect(
     useCallback(() => {
@@ -97,28 +95,6 @@ export default function RunHubScreen() {
             </Pressable>
           </View>
         </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${hunt.huntTitle}. ${hunt.startHunt}`}
-          onPress={() => router.push('/run/hunt' as never)}
-          style={{
-            marginHorizontal: 16,
-            marginTop: 14,
-            borderRadius: 22,
-            padding: 16,
-            backgroundColor: dark ? '#042F2E' : '#0F766E',
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Sparkles size={18} color="#99F6E4" />
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: '#fff' }}>{hunt.huntTitle}</Text>
-          </View>
-          <Text style={{ marginTop: 8, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 19, color: 'rgba(255,255,255,0.86)' }}>
-            {hunt.huntBody}
-          </Text>
-          <Text style={{ marginTop: 10, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, color: '#99F6E4' }}>{hunt.startHunt}</Text>
-        </Pressable>
 
         {/* totals */}
         <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 16, marginTop: 14 }}>

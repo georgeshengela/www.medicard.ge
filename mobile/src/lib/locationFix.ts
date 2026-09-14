@@ -6,7 +6,7 @@ export function isFreshLocationTimestamp(
   now = Date.now(),
   maxAgeMs = MAX_LOCATION_FIX_AGE_MS,
 ): boolean {
-  if (!Number.isFinite(timestamp)) return true;
+  if (!Number.isFinite(timestamp)) return false;
   const age = now - Number(timestamp);
   if (age < 0) return true;
   return age <= maxAgeMs;

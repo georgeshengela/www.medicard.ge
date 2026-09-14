@@ -14,12 +14,6 @@ export const REWARDS_CAPABILITIES = Object.freeze([
   'REWARDS_ANALYTICS_VIEW',
 ]);
 
-export const HUNT_CAPABILITIES = Object.freeze([
-  'HUNT_VIEW',
-  'HUNT_MANAGE',
-  'HUNT_QA_GRANT',
-]);
-
 export function normalizeCapabilities(raw) {
   if (raw == null) return null; // full access
   if (Array.isArray(raw)) {

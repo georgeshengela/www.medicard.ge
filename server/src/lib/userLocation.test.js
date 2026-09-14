@@ -3,7 +3,9 @@ import { describe, it } from 'node:test';
 import {
   didMoveFar,
   geocodeAppliesToRow,
+  isHomePlaceWrite,
   isImplausibleJump,
+  isLiveLocationPing,
   isStaleLocationFixAt,
   MAX_LOCATION_FIX_AGE_MS,
   resolveStoredPlace,
@@ -16,7 +18,7 @@ const LIEGE = { lat: 50.6326, lng: 5.5797 };
 describe('user location place writes', () => {
   it('treats an old GPS timestamp as stale and a live stamp as fresh', () => {
     const now = Date.parse('2026-09-14T12:00:00.000Z');
-    assert.equal(isStaleLocationFixAt(undefined, now), false);
+    assert.equal(isStaleLocationFixAt(undefined, now), true);
     assert.equal(isStaleLocationFixAt(now - 5_000, now), false);
     assert.equal(isStaleLocationFixAt(now - MAX_LOCATION_FIX_AGE_MS - 1, now), true);
   });
@@ -71,5 +73,17 @@ describe('user location place writes', () => {
     assert.equal(snap.cityKa, null);
     assert.equal(snap.countryCode, null);
     assert.equal(snap.lat, LIEGE.lat);
+  });
+
+  it('writes home city only on grant, never on heartbeat/watch', () => {
+    assert.equal(isHomePlaceWrite('grant'), true);
+    assert.equal(isHomePlaceWrite('heartbeat'), false);
+    assert.equal(isHomePlaceWrite('watch'), false);
+    assert.equal(isLiveLocationPing('heartbeat'), true);
+    assert.equal(isLiveLocationPing('watch'), true);
+    assert.equal(isLiveLocationPing(null), true);
+    assert.equal(isLiveLocationPing('grant'), false);
+    assert.equal(isLiveLocationPing('skip'), false);
+    assert.equal(isLiveLocationPing('revoke'), false);
   });
 });

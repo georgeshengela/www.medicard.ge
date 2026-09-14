@@ -3,7 +3,7 @@
     "name": "MEDICARD",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.8.6",
+    "version": "1.0.0.8.24",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
-      "version": "1.8.6",
+      "version": "1.8.24",
       "buildNumber": "67",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD",
@@ -73,7 +73,12 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "root": "./app"
+        }
+      ],
       "expo-secure-store",
       [
         "expo-splash-screen",
@@ -153,7 +158,7 @@
     ],
     "extra": {
       "router": {},
-      "medicardInternalVersion": "1.0.0.8.6",
+      "medicardInternalVersion": "1.0.0.8.24",
       "apiUrl": "https://medicard.ge",
       "privacyPolicyUrl": "https://medicard.ge/privacy",
       "termsOfServiceUrl": "https://medicard.ge/terms",

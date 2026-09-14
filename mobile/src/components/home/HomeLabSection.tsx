@@ -24,7 +24,7 @@ type Spotlight = {
   change?: string;
 };
 
-export function HomeLabSection() {
+export function HomeLabSection({ edgeInset = 16 }: { edgeInset?: number }) {
   const router = useRouter();
   const FIGMA = useFigmaHomeDashboard();
   const T = useFigmaLab();
@@ -60,13 +60,13 @@ export function HomeLabSection() {
   const openParam = (key: string) => router.push(`/lab/param/${encodeURIComponent(key)}` as never);
 
   return (
-    <View style={{ paddingVertical: 4, gap: 8, marginTop: S.sectionTop }}>
-      <HomeSectionTitle title={ka.home.labTitle} style={{ marginHorizontal: 16, marginBottom: 0 }} />
+    <View style={{ paddingVertical: 4, gap: 8, marginTop: edgeInset === 0 ? 0 : S.sectionTop }}>
+      <HomeSectionTitle title={ka.home.labTitle} style={{ marginHorizontal: edgeInset, marginBottom: 0 }} />
       <Pressable
         accessibilityRole="button"
         onPress={openLab}
         style={{
-          marginHorizontal: 16,
+          marginHorizontal: edgeInset,
           backgroundColor: FIGMA.setupCardBg,
           borderWidth: 1,
           borderColor: FIGMA.border,

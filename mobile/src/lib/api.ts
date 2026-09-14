@@ -1642,14 +1642,6 @@ export const api = {
           allowRegistrations: boolean;
           supportEmail: string;
         };
-        hunt?: {
-          enabled: boolean;
-          rewardsEnabled: boolean;
-          playAreaM: number;
-          captureRadiusM: number;
-          modelKey: string;
-          attribution: string;
-        };
         client: { version: string; needsUpdate: boolean; blockedByForceUpdate: boolean };
         packages?: UserPackage[];
         mapboxToken?: string;
@@ -2498,50 +2490,6 @@ export const api = {
         newlyUnlockedKeys: string[];
         aggregateUnlockCount: number;
       }>(      '/api/medi-companion/reconcile', { method: 'POST' }),
-  },
-
-  hunt: {
-    status: () =>
-      request<{
-        enabled: boolean;
-        rewardsEnabled: boolean;
-        playAreaM: number;
-        captureRadiusM: number;
-        modelKey: string;
-        attribution: string;
-        schemaReady?: boolean;
-      }>('/api/hunt/status'),
-    progress: () => request<{ viruses: number; titles: unknown[] }>('/api/hunt/progress'),
-    start: (body: {
-      lat: number;
-      lng: number;
-      accuracy?: number;
-      mode?: 'default' | 'gentle';
-      simulation?: boolean;
-    }) => request<import('@/lib/hunt/types').HuntSnapshot>('/api/hunt/sessions', { method: 'POST', body }),
-    get: (id: string) => request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}`),
-    ping: (id: string, body: { samples: Array<{ lat: number; lng: number; accuracy: number; at: number; seq?: number }> }) =>
-      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/ping`, { method: 'POST', body }),
-    pause: (id: string) =>
-      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/pause`, { method: 'POST' }),
-    resume: (id: string) =>
-      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/resume`, { method: 'POST' }),
-    end: (id: string) =>
-      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/end`, { method: 'POST' }),
-    capsule: (id: string, capsuleId: string) =>
-      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/capsules/${capsuleId}`, { method: 'POST' }),
-    encounter: (id: string, enemyId: string) =>
-      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/encounters`, {
-        method: 'POST',
-        body: { enemyId },
-      }),
-    completeEncounter: (id: string, token: string) =>
-      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/encounters/complete`, {
-        method: 'POST',
-        body: { token },
-      }),
-    cancelEncounter: (id: string) =>
-      request<import('@/lib/hunt/types').HuntSnapshot>(`/api/hunt/sessions/${id}/encounters/cancel`, { method: 'POST' }),
   },
 
 };

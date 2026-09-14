@@ -6,6 +6,8 @@ import {
   geocodeAppliesToRow,
   isImplausibleJump,
   isStaleLocationFixAt,
+  isHomePlaceWrite,
+  isLiveLocationPing,
   PLACE_MOVE_METERS,
   resolveStoredPlace,
   snapshotFromRow,
@@ -15,6 +17,8 @@ export {
   didMoveFar,
   geocodeAppliesToRow,
   isStaleLocationFixAt,
+  isHomePlaceWrite,
+  isLiveLocationPing,
   MAX_LOCATION_FIX_AGE_MS,
   PLACE_MOVE_METERS,
   resolveStoredPlace,
@@ -126,8 +130,8 @@ async function reverseGeocode(lat, lng) {
 }
 
 function shouldRefreshPlace(row, lat, lng, source) {
-  if (source === 'grant' && (!row?.cityKa || !row?.countryCode)) return true;
-  if (!row?.cityKa || !row?.countryKa || !row?.countryCode) return true;
+  if (!isHomePlaceWrite(source)) return false;
+  if (!row?.cityKa || !row?.countryCode) return true;
   if (!Number.isFinite(row.lat) || !Number.isFinite(row.lng)) return true;
   return metersBetween({ lat: row.lat, lng: row.lng }, { lat, lng }) >= PLACE_MOVE_METERS;
 }
@@ -195,12 +199,20 @@ async function upsertUserLocationUnlocked(userId, input = {}) {
   const profile = await prisma.healthProfile.findUnique({ where: { userId } });
   const extra = profile?.extraAnswers && typeof profile.extraAnswers === 'object' ? profile.extraAnswers : {};
   const current = snapshotFromRow(row, extra);
+  const source = input.source || null;
+
+  if (isLiveLocationPing(source)) {
+    return { location: current, profile: publicHealthProfile(profile) };
+  }
 
   let hasCoords = Number.isFinite(input.lat) && Number.isFinite(input.lng);
   if (hasCoords && isStaleLocationFixAt(input.fixAt, now.getTime())) {
     hasCoords = false;
   }
   if (hasCoords && isImplausibleJump(row, input.lat, input.lng, now.getTime())) {
+    hasCoords = false;
+  }
+  if (hasCoords && !isHomePlaceWrite(source)) {
     hasCoords = false;
   }
 

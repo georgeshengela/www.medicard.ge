@@ -29,9 +29,6 @@ async function pingNow(reason: 'foreground' | 'screen' | 'heartbeat'): Promise<v
   try {
     const { pingAppActivity } = await import('@/lib/productObservability');
     await pingAppActivity(reason === 'heartbeat' ? 'heartbeat' : currentScreen);
-    if (reason === 'heartbeat' || reason === 'foreground') {
-      void import('@/lib/userLocation').then(({ pingLiveLocation }) => pingLiveLocation('heartbeat'));
-    }
   } catch {
     lastPingAt = 0;
   } finally {

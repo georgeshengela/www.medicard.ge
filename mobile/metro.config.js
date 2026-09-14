@@ -15,7 +15,7 @@ const config = getDefaultConfig(__dirname);
 config.resolver.useWatchman = true;
 
 const withCss = withNativeWind(config, { input: './global.css' });
-withCss.resolver.assetExts = [...new Set([...(withCss.resolver.assetExts || []), 'bin', 'glb'])];
+withCss.resolver.assetExts = [...new Set([...(withCss.resolver.assetExts || []), 'bin', 'glb', 'gif'])];
 
 /**
  * Expo/Metro package-exports picks engine.io-client's ESM build, then fails

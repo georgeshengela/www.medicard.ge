@@ -6,10 +6,19 @@ export const IMPLAUSIBLE_JUMP_METERS = 200_000;
 export const IMPLAUSIBLE_JUMP_MS = 15 * 60 * 1000;
 
 export function isStaleLocationFixAt(fixAt, now = Date.now(), maxAgeMs = MAX_LOCATION_FIX_AGE_MS) {
-  if (!Number.isFinite(fixAt)) return false;
+  if (!Number.isFinite(fixAt)) return true;
   const age = now - Number(fixAt);
   if (age < 0) return false;
   return age > maxAgeMs;
+}
+
+/** City/country is written at grant (registration). Heartbeat/watch must not rewrite home place. */
+export function isHomePlaceWrite(source) {
+  return source === 'grant';
+}
+
+export function isLiveLocationPing(source) {
+  return source === 'heartbeat' || source === 'watch' || source == null;
 }
 
 export function didMoveFar(row, lat, lng) {

@@ -1,5 +1,5 @@
--- Medi Hunt (additive). Do not apply against production from this working tree
--- until a coordinated release. Prisma client generate is safe; migrate is not.
+-- Medi Hunt (additive). CREATE TABLE IF NOT EXISTS. Safe to re-run.
+-- Apply with: npx prisma db execute --file prisma/migrations/20260914030000_medi_hunt/migration.sql
 
 CREATE TABLE IF NOT EXISTS "HuntConfig" (
   "id" TEXT NOT NULL,
@@ -63,9 +63,18 @@ CREATE TABLE IF NOT EXISTS "HuntCapture" (
 CREATE UNIQUE INDEX IF NOT EXISTS "HuntCapture_sessionId_enemyId_key" ON "HuntCapture"("sessionId", "enemyId");
 CREATE INDEX IF NOT EXISTS "HuntCapture_userId_createdAt_idx" ON "HuntCapture"("userId", "createdAt");
 
-ALTER TABLE "HuntCapture"
-  ADD CONSTRAINT "HuntCapture_sessionId_fkey"
-  FOREIGN KEY ("sessionId") REFERENCES "HuntSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "HuntCapture"
+    ADD CONSTRAINT "HuntCapture_sessionId_fkey"
+    FOREIGN KEY ("sessionId") REFERENCES "HuntSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+INSERT INTO "HuntConfig" ("id", "rules", "updatedAt")
+VALUES ('default', '{"version":1}', CURRENT_TIMESTAMP)
+ON CONFLICT ("id") DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS "HuntQaGrant" (
   "userId" TEXT NOT NULL,

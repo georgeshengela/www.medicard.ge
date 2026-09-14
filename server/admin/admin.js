@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'hunt', 'ai', 'health', 'audit', 'quality', 'cycleqa', 'settings'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'cycleqa', 'settings'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -823,7 +823,6 @@ async function boot() {
     else if (tab === 'users' && userId !== state.userPageId) renderUsers();
     else if (tab === 'health' && typeof renderHealthOps === 'function') renderHealthOps();
     else if (tab === 'rewards' && typeof renderRewards === 'function') renderRewards();
-    else if (tab === 'hunt' && typeof renderHunt === 'function') renderHunt();
     else if (tab === 'cycleqa' && typeof renderCycleQa === 'function') renderCycleQa();
   });
   $('drawer-backdrop').addEventListener('click', async () => {
@@ -1017,31 +1016,43 @@ async function switchTab(tab, opts = {}) {
     sms: ['Operations', 'SMS', 'გაგზავნა, ბალანსი და ჟურნალი.', 'sms.page'],
     pharmacy: ['Operations', 'ფარმაცია', 'სინქი, მდგომარეობა და შეცდომები.', 'pharmacy.page'],
     rewards: ['Commerce', 'ჯილდოები', 'მუშაობს თუ არა ჯილდოების სისტემა ნორმალურად?', 'rewards.page'],
-    hunt: ['Play', 'Medi Hunt', 'ქუჩის ნადირობის წესები, სესიები და QA.', 'hunt.page'],
     ai: ['Health & Medi', 'Medi', 'მუშაობს თუ არა Medi საიმედოდ და უსაფრთხოდ?', 'medi.page'],
     settings: ['Production', 'აპის რეჟიმი', 'რა წარმოების ქცევაა ჩართული?', 'settings.page'],
   };
   setPageHeader(tab, copy);
 
+  const painted = tabPanelIsPainted(tab);
   if (tab === 'overview') {
-    if (typeof renderCommandCenter === 'function') await renderCommandCenter();
+    if (painted) {
+      if (typeof window.refreshCommandCenterLive === 'function') void window.refreshCommandCenterLive();
+    } else if (typeof renderCommandCenter === 'function') await renderCommandCenter();
     else await renderOverview();
+  } else if (!painted) {
+    if (tab === 'orders') await renderOrders();
+    if (tab === 'users') await renderUsers();
+    if (tab === 'packages') await renderPackages();
+    if (tab === 'push') await renderPush();
+    if (tab === 'sms') await renderSms();
+    if (tab === 'pharmacy') await renderPharmacy();
+    if (tab === 'rewards' && typeof renderRewards === 'function') await renderRewards();
+    if (tab === 'ai') await renderAi();
+    if (tab === 'health' && typeof renderHealthOps === 'function') await renderHealthOps();
+    if (tab === 'audit' && typeof renderAuditLog === 'function') await renderAuditLog();
+    if (tab === 'quality' && typeof renderQualityOps === 'function') await renderQualityOps();
+    if (tab === 'cycleqa' && typeof renderCycleQa === 'function') await renderCycleQa();
+    if (tab === 'settings') await renderSettings();
   }
-  if (tab === 'orders') await renderOrders();
-  if (tab === 'users') await renderUsers();
-  if (tab === 'packages') await renderPackages();
-  if (tab === 'push') await renderPush();
-  if (tab === 'sms') await renderSms();
-  if (tab === 'pharmacy') await renderPharmacy();
-  if (tab === 'rewards' && typeof renderRewards === 'function') await renderRewards();
-  if (tab === 'hunt' && typeof renderHunt === 'function') await renderHunt();
-  if (tab === 'ai') await renderAi();
-  if (tab === 'health' && typeof renderHealthOps === 'function') await renderHealthOps();
-  if (tab === 'audit' && typeof renderAuditLog === 'function') await renderAuditLog();
-  if (tab === 'quality' && typeof renderQualityOps === 'function') await renderQualityOps();
-  if (tab === 'cycleqa' && typeof renderCycleQa === 'function') await renderCycleQa();
-  if (tab === 'settings') await renderSettings();
   startAdminLive();
+}
+
+function tabPanelIsPainted(tab) {
+  const root = $(`tab-${tab}`);
+  if (!root || !root.childElementCount) return false;
+  if (tab === 'overview') return Boolean(root.querySelector('[data-cc="v3"], .ops-board, .ng-dash'));
+  if (root.querySelector('[class*="skel"]')) return false;
+  const empty = root.querySelector('.empty');
+  if (empty && !root.querySelector('table, .v3-module, .v25-panel, form')) return false;
+  return true;
 }
 
 let adminLiveTimer = null;
@@ -3956,6 +3967,7 @@ async function viewAiInteraction(id) {
     <div class="drawer-stats">
       <div class="drawer-stat"><div class="label">მომხმარებელი</div><strong>${escapeHtml(interaction.user?.fullName || '—')}</strong></div>
       <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${interaction.status === 'OK' ? '✓ წარმატებული' : '✗ შეცდომა'}</strong></div>
+      <div class="drawer-stat"><div class="label">მოდელი</div><strong class="mono">${escapeHtml(interaction.reasoningModel || '—')}</strong></div>
       <div class="drawer-stat"><div class="label">Prompt</div><strong class="mono">v${escapeHtml(interaction.promptVersion)}</strong></div>
       <div class="drawer-stat"><div class="label">დრო (ms)</div><strong>${interaction.latencyMs ?? '—'} ms</strong></div>
     </div>

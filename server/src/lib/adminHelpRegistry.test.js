@@ -24,12 +24,12 @@ function collectReferencedHelpKeys() {
     'admin-help-content.js',
   ];
   const keys = new Set();
-  const re = /(?:helpKey:\s*['"]([a-z0-9.]+)['"]|infoButton\(\s*['"]([a-z0-9.]+)['"])/gi;
+  const re = /(?:helpKey:\s*['"]([a-z0-9.]+)['"]|infoButton\(\s*['"]([a-z0-9.]+)['"]|helpBtn\(\s*['"]([a-z0-9.]+)['"])/gi;
   for (const file of files) {
     const text = fs.readFileSync(path.join(adminDir, file), 'utf8');
     let m;
     while ((m = re.exec(text))) {
-      keys.add(m[1] || m[2]);
+      keys.add(m[1] || m[2] || m[3]);
     }
   }
   return [...keys].sort();

@@ -7,6 +7,6 @@ describe('isFreshLocationTimestamp', () => {
     const now = Date.parse('2026-09-14T12:00:00.000Z');
     assert.equal(isFreshLocationTimestamp(now - 8_000, now), true);
     assert.equal(isFreshLocationTimestamp(now - MAX_LOCATION_FIX_AGE_MS - 1, now), false);
-    assert.equal(isFreshLocationTimestamp(undefined, now), true);
+    assert.equal(isFreshLocationTimestamp(undefined, now), false);
   });
 });

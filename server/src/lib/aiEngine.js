@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
-import { SYSTEM_PROMPTS } from './prompts.js';
+import { SYSTEM_PROMPTS, looksLikeBrokenDoctorReply } from './prompts.js';
 import { askEvidenceMd, AiEngineError, ensureDisclaimer } from './evidencemd.js';
 
 /** User-selectable engines. Unknown / empty → Gemini Flash. */
@@ -57,8 +57,35 @@ export function resolveOpenRouterModel(user) {
 export function openRouterFallbackModels(primary) {
   const gemini = OPENROUTER_MODELS.gemini_flash;
   const ling = OPENROUTER_MODELS.ling_free;
+  // Ling mangles Georgian. Never use it as Gemini's safety net — EvidenceMD is askAi's last resort.
   if (primary === ling) return [ling, gemini];
-  return [gemini, ling];
+  return [gemini];
+}
+
+/** Gemini 3 reasoning is mandatory; medium + 2400 tokens leaves room for a full Georgian reply. */
+export function openRouterReasoningFor(model) {
+  if (String(model || '').includes('gemini-3')) {
+    return { effort: 'medium', exclude: true };
+  }
+  return undefined;
+}
+
+export function buildOpenRouterChatPayload({
+  model,
+  messages,
+  temperature = 0.2,
+  maxTokens = 2400,
+  stream = false,
+}) {
+  const reasoning = openRouterReasoningFor(model);
+  return {
+    model,
+    messages,
+    temperature,
+    max_tokens: maxTokens,
+    stream,
+    ...(reasoning ? { reasoning } : {}),
+  };
 }
 
 export async function withOpenRouterModelFallback(primary, run) {
@@ -191,13 +218,13 @@ export async function askOpenRouterChat({
   try {
     const stream = typeof onDelta === 'function';
     const extra = signal ? { signal } : undefined;
-    const payload = {
+    const payload = buildOpenRouterChatPayload({
       model,
       messages: buildClinicalMessages({ mode, messages, context }),
       temperature,
-      max_tokens: maxTokens,
+      maxTokens,
       stream,
-    };
+    });
     let completion;
     try {
       completion = await openrouter.chat.completions.create(
@@ -245,8 +272,7 @@ export async function askOpenRouterChat({
 }
 
 /**
- * One entry for chats, answers, cycle insights, and other clinical LLM turns.
- * Default Gemini Flash: OpenRouter Gemini → Ling free → EvidenceMD.
+ * Default Gemini Flash: OpenRouter Gemini → EvidenceMD. Ling only if the user picked it.
  */
 export async function askAi({
   user,
@@ -285,6 +311,15 @@ export async function askAi({
         : undefined;
     try {
       const result = await askOpenRouterChat({ ...opts, model, onDelta: wrappedDelta });
+      if (
+        !started &&
+        mode === 'DOCTOR' &&
+        looksLikeBrokenDoctorReply(result.content)
+      ) {
+        console.warn('[medicard] discarding broken Georgian reply from', model);
+        lastError = new AiEngineError('AI-მ გაუგებარი ქართული დააბრუნა.', { status: 502 });
+        continue;
+      }
       return { ...result, engine: 'openrouter', engineId: engine.id };
     } catch (error) {
       lastError = error;

@@ -24,6 +24,8 @@ import { HomeLandingSelect } from '@/components/home/HomeLandingSelect';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { PlanDetailCard } from '@/components/PlanUsageCard';
 import { ProfileStreakCard } from '@/components/check-in/ProfilePointsCard';
+import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
+import { HomeMediCompanionEntry } from '@/components/companion/HomeMediCompanionEntry';
 import { DeleteAccountModal } from '@/components/profile/DeleteAccountModal';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { ProfileVersionCard } from '@/components/profile/ProfileVersionCard';
@@ -50,6 +52,7 @@ import { usePlanUsage } from '@/lib/planUsage';
 import { useThemeColors } from '@/theme/colors';
 import { livingPlaceLine } from '@/lib/userLocation';
 import { useAuth } from '@/store/AuthContext';
+import { requestQuestRefresh } from '@/lib/quest/cache';
 import { rewardsApi } from '@/lib/quest/rewardsApi';
 import { rewardsCopy } from '@/i18n/quest/rewards.js';
 
@@ -98,7 +101,7 @@ export default function Profile() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), Promise.resolve(requestQuestRefresh())]);
     setRefreshing(false);
   }, [refresh]);
 
@@ -279,6 +282,11 @@ export default function Profile() {
         currentStreak={user?.currentStreak ?? 0}
         onPress={() => router.push('/profile/streak')}
       />
+
+      <View style={{ position: 'relative', marginTop: 8 }}>
+        <HomeMediCompanionEntry edgeInset={0} />
+        <HomeMediQuestSection edgeInset={0} />
+      </View>
 
       <View className="mt-5">
         <HomeSectionTitle title={ka.profile.appearance} />

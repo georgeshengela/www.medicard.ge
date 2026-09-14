@@ -26,8 +26,6 @@ import { visitsRouter } from './routes/visits.routes.js';
 import { usageRouter } from './routes/usage.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { adminRewardsRouter } from './routes/adminRewards.routes.js';
-import { huntRouter } from './routes/hunt.routes.js';
-import { adminHuntRouter } from './routes/adminHunt.routes.js';
 import { appRouter } from './routes/app.routes.js';
 import { accountRouter } from './routes/account.routes.js';
 import { cycleRouter, partnerShareClosedHandler } from './routes/cycle.routes.js';
@@ -208,11 +206,9 @@ app.use('/api/quests', questsRouter);
 app.use('/api/achievements', achievementsRouter);
 app.use('/api/rewards', rewardsRouter);
 app.use('/api/medi-companion', mediCompanionRouter);
-app.use('/api/hunt', huntRouter);
 app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/rewards', adminRewardsRouter);
-app.use('/api/admin/hunt', adminHuntRouter);
 
 if (serveAdmin) {
   // Must be registered before the marketing-site fallback, otherwise /admin becomes the landing page.

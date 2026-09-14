@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/EmptyState';
+import { HomeLabSection } from '@/components/home/HomeLabSection';
 import { RecordsPageSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { api, type ChatSummary, type MedicalRecord } from '@/lib/api';
@@ -94,6 +95,8 @@ export default function Records() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
       showsVerticalScrollIndicator={false}
     >
+      <HomeLabSection edgeInset={0} />
+      <View style={{ marginTop: 12 }}>
       {!ready ? (
         <RecordsPageSkeleton />
       ) : isEmpty ? (
@@ -200,6 +203,7 @@ export default function Records() {
           ) : null}
         </>
       )}
+      </View>
     </ScrollView>
     {!isEmpty ? (
       <Pressable

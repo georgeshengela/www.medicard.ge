@@ -206,8 +206,8 @@ aiRouter.post(
               mode,
               context: mergedContext || undefined,
               messages: [...priorTurns, { role: 'user', content: message }],
-              temperature: mode === 'DOCTOR' ? 0.4 : 0.2,
-              maxTokens: mode === 'DOCTOR' ? 900 : 2400,
+              temperature: mode === 'DOCTOR' ? 0.3 : 0.2,
+              maxTokens: 2400,
               signal: abort.signal,
               onDelta: (text) => {
                 if (abort.signal.aborted || res.writableEnded) return;
@@ -262,8 +262,8 @@ aiRouter.post(
           mode,
           context: mergedContext || undefined,
           messages: [...priorTurns, { role: 'user', content: message }],
-          temperature: mode === 'DOCTOR' ? 0.4 : 0.2,
-          maxTokens: mode === 'DOCTOR' ? 900 : 2400,
+          temperature: mode === 'DOCTOR' ? 0.3 : 0.2,
+          maxTokens: 2400,
         });
         if (mode === 'DOCTOR') {
           result.content = sanitizeDoctorReply(result.content);
