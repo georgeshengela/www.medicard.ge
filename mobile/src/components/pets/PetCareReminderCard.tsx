@@ -1,5 +1,6 @@
 import React from 'react';
 import { Linking, Pressable, Switch, Text, View } from 'react-native';
+import { Clock } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ka } from '@/i18n/ka';
@@ -153,7 +154,7 @@ export function PetCareReminderCard({
       />
       {schedule.timeMode !== 'EXACT_TIME' ? (
         <View className="gap-3">
-          <Input label={ka.pets.reminderClock} value={hour} onChangeText={setHour} placeholder="09:00" hint={ka.pets.reminderClockHint} keyboardType="numbers-and-punctuation" />
+          <Input figma icon={Clock} label={ka.pets.reminderClock} value={hour} onChangeText={setHour} placeholder="09:00" hint={ka.pets.reminderClockHint} keyboardType="numbers-and-punctuation" />
           <Button label={ka.pets.reminderClockSave} variant="secondary" onPress={() => void saveClock()} />
         </View>
       ) : (

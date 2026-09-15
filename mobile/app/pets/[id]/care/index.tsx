@@ -1,12 +1,13 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertTriangle, CalendarClock, Syringe } from 'lucide-react-native';
+import { AlertTriangle, ChevronRight, History, Package, Plus, Syringe } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/EmptyState';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
-import { PetPageScroll } from '@/components/pets/PetScreen';
+import { careKindIcon } from '@/components/pets/PetCareChips';
+import { PetIconWell, PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type Pet, type PetCareOccurrence } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -18,28 +19,36 @@ function OccurrenceCard({
   row,
   petId,
   completing,
+  tone,
   onComplete,
 }: {
   row: PetCareOccurrence;
   petId: string;
   completing: string | null;
+  tone?: 'overdue' | 'due' | 'upcoming';
   onComplete: (row: PetCareOccurrence) => void;
 }) {
   const colors = useThemeColors();
   const router = useRouter();
+  const dateColor = tone === 'overdue' ? colors.danger : colors.text300;
+
   return (
-    <Card onPress={() => router.push(`/pets/${petId}/care/schedule/${row.scheduleId}`)}>
-      <View className="flex-row items-center gap-3">
-        <CalendarClock size={18} color={colors.primary200} strokeWidth={2} />
-        <View className="flex-1">
-          <Text className="text-base font-semibold text-text-100">{row.title || kindLabel(row.kind, ka.pets)}</Text>
-          <Text className="mt-1 text-sm text-text-300">
-            {formatCycleDateKa(row.plannedOn)}
-            {row.plannedTime ? ` · ${row.plannedTime}` : ''}
-          </Text>
+    <View>
+      <Card onPress={() => router.push(`/pets/${petId}/care/schedule/${row.scheduleId}`)}>
+        <View className="flex-row items-center">
+          <PetIconWell icon={careKindIcon(row.kind)} />
+          <View className="flex-1 px-3">
+            <Text className="text-base font-semibold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+              {row.title || kindLabel(row.kind, ka.pets)}
+            </Text>
+            <Text className="mt-1 text-sm" style={{ color: dateColor }}>
+              {[formatCycleDateKa(row.plannedOn), row.plannedTime, kindLabel(row.kind, ka.pets)].filter(Boolean).join(' · ')}
+            </Text>
+          </View>
+          <ChevronRight size={18} color={colors.text300} strokeWidth={2} />
         </View>
-      </View>
-      <View className="mt-3">
+      </Card>
+      <View className="mt-2">
         <Button
           label={completeLabel(row.kind, ka.pets)}
           size="sm"
@@ -47,7 +56,7 @@ function OccurrenceCard({
           onPress={() => onComplete(row)}
         />
       </View>
-    </Card>
+    </View>
   );
 }
 
@@ -86,6 +95,11 @@ export default function PetCareHubScreen() {
       void load();
     }, [load]),
   );
+
+  const goAdd = () => {
+    if (!id) return;
+    router.push(`/pets/${id}/care/add`);
+  };
 
   const complete = async (row: PetCareOccurrence) => {
     if (!id || completing) return;
@@ -126,15 +140,39 @@ export default function PetCareHubScreen() {
     );
   }
 
+  const empty = !overdue.length && !due.length && !upcoming.length;
+
   return (
     <>
-      <Stack.Screen options={{ title: pet ? `${ka.pets.careTitle} · ${pet.name}` : ka.pets.careTitle }} />
+      <Stack.Screen
+        options={{
+          title: pet ? `${ka.pets.careTitle} · ${pet.name}` : ka.pets.careTitle,
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={ka.pets.careAdd}
+              onPress={goAdd}
+              hitSlop={12}
+              className="active:opacity-70"
+            >
+              <Plus size={22} color={colors.primary200} strokeWidth={2.2} />
+            </Pressable>
+          ),
+        }}
+      />
       <PetPageScroll>
         {overdue.length ? (
           <View className="gap-2">
             <HomeSectionTitle title={ka.pets.overdue} />
             {overdue.map((row) => (
-              <OccurrenceCard key={row.occurrenceKey} row={row} petId={id} completing={completing} onComplete={complete} />
+              <OccurrenceCard
+                key={row.occurrenceKey}
+                row={row}
+                petId={id}
+                completing={completing}
+                tone="overdue"
+                onComplete={complete}
+              />
             ))}
           </View>
         ) : null}
@@ -142,7 +180,14 @@ export default function PetCareHubScreen() {
           <View className="gap-2">
             <HomeSectionTitle title={ka.pets.dueToday} />
             {due.map((row) => (
-              <OccurrenceCard key={row.occurrenceKey} row={row} petId={id} completing={completing} onComplete={complete} />
+              <OccurrenceCard
+                key={row.occurrenceKey}
+                row={row}
+                petId={id}
+                completing={completing}
+                tone="due"
+                onComplete={complete}
+              />
             ))}
           </View>
         ) : null}
@@ -150,18 +195,39 @@ export default function PetCareHubScreen() {
           <View className="gap-2">
             <HomeSectionTitle title={ka.pets.upcomingCare} />
             {upcoming.map((row) => (
-              <OccurrenceCard key={row.occurrenceKey} row={row} petId={id} completing={completing} onComplete={complete} />
+              <OccurrenceCard
+                key={row.occurrenceKey}
+                row={row}
+                petId={id}
+                completing={completing}
+                tone="upcoming"
+                onComplete={complete}
+              />
             ))}
           </View>
         ) : null}
-        {!overdue.length && !due.length && !upcoming.length ? (
-          <EmptyState icon={Syringe} title={ka.pets.careEmpty} body={ka.pets.careEmptyBody} />
-        ) : null}
+
+        {empty ? (
+          <EmptyState icon={Syringe} title={ka.pets.careEmpty} body={ka.pets.careEmptyBody}>
+            <Button icon={Plus} label={ka.pets.careAdd} onPress={goAdd} />
+          </EmptyState>
+        ) : (
+          <Button icon={Plus} label={ka.pets.careAdd} onPress={goAdd} />
+        )}
+
+        <PetListRow
+          icon={History}
+          title={ka.pets.careHistory}
+          subtitle={ka.pets.careHistoryHint}
+          onPress={() => router.push(`/pets/${id}/care/history`)}
+        />
+        <PetListRow
+          icon={Package}
+          title={ka.pets.productsTitle}
+          subtitle={ka.pets.expiresHint}
+          onPress={() => router.push(`/pets/${id}/care/products`)}
+        />
         <Text className="text-sm text-text-300">{ka.pets.plannedDisclaimer}</Text>
-        <Button label={ka.pets.recordAdmin} onPress={() => router.push(`/pets/${id}/care/record`)} />
-        <Button label={ka.pets.planCare} variant="secondary" onPress={() => router.push(`/pets/${id}/care/plan`)} />
-        <Button label={ka.pets.careHistory} variant="ghost" onPress={() => router.push(`/pets/${id}/care/history`)} />
-        <Button label={ka.pets.productsTitle} variant="ghost" onPress={() => router.push(`/pets/${id}/care/products`)} />
       </PetPageScroll>
     </>
   );

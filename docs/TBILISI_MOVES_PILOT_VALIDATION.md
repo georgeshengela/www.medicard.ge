@@ -1,13 +1,13 @@
 # თბილისი მოძრაობს — Phase 6 human-pilot preparation
 
-**Date:** 2026-09-14  
-**Public identity:** `1.0.0.8.25` (unchanged; no version bump)  
+**Date:** 2026-09-15  
+**Public identity:** no bump this phase (`1.0.0.8.31` is Pets work, unrelated)  
 **Pilot mode:** true (not switchable to “verified”)  
 **Hosted Neon / production flags / scheduler / push:** not touched
 
 Owner runbook: `docs/TBILISI_MOVES_OWNER_PILOT.md`.
 
-Synthetic API observations (Phase 5) prove the **competition pipeline**. They do **not** prove HealthKit or Health Connect integrity. This phase prepared a persistent owner-pilot environment, polished UI, and captured admin screenshots. An Android emulator appeared once (`emulator-5554`) then disconnected before install, so native sensor evidence is still pending.
+Synthetic API observations (Phase 5) prove the **competition pipeline**. They do **not** prove HealthKit or Health Connect integrity. The live Expo Go Home total is personal `HealthMetricDaily`, not a native sensor. Client awaits the same-day Tbilisi-interval competition read after first enroll (12s cap) and shows a retry CTA if that read/PUT fails. A native provider read was **not** executed this pass.
 
 ---
 
@@ -17,9 +17,10 @@ Synthetic API observations (Phase 5) prove the **competition pipeline**. They do
 |---|---|
 | Backend pipeline (Phase 5 isolated Postgres, 7/7 + 32/32) | **Verified** — not re-run as a whole |
 | Persistent owner-pilot DB `medicard_tbilisi_moves_pilot` | **Prepared** (`127.0.0.1:55433`, not the test DB) |
-| Mobile visual checks | **Admin screenshots captured** on the isolated API; Expo Go/web cannot validate Noto at OS scale or sensors |
-| Android native | **Pending** — emulator `emulator-5554` listed once, then `adb devices` empty; no APK installed |
-| iOS native | **Pending** — Windows environment, no Xcode device |
+| Live phone runtime | Expo Go at `192.168.1.187` on Metro `:8081` → `https://medicard.ge` (not retargeted) |
+| Mobile visual checks | **Admin screenshots captured** earlier; Expo Go/web cannot validate sensors |
+| Android native | **Not installed** — `adb` empty |
+| iOS native | **Not built** — no `mobile/ios`, no Xcode on this PC |
 | Production activation | **Not performed** |
 | Scheduler | **Not registered** |
 
@@ -77,7 +78,7 @@ Observed: tab shell width matches the pane; KPI zeros and 52/110,160 tabular num
 
 ### Native step validation
 
-**Not executed as a human walking day.** At inspect, `adb devices` listed `emulator-5554` (`sdk_gphone64_x86_64`, Android 15). It disconnected before a development APK could be installed. `adb devices` was empty on re-check. No Health Connect permission dialog, Tbilisi-interval query, or observation PUT was performed on a device. Expo Go / web remain unsupported.
+**Not executed as a provider read.** 2026-09-15: live phone is Expo Go (`192.168.1.187` → Metro `:8081` → `https://medicard.ge`). `adb devices` empty. No `mobile/ios`. No HealthKit/Health Connect interval, no observation PUT, no enrollment screenshot. Expo Go / web remain unsupported. The remaining action is a Mac `expo run:ios --device` against isolated `:4011` with the pilot account — see `docs/TBILISI_MOVES_OWNER_PILOT.md`.
 
 See the ordered owner procedure in `docs/TBILISI_MOVES_OWNER_PILOT.md`.
 

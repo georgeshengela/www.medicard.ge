@@ -7,6 +7,7 @@ import { tbilisiMovesError } from './errors.js';
 import { districtIdForDate, ensureFeature, lockUserTx, applyDuePendingForUser } from './membership.js';
 import { assertDateIngestible, assertRoundAcceptsIngest, ensureRoundInTx, loadRound, lockRoundTx, refreshDistrictDay } from './rounds.js';
 import { intervalsOverlap, tbilisiMidnight, tbilisiYmd, addDaysYmd } from './time.js';
+import { notifyTbilisiMovesLive } from './liveSnapshot.js';
 
 export function observationPayloadHash(input) {
   const canonical = JSON.stringify({
@@ -140,7 +141,7 @@ export async function putObservation({ userId, body, now = new Date() }) {
     sanityMaxRawSteps: live.sanityMaxRawSteps,
   });
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await lockUserTx(tx, userId);
     await applyDuePendingForUser(tx, userId, now);
 
@@ -330,4 +331,6 @@ export async function putObservation({ userId, body, now = new Date() }) {
 
     return { accepted: true, idempotent: false, credit: publicCredit(saved) };
   });
+  notifyTbilisiMovesLive();
+  return result;
 }

@@ -40,6 +40,35 @@ export function nonOverlappingStepSum(items) {
   return total;
 }
 
+export function healthConnectOriginId(dataOrigin) {
+  if (dataOrigin == null || dataOrigin === '') return '_unknown';
+  if (typeof dataOrigin === 'string') return dataOrigin.trim() || '_unknown';
+  if (typeof dataOrigin === 'object') {
+    return String(dataOrigin.packageName || dataOrigin.applicationId || '').trim() || '_unknown';
+  }
+  const text = String(dataOrigin).trim();
+  return !text || text === '[object Object]' ? '_unknown' : text;
+}
+
+/** Inclusive overlap: Health Connect day-buckets often end after `now`. */
+export function recordOverlapsInterval(record, startMs, endMs) {
+  const start = new Date(record?.startTime || record?.start || 0).getTime();
+  if (!Number.isFinite(start)) return false;
+  const rawEnd = new Date(record?.endTime || record?.end || record?.startTime || 0).getTime();
+  const end = Number.isFinite(rawEnd) && rawEnd > start ? rawEnd : start + 1;
+  return start < endMs && end > startMs;
+}
+
+export function hasCompetitionStepsGrant(granted = []) {
+  return granted.some((item) => {
+    const type = String(item.recordType || '')
+      .replace(/_/g, '')
+      .toLowerCase();
+    const access = String(item.accessType || 'read').toLowerCase();
+    return type === 'steps' && (access === 'read' || !item.accessType);
+  });
+}
+
 export function originTotalsFromHealthConnectRecords(records) {
   const byOrigin = new Map();
   let manualCount = 0;
@@ -48,7 +77,7 @@ export function originTotalsFromHealthConnectRecords(records) {
       manualCount += 1;
       continue;
     }
-    const origin = String(rec?.metadata?.dataOrigin || '_unknown');
+    const origin = healthConnectOriginId(rec?.metadata?.dataOrigin);
     const list = byOrigin.get(origin) || [];
     const start = new Date(rec.startTime || rec.start || 0).getTime();
     const end = new Date(rec.endTime || rec.end || rec.startTime || 0).getTime();

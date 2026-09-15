@@ -5,11 +5,13 @@ import type { SensorReading } from '@/lib/tbilisiMoves/types';
 
 const STEP = 'HKQuantityTypeIdentifierStepCount' as const;
 
-async function ensureStepRead(): Promise<boolean> {
+async function ensureStepRead(prompt: boolean): Promise<boolean> {
   try {
     const available = await isHealthDataAvailableAsync();
     if (!available) return false;
-    await requestAuthorization({ toShare: [], toRead: [STEP] });
+    if (prompt) {
+      await requestAuthorization({ toShare: [], toRead: [STEP] });
+    }
     return true;
   } catch {
     return false;
@@ -22,7 +24,11 @@ function quantitySum(stat: { sumQuantity?: { quantity: number } } | null | undef
   return Math.max(0, Math.round(raw));
 }
 
-export async function readCompetitionSteps(ymd: string, now = new Date()): Promise<SensorReading> {
+export async function readCompetitionSteps(
+  ymd: string,
+  now = new Date(),
+  opts?: { prompt?: boolean },
+): Promise<SensorReading> {
   const interval = competitionInterval(ymd, now);
   const intervalStart = interval.start.toISOString();
   const intervalEnd = interval.end.toISOString();
@@ -30,7 +36,7 @@ export async function readCompetitionSteps(ymd: string, now = new Date()): Promi
   const base = { intervalStart, intervalEnd, tbilisiDate: ymd, recordedAt, provider: 'APPLE_HEALTH' as const };
 
   try {
-    const ok = await ensureStepRead();
+    const ok = await ensureStepRead(Boolean(opts?.prompt));
     if (!ok) {
       return { kind: 'unavailable', ...base, note: 'HealthKit is not available on this device.' };
     }
@@ -48,6 +54,21 @@ export async function readCompetitionSteps(ymd: string, now = new Date()): Promi
       })) as typeof samples;
     } catch {
       samples = [];
+    }
+
+    if (samples.length === 0) {
+      const localStart = new Date(now);
+      localStart.setHours(0, 0, 0, 0);
+      try {
+        samples = (await queryQuantitySamples(STEP, {
+          limit: 0,
+          ascending: false,
+          unit: 'count',
+          filter: { date: { startDate: localStart, endDate: now } },
+        })) as typeof samples;
+      } catch {
+        samples = [];
+      }
     }
 
     const nonManual = samples.filter((sample) => !isManualHealthKitSample(sample));
@@ -84,7 +105,16 @@ export async function readCompetitionSteps(ymd: string, now = new Date()): Promi
     }
 
     const stat = await queryStatisticsForQuantity(STEP, ['cumulativeSum'], options);
-    const steps = quantitySum(stat);
+    let steps = quantitySum(stat);
+    if (steps == null || steps === 0) {
+      const localStart = new Date(now);
+      localStart.setHours(0, 0, 0, 0);
+      const localStat = await queryStatisticsForQuantity(STEP, ['cumulativeSum'], {
+        unit: 'count',
+        filter: { date: { startDate: localStart, endDate: now } },
+      });
+      steps = quantitySum(localStat);
+    }
     if (steps == null) {
       return {
         kind: samples.length === 0 ? 'empty' : 'error',

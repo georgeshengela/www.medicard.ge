@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { CalendarDays } from 'lucide-react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { Card } from '@/components/ui/Card';
+import { TbilisiMovesChrome } from '@/components/tbilisiMoves/TbilisiMovesChrome';
 import { GEO } from '@/components/tbilisiMoves/copyStyles';
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
@@ -51,15 +52,20 @@ export default function TbilisiMovesHistoryScreen() {
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg100, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={colors.primary200} />
+      <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+        <TbilisiMovesChrome title={ka.tbilisiMoves.history} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={colors.primary200} />
+        </View>
       </View>
     );
   }
 
   return (
-    <FlatList
-      style={{ flex: 1, backgroundColor: colors.bg100 }}
+    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+      <TbilisiMovesChrome title={ka.tbilisiMoves.history} />
+      <FlatList
+        style={{ flex: 1 }}
       contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
       data={items}
       keyExtractor={(item) => item.date}
@@ -104,5 +110,6 @@ export default function TbilisiMovesHistoryScreen() {
         </Pressable>
       )}
     />
+    </View>
   );
 }

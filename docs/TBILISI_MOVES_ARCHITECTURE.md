@@ -1,8 +1,8 @@
 # თბილისი მოძრაობს / Tbilisi Moves — architecture & implementation handoff
 
-**Status:** PHASE 6 — human-pilot environment prepared on a persistent isolated database. Phase 5 isolated verification remains the backend evidence. Feature flags still **off by default** on hosted Neon. SQL has **not** been applied to hosted Neon. Runner is implemented and **not** scheduled. Native HealthKit / Health Connect device run is still pending (no development-build device attached this pass). No map, Hunt, coins, version bump, deploy, or production flag enable.  
-**Date:** 2026-09-14  
-**Public app identity:** unchanged (`1.0.0.8.25`) — Phase 6 explicitly did not bump.  
+**Status:** PHASE 6 — **hosted Neon schema applied** (phase2 → phase4). Live `https://medicard.ge` has `schemaReady`, `featureEnabled`, and `enrollmentOpen` with `pilotMode=true`. Expo Go can enroll and browse; it cannot ingest native steps and must not import `HealthMetricDaily`. Enroll skips the 12s sensor wait in Expo Go. Persistent isolated owner-pilot DB remains available for synthetic tests. Runner is implemented and **not** scheduled. No map, Hunt, coins, version bump, or store publish.  
+**Date:** 2026-09-15  
+**Public app identity:** unchanged this phase (`mobile/app.json` is currently `1.0.0.8.31` from unrelated Pets work; this phase did not bump).  
 **User-facing name:** **თბილისი მოძრაობს**. English internal name: Tbilisi Moves. Never Nightingale. Never “healthiest district” / „ყველაზე ჯანმრთელი რაიონი“. This is an **activity** competition (ნაბიჯები / სიარული), not a medical ranking.
 
 This document is the implementation handoff. Later agents must re-read the live tree before coding. Do not hang this feature on `HealthProfile`, `ChatSession`, `MedicationSchedule`, `DoctorVisit`, Home section order, Medi Quest economy, Medi Hunt tables, or a fifth bottom tab.
@@ -13,15 +13,59 @@ Pilot evidence: `docs/TBILISI_MOVES_PILOT_VALIDATION.md`. Owner runbook: `docs/T
 
 ## Phase 6 — what is in the tree now
 
-Persistent owner-pilot API against `medicard_tbilisi_moves_pilot` on the same guarded cluster as Phase 5 (`127.0.0.1:55433`). SQL order test-base → `tbilisi-moves-pilot-base.sql` → phase2 → phase4. Flags enabled **only** there. Real server clock. No auto-destroy. Optional `--visual-qa` uses a separate DB with `QA `-prefixed handles and a visible banner. Mobile/admin visual polish (Noto / FiraGO, hierarchy, empty states). HealthKit share string now mentions steps.
+Persistent owner-pilot API against `medicard_tbilisi_moves_pilot` on the same guarded cluster as Phase 5 (`127.0.0.1:55433`). SQL order test-base → `tbilisi-moves-pilot-base.sql` → phase2 → phase4. Flags enabled **only** there. Real server clock. No auto-destroy. Optional `--visual-qa` uses a separate DB with `QA `-prefixed handles and a visible banner. Mobile/admin visual polish (Noto / FiraGO, hierarchy, empty states). HealthKit share string mentions steps.
 
-Command: `cd server && node scripts/tbilisi-moves-pilot.mjs` (port **4011**). Do not point Expo at production for this pilot. Expo Go/web cannot collect competition steps.
+Command: `cd server && node scripts/tbilisi-moves-pilot.mjs` (port **4011**). Do not point the live Expo Go session at production-or-pilot by rewriting `app.json` `extra.apiUrl`. Pilot Metro must be a **separate** process/port with `EXPO_PUBLIC_API_URL` only in that process.
 
-**Not done:** development-build install, Health Connect/HealthKit on a phone, production SQL/flags/scheduler, version bump, map geometry.
+### Runtime identified this pass (2026-09-15, this machine)
+
+| Item | Observed |
+|---|---|
+| Live phone | `192.168.1.187` connected to Metro `:8081` (`expo start --lan`, **no** `EXPO_PUBLIC_API_URL`) |
+| JS runtime | Expo Go (iOS + Android bundles on that Metro; LAN peer matches the earlier iPhone Expo Go session) |
+| API target of that session | `https://medicard.ge` (`app.json` `extra.apiUrl`; do **not** retarget this session) |
+| Native health in that session | **Unsupported** — Expo Go cannot load HealthKit / Health Connect. Home steps still render from `GET /api/health-metrics`. |
+| Isolated pilot `:4011` | **Not running** this pass |
+| `adb devices` | **Empty** (Pixel_8 AVD exists, not booted) |
+| `mobile/ios` | **Absent** (Windows, no Xcode) |
+| `mobile/android` | Present; no debug APK on disk this pass |
+
+### Home steps on the live Expo Go session (not competition)
+
+Traced 2026-09-15. **Do not infer HealthKit** from a visible total.
+
+| Layer | Path |
+|---|---|
+| Screen | `HomeHealthMetricsSection` (`todayTotal`) and `/health-metrics/steps` |
+| Hook | `useStepsMetrics` → `fetchStepsMetrics` |
+| Native | `fetchStepsSamples` returns `[]` when `Constants.appOwnership === 'expo'`. `expo-sensors` / Pedometer is unused. |
+| Store | `pullStoredHealth` → `GET /api/health-metrics` (12s memory TTL, then account cache `medicard.health.metrics.cache`) |
+| Merge | empty native + `stepLogs` + `daily[].steps` for days with no samples |
+| Date | device-local `ymd(new Date())`, not Asia/Tbilisi |
+| Provenance | server `mergeDaily` always writes `source: 'merged'`. Typed `logManualHealthMetric('steps')` uses the same endpoint. |
+
+`__DEV__` Metro log: `[steps-origin]` with `displaySource`, `nativeSkipped`, `deviceLocalYmd`, `tbilisiYmd`, `dailySource`, `dailySteps`, `dailySyncedAt`, `todayStepLogCount`, `displayTotal`, `pullKind`. No tokens or raw records.
+
+**Contract check:** this source cannot supply a Tbilisi midnight→now single-origin total, cannot distinguish manual vs sensor vs overlapping apps, and must not be relabeled `APPLE_HEALTH` / `HEALTH_CONNECT`. Do **not** copy it into `PUT /api/tbilisi-moves/observations`.
+
+### Post-enrollment same-day credit (client)
+
+Already present: `PUT` observations, unique `(userId, date)` **replace-not-add**, cap on the server, origin/manual exclusion in `healthKitSensor.ts` / `healthConnectSensor.ts`, enroll trigger `reason: 'enroll'`.
+
+**Missing behavior filled this pass (not a second ingest pipeline):**
+
+1. Enroll **awaits** `runCompetitionSync({ reason: 'enroll', force: true })` for at most **12s**, then navigates. The POST is already committed; the sync may finish in the background.
+2. Hub retry CTA for error / pending / permission / unsupported / offline / empty (`ka.tbilisiMoves.syncRetry` / `syncError`).
+3. First-enroll `NO_DISTRICT_FOR_DATE` on yesterday (grace window) is skipped so today’s accepted credit is not thrown away. Yesterday permission/unsupported after an accepted today is also skipped.
+4. After an accepted today, a later empty/manual yesterday reading does not replace the hub state with empty.
+5. OS HealthKit / Health Connect permission sheets run only when `reason` is `enroll` or `refresh` (explicit retry). `focus` / `foreground` / `TbilisiMovesHost` read granted state only.
+6. Native `TbilisiMovesHost` also syncs once on mount (still skipped in Expo Go).
+
+Second refresh: new `clientObservationId` + later `recordedAt` **replaces** the same `(userId, date)` row; identical payload hash on the same observation id returns `idempotent: true`. It does not add. Personal `HealthMetricDaily` / typed steps are not read.
 
 ### Remaining (do not call this production-ready)
 
-1. Owner attaches a development-build device and follows `docs/TBILISI_MOVES_OWNER_PILOT.md`.
+1. **Single native-test blocker:** a development build on the owner’s iPhone (HealthKit), pointed at isolated `:4011` with `pilot.owner@medicard.test` — not Expo Go, not this Windows box, not the live production Metro session. Exact steps in `docs/TBILISI_MOVES_OWNER_PILOT.md`.
 2. Operator applies phase2 → phase4 on the intended hosted DB (not this agent).
 3. Licensed Tbilisi district map (next **product** phase; Mapbox stack; never invent polygons).
 4. Scheduler registration and production flag enable remain operator actions. `pilotMode` stays true.
@@ -205,7 +249,8 @@ Installation id: random UUID in **account-scoped** prefs (`medicard.tbilisiMoves
 ### Sync / retry / account isolation / source conflict
 
 - Runs only when authenticated, opted-in (`membership.enrolled`), and server `ingestEligible`.
-- Triggers: after enroll; hub focus (90s throttle); app foreground (`TbilisiMovesHost` / `AppState`); pull-to-refresh (`force`).
+- Triggers: after enroll (**awaited** before leaving the enroll screen); hub focus (90s throttle); app foreground and native mount (`TbilisiMovesHost` / `AppState`, skipped in Expo Go); pull-to-refresh (`force`); hub **კიდევ სცადე** when the last sync failed.
+- First enroll still counts **today’s** Tbilisi-interval eligible steps (pre-enrollment walking). Yesterday during grace is queried separately; `409 NO_DISTRICT_FOR_DATE` on that extra date is skipped so today’s credit is kept.
 - No background fetch, no new permission flow, no polling while backgrounded.
 - Collection is serialized per `userId`. Retry the **same** observation id/payload. A new sensor reading gets a new id + `clientSequence`.
 - Transient: 3 retries, 1s/2s/4s… capped 8s. Do not retry 4xx validation, `SOURCE_CONFLICT`, `NOT_ENROLLED`, `FEATURE_DISABLED`, `SCHEMA_NOT_READY`.

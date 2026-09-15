@@ -38,6 +38,7 @@ import {
   PetErrorText,
   PetFilterChip,
   PetFormScroll,
+  PetSectionLabel,
   PetSheet,
 } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
@@ -179,22 +180,6 @@ function petFormProgress(value: PetFormValue, hasPhoto: boolean): number {
   if (value.ageKind !== 'UNKNOWN') filled += 1;
   if (hasPhoto) filled += 1;
   return filled / 6;
-}
-
-function SectionLabel({ label }: { label: string }) {
-  const auth = useFigmaAuth();
-  return (
-    <Text
-      style={{
-        fontFamily: 'NotoSansGeorgian_600SemiBold',
-        fontSize: 14,
-        lineHeight: 20,
-        color: auth.labelColor,
-      }}
-    >
-      {label}
-    </Text>
-  );
 }
 
 function PetPhotoProgress({
@@ -502,7 +487,7 @@ export function PetForm({
       </View>
 
       <View style={{ gap: 12 }}>
-        <SectionLabel label={ka.pets.sex} />
+        <PetSectionLabel label={ka.pets.sex} />
         <PetChipRow>
           <PetFilterChip
             label={ka.pets.sexMale}
@@ -526,7 +511,7 @@ export function PetForm({
       </View>
 
       <View style={{ gap: 12 }}>
-        <SectionLabel label={ka.pets.neutered} />
+        <PetSectionLabel label={ka.pets.neutered} />
         <PetChipRow>
           <PetFilterChip
             label={ka.pets.neuteredYes}
@@ -550,7 +535,7 @@ export function PetForm({
       </View>
 
       <View style={{ gap: 12 }}>
-        <SectionLabel label={ka.pets.age} />
+        <PetSectionLabel label={ka.pets.age} />
         <PetChipRow>
           <PetFilterChip
             label={ka.pets.ageExact}

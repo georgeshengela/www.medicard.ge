@@ -5,6 +5,7 @@ import { DISTRICT_STATUS, MEMBERSHIP_STATUS } from './constants.js';
 import { featureDisabled, tbilisiMovesError } from './errors.js';
 import { loadLiveConfig, publicConfig, requireSchema, resolvedDistrictTarget, scoringSnapshot } from './config.js';
 import { addDaysYmd, dateInPeriod, tbilisiClock, tbilisiMidnight, tbilisiYmd } from './time.js';
+import { notifyTbilisiMovesLive } from './liveSnapshot.js';
 
 export async function lockUserTx(tx, userId) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`tbilisi-moves:${userId}`}))`;
@@ -255,7 +256,7 @@ export async function enrollUser({ userId, districtId, publicHandle, publicAvata
     throw tbilisiMovesError(409, 'COMPETITION_PAUSED', 'შეჯიბრი დროებით შეჩერებულია.');
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await lockUserTx(tx, userId);
     await requireActiveDistrict(tx, districtId);
     const today = tbilisiYmd(now);
@@ -358,6 +359,8 @@ export async function enrollUser({ userId, districtId, publicHandle, publicAvata
     });
     return serializeMembership(row, now);
   });
+  notifyTbilisiMovesLive();
+  return result;
 }
 
 export async function requestDistrictChange({ userId, districtId, now = new Date() }) {
@@ -443,7 +446,7 @@ export async function leaveCompetition({ userId, now = new Date() }) {
   const config = await loadLiveConfig();
   ensureFeature(config);
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await lockUserTx(tx, userId);
     await applyDuePendingForUser(tx, userId, now);
     const row = await tx.tbilisiMovesMembership.findUnique({ where: { userId } });
@@ -473,6 +476,8 @@ export async function leaveCompetition({ userId, now = new Date() }) {
     });
     return serializeMembership(updated, now);
   });
+  notifyTbilisiMovesLive();
+  return result;
 }
 
 export async function patchMembershipIdentity({ userId, publicHandle, publicAvatarId, now = new Date() }) {

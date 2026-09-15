@@ -5,6 +5,7 @@ import { ShieldAlert } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
+import { allergyCategoryIcon } from '@/components/pets/PetHealthForms';
 import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type Pet, type PetAllergy } from '@/lib/api';
@@ -62,11 +63,12 @@ export default function PetAllergiesScreen() {
               subtitle={[statusLabel(row.reportedStatus), row.notedOn ? formatCycleDateKa(row.notedOn) : null]
                 .filter(Boolean)
                 .join(' · ')}
+              icon={allergyCategoryIcon(row.category)}
               onPress={() => router.push(`/pets/${id}/allergies/${row.id}`)}
             />
           ))
         )}
-        <Button label={ka.pets.allergyAdd} onPress={() => router.push(`/pets/${id}/allergies/new`)} />
+        <Button icon={ShieldAlert} label={ka.pets.allergyAdd} onPress={() => router.push(`/pets/${id}/allergies/new`)} />
       </PetPageScroll>
     </>
   );

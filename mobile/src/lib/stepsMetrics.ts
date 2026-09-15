@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { pullStoredHealth, syncNativeHealthToServer } from '@/lib/healthDataSync';
+import { getLastHealthPullMeta, pullStoredHealth, syncNativeHealthToServer } from '@/lib/healthDataSync';
 import {
   defaultSyncFromDate,
   defaultSyncToDate,
@@ -8,8 +8,10 @@ import {
   storedStepLogsToSamples,
   ymd,
 } from '@/lib/healthMetricsStorage';
+import { describePersonalStepsOrigin } from '@/lib/personalStepsOrigin.js';
 import { buildStepsBundle, sinceDateForPeriod } from '@/lib/stepsMetrics.shared';
 import { isHealthSyncEnabled, getHealthPlatform } from '@/lib/healthSync';
+import { tbilisiYmd } from '@/lib/tbilisiMoves/civilTime.js';
 import type { StepChartPeriod, StepSample, StepsMetricsBundle } from '@/types/stepsMetrics';
 
 function isExpoGo(): boolean {
@@ -62,8 +64,30 @@ export async function fetchStepsMetrics(period: StepChartPeriod = '1d', opts?: {
   }
 
   const hasData = merged.length > 0 || stored.daily.some((d) => d.steps != null);
+  const bundle = buildStepsBundle(merged, deviceConnected || hasData, period);
 
-  return buildStepsBundle(merged, deviceConnected || hasData, period);
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    const todayKey = ymd(new Date());
+    const dailyRow = stored.daily.find((row) => row.date === todayKey) ?? null;
+    const todayLogs = stored.stepLogs.filter((log) => ymd(new Date(log.at)) === todayKey);
+    console.log(
+      '[steps-origin]',
+      describePersonalStepsOrigin({
+        expoGo: isExpoGo(),
+        healthSyncEnabled: deviceConnected,
+        nativeSampleCount: nativeSamples.length,
+        deviceLocalYmd: todayKey,
+        tbilisiYmd: tbilisiYmd(new Date()),
+        dailyRow,
+        todayStepLogCount: todayLogs.length,
+        todayStepLogSum: todayLogs.reduce((sum, log) => sum + (Number(log.count) || 0), 0),
+        displayTotal: bundle.todayTotal,
+        pullKind: getLastHealthPullMeta().kind,
+      }),
+    );
+  }
+
+  return bundle;
 }
 
 export async function fetchStepsTotalBetween(fromYmd: string, toYmd: string): Promise<number> {

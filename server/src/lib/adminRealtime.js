@@ -5,6 +5,7 @@ import { loadAppActivityRows } from './appActivity.js';
 import { clearAdminAnalyticsCache } from './adminAnalytics.js';
 import { ADMIN_SOCKET_ROOM, authorizeSocketHandshake, userSocketRoom } from './socketAuth.js';
 import { registerQuestRealtimeEmitter } from './questRealtime.js';
+import { getTbilisiMovesLiveSnapshot, TBILISI_MOVES_LIVE_EVENT } from './tbilisiMoves/liveSnapshot.js';
 
 const ROOM = ADMIN_SOCKET_ROOM;
 const LIVE_MS = 90_000;
@@ -12,6 +13,7 @@ const DEBOUNCE_MS = 300;
 
 let io = null;
 let flushTimer = null;
+let tbilisiMovesFlushTimer = null;
 const seen = new Map();
 
 export function getRealtimeIo() {
@@ -43,6 +45,9 @@ export function attachAdminRealtime(httpServer) {
       socket.join(ROOM);
       getOpsLiveSnapshot()
         .then((snap) => socket.emit('ops:live', snap))
+        .catch(() => undefined);
+      getTbilisiMovesLiveSnapshot()
+        .then((snap) => socket.emit(TBILISI_MOVES_LIVE_EVENT, snap))
         .catch(() => undefined);
       return;
     }
@@ -76,6 +81,18 @@ export function notifyOpsActivity(row) {
 
 let brainFlushTimer = null;
 let brainPending = { decisions: 0, outcomes: 0 };
+
+export function emitTbilisiMovesLive() {
+  if (!io) return false;
+  if (tbilisiMovesFlushTimer) return true;
+  tbilisiMovesFlushTimer = setTimeout(() => {
+    tbilisiMovesFlushTimer = null;
+    getTbilisiMovesLiveSnapshot()
+      .then((snap) => io.to(ROOM).emit(TBILISI_MOVES_LIVE_EVENT, snap))
+      .catch(() => undefined);
+  }, 400);
+  return true;
+}
 
 export function notifyBrainSync(kind, count = 0) {
   if (kind === 'decisions') brainPending.decisions += count;

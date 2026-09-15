@@ -125,4 +125,4 @@ Do **not** drop Pets tables. History stays.
 
 ## Honesty
 
-Hosted Neon was **not** applied. Phase 7.1 installed a Pixel_8 development APK and confirmed isolated-API traffic. **OS reminder banners and iOS were not observed.** See `docs/PETS_PHASE7_VERIFICATION.md`.
+**2026-09-15:** Hosted Neon Pets SQL **is applied** (11 `Pet*` tables, `PeriodUsage.reserved`/`reservedAt`, reminder FKs, inflight chat index). Production `/api/pets` is mounted. **Do not re-apply SQL. Do not `db push`.** Phase 7.1 Pixel_8 `:4010` remains isolated-only evidence. **OS reminder banners and iOS were not observed.** Owner-reported create/weight/allergies/Medi Vet chat on production is recorded in `docs/PETS_PHASE7_VERIFICATION.md`. Rollout: `docs/PETS_RELEASE_READINESS.md`.

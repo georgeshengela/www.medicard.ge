@@ -73,6 +73,7 @@ export default function PetConditionsScreen() {
                 subtitle={[statusLabel(row.status), basisLabel(row.reportedBasis), row.onsetOn ? formatCycleDateKa(row.onsetOn) : null]
                   .filter(Boolean)
                   .join(' · ')}
+                icon={Stethoscope}
                 onPress={() => router.push(`/pets/${id}/conditions/${row.id}`)}
               />
             ))}
@@ -84,12 +85,13 @@ export default function PetConditionsScreen() {
                 subtitle={[ka.pets.conditionResolved, basisLabel(row.reportedBasis), row.resolvedOn ? formatCycleDateKa(row.resolvedOn) : null]
                   .filter(Boolean)
                   .join(' · ')}
+                icon={Stethoscope}
                 onPress={() => router.push(`/pets/${id}/conditions/${row.id}`)}
               />
             ))}
           </>
         )}
-        <Button label={ka.pets.conditionAdd} onPress={() => router.push(`/pets/${id}/conditions/new`)} />
+        <Button icon={Stethoscope} label={ka.pets.conditionAdd} onPress={() => router.push(`/pets/${id}/conditions/new`)} />
       </PetPageScroll>
     </>
   );

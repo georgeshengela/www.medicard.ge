@@ -1,20 +1,20 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Check, Clock, Package, Pencil, Pill } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { DateField } from '@/components/ui/DateField';
 import { Input } from '@/components/ui/Input';
-import { SegmentedField } from '@/components/ui/SegmentedField';
-import { CareKindChips, RouteChips } from '@/components/pets/PetCareChips';
-import { PetChoiceRows, PetErrorText, PetFormScroll } from '@/components/pets/PetScreen';
+import { CareIntentChips, CareKindChips, CareProductPicker, RouteChips } from '@/components/pets/PetCareChips';
+import { PetErrorText, PetFormScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type PetCareKind, type PetCareRoute, type PetProduct } from '@/lib/api';
-import { isoToDigits, parseBirthDate } from '@/lib/birthdate';
+import { isoToDigits, parseCivilDate } from '@/lib/birthdate';
 import { localUtcOffsetMinutes, newPetsRequestId, petsCareErrorMessage } from '@/lib/petsCare';
 import { todayIsoLocal } from '@/lib/visitReminders';
 
 function digitsToIso(digits: string): string | null {
   if (!digits) return null;
-  const parsed = parseBirthDate(digits);
+  const parsed = parseCivilDate(digits);
   return parsed.ok ? parsed.iso : '';
 }
 
@@ -46,9 +46,11 @@ export default function PetCareRecordScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    void loadProducts();
-  }, [loadProducts]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadProducts();
+    }, [loadProducts]),
+  );
 
   const selected = products.find((row) => row.id === productId);
   const iso = digitsToIso(dateDigits);
@@ -101,7 +103,8 @@ export default function PetCareRecordScreen() {
         <>
           <PetErrorText message={error} />
           <Button
-            label={mode === 'plan' ? ka.pets.planCare : ka.pets.save}
+            icon={Check}
+            label={mode === 'plan' ? ka.pets.planCare : saving ? ka.pets.saving : ka.pets.save}
             loading={saving}
             disabled={!kind || saving}
             onPress={() => void save()}
@@ -121,43 +124,50 @@ export default function PetCareRecordScreen() {
         }}
       />
 
-      <Input label={ka.pets.productName} value={title} onChangeText={setTitle} placeholder={ka.pets.productNamePh} />
+      <Input
+        figma
+        icon={Package}
+        label={ka.pets.productName}
+        value={title}
+        onChangeText={setTitle}
+        placeholder={ka.pets.productNamePh}
+      />
 
-      <PetChoiceRows
-        value={productId || 'none'}
-        onChange={(next) => {
-          if (next === 'none') {
-            setProductId(null);
-            return;
-          }
+      <CareProductPicker
+        products={matchingProducts}
+        value={productId}
+        onChange={(next, match) => {
           setProductId(next);
-          const match = matchingProducts.find((row) => row.id === next);
           if (match && !title) setTitle(match.name);
         }}
-        options={[
-          { value: 'none', label: ka.pets.skipProduct },
-          ...matchingProducts.map((row) => ({ value: row.id, label: row.name })),
-        ]}
+        onAddNew={() => router.push(`/pets/${id}/care/products/new?returnTo=record`)}
       />
 
-      <SegmentedField
-        label={ka.pets.alreadyGiven}
-        value={mode}
-        onChange={setMode}
-        options={[
-          { value: 'given', label: ka.pets.alreadyGiven },
-          { value: 'plan', label: ka.pets.planningNext },
-        ]}
-      />
+      <CareIntentChips value={mode} onChange={setMode} />
 
       {mode === 'given' ? (
         <>
-          <DateField label={ka.pets.administeredOn} value={dateDigits} onChangeText={setDateDigits} showAge={false} />
-          <Input label={ka.pets.administeredTime} value={time} onChangeText={setTime} placeholder="09:00" />
-          <Input label={ka.pets.dose} value={dose} onChangeText={setDose} />
-          <Input label={ka.pets.doseUnit} value={doseUnit} onChangeText={setDoseUnit} placeholder={ka.pets.doseUnitPh} />
+          <DateField figma label={ka.pets.administeredOn} value={dateDigits} onChangeText={setDateDigits} showAge={false} />
+          <Input
+            figma
+            icon={Clock}
+            label={ka.pets.administeredTime}
+            value={time}
+            onChangeText={setTime}
+            placeholder="09:00"
+            hint={ka.pets.timeUnknown}
+          />
+          <Input figma icon={Pill} label={ka.pets.dose} value={dose} onChangeText={setDose} />
+          <Input
+            figma
+            icon={Pill}
+            label={ka.pets.doseUnit}
+            value={doseUnit}
+            onChangeText={setDoseUnit}
+            placeholder={ka.pets.doseUnitPh}
+          />
           <RouteChips value={route} onChange={setRoute} />
-          <Input label={ka.pets.note} value={notes} onChangeText={setNotes} />
+          <Input figma icon={Pencil} label={ka.pets.note} value={notes} onChangeText={setNotes} />
         </>
       ) : null}
     </PetFormScroll>

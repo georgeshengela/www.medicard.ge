@@ -1,12 +1,20 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Text } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Check, Clock, Hash, Package, Pill } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
 import { Input } from '@/components/ui/Input';
-import { BasisChips, CareKindChips, RecurrenceChips, RouteChips, SourceChips } from '@/components/pets/PetCareChips';
-import { PetChoiceRows, PetErrorText, PetFormScroll } from '@/components/pets/PetScreen';
+import {
+  BasisChips,
+  CareKindChips,
+  CareProductPicker,
+  RecurrenceChips,
+  RouteChips,
+  SourceChips,
+} from '@/components/pets/PetCareChips';
+import { PetErrorText, PetFormScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import {
   api,
@@ -17,14 +25,14 @@ import {
   type PetRecurrenceBasis,
   type PetRecurrenceKind,
 } from '@/lib/api';
-import { isoToDigits, parseBirthDate } from '@/lib/birthdate';
+import { isoToDigits, parseCivilDate } from '@/lib/birthdate';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 import { newPetsRequestId, petsCareErrorMessage, summarizePlanKa } from '@/lib/petsCare';
 import { todayIsoLocal } from '@/lib/visitReminders';
 
 function digitsToIso(digits: string): string | null {
   if (!digits) return null;
-  const parsed = parseBirthDate(digits);
+  const parsed = parseCivilDate(digits);
   return parsed.ok ? parsed.iso : '';
 }
 
@@ -72,9 +80,11 @@ export default function PetCarePlanScreen() {
     }
   }, [params.id]);
 
-  useEffect(() => {
-    void loadProducts();
-  }, [loadProducts]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadProducts();
+    }, [loadProducts]),
+  );
 
   const selected = products.find((row) => row.id === productId);
   const startOn = digitsToIso(dateDigits);
@@ -137,7 +147,8 @@ export default function PetCarePlanScreen() {
         <>
           <PetErrorText message={error} />
           <Button
-            label={ka.pets.confirmPlan}
+            icon={Check}
+            label={saving ? ka.pets.saving : ka.pets.confirmPlan}
             loading={saving}
             disabled={!kind || !startOn || saving}
             onPress={() => void save()}
@@ -154,44 +165,72 @@ export default function PetCarePlanScreen() {
         }}
       />
 
-      <Input label={ka.pets.productName} value={title} onChangeText={setTitle} placeholder={ka.pets.productNamePh} />
-
-      <PetChoiceRows
-        value={productId || 'none'}
-        onChange={(next) => {
-          if (next === 'none') {
-            setProductId(null);
-            return;
-          }
-          setProductId(next);
-          const match = matchingProducts.find((row) => row.id === next);
-          if (match && !title) setTitle(match.name);
-        }}
-        options={[
-          { value: 'none', label: ka.pets.skipProduct },
-          ...matchingProducts.map((row) => ({ value: row.id, label: row.name })),
-        ]}
+      <Input
+        figma
+        icon={Package}
+        label={ka.pets.productName}
+        value={title}
+        onChangeText={setTitle}
+        placeholder={ka.pets.productNamePh}
       />
 
-      <DateField label={ka.pets.firstDate} value={dateDigits} onChangeText={setDateDigits} showAge={false} />
-      <Input label={ka.pets.administeredTime} value={dueTime} onChangeText={setDueTime} placeholder="09:00" />
+      <CareProductPicker
+        products={matchingProducts}
+        value={productId}
+        onChange={(next, match) => {
+          setProductId(next);
+          if (match && !title) setTitle(match.name);
+        }}
+        onAddNew={() => router.push(`/pets/${params.id}/care/products/new?returnTo=plan`)}
+      />
+
+      <DateField figma label={ka.pets.firstDate} value={dateDigits} onChangeText={setDateDigits} showAge={false} />
+      <Input
+        figma
+        icon={Clock}
+        label={ka.pets.administeredTime}
+        value={dueTime}
+        onChangeText={setDueTime}
+        placeholder="09:00"
+      />
 
       <RecurrenceChips value={recurrenceKind} onChange={setRecurrenceKind} />
       {recurrenceKind !== 'ONCE' && recurrenceKind !== 'DAILY_COURSE' ? (
         <>
-          <Input label={ka.pets.intervalCount} value={intervalCount} onChangeText={setIntervalCount} keyboardType="number-pad" />
+          <Input
+            figma
+            icon={Hash}
+            label={ka.pets.intervalCount}
+            value={intervalCount}
+            onChangeText={setIntervalCount}
+            keyboardType="number-pad"
+          />
           <BasisChips value={basis} onChange={setBasis} />
         </>
       ) : null}
       {recurrenceKind === 'DAILY_COURSE' ? (
-        <Input label={ka.pets.times} value={times} onChangeText={setTimes} placeholder="08:00,20:00" />
+        <Input figma icon={Clock} label={ka.pets.times} value={times} onChangeText={setTimes} placeholder="08:00,20:00" />
       ) : null}
-      <DateField label={ka.pets.courseEndsOn} value={courseEnds} onChangeText={setCourseEnds} showAge={false} />
-      <Input label={ka.pets.occurrenceLimit} value={limit} onChangeText={setOccurrenceLimit} keyboardType="number-pad" />
+      <DateField figma label={ka.pets.courseEndsOn} value={courseEnds} onChangeText={setCourseEnds} showAge={false} />
+      <Input
+        figma
+        icon={Hash}
+        label={ka.pets.occurrenceLimit}
+        value={limit}
+        onChangeText={setOccurrenceLimit}
+        keyboardType="number-pad"
+      />
 
       <SourceChips value={source} onChange={setSource} />
-      <Input label={ka.pets.dose} value={dose} onChangeText={setDose} />
-      <Input label={ka.pets.doseUnit} value={doseUnit} onChangeText={setDoseUnit} placeholder={ka.pets.doseUnitPh} />
+      <Input figma icon={Pill} label={ka.pets.dose} value={dose} onChangeText={setDose} />
+      <Input
+        figma
+        icon={Pill}
+        label={ka.pets.doseUnit}
+        value={doseUnit}
+        onChangeText={setDoseUnit}
+        placeholder={ka.pets.doseUnitPh}
+      />
       <RouteChips value={route} onChange={setRoute} />
 
       {summary ? (

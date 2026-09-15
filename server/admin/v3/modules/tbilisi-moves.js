@@ -14,7 +14,7 @@
     ['rewards', 'ჯილდოები'],
   ];
   const TAB_KEYS = new Set(TABS.map(([k]) => k));
-  const ui = { preview: null, roundDate: '', busy: false };
+  const ui = { preview: null, roundDate: '', busy: false, clockTimer: 0, serverNowMs: 0, clockOrigin: 0 };
 
   function esc(v) {
     if (typeof escapeHtml === 'function') return escapeHtml(v);
@@ -33,6 +33,19 @@
     if (!Number.isFinite(v)) return n == null ? '—' : String(n);
     return v.toLocaleString('ka-GE');
   }
+  function fmtWhen(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (!Number.isFinite(d.getTime())) return '—';
+    return new Intl.DateTimeFormat('ka-GE', {
+      timeZone: 'Asia/Tbilisi',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(d);
+  }
   function pct(ratio) {
     if (ratio == null || !Number.isFinite(Number(ratio))) return '—';
     return `${(Number(ratio) * 100).toLocaleString('ka-GE', { maximumFractionDigits: 2 })}%`;
@@ -50,7 +63,7 @@
     return TAB_KEYS.has(tab) ? tab : 'overview';
   }
   function go(tab) {
-    Shell().writeModuleHash?.('tbilisi-moves', { tab });
+    Shell().writeModuleHash?.('tbilisi-moves', { tab, range: null, grain: null, from: null, to: null });
     void renderTbilisiMoves();
   }
   function tmApi(path, options) {
@@ -78,7 +91,11 @@
 
   function visualBanner(live) {
     if (!live?.visualQaFixture) return '';
-    return `<div class="v3-tm-visual-banner" role="status">სინთეზური ვიზუალური QA — ეს ნაბიჯები სენსორიდან არ არის. ეს არ არის owner-pilot-ის ნამდვილი გარემო.</div>`;
+    return alertBox(
+      'warn',
+      'სინთეზური ვიზუალური QA',
+      'ეს ნაბიჯები სენსორიდან არ არის. ეს არ არის owner-pilot-ის ნამდვილი გარემო.',
+    );
   }
 
   function shellHtml(active, body) {
@@ -101,21 +118,244 @@
     });
   }
 
-  function kpi(label, value, hint) {
-    return `<article class="v3-settings-kpi">
+  function kpi(label, value, hint, key, icoName, tone) {
+    const toneClass = tone === 'warn' ? ' is-amber' : tone === 'ok' ? ' is-ok' : tone === 'soft' ? ' is-soft' : '';
+    return `<article class="v3-settings-kpi${toneClass}">
+      <span class="v3-settings-kpi-ico" aria-hidden="true">${ico(icoName || 'activity')}</span>
       <div class="v3-settings-kpi-copy">
         <span>${esc(label)}</span>
-        <strong>${esc(value)}</strong>
+        <strong ${key ? `data-tm-live="${escA(key)}"` : ''}>${esc(value)}</strong>
         ${hint ? `<em>${esc(hint)}</em>` : ''}
       </div>
     </article>`;
   }
 
+  function ico(name) {
+    return typeof icon === 'function' ? icon(name) : '';
+  }
+
+  function roundStatusKa(status) {
+    if (status === 'PROVISIONAL') return 'მიმდინარე';
+    if (status === 'FINALIZED') return 'დასრულებული';
+    return 'ჯერ არ გახსნილა';
+  }
+
+  function liveBar({ date, status, ingestOpen, socket, title }) {
+    const live = socket === 'live';
+    return `
+      <div class="v3-settings-toolbar" data-tm-livebar>
+        <div class="v3-settings-toolbar-copy">
+          <strong>${esc(title || 'თბილისი მოძრაობს')}</strong>
+          <span>თბილისის დრო · <time data-tm-clock>—</time> · <span data-tm-live="date">${esc(date || '—')}</span> · <span data-tm-live="roundStatus">${esc(roundStatusKa(status))}</span></span>
+          <span class="tm-toolbar-note"><span data-tm-ingest-line>${ingestOpen ? 'ინგესტია ღიაა' : 'ინგესტია დახურულია'}</span> · რაიონული სიარული, არა სამედიცინო რეიტინგი</span>
+        </div>
+        <div class="v3-settings-toolbar-actions">
+          <span class="status-pill ${live ? 'ok' : 'warn'}" data-tm-socket="${escA(socket || 'offline')}">${live ? 'ცოცხალი' : 'კავშირი დაიკარგა'}</span>
+          <button type="button" class="btn ghost compact" data-tm-refresh>${ico('refresh')} განახლება</button>
+        </div>
+      </div>`;
+  }
+
+  function alertBox(tone, title, body) {
+    return `<div class="v3-settings-alert is-${escA(tone)}">
+      <span class="v3-settings-alert-ico">${ico('alert')}</span>
+      <div><strong>${esc(title)}</strong>${body ? `<p>${esc(body)}</p>` : ''}</div>
+    </div>`;
+  }
+
+  function toggleRow({ id, title, body, checked, disabled, tone }) {
+    return `
+      <div class="v3-settings-toggle${tone ? ` is-${tone}` : ''}">
+        <div class="v3-settings-toggle-copy">
+          <div class="v3-title-row"><strong>${esc(title)}</strong></div>
+          ${body ? `<p>${esc(body)}</p>` : ''}
+        </div>
+        <label class="toggle v3-settings-switch">
+          <span class="switch"><input id="${escA(id)}" type="checkbox" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}/><i></i></span>
+        </label>
+      </div>`;
+  }
+
+  function fieldBlock({ id, label, value, hint, disabled, min, max, type, placeholder, maxlength }) {
+    const t = type || 'number';
+    return `<label class="v3-settings-field" for="${escA(id)}">
+      <span>${esc(label)}</span>
+      <input id="${escA(id)}" class="v3-settings-control" type="${escA(t)}" value="${escA(value ?? '')}" ${placeholder ? `placeholder="${escA(placeholder)}"` : ''} ${maxlength != null ? `maxlength="${escA(maxlength)}"` : ''} ${min != null ? `min="${escA(min)}"` : ''} ${max != null ? `max="${escA(max)}"` : ''} ${disabled ? 'disabled' : ''}/>
+      ${hint ? `<em>${esc(hint)}</em>` : ''}
+    </label>`;
+  }
+
+  function panel({ title, description, content, tone }) {
+    const toneClass = tone === 'warn' ? ' is-warn' : tone === 'danger' ? ' is-danger' : '';
+    return `<section class="v3-settings-panel${toneClass}">
+      <div class="v3-settings-head">
+        <div class="v3-settings-head-copy">
+          <div class="v3-title-row"><h3>${esc(title)}</h3></div>
+          ${description ? `<p class="muted">${esc(description)}</p>` : ''}
+        </div>
+      </div>
+      <div class="v3-settings-panel-body">${content}</div>
+    </section>`;
+  }
+
+  function tableWrap(head, rows, empty, cols) {
+    return `<div class="table-wrap"><table class="v3-table">
+      <thead>${head}</thead>
+      <tbody>${rows || `<tr><td colspan="${cols || 5}">${esc(empty || 'ცარიელია')}</td></tr>`}</tbody>
+    </table></div>`;
+  }
+
+  function flagChip(on, onLabel, offLabel, key) {
+    return `<span class="status-pill ${on ? 'ok' : ''}" data-tm-flag="${escA(key)}">${esc(on ? onLabel : offLabel)}</span>`;
+  }
+
+  function startTbilisiClock(serverNow) {
+    if (ui.clockTimer) clearInterval(ui.clockTimer);
+    ui.serverNowMs = serverNow ? Date.parse(serverNow) : Date.now();
+    if (!Number.isFinite(ui.serverNowMs)) ui.serverNowMs = Date.now();
+    ui.clockOrigin = Date.now();
+    const tick = () => {
+      const el = document.querySelector('#tab-tbilisi-moves [data-tm-clock]');
+      if (!el) {
+        if (ui.clockTimer) clearInterval(ui.clockTimer);
+        ui.clockTimer = 0;
+        return;
+      }
+      const now = new Date(ui.serverNowMs + (Date.now() - ui.clockOrigin));
+      el.textContent = new Intl.DateTimeFormat('ka-GE', {
+        timeZone: 'Asia/Tbilisi',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }).format(now);
+    };
+    tick();
+    ui.clockTimer = setInterval(tick, 1000);
+  }
+
+  function patchTbilisiMovesSocket(state) {
+    document.querySelectorAll('#tab-tbilisi-moves [data-tm-socket]').forEach((el) => {
+      el.dataset.tmSocket = state === 'live' ? 'live' : 'offline';
+      el.classList.toggle('ok', state === 'live');
+      el.classList.toggle('warn', state !== 'live');
+      el.textContent = state === 'live' ? 'ცოცხალი' : 'კავშირი დაიკარგა';
+    });
+  }
+
+  function applyLiveKpis(root, snap) {
+    const k = snap?.kpis || {};
+    const set = (key, value) => {
+      root.querySelectorAll(`[data-tm-live="${key}"]`).forEach((el) => {
+        el.textContent = value;
+      });
+    };
+    set('enrolledUsers', fmt(k.enrolledUsers));
+    set('contributingUsers', fmt(k.contributingUsers));
+    set('eligibleSteps', fmt(k.eligibleSteps));
+    set('lastObservationAt', fmtWhen(k.lastObservationAt));
+    set('date', snap.date || '—');
+    set('roundStatus', roundStatusKa(snap.round?.status));
+    const ingestLine = root.querySelector('[data-tm-ingest-line]');
+    const open = Boolean(snap.round?.ingestOpen);
+    if (ingestLine) ingestLine.textContent = open ? 'ინგესტია ღიაა' : 'ინგესტია დახურულია';
+  }
+
+  function rulesFormDirty(root) {
+    return root.querySelector('[data-tm-rules]')?.classList.contains('is-dirty');
+  }
+
+  function applyLiveFlags(root, snap) {
+    const map = [
+      ['tm-feature', snap.featureEnabled],
+      ['tm-enroll', snap.enrollmentOpen],
+      ['tm-ingest', snap.ingestionEnabled],
+      ['tm-comp-pause', snap.competitionPaused],
+      ['tm-rewards', snap.rewardsEnabled],
+      ['tm-leader-on', snap.leaderRecognitionEnabled !== false],
+      ['tm-goal-badge', snap.districtGoalBadgeEnabled !== false],
+    ];
+    for (const [id, on] of map) {
+      const el = root.querySelector(`#${id}`);
+      if (!el || document.activeElement === el) continue;
+      el.checked = Boolean(on);
+    }
+    const nums = [
+      ['tm-target', snap.defaultDailyTarget],
+      ['tm-cap', snap.competitiveCap],
+      ['tm-cool', snap.cooldownDays],
+      ['tm-minp', snap.minParticipantsForRank],
+      ['tm-grace', snap.lateSyncGraceHours],
+      ['tm-sanity', snap.sanityMaxRawSteps],
+      ['tm-drop', snap.correctionDropFlagPct],
+      ['tm-leader-n', snap.leaderRewardedRanks],
+    ];
+    for (const [id, value] of nums) {
+      const el = root.querySelector(`#${id}`);
+      if (!el || document.activeElement === el || value == null) continue;
+      el.value = value;
+    }
+    const rev = root.querySelector('#tm-revision');
+    if (rev && snap.revision != null) rev.value = snap.revision;
+    root.querySelectorAll('[data-tm-flag]').forEach((el) => {
+      const key = el.getAttribute('data-tm-flag');
+      const on = key === 'competitionActive' ? !snap.competitionPaused : Boolean(snap[key]);
+      el.classList.toggle('ok', on);
+      if (key === 'featureEnabled') el.textContent = on ? 'ფიჩერი ჩართულია' : 'ფიჩერი გამორთულია';
+      if (key === 'enrollmentOpen') el.textContent = on ? 'რეგისტრაცია ღიაა' : 'რეგისტრაცია დახურულია';
+      if (key === 'ingestionEnabled') el.textContent = on ? 'ინგესტია ღიაა' : 'ინგესტია პაუზაზეა';
+      if (key === 'competitionActive') el.textContent = on ? 'შეჯიბრი აქტიურია' : 'შეჯიბრი პაუზაზეა';
+    });
+    const flagKpis = [
+      ['featureEnabled', Boolean(snap.featureEnabled), 'ჩართულია', 'გამორთულია'],
+      ['enrollmentOpen', Boolean(snap.enrollmentOpen), 'ღიაა', 'დახურულია'],
+      ['ingestionEnabled', Boolean(snap.ingestionEnabled), 'ღიაა', 'პაუზაზეა'],
+      ['competitionActive', !snap.competitionPaused, 'აქტიურია', 'პაუზაზეა'],
+    ];
+    for (const [key, on, onText, offText] of flagKpis) {
+      root.querySelectorAll(`[data-tm-live="${key}"]`).forEach((el) => {
+        el.textContent = on ? onText : offText;
+        const art = el.closest('.v3-settings-kpi');
+        if (!art) return;
+        art.classList.toggle('is-ok', on);
+        art.classList.toggle('is-amber', !on);
+        art.classList.remove('is-soft');
+      });
+    }
+  }
+
+  function patchTbilisiMovesLive(snap) {
+    const root = $('tab-tbilisi-moves');
+    if (!root || !snap) return;
+    if (snap.serverNow) startTbilisiClock(snap.serverNow);
+    applyLiveKpis(root, snap);
+    const rules = root.querySelector('[data-tm-rules]');
+    if (!rules) return;
+    const formRev = Number(rules.querySelector('#tm-revision')?.value);
+    const remoteRev = Number(snap.revision);
+    const stale = rules.querySelector('[data-tm-stale]');
+    if (Number.isFinite(remoteRev) && Number.isFinite(formRev) && remoteRev > formRev) {
+      if (rulesFormDirty(root)) {
+        if (stale) stale.hidden = false;
+        return;
+      }
+      applyLiveFlags(root, snap);
+      if (stale) stale.hidden = true;
+    }
+  }
+
   function renderDenied() {
-    return `<div class="empty">
-      <h3>წვდომა შეზღუდულია</h3>
+    return `<div class="v3-settings-empty">
+      <strong>წვდომა შეზღუდულია</strong>
       <p>თბილისი მოძრაობს სანახავად საჭიროა TBILISI_MOVES_VIEW.</p>
     </div>`;
+  }
+
+  function rankClass(rank) {
+    if (rank === 1) return 'tm-rank-1';
+    if (rank === 2) return 'tm-rank-2';
+    if (rank === 3) return 'tm-rank-3';
+    return '';
   }
 
   async function renderOverview() {
@@ -127,45 +367,58 @@
       .map((row) => `${row.reason}: ${fmt(row.count)}`)
       .join(' · ');
     const rows = (data.districts || [])
-      .map(
-        (d) => `<tr>
-          <td>${esc(d.nameKa)}</td>
-          <td>${fmt(d.eligibleSteps)}</td>
-          <td>${fmt(d.target)}</td>
+      .map((d) => {
+        const ratio = Number(d.goalRatio);
+        const bar = Number.isFinite(ratio) ? Math.max(0, Math.min(100, Math.round(ratio * 100))) : 0;
+        return `<tr>
+          <td><strong>${esc(d.nameKa)}</strong></td>
+          <td>
+            <div class="tm-mini-goal">
+              <span>${fmt(d.eligibleSteps)} / ${fmt(d.target)}</span>
+              <span class="tm-mini-goal-track"><i style="width:${bar}%"></i></span>
+            </div>
+          </td>
           <td>${esc(pct(d.goalRatio))}</td>
           <td>${fmt(d.participantCount)}</td>
-          <td class="${d.rank === 1 ? 'tm-rank-1' : d.rank === 2 || d.rank === 3 ? 'tm-rank-podium' : ''}">${d.rank == null ? 'არ არის რეიტინგში' : fmt(d.rank)}</td>
-        </tr>`,
-      )
+          <td class="${rankClass(d.rank)}">${d.rank == null ? 'არ არის რეიტინგში' : fmt(d.rank)}</td>
+        </tr>`;
+      })
       .join('');
     return `
-      <div class="v3-settings-kpis">
-        ${kpi('რეგისტრირებული', fmt(k.enrolledUsers), 'აქტიური წევრები')}
-        ${kpi('მონაწილეები', fmt(k.contributingUsers), 'დადებითი კრედიტი დღეს')}
-        ${kpi('დაშვებული ნაბიჯები', fmt(k.eligibleSteps), 'დღევანდელი ჯამი')}
-        ${kpi('ბოლო დაკვირვება', k.lastObservationAt ? new Date(k.lastObservationAt).toLocaleString('ka-GE') : '—', 'სერვერის მიღება')}
+      ${liveBar({
+        title: 'ცოცხალი მიმოხილვა',
+        date: data.date || round.date,
+        status: round.status,
+        ingestOpen: round.ingestOpen,
+        socket: window.__adminSocketConnected ? 'live' : 'offline',
+      })}
+      <div class="v3-settings-kpis" role="group" aria-label="დღის სიგნალები">
+        ${kpi('რეგისტრირებული', fmt(k.enrolledUsers), 'აქტიური წევრები', 'enrolledUsers', 'users', 'ok')}
+        ${kpi('მონაწილეები', fmt(k.contributingUsers), 'დადებითი კრედიტი დღეს', 'contributingUsers', 'activity', 'soft')}
+        ${kpi('დაშვებული ნაბიჯები', fmt(k.eligibleSteps), 'დღევანდელი ჯამი', 'eligibleSteps', 'zap')}
+        ${kpi('ბოლო დაკვირვება', fmtWhen(k.lastObservationAt), 'სერვერის მიღება', 'lastObservationAt', 'clock')}
       </div>
-      <div class="v3-card">
-        <p class="kicker">პილოტი</p>
-        <h3>ინგესტია არ არის დამოწმებული</h3>
-        <p>pilotMode მუდმივად ჩართულია. იგივე ნაკადი „verified“ რეჟიმად ვერ გამოცხადდება.</p>
-        <p>რაუნდი: <strong>${esc(round.status || 'NOT_OPENED')}</strong>
-          ${round.scoringFrozen ? ' · დღევანდელი წესები დაფიქსირებულია' : ' · წესების ცვლილება ჯერ მოქმედებს დღევანდელ გაუხსნელ რაუნდზე'}
-          ${round.ingestOpen ? ' · ინგესტია ღიაა' : ' · ინგესტია დახურულია'}</p>
-      </div>
-      <div class="v3-card">
-        <h3>რაიონების პროგრესი</h3>
-        <div class="table-wrap"><table class="v3-table">
-          <thead><tr><th>რაიონი</th><th>ნაბიჯები</th><th>მიზანი</th><th>თანაფარდობა</th><th>მონაწილე</th><th>ადგილი</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="6">დღეს კრედიტი არ არის.</td></tr>'}</tbody>
-        </table></div>
-      </div>
-      <div class="v3-card">
-        <h3>სინქის სიგნალები</h3>
-        <p>მონიშნული კრედიტები: <strong>${fmt(issues.flaggedCredits)}</strong></p>
-        <p>უგულებელყოფილი დაკვირვებები (7 დღე): ${esc(ignored || 'არ არის')}</p>
-        <p class="muted">რუკა და ავტომატური კრონი ამ ფაზაში არ არის. ფინალიზაცია, მოდერაცია და კოსმეტიკური ჯილდოები რაუნდების/გადახედვის ჩანართებშია.</p>
-      </div>`;
+      ${alertBox(
+        'warn',
+        'პილოტი ჩაკეტილია',
+        'pilotMode მუდმივად ჩართულია. იგივე ნაკადი „verified“ რეჟიმად ვერ გამოცხადდება. ფინალიზაცია, მოდერაცია და კოსმეტიკური ჯილდოები რაუნდების/გადახედვის ჩანართებშია.',
+      )}
+      ${panel({
+        title: 'რაიონების პროგრესი',
+        description: `რაუნდი: ${roundStatusKa(round.status)}${round.scoringFrozen ? ' · დღევანდელი წესები დაფიქსირებულია' : ' · წესების ცვლილება ჯერ მოქმედებს დღევანდელ გაუხსნელ რაუნდზე'}`,
+        content: tableWrap(
+          '<tr><th>რაიონი</th><th>ნაბიჯები</th><th>თანაფარდობა</th><th>მონაწილე</th><th>ადგილი</th></tr>',
+          rows,
+          'დღეს კრედიტი არ არის.',
+          5,
+        ),
+      })}
+      ${panel({
+        title: 'სინქის სიგნალები',
+        description: 'რუკა და ავტომატური კრონი ამ ფაზაში არ არის.',
+        content: `<p class="tm-meta">მონიშნული კრედიტები: <strong>${fmt(issues.flaggedCredits)}</strong></p>
+          <p class="tm-meta">უგულებელყოფილი დაკვირვებები (7 დღე): ${esc(ignored || 'არ არის')}</p>`,
+      })}`;
   }
 
   async function renderDistricts() {
@@ -176,72 +429,126 @@
       .map((d) => {
         const override = d.dailyTargetOverride;
         return `<tr data-district-id="${escA(d.id)}" data-revision="${escA(d.revision)}">
-          <td>${esc(d.nameKa)}<div class="muted">${esc(d.slug)}</div></td>
-          <td>${esc(d.status)}</td>
-          <td><input class="tm-sort" type="number" min="0" value="${escA(d.sortOrder)}" ${manage ? '' : 'disabled'}/></td>
+          <td><strong>${esc(d.nameKa)}</strong><div class="muted">${esc(d.slug)}</div></td>
+          <td><span class="status-pill ${d.status === 'ACTIVE' ? 'ok' : ''}">${esc(d.status)}</span></td>
+          <td><input class="v3-settings-control tm-sort" type="number" min="0" value="${escA(d.sortOrder)}" ${manage ? '' : 'disabled'}/></td>
           <td>
-            <input class="tm-override" type="number" min="1000" placeholder="${escA(def)}" value="${override == null ? '' : escA(override)}" ${manage ? '' : 'disabled'}/>
-            <div class="muted">${override == null ? `ნაგულისხმევი (${fmt(def)})` : 'გადაფარვა'}</div>
+            <input class="v3-settings-control tm-override" type="number" min="1000" placeholder="${escA(def)}" value="${override == null ? '' : escA(override)}" ${manage ? '' : 'disabled'}/>
+            <em class="tm-field-hint">${override == null ? `ნაგულისხმევი (${fmt(def)})` : 'გადაფარვა'}</em>
           </td>
-          <td>${manage ? `<button class="btn tm-save-district" type="button">შენახვა</button>
-            ${d.status === 'ACTIVE' ? '<button class="btn ghost tm-archive" type="button">არქივი</button>' : ''}` : '—'}</td>
+          <td class="tm-row-actions">${manage ? `<button class="btn compact tm-save-district" type="button">შენახვა</button>
+            ${d.status === 'ACTIVE' ? '<button class="btn ghost compact tm-archive" type="button">არქივი</button>' : ''}` : '—'}</td>
         </tr>`;
       })
       .join('');
     return `
-      <div class="v3-card">
-        <h3>რაიონები</h3>
-        <p>მიზნის ცვლილება მოქმედებს შემდეგ გაუხსნელ რაუნდზე. არსებული რაუნდის snapshot უცვლელია.</p>
-        <div class="table-wrap"><table class="v3-table">
-          <thead><tr><th>რაიონი</th><th>სტატუსი</th><th>რიგი</th><th>დღიური მიზანი</th><th></th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table></div>
-      </div>`;
+      ${panel({
+        title: 'რაიონები',
+        description: 'მიზნის ცვლილება მოქმედებს შემდეგ გაუხსნელ რაუნდზე. არსებული რაუნდის snapshot უცვლელია.',
+        content: tableWrap(
+          '<tr><th>რაიონი</th><th>სტატუსი</th><th>რიგი</th><th>დღიური მიზანი</th><th></th></tr>',
+          rows,
+          'რაიონი არ არის.',
+          5,
+        ),
+      })}`;
   }
 
   async function renderRules() {
     const data = await tmApi('/config');
     const live = data.live || {};
     const current = data.currentRound || {};
+    const stats = data.liveStats || {};
+    const k = stats.kpis || {};
     const manage = can('TBILISI_MOVES_MANAGE');
-    const dis = manage ? '' : 'disabled';
+    const dis = !manage;
     const snap = current.rulesSnapshot || {};
+    const Av = global.AdminV3 || {};
+    const sticky = manage
+      ? Av.stickyActions
+        ? Av.stickyActions({
+            dirty: false,
+            cancel: `<button class="btn ghost" id="tm-cancel-rules" type="button">გაუქმება</button>`,
+            save: `<button class="btn primary" id="tm-save-rules" type="button">${ico('check')} შენახვა</button>`,
+          })
+        : `<footer class="v3-sticky-actions" id="v3-sticky-actions">
+            <div class="v3-sticky-actions-main">
+              <button class="btn ghost" id="tm-cancel-rules" type="button">გაუქმება</button>
+              <button class="btn primary" id="tm-save-rules" type="button">${ico('check')} შენახვა</button>
+            </div>
+          </footer>`
+      : '';
     return `
-      <div class="v3-card">
-        <p class="kicker">პილოტური რეჟიმი · ჩართულია და არ ირთვება</p>
-        <h3>ოპერაციული კონტროლი · ძალაში ახლავე</h3>
-        <label class="v3-settings-toggle"><span>ფიჩერი</span>
-          <input id="tm-feature" type="checkbox" ${live.featureEnabled ? 'checked' : ''} ${dis}/></label>
-        <label class="v3-settings-toggle"><span>რეგისტრაცია</span>
-          <input id="tm-enroll" type="checkbox" ${live.enrollmentOpen ? 'checked' : ''} ${dis}/></label>
-        <label class="v3-settings-toggle"><span>ინგესტია</span>
-          <input id="tm-ingest" type="checkbox" ${live.ingestionEnabled ? 'checked' : ''} ${dis}/></label>
-        <label class="v3-settings-toggle"><span>შეჯიბრი შეჩერებულია</span>
-          <input id="tm-comp-pause" type="checkbox" ${live.competitionPaused ? 'checked' : ''} ${dis}/></label>
-        <p class="muted">პაუზის დროს სრული დღიური ჯამი, რომელიც პაუზის ინტერვალს ემთხვევა, არ მიიღება. შეჯიბრის პაუზა ფინალიზაციას არ აუქმებს — ჯილდოები არ გაიცემა.</p>
-      </div>
-      <div class="v3-card">
-        <h3>ქულების წესები · შემდეგი გაუხსნელი რაუნდი</h3>
-        <p>დღეს: <strong>${esc(current.status || 'NOT_OPENED')}</strong>
-          ${current.scoringFrozen ? ` · snapshot cap ${fmt(snap.competitiveCap)} / მიზანი ${fmt(snap.defaultDailyTarget)}` : ' · snapshot ჯერ არ არის, ეს რიცხვები დღესაც იმოქმედებს'}</p>
-        <label>ნაგულისხმევი მიზანი <input id="tm-target" type="number" value="${escA(live.defaultDailyTarget)}" ${dis}/></label>
-        <label>ინდივიდუალური ლიმიტი <input id="tm-cap" type="number" value="${escA(live.competitiveCap)}" ${dis}/></label>
-        <label>რაიონის შეცვლის cooldown (დღე) <input id="tm-cool" type="number" value="${escA(live.cooldownDays)}" ${dis}/></label>
-        <label>მინ. მონაწილე რეიტინგისთვის <input id="tm-minp" type="number" value="${escA(live.minParticipantsForRank)}" ${dis}/></label>
-        <label>გვიანი სინქის grace (საათი) <input id="tm-grace" type="number" value="${escA(live.lateSyncGraceHours)}" ${dis}/></label>
-        <label>სანიტარული მაქს. ნაბიჯი <input id="tm-sanity" type="number" value="${escA(live.sanityMaxRawSteps)}" ${dis}/></label>
-        <label>ვარდნის flag ზღვარი (%) <input id="tm-drop" type="number" value="${escA(live.correctionDropFlagPct)}" ${dis}/></label>
-        <label class="v3-settings-toggle"><span>კოსმეტიკური ჯილდოები</span>
-          <input id="tm-rewards" type="checkbox" ${live.rewardsEnabled ? 'checked' : ''} ${dis}/></label>
-        <label class="v3-settings-toggle"><span>რაიონის ლიდერების აღიარება</span>
-          <input id="tm-leader-on" type="checkbox" ${live.leaderRecognitionEnabled !== false ? 'checked' : ''} ${dis}/></label>
-        <label>დაჯილდოებული ადგილები (dense 1–N) <input id="tm-leader-n" type="number" min="1" max="10" value="${escA(live.leaderRewardedRanks || 3)}" ${dis}/></label>
-        <label class="v3-settings-toggle"><span>რაიონის მიზნის ბეჯი</span>
-          <input id="tm-goal-badge" type="checkbox" ${live.districtGoalBadgeEnabled !== false ? 'checked' : ''} ${dis}/></label>
-        <p class="muted">არსებული lockUntilDate cooldown-ის შეცვლაზე არ გადაიწერება. ჯილდოს წესები ძველ რაუნდზე რეტროაქტიულად არ გამოიგონება.</p>
-        ${manage ? `<label>მიზეზი <input id="tm-reason" type="text" maxlength="400" placeholder="აუდიტის მიზეზი"/></label>
-          <input id="tm-revision" type="hidden" value="${escA(live.revision)}"/>
-          <button class="btn primary" id="tm-save-rules" type="button">შენახვა</button>` : ''}
+      <div class="tm-rules" data-tm-rules>
+        ${liveBar({
+          title: 'წესების ობსერვატორია',
+          date: stats.date || current.date,
+          status: current.status || stats.round?.status,
+          ingestOpen: current.ingestOpen || stats.round?.ingestOpen,
+          socket: window.__adminSocketConnected ? 'live' : 'offline',
+        })}
+        <div class="v3-settings-kpis" role="group" aria-label="ოპერაციული მდგომარეობა">
+          ${kpi('ფიჩერი', live.featureEnabled ? 'ჩართულია' : 'გამორთულია', 'ჰაბი და API', 'featureEnabled', 'zap', live.featureEnabled ? 'ok' : 'warn')}
+          ${kpi('რეგისტრაცია', live.enrollmentOpen ? 'ღიაა' : 'დახურულია', 'ახალი წევრები', 'enrollmentOpen', 'users', live.enrollmentOpen ? 'ok' : 'warn')}
+          ${kpi('ინგესტია', live.ingestionEnabled ? 'ღიაა' : 'პაუზაზეა', 'სენსორის ნაბიჯები', 'ingestionEnabled', 'activity', live.ingestionEnabled ? 'ok' : 'warn')}
+          ${kpi('შეჯიბრი', live.competitionPaused ? 'პაუზაზეა' : 'აქტიურია', 'დღიური კრედიტი', 'competitionActive', 'shield', live.competitionPaused ? 'warn' : 'ok')}
+        </div>
+        <div class="v3-settings-kpis" role="group" aria-label="დღის სიგნალები">
+          ${kpi('რეგისტრირებული', fmt(k.enrolledUsers), 'აქტიური წევრები', 'enrolledUsers', 'users', 'ok')}
+          ${kpi('მონაწილეები', fmt(k.contributingUsers), 'დადებითი კრედიტი დღეს', 'contributingUsers', 'activity', 'soft')}
+          ${kpi('დაშვებული ნაბიჯები', fmt(k.eligibleSteps), 'დღევანდელი ჯამი', 'eligibleSteps', 'zap')}
+          ${kpi('ბოლო დაკვირვება', fmtWhen(k.lastObservationAt), 'სერვერის მიღება', 'lastObservationAt', 'clock')}
+        </div>
+        ${alertBox('warn', 'პილოტი ჩაკეტილია', 'იგივე ნაკადი verified რეჟიმად ვერ გამოცხადდება. ქულები აქტივობის რეიტინგია — არა სამედიცინო.')}
+        <div class="tm-stale" data-tm-stale hidden>${alertBox('warn', 'კონფიგურაცია განახლდა', 'სხვა ადმინმა შეცვალა წესები. შეინახეთ ან განაახლეთ გვერდი.')}</div>
+        <div class="v3-settings-grid">
+          ${panel({
+            title: 'ოპერაციული კონტროლი',
+            description: 'ძალაში ახლავე — ჰაბი, რეგისტრაცია და ინგესტია.',
+            content: `
+              ${toggleRow({ id: 'tm-feature', title: 'ფიჩერი', body: 'ჰაბი და API ჩანს მხოლოდ ჩართვისას.', checked: live.featureEnabled, disabled: dis })}
+              ${toggleRow({ id: 'tm-enroll', title: 'რეგისტრაცია', body: 'ახალი წევრები რაიონს ირჩევენ მხოლოდ ღია რეჟიმში.', checked: live.enrollmentOpen, disabled: dis })}
+              ${toggleRow({ id: 'tm-ingest', title: 'ინგესტია', body: 'სენსორის ნაბიჯები მიიღება, სანამ პაუზა არ არის.', checked: live.ingestionEnabled, disabled: dis })}
+              ${toggleRow({ id: 'tm-comp-pause', title: 'შეჯიბრი შეჩერებულია', body: 'პაუზის ინტერვალში მოხვედრილი სრული დღიური ჯამი არ მიიღება. ფინალიზაცია არ უქმდება.', checked: live.competitionPaused, disabled: dis, tone: 'warn' })}
+            `,
+          })}
+          ${panel({
+            title: 'ქულების წესები',
+            description: current.scoringFrozen
+              ? `დღეს ${roundStatusKa(current.status)} · snapshot cap ${fmt(snap.competitiveCap)} / მიზანი ${fmt(snap.defaultDailyTarget)}`
+              : `დღეს ${roundStatusKa(current.status)} · snapshot ჯერ არ არის, ეს რიცხვები დღესაც იმოქმედებს`,
+            tone: current.scoringFrozen ? 'warn' : '',
+            content: `
+              ${current.scoringFrozen ? alertBox('warn', 'დღევანდელი snapshot დაფიქსირებულია', 'ახალი რიცხვები შემდეგ გაუხსნელ რაუნდზე იმოქმედებს.') : ''}
+              <div class="v3-settings-fields">
+                ${fieldBlock({ id: 'tm-target', label: 'ნაგულისხმევი მიზანი', value: live.defaultDailyTarget, hint: 'რაიონის დღიური ნაბიჯები', disabled: dis, min: 1000 })}
+                ${fieldBlock({ id: 'tm-cap', label: 'ინდივიდუალური ლიმიტი', value: live.competitiveCap, disabled: dis, min: 1000 })}
+                ${fieldBlock({ id: 'tm-cool', label: 'რაიონის cooldown (დღე)', value: live.cooldownDays, hint: 'არსებული lockUntilDate არ გადაიწერება', disabled: dis, min: 1 })}
+                ${fieldBlock({ id: 'tm-minp', label: 'მინ. მონაწილე რეიტინგისთვის', value: live.minParticipantsForRank, disabled: dis, min: 1 })}
+                ${fieldBlock({ id: 'tm-grace', label: 'გვიანი სინქის grace (საათი)', value: live.lateSyncGraceHours, disabled: dis, min: 1, max: 24 })}
+                ${fieldBlock({ id: 'tm-sanity', label: 'სანიტარული მაქს. ნაბიჯი', value: live.sanityMaxRawSteps, disabled: dis })}
+                ${fieldBlock({ id: 'tm-drop', label: 'ვარდნის flag ზღვარი (%)', value: live.correctionDropFlagPct, disabled: dis, min: 10, max: 90 })}
+                ${fieldBlock({ id: 'tm-leader-n', label: 'დაჯილდოებული ადგილები', value: live.leaderRewardedRanks || 3, disabled: dis, min: 1, max: 10 })}
+              </div>
+              <input id="tm-revision" type="hidden" value="${escA(live.revision)}"/>
+            `,
+          })}
+          ${panel({
+            title: 'კოსმეტიკური ჯილდოები',
+            description: 'ფულადი პრიზი და Medi Coin არ გაიცემა. ძველ რაუნდზე რეტროაქტიულად არ გამოიგონება.',
+            content: `
+              ${toggleRow({ id: 'tm-rewards', title: 'კოსმეტიკური ჯილდოები', body: 'ჩართვა მხოლოდ შემდეგ დაფიქსირებულ რაუნდზე იმოქმედებს.', checked: live.rewardsEnabled, disabled: dis })}
+              ${toggleRow({ id: 'tm-leader-on', title: 'რაიონის ლიდერების აღიარება', checked: live.leaderRecognitionEnabled !== false, disabled: dis })}
+              ${toggleRow({ id: 'tm-goal-badge', title: 'რაიონის მიზნის ბეჯი', checked: live.districtGoalBadgeEnabled !== false, disabled: dis })}
+            `,
+          })}
+          ${manage ? panel({
+            title: 'აუდიტი',
+            description: 'შენახვა იწერს მიზეზს ოპერაციულ ჟურნალში.',
+            content: fieldBlock({ id: 'tm-reason', label: 'აუდიტის მიზეზი', value: '', hint: 'სავალდებულოა, თუ კონსოლი ითხოვს', placeholder: 'rules_update', maxlength: 400, disabled: false, type: 'text' }),
+          }) : ''}
+        </div>
+        ${sticky}
       </div>`;
   }
 
@@ -259,15 +566,21 @@
       )
       .join('');
     return `
-      <div class="v3-card">
-        <h3>დღიური რაუნდები</h3>
-        <p>გამოტოვებული დღეები დღევანდელი წესებით არ რეკონსტრუირდება.</p>
-        <div class="table-wrap"><table class="v3-table">
-          <thead><tr><th>თარიღი</th><th>ციკლი</th><th>რევიზია</th><th>Grace</th><th></th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="5">რაუნდი არ არის.</td></tr>'}</tbody>
-        </table></div>
-      </div>
-      <div id="tm-round-detail" class="v3-card"><p class="muted">აირჩიეთ თარიღი დეტალისთვის.</p></div>`;
+      ${panel({
+        title: 'დღიური რაუნდები',
+        description: 'გამოტოვებული დღეები დღევანდელი წესებით არ რეკონსტრუირდება.',
+        content: tableWrap(
+          '<tr><th>თარიღი</th><th>ციკლი</th><th>რევიზია</th><th>Grace</th><th></th></tr>',
+          rows,
+          'რაუნდი არ არის.',
+          5,
+        ),
+      })}
+      <div id="tm-round-detail">${panel({
+        title: 'რაუნდის დეტალი',
+        description: 'აირჩიეთ თარიღი ცხრილიდან.',
+        content: '<p class="tm-meta">დეტალი აქ გამოჩნდება.</p>',
+      })}</div>`;
   }
 
   function renderRoundDetail(detail) {
@@ -282,37 +595,53 @@
       .map((d) => `<tr><td>${esc(d.nameKa)}</td><td>${fmt(d.eligibleSteps)}</td><td>${d.rank == null ? '—' : fmt(d.rank)}</td><td>${d.goalReached ? 'კი' : 'არა'}</td></tr>`)
       .join('');
     return `
-      <p class="kicker">${esc(detail.date)} · ${esc(life.phase || detail.status)}</p>
-      <h3>რაუნდის დეტალი</h3>
-      <p>Grace: <strong>${detail.graceEndsAt ? new Date(detail.graceEndsAt).toLocaleString('ka-GE') : '—'}</strong>
-        · რევიზია ${fmt(detail.resultRevision)} · ${esc(blockers)}</p>
-      ${published ? `<p>გამოქვეყნებულია r${fmt(published.revision)} · ჯილდო ${fmt(published.awardCount)} · ${published.kind === 'CORRECTION' ? 'კორექცია' : 'საწყისი'}</p>` : '<p>გამოქვეყნებული შედეგი არ არის.</p>'}
-      <p>მოსალოდნელი ჯილდოები: ლიდერი ${fmt(award.districtLeader || 0)} · მიზანი ${fmt(award.districtGoal || 0)}</p>
-      <div class="table-wrap"><table class="v3-table">
-        <thead><tr><th>რაიონი</th><th>ნაბიჯები</th><th>ადგილი</th><th>მიზანი</th></tr></thead>
-        <tbody>${districtRows || '<tr><td colspan="4">ცარიელი შედეგი — გამარჯვებული არ გამოიგონება.</td></tr>'}</tbody>
-      </table></div>
-      ${manage ? `<button class="btn" id="tm-preview" type="button">გადახედვა</button>
-        <button class="btn primary" id="tm-finalize" type="button" ${life.canFinalize ? '' : 'disabled'}>ფინალიზაცია</button>` : ''}
-      ${correct && detail.status === 'FINALIZED' ? `<label>კორექციის მიზეზი <input id="tm-correct-reason" type="text" maxlength="400"/></label>
-        <button class="btn" id="tm-correct-preview" type="button">კორექციის გადახედვა</button>
-        <button class="btn primary" id="tm-correct" type="button">კორექციის დადასტურება</button>` : ''}
-      <p id="tm-round-status" class="muted"></p>`;
+      ${panel({
+        title: `${detail.date} · ${life.phase || detail.status}`,
+        description: `Grace ${detail.graceEndsAt ? new Date(detail.graceEndsAt).toLocaleString('ka-GE') : '—'} · რევიზია ${fmt(detail.resultRevision)} · ${blockers}`,
+        content: `
+          ${published
+            ? `<p class="tm-meta">გამოქვეყნებულია r${fmt(published.revision)} · ჯილდო ${fmt(published.awardCount)} · ${published.kind === 'CORRECTION' ? 'კორექცია' : 'საწყისი'}</p>`
+            : '<p class="tm-meta">გამოქვეყნებული შედეგი არ არის.</p>'}
+          <p class="tm-meta">მოსალოდნელი ჯილდოები: ლიდერი ${fmt(award.districtLeader || 0)} · მიზანი ${fmt(award.districtGoal || 0)}</p>
+          ${tableWrap(
+            '<tr><th>რაიონი</th><th>ნაბიჯები</th><th>ადგილი</th><th>მიზანი</th></tr>',
+            districtRows,
+            'ცარიელი შედეგი — გამარჯვებული არ გამოიგონება.',
+            4,
+          )}
+          <div class="v3-settings-actions">
+            ${manage ? `<button class="btn" id="tm-preview" type="button">გადახედვა</button>
+              <button class="btn primary" id="tm-finalize" type="button" ${life.canFinalize ? '' : 'disabled'}>ფინალიზაცია</button>` : ''}
+          </div>
+          ${correct && detail.status === 'FINALIZED' ? `
+            ${fieldBlock({ id: 'tm-correct-reason', label: 'კორექციის მიზეზი', value: '', type: 'text', maxlength: 400, placeholder: 'correction' })}
+            <div class="v3-settings-actions">
+              <button class="btn" id="tm-correct-preview" type="button">კორექციის გადახედვა</button>
+              <button class="btn primary" id="tm-correct" type="button">კორექციის დადასტურება</button>
+            </div>` : ''}
+          <p id="tm-round-status" class="tm-meta"></p>
+        `,
+      })}`;
   }
 
   async function renderReview() {
     const review = can('TBILISI_MOVES_REVIEW');
     const list = await tmApi('/rounds');
     const first = list.items?.[0]?.date || '';
-    return `
-      <div class="v3-card">
-        <h3>წვლილის გადახედვა</h3>
-        <p>წყაროს ეტიკეტი დამოწმებული მტკიცებულება არ არის. გამორიცხვა პირად ჯანმრთელობის ჩანაწერს არ ცვლის და შემდეგი სინქი excluded სტატუსს არ აბრუნებს.</p>
-        <label>თარიღი <input id="tm-review-date" type="date" value="${escA(first)}"/></label>
-        <button class="btn" id="tm-load-credits" type="button">ჩატვირთვა</button>
+    return panel({
+      title: 'წვლილის გადახედვა',
+      description: 'წყაროს ეტიკეტი დამოწმებული მტკიცებულება არ არის. გამორიცხვა პირად ჯანმრთელობის ჩანაწერს არ ცვლის და შემდეგი სინქი excluded სტატუსს არ აბრუნებს.',
+      content: `
+        <div class="tm-tools">
+          ${fieldBlock({ id: 'tm-review-date', label: 'თარიღი', value: first, type: 'date' })}
+          <button class="btn compact" id="tm-load-credits" type="button">ჩატვირთვა</button>
+        </div>
         <div id="tm-credit-table" class="table-wrap"></div>
-        ${review ? `<label>მიზეზი <input id="tm-review-reason" type="text" maxlength="400" placeholder="სავალდებულო მიზეზი"/></label>` : '<p class="muted">გამორიცხვა საჭიროებს TBILISI_MOVES_REVIEW.</p>'}
-      </div>`;
+        ${review
+          ? fieldBlock({ id: 'tm-review-reason', label: 'მიზეზი', value: '', hint: 'სავალდებულოა გამორიცხვისას', type: 'text', maxlength: 400, placeholder: 'review' })
+          : '<p class="tm-meta">გამორიცხვა საჭიროებს TBILISI_MOVES_REVIEW.</p>'}
+      `,
+    });
   }
 
   async function renderRewards() {
@@ -332,18 +661,20 @@
       )
       .join('');
     return `
-      <div class="v3-card">
-        <h3>კოსმეტიკური წესები</h3>
-        <p>ჩართული: ${live.rewardsEnabled ? 'კი' : 'არა'} · ლიდერი 1–${fmt(live.leaderRewardedRanks || 3)} · მიზნის ბეჯი: ${live.districtGoalBadgeEnabled !== false ? 'კი' : 'არა'}</p>
-        <p class="muted">${esc(policy.policy?.note || '')} ფულადი პრიზი / Medi Coin არ გაიცემა. წესების შეცვლა „წესები“ ჩანართშია.</p>
-      </div>
-      <div class="v3-card">
-        <h3>გაცემული ჯილდოები</h3>
-        <div class="table-wrap"><table class="v3-table">
-          <thead><tr><th>თარიღი</th><th>რაიონი</th><th>სახელი</th><th>ჯილდო</th><th>სტატუსი</th><th>რევიზია</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="6">ჯილდო არ არის.</td></tr>'}</tbody>
-        </table></div>
-      </div>`;
+      ${panel({
+        title: 'კოსმეტიკური წესები',
+        description: `${policy.policy?.note || ''} ფულადი პრიზი / Medi Coin არ გაიცემა. წესების შეცვლა „წესები“ ჩანართშია.`,
+        content: `<p class="tm-meta">ჩართული: <strong>${live.rewardsEnabled ? 'კი' : 'არა'}</strong> · ლიდერი 1–${fmt(live.leaderRewardedRanks || 3)} · მიზნის ბეჯი: ${live.districtGoalBadgeEnabled !== false ? 'კი' : 'არა'}</p>`,
+      })}
+      ${panel({
+        title: 'გაცემული ჯილდოები',
+        content: tableWrap(
+          '<tr><th>თარიღი</th><th>რაიონი</th><th>სახელი</th><th>ჯილდო</th><th>სტატუსი</th><th>რევიზია</th></tr>',
+          rows,
+          'ჯილდო არ არის.',
+          6,
+        ),
+      })}`;
   }
 
   function bindDistrictActions(root) {
@@ -386,7 +717,42 @@
   }
 
   function bindRules(root) {
+    const rules = root.querySelector('[data-tm-rules]') || root;
     const save = root.querySelector('#tm-save-rules');
+    const baseline = () => {
+      const ids = [
+        'tm-feature',
+        'tm-enroll',
+        'tm-ingest',
+        'tm-comp-pause',
+        'tm-target',
+        'tm-cap',
+        'tm-cool',
+        'tm-minp',
+        'tm-grace',
+        'tm-sanity',
+        'tm-drop',
+        'tm-rewards',
+        'tm-leader-on',
+        'tm-leader-n',
+        'tm-goal-badge',
+        'tm-reason',
+      ];
+      return ids
+        .map((id) => {
+          const el = root.querySelector(`#${id}`);
+          if (!el) return '';
+          return el.type === 'checkbox' ? `${id}:${el.checked}` : `${id}:${el.value}`;
+        })
+        .join('|');
+    };
+    let start = baseline();
+    rules.addEventListener('input', () => {
+      const dirty = baseline() !== start;
+      rules.classList.toggle('is-dirty', dirty);
+      global.AdminV3?.setDirty?.(dirty);
+    });
+    root.querySelector('#tm-cancel-rules')?.addEventListener('click', () => void renderTbilisiMoves(true));
     if (!save) return;
     save.addEventListener('click', async () => {
       setBusy(save, true);
@@ -427,7 +793,7 @@
     const pane = root.querySelector('#tm-round-detail');
     async function openDate(date) {
       if (!pane || !date) return;
-      pane.innerHTML = '<p>იტვირთება…</p>';
+      pane.innerHTML = '<div class="v3-settings-empty"><strong>იტვირთება…</strong></div>';
       try {
         const detail = await tmApi(`/rounds/${date}`);
         ui.roundDate = date;
@@ -590,6 +956,27 @@
       return;
     }
     const tab = activeTab();
+    Shell().writeModuleHash?.('tbilisi-moves', { tab, range: null, grain: null, from: null, to: null });
+    const purpose =
+      tab === 'rules'
+        ? 'ოპერაციული კონტროლი და ქულების წესები — რაიონული სიარული, არა სამედიცინო რეიტინგი.'
+        : tab === 'districts'
+          ? 'რაიონების მიზნები და რიგი. უკვე გახსნილი რაუნდის snapshot უცვლელია.'
+          : tab === 'rounds'
+            ? 'დღიური რაუნდები, გადახედვა და ფინალიზაცია.'
+            : tab === 'review'
+              ? 'წვლილის გადახედვა — წყაროს ეტიკეტი მტკიცებულება არ არის.'
+              : tab === 'rewards'
+                ? 'კოსმეტიკური ჯილდოები. ფული და Medi Coin არ გაიცემა.'
+                : 'რაიონული სიარულის შეჯიბრის კონფიგურაცია და მიმოხილვა.';
+    const mountHead = () =>
+      Shell().mountHeader?.({
+        tab: 'tbilisi-moves',
+        kicker: 'Engagement',
+        title: 'თბილისი მოძრაობს',
+        purpose,
+      });
+    mountHead();
     let visual = '';
     try {
       const cfg = await tmApi('/config');
@@ -597,7 +984,7 @@
     } catch {
       visual = '';
     }
-    root.innerHTML = shellHtml(tab, `${visual}<div class="empty">იტვირთება…</div>`);
+    root.innerHTML = shellHtml(tab, `${visual}<div class="v3-settings-empty"><strong>იტვირთება…</strong></div>`);
     bindSubnav(root);
     try {
       let body = '';
@@ -609,16 +996,21 @@
       else body = await renderOverview();
       root.innerHTML = shellHtml(tab, `${visual}${body}`);
       bindSubnav(root);
+      mountHead();
+      root.querySelector('[data-tm-refresh]')?.addEventListener('click', () => void renderTbilisiMoves(true));
       if (tab === 'districts') bindDistrictActions(root);
       if (tab === 'rules') bindRules(root);
       if (tab === 'rounds') bindRounds(root);
       if (tab === 'review') bindReview(root);
+      startTbilisiClock();
     } catch (err) {
-      root.innerHTML = shellHtml(tab, `<div class="empty"><h3>ვერ ჩაიტვირთა</h3><p>${esc(err.message || err)}</p></div>`);
+      root.innerHTML = shellHtml(tab, `<div class="v3-settings-empty is-err"><strong>ვერ ჩაიტვირთა</strong><p>${esc(err.message || err)}</p></div>`);
       bindSubnav(root);
     }
     void force;
   }
 
   global.renderTbilisiMoves = renderTbilisiMoves;
+  global.patchTbilisiMovesLive = patchTbilisiMovesLive;
+  global.patchTbilisiMovesSocket = patchTbilisiMovesSocket;
 })(window);

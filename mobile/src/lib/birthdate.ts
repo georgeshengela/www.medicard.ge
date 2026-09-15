@@ -34,27 +34,52 @@ export function ageFromBirthDate(date: Date, now = new Date()): number {
 
 export type BirthDateResult = { ok: true; iso: string; age: number } | { ok: false; error: string };
 
-export function parseBirthDate(value: string): BirthDateResult {
+export type CivilDateResult = { ok: true; iso: string } | { ok: false; error: string };
+
+function readYmd(value: string): { day: number; month: number; year: number } | null {
   const digits = toDigits(value);
-  if (digits.length !== 8) return { ok: false, error: ka.auth.invalidBirthDate };
+  if (digits.length !== 8) return null;
+  return {
+    day: Number(digits.slice(0, 2)),
+    month: Number(digits.slice(2, 4)),
+    year: Number(digits.slice(4, 8)),
+  };
+}
 
-  const day = Number(digits.slice(0, 2));
-  const month = Number(digits.slice(2, 4));
-  const year = Number(digits.slice(4, 8));
+function isoFromYmd(year: number, month: number, day: number): string {
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
 
-  const date = new Date(Date.UTC(year, month - 1, day));
+/** Weight / visit / care dates — local civil day, not a birth date. Today is allowed. */
+export function parseCivilDate(value: string, now = new Date()): CivilDateResult {
+  const ymd = readYmd(value);
+  if (!ymd) return { ok: false, error: ka.auth.invalidBirthDate };
+
+  const local = new Date(ymd.year, ymd.month - 1, ymd.day);
   const real =
-    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+    local.getFullYear() === ymd.year && local.getMonth() === ymd.month - 1 && local.getDate() === ymd.day;
+  if (!real) return { ok: false, error: ka.auth.unrealBirthDate };
+  if (startOfDay(local) > startOfDay(now)) return { ok: false, error: ka.auth.futureBirthDate };
+
+  return { ok: true, iso: isoFromYmd(ymd.year, ymd.month, ymd.day) };
+}
+
+export function parseBirthDate(value: string, now = new Date()): BirthDateResult {
+  const ymd = readYmd(value);
+  if (!ymd) return { ok: false, error: ka.auth.invalidBirthDate };
+
+  const date = new Date(Date.UTC(ymd.year, ymd.month - 1, ymd.day));
+  const real =
+    date.getUTCFullYear() === ymd.year && date.getUTCMonth() === ymd.month - 1 && date.getUTCDate() === ymd.day;
   if (!real) return { ok: false, error: ka.auth.unrealBirthDate };
 
-  const now = new Date();
-  if (date.getTime() > now.getTime()) return { ok: false, error: ka.auth.futureBirthDate };
+  const local = new Date(ymd.year, ymd.month - 1, ymd.day);
+  if (startOfDay(local) > startOfDay(now)) return { ok: false, error: ka.auth.futureBirthDate };
 
   const age = ageFromBirthDate(date, now);
   if (age > MAX_AGE) return { ok: false, error: ka.auth.outOfRangeBirthDate };
 
-  const iso = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  return { ok: true, iso, age };
+  return { ok: true, iso: isoFromYmd(ymd.year, ymd.month, ymd.day), age };
 }
 
 /** `1990-05-15` → `15.05.1990`, for rendering a stored value. */

@@ -2,13 +2,15 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
-import { CompetitionAvatar } from '@/components/tbilisiMoves/CompetitionAvatar';
-import { TbilisiProgressBar } from '@/components/tbilisiMoves/TbilisiProgressBar';
+import { TbilisiMovesDistrictRow, TbilisiMovesPersonRow } from '@/components/tbilisiMoves/TbilisiMovesBoard';
+import { TbilisiMovesChrome } from '@/components/tbilisiMoves/TbilisiMovesChrome';
+import { TbilisiMovesDistrictPodium, TbilisiMovesPeoplePodium } from '@/components/tbilisiMoves/TbilisiMovesLeaderboard';
+import { takeRankPodium } from '@/components/tbilisiMoves/tbilisiMovesRank';
 import { Card } from '@/components/ui/Card';
 import { GEO } from '@/components/tbilisiMoves/copyStyles';
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
-import { formatGoalPct, formatKaInt, formatYmdKa } from '@/lib/tbilisiMoves/format';
+import { formatKaInt, formatYmdKa } from '@/lib/tbilisiMoves/format';
 import type { TbilisiMovesDayResults } from '@/lib/tbilisiMoves/types';
 import { useThemeColors } from '@/theme/colors';
 
@@ -41,8 +43,11 @@ export default function TbilisiMovesDayScreen() {
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg100, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={colors.primary200} />
+      <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+        <TbilisiMovesChrome title={ka.tbilisiMoves.history} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={colors.primary200} />
+        </View>
       </View>
     );
   }
@@ -61,9 +66,13 @@ export default function TbilisiMovesDayScreen() {
             ? ka.tbilisiMoves.provisional
             : error || ka.tbilisiMoves.resultUnavailable;
 
+  const districtPodium = takeRankPodium(data?.districts || []);
+  const peoplePodium = takeRankPodium(data?.people?.people || []);
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.bg100 }} contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}>
-      <Text style={{ fontFamily: GEO.title, fontSize: 22, color: colors.text100 }}>{date ? formatYmdKa(date) : date}</Text>
+    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+      <TbilisiMovesChrome title={date ? formatYmdKa(date) : ka.tbilisiMoves.history} />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}>
       <Text style={{ color: colors.text200, fontFamily: GEO.regular }}>{statusCopy}</Text>
       {data?.source === 'live' ? (
         <Text style={{ color: colors.text300, fontFamily: GEO.regular }}>{ka.tbilisiMoves.todayProvisionalHint}</Text>
@@ -72,31 +81,18 @@ export default function TbilisiMovesDayScreen() {
       {!data ? null : !data.districts?.length ? (
         <Text style={{ color: colors.text300 }}>{ka.tbilisiMoves.resultEmpty}</Text>
       ) : (
-        data.districts.map((row) => {
-          const ratio = Number(row.goalRatio) || 0;
-          return (
-            <View
-              key={row.id}
-              style={{
-                borderRadius: 18,
-                borderWidth: 1,
-                borderColor: colors.bg300,
-                backgroundColor: colors.surface,
-                padding: 14,
-              }}
-            >
-              <Text style={{ fontFamily: GEO.title, fontSize: 16, color: colors.text100 }}>
-                {row.unranked || !row.rank ? '—' : row.rank}. {row.nameKa}
-              </Text>
-              <View style={{ marginTop: 10 }}>
-                <TbilisiProgressBar ratio={ratio} label={ka.tbilisiMoves.percent(formatGoalPct(ratio))} />
-              </View>
-              <Text style={{ marginTop: 8, color: colors.text200, fontFamily: GEO.regular }}>
-                {formatKaInt(row.eligibleSteps || 0)} / {formatKaInt(row.target)} · {formatKaInt(row.participantCount || 0)} {ka.tbilisiMoves.participants}
-              </Text>
-            </View>
-          );
-        })
+        <>
+          {districtPodium.hasPodium ? (
+            <TbilisiMovesDistrictPodium
+              first={districtPodium.first}
+              second={districtPodium.second}
+              third={districtPodium.third}
+            />
+          ) : null}
+          {districtPodium.rest.map((row) => (
+            <TbilisiMovesDistrictRow key={row.id} row={row} />
+          ))}
+        </>
       )}
 
       {data?.you ? (
@@ -111,17 +107,15 @@ export default function TbilisiMovesDayScreen() {
         </Card>
       ) : null}
 
-      {(data?.people?.people || []).slice(0, 20).map((row, index) => (
-        <View key={`${row.publicHandle}-${index}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Text style={{ width: 28, fontFamily: 'NotoSansGeorgian_700Bold', color: colors.text100 }}>
-            {row.rank == null ? '—' : row.rank}
-          </Text>
-          <CompetitionAvatar avatarId={row.publicAvatarId} handle={row.publicHandle} size={36} />
-            <Text style={{ flex: 1, fontFamily: GEO.semibold, color: colors.text100 }} numberOfLines={2}>
-              {row.publicHandle}
-            </Text>
-            <Text style={{ color: colors.text200, fontFamily: GEO.regular }}>{formatKaInt(row.eligibleSteps)}</Text>
-        </View>
+      {peoplePodium.hasPodium ? (
+        <TbilisiMovesPeoplePodium
+          first={peoplePodium.first}
+          second={peoplePodium.second}
+          third={peoplePodium.third}
+        />
+      ) : null}
+      {peoplePodium.rest.slice(0, 20).map((row, index) => (
+        <TbilisiMovesPersonRow key={`${row.publicHandle}-${index}`} row={row} />
       ))}
 
       {(data?.awards || []).map((award) => (
@@ -134,5 +128,6 @@ export default function TbilisiMovesDayScreen() {
         </Card>
       ))}
     </ScrollView>
+    </View>
   );
 }

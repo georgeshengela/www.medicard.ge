@@ -13,11 +13,13 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { CompetitionAvatar } from '@/components/tbilisiMoves/CompetitionAvatar';
+import { TbilisiMovesChrome } from '@/components/tbilisiMoves/TbilisiMovesChrome';
 import { GEO } from '@/components/tbilisiMoves/copyStyles';
 import { AVATAR_IDS } from '@/constants/avatarAssets';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
-import { runCompetitionSync } from '@/lib/tbilisiMoves/sync';
+import { runCompetitionSync, ENROLL_SYNC_BUDGET_MS } from '@/lib/tbilisiMoves/sync';
+import { isNativeCompetitionRuntime } from '@/lib/tbilisiMoves/sensor';
 import type { TbilisiMovesDistrict } from '@/lib/tbilisiMoves/types';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
@@ -72,6 +74,13 @@ export default function TbilisiMovesEnrollScreen() {
 
   const selected = districts.find((row) => row.id === districtId) || null;
 
+  const goBack = () => {
+    if (step === 'district') setStep('intro');
+    else if (step === 'identity') setStep('district');
+    else if (step === 'confirm') setStep('identity');
+    else router.back();
+  };
+
   const submit = async () => {
     if (submitting || !districtId || !acceptLock || !acceptPublic) return;
     setSubmitting(true);
@@ -84,7 +93,17 @@ export default function TbilisiMovesEnrollScreen() {
         acceptLock: true,
         acceptPublicBoard: true,
       });
-      if (user?.id) void runCompetitionSync({ userId: user.id, reason: 'enroll', force: true });
+      try {
+        if (user?.id && isNativeCompetitionRuntime()) {
+          const sync = runCompetitionSync({ userId: user.id, reason: 'enroll', force: true });
+          await Promise.race([
+            sync,
+            new Promise<void>((resolve) => setTimeout(resolve, ENROLL_SYNC_BUDGET_MS)),
+          ]);
+        }
+      } catch {
+        /* Enrollment already succeeded. Hub shows retry if this read/PUT failed. */
+      }
       router.replace('/tbilisi-moves');
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : ka.common.networkError);
@@ -95,29 +114,37 @@ export default function TbilisiMovesEnrollScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg100, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <ActivityIndicator color={colors.primary200} />
-        <Text style={{ fontFamily: GEO.regular, fontSize: 15, color: colors.text300 }}>{ka.tbilisiMoves.enrollLoading}</Text>
+      <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+        <TbilisiMovesChrome title={ka.tbilisiMoves.enroll} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <ActivityIndicator color={colors.primary200} />
+          <Text style={{ fontFamily: GEO.regular, fontSize: 15, color: colors.text300 }}>{ka.tbilisiMoves.enrollLoading}</Text>
+        </View>
       </View>
     );
   }
 
   if (unavailable) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg100, padding: 16, justifyContent: 'center' }}>
-        <Text style={{ fontFamily: GEO.title, fontSize: 22, color: colors.text100 }}>{ka.tbilisiMoves.unavailableTitle}</Text>
-        <Text style={{ marginTop: 10, fontFamily: GEO.regular, fontSize: 15, lineHeight: 22, color: colors.text200 }}>
-          {unavailable}
-        </Text>
+      <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+        <TbilisiMovesChrome title={ka.tbilisiMoves.enroll} />
+        <View style={{ flex: 1, padding: 16, justifyContent: 'center' }}>
+          <Text style={{ fontFamily: GEO.title, fontSize: 22, color: colors.text100 }}>{ka.tbilisiMoves.unavailableTitle}</Text>
+          <Text style={{ marginTop: 10, fontFamily: GEO.regular, fontSize: 15, lineHeight: 22, color: colors.text200 }}>
+            {unavailable}
+          </Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: colors.bg100 }}
-    >
+    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+      <TbilisiMovesChrome title={ka.tbilisiMoves.enroll} onBack={goBack} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, backgroundColor: colors.bg100 }}
+      >
       <ScrollView
         style={{ flex: 1, backgroundColor: colors.bg100 }}
         contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 14 }}
@@ -126,7 +153,6 @@ export default function TbilisiMovesEnrollScreen() {
       >
         {step === 'intro' ? (
           <>
-            <Text style={{ fontFamily: GEO.title, fontSize: 22, color: colors.text100 }}>{ka.tbilisiMoves.title}</Text>
             <Text style={{ fontFamily: GEO.regular, fontSize: 15, lineHeight: 22, color: colors.text200 }}>
               {ka.tbilisiMoves.enrollExplain}
             </Text>
@@ -259,5 +285,6 @@ export default function TbilisiMovesEnrollScreen() {
         ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
+    </View>
   );
 }

@@ -52,7 +52,10 @@ export function isImplausibleJump(row, lat, lng, now = Date.now()) {
   if (!row.updatedAt) return false;
   const dtMs = now - new Date(row.updatedAt).getTime();
   if (!Number.isFinite(dtMs) || dtMs < 0) return true;
-  return dtMs < IMPLAUSIBLE_JUMP_MS;
+  if (dtMs >= IMPLAUSIBLE_JUMP_MS) return false;
+  // OS last-known Tbilisi must not overwrite a live European fix.
+  // A real grant move Tbilisi → Liège must still write the new home place.
+  return isInGeorgiaBox(lat, lng) && !isInGeorgiaBox(row.lat, row.lng);
 }
 
 export function geocodeAppliesToRow(row, lat, lng) {

@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Trash2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { PetAllergyForm } from '@/components/pets/PetHealthForms';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
@@ -49,6 +50,7 @@ export default function PetAllergyEditScreen() {
         error={error}
         footer={
           <Button
+            icon={Trash2}
             label={ka.pets.deleteAction}
             variant="danger"
             disabled={saving}

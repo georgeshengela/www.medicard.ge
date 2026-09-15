@@ -3,7 +3,7 @@
     "name": "MEDICARD",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.8.28",
+    "version": "1.0.0.8.41",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
-      "version": "1.8.28",
+      "version": "1.8.41",
       "buildNumber": "67",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD",
@@ -158,7 +158,7 @@
     ],
     "extra": {
       "router": {},
-      "medicardInternalVersion": "1.0.0.8.28",
+      "medicardInternalVersion": "1.0.0.8.41",
       "apiUrl": "https://medicard.ge",
       "privacyPolicyUrl": "https://medicard.ge/privacy",
       "termsOfServiceUrl": "https://medicard.ge/terms",

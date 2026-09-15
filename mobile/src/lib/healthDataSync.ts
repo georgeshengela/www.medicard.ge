@@ -85,7 +85,19 @@ export async function cacheLocalHealthSync(payload: HealthMetricsSyncPayload): P
 let pullGeneration = 0;
 let pullInflight: { key: string; promise: Promise<StoredHealthBundle>; generation: number } | null = null;
 let pullCache: { key: string; at: number; data: StoredHealthBundle } | null = null;
+let lastHealthPullMeta: { kind: 'none' | 'memory' | 'api' | 'cache' | 'empty'; at: number } = {
+  kind: 'none',
+  at: 0,
+};
 const healthRefreshListeners = new Set<() => void>();
+
+export function getLastHealthPullMeta() {
+  return lastHealthPullMeta;
+}
+
+function setHealthPullMeta(kind: typeof lastHealthPullMeta.kind) {
+  lastHealthPullMeta = { kind, at: Date.now() };
+}
 
 function pullIdentity(token: string | null) {
   return localAccountId() || jwtSubject(token) || '';
@@ -95,6 +107,7 @@ export function resetHealthPullCache() {
   pullGeneration += 1;
   pullInflight = null;
   pullCache = null;
+  lastHealthPullMeta = { kind: 'none', at: 0 };
 }
 
 subscribeProtectedTokenChange(() => {
@@ -141,6 +154,7 @@ export async function pullStoredHealth(
 
   const now = Date.now();
   if (canReuseHealthPull(pullCache, key, now, Boolean(opts?.force))) {
+    setHealthPullMeta('memory');
     return pullCache!.data;
   }
 
@@ -158,6 +172,7 @@ export async function pullStoredHealth(
       }
       await saveHealthCache(data);
       pullCache = { key, at: Date.now(), data };
+      setHealthPullMeta('api');
       return data;
     } catch (err) {
       if (isHealthPullCancelled(err)) {
@@ -171,7 +186,9 @@ export async function pullStoredHealth(
       })) {
         throw cancelledHealthPull();
       }
-      return (await loadHealthCache()) ?? { daily: [], stepLogs: [] };
+      const cached = await loadHealthCache();
+      setHealthPullMeta(cached ? 'cache' : 'empty');
+      return cached ?? { daily: [], stepLogs: [] };
     } finally {
       if (pullInflight?.generation === startedGeneration && pullInflight?.key === key) {
         pullInflight = null;

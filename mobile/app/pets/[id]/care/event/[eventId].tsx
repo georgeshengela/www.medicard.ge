@@ -3,7 +3,8 @@ import { Alert, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { PetErrorText, PetFactRow, PetPageScroll } from '@/components/pets/PetScreen';
+import { careKindIcon } from '@/components/pets/PetCareChips';
+import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type Pet, type PetCareEvent } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -69,6 +70,12 @@ export default function PetCareEventScreen() {
       <PetPageScroll>
         <PetErrorText message={error} />
         <Card>
+          <View className="mb-3 flex-row items-center gap-3">
+            <PetIconWell icon={careKindIcon(event.kind)} />
+            <Text className="flex-1 text-base font-semibold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+              {event.titleSnapshot}
+            </Text>
+          </View>
           <PetFactRow label={ka.pets.careKind} value={kindLabel(event.kind, ka.pets)} />
           <PetFactRow
             label={ka.pets.administeredOn}

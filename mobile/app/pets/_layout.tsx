@@ -11,7 +11,7 @@ export default function PetsLayout() {
         ...STACK_PUSH,
       }}
     >
-      <Stack.Screen name="index" options={{ title: ka.pets.hubTitle }} />
+      <Stack.Screen name="index" options={{ headerShown: false, title: ka.pets.hubTitle }} />
       <Stack.Screen name="new" options={{ title: ka.pets.add }} />
       <Stack.Screen name="[id]" options={{ headerShown: false }} />
     </Stack>

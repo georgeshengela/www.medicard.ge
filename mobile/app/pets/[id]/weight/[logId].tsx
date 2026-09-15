@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Trash2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
 import { PetWeightForm } from '@/components/pets/PetHealthForms';
@@ -70,7 +71,7 @@ export default function PetWeightEditScreen() {
         initial={log}
         saving={saving}
         error={error}
-        footer={<Button label={ka.pets.deleteAction} variant="danger" disabled={saving} onPress={remove} />}
+        footer={<Button icon={Trash2} label={ka.pets.deleteAction} variant="danger" disabled={saving} onPress={remove} />}
         onSubmit={async (body) => {
           if (!id || !logId || saving) return;
           setSaving(true);

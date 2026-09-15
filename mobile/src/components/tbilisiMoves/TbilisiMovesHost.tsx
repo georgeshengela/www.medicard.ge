@@ -10,6 +10,7 @@ export function TbilisiMovesHost() {
   useEffect(() => {
     if (!user?.id) return;
     if (Constants.appOwnership === 'expo') return;
+    void runCompetitionSync({ userId: user.id, reason: 'foreground' });
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'active') {
         void runCompetitionSync({ userId: user.id, reason: 'foreground' });

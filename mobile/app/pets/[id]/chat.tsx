@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { FlatList, Linking, Pressable, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, Stethoscope } from 'lucide-react-native';
 import { ChatBubbleAssistant, ChatBubbleUser } from '@/components/chat/ChatBubble';
 import { ChatEmptyHero, ChatSuggestionChip } from '@/components/chat/ChatExtras';
 import { ChatInputBar } from '@/components/chat/ChatInputBar';
@@ -74,7 +74,6 @@ export default function PetVetChatScreen() {
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ id: string }>();
   const petId = typeof params.id === 'string' ? params.id : '';
-  const profile = useMemo(() => getPetVetChatProfile(), []);
   const { applyUsage } = useAuth();
   const plan = usePlanUsage();
   const listRef = useRef<FlatList<PetChatMessage>>(null);
@@ -254,11 +253,11 @@ export default function PetVetChatScreen() {
               borderBottomWidth: 1,
               borderBottomColor: FIGMA_CHAT.border,
               paddingTop: insets.top,
-              paddingHorizontal: 12,
-              paddingBottom: 10,
+              paddingHorizontal: 16,
+              paddingBottom: 12,
               flexDirection: 'row',
               alignItems: 'center',
-              gap: 10,
+              gap: 12,
             }}
           >
             <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel={ka.common.back} style={{ padding: 4 }}>
@@ -266,8 +265,12 @@ export default function PetVetChatScreen() {
             </Pressable>
             <PetPhoto photoUrl={pet?.photoUrl || null} name={pet?.name || 'M'} size={40} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '700', color: FIGMA_CHAT.textPrimary }}>{ka.pets.vetName}</Text>
-              <Text style={{ color: FIGMA_CHAT.textSecondary }}>{pet?.name || titledProfile.subtitle}</Text>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 22, color: FIGMA_CHAT.textPrimary }}>
+                {ka.pets.vetName}
+              </Text>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: FIGMA_CHAT.textSecondary }}>
+                {pet?.name || titledProfile.subtitle}
+              </Text>
             </View>
             {remainingLabel ? (
               <Text style={{ fontSize: 12, color: FIGMA_CHAT.textSecondary }}>{remainingLabel}</Text>
@@ -300,13 +303,14 @@ export default function PetVetChatScreen() {
           style={{ flex: 1, backgroundColor: FIGMA_CHAT.cardBg }}
           data={messages}
           keyExtractor={(item, index) => item.id || String(index)}
-          contentContainerStyle={{ padding: 16, paddingBottom: 8, flexGrow: 1 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 16, flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={scrollToEnd}
           showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={{ height: FIGMA_CHAT.messageGap }} />}
           ListEmptyComponent={
-            <View style={{ gap: 12 }}>
-              <ChatBubbleAssistant icon={profile.icon} timestamp={new Date().toISOString()}>
+            <View style={{ gap: FIGMA_CHAT.messageGap }}>
+              <ChatBubbleAssistant icon={Stethoscope} timestamp={new Date().toISOString()}>
                 <ChatEmptyHero title={titledProfile.emptyTitle} body={titledProfile.emptyBody} />
               </ChatBubbleAssistant>
               {titledProfile.suggestions.map((suggestion) => (
@@ -319,13 +323,13 @@ export default function PetVetChatScreen() {
               <ChatBubbleUser content={item.content} timestamp={item.timestamp || item.createdAt || ''} />
             ) : (
               <ChatBubbleAssistant
-                icon={profile.icon}
+                icon={Stethoscope}
                 timestamp={item.timestamp || item.createdAt || ''}
                 streaming={item.streaming}
               >
                 {item.content ? <Markdown content={item.content} allowLinks /> : null}
                 {item.status && item.status !== 'COMPLETE' && !item.streaming ? (
-                  <Text style={{ color: colors.warning }}>
+                  <Text style={{ color: colors.warning, marginTop: 4 }}>
                     {item.status === 'CANCELLED'
                       ? ka.pets.vetCancelled
                       : item.status === 'PARTIAL'
@@ -334,7 +338,7 @@ export default function PetVetChatScreen() {
                   </Text>
                 ) : null}
                 {item.citations?.length ? (
-                  <View style={{ gap: 4 }}>
+                  <View style={{ gap: 8, marginTop: 4 }}>
                     <Text style={{ fontWeight: '600', color: colors.text200 }}>{ka.pets.vetSources}</Text>
                     {item.citations.map((source) => (
                       <Pressable key={source.id} onPress={() => void Linking.openURL(source.url)}>
@@ -350,7 +354,7 @@ export default function PetVetChatScreen() {
             )
           }
           ListFooterComponent={
-            <View style={{ gap: 8, paddingTop: messages.length ? 8 : 0 }}>
+            <View style={{ gap: FIGMA_CHAT.messageGap, paddingTop: messages.length ? FIGMA_CHAT.messageGap : 0 }}>
               {error ? <Text style={{ color: '#DC2626' }}>{error}</Text> : null}
               {messages.length > 0 ? (
                 <Text style={{ fontSize: 12, color: colors.text300 }}>{ka.pets.vetDisclaimer}</Text>

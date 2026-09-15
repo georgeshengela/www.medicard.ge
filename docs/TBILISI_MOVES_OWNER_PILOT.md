@@ -4,17 +4,33 @@ Short procedure for the owner. Full evidence: `docs/TBILISI_MOVES_PILOT_VALIDATI
 
 This is **not** production. `pilotMode` stays true. Hosted Neon, production flags, scheduler, push, and the public version are **not** touched.
 
-## Status (this machine, 2026-09-14)
+## Status (this machine, 2026-09-15)
 
 | Item | State |
 |---|---|
-| Backend pipeline (Phase 5 isolated Postgres) | **Verified** |
-| Owner-pilot API/DB (persistent, non-test DB) | **Running locally** — `GET /api/tbilisi-moves/status` returned schemaReady/flags/`pilotMode` without secrets |
-| Mobile visual checks | **Admin captured** (empty owner-pilot + labeled visual-QA). Expo/native screens pending a development build |
-| Android native Health Connect | **Pending** — emulator appeared then disconnected; no APK install this pass |
-| iOS native HealthKit | **Pending** — no Mac/device |
+| Backend pipeline (Phase 5 isolated Postgres) | **Verified** (not re-run) |
+| Owner-pilot API/DB | Prepared; **not running** this pass (`:4011` down) |
+| Live phone | `192.168.1.187` → Metro `:8081` Expo Go → **`https://medicard.ge`**. Not retargeted. |
+| Native health on that session | **Expo Go — cannot read HealthKit/Health Connect** |
+| Android native | **Not installed** — `adb` empty; Pixel_8 AVD listed, not booted; no debug APK on disk |
+| iOS native | **Not built** — `mobile/ios` missing; this PC has no Xcode |
 | Production activation | **Not performed** |
 | Scheduler | **Not registered** |
+
+## Exact remaining device action (iPhone)
+
+The owner’s 1,000+ Medicard steps live on the **production** Expo Go session as **personal `HealthMetricDaily` / `StepLog`** (`GET /api/health-metrics`, device-local day, `source: 'merged'`). They are **not** a live HealthKit total and **cannot** be ingested as competition observations. Expo Go still cannot call HealthKit / Health Connect. This Windows repo cannot compile iOS.
+
+On a **Mac with Xcode**, without touching the live `:8081` production Metro:
+
+1. Start the isolated API: `cd server && node scripts/tbilisi-moves-pilot.mjs` and confirm `GET http://127.0.0.1:4011/api/tbilisi-moves/status` (`pilotMode: true`, `visualQaFixture: false`). Use the printed LAN IPv4 (last time `http://192.168.1.104:4011`).
+2. `cd mobile && npx expo prebuild --platform ios`
+3. In **that shell only**: `$env:EXPO_PUBLIC_API_URL="http://LAN:4011"` (PowerShell) or `EXPO_PUBLIC_API_URL=http://LAN:4011` then `npx expo run:ios --device` on the physical iPhone. Do **not** set that env on the existing `--lan` Metro.
+4. Sign in as `pilot.owner@medicard.test` (password in gitignored `server/.tbilisi-moves-pilot-account.json`). Do not copy production account rows.
+5. Grant HealthKit **steps** read. Profile → თბილისი მოძრაობს → enroll a district.
+6. Confirm Metro `[tbilisi-moves] sensor` for today’s Asia/Tbilisi interval + `steps`, hub **შენი წვლილი**, then pull-to-refresh once more (`idempotent` / same credit, not a sum).
+
+Android equivalent (separate Metro port, never `:8081`): `npx expo run:android --device --port 8082` with `EXPO_PUBLIC_API_URL=http://LAN:4011`. An emulator cannot see the owner’s phone Health Connect/HealthKit history.
 
 ## 1. Start the isolated persistent API / database
 
@@ -91,4 +107,4 @@ Database `medicard_tbilisi_moves_visual`. Handles are prefixed `QA `. Status `vi
 
 ## Next owner action
 
-Attach a development-build Android phone (or iOS on a Mac), point it at `http://LAN:4011`, and run steps 4–8. That is the only remaining blocker for native sensor evidence. After that pipeline is trusted, the next **product** phase is the licensed Tbilisi district map (existing Mapbox stack; OSM ODbL or operator shapefile — never invented polygons).
+Run the **Exact remaining device action (iPhone)** above. That is the only remaining blocker for native sensor evidence. Do not treat Expo Go, an empty `adb`, or a Windows iOS prebuild as that evidence. After that pipeline is trusted, the next **product** phase is the licensed Tbilisi district map (existing Mapbox stack; OSM ODbL or operator shapefile — never invented polygons).

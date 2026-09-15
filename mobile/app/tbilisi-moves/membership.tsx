@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { TbilisiMovesChrome } from '@/components/tbilisiMoves/TbilisiMovesChrome';
 import { GEO } from '@/components/tbilisiMoves/copyStyles';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
@@ -85,7 +86,9 @@ export default function TbilisiMovesMembershipScreen() {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.bg100 }} contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+      <TbilisiMovesChrome title={ka.tbilisiMoves.membership} />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
       <Card>
         <Text style={{ fontSize: 13, color: colors.text300, fontFamily: GEO.regular }}>{ka.tbilisiMoves.currentDistrict}</Text>
         <Text style={{ marginTop: 4, fontFamily: GEO.title, fontSize: 20, color: colors.text100 }}>
@@ -162,5 +165,6 @@ export default function TbilisiMovesMembershipScreen() {
         </View>
       </Modal>
     </ScrollView>
+    </View>
   );
 }

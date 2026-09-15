@@ -1,9 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
+import { ChevronRight, Scale, ShieldAlert, Stethoscope } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { PetIconWell } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type PetAllergy, type PetCondition, type PetWeightLog } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -12,10 +14,12 @@ import { useThemeColors } from '@/theme/colors';
 
 function SummaryCard({
   title,
+  icon,
   children,
   onPress,
 }: {
   title: string;
+  icon: LucideIcon;
   children: React.ReactNode;
   onPress: () => void;
 }) {
@@ -25,7 +29,8 @@ function SummaryCard({
       <HomeSectionTitle title={title} />
       <Card onPress={onPress}>
         <View className="flex-row items-center">
-          <View className="flex-1 pr-3">{children}</View>
+          <PetIconWell icon={icon} />
+          <View className="flex-1 px-3">{children}</View>
           <ChevronRight size={18} color={colors.text300} strokeWidth={2} />
         </View>
       </Card>
@@ -94,7 +99,7 @@ export function PetHealthSummaries({ petId }: { petId: string }) {
 
   return (
     <View className="gap-4">
-      <SummaryCard title={ka.pets.weightTitle} onPress={() => router.push(`/pets/${petId}/weight`)}>
+      <SummaryCard title={ka.pets.weightTitle} icon={Scale} onPress={() => router.push(`/pets/${petId}/weight`)}>
         {weight ? (
           <>
             <Text className="text-xl font-bold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_700Bold' }}>
@@ -107,7 +112,7 @@ export function PetHealthSummaries({ petId }: { petId: string }) {
         )}
       </SummaryCard>
 
-      <SummaryCard title={ka.pets.allergiesTitle} onPress={() => router.push(`/pets/${petId}/allergies`)}>
+      <SummaryCard title={ka.pets.allergiesTitle} icon={ShieldAlert} onPress={() => router.push(`/pets/${petId}/allergies`)}>
         {allergies && allergies.length ? (
           <Text className="text-base text-text-100">
             {allergies
@@ -121,7 +126,7 @@ export function PetHealthSummaries({ petId }: { petId: string }) {
         )}
       </SummaryCard>
 
-      <SummaryCard title={ka.pets.conditionsTitle} onPress={() => router.push(`/pets/${petId}/conditions`)}>
+      <SummaryCard title={ka.pets.conditionsTitle} icon={Stethoscope} onPress={() => router.push(`/pets/${petId}/conditions`)}>
         {conditions && conditions.length ? (
           <Text className="text-base text-text-100">
             {ka.pets.conditionActiveCount(active)}

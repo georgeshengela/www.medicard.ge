@@ -9,10 +9,11 @@ import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
 import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { PetWeightTrend } from '@/components/pets/PetWeightTrend';
+import { WeightCircleProgress } from '@/components/weight/WeightCircleProgress';
 import { ka } from '@/i18n/ka';
 import { api, type Pet, type PetWeightLog } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
-import { formatPetWeight } from '@/lib/petsHealth';
+import { formatPetWeight, petWeightDeltaPercent } from '@/lib/petsHealth';
 import { useThemeColors } from '@/theme/colors';
 
 export default function PetWeightHistoryScreen() {
@@ -53,40 +54,50 @@ export default function PetWeightHistoryScreen() {
     return <PetHealthStatus error={error} onRetry={() => void load()} />;
   }
 
+  const delta = petWeightDeltaPercent(items);
+  const circlePct = delta == null ? (latest ? 100 : 0) : Math.min(100, Math.abs(delta));
+  const circleLabel = latest
+    ? Number.isInteger(latest.weightKg)
+      ? String(latest.weightKg)
+      : latest.weightKg.toFixed(1)
+    : '—';
+
   return (
     <>
       <Stack.Screen options={{ title: pet ? `${ka.pets.weightTitle} · ${pet.name}` : ka.pets.weightTitle }} />
       <PetPageScroll>
         {latest ? (
           <Card>
-            <Text className="text-sm font-semibold text-text-200">{ka.pets.current}</Text>
-            <Text className="mt-1 text-3xl font-bold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_700Bold' }}>
-              {formatPetWeight(latest, ka.pets)}
-            </Text>
-            <Text className="mt-1 text-sm text-text-300">{formatCycleDateKa(latest.recordedOn)}</Text>
+            <View className="flex-row items-center">
+              <WeightCircleProgress percent={circlePct} label={circleLabel} />
+              <View className="flex-1 pl-4">
+                <Text className="text-sm font-semibold text-text-200">{ka.pets.current}</Text>
+                <Text className="mt-1 text-3xl font-bold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_700Bold' }}>
+                  {formatPetWeight(latest, ka.pets)}
+                </Text>
+                <Text className="mt-1 text-sm text-text-300">{formatCycleDateKa(latest.recordedOn)}</Text>
+              </View>
+            </View>
           </Card>
         ) : (
           <EmptyState icon={Scale} title={ka.pets.weightEmpty} body={ka.pets.weightEmptyBody} />
         )}
-        {items.length > 1 ? (
+        {items.length ? (
           <View>
             <HomeSectionTitle title={ka.pets.weightTrendLabel} />
-            <Card>
-              <PetWeightTrend items={items} />
-            </Card>
+            <PetWeightTrend items={items} pet={pet} />
           </View>
-        ) : items.length === 1 ? (
-          <PetWeightTrend items={items} />
         ) : null}
         {items.map((row) => (
           <PetListRow
             key={row.id}
             title={formatPetWeight(row, ka.pets)}
             subtitle={[formatCycleDateKa(row.recordedOn), row.note].filter(Boolean).join(' · ')}
+            icon={Scale}
             onPress={() => router.push(`/pets/${id}/weight/${row.id}`)}
           />
         ))}
-        <Button label={ka.pets.weightAdd} onPress={() => router.push(`/pets/${id}/weight/new`)} />
+        <Button icon={Scale} label={ka.pets.weightAdd} onPress={() => router.push(`/pets/${id}/weight/new`)} />
       </PetPageScroll>
     </>
   );

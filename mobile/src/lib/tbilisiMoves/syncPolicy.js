@@ -47,3 +47,14 @@ export function shouldSubmitForUser(expectedUserId, activeUserId) {
 
 export const SYNC_THROTTLE_MS = 90_000;
 export const MAX_TRANSIENT_RETRIES = 3;
+export const ENROLL_SYNC_BUDGET_MS = 12_000;
+
+export function shouldPromptForCompetitionRead(reason, extras = {}) {
+  if (reason === 'enroll' || reason === 'refresh') return true;
+  return Boolean(reason === 'focus' && extras.neverSynced);
+}
+
+/** Yesterday's grace read must not discard today's accepted credit. */
+export function ignoreGraceDateSensorFailure({ dateYmd, todayYmd, todayAccepted }) {
+  return Boolean(todayAccepted && dateYmd && todayYmd && dateYmd !== todayYmd);
+}

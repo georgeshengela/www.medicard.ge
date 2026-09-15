@@ -4,6 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import { Award } from 'lucide-react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { Card } from '@/components/ui/Card';
+import { TbilisiMovesChrome } from '@/components/tbilisiMoves/TbilisiMovesChrome';
 import { GEO } from '@/components/tbilisiMoves/copyStyles';
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
@@ -42,15 +43,20 @@ export default function TbilisiMovesAwardsScreen() {
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg100, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={colors.primary200} />
+      <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+        <TbilisiMovesChrome title={ka.tbilisiMoves.myAwards} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={colors.primary200} />
+        </View>
       </View>
     );
   }
 
   return (
-    <FlatList
-      style={{ flex: 1, backgroundColor: colors.bg100 }}
+    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+      <TbilisiMovesChrome title={ka.tbilisiMoves.myAwards} />
+      <FlatList
+        style={{ flex: 1 }}
       contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
       data={awards}
       keyExtractor={(item) => item.id}
@@ -82,5 +88,6 @@ export default function TbilisiMovesAwardsScreen() {
         </View>
       )}
     />
+    </View>
   );
 }

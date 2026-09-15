@@ -955,14 +955,15 @@ function writeTabHash(tab, query) {
   const params = query instanceof URLSearchParams
     ? query
     : new URLSearchParams(query && typeof query === 'object' ? query : {});
-  if (typeof opsState !== 'undefined' && opsState.range && !params.get('range')) {
+  const inheritOpsRange = tab !== 'tbilisi-moves';
+  if (inheritOpsRange && typeof opsState !== 'undefined' && opsState.range && !params.get('range')) {
     params.set('range', opsState.range);
     if (opsState.range === 'custom') {
       if (opsState.from) params.set('from', opsState.from);
       if (opsState.to) params.set('to', opsState.to);
     }
   }
-  if (typeof opsState !== 'undefined' && opsState.grain && !params.get('grain')) {
+  if (inheritOpsRange && typeof opsState !== 'undefined' && opsState.grain && !params.get('grain')) {
     params.set('grain', opsState.grain);
   }
   const qs = params.toString();
@@ -1102,9 +1103,18 @@ function connectAdminRealtime() {
       pill.className = 'status-pill ok';
       pill.innerHTML = `${icon('check')} ცოცხალი`;
     }
+    if (typeof window.patchTbilisiMovesSocket === 'function') window.patchTbilisiMovesSocket('live');
+    window.__adminSocketConnected = true;
+  });
+  adminSocket.on('disconnect', () => {
+    if (typeof window.patchTbilisiMovesSocket === 'function') window.patchTbilisiMovesSocket('offline');
+    window.__adminSocketConnected = false;
   });
   adminSocket.on('ops:live', (snap) => {
     if (typeof window.patchOpsLive === 'function') window.patchOpsLive(snap);
+  });
+  adminSocket.on('tbilisi-moves:live', (snap) => {
+    if (typeof window.patchTbilisiMovesLive === 'function') window.patchTbilisiMovesLive(snap);
   });
   adminSocket.on('brain:sync', () => {
     if (state.tab !== 'push' || pushStudioTab !== 'brain') return;

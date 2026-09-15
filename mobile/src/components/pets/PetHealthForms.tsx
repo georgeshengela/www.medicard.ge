@@ -1,12 +1,33 @@
 import React, { useMemo, useState } from 'react';
+import { View } from 'react-native';
+import {
+  Check,
+  CheckCircle2,
+  CircleQuestionMark,
+  HeartPulse,
+  Pencil,
+  Pill,
+  Scale,
+  ShieldAlert,
+  Stethoscope,
+  User,
+  Utensils,
+  Wind,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { DateField } from '@/components/ui/DateField';
 import { Input } from '@/components/ui/Input';
-import { ChoiceTiles } from '@/components/ui/ChoiceTiles';
-import { SegmentedField } from '@/components/ui/SegmentedField';
-import { PetErrorText, PetFormScroll } from '@/components/pets/PetScreen';
+import {
+  PetChipRow,
+  PetErrorText,
+  PetFilterChip,
+  PetFormScroll,
+  PetSectionLabel,
+} from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
-import { isoToDigits, parseBirthDate } from '@/lib/birthdate';
+import { isoToDigits, parseCivilDate } from '@/lib/birthdate';
 import type {
   PetAllergy,
   PetAllergyCategory,
@@ -24,8 +45,32 @@ import { todayIsoLocal } from '@/lib/visitReminders';
 
 function digitsToIso(digits: string): string | null {
   if (!digits) return null;
-  const parsed = parseBirthDate(digits);
+  const parsed = parseCivilDate(digits);
   return parsed.ok ? parsed.iso : '';
+}
+
+function ChipField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <View style={{ gap: 12 }}>
+      <PetSectionLabel label={label} />
+      {children}
+    </View>
+  );
+}
+
+export function allergyCategoryIcon(category: PetAllergyCategory): LucideIcon {
+  switch (category) {
+    case 'food':
+      return Utensils;
+    case 'medication':
+      return Pill;
+    case 'environmental':
+      return Wind;
+    case 'unknown':
+      return CircleQuestionMark;
+    default:
+      return ShieldAlert;
+  }
 }
 
 export function PetWeightForm({
@@ -67,41 +112,56 @@ export function PetWeightForm({
     });
   };
 
+  const weightInvalid = fieldError === ka.pets.weightRequired;
+
   return (
     <PetFormScroll
       footer={
         <>
-          <PetErrorText message={fieldError || error} />
-          <Button label={saving ? ka.pets.saving : ka.pets.save} loading={saving} onPress={submit} />
+          <PetErrorText message={weightInvalid ? error : fieldError || error} />
+          <Button
+            icon={Check}
+            label={saving ? ka.pets.saving : ka.pets.save}
+            loading={saving}
+            onPress={submit}
+          />
           {footer}
         </>
       }
     >
       <Input
+        figma
+        icon={Scale}
         label={ka.pets.weightValue}
         value={value}
         onChangeText={setValue}
         keyboardType="decimal-pad"
         placeholder="4.2"
+        error={weightInvalid ? ka.pets.weightRequired : undefined}
       />
-      <SegmentedField
-        label={ka.pets.weightUnit}
-        value={unit}
-        onChange={setUnit}
-        options={[
-          { value: 'kg', label: ka.pets.unitKg },
-          { value: 'g', label: ka.pets.unitG },
-          { value: 'lb', label: ka.pets.unitLb },
-        ]}
-      />
+      <ChipField label={ka.pets.weightUnit}>
+        <PetChipRow>
+          <PetFilterChip label={ka.pets.unitKg} selected={unit === 'kg'} onPress={() => setUnit('kg')} />
+          <PetFilterChip label={ka.pets.unitG} selected={unit === 'g'} onPress={() => setUnit('g')} />
+          <PetFilterChip label={ka.pets.unitLb} selected={unit === 'lb'} onPress={() => setUnit('lb')} />
+        </PetChipRow>
+      </ChipField>
       <DateField
+        figma
         label={ka.pets.recordedOn}
         value={dateDigits}
         onChangeText={setDateDigits}
         showAge={false}
         placeholder={ka.pets.datePh}
       />
-      <Input label={ka.pets.note} value={note} onChangeText={setNote} placeholder={ka.pets.notePh} />
+      <Input
+        figma
+        icon={Pencil}
+        label={ka.pets.note}
+        value={note}
+        onChangeText={setNote}
+        placeholder={ka.pets.notePh}
+      />
     </PetFormScroll>
   );
 }
@@ -130,11 +190,11 @@ export function PetAllergyForm({
   const categories = useMemo(
     () =>
       [
-        { value: 'unknown' as const, label: ka.pets.allergyCatUnknown },
-        { value: 'food' as const, label: ka.pets.allergyCatFood },
-        { value: 'medication', label: ka.pets.allergyCatMedication },
-        { value: 'environmental', label: ka.pets.allergyCatEnvironmental },
-        { value: 'other', label: ka.pets.allergyCatOther },
+        { value: 'unknown' as const, label: ka.pets.allergyCatUnknown, icon: CircleQuestionMark },
+        { value: 'food' as const, label: ka.pets.allergyCatFood, icon: Utensils },
+        { value: 'medication' as const, label: ka.pets.allergyCatMedication, icon: Pill },
+        { value: 'environmental' as const, label: ka.pets.allergyCatEnvironmental, icon: Wind },
+        { value: 'other' as const, label: ka.pets.allergyCatOther, icon: ShieldAlert },
       ],
     [],
   );
@@ -160,30 +220,73 @@ export function PetAllergyForm({
     });
   };
 
+  const nameInvalid = fieldError === ka.pets.nameRequired;
+
   return (
     <PetFormScroll
       footer={
         <>
-          <PetErrorText message={fieldError || error} />
-          <Button label={saving ? ka.pets.saving : ka.pets.save} loading={saving} onPress={submit} />
+          <PetErrorText message={nameInvalid ? error : fieldError || error} />
+          <Button
+            icon={Check}
+            label={saving ? ka.pets.saving : ka.pets.save}
+            loading={saving}
+            onPress={submit}
+          />
           {footer}
         </>
       }
     >
-      <Input label={ka.pets.allergen} value={name} onChangeText={setName} placeholder={ka.pets.allergenPh} />
-      <ChoiceTiles label={ka.pets.allergyCategory} value={category} onChange={setCategory} options={categories} />
-      <ChoiceTiles
-        label={ka.pets.allergyReported}
-        value={status}
-        onChange={setStatus}
-        columns={1}
-        options={[
-          { value: 'suspected', label: ka.pets.allergySuspected },
-          { value: 'veterinarian_confirmed', label: ka.pets.allergyVetConfirmed },
-        ]}
+      <Input
+        figma
+        icon={allergyCategoryIcon(category)}
+        label={ka.pets.allergen}
+        value={name}
+        onChangeText={setName}
+        placeholder={ka.pets.allergenPh}
+        error={nameInvalid ? ka.pets.nameRequired : undefined}
       />
-      <Input label={ka.pets.allergyReaction} value={reaction} onChangeText={setReaction} placeholder={ka.pets.allergyReactionPh} />
+      <ChipField label={ka.pets.allergyCategory}>
+        <PetChipRow>
+          {categories.map((option) => (
+            <PetFilterChip
+              key={option.value}
+              label={option.label}
+              icon={option.icon}
+              selected={category === option.value}
+              onPress={() => setCategory(option.value)}
+            />
+          ))}
+        </PetChipRow>
+      </ChipField>
+      <ChipField label={ka.pets.allergyReported}>
+        <View style={{ gap: 8 }}>
+          <PetFilterChip
+            fill
+            label={ka.pets.allergySuspected}
+            icon={User}
+            selected={status === 'suspected'}
+            onPress={() => setStatus('suspected')}
+          />
+          <PetFilterChip
+            fill
+            label={ka.pets.allergyVetConfirmed}
+            icon={Stethoscope}
+            selected={status === 'veterinarian_confirmed'}
+            onPress={() => setStatus('veterinarian_confirmed')}
+          />
+        </View>
+      </ChipField>
+      <Input
+        figma
+        icon={Zap}
+        label={ka.pets.allergyReaction}
+        value={reaction}
+        onChangeText={setReaction}
+        placeholder={ka.pets.allergyReactionPh}
+      />
       <DateField
+        figma
         label={ka.pets.allergyNotedOn}
         value={dateDigits}
         onChangeText={setDateDigits}
@@ -191,7 +294,14 @@ export function PetAllergyForm({
         placeholder={ka.pets.datePh}
         hint={ka.pets.dateUnknownHint}
       />
-      <Input label={ka.pets.note} value={notes} onChangeText={setNotes} placeholder={ka.pets.notePh} />
+      <Input
+        figma
+        icon={Pencil}
+        label={ka.pets.note}
+        value={notes}
+        onChangeText={setNotes}
+        placeholder={ka.pets.notePh}
+      />
     </PetFormScroll>
   );
 }
@@ -243,38 +353,74 @@ export function PetConditionForm({
     });
   };
 
+  const nameInvalid = fieldError === ka.pets.nameRequired;
+
   return (
     <PetFormScroll
       footer={
         <>
-          <PetErrorText message={fieldError || error} />
-          <Button label={saving ? ka.pets.saving : ka.pets.save} loading={saving} onPress={submit} />
+          <PetErrorText message={nameInvalid ? error : fieldError || error} />
+          <Button
+            icon={Check}
+            label={saving ? ka.pets.saving : ka.pets.save}
+            loading={saving}
+            onPress={submit}
+          />
           {footer}
         </>
       }
     >
-      <Input label={ka.pets.conditionName} value={name} onChangeText={setName} placeholder={ka.pets.conditionNamePh} />
-      <SegmentedField
-        label={ka.pets.conditionStatus}
-        value={status}
-        onChange={setStatus}
-        options={[
-          { value: 'active', label: ka.pets.conditionActive },
-          { value: 'resolved', label: ka.pets.conditionResolved },
-          { value: 'unknown', label: ka.pets.conditionUnknown },
-        ]}
+      <Input
+        figma
+        icon={Stethoscope}
+        label={ka.pets.conditionName}
+        value={name}
+        onChangeText={setName}
+        placeholder={ka.pets.conditionNamePh}
+        error={nameInvalid ? ka.pets.nameRequired : undefined}
       />
-      <ChoiceTiles
-        label={ka.pets.conditionBasis}
-        value={basis}
-        onChange={setBasis}
-        columns={1}
-        options={[
-          { value: 'owner_reported', label: ka.pets.conditionOwnerReported },
-          { value: 'veterinarian_confirmed', label: ka.pets.conditionVetConfirmed },
-        ]}
-      />
+      <ChipField label={ka.pets.conditionStatus}>
+        <PetChipRow>
+          <PetFilterChip
+            label={ka.pets.conditionActive}
+            icon={HeartPulse}
+            selected={status === 'active'}
+            onPress={() => setStatus('active')}
+          />
+          <PetFilterChip
+            label={ka.pets.conditionResolved}
+            icon={CheckCircle2}
+            selected={status === 'resolved'}
+            onPress={() => setStatus('resolved')}
+          />
+          <PetFilterChip
+            label={ka.pets.conditionUnknown}
+            icon={CircleQuestionMark}
+            selected={status === 'unknown'}
+            onPress={() => setStatus('unknown')}
+          />
+        </PetChipRow>
+      </ChipField>
+      <ChipField label={ka.pets.conditionBasis}>
+        <View style={{ gap: 8 }}>
+          <PetFilterChip
+            fill
+            label={ka.pets.conditionOwnerReported}
+            icon={User}
+            selected={basis === 'owner_reported'}
+            onPress={() => setBasis('owner_reported')}
+          />
+          <PetFilterChip
+            fill
+            label={ka.pets.conditionVetConfirmed}
+            icon={Stethoscope}
+            selected={basis === 'veterinarian_confirmed'}
+            onPress={() => setBasis('veterinarian_confirmed')}
+          />
+        </View>
+      </ChipField>
       <DateField
+        figma
         label={ka.pets.conditionOnset}
         value={onsetDigits}
         onChangeText={setOnsetDigits}
@@ -284,6 +430,7 @@ export function PetConditionForm({
       />
       {status === 'resolved' ? (
         <DateField
+          figma
           label={ka.pets.conditionResolvedOn}
           value={resolvedDigits}
           onChangeText={setResolvedDigits}
@@ -292,7 +439,14 @@ export function PetConditionForm({
           hint={ka.pets.dateUnknownHint}
         />
       ) : null}
-      <Input label={ka.pets.note} value={notes} onChangeText={setNotes} placeholder={ka.pets.notePh} />
+      <Input
+        figma
+        icon={Pencil}
+        label={ka.pets.note}
+        value={notes}
+        onChangeText={setNotes}
+        placeholder={ka.pets.notePh}
+      />
     </PetFormScroll>
   );
 }

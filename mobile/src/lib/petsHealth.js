@@ -31,6 +31,50 @@ export function sortWeightChronological(items) {
   });
 }
 
+function ymdLocal(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Last 7 local days. Missing days carry the previous logged kg — chart only, not a medical gap. */
+export function petWeightWeekSeries(items, now = new Date()) {
+  const sorted = sortWeightChronological(items);
+  const byDay = new Map();
+  for (const row of sorted) byDay.set(row.recordedOn, row.weightKg);
+
+  const windowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  const startYmd = ymdLocal(windowStart);
+  let carry = null;
+  for (const row of sorted) {
+    if (row.recordedOn < startYmd) carry = row.weightKg;
+  }
+
+  const days = [];
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset);
+    const ymd = ymdLocal(date);
+    if (byDay.has(ymd)) carry = byDay.get(ymd);
+    days.push({
+      ymd,
+      date,
+      weekdayIndex: (date.getDay() + 6) % 7,
+      value: carry,
+    });
+  }
+  return days;
+}
+
+export function petWeightDeltaPercent(items) {
+  const sorted = sortWeightChronological(items);
+  if (sorted.length < 2) return null;
+  const latest = sorted[sorted.length - 1].weightKg;
+  const previous = sorted[sorted.length - 2].weightKg;
+  if (!previous) return null;
+  return Math.round(((latest - previous) / previous) * 1000) / 10;
+}
+
 export function weightTrendAccessibleText(items, formatDate, copy) {
   if (!items.length) return copy.weightEmpty;
   if (items.length === 1) {

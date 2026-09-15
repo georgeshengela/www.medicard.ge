@@ -19,7 +19,7 @@ export const FIGMA_CHAT = {
   successBg: '#F0FDF4',
   successBorder: '#BBF7D0',
   paddingH: 16,
-  messageGap: 12,
+  messageGap: 16,
   bubbleRadius: 16,
   inputRadius: 9999,
   navAvatarPad: 24,

@@ -1,9 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { AlertTriangle, CalendarClock } from 'lucide-react-native';
+import { AlertTriangle, ChevronRight, Syringe } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { careKindIcon } from '@/components/pets/PetCareChips';
+import { PetIconWell } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type Pet, type PetCareOccurrence } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -55,47 +57,55 @@ export function PetCareSummary({ pet }: { pet: Pet }) {
     return (
       <View>
         <HomeSectionTitle title={ka.pets.careTitle} />
-        <Card>
-          <Text style={{ fontSize: 15, color: colors.text200 }}>{message}</Text>
-          <Text
-            onPress={() => void load()}
-            accessibilityRole="button"
-            className="mt-2 min-h-11 text-base font-semibold text-primary-200"
-          >
-            {ka.pets.retry}
-          </Text>
+        <Card onPress={() => void load()}>
+          <View className="flex-row items-center">
+            <PetIconWell icon={AlertTriangle} />
+            <View className="flex-1 px-3">
+              <Text className="text-base text-text-200">{message}</Text>
+              <Text className="mt-1 text-sm font-semibold text-primary-200">{ka.pets.retry}</Text>
+            </View>
+          </View>
         </Card>
       </View>
     );
   }
 
   const next = overdue[0] || due[0] || upcoming[0];
+  const empty = !next;
+  const Icon = next ? careKindIcon(next.kind) : Syringe;
   const headline = overdue.length
     ? `${ka.pets.overdue} · ${kindLabel(overdue[0].kind, ka.pets)}`
     : due.length
       ? `${ka.pets.dueToday} · ${kindLabel(due[0].kind, ka.pets)}`
       : next
         ? `${formatCycleDateKa(next.plannedOn)} · ${kindLabel(next.kind, ka.pets)}`
-        : ka.pets.noUpcoming;
+        : ka.pets.careEmpty;
 
   return (
     <View>
       <HomeSectionTitle title={ka.pets.careTitle} />
-      <Card onPress={() => router.push(`/pets/${pet.id}/care`)}>
-        <View className="flex-row items-center gap-3">
-          {overdue.length ? (
-            <AlertTriangle size={20} color={colors.danger} strokeWidth={2} />
-          ) : (
-            <CalendarClock size={20} color={colors.primary200} strokeWidth={2} />
-          )}
-          <View className="flex-1">
-            <Text className="text-base font-semibold text-text-100">{headline}</Text>
+      <Card onPress={() => router.push(empty ? `/pets/${pet.id}/care/add` : `/pets/${pet.id}/care`)}>
+        <View className="flex-row items-center">
+          <PetIconWell icon={empty ? Syringe : Icon} />
+          <View className="flex-1 px-3">
+            <Text
+              className="text-base font-semibold"
+              style={{
+                color: overdue.length ? colors.danger : empty ? colors.text300 : colors.text100,
+                fontFamily: 'NotoSansGeorgian_600SemiBold',
+              }}
+            >
+              {headline}
+            </Text>
             {next?.title ? <Text className="mt-1 text-sm text-text-300">{next.title}</Text> : null}
+            {empty ? (
+              <Text className="mt-1 text-sm font-semibold text-primary-200">{ka.pets.careAdd}</Text>
+            ) : overdue.length || due.length ? (
+              <Text className="mt-1 text-sm text-text-200">{completeLabel(next?.kind, ka.pets)}</Text>
+            ) : null}
           </View>
+          <ChevronRight size={18} color={colors.text300} strokeWidth={2} />
         </View>
-        {overdue.length || due.length ? (
-          <Text className="mt-2 text-sm text-text-200">{completeLabel(next?.kind, ka.pets)}</Text>
-        ) : null}
       </Card>
     </View>
   );

@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, ChevronRight, X, type LucideIcon } from 'lucide-react-native';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { Card } from '@/components/ui/Card';
-import { FIGMA_AUTH_SHADOW } from '@/constants/figmaAuthLayout';
+import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
@@ -84,22 +84,67 @@ export function PetErrorText({ message }: { message: string | null }) {
   return <Text className="text-sm text-state-danger">{message}</Text>;
 }
 
+export function PetSectionLabel({ label }: { label: string }) {
+  const auth = useFigmaAuth();
+  return (
+    <Text
+      style={{
+        fontFamily: 'NotoSansGeorgian_600SemiBold',
+        fontSize: 14,
+        lineHeight: 20,
+        color: auth.labelColor,
+      }}
+    >
+      {label}
+    </Text>
+  );
+}
+
+export function PetIconWell({
+  icon: Icon,
+  size = 44,
+}: {
+  icon: LucideIcon;
+  size?: number;
+}) {
+  const colors = useThemeColors();
+  const dark = useIsDark();
+  const iconSize = size >= 56 ? 26 : 22;
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 14,
+        backgroundColor: dark ? colors.accent100 : '#F0FDFA',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Icon size={iconSize} color={dark ? colors.primary100 : colors.primary200} strokeWidth={2} />
+    </View>
+  );
+}
+
 export function PetListRow({
   title,
   subtitle,
   onPress,
   tone = 'default',
+  icon,
 }: {
   title: string;
   subtitle?: string;
   onPress: () => void;
   tone?: 'default' | 'muted';
+  icon?: LucideIcon;
 }) {
   const colors = useThemeColors();
   return (
     <Card onPress={onPress}>
       <View className="flex-row items-center">
-        <View className="flex-1 pr-3">
+        {icon ? <PetIconWell icon={icon} /> : null}
+        <View className={icon ? 'flex-1 px-3' : 'flex-1 pr-3'}>
           <Text
             className="text-base font-semibold"
             style={{

@@ -7,6 +7,7 @@ import { listDistricts } from './membership.js';
 import { rankDistricts } from './ranking.js';
 import { loadRound } from './rounds.js';
 import { tbilisiYmd } from './time.js';
+import { getTbilisiMovesLiveSnapshot } from './liveSnapshot.js';
 
 export async function adminOverview(now = new Date()) {
   await requireSchema();
@@ -139,8 +140,10 @@ export async function adminConfigView(now = new Date()) {
   const live = await loadLiveConfig();
   const ymd = tbilisiYmd(now);
   const round = await loadRound(prisma, ymd);
+  const liveStats = await getTbilisiMovesLiveSnapshot(now);
   return {
     live: publicConfig(live),
+    liveStats,
     currentRound: round
       ? {
           date: round.date,

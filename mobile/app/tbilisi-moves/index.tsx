@@ -10,29 +10,51 @@ import {
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Footprints } from 'lucide-react-native';
+import {
+  Award,
+  ChevronRight,
+  Footprints,
+  History,
+  MapPin,
+  RefreshCw,
+  Trophy,
+  Users,
+} from 'lucide-react-native';
 import { EmptyState } from '@/components/EmptyState';
-import { CompetitionAvatar } from '@/components/tbilisiMoves/CompetitionAvatar';
+import {
+  TbilisiMovesActionChip,
+  TbilisiMovesDistrictRow,
+  TbilisiMovesPersonRow,
+  TbilisiMovesStatTile,
+} from '@/components/tbilisiMoves/TbilisiMovesBoard';
+import { TbilisiMovesChrome, TbilisiMovesIconWell } from '@/components/tbilisiMoves/TbilisiMovesChrome';
+import {
+  TbilisiMovesBoardEmpty,
+  TbilisiMovesBoardHeading,
+  TbilisiMovesDistrictPodium,
+  TbilisiMovesPeoplePodium,
+  TbilisiMovesYourPlaceDock,
+} from '@/components/tbilisiMoves/TbilisiMovesLeaderboard';
 import { GEO } from '@/components/tbilisiMoves/copyStyles';
-import { TbilisiProgressBar } from '@/components/tbilisiMoves/TbilisiProgressBar';
+import { TbilisiMovesScoreRing } from '@/components/tbilisiMoves/TbilisiMovesScoreRing';
+import { takeRankPodium } from '@/components/tbilisiMoves/tbilisiMovesRank';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
-import { formatDateTime } from '@/lib/format';
-import { formatGoalPct, formatKaInt } from '@/lib/tbilisiMoves/format';
+import { formatRelative } from '@/lib/format';
+import { formatKaInt } from '@/lib/tbilisiMoves/format';
+import { getCachedTodaySteps } from '@/lib/healthDataSync';
 import { loadCache, loadLastSyncOk, saveCache } from '@/lib/tbilisiMoves/storage';
 import {
   getCompetitionSyncState,
   runCompetitionSync,
   subscribeCompetitionSync,
 } from '@/lib/tbilisiMoves/sync';
+import { isNativeCompetitionRuntime } from '@/lib/tbilisiMoves/sensor';
 import type {
-  TbilisiMovesDistrict,
   TbilisiMovesDistrictBoard,
   TbilisiMovesMe,
   TbilisiMovesPeopleBoard,
-  TbilisiMovesPerson,
   TbilisiMovesStatus,
 } from '@/lib/tbilisiMoves/types';
 import { useOffline } from '@/hooks/useOffline';
@@ -46,7 +68,37 @@ type HubCache = {
   people: TbilisiMovesPeopleBoard | null;
 };
 
-function SyncBanner({ colors }: { colors: ReturnType<typeof useThemeColors> }) {
+function SyncBanner({
+  colors,
+  onRetry,
+  retrying,
+  personalHomeSteps,
+  competitionSteps,
+}: {
+  colors: ReturnType<typeof useThemeColors>;
+  onRetry: () => void;
+  retrying: boolean;
+  personalHomeSteps: number | null;
+  competitionSteps: number;
+}) {
+  if (!isNativeCompetitionRuntime()) {
+    return (
+      <View
+        style={{
+          padding: 14,
+          borderRadius: 16,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.bg300,
+          gap: 8,
+        }}
+      >
+        <Text style={{ fontSize: 13, lineHeight: 20, color: colors.text200, fontFamily: GEO.regular }}>
+          {ka.tbilisiMoves.personalNotCompetition(personalHomeSteps)}
+        </Text>
+      </View>
+    );
+  }
   const sync = getCompetitionSyncState();
   const copy =
     sync.phase === 'conflict'
@@ -67,11 +119,52 @@ function SyncBanner({ colors }: { colors: ReturnType<typeof useThemeColors> }) {
                     ? ka.tbilisiMoves.offline
                     : sync.phase === 'unavailable'
                       ? ka.tbilisiMoves.unavailableTitle
-                      : null;
-  if (!copy) return null;
+                      : sync.phase === 'error'
+                        ? ka.tbilisiMoves.syncError
+                        : null;
+  const retryable =
+    sync.phase === 'error' ||
+    sync.phase === 'pending' ||
+    sync.phase === 'permission' ||
+    sync.phase === 'offline' ||
+    sync.phase === 'empty';
+  if (!copy) {
+    if (personalHomeSteps && personalHomeSteps > 0 && competitionSteps <= 0) {
+      return (
+        <View
+          style={{
+            padding: 14,
+            borderRadius: 16,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.bg300,
+            gap: 12,
+          }}
+        >
+          <Text style={{ fontSize: 13, lineHeight: 20, color: colors.text200, fontFamily: GEO.regular }}>
+            {ka.tbilisiMoves.sensorCatchUp}
+          </Text>
+          <Button label={ka.tbilisiMoves.syncRetry} loading={retrying} disabled={retrying} onPress={onRetry} />
+        </View>
+      );
+    }
+    return null;
+  }
   return (
-    <View style={{ padding: 12, borderRadius: 16, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.bg300 }}>
-      <Text style={{ fontSize: 13, color: colors.text300, fontFamily: 'NotoSansGeorgian_400Regular' }}>{copy}</Text>
+    <View
+      style={{
+        padding: 14,
+        borderRadius: 16,
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.bg300,
+        gap: 12,
+      }}
+    >
+      <Text style={{ fontSize: 13, lineHeight: 20, color: colors.text200, fontFamily: GEO.regular }}>{copy}</Text>
+      {retryable ? (
+        <Button label={ka.tbilisiMoves.syncRetry} loading={retrying} disabled={retrying} onPress={onRetry} />
+      ) : null}
     </View>
   );
 }
@@ -93,6 +186,7 @@ export default function TbilisiMovesHubScreen() {
   const [error, setError] = useState<string | null>(null);
   const [cached, setCached] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
+  const [personalHomeSteps, setPersonalHomeSteps] = useState<number | null>(null);
   const [, setSyncTick] = useState(0);
 
   React.useEffect(() => subscribeCompetitionSync(() => setSyncTick((n) => n + 1)), []);
@@ -121,14 +215,18 @@ export default function TbilisiMovesHubScreen() {
         setPeopleOffset(0);
         await saveCache({ me: nextMe, districts: board, people: peopleBoard } satisfies HubCache);
         setCached(false);
-        if (user?.id && nextMe.membership.enrolled && opts?.refresh) {
-          await runCompetitionSync({ userId: user.id, reason: 'refresh', force: true });
-          const after = await api.tbilisiMoves.me();
-          setMe(after);
-          const afterBoard = await api.tbilisiMoves.districts(after.date);
-          setDistrictBoard(afterBoard);
-          if (after.membership.districtId) {
-            setPeople(await api.tbilisiMoves.people(after.date, after.membership.districtId, { limit: 50, offset: 0 }));
+        if (user?.id && nextMe.membership.enrolled && opts?.refresh && isNativeCompetitionRuntime()) {
+          try {
+            await runCompetitionSync({ userId: user.id, reason: 'refresh', force: true });
+            const after = await api.tbilisiMoves.me();
+            setMe(after);
+            const afterBoard = await api.tbilisiMoves.districts(after.date);
+            setDistrictBoard(afterBoard);
+            if (after.membership.districtId) {
+              setPeople(await api.tbilisiMoves.people(after.date, after.membership.districtId, { limit: 50, offset: 0 }));
+            }
+          } catch {
+            // Health Connect / a cancelled follow-up GET is not offline. Keep the live board.
           }
         }
       } catch (caught) {
@@ -154,8 +252,18 @@ export default function TbilisiMovesHubScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void load();
-      if (user?.id) void runCompetitionSync({ userId: user.id, reason: 'focus' });
+      let cancelled = false;
+      void (async () => {
+        const cachedSteps = await getCachedTodaySteps();
+        if (!cancelled) setPersonalHomeSteps(cachedSteps);
+        if (user?.id && isNativeCompetitionRuntime()) {
+          await runCompetitionSync({ userId: user.id, reason: 'focus' });
+        }
+        if (!cancelled) await load();
+      })();
+      return () => {
+        cancelled = true;
+      };
     }, [load, user?.id]),
   );
 
@@ -187,6 +295,7 @@ export default function TbilisiMovesHubScreen() {
   const cap = you?.capSnapshot || me?.config.competitiveCap || 0;
   const personal = you?.eligibleSteps || 0;
   const sync = getCompetitionSyncState();
+  const updatedAt = lastSync || sync.lastOkAt || null;
 
   const tiedLeaders = useMemo(() => {
     const rows = people?.people || [];
@@ -194,44 +303,112 @@ export default function TbilisiMovesHubScreen() {
     if (firstRank !== 1) return [];
     return rows.filter((row) => row.rank === 1);
   }, [people]);
+  const districtPodium = useMemo(
+    () => takeRankPodium(districtBoard?.districts || []),
+    [districtBoard],
+  );
+  const peoplePodium = useMemo(() => takeRankPodium(people?.people || []), [people]);
+
+  const chrome = (
+    <TbilisiMovesChrome
+      title={ka.tbilisiMoves.title}
+      right={
+        enrolled ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={ka.tbilisiMoves.refresh}
+            hitSlop={12}
+            onPress={() => void onRefresh()}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.bg300,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <RefreshCw size={18} color={colors.primary200} strokeWidth={2.2} />
+          </Pressable>
+        ) : undefined
+      }
+    />
+  );
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg100, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={colors.primary200} />
+      <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+        {chrome}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={colors.primary200} />
+        </View>
       </View>
     );
   }
 
   if (!available) {
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: colors.bg100 }} contentContainerStyle={{ padding: 16 }}>
-        <EmptyState
-          icon={Footprints}
-          title={ka.tbilisiMoves.unavailableTitle}
-          body={error || ka.tbilisiMoves.unavailableBody}
-        />
-      </ScrollView>
+      <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+        {chrome}
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
+          <EmptyState icon={Footprints} title={ka.tbilisiMoves.unavailableTitle} body={error || ka.tbilisiMoves.unavailableBody} />
+        </ScrollView>
+      </View>
     );
   }
 
   if (!enrolled) {
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: colors.bg100 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
-        <EmptyState icon={Footprints} title={ka.tbilisiMoves.notEnrolledTitle} body={ka.tbilisiMoves.notEnrolledBody}>
-          <Button label={ka.tbilisiMoves.enroll} onPress={() => router.push('/tbilisi-moves/enroll')} />
-        </EmptyState>
-      </ScrollView>
+      <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+        {chrome}
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+          <EmptyState icon={Footprints} title={ka.tbilisiMoves.notEnrolledTitle} body={ka.tbilisiMoves.notEnrolledBody}>
+            <Button label={ka.tbilisiMoves.enroll} onPress={() => router.push('/tbilisi-moves/enroll')} />
+          </EmptyState>
+        </ScrollView>
+      </View>
     );
   }
 
   const overview = (
-    <View style={{ gap: 12, paddingBottom: 12 }}>
-      <Text style={{ fontSize: 13, lineHeight: 20, color: colors.text300, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.tbilisiMoves.pilot}</Text>
-      {(offline || cached) && (
-        <Text style={{ fontSize: 13, color: colors.warning, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.tbilisiMoves.offline}</Text>
-      )}
-      <SyncBanner colors={colors} />
+    <View style={{ gap: 14, paddingBottom: 8 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        <View
+          style={{
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: 999,
+            backgroundColor: colors.accent100,
+            borderWidth: 1,
+            borderColor: colors.bg300,
+          }}
+        >
+          <Text style={{ fontFamily: GEO.semibold, fontSize: 12, color: colors.primary200 }}>{ka.tbilisiMoves.pilotShort}</Text>
+        </View>
+        {(offline || cached) && (
+          <View
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 999,
+              backgroundColor: colors.warningBg,
+            }}
+          >
+            <Text style={{ fontFamily: GEO.semibold, fontSize: 12, color: colors.warning }}>{ka.tbilisiMoves.offline}</Text>
+          </View>
+        )}
+      </View>
+
+      <Text style={{ fontSize: 13, lineHeight: 20, color: colors.text300, fontFamily: GEO.regular }}>{ka.tbilisiMoves.pilot}</Text>
+      <SyncBanner
+        colors={colors}
+        onRetry={() => void onRefresh()}
+        retrying={refreshing}
+        personalHomeSteps={personalHomeSteps}
+        competitionSteps={personal}
+      />
       {status?.visualQaFixture ? (
         <View style={{ padding: 12, borderRadius: 16, backgroundColor: colors.warningBg, borderWidth: 1, borderColor: colors.warning }}>
           <Text style={{ fontSize: 13, lineHeight: 20, color: colors.text100, fontFamily: GEO.semibold }}>
@@ -240,140 +417,131 @@ export default function TbilisiMovesHubScreen() {
         </View>
       ) : null}
 
-      <Card>
-        <Pressable onPress={() => router.push('/tbilisi-moves/membership')}>
-          <Text style={{ fontSize: 13, color: colors.text300, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.tbilisiMoves.currentDistrict}</Text>
-          <Text style={{ marginTop: 4, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, color: colors.text100 }}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push('/tbilisi-moves/membership')}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          padding: 14,
+          borderRadius: 18,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.bg300,
+        }}
+      >
+        <TbilisiMovesIconWell>
+          <MapPin size={18} color={colors.primary200} strokeWidth={2.2} />
+        </TbilisiMovesIconWell>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontSize: 12, color: colors.text300, fontFamily: GEO.regular }}>{ka.tbilisiMoves.currentDistrict}</Text>
+          <Text style={{ marginTop: 2, fontFamily: GEO.title, fontSize: 18, color: colors.text100 }} numberOfLines={1}>
             {me?.membership.district?.nameKa || district?.nameKa}
           </Text>
           {me?.membership.pendingDistrict ? (
-            <Text style={{ marginTop: 6, color: colors.primary200, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.tbilisiMoves.pendingChange}</Text>
-          ) : null}
-        </Pressable>
-      </Card>
-
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <Pressable
-          onPress={() => router.push('/tbilisi-moves/history')}
-          style={{
-            flex: 1,
-            padding: 14,
-            borderRadius: 16,
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.bg300,
-          }}
-        >
-          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: colors.text100 }}>{ka.tbilisiMoves.history}</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => router.push('/tbilisi-moves/awards')}
-          style={{
-            flex: 1,
-            padding: 14,
-            borderRadius: 16,
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.bg300,
-          }}
-        >
-          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: colors.text100 }}>{ka.tbilisiMoves.myAwards}</Text>
-        </Pressable>
-      </View>
-
-      <Card>
-        <Text style={{ fontSize: 13, color: colors.text300, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.tbilisiMoves.credited}</Text>
-        <Text style={{ marginTop: 4, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 36, color: colors.text100 }}>
-          {formatKaInt(credited)}
-        </Text>
-        <Text style={{ marginTop: 2, fontSize: 14, color: colors.text200, fontFamily: 'NotoSansGeorgian_400Regular' }}>
-          {ka.tbilisiMoves.ofTarget} {formatKaInt(target)}
-        </Text>
-        <View style={{ marginTop: 12 }}>
-          <TbilisiProgressBar ratio={ratio} label={ka.tbilisiMoves.percent(formatGoalPct(ratio))} />
-        </View>
-        <View style={{ marginTop: 14, flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text style={{ color: colors.text200, fontFamily: 'NotoSansGeorgian_400Regular' }}>
-            {ka.tbilisiMoves.participants}: {formatKaInt(district?.participantCount || 0)}
-          </Text>
-          <Text style={{ color: colors.text200, fontFamily: 'NotoSansGeorgian_400Regular' }}>
-            {ka.tbilisiMoves.districtRank}:{' '}
-            {district?.unranked || !district?.rank ? ka.tbilisiMoves.unranked : district.rank}
-          </Text>
-        </View>
-        {district?.unranked ? (
-          <Text style={{ marginTop: 8, fontSize: 13, color: colors.text300, fontFamily: 'NotoSansGeorgian_400Regular' }}>
-            {ka.tbilisiMoves.unrankedWhy(me?.overview.round.rules.minParticipantsForRank || 5)}
-          </Text>
-        ) : null}
-        <Text style={{ marginTop: 12, fontSize: 14, color: colors.text200, fontFamily: 'NotoSansGeorgian_400Regular' }}>
-          {ka.tbilisiMoves.yourContribution}: {formatKaInt(personal)} / {formatKaInt(cap)}
-        </Text>
-        {cap > 0 && personal >= cap ? (
-          <Text style={{ marginTop: 6, fontSize: 13, color: colors.warning, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.tbilisiMoves.capReached}</Text>
-        ) : null}
-        <Text style={{ marginTop: 10, fontSize: 12, color: colors.text300, fontFamily: 'NotoSansGeorgian_400Regular' }}>
-          {ka.tbilisiMoves.lastSync}: {lastSync || sync.lastOkAt ? formatDateTime(lastSync || sync.lastOkAt || '') : ka.tbilisiMoves.neverSynced}
-        </Text>
-        <Text style={{ marginTop: 6, fontFamily: 'NotoSansGeorgian_600SemiBold', color: colors.primary200 }}>
-          {ka.tbilisiMoves.provisional}
-        </Text>
-      </Card>
-
-      <View style={{ flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 16, padding: 4, borderWidth: 1, borderColor: colors.bg300 }}>
-        {(['districts', 'people'] as const).map((id) => (
-          <Pressable
-            key={id}
-            onPress={() => setTab(id)}
-            style={{
-              flex: 1,
-              paddingVertical: 10,
-              borderRadius: 12,
-              backgroundColor: tab === id ? colors.accent100 : 'transparent',
-              alignItems: 'center',
-            }}
-          >
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: tab === id ? colors.primary200 : colors.text300 }}>
-              {id === 'districts' ? ka.tbilisiMoves.tabDistricts : ka.tbilisiMoves.tabPeople}
+            <Text style={{ marginTop: 4, color: colors.primary200, fontFamily: GEO.regular, fontSize: 13 }}>
+              {ka.tbilisiMoves.pendingChange}
             </Text>
-          </Pressable>
-        ))}
+          ) : null}
+        </View>
+        <ChevronRight size={18} color={colors.text300} strokeWidth={2.2} />
+      </Pressable>
+
+      <TbilisiMovesScoreRing percent={Math.round(ratio * 100)} caption={ka.tbilisiMoves.dayGoal} />
+      <Text style={{ textAlign: 'center', fontSize: 15, color: colors.text200, fontFamily: GEO.semibold }}>
+        {formatKaInt(credited)} {ka.tbilisiMoves.ofTarget} {formatKaInt(target)}
+      </Text>
+      <Text style={{ textAlign: 'center', fontSize: 12, color: colors.text300, fontFamily: GEO.regular }}>
+        {ka.tbilisiMoves.updatedLine(updatedAt ? formatRelative(updatedAt) : ka.tbilisiMoves.neverSynced)}
+      </Text>
+
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <TbilisiMovesStatTile
+          icon={Users}
+          label={ka.tbilisiMoves.participants}
+          value={formatKaInt(district?.participantCount || 0)}
+        />
+        <TbilisiMovesStatTile
+          icon={Trophy}
+          label={ka.tbilisiMoves.districtRank}
+          value={district?.unranked || !district?.rank ? ka.tbilisiMoves.unranked : String(district.rank)}
+        />
       </View>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <TbilisiMovesStatTile
+          icon={Footprints}
+          label={ka.tbilisiMoves.yourContribution}
+          value={
+            you?.lastRecordedAt || you?.rawObservedSteps != null
+              ? `${formatKaInt(personal)} / ${formatKaInt(cap)}`
+              : ka.tbilisiMoves.neverSynced
+          }
+        />
+        <TbilisiMovesStatTile icon={Award} label={ka.tbilisiMoves.cap} value={formatKaInt(cap)} />
+      </View>
+      {district?.unranked ? (
+        <Text style={{ fontSize: 13, color: colors.text300, fontFamily: GEO.regular }}>
+          {ka.tbilisiMoves.unrankedWhy(me?.overview.round.rules.minParticipantsForRank || 5)}
+        </Text>
+      ) : null}
+      {cap > 0 && personal >= cap ? (
+        <Text style={{ fontSize: 13, color: colors.warning, fontFamily: GEO.regular }}>{ka.tbilisiMoves.capReached}</Text>
+      ) : null}
+      <Text style={{ fontFamily: GEO.semibold, fontSize: 13, color: colors.primary200 }}>{ka.tbilisiMoves.provisional}</Text>
+
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <TbilisiMovesActionChip
+          icon={History}
+          label={ka.tbilisiMoves.history}
+          onPress={() => router.push('/tbilisi-moves/history')}
+        />
+        <TbilisiMovesActionChip
+          icon={Award}
+          label={ka.tbilisiMoves.myAwards}
+          onPress={() => router.push('/tbilisi-moves/awards')}
+        />
+      </View>
+
+      <TbilisiMovesBoardHeading tab={tab} onTab={setTab} />
     </View>
   );
 
   const yourPlaceOffPage = people?.you && !people.you.onPage && people.you.rank != null;
 
   if (tab === 'people') {
-    const headerLeaders = tiedLeaders.length > 3;
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+        {chrome}
         <FlatList
-          data={people?.people || []}
+          data={peoplePodium.rest}
           keyExtractor={(item, index) => `${item.publicHandle}-${item.eligibleSteps}-${index}`}
-          contentContainerStyle={{ padding: 16, paddingBottom: yourPlaceOffPage ? 120 + insets.bottom : 40 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
+          contentContainerStyle={{ padding: 16, paddingBottom: yourPlaceOffPage ? 128 + insets.bottom : 40 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary200} />}
           onEndReached={() => void loadMorePeople()}
           onEndReachedThreshold={0.4}
           ListHeaderComponent={
-            <View>
+            <View style={{ gap: 10, marginBottom: 8 }}>
               {overview}
-              {headerLeaders ? (
-                <Card>
-                  <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: colors.text100 }}>
-                    {ka.tbilisiMoves.tiedLeaders}
-                  </Text>
-                  {tiedLeaders.slice(0, 8).map((row, index) => (
-                    <PersonLine key={`${row.publicHandle}-lead-${index}`} row={row} colors={colors} />
-                  ))}
-                </Card>
+              {peoplePodium.hasPodium ? (
+                <TbilisiMovesPeoplePodium
+                  first={peoplePodium.first}
+                  second={peoplePodium.second}
+                  third={peoplePodium.third}
+                  myHandle={me?.membership.publicHandle}
+                />
               ) : null}
-              {!people?.people.length ? (
-                <Text style={{ marginTop: 12, color: colors.text300, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.tbilisiMoves.emptyBoard}</Text>
+              {tiedLeaders.length > 1 ? (
+                <Text style={{ fontFamily: GEO.regular, fontSize: 13, color: colors.text300, textAlign: 'center' }}>
+                  {ka.tbilisiMoves.tiedLeaders}
+                </Text>
               ) : null}
+              {!people?.people.length ? <TbilisiMovesBoardEmpty /> : null}
             </View>
           }
-          renderItem={({ item }) => <PersonLine row={item} colors={colors} highlight={item.publicHandle === me?.membership.publicHandle} />}
+          renderItem={({ item }) => (
+            <TbilisiMovesPersonRow row={item} highlight={item.publicHandle === me?.membership.publicHandle} />
+          )}
         />
         {yourPlaceOffPage && people.you ? (
           <View
@@ -384,16 +552,11 @@ export default function TbilisiMovesHubScreen() {
               bottom: Math.max(insets.bottom, 16) + 8,
             }}
           >
-            <Card>
-              <Text style={{ fontSize: 12, color: colors.text300, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.tbilisiMoves.yourPlace}</Text>
-              <PersonLine row={people.you} colors={colors} highlight />
-            </Card>
+            <TbilisiMovesYourPlaceDock row={people.you} />
           </View>
         ) : people?.you && people.you.unranked ? (
           <View style={{ position: 'absolute', left: 16, right: 16, bottom: Math.max(insets.bottom, 16) + 8 }}>
-            <Card>
-              <Text style={{ color: colors.text200, fontFamily: 'NotoSansGeorgian_400Regular' }}>{ka.tbilisiMoves.noRank}</Text>
-            </Card>
+            <TbilisiMovesYourPlaceDock unranked />
           </View>
         ) : null}
       </View>
@@ -401,97 +564,27 @@ export default function TbilisiMovesHubScreen() {
   }
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg100 }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
-    >
-      {overview}
-      {(districtBoard?.districts || []).map((row) => (
-        <DistrictRow
-          key={row.id}
-          row={row}
-          mine={row.id === me?.membership.districtId}
-          colors={colors}
-        />
-      ))}
-    </ScrollView>
-  );
-}
-
-function PersonLine({
-  row,
-  colors,
-  highlight,
-}: {
-  row: TbilisiMovesPerson;
-  colors: ReturnType<typeof useThemeColors>;
-  highlight?: boolean;
-}) {
-  const medal = row.rank === 1 || row.rank === 2 || row.rank === 3;
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        minHeight: 48,
-        paddingVertical: 10,
-        backgroundColor: highlight ? colors.accent100 : 'transparent',
-        borderRadius: 12,
-        paddingHorizontal: highlight || medal ? 8 : 0,
-        borderLeftWidth: medal && !highlight ? 3 : 0,
-        borderLeftColor: medal ? colors.primary200 : 'transparent',
-      }}
-    >
-      <Text style={{ width: 28, fontFamily: GEO.title, color: medal ? colors.primary200 : colors.text100 }}>
-        {row.rank == null || row.rank < 1 ? '—' : row.rank}
-      </Text>
-      <CompetitionAvatar avatarId={row.publicAvatarId} handle={row.publicHandle} size={40} />
-      <Text style={{ flex: 1, fontFamily: GEO.semibold, color: colors.text100 }} numberOfLines={2}>
-        {row.publicHandle}
-      </Text>
-      <Text style={{ fontFamily: GEO.regular, color: colors.text200 }}>{formatKaInt(row.eligibleSteps)}</Text>
-    </View>
-  );
-}
-
-function DistrictRow({
-  row,
-  mine,
-  colors,
-}: {
-  row: TbilisiMovesDistrict;
-  mine: boolean;
-  colors: ReturnType<typeof useThemeColors>;
-}) {
-  const ratio = Number(row.goalRatio) || 0;
-  return (
-    <View
-      style={{
-        marginBottom: 10,
-        borderRadius: 18,
-        borderWidth: mine ? 2 : 1,
-        borderColor: mine ? colors.primary200 : colors.bg300,
-        backgroundColor: colors.surface,
-        padding: 14,
-      }}
-    >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: colors.text100, flex: 1 }} numberOfLines={2}>
-          {row.unranked || !row.rank ? '—' : row.rank}. {row.nameKa}
-        </Text>
-        {mine ? (
-          <Text style={{ color: colors.primary200, fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.tbilisiMoves.you}</Text>
+    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
+      {chrome}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 10 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary200} />}
+      >
+        {overview}
+        {districtPodium.hasPodium ? (
+          <TbilisiMovesDistrictPodium
+            first={districtPodium.first}
+            second={districtPodium.second}
+            third={districtPodium.third}
+            mineId={me?.membership.districtId}
+          />
         ) : null}
-      </View>
-      <View style={{ marginTop: 10 }}>
-        <TbilisiProgressBar ratio={ratio} label={ka.tbilisiMoves.percent(formatGoalPct(ratio))} />
-      </View>
-      <Text style={{ marginTop: 8, fontFamily: GEO.regular, fontSize: 13, color: colors.text200 }}>
-        {formatKaInt(row.eligibleSteps || 0)} / {formatKaInt(row.target)} · {formatKaInt(row.participantCount || 0)}{' '}
-        {ka.tbilisiMoves.participants}
-      </Text>
+        {districtPodium.rest.map((row) => (
+          <TbilisiMovesDistrictRow key={row.id} row={row} mine={row.id === me?.membership.districtId} />
+        ))}
+        {!districtBoard?.districts.length ? <TbilisiMovesBoardEmpty /> : null}
+      </ScrollView>
     </View>
   );
 }

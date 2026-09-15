@@ -1,5 +1,5 @@
 import { ApiError, api } from '@/lib/api';
-import { localAccountId } from '@/lib/localAccount';
+import { localAccountId, setLocalAccountId } from '@/lib/localAccount';
 import { competitionInterval, datesToCollect, tbilisiYmd } from '@/lib/tbilisiMoves/civilTime.js';
 import { readCompetitionSteps } from '@/lib/tbilisiMoves/sensor';
 import {
@@ -12,13 +12,26 @@ import {
   saveSourceConflict,
 } from '@/lib/tbilisiMoves/storage';
 import {
+  ENROLL_SYNC_BUDGET_MS,
   MAX_TRANSIENT_RETRIES,
   SYNC_THROTTLE_MS,
   backoffMs,
   classifySyncError,
+  ignoreGraceDateSensorFailure,
+  shouldPromptForCompetitionRead,
   shouldSubmitForUser,
 } from '@/lib/tbilisiMoves/syncPolicy.js';
 import type { SensorReading, TbilisiMovesObservationBody, TbilisiMovesStatus } from '@/lib/tbilisiMoves/types';
+
+export type CompetitionSyncSnapshot = {
+  kind: SensorReading['kind'];
+  steps?: number;
+  intervalStart: string;
+  intervalEnd: string;
+  tbilisiDate: string;
+  provider?: SensorReading['provider'];
+  note?: string;
+};
 
 export type CompetitionSyncState = {
   phase:
@@ -40,6 +53,7 @@ export type CompetitionSyncState = {
   lastOkAt: string | null;
   accepted?: boolean;
   credited?: number | null;
+  lastReading?: CompetitionSyncSnapshot | null;
 };
 
 type QueuedObservation = TbilisiMovesObservationBody & { userId: string };
@@ -66,6 +80,31 @@ export function getCompetitionSyncState(): CompetitionSyncState {
 function setState(next: Partial<CompetitionSyncState>) {
   state = { ...state, ...next };
   emit();
+}
+
+function snapshotReading(reading: SensorReading): CompetitionSyncSnapshot {
+  return {
+    kind: reading.kind,
+    steps: reading.steps,
+    intervalStart: reading.intervalStart,
+    intervalEnd: reading.intervalEnd,
+    tbilisiDate: reading.tbilisiDate,
+    provider: reading.provider,
+    note: reading.note,
+  };
+}
+
+function logSensor(reading: SensorReading, extra?: Record<string, unknown>) {
+  if (typeof __DEV__ === 'undefined' || !__DEV__) return;
+  console.log('[tbilisi-moves] sensor', {
+    kind: reading.kind,
+    steps: reading.steps ?? null,
+    tbilisiDate: reading.tbilisiDate,
+    intervalStart: reading.intervalStart,
+    intervalEnd: reading.intervalEnd,
+    provider: reading.provider ?? null,
+    ...extra,
+  });
 }
 
 export function cancelTbilisiMovesWork() {
@@ -146,11 +185,17 @@ async function readingToBody(
   };
 }
 
-async function syncOneDate(userId: string, ymd: string, installId: string, gen: number) {
+async function syncOneDate(
+  userId: string,
+  ymd: string,
+  installId: string,
+  gen: number,
+  prompt: boolean,
+) {
   const collectedAt = new Date();
-  const reading = await readCompetitionSteps(ymd, collectedAt);
+  const reading = await readCompetitionSteps(ymd, collectedAt, { prompt });
   if (tbilisiYmd(new Date()) !== tbilisiYmd(collectedAt)) {
-    return { reading: await readCompetitionSteps(ymd, new Date()) };
+    return { reading: await readCompetitionSteps(ymd, new Date(), { prompt }) };
   }
   if (reading.kind === 'unsupported') return { reading };
   if (reading.kind === 'permission' || reading.kind === 'unavailable') return { reading };
@@ -175,6 +220,7 @@ async function runLocked(userId: string, reason: string, force: boolean) {
   lastTriggerAt = Date.now();
 
   const lastOkAt = await loadLastSyncOk();
+  const prompt = shouldPromptForCompetitionRead(reason, { neverSynced: !lastOkAt });
   setState({ phase: 'syncing', lastOkAt });
 
   let status: TbilisiMovesStatus;
@@ -251,25 +297,53 @@ async function runLocked(userId: string, reason: string, force: boolean) {
   let lastReading: SensorReading | null = null;
   let accepted = false;
   let credited: number | null = null;
+  let lastAcceptedReading: SensorReading | null = null;
   for (const ymd of dates) {
     if (generation !== gen) return;
     try {
-      const outcome = await syncOneDate(userId, ymd, installId, gen);
+      const outcome = await syncOneDate(userId, ymd, installId, gen, prompt);
       lastReading = outcome.reading;
+      logSensor(outcome.reading, {
+        date: ymd,
+        prompt,
+        accepted: 'result' in outcome ? Boolean(outcome.result?.accepted) : false,
+        idempotent: 'result' in outcome ? Boolean(outcome.result?.idempotent) : false,
+        credited: 'result' in outcome ? outcome.result?.credit?.eligibleSteps ?? null : null,
+      });
       if ('result' in outcome && outcome.result?.accepted) {
         accepted = true;
         credited = outcome.result.credit?.eligibleSteps ?? credited;
+        lastAcceptedReading = outcome.reading;
       }
       if (outcome.reading.kind === 'unsupported') {
-        setState({ phase: 'unsupported', lastOkAt, message: outcome.reading.note });
+        if (ignoreGraceDateSensorFailure({ dateYmd: ymd, todayYmd: serverDate, todayAccepted: accepted })) {
+          continue;
+        }
+        setState({
+          phase: 'unsupported',
+          lastOkAt,
+          message: outcome.reading.note,
+          lastReading: snapshotReading(outcome.reading),
+        });
         return;
       }
       if (outcome.reading.kind === 'permission') {
-        setState({ phase: 'permission', lastOkAt, message: outcome.reading.note });
+        if (ignoreGraceDateSensorFailure({ dateYmd: ymd, todayYmd: serverDate, todayAccepted: accepted })) {
+          continue;
+        }
+        setState({
+          phase: 'permission',
+          lastOkAt,
+          message: outcome.reading.note,
+          lastReading: snapshotReading(outcome.reading),
+        });
         return;
       }
     } catch (error) {
       const classified = classifySyncError(error);
+      if (error instanceof ApiError && error.code === 'NO_DISTRICT_FOR_DATE') {
+        continue;
+      }
       if (classified.kind === 'source_conflict') {
         setState({ phase: 'conflict', lastOkAt, message: error instanceof Error ? error.message : undefined });
         return;
@@ -291,34 +365,56 @@ async function runLocked(userId: string, reason: string, force: boolean) {
     }
   }
 
-  if (lastReading?.kind === 'empty') {
-    setState({ phase: 'empty', lastOkAt, message: lastReading.note });
-    return;
-  }
-  if (lastReading?.kind === 'manual_only') {
-    setState({ phase: 'manual_only', lastOkAt, message: lastReading.note });
-    return;
-  }
-  if (lastReading?.kind === 'unavailable') {
-    setState({ phase: 'unsupported', lastOkAt, message: lastReading.note });
-    return;
+  const displayReading = lastAcceptedReading || lastReading;
+  if (!accepted) {
+    if (lastReading?.kind === 'empty') {
+      setState({
+        phase: 'empty',
+        lastOkAt,
+        message: lastReading.note,
+        lastReading: snapshotReading(lastReading),
+      });
+      return;
+    }
+    if (lastReading?.kind === 'manual_only') {
+      setState({
+        phase: 'manual_only',
+        lastOkAt,
+        message: lastReading.note,
+        lastReading: snapshotReading(lastReading),
+      });
+      return;
+    }
+    if (lastReading?.kind === 'unavailable') {
+      setState({
+        phase: 'unsupported',
+        lastOkAt,
+        message: lastReading.note,
+        lastReading: snapshotReading(lastReading),
+      });
+      return;
+    }
   }
 
   const okAt = new Date().toISOString();
   if (accepted) await saveLastSyncOk(okAt);
   setState({
-    phase: accepted ? 'ok' : lastReading?.kind === 'zero' ? 'ok' : 'ok',
+    phase: 'ok',
     lastOkAt: accepted ? okAt : lastOkAt,
     accepted,
     credited,
+    lastReading: displayReading ? snapshotReading(displayReading) : null,
   });
 }
+
+export { ENROLL_SYNC_BUDGET_MS };
 
 export async function runCompetitionSync(input: {
   userId: string;
   reason: 'enroll' | 'focus' | 'foreground' | 'refresh';
   force?: boolean;
 }) {
+  if (input.userId && !localAccountId()) setLocalAccountId(input.userId);
   return withUserLock(input.userId, () => runLocked(input.userId, input.reason, Boolean(input.force)));
 }
 

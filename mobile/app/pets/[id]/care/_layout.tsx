@@ -6,6 +6,7 @@ export default function PetCareLayout() {
   return (
     <Stack screenOptions={{ headerBackTitle: ka.common.back, headerTitleStyle: { fontWeight: '700' }, ...STACK_PUSH }}>
       <Stack.Screen name="index" options={{ title: ka.pets.careTitle }} />
+      <Stack.Screen name="add" options={{ title: ka.pets.careAdd }} />
       <Stack.Screen name="record" options={{ title: ka.pets.recordAdmin }} />
       <Stack.Screen name="plan" options={{ title: ka.pets.planCare }} />
       <Stack.Screen name="history" options={{ title: ka.pets.careHistory }} />

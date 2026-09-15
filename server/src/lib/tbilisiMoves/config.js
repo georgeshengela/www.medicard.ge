@@ -203,6 +203,9 @@ export async function patchConfig({ admin, body, now = new Date() }) {
     };
   });
 
+  const { notifyTbilisiMovesLive } = await import('./liveSnapshot.js');
+  notifyTbilisiMovesLive();
+
   await writeAdminAudit({
     admin,
     action: 'tbilisi_moves.config.patch',

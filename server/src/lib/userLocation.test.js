@@ -36,6 +36,8 @@ describe('user location place writes', () => {
       isImplausibleJump({ ...LIEGE, updatedAt: new Date(now - 16 * 60 * 1000) }, TBILISI.lat, TBILISI.lng, now),
       false,
     );
+    const justWroteTbilisi = { ...TBILISI, updatedAt: new Date(now) };
+    assert.equal(isImplausibleJump(justWroteTbilisi, LIEGE.lat, LIEGE.lng, now + 8_000), false);
   });
 
   it('clears Tbilisi instead of keeping it on Belgian coordinates', () => {

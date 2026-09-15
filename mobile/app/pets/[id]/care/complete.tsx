@@ -1,13 +1,15 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Check } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
-import { PetErrorText, PetFactRow, PetPageScroll } from '@/components/pets/PetScreen';
+import { careKindIcon } from '@/components/pets/PetCareChips';
+import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type Pet, type PetCareSchedule } from '@/lib/api';
-import { isoToDigits, parseBirthDate } from '@/lib/birthdate';
+import { isoToDigits, parseCivilDate } from '@/lib/birthdate';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 import { conflictExplanation } from '@/lib/petCareReminderContract.js';
 import { queuePetCareConfirm, reconcilePetCareReminders } from '@/lib/petCareReminders';
@@ -19,7 +21,7 @@ import { useThemeColors } from '@/theme/colors';
 
 function digitsToIso(digits: string): string | null {
   if (!digits) return null;
-  const parsed = parseBirthDate(digits);
+  const parsed = parseCivilDate(digits);
   return parsed.ok ? parsed.iso : '';
 }
 
@@ -141,6 +143,14 @@ export default function PetCareCompleteScreen() {
         <PetErrorText message={error} />
         <PetErrorText message={stale} />
         <Card>
+          {schedule ? (
+            <View className="mb-3 flex-row items-center gap-3">
+              <PetIconWell icon={careKindIcon(schedule.kind)} />
+              <Text className="flex-1 text-base font-semibold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+                {schedule.title || kindLabel(schedule.kind, ka.pets)}
+              </Text>
+            </View>
+          ) : null}
           {schedule ? <PetFactRow label={ka.pets.careKind} value={kindLabel(schedule.kind, ka.pets)} /> : null}
           {schedule?.nextDueOn ? (
             <PetFactRow
@@ -152,12 +162,13 @@ export default function PetCareCompleteScreen() {
           <Text className="mt-3 text-sm text-text-300">{ka.pets.plannedDisclaimer}</Text>
         </Card>
         {!skip ? (
-          <DateField label={ka.pets.administeredOn} value={dateDigits} onChangeText={setDateDigits} showAge={false} />
+          <DateField figma label={ka.pets.administeredOn} value={dateDigits} onChangeText={setDateDigits} showAge={false} />
         ) : (
           <Text className="text-sm text-text-300">{ka.pets.skipDoesNotAdminister}</Text>
         )}
         {schedule ? (
           <Button
+            icon={Check}
             label={skip ? ka.pets.skipOccurrence : completeLabel(schedule.kind, ka.pets)}
             loading={saving}
             onPress={() => void submit(skip ? 'skip' : 'complete')}

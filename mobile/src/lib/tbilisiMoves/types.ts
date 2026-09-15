@@ -215,6 +215,14 @@ export type TbilisiMovesObservationBody = {
   clientSequence?: number;
 };
 
+export type TbilisiMovesObservationResult = {
+  accepted: boolean;
+  idempotent?: boolean;
+  reason?: string;
+  status?: number;
+  credit?: TbilisiMovesCredit | null;
+};
+
 export type TbilisiMovesAward = {
   id: string;
   date: string;

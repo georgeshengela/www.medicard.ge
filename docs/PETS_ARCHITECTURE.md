@@ -1,10 +1,11 @@
 # Pets / Medi Vet — architecture & implementation handoff
 
-**Status:** PHASE 7.1 — local backend candidate plus an Android development-build smoke. Isolated Postgres SQL files remain applied. Bird/unsupported-species is a bounded COMPLETE policy answer (not 502). COMPLETE persist and quota commit share one transaction. A Pixel_8 development APK was installed and talked to the isolated API. **OS notification banners, the full in-app create/care/Medi Vet journey, and iOS were not completed.** Hosted Neon is **not** applied. **Not ready for production enablement.**  
-**Date:** 2026-09-14  
-**Public app identity:** unchanged (`1.0.0.8.25`). No version bump, deploy, or remote SQL.  
+**Status (2026-09-15):** Hosted Neon Pets SQL is applied (phase2 → phase7). Production `/api/pets` is live. Owner-reported Android tests of dog create, weight, allergies, and Medi Vet chat are accepted. Owner UI/design changes are preserved. **OS reminder banners, care-draft confirmation, iOS, and durable photos are not verified.** Rollout: `docs/PETS_RELEASE_READINESS.md`. Evidence: `docs/PETS_PHASE7_VERIFICATION.md`.  
+**Public app identity:** do not bump in the readiness pass (tree currently `1.0.0.8.31`).  
 **User-facing names:** hub **ჩემი ცხოველები**; assistant **Medi Vet**. Never Nightingale.
-**Runbook:** `server/docs/pets-phase7-runbook.md`. **Evidence table:** `docs/PETS_PHASE7_VERIFICATION.md`. Device screenshots: `qa/pets-phase7.1/`.
+**Runbook:** `server/docs/pets-phase7-runbook.md`. Device screenshots: `qa/pets-phase7.1/` (Phase 7.1 isolated API only).
+
+Historical 2026-09-14: PHASE 7.1 was an isolated-Postgres + Pixel_8 `:4010` smoke. That pass did **not** observe OS banners and is **not** the current hosted schema state.
 
 This document is the implementation handoff. Later agents must re-read the live tree before coding.
 
@@ -75,7 +76,7 @@ Functional care tracking: **მოვლა** on the pet profile. Product / sche
 5. `pets-phase6.sql` then `pets-phase7.sql` (quota reservation + reminder FKs)
 6. `npx prisma generate`
 
-Do not `db push`. Do not apply to hosted Neon unless an operator asks.
+Hosted Neon **already has** these objects (inspected 2026-09-15). Do not re-apply as a release step. Do not `db push`.
 
 ### Domain (kept distinct)
 
@@ -942,7 +943,7 @@ Add every new file to `server/package.json` `"test"` (the script is an explicit 
 
 ## 12. Real infrastructure blockers
 
-1. **Neon apply is manual.** Live DB has no `_prisma_migrations`. Render `preDeployCommand` (`render.yaml`) runs `npm run release` = `prisma generate` + seed. Pets tables will **not** appear on deploy. Operator must `npx prisma db execute --file prisma/pets-phase2.sql` against unpooled/pooled URL as used for Hunt/Companion. Do not `db push` (can propose dropping runtime tables such as `UserLocation`).
+1. **Neon apply is manual, and for Pets it is already done (2026-09-15 inspect).** Live DB has no `_prisma_migrations`. Render `preDeployCommand` still does **not** apply Pets SQL (`prisma generate` + seed only). **Do not re-execute** `pets-phase2.sql` … `pets-phase7.sql` as a release step. Do not `db push` (can propose dropping runtime tables such as `UserLocation`). See `docs/PETS_RELEASE_READINESS.md`.
 2. **Upload disk is ephemeral.** `render.yaml` has **no persistent disk**. `saveUpload` writes `server/uploads/`. Pet photos (and lab images) vanish on Render restart/redeploy. Object storage (S3/R2) is the real fix; `storage.js` is already the swap point. Until then, photos are best-effort on that host.
 3. **EvidenceMD is the wrong engine for animals.** VET must pin OpenRouter even when the user’s picker is EvidenceMD.
 4. **Legal / store copy.** Pets/Medi Vet/OpenRouter/text-only/ephemeral photos/local reminders are drafted in `scripts/privacy-source.md` §3.4ა and rebuilt pages. **Legal review outstanding.** Camera/library strings in `mobile/app.json` mention pet photos. Breed-catalog attribution (CC BY-SA 4.0 Wikipedia subset) is on the pet form. Do not invent retention periods.

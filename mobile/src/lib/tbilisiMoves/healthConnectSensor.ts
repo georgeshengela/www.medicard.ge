@@ -4,15 +4,45 @@ import {
   getSdkStatus,
   initialize,
   readRecords,
+  requestPermission,
   RecordingMethod,
   SdkAvailabilityStatus,
 } from 'react-native-health-connect';
 import { competitionInterval } from '@/lib/tbilisiMoves/civilTime.js';
-import { originTotalsFromHealthConnectRecords, pickHighestOrigin } from '@/lib/tbilisiMoves/originPolicy.js';
+import {
+  hasCompetitionStepsGrant,
+  originTotalsFromHealthConnectRecords,
+  pickHighestOrigin,
+  recordOverlapsInterval,
+} from '@/lib/tbilisiMoves/originPolicy.js';
 import type { SensorReading } from '@/lib/tbilisiMoves/types';
 
 function hasStepsRead(granted: Array<{ accessType?: string; recordType?: string }>) {
-  return granted.some((item) => item.recordType === 'Steps' && item.accessType === 'read');
+  return hasCompetitionStepsGrant(granted);
+}
+
+async function loadStepRecords(intervalStart: string, intervalEnd: string) {
+  const between = await readRecords('Steps', {
+    timeRangeFilter: {
+      operator: 'between',
+      startTime: intervalStart,
+      endTime: intervalEnd,
+    },
+    ascendingOrder: true,
+    pageSize: 5000,
+  });
+  const first = between.records ?? [];
+  if (first.length) return first;
+
+  // Home uses operator `after`. HC `between` drops day-buckets whose endTime is after `now`.
+  const after = await readRecords('Steps', {
+    timeRangeFilter: { operator: 'after', startTime: intervalStart },
+    ascendingOrder: true,
+    pageSize: 5000,
+  });
+  const startMs = new Date(intervalStart).getTime();
+  const endMs = new Date(intervalEnd).getTime();
+  return (after.records ?? []).filter((record) => recordOverlapsInterval(record, startMs, endMs));
 }
 
 export async function competitionSensorSupported(): Promise<boolean> {
@@ -24,12 +54,21 @@ export async function competitionSensorSupported(): Promise<boolean> {
   }
 }
 
-export async function readCompetitionSteps(ymd: string, now = new Date()): Promise<SensorReading> {
+export async function readCompetitionSteps(
+  ymd: string,
+  now = new Date(),
+  opts?: { prompt?: boolean },
+): Promise<SensorReading> {
   const interval = competitionInterval(ymd, now);
   const intervalStart = interval.start.toISOString();
   const intervalEnd = interval.end.toISOString();
   const recordedAt = now.toISOString();
   const base = { intervalStart, intervalEnd, tbilisiDate: ymd, recordedAt, provider: 'HEALTH_CONNECT' as const };
+  const timeRangeFilter = {
+    operator: 'between' as const,
+    startTime: intervalStart,
+    endTime: intervalEnd,
+  };
 
   try {
     const status = await getSdkStatus();
@@ -39,8 +78,29 @@ export async function readCompetitionSteps(ymd: string, now = new Date()): Promi
     const ready = await initialize();
     if (!ready) return { kind: 'unavailable', ...base };
 
-    const granted = await getGrantedPermissions().catch(() => []);
+    let granted = await getGrantedPermissions().catch(() => []);
+    if (!hasStepsRead(granted) && opts?.prompt) {
+      granted = await requestPermission([
+        { accessType: 'read', recordType: 'Steps' },
+        { accessType: 'read', recordType: 'ReadHealthDataHistory' },
+      ]).catch(() => granted);
+    }
     if (!hasStepsRead(granted)) {
+      granted = await getGrantedPermissions().catch(() => granted);
+    }
+
+    let records: Awaited<ReturnType<typeof readRecords>>['records'] = [];
+    try {
+      records = await loadStepRecords(intervalStart, intervalEnd);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/denied|permission/i.test(message) || !hasStepsRead(granted)) {
+        return { kind: 'permission', ...base, note: message };
+      }
+      return { kind: 'error', ...base, note: message };
+    }
+
+    if (!hasStepsRead(granted) && records.length === 0) {
       return {
         kind: 'permission',
         ...base,
@@ -48,19 +108,7 @@ export async function readCompetitionSteps(ymd: string, now = new Date()): Promi
       };
     }
 
-    const timeRangeFilter = {
-      operator: 'between' as const,
-      startTime: intervalStart,
-      endTime: intervalEnd,
-    };
-
-    const result = await readRecords('Steps', {
-      timeRangeFilter,
-      ascendingOrder: true,
-      pageSize: 5000,
-    });
-    const records = result.records ?? [];
-    const { totals, manualCount, sensorCount } = originTotalsFromHealthConnectRecords(records);
+    const { totals, sensorCount } = originTotalsFromHealthConnectRecords(records);
 
     if (records.length > 0 && sensorCount === 0) {
       return { kind: 'manual_only', ...base, note: 'All Health Connect step records for this interval are MANUAL_ENTRY.' };
@@ -82,9 +130,9 @@ export async function readCompetitionSteps(ymd: string, now = new Date()): Promi
           /* originPolicy fallback below */
         }
       }
-      if (best) {
+      if (best && best.steps > 0) {
         return {
-          kind: best.steps === 0 ? 'zero' : 'ok',
+          kind: 'ok',
           steps: best.steps,
           origin: best.origin,
           ...base,

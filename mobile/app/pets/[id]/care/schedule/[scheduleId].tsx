@@ -1,10 +1,12 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Check } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { PetCareReminderCard } from '@/components/pets/PetCareReminderCard';
-import { PetErrorText, PetFactRow, PetPageScroll } from '@/components/pets/PetScreen';
+import { careKindIcon } from '@/components/pets/PetCareChips';
+import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type Pet, type PetCareSchedule } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -86,6 +88,12 @@ export default function PetScheduleDetailScreen() {
       <PetPageScroll>
         <PetErrorText message={error} />
         <Card>
+          <View className="mb-3 flex-row items-center gap-3">
+            <PetIconWell icon={careKindIcon(schedule.kind)} />
+            <Text className="flex-1 text-base font-semibold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+              {schedule.title || kindLabel(schedule.kind, ka.pets)}
+            </Text>
+          </View>
           <PetFactRow label={ka.pets.careKind} value={kindLabel(schedule.kind, ka.pets)} />
           <PetFactRow
             label={ka.pets.upcomingCare}
@@ -98,7 +106,7 @@ export default function PetScheduleDetailScreen() {
           <PetCareReminderCard petId={id} schedule={schedule} onSchedule={setSchedule} onError={setError} />
         </Card>
         {schedule.status === 'ACTIVE' && schedule.nextDueOn ? (
-          <Button label={completeLabel(schedule.kind, ka.pets)} loading={saving} onPress={() => void complete()} />
+          <Button icon={Check} label={completeLabel(schedule.kind, ka.pets)} loading={saving} onPress={() => void complete()} />
         ) : null}
         {schedule.status === 'ACTIVE' ? (
           <Button label={ka.pets.cancelSchedule} variant="danger" onPress={cancel} />

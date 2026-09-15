@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  hasCompetitionStepsGrant,
+  healthConnectOriginId,
   originTotalsFromHealthConnectRecords,
   originTotalsFromHealthKitSources,
   pickHighestOrigin,
+  recordOverlapsInterval,
 } from './originPolicy.js';
 
 describe('tbilisi moves origin policy', () => {
@@ -63,5 +66,30 @@ describe('tbilisi moves origin policy', () => {
     ]);
     assert.equal(pickHighestOrigin(totals).origin, 'watch');
     assert.equal(pickHighestOrigin(totals).steps, 6200);
+  });
+
+  it('accepts Health Connect grant shapes Home already treats as connected', () => {
+    assert.equal(hasCompetitionStepsGrant([{ recordType: 'Steps', accessType: 'read' }]), true);
+    assert.equal(hasCompetitionStepsGrant([{ recordType: 'STEPS', accessType: 'READ' }]), true);
+    assert.equal(hasCompetitionStepsGrant([{ recordType: 'Weight', accessType: 'read' }]), false);
+    assert.equal(healthConnectOriginId({ packageName: 'com.google.android.apps.fitness' }), 'com.google.android.apps.fitness');
+    assert.equal(healthConnectOriginId({}), '_unknown');
+  });
+
+  it('keeps a full-day Health Connect bucket that ends after now', () => {
+    const start = Date.parse('2026-09-15T00:00:00.000+04:00');
+    const now = Date.parse('2026-09-15T15:00:00.000+04:00');
+    assert.equal(
+      recordOverlapsInterval(
+        {
+          startTime: '2026-09-15T00:00:00.000+04:00',
+          endTime: '2026-09-15T23:59:59.000+04:00',
+          count: 583,
+        },
+        start,
+        now,
+      ),
+      true,
+    );
   });
 });

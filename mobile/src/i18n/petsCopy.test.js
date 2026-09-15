@@ -7,11 +7,18 @@ describe('pets Georgian copy', () => {
     const blob = JSON.stringify(ka.pets);
     assert.equal(/Nightingale/i.test(blob), false);
     assert.equal(ka.pets.hubTitle, 'ჩემი ცხოველები');
+    assert.equal(ka.pets.seeAll, 'ყველას ნახვა');
+    assert.match(ka.pets.swipeHint, /არქივ/);
+    assert.equal(ka.pets.manageSection, 'სწრაფი მოქმედებები');
+    assert.match(ka.pets.manageSectionHint('მაქსი'), /მაქსი/);
+    assert.equal(ka.pets.profileCta, 'გახსნა');
     assert.equal(ka.pets.namePh, 'მაგ. მაქსი');
     assert.equal(ka.pets.allergiesEmpty, 'ალერგიები ჯერ არ არის დამატებული');
     assert.equal(ka.pets.weightTitle, 'წონა');
     assert.equal(ka.pets.conditionsTitle, 'ჯანმრთელობის მდგომარეობები');
     assert.equal(ka.pets.careTitle, 'მოვლა');
+    assert.equal(ka.pets.careAdd, 'მოვლის დამატება');
+    assert.match(ka.pets.careAddBody, /პროდუქტი/);
     assert.equal(ka.pets.completeMed, 'მივეცი');
     assert.match(ka.pets.plannedDisclaimer, /არა გარანტირებული დაცვა/);
     assert.match(ka.pets.remindersNotEnabled, /გამორთულია/);

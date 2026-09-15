@@ -7,12 +7,12 @@ import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { Button } from './Button';
 import { ka } from '@/i18n/ka';
 import {
-  ageFromBirthDate,
   birthYearBounds,
   digitsToYmd,
   formatBirthDateInput,
   monthGrid,
   parseBirthDate,
+  parseCivilDate,
 } from '@/lib/birthdate';
 import { useThemeColors } from '@/theme/colors';
 
@@ -46,7 +46,7 @@ export function DateField({
   const auth = useFigmaAuth();
   const [open, setOpen] = useState(false);
   const display = formatBirthDateInput(value);
-  const parsed = parseBirthDate(value);
+  const parsed = showAge ? parseBirthDate(value) : parseCivilDate(value);
 
   return (
     <View className="w-full">
@@ -120,7 +120,7 @@ export function DateField({
         >
           {display || placeholder || ka.auth.birthDatePlaceholder}
         </Text>
-        {showAge && parsed.ok ? (
+        {showAge && parsed.ok && 'age' in parsed ? (
           <View className="rounded-full bg-accent-100 px-2.5 py-1">
             <Text className="text-xs font-bold text-primary-100">{ka.auth.yearsOld(parsed.age)}</Text>
           </View>
@@ -138,6 +138,7 @@ export function DateField({
       <BirthCalendar
         visible={open}
         value={value}
+        civil={!showAge}
         onClose={() => setOpen(false)}
         onConfirm={(digits) => {
           onChangeText(digits);
@@ -151,11 +152,13 @@ export function DateField({
 function BirthCalendar({
   visible,
   value,
+  civil = false,
   onClose,
   onConfirm,
 }: {
   visible: boolean;
   value: string;
+  civil?: boolean;
   onClose: () => void;
   onConfirm: (digits: string) => void;
 }) {
@@ -190,7 +193,7 @@ function BirthCalendar({
   }, [visible, value, now]);
 
   const cells = useMemo(() => monthGrid(cursor.year, cursor.month, now), [cursor.year, cursor.month, now]);
-  const parsedDraft = parseBirthDate(draft);
+  const parsedDraft = civil ? parseCivilDate(draft) : parseBirthDate(draft);
   const years = useMemo(
     () => Array.from({ length: 12 }, (_, index) => yearPage + index).filter((year) => year >= minYear && year <= maxYear),
     [yearPage, minYear, maxYear],
@@ -220,7 +223,9 @@ function BirthCalendar({
               <Text className="text-xl font-bold text-text-100">{ka.auth.birthDate}</Text>
               <Text className="mt-0.5 text-sm text-text-300">
                 {parsedDraft.ok
-                  ? `${formatBirthDateInput(draft)} · ${ka.auth.yearsOld(parsedDraft.age)}`
+                  ? civil || !('age' in parsedDraft)
+                    ? formatBirthDateInput(draft)
+                    : `${formatBirthDateInput(draft)} · ${ka.auth.yearsOld(parsedDraft.age)}`
                   : ka.auth.birthDatePlaceholder}
               </Text>
             </View>

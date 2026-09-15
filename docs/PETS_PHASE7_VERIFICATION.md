@@ -52,7 +52,11 @@ SQL apply via `psql -h 127.0.0.1 -p 55432` (not `prisma db execute`, not Neon): 
 | Missing-schema vs empty data | Isolated rename + existing 503 helpers | Telemetry 202 vs empty list 200; chat/care 503 helpers unit-tested | Passed (reminder table) | Dropping chat/care tables not mutated during parallel `npm test` |
 | Medi Vet mocked chat | Isolated API | mock at `askOpenRouterPrepared`; no EvidenceMD | Passed | — |
 | Medi Vet live OpenRouter | OpenRouter + synthetic pet | 8 requests, requested=`google/gemini-3.8-flash` (listed). 7 ok, bird 502 in Phase 7. Phase 7.1 bird HTTP **200 COMPLETE** `policy/unsupported-species` (0 provider calls). No EvidenceMD. | Passed with gaps | Clinical review outstanding; retrieved IDs ≠ grounded claims |
-| Mobile E2E + Georgian visual | Pixel_8 development APK | Login + Home + Profile hub **ჩემი ცხოველები**; `GET /api/pets` 200 on isolated API. Two-pet create / care / Medi Vet / light+font QA **not** finished on device | Partial | IME/`adb input` ate Latin prefixes; OS banners not reached |
+| Owner: create dog | Production API via Metro `:8081` | Owner-reported 2026-09-15. Hosted `Pet` count 1 | Passed (owner) | Design changes preserved; not a second QA campaign |
+| Owner: weight | Production API | Owner-reported. Hosted `PetWeightLog` count 2 | Passed (owner) | — |
+| Owner: allergies | Production API | Owner-reported. Hosted `PetAllergy` count 1 | Passed (owner) | Conditions not reported |
+| Owner: Medi Vet chat | Production API | Owner-reported. Hosted `PetChatSession` 1 / `PetChatMessage` 10 | Passed (owner) | Care-draft confirm not reported |
+| Mobile E2E + Georgian visual | Pixel_8 development APK | Login + Home + Profile hub **ჩემი ცხოველები**; `GET /api/pets` 200 on isolated API. Two-pet create / care / Medi Vet / light+font QA **not** finished on device | Partial | Historical 7.1 harness. Owner later completed create/weight/allergies/VET on production |
 | OS reminder journey | Pixel_8 development APK | `dumpsys notification` had no `pet_care` / `petCare` entries. No banner observed. Permission / tap / complete / snooze / human-med coexistence **not** run | Failed (not observed) | Need a near-future occurrence created in the app, then background + tray |
 | Human medication notifications intact | Device | Not run | Skipped | Same device blocker |
 | Photos durable storage | Code + isolation HTTP | `server/uploads/` ephemeral; Render has no persistent disk | Not production-durable | Object storage unresolved |
@@ -64,9 +68,10 @@ SQL apply via `psql -h 127.0.0.1 -p 55432` (not `prisma db execute`, not Neon): 
 
 - **Implemented:** Phases 2–6 product + Phase 7 quota reservation, reminder FKs, schedule row lock, persist-then-consume, stream disconnect abort, emergency prefix without self-scrambling 112, tests, runbook, privacy draft.
 - **Verified locally:** SQL files on isolated PG; 10/10 pets HTTP files; 4/4 quota tests; 1/1 partial-schema mutation; 97 helper tests.
-- **Verified on device:** Pixel_8 development APK installed; login + Home + Profile pets hub against isolated `:4010`. OS reminder banners **not** observed. Full create/care/Medi Vet UI loop **not** finished.
-- **Verified with live OpenRouter:** 7/8 synthetic cases on `google/gemini-3.8-flash` (returned the same id). Not a clinical sign-off.
-- **Not verified:** hosted Neon apply; iOS; Android force-stop; Expo Go reminder banners; durable photos; legal sign-off; admin encyclopedia; visual screenshots.
+- **Verified on device:** Pixel_8 development APK vs isolated `:4010` (hub only, 2026-09-14). Owner-reported 2026-09-15 on a LAN phone + Metro `:8081` against **production**: dog create, weight, allergies, Medi Vet chat. OS reminder banners **not** observed. Care-draft confirm **not** reported. iOS unverified.
+- **Verified with live OpenRouter:** 7/8 synthetic cases on `google/gemini-3.8-flash` (returned the same id). Not a clinical sign-off. Owner chat on production is additional live use, not clinical sign-off.
+- **Hosted schema (2026-09-15 inspect):** Neon via `server/.env` has 11 `Pet*` tables, `PeriodUsage.reserved` + `reservedAt`, reminder FKs, inflight chat index. **Do not re-apply SQL.**
+- **Not verified:** OS reminder tray; care-draft confirmation; iOS; durable photos; legal sign-off; admin encyclopedia.
 
 ## Live OpenRouter detail (synthetic only)
 
@@ -163,33 +168,33 @@ See `qa/pets-phase7.1/README.md`.
 
 ## Release status
 
-**Not ready for production enablement.** Local SQL+HTTP candidate. Android development client can reach the isolated API. Controlled release remains blocked until Neon SQL is applied on a confirmed target, a development-build **OS reminder banner** is observed, the in-app create/care/Medi Vet loop is finished on device, and legal + clinical review are recorded.
+**2026-09-15 (this pass):** Hosted Neon already has Pets phase2–7 objects. Production `https://medicard.ge/api/pets` is mounted (`401` unauthenticated, not 404). Owner-reported Android manual tests of dog create, weight, allergies, and Medi Vet chat are accepted. **Do not re-apply Pets SQL.** Do not `prisma db push`. Version was not bumped in this readiness pass.
 
-**Next operator action (do not perform unless asked):**
+Identity / health / Medi Vet text chat are **not** blocked by missing schema. Remaining launch limits are capability-scoped: OS reminder tray, care-draft confirmation, iOS, photo durability, clinical review of VET answers. See `docs/PETS_RELEASE_READINESS.md`.
 
-1. `SELECT current_database(), inet_server_addr(), inet_server_port()` on the intended **non-prod** database.
-2. Apply `pets-phase2.sql` → `3` → `4` → `5` → `6` → `pets-phase7.sql` (includes `reservedAt`). `npx prisma generate`. Do not `db push`.
-3. Point a development build at that API. Finish the two-pet UI journey, Medi Vet confirm-draft, and OS notification tray on Android (then iOS).
-4. Do not bump `1.0.0.8.25` until that store-facing QA exists.
+Historical 2026-09-14 line (kept): isolated SQL+HTTP candidate; Pixel_8 development APK vs `:4010`; OS banners not observed.
 
-### Remaining blockers per capability
+**Do not perform unless asked:** deploy / EAS / push. SQL apply is **not** the next step on this Neon.
 
-| Capability | Blocks core? | Gap |
+### Remaining blockers per capability (updated 2026-09-15)
+
+| Capability | Blocks core My Pets? | Gap |
 |---|---|---|
-| Identity / list / archive | Hosted only | Neon SQL unapplied |
-| Care tracking | Hosted + device UI | Neon SQL; in-app create/care not finished on device |
-| OS reminders | **Yes for reminder launch** | No banner/tap evidence. iOS unverified. Force-stop remains a separate OS state |
-| Medi Vet | Clinical + hosted | Bird 502 **fixed**. Device chat/draft not run. Clinical review outstanding. OpenRouter required |
-| Photos | Durable storage | `server/uploads/` ephemeral |
-| Legal | Copy review | `scripts/privacy-source.md` §3.4ა drafted |
-| Admin encyclopedia | No | Operator help entry missing; not a tracking/reminder/VET runtime blocker |
+| Identity / list / archive | No | Owner created a dog on the production API. Hosted `Pet` exists |
+| Weight / allergies | No | Owner-reported. Hosted rows exist. Conditions **not** owner-tested |
+| Care tracking ledger | No for ledger schema | Hosted care tables exist. Owner did **not** report complete → next occurrence |
+| OS reminders | **Yes if marketing device reminders** | No banner/tap/complete evidence. Expo Go is not that proof. iOS unverified |
+| Medi Vet text | No for text chat | Owner-reported chat. Care-draft confirm **not** reported. Clinical review outstanding |
+| Photos | Durable storage only | `server/uploads/` ephemeral on Render. In-app hint + privacy already say temporary |
+| Legal copy | Process, not schema | Live `/privacy` has §3.4ა. Formal legal sign-off still not recorded |
+| Admin encyclopedia | No | Operator help entry missing |
 
-### Processes left running (this machine)
+### Processes left running (this machine, 2026-09-15)
 
 | Process | Detail |
 |---|---|
-| PostgreSQL 18 | `127.0.0.1:55432` / `medicard_pets_phase7` |
-| Isolated API | `node src/server.js` `PORT=4010` (process env DATABASE_URL only) |
-| Pixel_8 emulator | cold-started `-no-snapshot-load` |
-| Metro | `localhost:8082` with `EXPO_PUBLIC_API_URL=http://10.0.2.2:4010` |
-| Unrelated Metro `:8081` | Pre-existing physical-device session; **not** stopped |
+| Metro `:8081` | Physical-device session. `mobile/.env` `EXPO_PUBLIC_API_URL` is production `https://medicard.ge` |
+| Local Express `:4000` | `server/.env` → same hosted Neon. Admin traffic. Not the phone's API |
+| Isolated API `:4010` | `127.0.0.1:55432` / `medicard_pets_phase7`. Leftover Phase 7.1. **Not** the owner test |
+| Metro `:8082` | `EXPO_PUBLIC_API_URL=http://10.0.2.2:4010` (emulator). Not the owner phone |
+| Tbilisi Moves `:4011` | Unrelated owner-pilot |
