@@ -63,8 +63,7 @@ export function StepsGoalCard({ goal, current, remaining }: Props) {
             strokeDasharray={`${c} ${c}`}
             strokeDashoffset={offset}
             strokeLinecap="round"
-            rotation="-90"
-            origin={`${size / 2}, ${size / 2}`}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
           />
         </Svg>
         <Flag size={22} color={FIGMA_STEPS.brand} strokeWidth={2.2} />

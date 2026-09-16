@@ -113,8 +113,7 @@ export function HomePackageQuotaBadge({ onPress }: Props) {
               strokeLinecap="round"
               strokeDasharray={`${CIRC} ${CIRC}`}
               strokeDashoffset={CIRC * (1 - progress)}
-              rotation={-90}
-              origin={`${CX}, ${CX}`}
+              transform={`rotate(-90 ${CX} ${CX})`}
               opacity={0.18}
             />
             <AnimatedCircle
@@ -126,8 +125,7 @@ export function HomePackageQuotaBadge({ onPress }: Props) {
               fill="none"
               strokeLinecap="round"
               strokeDasharray={`${CIRC} ${CIRC}`}
-              rotation={-90}
-              origin={`${CX}, ${CX}`}
+              transform={`rotate(-90 ${CX} ${CX})`}
               animatedProps={animatedProps}
             />
             {showKnob ? (

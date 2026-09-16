@@ -1,6 +1,7 @@
 import { prisma } from './prisma.js';
 import { getMobileAppVersion } from './mobileAppVersion.js';
 import { parseAppVersion } from './appVersion.js';
+import { consumerPurchasesEnabled } from './consumerPurchases.js';
 
 const DEFAULTS = {
   id: 'default',
@@ -73,6 +74,7 @@ export function publicAppSettings(settings) {
     forceUpdate: settings.forceUpdate,
     allowRegistrations: settings.allowRegistrations,
     supportEmail: settings.supportEmail,
+    consumerPurchasesEnabled: consumerPurchasesEnabled(),
     updatedAt: settings.updatedAt,
   };
 }

@@ -78,7 +78,8 @@ export default function TbilisiMovesEnrollScreen() {
     if (step === 'district') setStep('intro');
     else if (step === 'identity') setStep('district');
     else if (step === 'confirm') setStep('identity');
-    else router.back();
+    else if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/profile');
   };
 
   const submit = async () => {
@@ -102,7 +103,7 @@ export default function TbilisiMovesEnrollScreen() {
           ]);
         }
       } catch {
-        /* Enrollment already succeeded. Hub shows retry if this read/PUT failed. */
+        /* Enrollment already succeeded. Hub GET /me still copies stored daily steps. */
       }
       router.replace('/tbilisi-moves');
     } catch (caught) {

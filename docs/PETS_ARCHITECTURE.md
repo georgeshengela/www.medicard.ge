@@ -89,6 +89,10 @@ Hosted Neon **already has** these objects (inspected 2026-09-15). Do not re-appl
 
 Kinds: `VACCINATION` \| `FLEA_TICK` \| `DEWORMING` \| `MEDICATION` \| `OTHER` (architecture originally said `VACCINE`; stored value is **VACCINATION**).
 
+### Vet clinic directory (information only)
+
+`GET /api/pets/clinics` fetches the public [Dogdog.ge vet listing](https://dogdog.ge/index.php?m=315), caches 6h, and computes open/closed in `Asia/Tbilisi` from published hours. Not a booking system, not Medicard clinics, not a new Pets SQL phase. Hub section only — not Home, not a fifth tab.
+
 ### Recurrence
 
 Supported only with implemented behavior:

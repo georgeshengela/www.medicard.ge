@@ -163,9 +163,10 @@ html[data-theme="dark"] .v3-subnav-btn.is-active { background: #1F2937; }
 
 .v3-push,
 .v3-rewards,
-.v3-module.v3-rewards {
+.v3-module.v3-rewards,
+.v3-module {
   width: 100%;
-  max-width: var(--v3-page-max);
+  max-width: none;
 }
 .rw-grid-2 {
   display: grid;

@@ -4,6 +4,7 @@ import { publicExtraAnswers } from './appState.js';
 import { resolvePackageAiLimit } from './packages.js';
 import { normalizeAiEngine } from './aiEngine.js';
 import { cycleModeForPatientAiContext } from './cycleModes.js';
+import { wrapUntrustedAiBlock } from './clinicalMessages.js';
 
 function packageIsExpired(user) {
   return Boolean(user?.packageExpiresAt && new Date(user.packageExpiresAt).getTime() < Date.now());
@@ -306,7 +307,7 @@ export async function withPatientAiContext(user, extra) {
     buildTrackedMetricsBlock(bundle.metrics),
     meds,
     cycle,
-    extra?.trim() || null,
+    extra?.trim() ? wrapUntrustedAiBlock('client_note', extra.trim(), 4000) : null,
   ]
     .filter(Boolean)
     .join('\n\n');

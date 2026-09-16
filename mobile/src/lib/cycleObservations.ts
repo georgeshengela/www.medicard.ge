@@ -65,6 +65,10 @@ export function caffeineLabel(value: string): string {
   return ka.cycle.caffeineLevel[value as CycleCaffeineLevel] ?? value;
 }
 
+export function alcoholLabel(value: string): string {
+  return ka.cycle.alcoholLevel[value as CycleAlcoholLevel] ?? value;
+}
+
 export function energyLabel(value: string): string {
   return ka.cycle.energyLevel[value as keyof typeof ka.cycle.energyLevel] ?? value;
 }

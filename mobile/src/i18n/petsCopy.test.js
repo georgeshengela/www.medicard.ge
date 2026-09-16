@@ -12,6 +12,8 @@ describe('pets Georgian copy', () => {
     assert.equal(ka.pets.manageSection, 'სწრაფი მოქმედებები');
     assert.match(ka.pets.manageSectionHint('მაქსი'), /მაქსი/);
     assert.equal(ka.pets.profileCta, 'გახსნა');
+    assert.equal(ka.pets.clinicsTitle, 'ვეტკლინიკები');
+    assert.equal(ka.pets.clinicsOpen, 'ღიაა');
     assert.equal(ka.pets.namePh, 'მაგ. მაქსი');
     assert.equal(ka.pets.allergiesEmpty, 'ალერგიები ჯერ არ არის დამატებული');
     assert.equal(ka.pets.weightTitle, 'წონა');

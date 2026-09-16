@@ -174,7 +174,6 @@ aiRouter.post(
       mode === 'DOCTOR'
         ? buildDoctorTurnContext({ userTurnCount, assistantTurnCount })
         : null;
-    const mergedContext = [profileContext, turnContext].filter(Boolean).join('\n\n');
     const stream = wantsChatStream(req);
 
     if (stream) {
@@ -204,7 +203,8 @@ aiRouter.post(
             const result = await askAi({
               user: req.user,
               mode,
-              context: mergedContext || undefined,
+              context: profileContext || undefined,
+              trustedContext: turnContext || undefined,
               messages: [...priorTurns, { role: 'user', content: message }],
               temperature: mode === 'DOCTOR' ? 0.3 : 0.2,
               maxTokens: 2400,
@@ -260,7 +260,8 @@ aiRouter.post(
         const result = await askAi({
           user: req.user,
           mode,
-          context: mergedContext || undefined,
+          context: profileContext || undefined,
+          trustedContext: turnContext || undefined,
           messages: [...priorTurns, { role: 'user', content: message }],
           temperature: mode === 'DOCTOR' ? 0.3 : 0.2,
           maxTokens: 2400,

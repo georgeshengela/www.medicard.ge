@@ -10,14 +10,28 @@ export function TbilisiMovesChrome({
   title,
   onBack,
   right,
+  fallbackHref = '/(tabs)/profile',
 }: {
   title: string;
   onBack?: () => void;
   right?: React.ReactNode;
+  fallbackHref?: '/(tabs)/profile' | '/pets' | '/tbilisi-moves';
 }) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+
+  const goBack = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(fallbackHref);
+  };
 
   return (
     <View style={{ paddingTop: insets.top, backgroundColor: colors.bg100 }}>
@@ -34,7 +48,7 @@ export function TbilisiMovesChrome({
           accessibilityRole="button"
           accessibilityLabel="უკან"
           hitSlop={12}
-          onPress={onBack || (() => router.back())}
+          onPress={goBack}
           style={{
             width: 40,
             height: 40,

@@ -19,7 +19,7 @@ This is **not** production. `pilotMode` stays true. Hosted Neon, production flag
 
 ## Exact remaining device action (iPhone)
 
-The owner’s 1,000+ Medicard steps live on the **production** Expo Go session as **personal `HealthMetricDaily` / `StepLog`** (`GET /api/health-metrics`, device-local day, `source: 'merged'`). They are **not** a live HealthKit total and **cannot** be ingested as competition observations. Expo Go still cannot call HealthKit / Health Connect. This Windows repo cannot compile iOS.
+The owner’s Medicard Home steps live as **personal `HealthMetricDaily` / `StepLog`**. District war now **copies that daily total** onto the competition credit. Expo Go can show the same number after a native build (or Home) has synced steps to the API. Expo Go still cannot read HealthKit / Health Connect itself.
 
 On a **Mac with Xcode**, without touching the live `:8081` production Metro:
 

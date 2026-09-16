@@ -188,9 +188,11 @@ export async function putObservation({ userId, body, now = new Date() }) {
     });
 
     if (credit) {
+      const dailyTakeover = body.sourceInstallationId === 'medicard-health-metrics';
       if (
-        credit.authoritativeProvider !== validated.provider ||
-        credit.sourceInstallationId !== body.sourceInstallationId
+        !dailyTakeover &&
+        (credit.authoritativeProvider !== validated.provider ||
+          credit.sourceInstallationId !== body.sourceInstallationId)
       ) {
         await tx.tbilisiMovesObservation.create({
           data: {
@@ -331,6 +333,6 @@ export async function putObservation({ userId, body, now = new Date() }) {
 
     return { accepted: true, idempotent: false, credit: publicCredit(saved) };
   });
-  notifyTbilisiMovesLive();
+  notifyTbilisiMovesLive(userId);
   return result;
 }

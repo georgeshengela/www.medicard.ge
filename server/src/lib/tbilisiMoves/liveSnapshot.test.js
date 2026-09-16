@@ -9,5 +9,6 @@ describe('tbilisiMoves live snapshot', () => {
 
   it('notify does not throw without a socket server', () => {
     assert.doesNotThrow(() => notifyTbilisiMovesLive());
+    assert.doesNotThrow(() => notifyTbilisiMovesLive('user-id'));
   });
 });

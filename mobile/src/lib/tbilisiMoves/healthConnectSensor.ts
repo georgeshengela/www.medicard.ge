@@ -1,24 +1,39 @@
 import {
-  aggregateRecord,
   getGrantedPermissions,
   getSdkStatus,
   initialize,
   readRecords,
   requestPermission,
-  RecordingMethod,
   SdkAvailabilityStatus,
 } from 'react-native-health-connect';
+import { fetchStepsNative } from '@/lib/healthSyncPlatform.android';
 import { competitionInterval } from '@/lib/tbilisiMoves/civilTime.js';
 import {
   hasCompetitionStepsGrant,
-  originTotalsFromHealthConnectRecords,
-  pickHighestOrigin,
+  homeStyleCompetitionSteps,
   recordOverlapsInterval,
 } from '@/lib/tbilisiMoves/originPolicy.js';
 import type { SensorReading } from '@/lib/tbilisiMoves/types';
 
-function hasStepsRead(granted: Array<{ accessType?: string; recordType?: string }>) {
-  return hasCompetitionStepsGrant(granted);
+function localYmd(now: Date) {
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function samplesFromRecords(
+  records: Array<{ count?: number; startTime?: string; endTime?: string }>,
+  startMs: number,
+  endMs: number,
+) {
+  return records
+    .filter((record) => recordOverlapsInterval(record, startMs, endMs))
+    .map((record) => ({
+      at: String(record.startTime || record.endTime || ''),
+      count: Math.max(0, Math.round(Number(record.count) || 0)),
+    }))
+    .filter((sample) => sample.at && sample.count > 0);
 }
 
 async function loadStepRecords(intervalStart: string, intervalEnd: string) {
@@ -34,7 +49,6 @@ async function loadStepRecords(intervalStart: string, intervalEnd: string) {
   const first = between.records ?? [];
   if (first.length) return first;
 
-  // Home uses operator `after`. HC `between` drops day-buckets whose endTime is after `now`.
   const after = await readRecords('Steps', {
     timeRangeFilter: { operator: 'after', startTime: intervalStart },
     ascendingOrder: true,
@@ -63,12 +77,9 @@ export async function readCompetitionSteps(
   const intervalStart = interval.start.toISOString();
   const intervalEnd = interval.end.toISOString();
   const recordedAt = now.toISOString();
+  const startMs = interval.start.getTime();
+  const endMs = interval.end.getTime();
   const base = { intervalStart, intervalEnd, tbilisiDate: ymd, recordedAt, provider: 'HEALTH_CONNECT' as const };
-  const timeRangeFilter = {
-    operator: 'between' as const,
-    startTime: intervalStart,
-    endTime: intervalEnd,
-  };
 
   try {
     const status = await getSdkStatus();
@@ -79,14 +90,23 @@ export async function readCompetitionSteps(
     if (!ready) return { kind: 'unavailable', ...base };
 
     let granted = await getGrantedPermissions().catch(() => []);
-    if (!hasStepsRead(granted) && opts?.prompt) {
+    if (!hasCompetitionStepsGrant(granted) && opts?.prompt) {
       granted = await requestPermission([
         { accessType: 'read', recordType: 'Steps' },
         { accessType: 'read', recordType: 'ReadHealthDataHistory' },
       ]).catch(() => granted);
     }
-    if (!hasStepsRead(granted)) {
-      granted = await getGrantedPermissions().catch(() => granted);
+
+    const samples = await fetchStepsNative(interval.start);
+    const homeSteps = homeStyleCompetitionSteps(samples, startMs, endMs, localYmd(now));
+    if (homeSteps > 0) {
+      return {
+        kind: 'ok',
+        steps: homeSteps,
+        origin: 'health-connect',
+        ...base,
+        note: 'Same Health Connect Steps read as Home.',
+      };
     }
 
     let records: Awaited<ReturnType<typeof readRecords>>['records'] = [];
@@ -94,70 +114,35 @@ export async function readCompetitionSteps(
       records = await loadStepRecords(intervalStart, intervalEnd);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (/denied|permission/i.test(message) || !hasStepsRead(granted)) {
+      if (/denied|permission/i.test(message) && homeSteps <= 0) {
         return { kind: 'permission', ...base, note: message };
       }
-      return { kind: 'error', ...base, note: message };
+      if (homeSteps <= 0) return { kind: 'error', ...base, note: message };
     }
 
-    if (!hasStepsRead(granted) && records.length === 0) {
+    const fallback = homeStyleCompetitionSteps(samplesFromRecords(records, startMs, endMs), startMs, endMs, localYmd(now));
+    if (fallback > 0) {
+      return {
+        kind: 'ok',
+        steps: fallback,
+        origin: 'health-connect',
+        ...base,
+        note: 'Health Connect step records overlapping the competition interval.',
+      };
+    }
+
+    if (!hasCompetitionStepsGrant(granted) && records.length === 0 && samples.length === 0) {
       return {
         kind: 'permission',
         ...base,
-        note: 'Steps read is not granted. Health Connect cannot always distinguish denial from empty data after a grant.',
+        note: 'Steps read is not granted.',
       };
     }
 
-    const { totals, sensorCount } = originTotalsFromHealthConnectRecords(records);
-
-    if (records.length > 0 && sensorCount === 0) {
-      return { kind: 'manual_only', ...base, note: 'All Health Connect step records for this interval are MANUAL_ENTRY.' };
-    }
-
-    const origins = totals.map((row) => row.origin).filter((origin) => origin && origin !== '_unknown');
-    if (origins.length) {
-      let best: { origin: string; steps: number } | null = null;
-      for (const origin of origins) {
-        try {
-          const agg = await aggregateRecord({
-            recordType: 'Steps',
-            timeRangeFilter,
-            dataOriginFilter: [origin],
-          });
-          const steps = Math.max(0, Math.round(Number(agg.COUNT_TOTAL) || 0));
-          if (!best || steps > best.steps) best = { origin, steps };
-        } catch {
-          /* originPolicy fallback below */
-        }
-      }
-      if (best && best.steps > 0) {
-        return {
-          kind: 'ok',
-          steps: best.steps,
-          origin: best.origin,
-          ...base,
-          note: 'Health Connect aggregateRecord per data origin; highest single origin. Manual records excluded from origin list.',
-        };
-      }
-    }
-
-    const winner = pickHighestOrigin(totals);
-    if (!winner) {
-      return {
-        kind: records.length === 0 ? 'empty' : 'error',
-        ...base,
-        note:
-          records.length === 0
-            ? 'No step records in the Tbilisi interval. Denied access and empty data cannot always be distinguished.'
-            : 'No usable non-manual origin total.',
-      };
-    }
     return {
-      kind: winner.steps === 0 ? 'zero' : 'ok',
-      steps: winner.steps,
-      origin: winner.origin,
+      kind: 'empty',
       ...base,
-      note: `Highest single origin after excluding recordingMethod=${RecordingMethod.RECORDING_METHOD_MANUAL_ENTRY}. Overlapping samples in one origin use max-in-cluster, not a naive sum.`,
+      note: 'Health Connect returned no overlapping step samples for this interval.',
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

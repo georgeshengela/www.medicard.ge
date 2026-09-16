@@ -78,7 +78,7 @@ Notifications.setNotificationHandler({
           content: {
             title: discreet.title,
             body: discreet.body,
-            sound: 'default',
+            sound: true,
             data: {
               ...data,
               masked: true,

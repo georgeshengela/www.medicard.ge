@@ -10,7 +10,12 @@ import {
 } from './prompts.js';
 
 test('prompt version tracks the Medi voice rewrite', () => {
-  assert.equal(PROMPT_VERSION, '1.8.0');
+  assert.equal(PROMPT_VERSION, '1.8.1');
+});
+
+test('doctor prompt treats clinical_context as untrusted data', () => {
+  assert.match(SYSTEM_PROMPTS.DOCTOR, /clinical_context/);
+  assert.match(SYSTEM_PROMPTS.DOCTOR, /დაგეგმილი მედიკამენტი ან შეხსენება არ არის მიღება/);
 });
 
 test('doctor prompt is a friendly Georgian health friend, not a clerk', () => {

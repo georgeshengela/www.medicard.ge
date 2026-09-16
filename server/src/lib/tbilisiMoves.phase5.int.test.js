@@ -359,7 +359,8 @@ describe('tbilisi moves Phase 5 isolated integration', { timeout: 180_000 }, () 
       const extra = await prisma.tbilisiMovesCredit.findMany({
         where: { userId: alice.id, rawObservedSteps: 22222 },
       });
-      assert.equal(extra.length, 0);
+      assert.equal(extra.length, 1);
+      assert.equal(extra[0].eligibleSteps, 10000);
       const healthDaily = await prisma.healthMetricDaily.findUnique({
         where: { userId_date: { userId: alice.id, date: today } },
       });

@@ -267,6 +267,36 @@ export type PetAgeDisplay = {
   months: number | null;
 };
 
+export type PetClinicHoursSlot = {
+  allDay?: boolean;
+  closed?: boolean;
+  openMin?: number;
+  closeMin?: number;
+  label?: string;
+} | null;
+
+export type PetClinic = {
+  id: string;
+  name: string;
+  description: string | null;
+  location: string | null;
+  email: string | null;
+  phones: Array<{ display: string; tel: string }>;
+  hours: Record<string, PetClinicHoursSlot>;
+  sourceUrl: string;
+  openNow: boolean | null;
+  hoursKnown: boolean;
+};
+
+export type PetClinicsDirectory = {
+  source: { name: string; url: string };
+  timezone: string;
+  fetchedAt: string | null;
+  stale: boolean;
+  error?: string;
+  clinics: PetClinic[];
+};
+
 export type Pet = {
   id: string;
   name: string;
@@ -2025,6 +2055,7 @@ export const api = {
           forceUpdate: boolean;
           allowRegistrations: boolean;
           supportEmail: string;
+          consumerPurchasesEnabled?: boolean;
         };
         client: { version: string; needsUpdate: boolean; blockedByForceUpdate: boolean };
         packages?: UserPackage[];
@@ -2605,6 +2636,7 @@ export const api = {
 
   pets: {
     catalog: () => request<PetsCatalog>('/api/pets/catalog'),
+    clinics: () => request<PetClinicsDirectory>('/api/pets/clinics'),
     list: () => request<{ schemaReady: boolean; pets: Pet[] }>('/api/pets'),
     create: (body: PetWriteBody) => request<{ schemaReady: boolean; pet: Pet }>('/api/pets', { method: 'POST', body }),
     get: (id: string) => request<{ schemaReady: boolean; pet: Pet }>(`/api/pets/${id}`),

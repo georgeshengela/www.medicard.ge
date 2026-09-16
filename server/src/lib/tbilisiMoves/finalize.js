@@ -16,6 +16,48 @@ import { isTbilisiMovesSchemaMissing, schemaUnavailable, tbilisiMovesError } fro
 import { assertCanFinalize, roundLifecycle } from './lifecycle.js';
 import { lockRoundTx, loadRound } from './rounds.js';
 import { assertYmd } from './time.js';
+import { finalizeSchedulerConfigured } from './schedulerPolicy.js';
+
+const FINALIZE_RUNNER_LOCK = 0x74626c31; // tbl1
+
+function lockFlag(rows) {
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  const value = row?.locked ?? row?.pg_try_advisory_lock;
+  return value === true || value === 't' || value === 1n || value === 1;
+}
+
+export async function withFinalizeRunnerLock(fn, db = prisma) {
+  let held = false;
+  try {
+    const rows = await db.$queryRaw`SELECT pg_try_advisory_lock(${FINALIZE_RUNNER_LOCK}) AS locked`;
+    held = lockFlag(rows);
+    if (!held) {
+      return {
+        skipped: true,
+        reason: 'concurrent_run',
+        scanned: 0,
+        processed: [],
+        failed: [],
+        dryRun: false,
+        automaticExecutionConfigured: finalizeSchedulerConfigured(),
+      };
+    }
+    return await fn();
+  } catch (error) {
+    if (/advisory/i.test(error?.message || '') || error?.code === '26000') {
+      return fn();
+    }
+    throw error;
+  } finally {
+    if (held) {
+      try {
+        await db.$queryRaw`SELECT pg_advisory_unlock(${FINALIZE_RUNNER_LOCK})`;
+      } catch {
+        /* connection already gone */
+      }
+    }
+  }
+}
 
 export async function requireResultsSchema(db = prisma) {
   await requireSchema(db);
@@ -396,6 +438,15 @@ export async function finalizeDueRounds({
   dryRun = false,
   date = null,
 } = {}) {
+  return withFinalizeRunnerLock(() => finalizeDueRoundsUnlocked({ now, limit, dryRun, date }));
+}
+
+async function finalizeDueRoundsUnlocked({
+  now = new Date(),
+  limit = 8,
+  dryRun = false,
+  date = null,
+} = {}) {
   await requireResultsSchema();
   const take = Math.min(50, Math.max(1, Number(limit) || 8));
   const where = {
@@ -451,6 +502,7 @@ export async function finalizeDueRounds({
     processed,
     failed,
     dryRun,
-    automaticExecutionConfigured: false,
+    skipped: false,
+    automaticExecutionConfigured: finalizeSchedulerConfigured(),
   };
 }

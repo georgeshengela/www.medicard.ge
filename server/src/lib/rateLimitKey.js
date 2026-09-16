@@ -1,6 +1,7 @@
 /**
- * Request-count limiters are not mounted on /api or /api/auth (see server.js).
- * These helpers stay for cycle-share and for tests of key isolation.
+ * Do not request-count all of /api. A global bucket 429s Expo /me retries.
+ * Auth writes (register/login/OTP/password) are IP-limited in server.js;
+ * GET /me and other reads are skipped via isAuthWriteRequest.
  *
  * JWT access tokens share the same base64 header (`eyJhbGciOi…`). Never slice
  * the first 20 characters after "Bearer " — that collapsed every session into

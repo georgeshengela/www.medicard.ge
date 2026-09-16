@@ -10,7 +10,12 @@ import rateLimit from 'express-rate-limit';
 
 import { env, hasVisionProvider } from './config/env.js';
 import { prisma } from './lib/prisma.js';
-import { attachRateLimitHandler, RATE_LIMIT_VALIDATE } from './lib/rateLimitKey.js';
+import {
+  attachRateLimitHandler,
+  authWriteKey,
+  isAuthWriteRequest,
+  RATE_LIMIT_VALIDATE,
+} from './lib/rateLimitKey.js';
 import { denyLegacyPublicUploads } from './lib/privateUploads.js';
 import { shutdownOcr } from './lib/ocr.js';
 import { errorHandler, notFound } from './middleware/error.js';
@@ -125,9 +130,9 @@ app.use(
   }),
 );
 
-// Do not request-count /api or /api/auth. A 120/min (or 20/min register)
-// bucket 429s real onboarding: Expo retries, /auth/me, assessment, home.
-// Scale the Render instance instead of making users wait.
+// Do not request-count all of /api. A 120/min (or 20/min register) bucket
+// 429s real onboarding: Expo retries, GET /auth/me, assessment, home.
+// Auth writes (register/login/OTP/password) are IP-limited; GET /me is skipped.
 
 app.use(
   '/api/cycle/share',
@@ -188,7 +193,18 @@ app.get('/health', (req, res) => {
 
 app.use(enforceAppAvailability);
 
-app.use('/api/auth', authRouter);
+const authWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: env.NODE_ENV === 'production' ? 80 : 400,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  validate: RATE_LIMIT_VALIDATE,
+  keyGenerator: authWriteKey,
+  skip: (req) => !isAuthWriteRequest(req),
+  handler: attachRateLimitHandler('auth-write'),
+});
+
+app.use('/api/auth', authWriteLimiter, authRouter);
 app.use('/api/health-profile', healthProfileRouter);
 app.use('/api/account', accountRouter);
 app.use('/api/health-metrics', healthMetricsRouter);

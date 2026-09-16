@@ -137,4 +137,25 @@ describe('rate-limit separation', () => {
       server.close();
     }
   });
+
+  it('does not spend auth-write quota on GET /api/auth/me', async () => {
+    const { server, url } = await listen(buildApp());
+    try {
+      for (let i = 0; i < 3; i += 1) {
+        const me = await hit(url, '/api/auth/me');
+        assert.equal(me.status, 200);
+      }
+      for (let i = 0; i < 3; i += 1) {
+        const register = await hit(url, '/api/auth/register', { method: 'POST' });
+        assert.equal(register.status, 201);
+      }
+      const blocked = await hit(url, '/api/auth/register', { method: 'POST' });
+      assert.equal(blocked.status, 429);
+      assert.equal(blocked.limiter, 'auth-write');
+      const meAfter = await hit(url, '/api/auth/me');
+      assert.equal(meAfter.status, 200);
+    } finally {
+      server.close();
+    }
+  });
 });

@@ -34,7 +34,9 @@
   --v3-sidebar: 272px;
   --v3-sidebar-compact: 76px;
   --v3-page-gutter: 24px;
-  --v3-page-max: 1440px;
+  --v3-page-max: none;
+  --v3-prose-max: 68ch;
+  --v3-form-max: none;
   --v3-drawer: 440px;
   --v3-drawer-wide: 640px;
   --v3-dialog: 480px;
@@ -906,38 +908,29 @@ body.v3-sidebar-compact .v3-sidebar .sidebar-foot { flex-direction: column; }
 
 /* ——— Step 4: full-width workspace ——— */
 :root {
-  --v3-page-max: min(1780px, calc(100vw - var(--v3-sidebar, 272px) - (var(--v3-page-gutter, 24px) * 2) - 8px));
+  --v3-page-max: none;
   --v3-prose-max: 68ch;
-  --v3-form-max: 720px;
+  --v3-form-max: none;
 }
 
 .app.v3-ready .workspace > .panel,
 .workspace > .panel {
   width: 100%;
-  max-width: var(--v3-page-max);
+  max-width: none;
   margin-inline: 0;
 }
 
 .v3-workspace-wide {
   width: 100%;
-  max-width: var(--v3-page-max);
+  max-width: none;
+  margin-inline: 0;
 }
 
 .v3-prose { max-width: var(--v3-prose-max); }
-.v3-form-rail { max-width: var(--v3-form-max); }
+.v3-form-rail { width: 100%; max-width: none; }
 
 @media (min-width: 1600px) {
   :root { --v3-page-gutter: 28px; --page-gutter: 28px; }
-}
-@media (min-width: 1920px) {
-  :root {
-    --v3-page-max: min(1840px, calc(100vw - var(--v3-sidebar, 272px) - 64px));
-  }
-}
-@media (min-width: 2560px) {
-  :root {
-    --v3-page-max: min(2000px, calc(100vw - var(--v3-sidebar, 272px) - 80px));
-  }
 }
 
 .v3-title-row {
@@ -7940,7 +7933,13 @@ article.v3-users-kpi { cursor: default; }
   display: grid;
   gap: 14px;
   width: 100%;
-  max-width: 920px;
+  max-width: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.v3-settings-grid > .v3-settings-panel.is-danger,
+.v3-settings-grid > .v3-settings-panel[data-span="full"] {
+  grid-column: 1 / -1;
 }
 
 .v3-settings-panel {
@@ -8164,12 +8163,14 @@ textarea.v3-settings-control {
 }
 
 .v3-settings .v3-sticky-actions {
-  max-width: 920px;
+  max-width: none;
+  width: 100%;
 }
 
 @media (max-width: 1100px) {
   .v3-settings-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .v3-settings-fields { grid-template-columns: 1fr; }
+  .v3-settings-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
   .v3-settings-kpis { grid-template-columns: 1fr; }

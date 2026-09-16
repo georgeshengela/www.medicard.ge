@@ -127,10 +127,11 @@ export async function getTbilisiMovesLiveSnapshot(now = new Date()) {
   }
 }
 
-export function notifyTbilisiMovesLive() {
+export function notifyTbilisiMovesLive(userId) {
   void import('../adminRealtime.js')
     .then((mod) => {
       if (typeof mod.emitTbilisiMovesLive === 'function') mod.emitTbilisiMovesLive();
+      if (userId && typeof mod.emitTbilisiMovesUser === 'function') mod.emitTbilisiMovesUser(userId);
     })
     .catch(() => undefined);
 }

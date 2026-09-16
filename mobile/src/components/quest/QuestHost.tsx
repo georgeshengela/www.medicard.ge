@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/store/AuthContext';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { connectQuestSocket, disconnectQuestSocket, markQuestCelebration, onQuestSocketCompleted } from '@/lib/quest/socket';
+import { schedulePostLoginWork } from '@/lib/safeStartup';
 import { syncQuestBridges } from '@/lib/quest/sync';
 import {
   readQuestCache,
@@ -51,8 +52,10 @@ export function QuestHost() {
       disconnectQuestSocket();
       return;
     }
-    void syncQuestBridges('start');
-    void connectQuestSocket();
+    schedulePostLoginWork('quest-socket', async () => {
+      await syncQuestBridges('start');
+      await connectQuestSocket();
+    });
     const offCompleted = onQuestSocketCompleted((payload) => {
       if (!markQuestCelebration('completed', payload.questId, payload.completedAt || '')) return;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);

@@ -51,6 +51,7 @@ describe('rateLimitKey', () => {
     assert.equal(isAuthWriteRequest({ method: 'POST', originalUrl: '/api/auth/register' }), true);
     assert.equal(isAuthWriteRequest({ method: 'POST', originalUrl: '/api/auth/login' }), true);
     assert.equal(isAuthWriteRequest({ method: 'POST', originalUrl: '/api/auth/phone/start' }), true);
+    assert.equal(isAuthWriteRequest({ method: 'POST', originalUrl: '/api/auth/password/forgot' }), true);
     assert.equal(isAuthWriteRequest({ method: 'GET', originalUrl: '/api/auth/me' }), false);
     assert.equal(isAuthWriteRequest({ method: 'GET', originalUrl: '/api/admin/stats' }), false);
     assert.equal(isAuthWriteRequest({ method: 'PUT', originalUrl: '/api/health-profile' }), false);

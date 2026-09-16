@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
@@ -32,6 +33,7 @@ import {
 } from '../lib/pharmacy/sync.js';
 import { getSmsBalance, normalizeSmsDestination, sendSms } from '../lib/sms.js';
 import { deleteUserAccount } from '../lib/deleteUser.js';
+import { attachRateLimitHandler, authWriteKey, RATE_LIMIT_VALIDATE } from '../lib/rateLimitKey.js';
 import {
   getFeatureAnalytics,
   getMediAnalytics,
@@ -200,8 +202,19 @@ function adminUserRow(user, usage) {
   };
 }
 
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  validate: RATE_LIMIT_VALIDATE,
+  keyGenerator: authWriteKey,
+  handler: attachRateLimitHandler('admin-login'),
+});
+
 adminRouter.post(
   '/login',
+  adminLoginLimiter,
   asyncHandler(async (req, res) => {
     const body = z
       .object({

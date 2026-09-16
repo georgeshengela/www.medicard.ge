@@ -1,4 +1,5 @@
 import '../global.css';
+import '@/lib/bootGuard';
 
 import React, { useEffect, useRef, useState } from 'react';
 import { LogBox, Text, View } from 'react-native';

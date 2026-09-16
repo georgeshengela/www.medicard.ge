@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Linking, Text, View } from 'react-native';
+import { isSafeExternalHref } from '@/lib/safeExternalHref';
 
 /**
  * A small Markdown renderer for the subset the clinical engines actually emit:
@@ -137,9 +138,13 @@ function Inline({ text, allowLinks = true }: { text: string; allowLinks?: boolea
           );
         }
         if (token.type === 'link') {
-          if (!allowLinks) {
-            if (isCitation(token.value)) return null;
-            return <Text key={index}>{token.value}</Text>;
+          const href = token.href || '';
+          const safe = allowLinks && isSafeExternalHref(href);
+          if (!safe) {
+            if (!allowLinks && isCitation(token.value)) return null;
+            return (
+              <Text key={index}>{isCitation(token.value) ? `[${token.value}]` : token.value}</Text>
+            );
           }
           return (
             <Text
@@ -147,7 +152,7 @@ function Inline({ text, allowLinks = true }: { text: string; allowLinks?: boolea
               className="font-semibold text-primary-200 underline"
               suppressHighlighting
               onPress={() => {
-                Linking.openURL(token.href!).catch(() => undefined);
+                Linking.openURL(href).catch(() => undefined);
               }}
             >
               {isCitation(token.value) ? `[${token.value}]` : token.value}

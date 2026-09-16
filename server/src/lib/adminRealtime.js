@@ -94,6 +94,34 @@ export function emitTbilisiMovesLive() {
   return true;
 }
 
+const tbilisiUserFlush = new Map();
+
+export function emitTbilisiMovesUser(userId, payload = {}) {
+  if (!io || !userId) return false;
+  const prev = tbilisiUserFlush.get(userId);
+  if (prev) clearTimeout(prev);
+  tbilisiUserFlush.set(
+    userId,
+    setTimeout(() => {
+      tbilisiUserFlush.delete(userId);
+      io.to(userSocketRoom(userId)).emit('tbilisi-moves:update', {
+        at: new Date().toISOString(),
+        ...payload,
+      });
+    }, 300),
+  );
+  return true;
+}
+
+export function emitUserHealthMetrics(userId, payload = {}) {
+  if (!io || !userId) return false;
+  io.to(userSocketRoom(userId)).emit('health:metrics', {
+    at: new Date().toISOString(),
+    ...payload,
+  });
+  return true;
+}
+
 export function notifyBrainSync(kind, count = 0) {
   if (kind === 'decisions') brainPending.decisions += count;
   if (kind === 'outcomes') brainPending.outcomes += count;

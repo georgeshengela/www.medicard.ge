@@ -15,6 +15,7 @@ import { useFigmaPlans } from '@/constants/figmaPlansLayout';
 import { PackagePageSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { api, type UserPackage } from '@/lib/api';
+import { consumerPurchasesEnabledFromStatus } from '@/lib/consumerPurchases';
 import { usePlanUsage, type PlanCode } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
 
@@ -97,6 +98,7 @@ export default function PackageScreen() {
 
   const [packages, setPackages] = useState<UserPackage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [purchasesEnabled, setPurchasesEnabled] = useState(false);
   const [selectedCode, setSelectedCode] = useState<PlanCode>(usageData.code);
   const [annual, setAnnual] = useState(false);
 
@@ -107,6 +109,7 @@ export default function PackageScreen() {
     try {
       const version = Constants.expoConfig?.version ?? '1.0.0';
       const status = await api.app.status(version);
+      setPurchasesEnabled(consumerPurchasesEnabledFromStatus(status));
       const list = (status.packages ?? []).filter((pkg) => pkg.code !== 'FREE' || pkg.priceGel === 0);
       if (list.length) {
         setPackages(list);
@@ -139,6 +142,10 @@ export default function PackageScreen() {
   const onUpgrade = () => {
     if (selectedCode === currentCode) {
       Alert.alert(ka.plans.selectedPlan, ka.profile.planActive);
+      return;
+    }
+    if (!purchasesEnabled) {
+      Alert.alert(ka.usage.upsellTitle, ka.usage.purchasesUnavailable);
       return;
     }
     Alert.alert(ka.usage.upsellTitle, ka.usage.premiumSoon);
@@ -556,6 +563,7 @@ export default function PackageScreen() {
           ) : null}
 
           <View style={{ paddingHorizontal: 16, paddingTop: 24, gap: 24 }}>
+            {purchasesEnabled ? (
             <Pressable
               accessibilityRole="button"
               onPress={onUpgrade}
@@ -590,6 +598,19 @@ export default function PackageScreen() {
               </Text>
               <ArrowRight size={20} color="#FFFFFF" strokeWidth={2.2} />
             </Pressable>
+            ) : (
+              <Text
+                style={{
+                  fontFamily: 'NotoSansGeorgian_400Regular',
+                  fontSize: 14,
+                  lineHeight: 20,
+                  color: FIGMA_PLANS.textSecondary,
+                  textAlign: 'center',
+                }}
+              >
+                {ka.usage.purchasesUnavailable}
+              </Text>
+            )}
 
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
               <Pressable accessibilityRole="button" onPress={() => router.push('/profile/privacy')}>

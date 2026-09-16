@@ -32,8 +32,7 @@ export function WeightCircleProgress({ percent, label }: Props) {
           fill="none"
           strokeDasharray={`${dash} ${c}`}
           strokeLinecap="round"
-          rotation={-90}
-          origin={`${SIZE / 2}, ${SIZE / 2}`}
+          transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
         />
       </Svg>
       <Text

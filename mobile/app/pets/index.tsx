@@ -13,6 +13,7 @@ import {
 } from 'lucide-react-native';
 import { TbilisiMovesChrome } from '@/components/tbilisiMoves/TbilisiMovesChrome';
 import { PetsManageRow } from '@/components/pets/PetsManageRow';
+import { PetsClinicsSection } from '@/components/pets/PetsClinicsSection';
 import { EmptyState } from '@/components/EmptyState';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
@@ -303,6 +304,8 @@ export default function PetsHubScreen() {
               </View>
             </View>
           ) : null}
+
+          <PetsClinicsSection />
         </ScrollView>
       )}
 

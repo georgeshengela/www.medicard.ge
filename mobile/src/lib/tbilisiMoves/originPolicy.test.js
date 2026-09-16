@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   hasCompetitionStepsGrant,
   healthConnectOriginId,
+  homeStyleCompetitionSteps,
   originTotalsFromHealthConnectRecords,
   originTotalsFromHealthKitSources,
   pickHighestOrigin,
@@ -71,9 +72,24 @@ describe('tbilisi moves origin policy', () => {
   it('accepts Health Connect grant shapes Home already treats as connected', () => {
     assert.equal(hasCompetitionStepsGrant([{ recordType: 'Steps', accessType: 'read' }]), true);
     assert.equal(hasCompetitionStepsGrant([{ recordType: 'STEPS', accessType: 'READ' }]), true);
+    assert.equal(hasCompetitionStepsGrant([{ recordType: 'android.permission.health.READ_STEPS' }]), true);
     assert.equal(hasCompetitionStepsGrant([{ recordType: 'Weight', accessType: 'read' }]), false);
     assert.equal(healthConnectOriginId({ packageName: 'com.google.android.apps.fitness' }), 'com.google.android.apps.fitness');
     assert.equal(healthConnectOriginId({}), '_unknown');
+  });
+
+  it('credits the same Health Connect day bucket Home would sum', () => {
+    const start = Date.parse('2026-09-14T20:00:00.000Z');
+    const now = Date.parse('2026-09-15T15:31:00.000Z');
+    assert.equal(
+      homeStyleCompetitionSteps(
+        [{ at: '2026-09-14T22:00:00.000Z', count: 1240 }],
+        start,
+        now,
+        '2026-09-15',
+      ),
+      1240,
+    );
   });
 
   it('keeps a full-day Health Connect bucket that ends after now', () => {

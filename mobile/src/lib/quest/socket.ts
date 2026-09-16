@@ -109,6 +109,13 @@ export async function connectQuestSocket() {
   socket.on('usage:reset', (payload: UsageResetPayload) => {
     usageResetListeners.forEach((fn) => fn(payload || {}));
   });
+  socket.on('health:metrics', () => {
+    void import('@/lib/healthDataSync').then(({ requestHealthRefresh }) => requestHealthRefresh());
+    void import('@/lib/tbilisiMoves/live').then(({ requestTbilisiMovesLive }) => requestTbilisiMovesLive());
+  });
+  socket.on('tbilisi-moves:update', () => {
+    void import('@/lib/tbilisiMoves/live').then(({ requestTbilisiMovesLive }) => requestTbilisiMovesLive());
+  });
 }
 
 export function disconnectQuestSocket() {

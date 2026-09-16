@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { Crown, Sparkles, TriangleAlert, Zap } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { ka } from '@/i18n/ka';
 import { usePlanUsage, type PlanCode } from '@/lib/planUsage';
+import { consumerPurchasesEnabledFromStatus } from '@/lib/consumerPurchases';
+import { api } from '@/lib/api';
+import Constants from 'expo-constants';
 import { useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { useThemeColors, type Palette } from '@/theme/colors';
 
@@ -114,6 +117,16 @@ export function PlanDetailCard() {
   const colors = useThemeColors();
   const auth = useFigmaAuth();
   const data = usePlanUsage();
+  const [purchasesEnabled, setPurchasesEnabled] = useState(false);
+
+  useEffect(() => {
+    const version = Constants.expoConfig?.version ?? '1.0.0';
+    void api.app
+      .status(version)
+      .then((status) => setPurchasesEnabled(consumerPurchasesEnabledFromStatus(status)))
+      .catch(() => setPurchasesEnabled(false));
+  }, []);
+
   if (!data.usage) return null;
 
   const { code, meta, unlimited, remaining, limit, exhausted, progress, started, expires, expired } =
@@ -190,7 +203,7 @@ export function PlanDetailCard() {
         ) : null}
       </View>
 
-      {code === 'FREE' ? (
+      {code === 'FREE' && purchasesEnabled ? (
         <Pressable
           accessibilityRole="button"
           onPress={() => Alert.alert(ka.usage.upsellTitle, ka.usage.premiumSoon)}
@@ -205,6 +218,8 @@ export function PlanDetailCard() {
           <Crown size={16} color={colors.onPrimary} strokeWidth={2.2} />
           <Text className="ml-2 text-sm font-bold text-white">{ka.usage.upsellCta}</Text>
         </Pressable>
+      ) : code === 'FREE' ? (
+        <Text className="mx-4 mb-4 text-center text-xs leading-5 text-text-300">{ka.usage.purchasesUnavailable}</Text>
       ) : null}
     </Card>
   );

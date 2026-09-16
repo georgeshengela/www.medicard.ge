@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { ensureDrugCategories, ensurePharmacySources } from '../src/lib/pharmacy/categories.js';
 import { ensureQuestTemplates } from '../src/lib/questTemplates.js';
 import { ensureRewardDefinitions } from '../src/lib/rewards.js';
+import { resolveAdminSeedAction } from '../src/lib/seedAdminPolicy.js';
 
 const prisma = new PrismaClient();
 
@@ -102,25 +103,37 @@ async function main() {
   }
 
   const adminEmail = (process.env.ADMIN_EMAIL || 'admin@medicard.ge').toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD || 'MedicardAdmin1!';
   const adminName = process.env.ADMIN_FULL_NAME || 'Medicard Admin';
-
-  await prisma.admin.upsert({
-    where: { email: adminEmail },
-    create: {
-      email: adminEmail,
-      fullName: adminName,
-      passwordHash: await bcrypt.hash(adminPassword, 12),
-    },
-    update: {
-      fullName: adminName,
-      passwordHash: await bcrypt.hash(adminPassword, 12),
-    },
+  const existingAdmin = await prisma.admin.findUnique({ where: { email: adminEmail } });
+  const seedAction = resolveAdminSeedAction({
+    existingAdmin,
+    nodeEnv: process.env.NODE_ENV,
+    adminPassword: process.env.ADMIN_PASSWORD,
   });
+
+  if (seedAction.action === 'abort') {
+    throw new Error(seedAction.error);
+  }
+
+  if (seedAction.action === 'update-name-only') {
+    // Render runs seed on every deploy. Never rotate the live hash from env/default.
+    await prisma.admin.update({
+      where: { email: adminEmail },
+      data: { fullName: adminName },
+    });
+  } else {
+    const password = seedAction.useBuiltinDevPassword ? 'MedicardAdmin1!' : process.env.ADMIN_PASSWORD;
+    await prisma.admin.create({
+      data: {
+        email: adminEmail,
+        fullName: adminName,
+        passwordHash: await bcrypt.hash(password, 12),
+      },
+    });
+  }
 
   console.log('Seeded monthly packages: FREE (90/mo), STANDARD (1500/mo), ULTIMATE (∞/mo)');
   console.log(`Admin login: ${adminEmail}`);
-  console.log('Change ADMIN_PASSWORD in production.');
 
   await ensurePharmacySources();
   await ensureDrugCategories();

@@ -43,14 +43,13 @@ import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
 import { formatKaInt } from '@/lib/tbilisiMoves/format';
-import { getCachedTodaySteps } from '@/lib/healthDataSync';
+import { subscribeTbilisiMovesLive } from '@/lib/tbilisiMoves/live';
 import { loadCache, loadLastSyncOk, saveCache } from '@/lib/tbilisiMoves/storage';
 import {
   getCompetitionSyncState,
   runCompetitionSync,
   subscribeCompetitionSync,
 } from '@/lib/tbilisiMoves/sync';
-import { isNativeCompetitionRuntime } from '@/lib/tbilisiMoves/sensor';
 import type {
   TbilisiMovesDistrictBoard,
   TbilisiMovesMe,
@@ -67,107 +66,6 @@ type HubCache = {
   districts: TbilisiMovesDistrictBoard;
   people: TbilisiMovesPeopleBoard | null;
 };
-
-function SyncBanner({
-  colors,
-  onRetry,
-  retrying,
-  personalHomeSteps,
-  competitionSteps,
-}: {
-  colors: ReturnType<typeof useThemeColors>;
-  onRetry: () => void;
-  retrying: boolean;
-  personalHomeSteps: number | null;
-  competitionSteps: number;
-}) {
-  if (!isNativeCompetitionRuntime()) {
-    return (
-      <View
-        style={{
-          padding: 14,
-          borderRadius: 16,
-          backgroundColor: colors.surface,
-          borderWidth: 1,
-          borderColor: colors.bg300,
-          gap: 8,
-        }}
-      >
-        <Text style={{ fontSize: 13, lineHeight: 20, color: colors.text200, fontFamily: GEO.regular }}>
-          {ka.tbilisiMoves.personalNotCompetition(personalHomeSteps)}
-        </Text>
-      </View>
-    );
-  }
-  const sync = getCompetitionSyncState();
-  const copy =
-    sync.phase === 'conflict'
-      ? ka.tbilisiMoves.conflict
-      : sync.phase === 'unsupported'
-        ? ka.tbilisiMoves.unsupported
-        : sync.phase === 'permission'
-          ? ka.tbilisiMoves.permission
-          : sync.phase === 'empty'
-            ? ka.tbilisiMoves.noSensor
-            : sync.phase === 'manual_only'
-              ? ka.tbilisiMoves.manualOnly
-              : sync.phase === 'paused'
-                ? ka.tbilisiMoves.paused
-                : sync.phase === 'pending'
-                  ? ka.tbilisiMoves.syncPending
-                  : sync.phase === 'offline'
-                    ? ka.tbilisiMoves.offline
-                    : sync.phase === 'unavailable'
-                      ? ka.tbilisiMoves.unavailableTitle
-                      : sync.phase === 'error'
-                        ? ka.tbilisiMoves.syncError
-                        : null;
-  const retryable =
-    sync.phase === 'error' ||
-    sync.phase === 'pending' ||
-    sync.phase === 'permission' ||
-    sync.phase === 'offline' ||
-    sync.phase === 'empty';
-  if (!copy) {
-    if (personalHomeSteps && personalHomeSteps > 0 && competitionSteps <= 0) {
-      return (
-        <View
-          style={{
-            padding: 14,
-            borderRadius: 16,
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.bg300,
-            gap: 12,
-          }}
-        >
-          <Text style={{ fontSize: 13, lineHeight: 20, color: colors.text200, fontFamily: GEO.regular }}>
-            {ka.tbilisiMoves.sensorCatchUp}
-          </Text>
-          <Button label={ka.tbilisiMoves.syncRetry} loading={retrying} disabled={retrying} onPress={onRetry} />
-        </View>
-      );
-    }
-    return null;
-  }
-  return (
-    <View
-      style={{
-        padding: 14,
-        borderRadius: 16,
-        backgroundColor: colors.surface,
-        borderWidth: 1,
-        borderColor: colors.bg300,
-        gap: 12,
-      }}
-    >
-      <Text style={{ fontSize: 13, lineHeight: 20, color: colors.text200, fontFamily: GEO.regular }}>{copy}</Text>
-      {retryable ? (
-        <Button label={ka.tbilisiMoves.syncRetry} loading={retrying} disabled={retrying} onPress={onRetry} />
-      ) : null}
-    </View>
-  );
-}
 
 export default function TbilisiMovesHubScreen() {
   const colors = useThemeColors();
@@ -186,7 +84,6 @@ export default function TbilisiMovesHubScreen() {
   const [error, setError] = useState<string | null>(null);
   const [cached, setCached] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
-  const [personalHomeSteps, setPersonalHomeSteps] = useState<number | null>(null);
   const [, setSyncTick] = useState(0);
 
   React.useEffect(() => subscribeCompetitionSync(() => setSyncTick((n) => n + 1)), []);
@@ -215,7 +112,7 @@ export default function TbilisiMovesHubScreen() {
         setPeopleOffset(0);
         await saveCache({ me: nextMe, districts: board, people: peopleBoard } satisfies HubCache);
         setCached(false);
-        if (user?.id && nextMe.membership.enrolled && opts?.refresh && isNativeCompetitionRuntime()) {
+        if (user?.id && nextMe.membership.enrolled && opts?.refresh) {
           try {
             await runCompetitionSync({ userId: user.id, reason: 'refresh', force: true });
             const after = await api.tbilisiMoves.me();
@@ -250,14 +147,26 @@ export default function TbilisiMovesHubScreen() {
     [user?.id],
   );
 
+  React.useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const off = subscribeTbilisiMovesLive(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        void load();
+      }, 250);
+    });
+    return () => {
+      if (timer) clearTimeout(timer);
+      off();
+    };
+  }, [load]);
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       void (async () => {
-        const cachedSteps = await getCachedTodaySteps();
-        if (!cancelled) setPersonalHomeSteps(cachedSteps);
-        if (user?.id && isNativeCompetitionRuntime()) {
-          await runCompetitionSync({ userId: user.id, reason: 'focus' });
+        if (user?.id) {
+          await runCompetitionSync({ userId: user.id, reason: 'focus', force: true });
         }
         if (!cancelled) await load();
       })();
@@ -281,20 +190,27 @@ export default function TbilisiMovesHubScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load({ refresh: true });
-    setRefreshing(false);
-  }, [load]);
+    try {
+      if (user?.id) {
+        await runCompetitionSync({ userId: user.id, reason: 'refresh', force: true });
+      }
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load, user?.id]);
 
   const available = Boolean(status?.schemaReady && status.featureEnabled);
   const enrolled = Boolean(me?.membership.enrolled);
   const district = me?.overview.yourDistrict;
   const you = me?.overview.you;
   const target = district?.target || me?.config.defaultDailyTarget || 0;
-  const credited = district?.eligibleSteps || 0;
-  const ratio = target > 0 ? credited / target : 0;
-  const cap = you?.capSnapshot || me?.config.competitiveCap || 0;
-  const personal = you?.eligibleSteps || 0;
   const sync = getCompetitionSyncState();
+  const localSteps = Math.max(sync.credited || 0, sync.lastReading?.steps || 0);
+  const serverPersonal = you?.eligibleSteps || 0;
+  const cap = you?.capSnapshot || me?.config.competitiveCap || 0;
+  const personal = Math.max(serverPersonal, localSteps);
+  const credited = Math.max(0, (district?.eligibleSteps || 0) - serverPersonal + personal);
   const updatedAt = lastSync || sync.lastOkAt || null;
 
   const tiedLeaders = useMemo(() => {
@@ -402,13 +318,6 @@ export default function TbilisiMovesHubScreen() {
       </View>
 
       <Text style={{ fontSize: 13, lineHeight: 20, color: colors.text300, fontFamily: GEO.regular }}>{ka.tbilisiMoves.pilot}</Text>
-      <SyncBanner
-        colors={colors}
-        onRetry={() => void onRefresh()}
-        retrying={refreshing}
-        personalHomeSteps={personalHomeSteps}
-        competitionSteps={personal}
-      />
       {status?.visualQaFixture ? (
         <View style={{ padding: 12, borderRadius: 16, backgroundColor: colors.warningBg, borderWidth: 1, borderColor: colors.warning }}>
           <Text style={{ fontSize: 13, lineHeight: 20, color: colors.text100, fontFamily: GEO.semibold }}>
@@ -448,9 +357,12 @@ export default function TbilisiMovesHubScreen() {
         <ChevronRight size={18} color={colors.text300} strokeWidth={2.2} />
       </Pressable>
 
-      <TbilisiMovesScoreRing percent={Math.round(ratio * 100)} caption={ka.tbilisiMoves.dayGoal} />
+      <TbilisiMovesScoreRing value={personal} max={cap || 10000} caption={ka.tbilisiMoves.cap} />
       <Text style={{ textAlign: 'center', fontSize: 15, color: colors.text200, fontFamily: GEO.semibold }}>
-        {formatKaInt(credited)} {ka.tbilisiMoves.ofTarget} {formatKaInt(target)}
+        {formatKaInt(Math.min(personal, cap || personal))} / {formatKaInt(cap || 0)}
+      </Text>
+      <Text style={{ textAlign: 'center', fontSize: 13, color: colors.text300, fontFamily: GEO.regular }}>
+        {ka.tbilisiMoves.target} · {formatKaInt(credited)} {ka.tbilisiMoves.ofTarget} {formatKaInt(target)}
       </Text>
       <Text style={{ textAlign: 'center', fontSize: 12, color: colors.text300, fontFamily: GEO.regular }}>
         {ka.tbilisiMoves.updatedLine(updatedAt ? formatRelative(updatedAt) : ka.tbilisiMoves.neverSynced)}
@@ -473,8 +385,8 @@ export default function TbilisiMovesHubScreen() {
           icon={Footprints}
           label={ka.tbilisiMoves.yourContribution}
           value={
-            you?.lastRecordedAt || you?.rawObservedSteps != null
-              ? `${formatKaInt(personal)} / ${formatKaInt(cap)}`
+            personal > 0
+              ? `${formatKaInt(Math.min(personal, cap || personal))} / ${formatKaInt(cap)}`
               : ka.tbilisiMoves.neverSynced
           }
         />

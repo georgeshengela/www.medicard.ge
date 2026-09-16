@@ -503,6 +503,8 @@ export const ka = {
     upsellCta: 'გეგმის განახლება',
     premiumSoon:
       'გადახდა მალე აპში. ახლა პაკეტს ადმინი ანიჭებს — 30-დღიანი პერიოდი და თვიური ლიმიტი.',
+    purchasesUnavailable:
+      'აპში გადახდა ჯერ არ მუშაობს. შენი მიმდინარე გეგმა და ლიმიტი უცვლელია. ფასიან პაკეტს ადმინი ანიჭებს. ეს არ არის შეძენის დასტური.',
   },
 
   plans: {
@@ -2768,6 +2770,19 @@ export const ka = {
     manageSection: 'სწრაფი მოქმედებები',
     manageSectionHint: (name: string) => `პროდუქტები, მოვლა, Medi Vet და წონა — ${name}.`,
     profileCta: 'გახსნა',
+    clinicsTitle: 'ვეტკლინიკები',
+    clinicsOpen: 'ღიაა',
+    clinicsClosed: 'დაკეტილია',
+    clinicsUnknownHours: 'საათი უცნობია',
+    clinicsOpenNow: 'ღია ახლა',
+    clinicsAll: 'ყველა',
+    clinicsHoursAllDay: '24 საათი',
+    clinicsHoursClosed: 'დაკეტილია',
+    clinicsCall: 'დარეკვა',
+    clinicsSource: 'წყარო: Dogdog.ge',
+    clinicsLoadError: 'კლინიკების სია ვერ ჩაიტვირთა.',
+    clinicsStale: 'ბოლო შენახული სია — დირექტორია ახლა მიუწვდომელია.',
+    clinicsEmpty: 'კლინიკები ამ ფილტრში არ ჩანს.',
     profileTitle: 'პროფილი',
     editTitle: 'რედაქტირება',
     save: 'შენახვა',
@@ -3624,13 +3639,16 @@ export const ka = {
     districtRank: 'რაიონის ადგილი',
     yourContribution: 'შენი წვლილი',
     cap: 'დღიური ლიმიტი',
+    bandLow: 'დაბალი',
+    bandMid: 'საშუალო',
+    bandHigh: 'მაღალი',
     lastSync: 'ბოლო წარმატებული სინქრონი',
     neverSynced: 'ჯერ არ დასინქრონებულა',
     personalNotCompetition: (homeSteps: number | null) =>
       homeSteps && homeSteps > 0
-        ? `Health-ში ${homeSteps} ნაბიჯია. Expo Go ამას რაიონში ვერ ჩარიცხავს — გახსენი Medicard-ის დაყენებული აპი, Health-ში დართე ნაბიჯები და გადაავლე განახლება.`
-        : 'რაიონის ნაბიჯები Health Connect / HealthKit-იდან ითვლება. Expo Go ამ სენსორს ვერ კითხულობს — გახსენი დაყენებული აპი და გადაავლე განახლება.',
-    sensorCatchUp: 'Health-ის ნაბიჯები ჯერ არ ჩაირიცხა რაიონში. დააჭირე კიდევ სცადე — გაიხსნება Health Connect / HealthKit.',
+        ? `მთავარზე ${homeSteps} ნაბიჯია. რაიონი იგივე დღიურ ჯამს იყენებს — გახსენი აპი და გადაავლე განახლება.`
+        : 'რაიონის ნაბიჯები იგივეა, რაც მთავარ გვერდზე ნაბიჯების სექციაში.',
+    sensorCatchUp: 'მთავარზე ნაბიჯები ჩანს, რაიონში ჯერ არ აისახა. დააჭირე კიდევ სცადე — იგივე დღიური ჯამი ჩაირიცხება.',
     refresh: 'განახლება',
     tabDistricts: 'რაიონები',
     tabPeople: 'ადამიანები',
@@ -3642,9 +3660,9 @@ export const ka = {
     emptyBoard: 'დღეს ჯერ არავის აქვს ჩათვლილი ნაბიჯი.',
     paused: 'ნაბიჯების მიღება დროებით შეჩერებულია.',
     conflict: 'ამ დღეს უკვე დაფიქსირებულია სხვა წყარო. წყაროები არ ჯამდება და ავტომატურად არ იცვლება.',
-    unsupported: 'სენსორის წაკითხვა ამ აპის ვერსიაში შეუძლებელია. საჭიროა development ან store build.',
+    unsupported: 'რაიონის ნაბიჯები ამ ეკრანზე არ ჩაირიცხება. გახსენი Medicard აპში.',
     permission: 'ნაბიჯების წაკითხვის ნებართვა არ არის. HealthKit / Health Connect-ში გახსენით Medicard-ის წვდომა.',
-    noSensor: 'სენსორის მონაცემი ამ ინტერვალში ვერ წაიკითხა. ეს ნულს არ ნიშნავს.',
+    noSensor: 'დღიური ნაბიჯები ჯერ არ არის შენახული. გახსენი მთავარი გვერდი ან დაყენებული აპი.',
     manualOnly: 'ამ ინტერვალში მხოლოდ ხელით შეყვანილი ჩანაწერებია — შეჯიბრში არ ითვლება.',
     offline: 'ოფლაინია. ნაჩვენებია შენახული მონაცემები.',
     syncPending: 'სინქრონი რიგშია.',

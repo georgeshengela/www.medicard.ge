@@ -7,6 +7,7 @@ import { roundLifecycle } from './lifecycle.js';
 import { applyAllDuePending, districtIdForDate, ensureFeature, listDistricts } from './membership.js';
 import { rankDistricts, rankPeople, ownPeopleRow } from './ranking.js';
 import { ensureRound, loadRound } from './rounds.js';
+import { applyRecentHealthDailyToCompetition } from './fromHealthDaily.js';
 import { assertYmd, tbilisiClock, tbilisiYmd } from './time.js';
 
 function publicRules(snapshot, live) {
@@ -380,6 +381,11 @@ export async function getTodayOverview(userId, now = new Date()) {
   ensureFeature(live);
   const ymd = tbilisiYmd(now);
   await applyAllDuePending(prisma, now);
+  try {
+    await applyRecentHealthDailyToCompetition(userId, now);
+  } catch {
+    // Personal daily copy must never hide the overview.
+  }
   const membership = await prisma.tbilisiMovesMembership.findUnique({
     where: { userId },
     include: { district: true, pendingDistrict: true },

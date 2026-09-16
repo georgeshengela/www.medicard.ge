@@ -115,6 +115,26 @@ export async function readCompetitionSteps(
       });
       steps = quantitySum(localStat);
     }
+    if (steps == null || steps === 0) {
+      const { fetchStepsNative } = await import('@/lib/healthSyncPlatform.ios');
+      const { homeStyleCompetitionSteps } = await import('@/lib/tbilisiMoves/originPolicy.js');
+      const samples = await fetchStepsNative(interval.start);
+      const homeSteps = homeStyleCompetitionSteps(
+        samples,
+        interval.start.getTime(),
+        interval.end.getTime(),
+        `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
+      );
+      if (homeSteps > 0) {
+        return {
+          kind: 'ok',
+          steps: homeSteps,
+          origin: 'healthkit-home-read',
+          ...base,
+          note: 'Same HealthKit step read as Home.',
+        };
+      }
+    }
     if (steps == null) {
       return {
         kind: samples.length === 0 ? 'empty' : 'error',

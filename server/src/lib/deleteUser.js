@@ -2,9 +2,16 @@ import { prisma } from './prisma.js';
 import { revokeCycleShares } from './cycleLifecycle.js';
 import { unlinkStoredUpload } from './privateUploads.js';
 
+export const SMS_LOG_REDACTED_CONTENT = '[redacted]';
+
+/** Audit rows stay, but OTP / message bodies must not survive account deletion. */
+export function smsLogAccountDeletePatch() {
+  return { userId: null, content: SMS_LOG_REDACTED_CONTENT };
+}
+
 /**
  * Permanently remove a user and orphaned rows that are not FK-cascaded.
- * Keeps SmsLog rows but clears userId for audit trail.
+ * Keeps SmsLog rows but clears userId and redacts content for audit trail.
  */
 export async function deleteUserAccount(userId) {
   const user = await prisma.user.findUnique({
@@ -43,7 +50,7 @@ export async function deleteUserAccount(userId) {
   await prisma.$transaction([
     prisma.dailyUsage.deleteMany({ where: { userId } }),
     prisma.phoneVerification.deleteMany({ where: { userId } }),
-    prisma.smsLog.updateMany({ where: { userId }, data: { userId: null } }),
+    prisma.smsLog.updateMany({ where: { userId }, data: smsLogAccountDeletePatch() }),
     prisma.user.delete({ where: { id: userId } }),
   ]);
 

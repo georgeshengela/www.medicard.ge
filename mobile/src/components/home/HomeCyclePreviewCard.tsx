@@ -84,8 +84,7 @@ function MiniRing({
           strokeLinecap="round"
           strokeDasharray={`${circ} ${circ}`}
           strokeDashoffset={circ * (1 - clamped)}
-          rotation="-90"
-          origin={`${RING / 2}, ${RING / 2}`}
+          transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
         />
       </Svg>
       <View style={{ position: 'absolute', alignItems: 'center' }}>

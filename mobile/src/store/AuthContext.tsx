@@ -6,7 +6,7 @@ import { setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAc
 import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetup } from '@/lib/onboarding';
 import { clearSessionSnapshot, loadSessionSnapshot, saveSessionSnapshot } from '@/lib/sessionSnapshot';
 import { clearToken, getToken, setToken } from '@/lib/storage';
-import { jwtSubject } from '@/lib/jwtSubject';
+import { runPostLoginSideEffects } from '@/lib/safeStartup';
 import {
   isQuestDevEnabled,
   isQuestVisualSession,
@@ -89,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const hydrate = useCallback(async () => {
+    try {
     if (isQuestVisualSession()) {
       applyVisualSession();
       return;
@@ -101,56 +102,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const snapshot = await loadSessionSnapshot();
-    const tokenUserId = jwtSubject(token);
-    if (snapshot?.user?.id && tokenUserId && snapshot.user.id !== tokenUserId) {
-      await clearSessionSnapshot();
-    } else if (snapshot && tokenUserId && snapshot.user.id === tokenUserId) {
-      setLocalAccountId(snapshot.user.id);
-      setUser(snapshot.user);
-      setUsage(snapshot.usage);
-      setStats(snapshot.stats);
-      setHealthProfile(snapshot.healthProfile);
-    }
-
     try {
       const me = await api.auth.me();
       setLocalAccountId(me.user.id);
-      await wipeLegacyUnscopedHealthCaches();
       setUser(me.user);
       setUsage(me.usage);
       setStats(me.stats);
       setHealthProfile(me.healthProfile ?? null);
       if (me.checkInAwarded && me.checkIn) setPendingDailyBonus(me.checkIn);
-      await saveSessionSnapshot({
-        user: me.user,
-        usage: me.usage,
-        stats: me.stats,
-        healthProfile: me.healthProfile ?? null,
-      });
-      void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
-        flushCycleQueue(me.user.id).catch(() => undefined),
-      );
-      void import('@/lib/notifications').then(({ syncPushRegistration }) =>
-        syncPushRegistration(),
-      );
-      void import('@/lib/pushCopy').then(({ loadPushTemplates }) => loadPushTemplates());
-      void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
-        runMediNotificationBrain(me.user, me.healthProfile ?? null),
-      );
-      void import('@/lib/petCareReminders').then(({ reconcilePetCareReminders, flushPendingPetCareConfirms }) => {
-        void flushPendingPetCareConfirms();
-        void reconcilePetCareReminders({ reason: 'login' });
-      });
-      void import('@/lib/accountSync').then(({ pullAccountState }) =>
-        pullAccountState().catch(() => undefined),
-      );
+      runPostLoginSideEffects(me.user, me.healthProfile ?? null);
     } catch (error) {
       if (error instanceof ApiError && error.isUnauthorized) {
         await clearToken();
         await clearSessionSnapshot();
         resetSession();
       }
+    }
+    } catch {
+      await clearToken().catch(() => undefined);
+      await clearSessionSnapshot().catch(() => undefined);
+      resetSession();
     }
   }, [applyVisualSession, resetSession]);
 
@@ -212,23 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStats(stats);
         setHealthProfile(healthProfile);
         await saveSessionSnapshot({ user, usage, stats, healthProfile });
-        void import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
-          flushCycleQueue(user.id).catch(() => undefined),
-        );
-        void import('@/lib/notifications').then(({ syncPushRegistration }) =>
-          syncPushRegistration(),
-        );
-        void import('@/lib/pushCopy').then(({ loadPushTemplates }) => loadPushTemplates());
-        void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
-          runMediNotificationBrain(user, healthProfile),
-        );
-        void import('@/lib/petCareReminders').then(({ reconcilePetCareReminders, flushPendingPetCareConfirms }) => {
-          void flushPendingPetCareConfirms();
-          void reconcilePetCareReminders({ reason: 'login' });
-        });
-        void import('@/lib/accountSync').then(({ pullAccountState }) =>
-          pullAccountState().catch(() => undefined),
-        );
+        runPostLoginSideEffects(user, healthProfile);
       };
 
       await settle(result.user, result.usage, emptyStats, null);
@@ -312,7 +267,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userId = user?.id;
         setQuestVisualSession(false);
         try {
-          const { onPetCareLogout } = await import('@/lib/petCareReminders');
+          const [{ onPetCareLogout }, { cancelAllReminders, unregisterPushFromServer }] = await Promise.all([
+            import('@/lib/petCareReminders'),
+            import('@/lib/notifications'),
+          ]);
+          await unregisterPushFromServer();
+          await cancelAllReminders();
           await onPetCareLogout(userId);
         } catch {
           /* local reminder cleanup is best-effort */

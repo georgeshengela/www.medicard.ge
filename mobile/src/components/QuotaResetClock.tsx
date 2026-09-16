@@ -85,8 +85,7 @@ export function QuotaResetClock({ remainingMs, periodStart, periodEnd, colors }:
               strokeLinecap="round"
               strokeDasharray={`${circ} ${circ}`}
               strokeDashoffset={dashOffset}
-              rotation={-90}
-              origin={`${CX}, ${CY}`}
+              transform={`rotate(-90 ${CX} ${CY})`}
             />
             {Array.from({ length: TICKS }, (_, i) => {
               const angle = (i / TICKS) * Math.PI * 2 - Math.PI / 2;

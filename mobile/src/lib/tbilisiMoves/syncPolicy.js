@@ -50,8 +50,10 @@ export const MAX_TRANSIENT_RETRIES = 3;
 export const ENROLL_SYNC_BUDGET_MS = 12_000;
 
 export function shouldPromptForCompetitionRead(reason, extras = {}) {
-  if (reason === 'enroll' || reason === 'refresh') return true;
-  return Boolean(reason === 'focus' && extras.neverSynced);
+  void reason;
+  void extras;
+  // District war copies HealthMetricDaily. Native Health permission stays on Home / personal sync.
+  return false;
 }
 
 /** Yesterday's grace read must not discard today's accepted credit. */

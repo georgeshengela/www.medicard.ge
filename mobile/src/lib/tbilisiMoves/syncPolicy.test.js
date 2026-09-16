@@ -32,11 +32,11 @@ describe('tbilisi moves sync policy', () => {
     assert.equal(shouldSubmitForUser('a', null), false);
   });
 
-  it('prompts on enroll, retry, and first unsynced native focus', () => {
-    assert.equal(shouldPromptForCompetitionRead('enroll'), true);
-    assert.equal(shouldPromptForCompetitionRead('refresh'), true);
+  it('never opens a Health permission sheet for district war', () => {
+    assert.equal(shouldPromptForCompetitionRead('enroll'), false);
+    assert.equal(shouldPromptForCompetitionRead('refresh'), false);
     assert.equal(shouldPromptForCompetitionRead('focus'), false);
-    assert.equal(shouldPromptForCompetitionRead('focus', { neverSynced: true }), true);
+    assert.equal(shouldPromptForCompetitionRead('focus', { neverSynced: true }), false);
     assert.equal(shouldPromptForCompetitionRead('foreground'), false);
   });
 

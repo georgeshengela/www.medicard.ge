@@ -356,6 +356,21 @@ describe('tbilisi moves HTTP isolation', { timeout: 120_000 }, () => {
       assert.equal(capHit.data.credit.rawObservedSteps, 15000);
       assert.equal(capHit.data.credit.eligibleSteps, 10000);
 
+      const dailyTakeover = await json('PUT', '/api/tbilisi-moves/observations', {
+        user: userA,
+        body: observation({
+          date: today,
+          steps: 15000,
+          now: new Date(later.getTime() + 3500),
+          provider: 'HEALTH_CONNECT',
+          source: 'medicard-health-metrics',
+          seq: 6,
+        }),
+      });
+      assert.equal(dailyTakeover.status, 200);
+      assert.equal(dailyTakeover.data.accepted, true);
+      assert.equal(dailyTakeover.data.credit.rawObservedSteps, 15000);
+
       const enrollB = await json('POST', '/api/tbilisi-moves/enroll', {
         user: userB,
         body: {
@@ -396,7 +411,8 @@ describe('tbilisi moves HTTP isolation', { timeout: 120_000 }, () => {
       const extraCredits = await prisma.tbilisiMovesCredit.findMany({
         where: { userId: userA.id, rawObservedSteps: 22222 },
       });
-      assert.equal(extraCredits.length, 0);
+      assert.equal(extraCredits.length, 1);
+      assert.equal(extraCredits[0].eligibleSteps, Math.min(22222, extraCredits[0].capSnapshot || 22222));
       const healthDaily = await prisma.healthMetricDaily.findUnique({
         where: { userId_date: { userId: userA.id, date: today } },
       });

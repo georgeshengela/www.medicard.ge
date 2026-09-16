@@ -1,6 +1,8 @@
 # თბილისი მოძრაობს / Tbilisi Moves — architecture & implementation handoff
 
-**Status:** PHASE 6 — **hosted Neon schema applied** (phase2 → phase4). Live `https://medicard.ge` has `schemaReady`, `featureEnabled`, and `enrollmentOpen` with `pilotMode=true`. Expo Go can enroll and browse; it cannot ingest native steps and must not import `HealthMetricDaily`. Enroll skips the 12s sensor wait in Expo Go. Persistent isolated owner-pilot DB remains available for synthetic tests. Runner is implemented and **not** scheduled. No map, Hunt, coins, version bump, or store publish.  
+**Status:** PHASE 6 — **hosted Neon schema applied** (phase2 → phase4). Live `https://medicard.ge` has `schemaReady`, `featureEnabled`, and `enrollmentOpen` with `pilotMode=true`. **Owner override (2026-09-15):** district war uses the same stored daily total as Home (`HealthMetricDaily.steps`). Native HealthKit/Health Connect still write personal daily; they are not a second competition sensor. Expo Go shows whatever is already in that daily row. Runner is **not** scheduled. No map, Hunt, or coins.
+
+**Owner ingest (current):** `POST /api/health-metrics/sync` and `GET /api/tbilisi-moves/me` copy `HealthMetricDaily.steps` onto `TbilisiMovesCredit` for enrolled users (same YYYY-MM-DD, replace not add, competitive cap still applies). If Home shows 1000, district shows 1000 (eligible may still cap). Do not open Health permission sheets for district war.  
 **Date:** 2026-09-15  
 **Public app identity:** unchanged this phase (`mobile/app.json` is currently `1.0.0.8.31` from unrelated Pets work; this phase did not bump).  
 **User-facing name:** **თბილისი მოძრაობს**. English internal name: Tbilisi Moves. Never Nightingale. Never “healthiest district” / „ყველაზე ჯანმრთელი რაიონი“. This is an **activity** competition (ნაბიჯები / სიარული), not a medical ranking.
@@ -342,7 +344,7 @@ Reject `MANUAL` / `TYPED` / `UNKNOWN` / `OTHER` / `PEDOMETER`. A dishonest clien
 
 ### Final source / correction / pause policies
 
-- **Ledger:** only `TbilisiMovesCredit` / `TbilisiMovesObservation`. Never import `HealthMetricDaily` or `StepLog`. `POST /api/health-metrics/sync` is unchanged and must not create credits.
+- **Ledger:** `TbilisiMovesCredit` / `TbilisiMovesObservation` remain the competition tables. Owner override: those credits are filled from `HealthMetricDaily.steps` (same date) on health sync and GET `/me`. Client `PUT /observations` with a `HEALTH_METRIC_DAILY` provider label is still rejected; the server copies using `HEALTH_CONNECT` metadata.
 - **One authoritative source per user/day:** first accepted `(provider, sourceInstallationId)` wins. Later different source → `409 SOURCE_CONFLICT` (no SUM, no silent switch). Ignored observation is stored with `ignoreReason`.
 - **Replace, not add:** 4000 then 6200 → 6200. Same observation id + same payload → idempotent. Same id + different payload → `409 OBSERVATION_CONFLICT`. Older/out-of-order → `200 { accepted: false, reason: 'STALE' }`. Newer downward correction reduces **provisional** credit; large drop flags `DROP_CORRECTION`.
 - **Cap / district:** from the **round snapshot**. Credit `districtId` frozen on first insert from membership **history** for that Tbilisi date.

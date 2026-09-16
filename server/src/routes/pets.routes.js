@@ -18,6 +18,7 @@ import { isPetsSchemaMissing, petsSchemaUnavailable, PET_NOT_FOUND } from '../li
 import { petsHealthRouter } from './petsHealth.routes.js';
 import { petsCareRouter } from './petsCare.routes.js';
 import { petsChatRouter } from './petsChat.routes.js';
+import { getPetsClinicsDirectory } from '../lib/petsClinics.js';
 
 export const petsRouter = Router();
 
@@ -109,6 +110,14 @@ petsRouter.get(
 );
 
 petsRouter.get(
+  '/clinics',
+  asyncHandler(async (_req, res) => {
+    const directory = await getPetsClinicsDirectory();
+    return res.json(directory);
+  }),
+);
+
+petsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     try {
@@ -168,7 +177,9 @@ petsRouter.post(
 petsRouter.get(
   '/:petId',
   asyncHandler(async (req, res) => {
-    const { petId } = idParam.parse(req.params);
+    const parsed = idParam.safeParse(req.params);
+    if (!parsed.success) return res.status(404).json(PET_NOT_FOUND);
+    const { petId } = parsed.data;
     try {
       const row = await findOwnedActivePet(req.user.id, petId);
       if (!row) return res.status(404).json(PET_NOT_FOUND);

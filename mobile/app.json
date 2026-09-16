@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "MEDICARD",
+    "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.8.41",
+    "version": "1.0.0.8.61",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -14,15 +14,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
-      "version": "1.8.41",
-      "buildNumber": "67",
+      "version": "1.8.61",
+      "buildNumber": "71",
       "infoPlist": {
-        "CFBundleDisplayName": "MEDICARD",
+        "CFBundleDisplayName": "MEDICARD AI",
         "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის.",
         "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა სამედიცინო დოკუმენტების, ანალიზებისა და ცხოველის ფოტოების ასატვირთად.",
         "NSMicrophoneUsageDescription": "მიკროფონი საჭიროა ხმის ანალიზისთვის, თუ ამ ნაბიჯს გაივლით.",
-        "NSFaceIDUsageDescription": "Medicard-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად.",
-        "NSLocationWhenInUseUsageDescription": "Medicard-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის. ფონური წვდომა არ გამოიყენება.",
+        "NSFaceIDUsageDescription": "MEDICARD AI-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად.",
+        "NSLocationWhenInUseUsageDescription": "MEDICARD AI-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის. ფონური წვდომა არ გამოიყენება.",
         "NSCalendarsUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
         "NSCalendarsFullAccessUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
         "ITSAppUsesNonExemptEncryption": false
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "ge.medicard.app",
-      "versionCode": 67,
+      "versionCode": 71,
       "adaptiveIcon": {
         "backgroundColor": "#14B8A6",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -119,8 +119,8 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-      "NSHealthShareUsageDescription": "Medicard-ს Apple Health-ის წაკითხვა სჭირდება ნაბიჯების, წონის, წნევის, პულსის, ძილისა და ჰიდრატაციის სინქრონიზაციისთვის.",
-          "NSHealthUpdateUsageDescription": "Medicard-ს Apple Health-ში ციკლისა და ჯანმრთელობის ჩანაწერების შენახვა სჭირდება.",
+      "NSHealthShareUsageDescription": "Medicard-ს Apple Health-ის წაკითხვა სჭირდება ნაბიჯების, წონის, წნევის, პულსის, ძილის, ჰიდრატაციისა და ციკლის ჩანაწერების სინქრონიზაციისთვის.",
+          "NSHealthUpdateUsageDescription": "Medicard-ს Apple Health-ში ციკლის ჩანაწერების (მენსტრუაცია, ლაქები, BBT, ლორწო) შენახვა სჭირდება, თუ ამ სინქრონიზაციას ჩართავ.",
           "background": false
         }
       ],
@@ -158,7 +158,7 @@
     ],
     "extra": {
       "router": {},
-      "medicardInternalVersion": "1.0.0.8.41",
+      "medicardInternalVersion": "1.0.0.8.61",
       "apiUrl": "https://medicard.ge",
       "privacyPolicyUrl": "https://medicard.ge/privacy",
       "termsOfServiceUrl": "https://medicard.ge/terms",

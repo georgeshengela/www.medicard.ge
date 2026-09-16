@@ -42,8 +42,7 @@ export function MedicationCircularProgress({
           fill="none"
           strokeDasharray={`${dash} ${c}`}
           strokeLinecap="round"
-          rotation={-90}
-          origin={`${size / 2}, ${size / 2}`}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
       <MedicationPillIcon color={pillColor ?? color} shape={shape} size={size * 0.55} imageUrl={imageUrl} />

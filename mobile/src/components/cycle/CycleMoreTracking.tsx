@@ -173,7 +173,7 @@ export function CycleMoreTracking({ form, onChange, compact, mode }: Props) {
             );
           })}
 
-          {pregnancy ? (
+          {caps.showPregnancyTestLog ? (
             <View style={{ marginTop: 8, marginBottom: 8 }}>
               <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, marginBottom: 8 }}>
                 {ka.cycle.pregnancyTest}

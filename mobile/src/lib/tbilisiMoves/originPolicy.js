@@ -61,12 +61,53 @@ export function recordOverlapsInterval(record, startMs, endMs) {
 
 export function hasCompetitionStepsGrant(granted = []) {
   return granted.some((item) => {
-    const type = String(item.recordType || '')
+    const type = String(item.recordType || item.permission || '')
       .replace(/_/g, '')
       .toLowerCase();
     const access = String(item.accessType || 'read').toLowerCase();
-    return type === 'steps' && (access === 'read' || !item.accessType);
+    const isSteps =
+      type === 'steps' ||
+      type.includes('readsteps') ||
+      type.includes('stepsrecord') ||
+      type.endsWith('stepcount');
+    return isSteps && (access === 'read' || access === 'write' || !item.accessType);
   });
+}
+
+function sampleAtMs(sample) {
+  return Date.parse(sample?.at || sample?.startTime || sample?.start || '');
+}
+
+function localYmdFromAt(iso) {
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Same total Home uses: daily bucket wins, otherwise sum samples in range. */
+export function homeStyleIntervalSteps(samples, startMs, endMs) {
+  const inRange = (samples || []).filter((sample) => {
+    const at = sampleAtMs(sample);
+    return Number.isFinite(at) && at >= startMs && at < endMs;
+  });
+  const daily = inRange.find((sample) => sample.daily);
+  if (daily) return Math.max(0, Math.round(Number(daily.count) || 0));
+  return inRange.reduce((sum, sample) => sum + Math.max(0, Math.round(Number(sample.count) || 0)), 0);
+}
+
+export function homeStyleLocalDaySteps(samples, localYmd) {
+  if (!localYmd) return 0;
+  const day = (samples || []).filter((sample) => localYmdFromAt(sample.at || sample.startTime) === localYmd);
+  const daily = day.find((sample) => sample.daily);
+  if (daily) return Math.max(0, Math.round(Number(daily.count) || 0));
+  return day.reduce((sum, sample) => sum + Math.max(0, Math.round(Number(sample.count) || 0)), 0);
+}
+
+export function homeStyleCompetitionSteps(samples, startMs, endMs, localYmd) {
+  return homeStyleIntervalSteps(samples, startMs, endMs) || homeStyleLocalDaySteps(samples, localYmd);
 }
 
 export function originTotalsFromHealthConnectRecords(records) {

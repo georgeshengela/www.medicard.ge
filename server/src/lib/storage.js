@@ -17,7 +17,9 @@ const EXTENSIONS = {
 /**
  * Persists an upload to local disk and returns the storage key (`/uploads/<uuid>.ext`).
  * That key is not a public URL. Bytes are served only from `GET /api/files/:filename`
- * after owner auth. Swap this module for S3 / R2 later — callers keep storing the key.
+ * after owner auth. Optional S3/R2: set S3_BUCKET, S3_ENDPOINT, S3_ACCESS_KEY_ID,
+ * S3_SECRET_ACCESS_KEY (see objectStorage.js). Until those exist, this host writes
+ * Render ephemeral disk — photos vanish on restart.
  */
 export async function saveUpload(buffer, mimeType) {
   await mkdir(UPLOAD_DIR, { recursive: true });

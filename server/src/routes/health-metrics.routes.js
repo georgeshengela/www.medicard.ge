@@ -183,9 +183,23 @@ healthMetricsRouter.post(
     const touchedHydration = daily.some((row) => row.hydrationMl != null) || hydrationEvents.length > 0;
     if (touchedSteps) {
       await refreshQuestProgressForUser(userId, QuestSignal.STEPS_CHANGED);
+      const stepDates = [
+        ...daily.filter((row) => row.steps != null).map((row) => row.date),
+        ...stepLogs.map((log) => log.at.slice(0, 10)),
+      ];
+      const { applyHealthDailyQuiet } = await import('../lib/tbilisiMoves/fromHealthDaily.js');
+      await applyHealthDailyQuiet(userId, stepDates, now);
     }
     if (touchedHydration) {
       await refreshQuestProgressForUser(userId, QuestSignal.HYDRATION_CHANGED);
+    }
+    if (touchedSteps || touchedHydration) {
+      try {
+        const { emitUserHealthMetrics } = await import('../lib/adminRealtime.js');
+        emitUserHealthMetrics(userId, { steps: touchedSteps, hydration: touchedHydration });
+      } catch {
+        // Live push is optional; the daily row is already stored.
+      }
     }
 
     return res.json({

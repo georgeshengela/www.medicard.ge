@@ -45,7 +45,7 @@ export async function fetchStepsMetrics(period: StepChartPeriod = '1d', opts?: {
     const fetchSince = new Date(Math.min(since.getTime(), Date.now() - 6 * 86_400_000));
     fetchSince.setHours(0, 0, 0, 0);
     nativeSamples = await fetchStepsSamples(fetchSince);
-    void syncNativeHealthToServer({}, nativeSamples);
+    await syncNativeHealthToServer({}, nativeSamples);
   }
 
   const stored = await pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate(), opts);
@@ -57,9 +57,12 @@ export async function fetchStepsMetrics(period: StepChartPeriod = '1d', opts?: {
   for (const row of stored.daily) {
     if (row.steps == null || row.steps <= 0) continue;
     if (new Date(`${row.date}T12:00:00`).getTime() < sinceTs) continue;
-    const hasDay = merged.some((s) => ymd(new Date(s.at)) === row.date);
-    if (!hasDay) {
-      merged = mergeStepSamples(merged, [{ at: `${row.date}T12:00:00.000Z`, count: row.steps }]);
+    const daySamples = merged.filter((sample) => ymd(new Date(sample.at)) === row.date);
+    const daySum = daySamples.find((sample) => sample.daily)?.count
+      ?? daySamples.reduce((sum, sample) => sum + sample.count, 0);
+    if (!daySamples.length || row.steps >= daySum) {
+      merged = merged.filter((sample) => ymd(new Date(sample.at)) !== row.date);
+      merged = mergeStepSamples(merged, [{ at: `${row.date}T12:00:00.000Z`, count: row.steps, daily: true }]);
     }
   }
 

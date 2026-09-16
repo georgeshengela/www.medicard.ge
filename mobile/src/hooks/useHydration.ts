@@ -1,6 +1,10 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useAuth } from '@/store/AuthContext';
+import { api } from '@/lib/api';
+import { pullStoredHealth, subscribeHealthRefresh } from '@/lib/healthDataSync';
+import { defaultSyncFromDate, defaultSyncToDate } from '@/lib/healthMetricsStorage';
+import { mergeDayHydrationMl } from '@/lib/hydrationMerge.js';
 import {
   addHydrationLog,
   bestDay,
@@ -20,16 +24,34 @@ export function useHydration() {
   const { user } = useAuth();
   const [logs, setLogs] = useState<HydrationLog[]>([]);
   const [goalMl, setGoalMl] = useState(2000);
+  const [serverByDate, setServerByDate] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     if (!user?.id) {
       setLogs([]);
+      setServerByDate({});
       setLoading(false);
       return;
     }
-    const [nextLogs, nextGoal] = await Promise.all([loadHydrationLogs(), loadHydrationGoalMl()]);
+    const [nextLogs, localGoal, stored, remoteGoal] = await Promise.all([
+      loadHydrationLogs(),
+      loadHydrationGoalMl(),
+      pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate(), { force: true }).catch(() => null),
+      api.healthMetrics.hydrationGoalGet().catch(() => null),
+    ]);
+    const nextServer: Record<string, number> = {};
+    for (const row of stored?.daily || []) {
+      if (row.hydrationMl == null) continue;
+      nextServer[row.date] = Math.max(0, Math.round(Number(row.hydrationMl) || 0));
+    }
+    let nextGoal = localGoal;
+    if (remoteGoal?.goalMl != null && Number(remoteGoal.goalMl) >= 500) {
+      nextGoal = Math.round(Number(remoteGoal.goalMl));
+      if (nextGoal !== localGoal) await saveHydrationGoalMl(nextGoal);
+    }
     setLogs(nextLogs);
+    setServerByDate(nextServer);
     setGoalMl(nextGoal);
     setLoading(false);
   }, [user?.id]);
@@ -40,13 +62,20 @@ export function useHydration() {
     }, [refresh]),
   );
 
+  useEffect(() => subscribeHealthRefresh(() => {
+    void refresh();
+  }), [refresh]);
+
   const today = todayYmd();
-  const todayMl = dayTotalMl(logs, today);
+  const todayMl = mergeDayHydrationMl(dayTotalMl(logs, today), serverByDate[today]);
   const week = weekMonSun(today);
-  const weekTotals = week.map((date) => dayTotalMl(logs, date));
-  const yesterdayMl = dayTotalMl(logs, weekDatesEnding(today)[5]);
+  const weekTotals = week.map((date) => mergeDayHydrationMl(dayTotalMl(logs, date), serverByDate[date]));
+  const yesterdayMl = mergeDayHydrationMl(
+    dayTotalMl(logs, weekDatesEnding(today)[5]),
+    serverByDate[weekDatesEnding(today)[5]],
+  );
   const prevWeek = weekMonSun(addDaysSafe(week[0], -1));
-  const lastWeekTotals = prevWeek.map((date) => dayTotalMl(logs, date));
+  const lastWeekTotals = prevWeek.map((date) => mergeDayHydrationMl(dayTotalMl(logs, date), serverByDate[date]));
   const prevWeekSum = lastWeekTotals.reduce((a, b) => a + b, 0);
   const thisWeekSum = weekTotals.reduce((a, b) => a + b, 0);
 

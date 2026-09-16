@@ -22,6 +22,15 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "beta": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      },
+      "ios": {
+        "appleTeamId": "7699S4PS73"
+      }
+    }
   }
 }

@@ -1,5 +1,9 @@
 # Medicard.GE agent notes
 
+## Release readiness (2026-09-15)
+
+Beta execution 2026-09-15: owner-tested EAS preview `1.0.0.8.41` is AdHoc IPA / internal APK — not TestFlight/Play. `eas submit --profile beta` did not upload. Store-distribution EAS production builds were not started (paid). Do not treat Expo Go as store proof. Do not silently disable Pets or Tbilisi on production — scope claims instead. Handoff: `docs/RELEASE_RUNBOOK.md`. Tbilisi daily finalization is a Render cron the owner must register; a runner file is not a schedule. Do not remount a global `/api` request-count limiter. Auth writes are IP-limited; GET `/api/auth/me` is skipped. Seed must not rotate an existing admin `passwordHash` (Render runs seed on every deploy). Consumer purchase CTAs stay off unless `CONSUMER_PURCHASES_ENABLED=true`.
+
 ## Product naming
 
 The in-app AI is **Medi**. Never write Nightingale in user-facing copy (chat titles, CTAs, bubbles, share toggles). Nightingale is only the Figma UI kit name.
@@ -10,7 +14,7 @@ Hub copy is **ჩემი ცხოველები**. The pet assistant is *
 
 ## თბილისი მოძრაობს / Tbilisi Moves
 
-District walking competition (activity, not a medical ranking). Never “healthiest district.” Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Validation: `docs/TBILISI_MOVES_PILOT_VALIDATION.md`. Owner runbook: `docs/TBILISI_MOVES_OWNER_PILOT.md`. **Hosted Neon Tbilisi Moves SQL is applied** (phase2 → phase4, additive `db execute` only — never `db push`). Live `https://medicard.ge` status is `schemaReady` + `featureEnabled` + `enrollmentOpen` with `pilotMode=true`. Expo Go can enroll/browse; native HealthKit/Health Connect ingest stays unavailable there and must not import `HealthMetricDaily`. First enroll skips the 12s sensor wait in Expo Go. Permission sheets only on enroll/retry in native builds. Runner exists but is **not** scheduled. Competition sensor files must stay `healthKitSensor.ts` / `healthConnectSensor.ts`. Do not auto-select district from GPS/`UserLocation`. Do not hang it on Home or a fifth tab. Do not revive Medi Hunt. Map polygons must be licensed. No version bump for this phase.
+District walking competition (activity, not a medical ranking). Never “healthiest district.” Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Validation: `docs/TBILISI_MOVES_PILOT_VALIDATION.md`. Owner runbook: `docs/TBILISI_MOVES_OWNER_PILOT.md`. **Hosted Neon Tbilisi Moves SQL is applied** (phase2 → phase4, additive `db execute` only — never `db push`). Live `https://medicard.ge` status is `schemaReady` + `featureEnabled` + `enrollmentOpen` with `pilotMode=true`. **District steps = Home `HealthMetricDaily.steps` for the same date** (copied on `/api/health-metrics/sync` and `GET /me`). Native HealthKit/Health Connect still write personal daily so Expo Go can see the same number; they are not a separate competition sensor. Expo Go can enroll, browse, and show credited daily steps. Runner exists but is **not** scheduled. Keep `healthKitSensor.ts` / `healthConnectSensor.ts` files. Do not auto-select district from GPS/`UserLocation`. Do not hang it on Home or a fifth tab. Do not revive Medi Hunt. Map polygons must be licensed.
 
 ## Expo Router app directory
 
@@ -20,7 +24,9 @@ Routes live in `mobile/app/`. **Never create `mobile/src/app`** (even empty). Ex
 
 Tab selector and active tab content must share the **same left/right edges** — identical width. Never add horizontal padding only on the pane/body while the tablist stays full-bleed (and never max-width the content narrower than the tabs).
 
-Applies to Push (`#/push` subnav ↔ panels), user investigation (`#/users/:id` `.user-tabs` ↔ `.user-body`), and any future admin subnav.
+**Every admin page body is full workspace width** (`--v3-page-max: none`). Do not cap Settings / forms / modules at 720px, 920px, 1440px, or 1600px. Login cards, drawers, dialogs, toasts, and table-cell clips may stay constrained.
+
+Applies to Push (`#/push` subnav ↔ panels), user investigation (`#/users/:id` `.user-tabs` ↔ `.user-body`), Settings, Tbilisi Moves, and any future admin subnav.
 
 ```css
 /* Pattern */
@@ -79,7 +85,7 @@ Dark is **cool gray-950 navy**, not teal charcoal. Keep `global.css` `.dark` and
 
 Filled dark CTAs use `#0D9488` (`FIGMA_AUTH_DARK.primaryBg`), not `#14B8A6`. Auth screens sit on `bg-surface`. Google on dark is a **white** fill with dark label. Do not invert the stack (page stays darker than cards).
 
-On every **store-facing** mobile change, update `mobile/app.json` `expo.version`. The public identity is Instagram-style **five-part** `G.0.0.B.R` (currently `1.0.0.8.41`). That string is Android `versionName`, in-app display, and `/api/app/status`. Apple rejects five-part marketing versions — set `expo.ios.version` to `G.B.R` (`1.8.41`) and keep plugin `withIosMarketingVersion` as last-write guard. Never put `1.7.72` in `minAppVersion` — that would block five-part clients. Native `ios.buildNumber` / `android.versionCode` in `app.json` are a local floor only. EAS production uses `appVersionSource: remote` + `autoIncrement` (remote was **2** on 2026-09-11) — never lower the remote counter. Cycle phase numbers stay in contracts / QA only.
+On every **store-facing** mobile change, update `mobile/app.json` `expo.version`. The public identity is Instagram-style **five-part** `G.0.0.B.R` (currently `1.0.0.8.56`). That string is Android `versionName`, in-app display, and `/api/app/status`. Apple rejects five-part marketing versions — set `expo.ios.version` to `G.B.R` (`1.8.56`) and keep plugin `withIosMarketingVersion` as last-write guard. Never put `1.7.72` in `minAppVersion` — that would block five-part clients. Native `ios.buildNumber` / `android.versionCode` in `app.json` are a local floor only. EAS production uses `appVersionSource: remote` + `autoIncrement` (remote was **2** on 2026-09-11) — never lower the remote counter. Cycle phase numbers stay in contracts / QA only.
 
 - **Small** feature/fix → revision + 1 (`1.0.0.7.78` → `1.0.0.7.79`)
 - **Native / store train** → train + 1 and bump `buildNumber` / `versionCode` (`1.0.0.7.77` → `1.0.0.8.0`)

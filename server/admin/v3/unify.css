@@ -597,10 +597,12 @@ html[data-theme="dark"] .v3-push .v3-notif-toast {
   color: var(--v3-text);
 }
 
-/* Width: forms stay rail-ish; tables use full workspace */
+/* Width: every V3 page uses the full workspace. Forms and tables share edges. */
 .v3-module .v3-form-rail,
-.v3-settings .v3-form-rail {
-  max-width: 720px;
+.v3-settings .v3-form-rail,
+.v3-settings .v3-settings-grid {
+  width: 100%;
+  max-width: none;
 }
 .v3-push .push-compose-form,
 .v3-push .v3-compose-split .push-compose-form,
@@ -609,8 +611,8 @@ html[data-theme="dark"] .v3-push .v3-notif-toast {
 }
 .v3-workspace-wide {
   width: 100%;
-  max-width: var(--v3-page-max, 1600px);
-  margin-inline: auto;
+  max-width: none;
+  margin-inline: 0;
 }
 
 /* Push Brain: panels own their padding (override generic .v25-panel pad) */
@@ -735,7 +737,8 @@ html[data-theme="dark"] .v3-push .v3-notif-toast {
 }
 .v3-settings .v3-form-rail,
 .v3-settings .v3-settings-grid {
-  max-width: 920px !important;
+  max-width: none !important;
+  width: 100% !important;
 }
 .v3-settings .v3-settings-toggle {
   padding: 16px 18px !important;
@@ -762,10 +765,51 @@ html[data-theme="dark"] .v3-push .v3-notif-toast {
 }
 
 @media (min-width: 2400px) {
-  .v3-workspace-wide {
-    max-width: min(1680px, 72vw);
-  }
+  .v3-workspace-wide,
   .v3-module .v3-form-rail {
-    max-width: 640px;
+    max-width: none;
   }
 }
+
+/* Canonical: every admin page content is full workspace width.
+   Tablists and panes already share edges; this kills leftover 920/1440/1600 rails. */
+.app.v3-ready .workspace > .panel,
+.workspace > .panel,
+.v3-workspace-wide,
+.v3-module,
+.v3-cc,
+.v3-push,
+.v3-rewards,
+.v3-settings,
+.v3-health,
+.v3-medi,
+.v3-orders,
+.v3-packages,
+.v3-sms,
+.v3-pharmacy,
+.v3-quality,
+.v3-audit,
+.v3-cycleqa,
+.v3-tbilisi-moves,
+.v3-user-page,
+.v25-settings {
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+  box-sizing: border-box;
+}
+.v3-form-rail,
+.v3-settings-grid,
+.v3-settings-body,
+.v3-settings-kpis,
+.v3-settings-toolbar,
+.v3-tab-shell,
+.v3-tab-shell > .v3-subnav,
+.v3-tab-shell > [class$="-pane"],
+.v3-tab-shell > [class$="-panel"] {
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+  box-sizing: border-box;
+}
+

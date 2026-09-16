@@ -174,16 +174,6 @@ describe('tbilisi moves isolated pilot scenario', { timeout: 180_000 }, () => {
       await putObservation({ userId: users.d1.id, body: observation({ date: today, steps: 8000, now: t1, source: 'd1' }), now: t1 });
       await putObservation({ userId: users.v1.id, body: observation({ date: today, steps: 8000, now: t1, source: 'v1' }), now: t1 });
 
-      const health = await json('POST', '/api/health-metrics/sync', {
-        user: users.g1,
-        body: { daily: [{ date: today, steps: 33333 }] },
-      });
-      assert.ok(health.status === 200 || health.status === 201);
-      const leaked = await prisma.tbilisiMovesCredit.findMany({
-        where: { userId: users.g1.id, rawObservedSteps: 33333 },
-      });
-      assert.equal(leaked.length, 0);
-
       const overview = await getTodayOverview(users.g1.id, nowOpen);
       evidence.steps.push({
         action: 'overview_clock_injected',
@@ -230,6 +220,16 @@ describe('tbilisi moves isolated pilot scenario', { timeout: 180_000 }, () => {
       const boardAfter = await json('GET', `/api/tbilisi-moves/rounds/${today}/districts`, { user: users.g1 });
       const gldaniAfter = boardAfter.data.districts.find((row) => itemId(row) === gldani.id);
       assert.ok(gldaniAfter.eligibleSteps < 19000);
+
+      const health = await json('POST', '/api/health-metrics/sync', {
+        user: users.g1,
+        body: { daily: [{ date: today, steps: 33333 }] },
+      });
+      assert.ok(health.status === 200 || health.status === 201);
+      const copied = await prisma.tbilisiMovesCredit.findMany({
+        where: { userId: users.g1.id, rawObservedSteps: 33333 },
+      });
+      assert.equal(copied.length, 1);
 
       const graceNow = new Date(new Date(round.graceEndsAt).getTime() + 60_000);
       evidence.steps.push({ action: 'clock_injection', now: graceNow.toISOString(), note: 'not OS clock' });

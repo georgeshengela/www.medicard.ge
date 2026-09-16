@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
-import { SYSTEM_PROMPTS, DISCLAIMER_KA } from './prompts.js';
+import { DISCLAIMER_KA } from './prompts.js';
+import { buildClinicalMessages } from './clinicalMessages.js';
 
 /**
  * EvidenceMD exposes an OpenAI-compatible /chat/completions endpoint, so we drive it
@@ -34,7 +35,8 @@ export class AiEngineError extends Error {
  * @param {object} opts
  * @param {keyof typeof SYSTEM_PROMPTS} opts.mode
  * @param {{role: 'user'|'assistant', content: string}[]} opts.messages
- * @param {string} [opts.context] Extra clinical context prepended as a system message.
+ * @param {string} [opts.context] Untrusted patient/profile notes (data user turn, not system).
+ * @param {string} [opts.trustedContext] Server-authored turn staging appended to the system prompt.
  * @param {number} [opts.temperature]
  */
 function extractEvidenceDelta(chunk) {
@@ -50,19 +52,14 @@ export async function askEvidenceMd({
   mode = 'DOCTOR',
   messages,
   context,
+  trustedContext,
   temperature = 0.2,
   maxTokens = 2400,
   skipDisclaimer = false,
   onDelta,
   signal,
 }) {
-  const systemPrompt = SYSTEM_PROMPTS[mode] ?? SYSTEM_PROMPTS.DOCTOR;
-
-  const payload = [
-    { role: 'system', content: systemPrompt },
-    ...(context?.trim() ? [{ role: 'system', content: `დამატებითი კლინიკური კონტექსტი:\n${context.trim()}` }] : []),
-    ...messages.map((m) => ({ role: m.role, content: m.content })),
-  ];
+  const payload = buildClinicalMessages({ mode, messages, context, trustedContext });
 
   const extra = signal ? { signal } : undefined;
 

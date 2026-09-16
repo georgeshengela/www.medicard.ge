@@ -1,12 +1,13 @@
 {
   "name": "medicard-ge",
   "version": "3.3.0",
-  "main": "expo-router/entry",
+  "main": "index.js",
   "dependencies": {
     "@expo-google-fonts/noto-sans-georgian": "^0.4.3",
     "@kingstinct/react-native-healthkit": "^14.0.2",
     "@lottiefiles/dotlottie-react": "^0.13.5",
     "@meteocons/lottie": "^0.1.0",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "9.1.0",
     "expo": "~57.0.20",
     "expo-blur": "~57.0.2",
@@ -78,7 +79,9 @@
     "test:quest": "node --test src/lib/quest/logic.test.js src/lib/quest/smartContext.test.js src/lib/quest/questSmartEngage.test.js",
     "test:home": "node --experimental-strip-types --test src/lib/home/homeSectionOrder.test.ts",
     "test:engage": "node --experimental-strip-types --test src/lib/mediNotificationBrain.test.ts",
-    "icons:generate": "node scripts/generate-app-icons.mjs"
+    "icons:generate": "node scripts/generate-app-icons.mjs",
+    "store:screenshots": "node scripts/generate-app-store-bundle.mjs",
+    "store:screenshots:capture": "node scripts/generate-app-store-bundle.mjs --capture"
   },
   "private": true
 }

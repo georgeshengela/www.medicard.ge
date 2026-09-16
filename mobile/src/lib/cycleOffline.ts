@@ -1,7 +1,12 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { api, ApiError, type CycleBundle } from '@/lib/api';
-import { deletePreference, getPreference, setPreferenceStrict } from '@/lib/storage';
+import {
+  deletePreference,
+  getPreference,
+  setPreferenceStrict,
+  withNativeStorageLock,
+} from '@/lib/storage';
 import {
   CYCLE_OFFLINE_DEK_KEY,
   CYCLE_OFFLINE_STORAGE_KEY,
@@ -117,17 +122,19 @@ async function loadDek(): Promise<Uint8Array> {
     throw err;
   }
   try {
-    const existing = await SecureStore.getItemAsync(CYCLE_OFFLINE_DEK_KEY);
-    if (existing) {
-      dekCache = b64ToBytes(existing);
-      return dekCache;
-    }
-    const next = generateDekBytes();
-    await SecureStore.setItemAsync(CYCLE_OFFLINE_DEK_KEY, bytesToB64(next), {
-      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    return await withNativeStorageLock(async () => {
+      const existing = await SecureStore.getItemAsync(CYCLE_OFFLINE_DEK_KEY);
+      if (existing) {
+        dekCache = b64ToBytes(existing);
+        return dekCache;
+      }
+      const next = generateDekBytes();
+      await SecureStore.setItemAsync(CYCLE_OFFLINE_DEK_KEY, bytesToB64(next), {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      });
+      dekCache = next;
+      return next;
     });
-    dekCache = next;
-    return next;
   } catch (error) {
     if (error instanceof CyclePersistError) throw error;
     throw new CyclePersistError('cycle_offline_dek_unavailable');

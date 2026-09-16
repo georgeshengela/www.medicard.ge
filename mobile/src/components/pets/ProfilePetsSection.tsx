@@ -229,7 +229,6 @@ export function ProfilePetsSection() {
   const openPet = (id: string) => router.push(`/pets/${id}`);
   const openNew = () => router.push('/pets/new');
   const openManage = () => router.push('/pets');
-  const cardHref = featured ? `/pets/${featured.id}` : '/pets/new';
   const a11y = featured
     ? [ka.pets.hubTitle, featured.name, petMeta(featured)].filter(Boolean).join('. ')
     : `${ka.pets.hubTitle}. ${ka.pets.emptyTitle}`;
@@ -259,13 +258,8 @@ export function ProfilePetsSection() {
           <ChevronRight size={16} color={colors.primary200} strokeWidth={2.2} />
         </Pressable>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={a11y}
-        onPress={() => router.push(cardHref)}
-        className="active:opacity-90"
+      <View
         style={{
-          ...FLAT,
           borderRadius: 24,
           borderWidth: 1,
           borderColor: colors.bg300,
@@ -298,37 +292,45 @@ export function ProfilePetsSection() {
           {featured ? (
             <View style={{ gap: 14 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                <PhotoHalo pet={featured} />
-                <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
-                  <Text
-                    numberOfLines={1}
-                    style={{ fontFamily: GEO.title, fontSize: 18, lineHeight: 24, color: colors.text100 }}
-                  >
-                    {featured.name}
-                  </Text>
-                  <Text numberOfLines={2} style={{ fontFamily: GEO.regular, fontSize: 13, lineHeight: 18, color: colors.text300 }}>
-                    {petMeta(featured)}
-                  </Text>
-                  <View
-                    style={{
-                      alignSelf: 'flex-start',
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 6,
-                      paddingHorizontal: 8,
-                      paddingVertical: 3,
-                      borderRadius: 999,
-                      backgroundColor: colors.accent100,
-                      borderWidth: 1,
-                      borderColor: colors.bg300,
-                    }}
-                  >
-                    <SpeciesIcon size={12} color={colors.primary200} strokeWidth={2.2} />
-                    <Text style={{ fontFamily: GEO.semibold, fontSize: 11, color: colors.primary200 }}>
-                      {getSpecies(featured.speciesId)?.labelKa || ka.pets.species}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={a11y}
+                  onPress={() => openPet(featured.id)}
+                  className="active:opacity-90"
+                  style={{ ...FLAT, flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 14 }}
+                >
+                  <PhotoHalo pet={featured} />
+                  <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+                    <Text
+                      numberOfLines={1}
+                      style={{ fontFamily: GEO.title, fontSize: 18, lineHeight: 24, color: colors.text100 }}
+                    >
+                      {featured.name}
                     </Text>
+                    <Text numberOfLines={2} style={{ fontFamily: GEO.regular, fontSize: 13, lineHeight: 18, color: colors.text300 }}>
+                      {petMeta(featured)}
+                    </Text>
+                    <View
+                      style={{
+                        alignSelf: 'flex-start',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 999,
+                        backgroundColor: colors.accent100,
+                        borderWidth: 1,
+                        borderColor: colors.bg300,
+                      }}
+                    >
+                      <SpeciesIcon size={12} color={colors.primary200} strokeWidth={2.2} />
+                      <Text style={{ fontFamily: GEO.semibold, fontSize: 11, color: colors.primary200 }}>
+                        {getSpecies(featured.speciesId)?.labelKa || ka.pets.species}
+                      </Text>
+                    </View>
                   </View>
-                </View>
+                </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={ka.pets.addAnother}
@@ -368,7 +370,13 @@ export function ProfilePetsSection() {
             </View>
           ) : (
             <View style={{ gap: 14 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={a11y}
+                onPress={openNew}
+                className="active:opacity-90"
+                style={{ ...FLAT, flexDirection: 'row', alignItems: 'center', gap: 14 }}
+              >
                 <View
                   style={{
                     width: 64,
@@ -391,7 +399,7 @@ export function ProfilePetsSection() {
                     {ka.pets.emptyBody}
                   </Text>
                 </View>
-              </View>
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={ka.pets.add}
@@ -414,7 +422,7 @@ export function ProfilePetsSection() {
             </View>
           )}
         </LinearGradient>
-      </Pressable>
+      </View>
     </View>
   );
 }

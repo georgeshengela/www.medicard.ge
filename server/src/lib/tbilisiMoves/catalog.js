@@ -16,6 +16,7 @@ export const TBILISI_MOVES_DISTRICTS = Object.freeze([
 export const TBILISI_MOVES_CONFIG_ID = 'default';
 
 export const ALLOWED_OBSERVATION_PROVIDERS = Object.freeze(['APPLE_HEALTH', 'HEALTH_CONNECT']);
+/** Client PUTs still cannot label a fake HEALTH_METRIC_DAILY provider. Server copies daily steps via HEALTH_CONNECT. */
 export const REJECTED_OBSERVATION_PROVIDERS = Object.freeze([
   'MANUAL',
   'TYPED',

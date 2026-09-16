@@ -177,9 +177,7 @@ export function HomeHealthMetricsSection({ profile: _profile }: Props) {
           <ChartCardSkeleton />
         </View>
       ) : (
-        <Pressable
-          accessibilityRole="button"
-          onPress={openSteps}
+        <View
           style={{
             marginHorizontal: 16,
             backgroundColor: FIGMA_STEPS.cardBg,
@@ -195,7 +193,12 @@ export function HomeHealthMetricsSection({ profile: _profile }: Props) {
             elevation: 1,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${formatStepsCount(todayTotal)} ${ka.steps.unit}`}
+            onPress={openSteps}
+            style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}
+          >
             <View style={{ flex: 1, gap: 4 }}>
               <Text
                 style={{
@@ -241,13 +244,13 @@ export function HomeHealthMetricsSection({ profile: _profile }: Props) {
                 ) : null}
               </View>
             </View>
-            <Pressable accessibilityRole="button" onPress={openSteps} hitSlop={8}>
+            <View>
               <GoalDotsVertical size={24} color={FIGMA_STEPS.textSecondary} />
-            </Pressable>
-          </View>
+            </View>
+          </Pressable>
 
           <HomeStepsAreaChart days={days} />
-        </Pressable>
+        </View>
       )}
     </View>
   );

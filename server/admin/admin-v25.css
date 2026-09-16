@@ -866,7 +866,7 @@
 #tab-packages .pkg:hover { transform: none; box-shadow: none; }
 
 /* ——— Settings groups ——— */
-.v25-settings { display: grid; gap: 16px; max-width: 920px; }
+.v25-settings { display: grid; gap: 16px; width: 100%; max-width: none; }
 @media (min-width: 1440px) {
   .v25-settings {
     max-width: none;

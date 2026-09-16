@@ -296,6 +296,7 @@ export async function runMediNotificationBrain(
   health?: HealthProfile | null,
   opts: { markOpen?: boolean } = {},
 ): Promise<number> {
+  try {
   if (Platform.OS === 'web') return 0;
   rememberEngageActor(user, health);
   const granted = await requestNotificationPermission();
@@ -372,6 +373,9 @@ export async function runMediNotificationBrain(
     scheduled += 1;
   }
   return scheduled;
+  } catch {
+    return 0;
+  }
 }
 
 export function requestEngageRefresh(): void {

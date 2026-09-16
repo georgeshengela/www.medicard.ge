@@ -1,7 +1,10 @@
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
-import { SYSTEM_PROMPTS, looksLikeBrokenDoctorReply } from './prompts.js';
+import { looksLikeBrokenDoctorReply } from './prompts.js';
 import { askEvidenceMd, AiEngineError, ensureDisclaimer } from './evidencemd.js';
+import { buildClinicalMessages } from './clinicalMessages.js';
+
+export { buildClinicalMessages } from './clinicalMessages.js';
 
 /** User-selectable engines. Unknown / empty → Gemini Flash. */
 export const DEFAULT_AI_ENGINE = 'gemini_flash';
@@ -199,16 +202,6 @@ export function hasOpenRouter() {
   return Boolean(openrouter);
 }
 
-export function buildClinicalMessages({ mode = 'DOCTOR', messages, context }) {
-  const systemPrompt = SYSTEM_PROMPTS[mode] ?? SYSTEM_PROMPTS.DOCTOR;
-  return [
-    { role: 'system', content: systemPrompt },
-    ...(context?.trim()
-      ? [{ role: 'system', content: `დამატებითი კლინიკური კონტექსტი:\n${context.trim()}` }]
-      : []),
-    ...messages.map((m) => ({ role: m.role, content: m.content })),
-  ];
-}
 
 export async function askOpenRouterPrepared({
   model,
@@ -294,6 +287,7 @@ export async function askOpenRouterChat({
   mode = 'DOCTOR',
   messages,
   context,
+  trustedContext,
   temperature = 0.2,
   maxTokens = 2400,
   skipDisclaimer = false,
@@ -302,7 +296,7 @@ export async function askOpenRouterChat({
 }) {
   return askOpenRouterPrepared({
     model,
-    messages: buildClinicalMessages({ mode, messages, context }),
+    messages: buildClinicalMessages({ mode, messages, context, trustedContext }),
     temperature,
     maxTokens,
     skipDisclaimer,
@@ -319,6 +313,7 @@ export async function askAi({
   mode = 'DOCTOR',
   messages,
   context,
+  trustedContext,
   temperature = 0.2,
   maxTokens = 2400,
   skipDisclaimer = false,
@@ -326,7 +321,7 @@ export async function askAi({
   signal,
 }) {
   const engine = resolveAiEngine(user);
-  const opts = { mode, messages, context, temperature, maxTokens, skipDisclaimer, onDelta, signal };
+  const opts = { mode, messages, context, trustedContext, temperature, maxTokens, skipDisclaimer, onDelta, signal };
 
   if (engine.id === 'evidencemd') {
     const result = await askEvidenceMd(opts);

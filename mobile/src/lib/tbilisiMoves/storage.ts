@@ -9,9 +9,30 @@ const CONFLICT_KEY = 'medicard.tbilisiMoves.sourceConflict';
 const LAST_SYNC_KEY = 'medicard.tbilisiMoves.lastSyncOk';
 const SEQ_KEY = 'medicard.tbilisiMoves.sequence';
 
-function newInstallId() {
-  return globalThis.crypto.randomUUID();
+function newTbilisiUuid() {
+  try {
+    const id = globalThis.crypto?.randomUUID?.();
+    if (id) return id;
+  } catch {
+    // Hermes / Expo Go often has no crypto.randomUUID.
+  }
+  const bytes = new Uint8Array(16);
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < 16; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
+
+function newInstallId() {
+  return newTbilisiUuid();
+}
+
+export { newTbilisiUuid };
 
 export async function getOrCreateInstallationId(): Promise<string | null> {
   if (!localAccountId()) return null;

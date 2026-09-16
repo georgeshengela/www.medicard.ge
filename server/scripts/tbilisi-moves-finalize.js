@@ -11,12 +11,8 @@
  * Catch-up selects existing PROVISIONAL rounds whose own graceEndsAt <= now.
  * It does not invent missing historical dates.
  *
- * Proposed operator scan, **not registered**:
- *   every 15 minutes (cron example: `*/15 * * * *`)
- *   because admin can change lateSyncGraceHours (1–24). A single 04:15 UTC
- *   job only matches the default 8h grace.
- *
- * Automatic daily finalization is NOT live until that scheduler is configured.
+ * Prepared Render cron (not registered): server/docs/tbilisi-moves-finalize.render.yaml
+ * Set TBILISI_MOVES_FINALIZE_SCHEDULED=true on that cron only.
  */
 
 import 'dotenv/config';
@@ -44,7 +40,7 @@ console.log(
       processed: result.processed.length,
       failed: result.failed.length,
       dryRun: result.dryRun,
-      automaticExecutionConfigured: false,
+      automaticExecutionConfigured: result.automaticExecutionConfigured === true,
       items: result.processed,
       errors: result.failed,
     },
