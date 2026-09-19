@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
+import { resetRunMemory } from '@/lib/run/store';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type AiEngineId, type CheckInState, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
 import { setLocalAccountId, wipeLegacyUnscopedHealthCaches } from '@/lib/localAccount';
@@ -64,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [pendingDailyBonus, setPendingDailyBonus] = useState<CheckInState | null>(null);
 
   const resetSession = useCallback(() => {
+    resetRunMemory();
     setLocalAccountId(null);
     setUser(null);
     setUsage(null);

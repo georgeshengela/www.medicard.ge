@@ -106,7 +106,7 @@ function extraFromProfile(profile: HealthProfile | null): Partial<AssessmentForm
 
 export function formFromProfile(
   profile: HealthProfile | null,
-  user: { gender: Gender | null; birthDate: string | null; name?: string },
+  user: { gender: Gender | null; birthDate: string | null; name?: string; fullName?: string },
 ): AssessmentFormState {
   const base = defaultAssessmentForm();
   const parsed = parseBirthDate(user.birthDate);
@@ -115,7 +115,7 @@ export function formFromProfile(
   return {
     ...base,
     ...extra,
-    legalName: extra.legalName || user.name || '',
+    legalName: extra.legalName || user.fullName || user.name || '',
     birthMonth: parsed.month,
     birthDay: parsed.day,
     birthYear: parsed.year,

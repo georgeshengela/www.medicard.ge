@@ -25,6 +25,12 @@ server/.tbilisi-moves-pilot-account.json
 server/uploads/
 server/generated/
 
+# Historical QA screenshots / dumps (admin #/cycleqa)
+/qa/*
+!/qa/.gitkeep
+/docs/*
+!/docs/.gitkeep
+
 # Generated verification artefacts
 mobile/screenshots/
 mobile/.expo-export-check/
@@ -47,5 +53,6 @@ mobile/design-references/
 .DS_Store
 Thumbs.db
 *.log
+*.rar
 npm-debug.log*
 yarn-error.log*

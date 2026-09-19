@@ -3,7 +3,13 @@ import { useSegments } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LocationAskModal } from '@/components/location/LocationAskModal';
 import {
+  isDeviceAccessGateBlocking,
+  isDeviceAccessGateFinished,
+  subscribeDeviceAccessGate,
+} from '@/lib/deviceAccess';
+import {
   applyLocationToProfile,
+  getLocationPermissionState,
   grantUserLocation,
   hydrateLocationPromptedPref,
   isLocationPrompted,
@@ -18,16 +24,27 @@ export function LocationAskHost() {
   const segments = useSegments();
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [osUndetermined, setOsUndetermined] = useState(false);
+  const [gateReady, setGateReady] = useState(() => isDeviceAccessGateFinished() && !isDeviceAccessGateBlocking());
   const dismissed = useRef(false);
+
+  useEffect(() => subscribeDeviceAccessGate(() => {
+    setGateReady(isDeviceAccessGateFinished() && !isDeviceAccessGateBlocking());
+  }), []);
 
   const onTabs = segments[0] === '(tabs)';
   const shouldAsk = Boolean(
-    user && healthProfile?.completedAt && !dismissed.current && !isLocationPrompted(healthProfile),
+    gateReady &&
+      user &&
+      healthProfile &&
+      !dismissed.current &&
+      (osUndetermined || (healthProfile.completedAt && !isLocationPrompted(healthProfile))),
   );
 
   useEffect(() => {
-    void hydrateLocationPromptedPref().then((prompted) => {
-      if (prompted) dismissed.current = true;
+    void hydrateLocationPromptedPref();
+    void getLocationPermissionState().then((state) => {
+      if (state === 'undetermined') setOsUndetermined(true);
     });
   }, []);
 
@@ -37,28 +54,30 @@ export function LocationAskHost() {
       return;
     }
     const timer = setTimeout(() => {
-      if (dismissed.current || isLocationPrompted(healthProfile)) return;
+      if (dismissed.current) return;
+      if (!osUndetermined && isLocationPrompted(healthProfile)) return;
       setVisible(true);
-    }, 900);
+    }, 400);
     return () => clearTimeout(timer);
-  }, [shouldAsk, onTabs, healthProfile]);
+  }, [shouldAsk, onTabs, healthProfile, osUndetermined]);
 
-  const enable = async () => {
+  const enable = () => {
     if (!healthProfile) return;
-    dismissed.current = true;
-    markLocationPromptedLocal();
-    setBusy(true);
-    try {
+    void (async () => {
       const result = await grantUserLocation();
-      setHealthProfile(result.profile ?? applyLocationToProfile(healthProfile, result.snapshot));
-      if (result.granted) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      dismissed.current = true;
+      setBusy(true);
+      try {
+        setHealthProfile(result.profile ?? applyLocationToProfile(healthProfile, result.snapshot));
+        if (result.granted) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+        }
+        setVisible(false);
+      } finally {
+        setBusy(false);
+        setVisible(false);
       }
-      setVisible(false);
-    } finally {
-      setBusy(false);
-      setVisible(false);
-    }
+    })();
   };
 
   const skip = async () => {

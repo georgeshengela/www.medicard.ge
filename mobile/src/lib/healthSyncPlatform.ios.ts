@@ -31,8 +31,15 @@ const READ_TYPES = [
   'HKQuantityTypeIdentifierStepCount',
 ] as const;
 
+let kitMod = null;
+
 async function loadHealthKit() {
-  return import('@kingstinct/react-native-healthkit');
+  if (!kitMod) kitMod = await import('@kingstinct/react-native-healthkit');
+  return kitMod;
+}
+
+export async function preload() {
+  await loadHealthKit();
 }
 
 function mapFlow(
@@ -75,10 +82,7 @@ function mapMucus(
 
 export async function connectHealthNative(): Promise<HealthConnectResult> {
   try {
-    const HealthKit = await loadHealthKit();
-    const available = await HealthKit.isHealthDataAvailableAsync();
-    if (!available) return { ok: false, reason: 'unavailable' };
-
+    const HealthKit = kitMod || (await loadHealthKit());
     const granted = await HealthKit.requestAuthorization({
       toShare: [...SHARE_TYPES],
       toRead: [...READ_TYPES],
@@ -327,18 +331,6 @@ function extractStepCount(stat: {
   return rounded > 0 ? rounded : null;
 }
 
-/** Re-request full read set — covers users who connected before StepCount was added. */
-async function ensureHealthReadAccess(HealthKit: Awaited<ReturnType<typeof loadHealthKit>>): Promise<void> {
-  try {
-    await HealthKit.requestAuthorization({
-      toShare: [],
-      toRead: [...READ_TYPES],
-    });
-  } catch {
-    // Best-effort — user may have denied in Settings.
-  }
-}
-
 async function queryDayStepTotal(
   HealthKit: Awaited<ReturnType<typeof loadHealthKit>>,
   dayStart: Date,
@@ -378,8 +370,6 @@ export async function fetchStepsNative(since: Date): Promise<StepSample[]> {
     const HealthKit = await loadHealthKit();
     const available = await HealthKit.isHealthDataAvailableAsync();
     if (!available) return [];
-
-    await ensureHealthReadAccess(HealthKit);
 
     const now = new Date();
     const from = startOfLocalDay(since);

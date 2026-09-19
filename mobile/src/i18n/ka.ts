@@ -3188,6 +3188,7 @@ export const ka = {
     notificationsBody: 'ჩართეთ შეტყობინებები, რომ დროულად მიიღოთ არჩეული შეხსენებები და მნიშვნელოვანი განახლებები.',
     notificationsHint: 'პარამეტრების შეცვლა ნებისმიერ დროს შეგიძლიათ.',
     notificationsContinue: 'გაგრძელება',
+    notificationsEnable: 'ნებართვის მიცემა',
     notificationsSkip: 'გამოტოვება',
     notificationsPreviewTitle: 'არტერიული წნევა გაიზარდა ⚠',
     notificationsPreviewBody: 'დააჭირეთ დეტალების სანახავად!',
@@ -3361,7 +3362,7 @@ export const ka = {
     locationDisabledToast: 'ლოკაციის თვალყური გათიშულია.',
     locationDeniedHint: 'ლოკაციაზე წვდომა უარყოფილია — გახსენით სისტემური პარამეტრები.',
     pushRegisterExpoGo: 'Expo Go-ში დისტანციური შეტყობინებები აღარ მუშაობს. დააყენე Medicard-ის build.',
-    pushRegisterToken: 'ნებართვა არის, მაგრამ Expo token ვერ მივიღეთ. Android-ზე საჭიროა Firebase FCM V1 და ახალი native build.',
+    pushRegisterToken: 'Expo token ვერ მივიღეთ. სცადე თავიდან iPhone-ზე Expo Go-ში, ან Medicard-ის build.',
     disableNotificationsTitle: 'შეტყობინებების გამორთვა?',
     disableNotificationsBody: 'Push და დაგეგმილი შეხსენებები გაუქმდება.',
     openSettingsTitle: 'სისტემური პარამეტრები',
@@ -3431,6 +3432,14 @@ export const ka = {
     cycleLockEnabledToast: 'ციკლის ბლოკი ჩართულია.',
     cycleLockDisabledToast: 'ციკლის ბლოკი გამორთულია.',
     footerHint: 'ზოგიერთი ნებართვა მხოლოდ ტელეფონის სისტემური პარამეტრებიდან იცვლება.',
+    gateNotificationsTitle: 'შეტყობინებები',
+    gateNotificationsBody:
+      'დააჭირე ნებართვის მიცემას — ტელეფონი აქვე გაჩვენებს Allow ფანჯარას. პარამეტრებში (Siri / Search / მონაცემები) შეტყობინება მხოლოდ ამის შემდეგ გამოჩნდება. იქ ნუ შეხვალ ჯერ.',
+    gateHealthTitle: 'ნაბიჯები და ჯანმრთელობა',
+    gateHealthBody:
+      'დააჭირე ნებართვის მიცემას — გამოჩნდება Apple Health-ის ფანჯარა, არა პარამეტრები. ნაბიჯები მხოლოდ ამის შემდეგ აისახება.',
+    gateEnable: 'ნებართვის მიცემა',
+    gateSkip: 'ახლა არა',
   },
 
   notifSettings: {

@@ -115,9 +115,16 @@ async function ensureReady(): Promise<HealthConnectResult> {
   return { ok: true };
 }
 
+let readyCache = null;
+
+export async function preload() {
+  readyCache = await ensureReady();
+}
+
 export async function connectHealthNative(): Promise<HealthConnectResult> {
   try {
-    const ready = await ensureReady();
+    const ready = readyCache || (await ensureReady());
+    readyCache = ready;
     if (!ready.ok) {
       if (ready.reason === 'not_installed') {
         await openHealthConnectStore();
@@ -126,9 +133,8 @@ export async function connectHealthNative(): Promise<HealthConnectResult> {
     }
 
     const HC = await loadHealthConnect();
-    const already = await HC.getGrantedPermissions().catch(() => []);
     const requested = await HC.requestPermission(PERMISSIONS);
-    const granted = requested.length ? requested : already;
+    const granted = requested.length ? requested : await HC.getGrantedPermissions().catch(() => []);
     if (hasGrantedAccess(granted)) {
       await HC.requestPermission([HISTORY_PERMISSION]).catch(() => []);
       return { ok: true };

@@ -3,7 +3,7 @@ import { Notifications } from '@/lib/expoNotifications';
 import type { DoctorVisit } from '@/lib/api';
 import { buildVisitReminderDates, doctorDisplayName } from '@/lib/visitReminders';
 import { doctorTypeLabel, normalizeReminderConfig } from '@/constants/visits';
-import { NOTIF_PREFIX, VISIT_CHANNEL_ID, requestNotificationPermission } from '@/lib/notifications';
+import { NOTIF_PREFIX, VISIT_CHANNEL_ID, getNotificationPermissionGranted } from '@/lib/notifications';
 import { applyPushCopy } from '@/lib/pushCopy';
 
 export { VISIT_CHANNEL_ID };
@@ -20,7 +20,7 @@ async function ensureVisitChannel() {
 }
 
 export async function syncVisitReminders(visits: DoctorVisit[]): Promise<number> {
-  const granted = await requestNotificationPermission();
+  const granted = await getNotificationPermissionGranted();
   if (!granted) return 0;
 
   await ensureVisitChannel();

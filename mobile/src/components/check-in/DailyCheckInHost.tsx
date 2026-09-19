@@ -1,7 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useRouter, useSegments } from 'expo-router';
+import {
+  isDeviceAccessGateFinished,
+  subscribeDeviceAccessGate,
+} from '@/lib/deviceAccess';
 import { useAuth } from '@/store/AuthContext';
 
 /**
@@ -15,6 +19,11 @@ export function DailyCheckInHost() {
   const segments = useSegments();
   const root = segments[0];
   const shownThisAward = useRef(false);
+  const [gateReady, setGateReady] = useState(() => isDeviceAccessGateFinished());
+
+  useEffect(() => subscribeDeviceAccessGate(() => {
+    setGateReady(isDeviceAccessGateFinished());
+  }), []);
 
   useEffect(() => {
     shownThisAward.current = false;
@@ -23,6 +32,7 @@ export function DailyCheckInHost() {
   useEffect(() => {
     if (!user || !pendingDailyBonus) return;
     if (!root || root === '(auth)') return;
+    if (!gateReady) return;
     if (shownThisAward.current) return;
     shownThisAward.current = true;
 
@@ -33,7 +43,7 @@ export function DailyCheckInHost() {
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [user, pendingDailyBonus, root, consumeDailyBonus, router]);
+  }, [user, pendingDailyBonus, root, consumeDailyBonus, router, gateReady]);
 
   useEffect(() => {
     if (!user) return;

@@ -1,21 +1,25 @@
 /**
- * Runs before expo-router. JS fatals still call RCTExceptionsManager.reportFatal
- * unless ErrorUtils is hooked on the real global — import { ErrorUtils } can be a no-op.
+ * Runs before expo-router. Production JS fatals must not SIGABRT the TestFlight process.
+ * The 1.8.61 crash lived ~98s, then RCTExceptionsManager.reportFatal aborted after the
+ * 60s window. Keep swallowing fatals for the whole session in release.
  */
-const BOOT_FATAL_GUARD_MS = 60_000;
-const bootStartedAt = Date.now();
-
 (function installProductionBootGuard() {
+  const inDev = typeof __DEV__ !== 'undefined' && __DEV__;
+  if (inDev) return;
   const EU = globalThis.ErrorUtils;
   if (!EU || typeof EU.getGlobalHandler !== 'function' || typeof EU.setGlobalHandler !== 'function') {
     return;
   }
-  const previous = EU.getGlobalHandler();
-  EU.setGlobalHandler((error, isFatal) => {
-    if (isFatal && Date.now() - bootStartedAt < BOOT_FATAL_GUARD_MS) {
-      console.error('[Medicard] boot fatal suppressed:', error);
-      return;
+  EU.setGlobalHandler((error) => {
+    console.error('[Medicard] production fatal suppressed:', error);
+    try {
+      const Settings = require('react-native').Settings;
+      if (Settings && typeof Settings.set === 'function') {
+        const message = error instanceof Error ? error.message : String(error);
+        Settings.set({ 'medicard.lastFatal': message.slice(0, 1800) });
+      }
+    } catch {
+      /* never rethrow from the handler */
     }
-    if (typeof previous === 'function') previous(error, isFatal);
   });
 })();

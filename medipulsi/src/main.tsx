@@ -1,0 +1,15 @@
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import '@fontsource/noto-sans-georgian/400.css';
+import '@fontsource/noto-sans-georgian/500.css';
+import '@fontsource/noto-sans-georgian/600.css';
+import '@fontsource/noto-sans-georgian/700.css';
+import '@fontsource/noto-sans-georgian/800.css';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import './styles.css';
+import './refinements.css';
+import './explorer.css';
+import './passport.css';
+import './integration.css';
+import App from './AccountGate';
+ReactDOM.createRoot(document.getElementById('root')!).render(<App/>);

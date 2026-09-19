@@ -1,0 +1,74 @@
+-- Additive MEDIPULSI installation. Does not modify existing User/Admin records.
+BEGIN;
+CREATE TABLE IF NOT EXISTS "MedipulsiPlayer" (
+ "userId" TEXT PRIMARY KEY REFERENCES "User"("id") ON DELETE CASCADE,
+ "state" JSONB NOT NULL DEFAULT '{}', "settings" JSONB NOT NULL DEFAULT '{}',
+ "handle" TEXT NOT NULL DEFAULT '', "leaderboardOptIn" BOOLEAN NOT NULL DEFAULT FALSE,
+ "activeSessionId" TEXT, "revision" INTEGER NOT NULL DEFAULT 0,
+ "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS "MedipulsiSession" (
+ "id" TEXT PRIMARY KEY, "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+ "phase" TEXT NOT NULL DEFAULT 'ACTIVE', "seq" INTEGER NOT NULL DEFAULT 0,
+ "meters" DOUBLE PRECISION NOT NULL DEFAULT 0, "seconds" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ "steps" DOUBLE PRECISION NOT NULL DEFAULT 0, "newMeters" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ "movingSeconds" DOUBLE PRECISION NOT NULL DEFAULT 0, "maxSpeed" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ "rejected" INTEGER NOT NULL DEFAULT 0,
+ "excluded" BOOLEAN NOT NULL DEFAULT FALSE, "reviewNote" TEXT NOT NULL DEFAULT '',
+ "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ "endedAt" TIMESTAMP(3), "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ CHECK ("phase" IN ('ACTIVE','PAUSED','FINISHED'))
+);
+CREATE INDEX IF NOT EXISTS "MedipulsiSession_userId_startedAt_idx" ON "MedipulsiSession"("userId","startedAt");
+CREATE INDEX IF NOT EXISTS "MedipulsiSession_startedAt_idx" ON "MedipulsiSession"("startedAt");
+ALTER TABLE "MedipulsiSession" ADD COLUMN IF NOT EXISTS "movingSeconds" DOUBLE PRECISION NOT NULL DEFAULT 0;
+ALTER TABLE "MedipulsiSession" ADD COLUMN IF NOT EXISTS "maxSpeed" DOUBLE PRECISION NOT NULL DEFAULT 0;
+ALTER TABLE "MedipulsiSession" ADD COLUMN IF NOT EXISTS "rejected" INTEGER NOT NULL DEFAULT 0;
+CREATE TABLE IF NOT EXISTS "MedipulsiBatch" (
+ "id" TEXT NOT NULL, "sessionId" TEXT NOT NULL REFERENCES "MedipulsiSession"("id") ON DELETE CASCADE,
+ "seq" INTEGER NOT NULL, "digest" TEXT NOT NULL, "accepted" INTEGER NOT NULL DEFAULT 0,
+ "receivedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY ("sessionId","id"), UNIQUE ("sessionId","seq")
+);
+CREATE TABLE IF NOT EXISTS "MedipulsiMission" (
+ "id" TEXT PRIMARY KEY, "data" JSONB NOT NULL, "published" BOOLEAN NOT NULL DEFAULT FALSE,
+ "archived" BOOLEAN NOT NULL DEFAULT FALSE, "revision" INTEGER NOT NULL DEFAULT 0,
+ "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS "MedipulsiGift" (
+ "id" TEXT PRIMARY KEY, "title" TEXT NOT NULL, "description" TEXT NOT NULL DEFAULT '',
+ "longitude" DOUBLE PRECISION NOT NULL, "latitude" DOUBLE PRECISION NOT NULL,
+ "pulseRadius" INTEGER NOT NULL DEFAULT 120, "revealRadius" INTEGER NOT NULL DEFAULT 20,
+ "rewardKind" TEXT NOT NULL DEFAULT 'DIGITAL', "stock" INTEGER NOT NULL DEFAULT 1,
+ "allocated" INTEGER NOT NULL DEFAULT 0, "published" BOOLEAN NOT NULL DEFAULT FALSE,
+ "archived" BOOLEAN NOT NULL DEFAULT FALSE, "startsAt" TIMESTAMP(3) NOT NULL,
+ "endsAt" TIMESTAMP(3) NOT NULL, "revision" INTEGER NOT NULL DEFAULT 0,
+ "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ CHECK ("stock">=0 AND "allocated">=0 AND "stock">="allocated"),
+ CHECK ("endsAt">"startsAt"), CHECK ("revealRadius">=10 AND "pulseRadius">"revealRadius")
+);
+CREATE INDEX IF NOT EXISTS "MedipulsiGift_published_endsAt_idx" ON "MedipulsiGift"("published","endsAt");
+CREATE TABLE IF NOT EXISTS "MedipulsiClaim" (
+ "id" TEXT PRIMARY KEY, "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+ "giftId" TEXT NOT NULL REFERENCES "MedipulsiGift"("id"),
+ "sessionId" TEXT NOT NULL REFERENCES "MedipulsiSession"("id") ON DELETE CASCADE,
+ "status" TEXT NOT NULL DEFAULT 'PENDING', "code" TEXT NOT NULL UNIQUE,
+ "reward" JSONB NOT NULL, "note" TEXT NOT NULL DEFAULT '',
+ "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE ("userId","giftId"), CHECK ("status" IN ('PENDING','APPROVED','FULFILLED','REJECTED'))
+);
+CREATE INDEX IF NOT EXISTS "MedipulsiClaim_status_createdAt_idx" ON "MedipulsiClaim"("status","createdAt");
+CREATE TABLE IF NOT EXISTS "MedipulsiConfig" (
+ "id" TEXT PRIMARY KEY DEFAULT 'main', "data" JSONB NOT NULL DEFAULT '{}',
+ "revision" INTEGER NOT NULL DEFAULT 0, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO "MedipulsiConfig" ("id","data") VALUES ('main','{"enabled":true,"giftsEnabled":true,"leaderboardEnabled":true,"message":""}') ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS "MedipulsiAudit" (
+ "id" TEXT PRIMARY KEY, "actorId" TEXT NOT NULL, "action" TEXT NOT NULL,
+ "entityId" TEXT NOT NULL, "details" JSONB NOT NULL DEFAULT '{}',
+ "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "MedipulsiAudit_createdAt_idx" ON "MedipulsiAudit"("createdAt");
+COMMIT;

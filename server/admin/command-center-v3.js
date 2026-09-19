@@ -12,7 +12,6 @@
   const DEST = {
     '#/ai': 'Medi',
     '#/quality': 'ხარისხი',
-    '#/cycleqa': 'ფაზები',
     '#/push': 'Push & Brain',
     '#/tbilisi-moves': 'თბილისი მოძრაობს',
     '#/settings': 'რეჟიმი',
@@ -169,7 +168,6 @@
     if (key === 'pharmacy-sync' || href.includes('/pharmacy')) return 'pill';
     if (key === 'push-failed' || href.includes('/push')) return 'bell';
     if (href.includes('/settings')) return 'settings';
-    if (href.includes('/cycleqa')) return 'layers';
     if (href.includes('/quality')) return 'shield';
     if (href.includes('/users')) return 'users';
     return item?.severity === 'critical' ? 'zap' : 'alert';
@@ -266,7 +264,7 @@
     });
   }
 
-  async function renderCommandCenter() {
+  async function renderCommandCenter(opts) {
     const gen = ++opsFetchGen;
     const root = $('tab-overview');
     destroyGeoMap();
@@ -302,23 +300,25 @@
     if (typeof bindOpsRange === 'function') bindOpsRange(renderCommandCenter);
     $('ops-refresh')?.addEventListener('click', () => {
       if ($('ops-refresh')?.classList.contains('is-loading')) return;
-      renderCommandCenter();
+      renderCommandCenter({ fresh: true });
     });
     const refreshBtn = $('ops-refresh');
     if (refreshBtn) refreshBtn.classList.add('is-loading');
 
     const q = typeof opsQs === 'function' ? opsQs() : `range=${opsState.range}`;
     const grain = opsState.grain || 'dau';
-    const [overview, users, features, retention, notif, system, balances, geo] = await Promise.all([
-      api(`/analytics/overview?${q}`).catch((err) => ({ error: err.message })),
-      api(`/analytics/users?${q}&grain=${grain}`).catch((err) => ({ error: err.message })),
-      api(`/analytics/features?${q}`).catch((err) => ({ error: err.message })),
-      api(`/analytics/retention?${q}`).catch((err) => ({ error: err.message })),
-      api(`/analytics/notifications?${q}`).catch((err) => ({ error: err.message })),
-      api('/system/health').catch((err) => ({ error: err.message })),
+    const freshQs = opts && opts.fresh === true ? '&fresh=1' : '';
+    const [bundle, balances] = await Promise.all([
+      api(`/analytics/dashboard?${q}&grain=${grain}${freshQs}`).catch((err) => ({ error: err.message })),
       api('/balances').catch((err) => ({ error: err.message })),
-      api('/analytics/geo').catch((err) => ({ error: err.message })),
     ]);
+    const overview = bundle.overview || { error: bundle.error };
+    const users = bundle.users || { error: bundle.error };
+    const features = bundle.features || { error: bundle.error };
+    const retention = bundle.retention || { error: bundle.error };
+    const notif = bundle.notifications || { error: bundle.error };
+    const system = bundle.system || { error: bundle.error };
+    const geo = bundle.geo || { error: bundle.error };
     if (gen !== opsFetchGen) return;
     if (refreshBtn) refreshBtn.classList.remove('is-loading');
 
@@ -1017,6 +1017,7 @@
 
   async function refreshCommandCenterLive() {
     if (ccPollBusy) return;
+    if (global.__adminSocketConnected || global.adminSocketLive) return;
     if ($('ops-refresh')?.classList.contains('is-loading')) return;
     if (!$('ops-status')) return;
     ccPollBusy = true;

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@500;600;700;800&family=Inter:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    html, body { margin: 0; width: 2048px; height: 2732px; background: #042F2E; }
+    .canvas {
+      width: 2048px; height: 2732px; position: relative; overflow: hidden;
+      background:
+        radial-gradient(ellipse 130% 75% at 50% 112%, #14B8A64D 0%, transparent 54%),
+        radial-gradient(circle 640px at 8% 6%, #99F6E424 0%, transparent 58%),
+        radial-gradient(circle 520px at 94% 14%, #14B8A630 0%, transparent 56%),
+        linear-gradient(165deg, #042F2E 0%, #020617 48%, #030712 100%);
+    }
+    .grid {
+      position: absolute; inset: 0; opacity: 0.35; pointer-events: none;
+      background-image:
+        linear-gradient(#14B8A614 1px, transparent 1px),
+        linear-gradient(90deg, #14B8A614 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, #000 20%, transparent 75%);
+    }
+    .orb { position: absolute; border-radius: 999px; filter: blur(48px); pointer-events: none; }
+    .orb-a { width: 520px; height: 520px; left: -100px; top: 900px; background: #14B8A640; }
+    .orb-b { width: 360px; height: 360px; right: -60px; top: 180px; background: #99F6E430; }
+    .brand {
+      position: absolute; left: 120px; top: 44px; z-index: 6;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .brand img {
+      width: 56px; height: 56px; border-radius: 14px;
+      box-shadow: 0 8px 28px #14B8A655, 0 0 0 1px #ffffff18;
+    }
+    .brand-text {
+      font-family: Inter, system-ui, sans-serif;
+      font-weight: 700; font-size: 22px; letter-spacing: 0.22em;
+      color: #fff;
+    }
+    .brand-ver {
+      margin-left: 8px; font-weight: 600; font-size: 16px;
+      letter-spacing: 0.04em; color: #6B7280;
+    }
+    .copy {
+      position: absolute; left: 120px; right: 120px; top: 108px;
+      z-index: 3; text-align: center;
+    }
+    .kicker-wrap {
+      display: inline-flex; align-items: center; gap: 14px;
+      padding: 10px 22px 10px 18px; border-radius: 999px;
+      background: linear-gradient(135deg, #14B8A622, #99F6E412);
+      border: 1px solid #14B8A644;
+      backdrop-filter: blur(12px);
+      margin-bottom: 24px;
+    }
+    .kicker {
+      font-family: 'Noto Sans Georgian', Inter, sans-serif;
+      font-weight: 700; font-size: 28px; letter-spacing: 0.14em;
+      color: #99F6E4; margin: 0;
+    }
+    .kicker-dot {
+      width: 10px; height: 10px; border-radius: 99px; background: #14B8A6;
+      box-shadow: 0 0 18px #14B8A6;
+    }
+    .title {
+      font-family: 'Noto Sans Georgian', sans-serif;
+      font-weight: 800; font-size: 86px; line-height: 1.06;
+      color: #fff; margin: 0; white-space: pre-line;
+      text-shadow: 0 20px 60px #0009;
+      max-width: 1680px; margin-inline: auto;
+    }
+    .sub {
+      margin: 26px auto 0;
+      font-family: 'Noto Sans Georgian', sans-serif;
+      font-weight: 500; font-size: 34px; line-height: 1.45;
+      color: #D1D5DB;
+      max-width: 1100px;
+    }
+    .phone {
+      position: absolute;
+      left: 50%;
+      top: 640px;
+      transform: translateX(-50%);
+      width: 1080px;
+      height: 2280px;
+      border-radius: 100px;
+      padding: 16px;
+      background: linear-gradient(145deg, #374151 0%, #111827 40%, #030712 100%);
+      box-shadow:
+        0 0 0 1px #4B5563,
+        0 40px 100px #14B8A650,
+        0 12px 48px #000c,
+        inset 0 1px 0 #ffffff12;
+      z-index: 2;
+    }
+    .phone::after {
+      content: '';
+      position: absolute; left: 12%; right: 12%; bottom: -36px; height: 48px;
+      background: radial-gradient(ellipse at center, #14B8A633 0%, transparent 70%);
+      filter: blur(20px); z-index: -1;
+    }
+    .screen {
+      width: 100%; height: 100%; border-radius: 86px; overflow: hidden;
+      background: #030712;
+    }
+    .screen img {
+      width: 100%; height: 100%; object-fit: cover; object-position: top center;
+      display: block;
+    }
+    .island {
+      position: absolute; left: 50%; top: 30px; transform: translateX(-50%);
+      width: 260px; height: 38px; border-radius: 20px;
+      background: #000; z-index: 4;
+      box-shadow: inset 0 0 0 1px #1f2937;
+    }
+    .fade {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 280px;
+      background: linear-gradient(180deg, transparent, #042F2E);
+      z-index: 5; pointer-events: none;
+    }
+    .footer {
+      position: absolute; left: 0; right: 0; bottom: 52px;
+      text-align: center; z-index: 6;
+      font-family: Inter, sans-serif; font-size: 20px; font-weight: 600;
+      letter-spacing: 0.12em; color: #6B7280;
+    }
+    .footer span { color: #99F6E4; }
+  </style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="grid"></div>
+    <div class="orb orb-a"></div>
+    <div class="orb orb-b"></div>
+    <div class="brand"><img src="file:///C:/Users/User/Desktop/www.medicard/mobile/assets/icon.png" alt="" /><span class="brand-text">MEDICARD</span><span class="brand-ver">v1.0.0.8.56</span></div>
+    <div class="copy">
+      <div class="kicker-wrap"><span class="kicker-dot"></span><p class="kicker">Medi</p></div>
+      <h1 class="title">ჰკითხე
+Medi-ს.</h1>
+      <p class="sub">ქართულად · შენს პროფილზე დაყრდნობით</p>
+    </div>
+    <div class="phone">
+      <div class="island"></div>
+      <div class="screen"><img src="file:///C:/Users/User/Desktop/www.medicard/mobile/store/app-store-screens/_raw/07-medi.png" alt="" /></div>
+    </div>
+    <div class="fade"></div>
+    <p class="footer">medicard<span>.ge</span> · ჯიბის სამედიცინო ასისტენტი</p>
+  </div>
+</body>
+</html>

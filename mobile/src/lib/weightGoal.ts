@@ -6,7 +6,7 @@ import {
   cancelNotificationsByPrefix,
   NOTIF_PREFIX,
   WEIGHT_CHANNEL_ID,
-  requestNotificationPermission,
+  getNotificationPermissionGranted,
 } from '@/lib/notifications';
 import { expoWeekdayFromMonday } from '@/lib/notificationPlan';
 import { getScopedPreference, localAccountId, setLocalAccountId, setScopedPreference } from '@/lib/localAccount';
@@ -218,7 +218,7 @@ export async function syncWeightGoalReminders(goal: WeightGoal): Promise<void> {
   await cancelNotificationsByPrefix(NOTIF_PREFIX.weight);
   if (!goal.reminderEnabled || !goal.reminderDays.length) return;
   if (Platform.OS === 'web') return;
-  const granted = await requestNotificationPermission();
+  const granted = await getNotificationPermissionGranted();
   if (!granted) return;
   const latestKg = (await loadWeightLogs())[0]?.kg;
   const copy = applyPushCopy('weight', { kg: latestKg != null ? String(latestKg) : '' });

@@ -21,6 +21,8 @@ export const TBILISI_MOVES_CAPABILITIES = Object.freeze([
   'TBILISI_MOVES_CORRECT',
 ]);
 
+export const MEDIPULSI_CAPABILITIES = Object.freeze(['MEDIPULSI_VIEW','MEDIPULSI_MANAGE','MEDIPULSI_REVIEW']);
+
 export function normalizeCapabilities(raw) {
   if (raw == null) return null; // full access
   if (Array.isArray(raw)) {

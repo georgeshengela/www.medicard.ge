@@ -127,12 +127,18 @@
 
     try {
       const qs = typeof opsQs === 'function' ? opsQs() : '';
-      const [quality, versions, permissions, extra] = await Promise.all([
-        api('/analytics/quality'),
-        api(`/analytics/versions?${qs}`),
-        api('/analytics/permissions'),
-        api(`/analytics/outcomes-extra?${qs}`),
-      ]);
+      const [quality, versions, permissions, extra] = await (async () => {
+        const bundle = await api(`/analytics/quality-bundle?${qs}`).catch(() => null);
+        if (bundle && bundle.quality) {
+          return [bundle.quality, bundle.versions, bundle.permissions, bundle.extra];
+        }
+        return Promise.all([
+          api('/analytics/quality'),
+          api(`/analytics/versions?${qs}`),
+          api('/analytics/permissions'),
+          api(`/analytics/outcomes-extra?${qs}`),
+        ]);
+      })();
 
       const versionCoverage =
         quality.versionCoverageRate != null

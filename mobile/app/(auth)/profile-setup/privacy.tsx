@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   ScrollView,
   Text,
   View,
@@ -12,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ProfileSetupPrimaryButton,
 } from '@/components/profile/ProfileSetupButtons';
+import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 import { PRIVACY_POLICY_KA } from '@/constants/privacyPolicyKa';
 import { ka } from '@/i18n/ka';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
@@ -71,7 +71,7 @@ export default function ProfileSetupPrivacyScreen() {
     <View style={{ flex: 1, backgroundColor: FIGMA_PROFILE_SETUP.pageBg, paddingTop: welcomeTopInset(insets.top) }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <View style={{ alignItems: 'center', paddingHorizontal: 16, paddingVertical: 24, gap: 16 }}>
-          <Image source={require('../../../assets/logo-light.png')} style={{ width: 48, height: 48 }} resizeMode="contain" />
+          <MedicardLogoMark size={48} />
           <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 30, lineHeight: 38, color: FIGMA_PROFILE_SETUP.titleColor, textAlign: 'center' }}>
             {policy.title}
           </Text>

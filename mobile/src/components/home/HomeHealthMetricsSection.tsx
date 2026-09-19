@@ -60,20 +60,22 @@ export function HomeHealthMetricsSection({ profile: _profile }: Props) {
     }, [refresh]),
   );
 
-  const connect = useCallback(async () => {
-    setConnecting(true);
-    setStatus(null);
-    try {
+  const connect = useCallback(() => {
+    void (async () => {
       const result = await connectDeviceHealth();
-      if (!result.ok) {
-        setStatus(explainFailure(result));
-        return;
+      setConnecting(true);
+      setStatus(null);
+      try {
+        if (!result.ok) {
+          setStatus(explainFailure(result));
+          return;
+        }
+        setStatus(ka.cycle.healthConnected);
+        await refresh();
+      } finally {
+        setConnecting(false);
       }
-      setStatus(ka.cycle.healthConnected);
-      await refresh();
-    } finally {
-      setConnecting(false);
-    }
+    })();
   }, [refresh]);
 
   const days = useMemo<StepsDayPoint[]>(() => {

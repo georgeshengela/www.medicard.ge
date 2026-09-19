@@ -1,5 +1,6 @@
-import React, { useCallback } from 'react';
-import { Dimensions, View } from 'react-native';
+import React, { useCallback, useEffect } from 'react';
+import { Dimensions, Platform, StatusBar as RNStatusBar, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { FigmaWelcomeSlide } from '@/components/welcome/FigmaWelcomeSlide';
 import { welcomeProgressState } from '@/constants/figmaWelcomeLayout';
@@ -21,10 +22,18 @@ export default function WelcomeScreen() {
     router.replace('/(auth)/sign-in');
   }, [router]);
 
+  useEffect(() => {
+    RNStatusBar.setBarStyle('light-content', true);
+    if (Platform.OS === 'android') {
+      RNStatusBar.setBackgroundColor('#14B8A6', true);
+    }
+  }, []);
+
   const body = SLIDE_COPY[LANDING.bodyKey as keyof typeof SLIDE_COPY] as string;
 
   return (
-    <View className="flex-1 bg-bg-100" style={{ width: SCREEN_W }}>
+    <View className="flex-1" style={{ width: SCREEN_W, backgroundColor: '#14B8A6' }}>
+      <StatusBar style="light" />
       <FigmaWelcomeSlide
         frame={LANDING.frame}
         kind="landing"

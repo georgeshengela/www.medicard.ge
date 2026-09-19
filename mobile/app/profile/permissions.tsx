@@ -45,9 +45,7 @@ import {
   enablePushConnection,
   loadAppPermissions,
   openAppSystemSettings,
-  openHealthConnectionSettings,
   requestCameraAccess,
-  requestNotificationAccess,
   requestPhotosAccess,
   resetAllConnectionsAndPermissions,
   resetLocalReminders,
@@ -141,20 +139,19 @@ export default function PermissionsScreen() {
       showToast(ka.cycle.healthExpoGo);
       return;
     }
-    await withBusy('health', async () => {
-      if (next) {
-        const result = await connectHealthConnection();
+    if (next) {
+      const result = await connectHealthConnection();
+      await withBusy('health', async () => {
         if (!result.ok) {
           showToast(explainHealthFailure(result));
-          if (result.reason === 'denied') {
-            openSettingsAlert(ka.cycle.healthDenied, openHealthConnectionSettings);
-          }
           throw new Error('health');
         }
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         showToast(ka.cycle.healthConnected);
-        return;
-      }
+      }).catch(() => undefined);
+      return;
+    }
+    await withBusy('health', async () => {
       await disconnectHealthConnection();
       showToast(ka.cycle.healthDisconnected);
     }).catch(() => undefined);
@@ -162,24 +159,22 @@ export default function PermissionsScreen() {
 
   const toggleNotifications = async (next: boolean) => {
     if (next) {
+      // In-app opt-in only. OS Allow is already decided at signup / the gate.
+      // A second requestPermissionsAsync here returns "denied" on iOS 26 even
+      // when Settings → Notifications is Allow, then we wrongly opened Settings.
       await withBusy('notifications', async () => {
-        const granted = await requestNotificationAccess();
-        if (!granted) {
-          openSettingsAlert(ka.meds.notificationsDenied, openAppSystemSettings);
-          throw new Error('notif');
-        }
         const registered = await enablePushConnection();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         if (!registered.ok) {
           showToast(
             registered.reason === 'expo_go'
               ? ka.permissions.pushRegisterExpoGo
-              : registered.reason === 'permission'
-                ? ka.meds.notificationsDenied
+              : registered.detail
+                ? `${ka.permissions.pushRegisterToken} ${registered.detail}`
                 : ka.permissions.pushRegisterToken,
           );
-          throw new Error('push');
+          return;
         }
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         showToast(ka.permissions.notificationsEnabledToast);
       }).catch(() => undefined);
       return;
@@ -320,13 +315,12 @@ export default function PermissionsScreen() {
             accessibilityLabel={ka.common.back}
             onPress={() => router.back()}
             hitSlop={10}
-            style={({ pressed }) => ({
+            style={{
               width: 44,
               height: 44,
               alignItems: 'flex-start',
               justifyContent: 'center',
-              opacity: pressed ? 0.55 : 1,
-            })}
+            }}
           >
             <ArrowLeft size={22} color={FIGMA_HEALTH_METRICS.textPrimary} strokeWidth={2.2} />
           </Pressable>
@@ -488,14 +482,13 @@ export default function PermissionsScreen() {
               accessibilityRole="button"
               onPress={confirmResetAll}
               disabled={busyId === 'reset-all'}
-              style={({ pressed }) => ({
+              style={{
                 backgroundColor: FIGMA_HEALTH_METRICS.cardBg,
                 borderRadius: 18,
                 borderWidth: 1,
                 borderColor: FIGMA_HEALTH_METRICS.border,
                 overflow: 'hidden',
-                opacity: pressed ? 0.92 : 1,
-              })}
+              }}
             >
               <View
                 style={{

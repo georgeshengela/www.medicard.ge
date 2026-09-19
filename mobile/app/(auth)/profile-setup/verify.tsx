@@ -13,6 +13,22 @@ import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthC
 
 const RESEND_SEC = 60;
 
+function resolveSetupPhoneParam(raw: string | string[] | undefined): string {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (!value) return '';
+  let next = String(value);
+  try {
+    next = decodeURIComponent(next);
+  } catch {
+    /* already decoded */
+  }
+  next = next.replace(/ /g, '+');
+  const digits = next.replace(/\D/g, '');
+  if (/^9955\d{8}$/.test(digits)) return `+${digits}`;
+  if (/^5\d{8}$/.test(digits)) return `+995${digits}`;
+  return next;
+}
+
 function maskPhoneLast4(phone: string) {
   const d = phone.replace(/\D/g, '');
   if (d.length < 4) return '••••';
@@ -24,8 +40,8 @@ export default function ProfileSetupVerifyScreen() {
   const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const router = useRouter();
   const preview = useOnboardingDevPreview();
-  const params = useLocalSearchParams<{ phone?: string }>();
-  const phone = typeof params.phone === 'string' ? params.phone : '';
+  const params = useLocalSearchParams<{ phone?: string | string[] }>();
+  const phone = resolveSetupPhoneParam(params.phone);
   const { user, ready, healthProfile, setHealthProfile, setUser } = useAuth();
 
   const [code, setCode] = useState('');

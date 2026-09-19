@@ -1,4 +1,5 @@
-import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
+import { getScopedPreference, scopedPrefKey, localAccountId } from '@/lib/localAccount';
+import {getPreference,setPreferenceStrict} from '@/lib/storage';
 import type { LatLng, RunTarget } from '@/lib/run/geo';
 
 const KEY = 'medicard.run.history.v1';
@@ -22,6 +23,7 @@ export type RunSummary = {
   origin: LatLng | null;
   /** Down-sampled trail for the summary map. */
   path: LatLng[];
+  segments?: LatLng[][];
 };
 
 function parse(raw: string | null): RunSummary[] {
@@ -39,10 +41,12 @@ export async function loadRunHistory(): Promise<RunSummary[]> {
 }
 
 export async function saveRunSummary(summary: RunSummary): Promise<void> {
-  const list = await loadRunHistory();
+  const owner=localAccountId(),key=scopedPrefKey(KEY);
+  if(!key)return;
+  const list = parse(await getPreference(key));
   const next = [summary, ...list.filter((r) => r.id !== summary.id)].slice(0, MAX);
-  await setScopedPreference(KEY, JSON.stringify(next));
-  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
+  await setPreferenceStrict(key, JSON.stringify(next));
+  if(localAccountId()===owner)void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => {if(localAccountId()===owner)scheduleAccountSyncPush();});
 }
 
 export async function getRunById(id: string): Promise<RunSummary | null> {

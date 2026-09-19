@@ -23,7 +23,7 @@ import {
 import type { EngageSnapshot, UnfinishedDraft } from './mediNotificationBrain.shared';
 import { evaluateEngageBrain } from './mediNotificationBrain.shared';
 import { visitDateTimeMs } from '@/lib/visitReminders';
-import { cancelNotificationsByPrefix, ENGAGE_CHANNEL_ID, NOTIF_PREFIX, requestNotificationPermission } from '@/lib/notifications';
+import { cancelNotificationsByPrefix, ENGAGE_CHANNEL_ID, NOTIF_PREFIX, getNotificationPermissionGranted } from '@/lib/notifications';
 import { applyPushCopy } from '@/lib/pushCopy';
 
 export {
@@ -299,7 +299,7 @@ export async function runMediNotificationBrain(
   try {
   if (Platform.OS === 'web') return 0;
   rememberEngageActor(user, health);
-  const granted = await requestNotificationPermission();
+  const granted = await getNotificationPermissionGranted();
   if (!granted) {
     if (opts.markOpen !== false) await markEngageAppOpen();
     return 0;
@@ -574,7 +574,16 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
   rewriteMasked?: boolean;
 }> {
   if (!data || typeof data !== 'object') return { ok: true, reason: null };
-  if (data.rewrite === true) return { ok: true, reason: 'PRIVACY_MASKED' };
+  if (data.rewrite === true || data.rewrite === 'true') return { ok: true, reason: 'PRIVACY_MASKED' };
+  if (
+    data.type === 'admin_broadcast' ||
+    data.source === 'broadcast' ||
+    data.family === 'adminBroadcast' ||
+    data.qa === true ||
+    data.qa === 'true'
+  ) {
+    return { ok: true, reason: null };
+  }
 
   if (data.type === 'quota_reset' || data.family === 'quotaReset') {
     return { ok: true, reason: null };

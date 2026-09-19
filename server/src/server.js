@@ -34,6 +34,8 @@ import { adminRouter } from './routes/admin.routes.js';
 import { adminRewardsRouter } from './routes/adminRewards.routes.js';
 import { tbilisiMovesRouter } from './routes/tbilisiMoves.routes.js';
 import { adminTbilisiMovesRouter } from './routes/adminTbilisiMoves.routes.js';
+import { medipulsiRouter } from './routes/medipulsi.routes.js';
+import { adminMedipulsiRouter } from './routes/adminMedipulsi.routes.js';
 import { appRouter } from './routes/app.routes.js';
 import { accountRouter } from './routes/account.routes.js';
 import { cycleRouter, partnerShareClosedHandler } from './routes/cycle.routes.js';
@@ -216,6 +218,7 @@ app.use('/api/medications', medicationsRouter);
 app.use('/api/visits', visitsRouter);
 app.use('/api/pets', petsRouter);
 app.use('/api/tbilisi-moves', tbilisiMovesRouter);
+app.use('/api/medipulsi', medipulsiRouter);
 app.use('/api/cycle', cycleRouter);
 app.get('/api/cycle/share/:code', partnerShareClosedHandler);
 app.use('/api/usage', usageRouter);
@@ -231,6 +234,14 @@ app.use('/api/app', appRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/rewards', adminRewardsRouter);
 app.use('/api/admin/tbilisi-moves', adminTbilisiMovesRouter);
+app.use('/api/admin/medipulsi', adminMedipulsiRouter);
+
+app.get(['/medipulsi', '/medipulsi/', '/medipulsi/index.html'], (_req,res) => {
+  const file=path.resolve(__dirname,'../public/medipulsi/index.html');
+  res.set('Cache-Control','no-store');
+  if(!existsSync(file))return res.status(503).send('MEDIPULSI მზადდება.');
+  return res.sendFile(file);
+});
 
 if (serveAdmin) {
   // Must be registered before the marketing-site fallback, otherwise /admin becomes the landing page.

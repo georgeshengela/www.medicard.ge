@@ -13,8 +13,9 @@ export {
   shapeGeoCountries,
 } from './adminUserGeoShape.js';
 
-const CACHE_MS = 8_000;
+const CACHE_MS = 30_000;
 let cache = { at: 0, value: null };
+let pending = null;
 
 export function mapboxPublicToken() {
   return sanitizeMapboxPublicToken(env.MAPBOX_PUBLIC_TOKEN || process.env.EXPO_PUBLIC_MAPBOX_TOKEN);
@@ -26,15 +27,18 @@ function isMissingTable(error) {
 
 export function clearUserGeoCache() {
   cache = { at: 0, value: null };
+  pending = null;
 }
 
 export async function getUserGeoAnalytics() {
   if (cache.value && Date.now() - cache.at < CACHE_MS) return cache.value;
+  if (pending) return pending;
 
-  await ensureUserLocationTable();
-  let rows = [];
-  try {
-    rows = await prisma.$queryRaw`
+  pending = (async () => {
+    await ensureUserLocationTable();
+    let rows = [];
+    try {
+      rows = await prisma.$queryRaw`
       SELECT UPPER(TRIM(ul."countryCode")) AS "countryCode",
              MIN(NULLIF(TRIM(ul."countryKa"), '')) AS "countryKa",
              COUNT(*)::int AS users
@@ -46,22 +50,27 @@ export async function getUserGeoAnalytics() {
       GROUP BY 1
       ORDER BY users DESC
     `;
-  } catch (error) {
-    if (!isMissingTable(error)) throw error;
-    rows = [];
-  }
+    } catch (error) {
+      if (!isMissingTable(error)) throw error;
+      rows = [];
+    }
 
-  const countries = shapeGeoCountries(rows);
-  const located = countries.reduce((sum, row) => sum + row.users, 0);
-  const totalUsers = await prisma.user.count();
-  const payload = {
-    token: mapboxPublicToken(),
-    countries,
-    located,
-    unknown: Math.max(0, totalUsers - located),
-    totalUsers,
-    refreshedAt: new Date().toISOString(),
-  };
-  cache = { at: Date.now(), value: payload };
-  return payload;
+    const countries = shapeGeoCountries(rows);
+    const located = countries.reduce((sum, row) => sum + row.users, 0);
+    const totalUsers = await prisma.user.count();
+    const payload = {
+      token: mapboxPublicToken(),
+      countries,
+      located,
+      unknown: Math.max(0, totalUsers - located),
+      totalUsers,
+      refreshedAt: new Date().toISOString(),
+    };
+    cache = { at: Date.now(), value: payload };
+    return payload;
+  })().finally(() => {
+    pending = null;
+  });
+
+  return pending;
 }

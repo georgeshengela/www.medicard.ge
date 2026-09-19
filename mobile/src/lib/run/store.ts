@@ -1,10 +1,10 @@
+import {getPulseClient,resetPulseClient} from '@/lib/medipulsi/client';
 import { useSyncExternalStore } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import * as Location from 'expo-location';
 import {
   bearingDeg,
   caloriesKcal,
-  estimateSteps,
   haversineM,
   paceSecPerKm,
   targetMeters as targetToMeters,
@@ -22,11 +22,14 @@ import { generateTargetPin, type RunRoute } from '@/lib/run/mapbox';
 import { requestLocationPermission } from '@/lib/userLocation';
 
 export type RunPhase = 'idle' | 'preparing' | 'ready' | 'running' | 'paused' | 'finished';
-export type RunError = 'permission' | 'location' | null;
+export type RunError = 'permission' | 'location' | 'sync' | null;
 export type SimMode = 'off' | 'run' | 'drive';
 
 export type RunState = {
   phase: RunPhase;
+  mode: 'run' | 'explore';
+  syncError: string | null;
+  segments: LatLng[][];
   error: RunError;
   target: RunTarget | null;
   targetMeters: number;
@@ -74,6 +77,7 @@ const TRANSPORT_CANCEL_MS = 32_000;
 
 const initial: RunState = {
   phase: 'idle',
+  mode:'run', syncError:null, segments:[],
   error: null,
   target: null,
   targetMeters: 0,
@@ -120,7 +124,7 @@ let hydratePromise: Promise<boolean> | null = null;
 let appStateSub: { remove: () => void } | null = null;
 
 /** Live session the user has started — badge + persistence apply. */
-export function isActiveRunPhase(phase: RunPhase): boolean {
+export function isActiveRunPhase(phase: RunPhase): phase is 'running' | 'paused' {
   return phase === 'running' || phase === 'paused';
 }
 
@@ -152,6 +156,7 @@ function buildPersistSnapshot(): PersistedActiveRun | null {
   if (!isActiveRunPhase(state.phase) || !state.target || !state.origin || !state.startedAt) return null;
   return {
     v: 1,
+    mode:state.mode, segments:state.segments,
     phase: state.phase,
     target: state.target,
     targetMeters: state.targetMeters,
@@ -210,6 +215,7 @@ function ensureAppStatePersist() {
   if (appStateSub) return;
   appStateSub = AppState.addEventListener('change', (next: AppStateStatus) => {
     if (next === 'background' || next === 'inactive') {
+      if (state.phase === 'running') pauseRun();
       if (isActiveRunPhase(state.phase)) void flushPersist();
     } else if (next === 'active' && state.phase === 'running') {
       // Re-arm GPS after OS may have paused the watch while backgrounded.
@@ -238,7 +244,7 @@ export function useRunSession(): RunState {
 
 export function runDerived(s: RunState) {
   const calories = caloriesKcal(s.distanceM, s.movingMs, s.weightKg);
-  const steps = estimateSteps(s.distanceM, s.heightCm);
+  const steps = Math.round(s.distanceM / .72);
   const pace = paceSecPerKm(s.distanceM, s.movingMs);
   const toPinM = s.current && s.pin ? haversineM(s.current, s.pin) : null;
   const progress = s.targetMeters > 0 ? Math.min(1, s.distanceM / s.targetMeters) : 0;
@@ -251,7 +257,9 @@ export function runDerived(s: RunState) {
 
 async function readFix(): Promise<Location.LocationObject | null> {
   try {
-    return await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+    let timeout:ReturnType<typeof setTimeout>|undefined;
+    try{return await Promise.race([Location.getCurrentPositionAsync({accuracy:Location.Accuracy.High}),new Promise<never>((_,reject)=>{timeout=setTimeout(()=>reject(new Error('GPS timeout')),12000);})]);}
+    finally{if(timeout)clearTimeout(timeout);}
   } catch {
     try {
       const last = await Location.getLastKnownPositionAsync({ maxAge: 120_000 });
@@ -266,11 +274,14 @@ async function readFix(): Promise<Location.LocationObject | null> {
 export async function prepareRun(
   target: RunTarget,
   body: { weightKg?: number | null; heightCm?: number | null } = {},
+  mode: 'run' | 'explore' = 'run',
 ): Promise<boolean> {
+  if(isActiveRunPhase(state.phase))return false;
   stopEverything();
   wipePersist();
   prepareAbort?.abort();
   prepareAbort = new AbortController();
+  const request = prepareAbort;
   isReachedEmitted = false;
   isCompletedEmitted = false;
   lastFixAt = 0;
@@ -280,19 +291,23 @@ export async function prepareRun(
   set({
     ...initial,
     phase: 'preparing',
+    mode,
     target,
     targetMeters: meters,
     weightKg: body.weightKg ?? null,
     heightCm: body.heightCm ?? null,
   });
 
-  const permission = await requestLocationPermission();
+  const granted = await Location.getForegroundPermissionsAsync().catch(()=>({granted:false}));
+  const permission = granted.granted ? 'granted' : await requestLocationPermission().catch(()=>'denied');
+  if (request.signal.aborted || request !== prepareAbort) return false;
   if (permission !== 'granted') {
     set({ phase: 'idle', error: 'permission' });
     return false;
   }
 
   const fix = await readFix();
+  if(request.signal.aborted || request!==prepareAbort)return false;
   if (!fix) {
     set({ phase: 'idle', error: 'location' });
     return false;
@@ -300,16 +315,22 @@ export async function prepareRun(
   const origin = { lat: fix.coords.latitude, lng: fix.coords.longitude };
   set({ origin, current: origin, accuracyM: fix.coords.accuracy ?? null });
 
-  const generated = await generateTargetPin(origin, meters, { signal: prepareAbort.signal });
+  if (mode === 'explore') { set({phase:'ready'}); return true; }
+  const generated = await generateTargetPin(origin, meters, { signal: request.signal });
+  if (request.signal.aborted || request !== prepareAbort) return false;
   if (state.phase !== 'preparing') return false; // cancelled
   set({
     phase: 'ready',
-    pin: generated.pin,
+    pin: generated.routed ? generated.pin : null,
     route: generated.route,
     routed: generated.routed,
     expectedDistanceM: generated.expectedDistanceM,
   });
   return true;
+}
+
+export function prepareExploration(body: {weightKg?:number|null;heightCm?:number|null} = {}) {
+  return prepareRun({kind:'km',value:0},body,'explore');
 }
 
 export async function regeneratePin(): Promise<void> {
@@ -325,34 +346,34 @@ export async function regeneratePin(): Promise<void> {
   });
 }
 
+let starting = false;
+let generation = 0;
 export async function startRun(): Promise<void> {
-  if (state.phase !== 'ready' && state.phase !== 'paused') return;
-  const now = Date.now();
-  if (state.phase === 'ready') {
-    movingAccumMs = 0;
-    set({
-      phase: 'running',
-      startedAt: now,
-      path: state.current ? [state.current] : [],
-      distanceM: 0,
-      movingMs: 0,
-      elapsedMs: 0,
-    });
-  } else {
-    set({ phase: 'running' });
-  }
-  segmentStartedAt = now;
-  startTimer();
-  ensureAppStatePersist();
-  await startWatch();
-  void flushPersist();
+  if (starting || (state.phase !== 'ready' && state.phase !== 'paused')) return;
+  starting=true;
+  const owner=generation;
+  const client=getPulseClient();
+  try {
+    const verified=await client.begin();
+    if(owner!==generation || (AppState.currentState && AppState.currentState!=='active')){client.stop();return;}
+    const now=Date.now();
+    if(state.phase==='ready'){
+      movingAccumMs=verified.seconds*1000;
+      set({phase:'running',startedAt:now,path:state.current?[state.current]:[],segments:[],distanceM:verified.meters,movingMs:movingAccumMs,elapsedMs:0,error:null,syncError:null});
+    } else set({phase:'running',distanceM:verified.meters,error:null,syncError:null});
+    segmentStartedAt=now;lastFixAt=0;
+    startTimer();ensureAppStatePersist();await startWatch();void flushPersist();
+  }catch(error){if(owner===generation)set({error:'sync',syncError:(error as Error).message});}
+  finally{starting=false;}
 }
 
 export function pauseRun(): void {
   if (state.phase !== 'running') return;
   if (segmentStartedAt != null) movingAccumMs += Date.now() - segmentStartedAt;
   segmentStartedAt = null;
-  set({ phase: 'paused', movingMs: movingAccumMs });
+  generation++;watchSub?.remove();watchSub=null;headingSub?.remove();headingSub=null;compassLive=false;lastFixAt=0;
+  if(!state.simulating)getPulseClient().stop();
+  set({ phase: 'paused', movingMs: movingAccumMs, speedKmh:0 });
   void flushPersist();
 }
 
@@ -382,21 +403,26 @@ export async function finishRun(): Promise<RunSummary | null> {
     steps: d.steps,
     paceSecPerKm: d.pace,
     reachedPin: state.reachedPin,
-    completedTarget: state.completedTarget || state.distanceM >= state.targetMeters,
+    completedTarget: state.targetMeters > 0 && (state.completedTarget || state.distanceM >= state.targetMeters),
     pin: state.pin,
     origin: state.origin,
     path: downsamplePath(state.path),
+    segments: state.segments.map(segment=>downsamplePath(segment)),
   };
+  if(!state.simulating)getPulseClient().stop(true);
+  const wasSimulation=state.simulating;
   stopEverything();
   wipePersist();
   set({ phase: 'finished', movingMs, elapsedMs, summary });
-  if (summary.distanceM >= 50 || summary.movingMs >= 60_000) {
-    void saveRunSummary(summary);
+  if (!wasSimulation && (summary.distanceM >= 50 || summary.movingMs >= 60_000)) {
+    const owner=generation;
+    void saveRunSummary(summary).catch(()=>{if(owner===generation)set({syncError:'სესიის დეტალები ტელეფონში ვერ შეინახა. გადაამოწმე თავისუფალი ადგილი.'});});
   }
   return summary;
 }
 
 export function cancelRun(): void {
+  if(isActiveRunPhase(state.phase)&&!state.simulating)getPulseClient().stop(true);
   prepareAbort?.abort();
   stopEverything();
   wipePersist();
@@ -407,6 +433,7 @@ export function cancelRun(): void {
 
 /** Drop in-memory session without clearing the disk snapshot (logout / account switch). */
 export function resetRunMemory(): void {
+  resetPulseClient();
   prepareAbort?.abort();
   stopEverything();
   if (persistTimer) {
@@ -431,10 +458,11 @@ export function clearRunError(): void {
 export function hydrateActiveRun(): Promise<boolean> {
   if (state.phase !== 'idle') return Promise.resolve(false);
   if (hydratePromise) return hydratePromise;
+  const ownerGeneration=generation;
   hydratePromise = (async () => {
     if (state.phase !== 'idle') return false;
     const snap = await loadActiveRun();
-    if (!snap || state.phase !== 'idle') return false;
+    if (!snap || state.phase !== 'idle' || ownerGeneration!==generation) return false;
 
     movingAccumMs = Math.max(0, snap.movingAccumMs);
     segmentStartedAt = null;
@@ -447,7 +475,9 @@ export function hydrateActiveRun(): Promise<boolean> {
     const now = Date.now();
     state = {
       ...initial,
-      phase: snap.phase,
+      phase: 'paused',
+      mode: snap.mode || 'run',
+      segments: snap.segments || (snap.path.length ? [snap.path] : []),
       target: snap.target,
       targetMeters: snap.targetMeters,
       origin: snap.origin,
@@ -473,10 +503,7 @@ export function hydrateActiveRun(): Promise<boolean> {
 
     ensureAppStatePersist();
     startTimer();
-    if (snap.phase === 'running') {
-      segmentStartedAt = now;
-      await startWatch();
-    }
+    // Resuming restored sessions requires the user to press Continue.
     void flushPersist();
     return true;
   })()
@@ -515,14 +542,14 @@ function smoothHeadingTo(next: number): number {
 
 function applyCompassHeading(deg: number): void {
   compassLive = true;
-  // Moving: course-up from GPS / path, like Google Maps & Waze — not phone twist.
-  if (isMovingForCourse()) return;
+  // Phone compass remains the direction source while walking too.
   const next = smoothHeadingTo(deg);
   if (state.headingDeg != null && Math.abs(headingDelta(state.headingDeg, next)) < 2) return;
   set({ headingDeg: next });
 }
 
 function stopEverything() {
+  generation++;
   watchSub?.remove();
   watchSub = null;
   headingSub?.remove();
@@ -550,50 +577,58 @@ function startTimer() {
 }
 
 async function startHeadingWatch() {
-  if (headingSub || state.simulating) return;
+  if (headingSub || state.simulating || state.phase!=='running') return;
+  const owner=generation;
   try {
-    headingSub = await Location.watchHeadingAsync((h) => {
+    const subscription = await Location.watchHeadingAsync((h) => {
+      if(owner!==generation || state.phase!=='running')return;
       const deg = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
       if (typeof deg !== 'number' || deg < 0 || Number.isNaN(deg)) return;
       applyCompassHeading(deg);
     });
+    if(owner!==generation)subscription.remove();else headingSub=subscription;
   } catch {
     compassLive = false;
   }
 }
 
 async function startWatch() {
-  if (state.simulating) return;
+  if (state.simulating || state.phase!=='running') return;
+  const owner=generation;
   if (!watchSub) {
     try {
-      watchSub = await Location.watchPositionAsync(
+      const subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.BestForNavigation,
           timeInterval: 1000,
           distanceInterval: 2,
         },
-        (fix) => ingestFix({
+        (fix) => {if(owner!==generation)return;ingestFix({
           lat: fix.coords.latitude,
           lng: fix.coords.longitude,
           accuracy: fix.coords.accuracy ?? null,
           heading: fix.coords.heading != null && fix.coords.heading >= 0 ? fix.coords.heading : null,
           at: fix.timestamp,
-        }),
+          speed: fix.coords.speed,
+          mocked: fix.mocked === true,
+        });},
       );
+      if(owner!==generation)subscription.remove();else watchSub=subscription;
     } catch {
-      /* keep the timer running; the HUD shows the last known point */
+      pauseRun();set({error:'location'});
     }
   }
   await startHeadingWatch();
 }
 
-type Fix = { lat: number; lng: number; accuracy: number | null; heading: number | null; at: number };
+type Fix = { lat: number; lng: number; accuracy: number | null; heading: number | null; at: number; speed?:number|null; mocked?:boolean };
 let lastFixAt = 0;
 let fastMs = 0;
 let emaSpeedMps = 0;
 
 /** Runner appears to be in a vehicle — stop tracking, keep the screen state for the explainer modal. */
 function cancelForTransport() {
+  if(!state.simulating)getPulseClient().stop(true);
   stopEverything();
   wipePersist();
   set({
@@ -608,7 +643,28 @@ function cancelForTransport() {
 }
 
 function ingestFix(fix: Fix) {
-  const point = { lat: fix.lat, lng: fix.lng };
+  if (state.phase !== 'running') return;
+  if(!state.simulating){
+    const client=getPulseClient(), before=client.getSnapshot().journey;
+    if(!client.getSnapshot().running){pauseRun();set({syncError:client.getSnapshot().message});return;}
+    const journey=client.ingest({position:[fix.lng,fix.lat],accuracy:fix.accuracy??999,timestamp:fix.at,speed:fix.speed!=null&&fix.speed>=0?fix.speed:null,mocked:fix.mocked});
+    const point={lat:journey.position[1],lng:journey.position[0]};
+    const added=journey.meters-before.meters;
+    let segments=state.segments,path=state.path;
+    if(added>0 && before.accuracy<=25 && ['tracking','off-path','stationary'].includes(before.status) && haversineM({lat:before.position[1],lng:before.position[0]},point)<=added+20){
+      const anchor={lat:before.position[1],lng:before.position[0]},last=segments.at(-1);
+      const continuous=last && haversineM(last.at(-1)!,anchor)<.5 && lastFixAt>0 && fix.at-lastFixAt<=15000;
+      segments=continuous?[...segments.slice(0,-1),[...last,point]]:[...segments,[anchor,point]];
+      path=[...path,point];
+    }
+    const reached=Boolean(state.pin && added>0 && haversineM(point,state.pin)<=PIN_RADIUS_M);
+    const complete=state.targetMeters>0 && journey.meters>=state.targetMeters;
+    set({current:point,accuracyM:fix.accuracy,headingDeg:compassLive?state.headingDeg:(fix.heading??journey.heading),distanceM:journey.meters,speedKmh:journey.speed,path,segments,reachedPin:state.reachedPin||reached,completedTarget:state.completedTarget||complete,transportWarning:journey.status==='vehicle'});
+    if(reached&&!isReachedEmitted){isReachedEmitted=true;emit('pin_reached');}
+    if(complete&&!isCompletedEmitted){isCompletedEmitted=true;emit('target_completed');}
+    lastFixAt=journey.lastFix??0;return;
+  }
+  const point = {lat:fix.lat,lng:fix.lng};
   const patch: Partial<RunState> = { accuracyM: fix.accuracy };
 
   if (fix.accuracy != null && fix.accuracy > MAX_ACCURACY_M && state.current) {
@@ -646,7 +702,7 @@ function ingestFix(fix: Fix) {
   const prev = state.path[state.path.length - 1] ?? state.current;
   let heading = state.headingDeg;
   const stepped = Boolean(prev && haversineM(prev, point) >= 3);
-  if (isMovingForCourse() || stepped) {
+  if (!compassLive && (isMovingForCourse() || stepped)) {
     if (fix.heading != null) heading = smoothHeadingTo(fix.heading);
     else if (prev && stepped) heading = smoothHeadingTo(bearingDeg(prev, point));
   } else if (!compassLive && fix.heading != null) {
@@ -659,8 +715,12 @@ function ingestFix(fix: Fix) {
     const speed = dt > 0 ? d / dt : 0;
     if (d >= MIN_STEP_M && speed <= MAX_SPEED_MPS) {
       const distanceM = state.distanceM + d;
-      const path = state.path.length ? [...state.path, point] : [prev, point];
-      const completedTarget = state.completedTarget || distanceM >= state.targetMeters;
+      const anchor = prev;
+      const last = state.segments.at(-1);
+      const continuous = last && haversineM(last.at(-1)!,anchor)<.5 && lastFixAt>0;
+      const segments = continuous ? [...state.segments.slice(0,-1),[...last,point]] : [...state.segments,[anchor,point]];
+      const path = state.path.length ? [...state.path, point] : [anchor, point];
+      const completedTarget = state.targetMeters > 0 && (state.completedTarget || distanceM >= state.targetMeters);
       const pinDist = state.pin ? haversineM(point, state.pin) : Infinity;
       const radius = Math.min(45, Math.max(PIN_RADIUS_M, (fix.accuracy ?? 0) + 8));
       const reachedPin = state.reachedPin || pinDist <= radius;
@@ -669,6 +729,7 @@ function ingestFix(fix: Fix) {
         headingDeg: heading,
         distanceM,
         path,
+        segments,
         completedTarget,
         reachedPin,
         reachedAt: reachedPin && !state.reachedPin ? Date.now() : state.reachedAt,
@@ -721,9 +782,11 @@ export function toggleSimulation(): void {
 function setSimMode(mode: SimMode): void {
   if (simTimer) clearInterval(simTimer);
   simTimer = null;
+  if (mode !== 'off' && !state.simulating && isActiveRunPhase(state.phase)) getPulseClient().stop();
   if (mode === 'off') {
     set({ simulating: false, simMode: 'off' });
-    if (state.phase === 'running') void startWatch();
+    if(state.phase==='running')pauseRun();
+    set({syncError:'დემო დასრულდა. GPS სესიისთვის დააჭირე გაგრძელებას.'});
     return;
   }
   watchSub?.remove();

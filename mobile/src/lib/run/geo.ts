@@ -62,11 +62,11 @@ export function strideM(heightCm?: number | null): number {
 
 export function targetMeters(target: RunTarget, heightCm?: number | null): number {
   if (target.kind === 'km') return Math.round(target.value * 1000);
-  return Math.round(target.value * strideM(heightCm));
+  return Math.round(target.value * .72);
 }
 
 export function estimateSteps(distanceM: number, heightCm?: number | null): number {
-  return Math.max(0, Math.round(distanceM / strideM(heightCm)));
+  return Math.max(0, Math.round(distanceM / .72));
 }
 
 // ---------------------------------------------------------------------------

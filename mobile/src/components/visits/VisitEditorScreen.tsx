@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -39,6 +38,7 @@ import {
   type DoctorTypeCode,
 } from '@/constants/visits';
 import { ApiError, api, type DoctorVisit, type GeocodeResult, type VisitReminderConfig } from '@/lib/api';
+import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
 import { defaultVisitTime, todayIsoLocal } from '@/lib/visitReminders';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { useThemeColors } from '@/theme/colors';
@@ -54,26 +54,6 @@ const STEPS: { key: string; title: string; hint: string; icon: LucideIcon }[] = 
   { key: 'extras', title: ka.visits.sectionExtras, hint: ka.visits.wizardExtrasHint, icon: BellRing },
 ];
 
-function useKeyboardHeight() {
-  const [height, setHeight] = useState(0);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const show = Keyboard.addListener(showEvent, (event) => {
-      setHeight(event.endCoordinates.height);
-    });
-    const hide = Keyboard.addListener(hideEvent, () => setHeight(0));
-
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
-
-  return height;
-}
 
 export function VisitEditorScreen({ visitId }: Props) {
   const router = useRouter();

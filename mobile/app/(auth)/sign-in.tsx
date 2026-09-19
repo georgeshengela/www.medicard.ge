@@ -9,7 +9,9 @@ import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { Input } from '@/components/ui/Input';
 import { FIGMA_AUTH, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { ka } from '@/i18n/ka';
+import { AUTH_KEYBOARD_OPEN_PX } from '@/lib/authChrome';
 import { authErrorMessage } from '@/lib/authErrorMessage';
+import { useKeyboardMetrics } from '@/lib/useKeyboardHeight';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
 
@@ -22,6 +24,8 @@ export default function SignIn() {
   const router = useRouter();
   const auth = useFigmaAuth();
   const colors = useThemeColors();
+  const { height: keyboardHeight } = useKeyboardMetrics();
+  const keyboardOpen = keyboardHeight > AUTH_KEYBOARD_OPEN_PX;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -64,7 +68,7 @@ export default function SignIn() {
         heroSubtitle={ka.auth.signInHero}
         footer={<AuthPrimaryButton label={ka.auth.signIn} loading={busy} onPress={() => void submit()} />}
       >
-        <View style={{ gap: FIGMA_AUTH.sectionGap, paddingTop: 32 }}>
+        <View style={{ gap: keyboardOpen ? 16 : FIGMA_AUTH.sectionGap, paddingTop: keyboardOpen ? 8 : 32 }}>
           <View style={{ gap: 16 }}>
             <View style={{ gap: FIGMA_AUTH.formFieldGap }}>
               <Input
@@ -143,7 +147,7 @@ export default function SignIn() {
             </View>
           ) : null}
 
-          <SignInSwitchLink />
+          {keyboardOpen ? null : <SignInSwitchLink />}
         </View>
       </AuthShell>
     </View>

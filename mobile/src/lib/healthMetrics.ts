@@ -57,34 +57,21 @@ export async function fetchHealthMetrics(
 
   const platform = getHealthPlatform();
 
-  const deviceConnected = (await isHealthSyncEnabled()) && isHealthPlatformSupported() && !isExpoGo();
-
-
+  const nativeRuntime = isHealthPlatformSupported() && !isExpoGo();
+  const deviceConnected = nativeRuntime && (await isHealthSyncEnabled());
 
   let nativeRaw: Partial<Record<HealthMetricKey, HealthMetricPoint[]>> = {};
-
   let stepSamples: StepSample[] = [];
 
-
-
-  if (deviceConnected) {
-
+  if (nativeRuntime) {
     const impl = await metricsNativeImpl();
-
     if (impl?.fetchHealthMetricsNative) {
-
       nativeRaw = await impl.fetchHealthMetricsNative();
-
     }
-
     if (impl?.fetchStepsNative) {
-
       stepSamples = await impl.fetchStepsNative(new Date(`${daysAgo(90)}T00:00:00`));
-
     }
-
     void syncNativeHealthToServer(nativeRaw, stepSamples);
-
   }
 
 
@@ -103,7 +90,7 @@ export async function fetchHealthMetrics(
 
     profile,
 
-    deviceConnected || hasStored,
+    deviceConnected || hasStored || stepSamples.length > 0,
 
     platform,
 

@@ -1,6 +1,8 @@
 import { Notifications } from '@/lib/expoNotifications';
+export { isNotificationsNativeAvailable } from '@/lib/expoNotifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import { isRunningInExpoGo } from 'expo';
 import { AppState, Platform } from 'react-native';
 import { ApiError, api } from './api';
 import type { Medication, ScheduledDose } from './api';
@@ -17,7 +19,11 @@ import {
   prefixForNotificationId,
 } from '@/lib/notificationPlan';
 import { applyPushCopy, logPushEvent } from '@/lib/pushCopy';
-import { resolvePushOptedIn, resolvePushToggleOn } from '@/lib/pushOptIn';
+import {
+  notificationResponseIsGranted,
+  notificationResponseStatus,
+} from '@/lib/notificationPermission.js';
+import { resolvePermissionsPageToggle } from '@/lib/pushOptIn';
 import { getPreference, setPreference } from '@/lib/storage';
 
 export const MED_CHANNEL_ID = 'medication-reminders';
@@ -43,11 +49,25 @@ export const NOTIF_PREFIX = {
   pets: 'pets:',
 } as const;
 
+function flagOn(value: unknown) {
+  return value === true || value === 1 || value === 'true' || value === '1';
+}
+
+function isRemoteAdminPush(data: Record<string, unknown>) {
+  return (
+    flagOn(data.qa) ||
+    data.type === 'admin_broadcast' ||
+    data.source === 'broadcast' ||
+    data.family === 'adminBroadcast'
+  );
+}
+
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = (notification.request.content.data ?? {}) as Record<string, unknown>;
     try {
-      if (data.qa === true) {
+      // iOS APNs stringifies data booleans, so qa:"true" must still show a banner.
+      if (isRemoteAdminPush(data)) {
         return { shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false };
       }
       if (data.type === 'quota_reset' || data.family === 'quotaReset') {
@@ -120,7 +140,9 @@ Notifications.setNotificationHandler({
 export async function getNotificationPermissionGranted(): Promise<boolean> {
   try {
     const existing = await Notifications.getPermissionsAsync();
-    return existing.status === 'granted';
+    const granted = notificationResponseIsGranted(existing);
+    if (granted) void ensureAndroidChannels();
+    return granted;
   } catch {
     return false;
   }
@@ -194,27 +216,56 @@ async function ensureAndroidChannels(): Promise<void> {
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
-  await ensureAndroidChannels();
-  void import('@/lib/mediNotificationActions').then((mod) => mod.registerNotificationCategories());
-  const existing = await Notifications.getPermissionsAsync();
-  const status =
-    existing.status === 'granted' ? existing.status : (await Notifications.requestPermissionsAsync()).status;
+  // iOS 26 only shows Allow if this is the first await on the tap.
+  // Do not read current status or setState first — that poisons denied
+  // with no sheet, so Settings never grows a Notifications row
+  // (only Siri, Search, Mobile Data).
+  try {
+    const next = await Notifications.requestPermissionsAsync({
+      ios: { allowAlert: true, allowBadge: true, allowSound: true },
+    });
+    void ensureAndroidChannels();
+    void import('@/lib/mediNotificationActions').then((mod) => mod.registerNotificationCategories());
+    const granted = notificationResponseIsGranted(next);
+    if (granted) await rememberOsNotificationGrant();
+    return granted;
+  } catch {
+    try {
+      const next = await Notifications.requestPermissionsAsync();
+      const granted = notificationResponseIsGranted(next);
+      if (granted) await rememberOsNotificationGrant();
+      return granted;
+    } catch {
+      return false;
+    }
+  }
+}
 
-  return status === 'granted';
+export async function notificationCanAskAgain(): Promise<boolean> {
+  try {
+    const existing = await Notifications.getPermissionsAsync();
+    if (notificationResponseIsGranted(existing)) return false;
+    return existing.canAskAgain !== false;
+  } catch {
+    return true;
+  }
 }
 
 export type PushRegisterReason = 'permission' | 'simulator' | 'expo_go' | 'token' | 'auth' | 'network';
 
-export type PushRegisterResult = { ok: true } | { ok: false; reason: PushRegisterReason };
+export type PushRegisterResult = { ok: true } | { ok: false; reason: PushRegisterReason; detail?: string };
 
 const PUSH_OPTED_IN_KEY = 'medicard.push.optedIn';
+const PUSH_OS_GRANTED_KEY = 'medicard.push.osGranted';
 const PUSH_LAST_TOKEN_KEY = 'medicard.push.lastToken';
+const FALLBACK_EAS_PROJECT_ID = '7dd7dc9b-9e05-4e8c-a26e-8fc6800dc492';
+const PUSH_TOKEN_WAIT_MS = 45_000;
 
-function pushProjectId(): string | undefined {
+function pushProjectId(): string {
   return (
     Constants.easConfig?.projectId ??
     Constants.expoConfig?.extra?.eas?.projectId ??
-    undefined
+    FALLBACK_EAS_PROJECT_ID
   );
 }
 
@@ -222,9 +273,23 @@ function isExpoPushToken(token: string): boolean {
   return /^ExponentPushToken\[.+\]$/.test(token) || /^ExpoPushToken\[.+\]$/.test(token);
 }
 
+export async function getPushOptedInStored(): Promise<string | null> {
+  return getPreference(PUSH_OPTED_IN_KEY);
+}
+
+export async function getRememberedOsNotificationGrant(): Promise<boolean> {
+  return (await getPreference(PUSH_OS_GRANTED_KEY)) === '1';
+}
+
+export async function rememberOsNotificationGrant(): Promise<void> {
+  await setPreference(PUSH_OS_GRANTED_KEY, '1');
+}
+
 export async function isPushOptedIn(): Promise<boolean> {
-  const stored = await getPreference(PUSH_OPTED_IN_KEY);
-  return resolvePushOptedIn(stored, await getNotificationPermissionGranted());
+  const stored = await getPushOptedInStored();
+  if (stored === '0') return false;
+  if (stored === '1') return true;
+  return getRememberedOsNotificationGrant();
 }
 
 export async function setPushOptedIn(on: boolean): Promise<void> {
@@ -232,14 +297,15 @@ export async function setPushOptedIn(on: boolean): Promise<void> {
 }
 
 export async function isNotificationsEnabled(): Promise<boolean> {
-  const granted = await getNotificationPermissionGranted();
-  return resolvePushToggleOn(granted, await isPushOptedIn());
+  const stored = await getPushOptedInStored();
+  const remembered = await getRememberedOsNotificationGrant();
+  return resolvePermissionsPageToggle(stored, remembered);
 }
 
 /** Registers only when the user has not opted out. Used on login / resume. */
 export async function syncPushRegistration(): Promise<void> {
   if (!(await isPushOptedIn())) return;
-  await registerPushTokenWithServer();
+  await registerPushTokenWithServer({ skipPermissionProbe: true });
 }
 
 async function saveLastPushToken(token: string): Promise<void> {
@@ -250,27 +316,88 @@ async function readLastPushToken(): Promise<string | null> {
   return getPreference(PUSH_LAST_TOKEN_KEY);
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(label)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+function canAttemptRemotePush(): boolean {
+  if (Platform.OS === 'web') return false;
+  if (Device.isDevice) return true;
+  // Some Expo Go iOS builds report isDevice=false on a real phone.
+  return Platform.OS === 'ios' && isRunningInExpoGo();
+}
+
+function expoNotificationsNative() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('expo-notifications');
+  } catch {
+    return Notifications;
+  }
+}
+
+let pushTokenListenerAttached = false;
+
+function ensurePushTokenListener(native: {
+  addPushTokenListener?: (listener: (token: unknown) => void) => { remove?: () => void };
+}) {
+  // SDK 53–57: the native device-token promise inside getExpoPushTokenAsync can
+  // hang unless a JS listener exists. Keep it for the whole JS session — do not
+  // add/remove around a timeout, or that native promise stays stuck.
+  if (pushTokenListenerAttached) return;
+  if (typeof native.addPushTokenListener !== 'function') return;
+  native.addPushTokenListener(() => undefined);
+  pushTokenListenerAttached = true;
+}
+
 async function fetchExpoPushToken(): Promise<string | null> {
+  const native = expoNotificationsNative();
+  const getToken = native.getExpoPushTokenAsync?.bind(native);
+  if (typeof getToken !== 'function') {
+    throw new Error('getExpoPushTokenAsync unavailable');
+  }
+
+  ensurePushTokenListener(native);
   const projectId = pushProjectId();
-  const tokenResult = await Notifications.getExpoPushTokenAsync(
-    projectId ? { projectId } : undefined,
+  // Do not force sandbox APNs. App Store Expo Go uses production;
+  // a sandbox mint still returns a token, then admin send looks OK and Apple drops it.
+  const tokenResult = await withTimeout(
+    getToken({ projectId }),
+    PUSH_TOKEN_WAIT_MS,
+    'expo push token timeout',
   );
-  const token = tokenResult.data;
-  return isExpoPushToken(token) ? token : null;
+  const token = typeof tokenResult === 'string' ? tokenResult : tokenResult?.data;
+  return typeof token === 'string' && isExpoPushToken(token) ? token : null;
 }
 
 /** Registers the device for admin broadcast push via Expo Push Service. */
-export async function registerPushTokenWithServer(): Promise<PushRegisterResult> {
-  if (!Device.isDevice) return { ok: false, reason: 'simulator' };
+export async function registerPushTokenWithServer(
+  opts: { skipPermissionProbe?: boolean } = {},
+): Promise<PushRegisterResult> {
+  if (!canAttemptRemotePush()) return { ok: false, reason: 'simulator', detail: 'simulator' };
 
-  const granted = await requestNotificationPermission();
-  if (!granted) return { ok: false, reason: 'permission' };
+  if (!opts.skipPermissionProbe) {
+    const granted = await getNotificationPermissionGranted();
+    if (!granted) return { ok: false, reason: 'permission' };
+  }
 
   try {
     const token = await fetchExpoPushToken();
     if (!token) {
       console.warn('[medicard-push] unexpected token shape');
-      return { ok: false, reason: 'token' };
+      return { ok: false, reason: 'token', detail: 'empty expo token' };
     }
 
     const platform =
@@ -278,7 +405,9 @@ export async function registerPushTokenWithServer(): Promise<PushRegisterResult>
     await api.push.register({ token, platform });
     await saveLastPushToken(token);
 
-    if (!(await isPushOptedIn())) {
+    // skipPermissionProbe means the user just opted in. Do not immediately
+    // unregister if the opted-in pref read is still catching up.
+    if (!opts.skipPermissionProbe && !(await isPushOptedIn())) {
       await api.push.unregister(token).catch(() => undefined);
       return { ok: false, reason: 'permission' };
     }
@@ -286,10 +415,14 @@ export async function registerPushTokenWithServer(): Promise<PushRegisterResult>
   } catch (error) {
     console.warn('[medicard-push] register failed', error);
     const message = error instanceof Error ? error.message : String(error);
-    if (/Expo Go/i.test(message)) return { ok: false, reason: 'expo_go' };
-    if (error instanceof ApiError && error.isUnauthorized) return { ok: false, reason: 'auth' };
-    if (error instanceof ApiError) return { ok: false, reason: 'network' };
-    return { ok: false, reason: 'token' };
+    // Android Expo Go dropped remote tokens in SDK 53. iOS Expo Go still mints them —
+    // do not treat every "Expo Go" string as a hard stop.
+    if (Platform.OS === 'android' && /Expo Go/i.test(message)) {
+      return { ok: false, reason: 'expo_go' };
+    }
+    if (error instanceof ApiError && error.isUnauthorized) return { ok: false, reason: 'auth', detail: 'auth' };
+    if (error instanceof ApiError) return { ok: false, reason: 'network', detail: 'network' };
+    return { ok: false, reason: 'token', detail: message.replace(/\s+/g, ' ').slice(0, 96) };
   }
 }
 
@@ -319,7 +452,7 @@ export async function syncMedicationReminders(
   schedule: ScheduledDose[],
   medications: Medication[] = [],
 ): Promise<number> {
-  const granted = await requestNotificationPermission();
+  const granted = await getNotificationPermissionGranted();
   if (!granted) return 0;
 
   await cancelNotificationsByPrefix(NOTIF_PREFIX.med);
@@ -379,10 +512,8 @@ export async function syncMedicationReminders(
 
 export async function getNotificationPermissionStatus(): Promise<'granted' | 'denied' | 'undetermined'> {
   try {
-    const { status } = await Notifications.getPermissionsAsync();
-    if (status === 'granted') return 'granted';
-    if (status === 'denied') return 'denied';
-    return 'undetermined';
+    const existing = await Notifications.getPermissionsAsync();
+    return notificationResponseStatus(existing);
   } catch {
     return 'undetermined';
   }
@@ -505,7 +636,7 @@ export async function presentNotificationNow(opts: {
   secondsFromNow?: number;
   categoryIdentifier?: string;
 }): Promise<boolean> {
-  const granted = await requestNotificationPermission();
+  const granted = await getNotificationPermissionGranted();
   if (!granted || !canScheduleNotifications()) return false;
 
   const seconds = Math.max(1, opts.secondsFromNow ?? 2);
@@ -607,7 +738,7 @@ async function resolveCycleNotificationContent(
 
 /** Schedule a one-time cycle notification at a specific local date/time. */
 export async function scheduleCycleDateNotification(opts: ScheduleCycleOpts): Promise<boolean> {
-  const granted = await requestNotificationPermission();
+  const granted = await getNotificationPermissionGranted();
   if (!granted) return false;
 
   const now = Date.now();
@@ -753,7 +884,7 @@ export async function scheduleCycleReminder(opts: {
   body: string;
   minutesFromNow: number;
 }): Promise<boolean> {
-  const granted = await requestNotificationPermission();
+  const granted = await getNotificationPermissionGranted();
   if (!granted) return false;
 
   const seconds = Math.max(60, Math.round(opts.minutesFromNow * 60));

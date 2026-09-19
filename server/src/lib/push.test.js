@@ -5,6 +5,8 @@ import {
   normalizePushTickets,
   tallyPushTickets,
   tokenPreview,
+  stringifyPushData,
+  applyPushReceipts,
   sendExpoPush,
 } from './push.js';
 
@@ -102,5 +104,27 @@ describe('sendExpoPush', () => {
   it('ignores junk tokens', async () => {
     const result = await sendExpoPush(['nope', ''], { title: 'Hi', body: 'Test' });
     assert.deepEqual(result, { sent: 0, failed: 0, tickets: [], deliveries: [] });
+  });
+});
+
+describe('stringifyPushData', () => {
+  it('stringifies nested values for iOS APNs', () => {
+    assert.deepEqual(stringifyPushData({ campaignId: 'abc', qa: true, n: 1 }), {
+      campaignId: 'abc',
+      qa: 'true',
+      n: '1',
+    });
+  });
+});
+
+describe('applyPushReceipts', () => {
+  it('marks a ticket-ok delivery as failed when the receipt errors', () => {
+    const result = applyPushReceipts(
+      [{ tokenPreview: 'ExponentPushToken[ab…z]', status: 'ok', ticketId: 't1', error: null }],
+      { t1: { status: 'error', message: 'DeviceNotRegistered', details: { error: 'DeviceNotRegistered' } } },
+    );
+    assert.equal(result.sent, 0);
+    assert.equal(result.failed, 1);
+    assert.equal(result.deliveries[0].error, 'DeviceNotRegistered');
   });
 });

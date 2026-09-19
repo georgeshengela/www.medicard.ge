@@ -20,16 +20,17 @@ import {
   cancelAllReminders,
   cancelCycleReminders,
   cancelPregnancyCareReminders,
-  getNotificationPermissionStatus,
+  getPushOptedInStored,
+  getRememberedOsNotificationGrant,
+  rememberOsNotificationGrant,
   getScheduledReminderCounts,
-  isPushOptedIn,
   registerPushTokenWithServer,
   requestNotificationPermission,
   setPushOptedIn,
   unregisterPushFromServer,
   type PushRegisterResult,
 } from '@/lib/notifications';
-import { resolvePushToggleOn } from '@/lib/pushOptIn';
+import { resolvePermissionsPageToggle } from '@/lib/pushOptIn';
 import type { HealthProfile } from '@/lib/api';
 import {
   getLocationPermissionState,
@@ -50,6 +51,7 @@ export type AppPermissionsSnapshot = {
   };
   push: {
     permission: ExpoPermissionState;
+    optedIn: boolean;
     enabled: boolean;
     device: boolean;
   };
@@ -91,8 +93,8 @@ function isExpoGo(): boolean {
 export async function loadAppPermissions(profile?: HealthProfile | null): Promise<AppPermissionsSnapshot> {
   const [
     healthConnected,
-    pushPermission,
-    pushOptedIn,
+    storedOptIn,
+    rememberedOsGrant,
     reminderCounts,
     cameraPermission,
     photosPermission,
@@ -103,8 +105,8 @@ export async function loadAppPermissions(profile?: HealthProfile | null): Promis
     locationPermission,
   ] = await Promise.all([
     isHealthSyncEnabled().catch(() => false),
-    getNotificationPermissionStatus().catch(() => 'undetermined' as const),
-    isPushOptedIn().catch(() => false),
+    getPushOptedInStored().catch(() => null),
+    getRememberedOsNotificationGrant().catch(() => false),
     getScheduledReminderCounts(),
     ImagePicker.getCameraPermissionsAsync().catch(() => ({ status: ImagePicker.PermissionStatus.UNDETERMINED })),
     ImagePicker.getMediaLibraryPermissionsAsync().catch(() => ({ status: ImagePicker.PermissionStatus.UNDETERMINED })),
@@ -115,6 +117,11 @@ export async function loadAppPermissions(profile?: HealthProfile | null): Promis
     getLocationPermissionState().catch(() => 'undetermined' as const),
   ]);
 
+  const extraEnabled = profile?.extraAnswers?.notificationsEnabled === true;
+  const pushOptedIn = storedOptIn === '1' || (storedOptIn !== '0' && extraEnabled);
+  const osKnown = rememberedOsGrant || extraEnabled || storedOptIn === '1';
+  const pushPermission: ExpoPermissionState = osKnown ? 'granted' : 'undetermined';
+
   return {
     health: {
       supported: isHealthPlatformSupported(),
@@ -124,7 +131,8 @@ export async function loadAppPermissions(profile?: HealthProfile | null): Promis
     },
     push: {
       permission: pushPermission,
-      enabled: resolvePushToggleOn(pushPermission === 'granted', pushOptedIn),
+      optedIn: pushOptedIn,
+      enabled: resolvePermissionsPageToggle(storedOptIn, osKnown),
       device: Device.isDevice,
     },
     localReminders: {
@@ -224,9 +232,8 @@ export async function openHealthConnectionSettings(): Promise<void> {
 
 export async function enablePushConnection(): Promise<PushRegisterResult> {
   await setPushOptedIn(true);
-  const result = await registerPushTokenWithServer();
-  if (!result.ok) await setPushOptedIn(false);
-  return result;
+  await rememberOsNotificationGrant();
+  return registerPushTokenWithServer({ skipPermissionProbe: true });
 }
 
 export async function disablePushConnection(): Promise<void> {
@@ -302,6 +309,7 @@ export async function disableLocationConnection(): Promise<void> {
   await revokeUserLocation();
 }
 
-export async function requestNotificationAccess(): Promise<boolean> {
+export async function requestNotificationAccess(alreadyGranted = false): Promise<boolean> {
+  if (alreadyGranted) return true;
   return requestNotificationPermission();
 }

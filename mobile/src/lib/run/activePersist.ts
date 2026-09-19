@@ -8,6 +8,8 @@ const KEY = 'medicard.run.active.v1';
 /** Snapshot of a live run — survives kill / cold start until finish or cancel. */
 export type PersistedActiveRun = {
   v: 1;
+  mode?: 'run' | 'explore';
+  segments?: LatLng[][];
   phase: 'running' | 'paused';
   target: RunTarget;
   targetMeters: number;
@@ -53,6 +55,7 @@ export async function saveActiveRun(snap: PersistedActiveRun): Promise<void> {
   const trimmed: PersistedActiveRun = {
     ...snap,
     path: downsamplePath(snap.path, 320),
+    segments:snap.segments?.map(segment=>downsamplePath(segment,320)),
     route: snap.route
       ? {
           ...snap.route,

@@ -10,7 +10,7 @@ import {
 } from '@/lib/healthMetricsStorage';
 import { describePersonalStepsOrigin } from '@/lib/personalStepsOrigin.js';
 import { buildStepsBundle, sinceDateForPeriod } from '@/lib/stepsMetrics.shared';
-import { isHealthSyncEnabled, getHealthPlatform } from '@/lib/healthSync';
+import { isHealthSyncEnabled, setHealthSyncEnabled, getHealthPlatform } from '@/lib/healthSync';
 import { tbilisiYmd } from '@/lib/tbilisiMoves/civilTime.js';
 import type { StepChartPeriod, StepSample, StepsMetricsBundle } from '@/types/stepsMetrics';
 
@@ -25,28 +25,32 @@ async function stepsNativeImpl() {
 }
 
 export async function fetchStepsSamples(since: Date): Promise<StepSample[]> {
-  const connected = await isHealthSyncEnabled();
-  if (!connected || isExpoGo()) return [];
+  if (isExpoGo()) return [];
 
   const impl = await stepsNativeImpl();
   if (!impl?.fetchStepsNative) return [];
 
-  return impl.fetchStepsNative(since);
+  const samples = await impl.fetchStepsNative(since);
+  if (samples.length && !(await isHealthSyncEnabled())) {
+    await setHealthSyncEnabled(true);
+  }
+  return samples;
 }
 
 export async function fetchStepsMetrics(period: StepChartPeriod = '1d', opts?: { force?: boolean }): Promise<StepsMetricsBundle> {
-  const deviceConnected = (await isHealthSyncEnabled()) && !isExpoGo();
+  const nativeRuntime = !isExpoGo() && Platform.OS !== 'web';
   const since = sinceDateForPeriod(period);
   const sinceTs = since.getTime();
 
   let nativeSamples: StepSample[] = [];
-  if (deviceConnected) {
+  if (nativeRuntime) {
     // Always pull at least 7 days for history; period controls chart grouping only.
     const fetchSince = new Date(Math.min(since.getTime(), Date.now() - 6 * 86_400_000));
     fetchSince.setHours(0, 0, 0, 0);
     nativeSamples = await fetchStepsSamples(fetchSince);
     await syncNativeHealthToServer({}, nativeSamples);
   }
+  const deviceConnected = nativeRuntime && ((await isHealthSyncEnabled()) || nativeSamples.length > 0);
 
   const stored = await pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate(), opts);
   const storedSamples = storedStepLogsToSamples(stored.stepLogs).filter(

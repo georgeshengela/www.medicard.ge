@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
-import { Keyboard, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { Keyboard, Platform, Text, TextInput, View } from 'react-native';
 import { KEYBOARD_DONE_ACCESSORY_ID } from '@/components/ui/KeyboardDoneAccessory';
 import { useFigmaProfileSetup, FIGMA_PROFILE_SETUP_SHADOW } from '@/constants/figmaProfileSetupLayout';
+import { useThemeColors } from '@/theme/colors';
 
 type Props = {
   value: string;
@@ -27,6 +28,7 @@ export function OtpCodeInput({
   resetKey = 0,
 }: Props) {
   const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
+  const theme = useThemeColors();
   const inputRef = useRef<TextInput>(null);
   const box = variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxSize : 48;
   const gap = variant === 'hero' ? FIGMA_PROFILE_SETUP.otpGap : 8;
@@ -36,8 +38,8 @@ export function OtpCodeInput({
 
   return (
     <View>
-      <Pressable accessibilityRole="none" onPress={() => inputRef.current?.focus()}>
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap }}>
+      <View style={{ position: 'relative' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap }} pointerEvents="none">
           {digits.map((digit, index) => {
             const filled = digit.trim().length > 0;
             return (
@@ -64,7 +66,7 @@ export function OtpCodeInput({
                   style={{
                     fontFamily: 'NotoSansGeorgian_700Bold',
                     fontSize,
-                    color: filled ? '#0F172A' : '#94A3B8',
+                    color: filled ? theme.text100 : theme.text300,
                   }}
                 >
                   {filled ? digit : variant === 'hero' ? '' : '·'}
@@ -73,25 +75,37 @@ export function OtpCodeInput({
             );
           })}
         </View>
-      </Pressable>
 
-      <TextInput
-        key={resetKey}
-        ref={inputRef}
-        value={value}
-        onChangeText={(text) => {
-          const next = text.replace(/\D/g, '').slice(0, length);
-          onChange(next);
-          if (next.length >= length) Keyboard.dismiss();
-        }}
-        keyboardType="number-pad"
-        textContentType="oneTimeCode"
-        autoComplete="sms-otp"
-        maxLength={length}
-        autoFocus={autoFocus}
-        inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ACCESSORY_ID : undefined}
-        style={{ position: 'absolute', opacity: 0, height: 1, width: 1 }}
-      />
+        <TextInput
+          key={resetKey}
+          ref={inputRef}
+          value={value}
+          onChangeText={(text) => {
+            const next = text.replace(/\D/g, '').slice(0, length);
+            onChange(next);
+            if (next.length >= length) Keyboard.dismiss();
+          }}
+          keyboardType="number-pad"
+          textContentType="oneTimeCode"
+          autoComplete="sms-otp"
+          maxLength={length}
+          autoFocus={autoFocus}
+          caretHidden
+          importantForAccessibility="yes"
+          accessibilityLabel="SMS კოდი"
+          inputAccessoryViewID={Platform.OS === 'ios' ? KEYBOARD_DONE_ACCESSORY_ID : undefined}
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            height: box + (variant === 'hero' ? 0 : 4),
+            opacity: 0.02,
+            color: theme.text100,
+            fontSize,
+          }}
+        />
+      </View>
 
       {error ? (
         <Text

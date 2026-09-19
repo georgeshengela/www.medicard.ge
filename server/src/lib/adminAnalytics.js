@@ -16,7 +16,8 @@ import {
   METRIC_DEFINITIONS,
 } from './adminAnalyticsRange.js';
 import { loadDecisionRows } from './notificationDecisions.js';
-import { loadAppActivityRows } from './appActivity.js';
+import { clearAppActivityRowMemo, loadAppActivityRows } from './appActivity.js';
+import { clearUserGeoCache, getUserGeoAnalytics } from './adminUserGeo.js';
 import { loadProductEvents } from './productEvents.js';
 import { loadOutcomeRows } from './notificationOutcomes.js';
 import {
@@ -39,6 +40,7 @@ export { getVersionAnalytics, getDataQuality, getFeatureRetentionAnalytics, getP
 /** Keep longer than the 8s admin live poll so health/overview hits cache instead of Neon. */
 const CACHE_MS = 30_000;
 const cache = new Map();
+const inflight = new Map();
 let indexesReady = false;
 
 async function ensureAnalyticsIndexes() {
@@ -73,8 +75,35 @@ function cacheSet(key, value) {
   return value;
 }
 
+async function cacheWrap(key, producer) {
+  const hit = cacheGet(key);
+  if (hit) return hit;
+  const pending = inflight.get(key);
+  if (pending) return pending;
+  const run = Promise.resolve()
+    .then(producer)
+    .then((value) => cacheSet(key, value))
+    .finally(() => inflight.delete(key));
+  inflight.set(key, run);
+  return run;
+}
+
 export function clearAdminAnalyticsCache() {
   cache.clear();
+}
+
+export function invalidateAdminAnalyticsPrefix(prefix) {
+  const needle = String(prefix || '');
+  if (!needle) return;
+  for (const key of [...cache.keys()]) {
+    if (String(key).startsWith(needle)) cache.delete(key);
+  }
+}
+
+export function invalidateDashboardCaches() {
+  clearAdminAnalyticsCache();
+  clearAppActivityRowMemo();
+  clearUserGeoCache();
 }
 
 function rangeKey(prefix, range) {
@@ -159,8 +188,7 @@ export async function getOverviewAnalytics(query) {
   const range = parseAnalyticsRange(query);
   await ensureAnalyticsIndexes();
   const key = rangeKey('overview', range);
-  const cached = cacheGet(key);
-  if (cached) return cached;
+  return cacheWrap(key, async () => {
 
   const today = range.today;
   const wauFrom = addDaysYmd(today, -6);
@@ -250,7 +278,12 @@ export async function getOverviewAnalytics(query) {
     }),
     prisma.syncRun.findFirst({ orderBy: { startedAt: 'desc' } }),
     prisma.pushCampaign.count({
-      where: { status: 'FAILED', createdAt: { gte: new Date(Date.now() - 86_400_000) } },
+      where: {
+        status: 'FAILED',
+        createdAt: { gte: new Date(Date.now() - 86_400_000) },
+        // target 0 = nobody registered yet, not an Expo delivery failure
+        targetCount: { gt: 0 },
+      },
     }),
   ]);
 
@@ -370,7 +403,8 @@ export async function getOverviewAnalytics(query) {
     definitions: METRIC_DEFINITIONS,
   };
 
-  return cacheSet(key, payload);
+  return payload;
+  });
 }
 
 function buildAttention({ settings, aiErrors24h, aiLast24h, smsFailed24h, lastSync, failedCampaigns24h, quality, permissions }) {
@@ -460,8 +494,7 @@ function buildAttention({ settings, aiErrors24h, aiLast24h, smsFailed24h, lastSy
 export async function getUserActivityAnalytics(query) {
   const range = parseAnalyticsRange(query);
   const key = rangeKey(`users:${query.grain || 'dau'}`, range);
-  const cached = cacheGet(key);
-  if (cached) return cached;
+  return cacheWrap(key, async () => {
 
   const lookbackDays = query.grain === 'mau' ? 29 : query.grain === 'wau' ? 6 : 0;
   const loadFrom = addDaysYmd(range.prevFromYmd, -lookbackDays);
@@ -522,13 +555,13 @@ export async function getUserActivityAnalytics(query) {
           ? 'უნიკალური AppActivity 7-დღიან ფანჯარაში.'
           : 'უნიკალური AppActivity 30-დღიან ფანჯარაში.',
   });
+  });
 }
 
 export async function getFeatureAnalytics(query) {
   const range = parseAnalyticsRange(query);
   const key = rangeKey('features', range);
-  const cached = cacheGet(key);
-  if (cached) return cached;
+  return cacheWrap(key, async () => {
 
   const activityRows = await loadAppActivityRows(range.fromYmd, range.toYmd);
   const activeIds = activityRows.map((row) => row.userId);
@@ -740,13 +773,13 @@ export async function getFeatureAnalytics(query) {
     activeUsers,
     features,
   });
+  });
 }
 
 export async function getRetentionAnalytics(query) {
   const range = parseAnalyticsRange({ range: query.range || '90d', from: query.from, to: query.to });
   const key = rangeKey('retention', range);
-  const cached = cacheGet(key);
-  if (cached) return cached;
+  return cacheWrap(key, async () => {
 
   const today = range.today;
   const [users, checkins, activity] = await Promise.all([
@@ -845,13 +878,13 @@ export async function getRetentionAnalytics(query) {
     cohorts: cohortWeeks,
     definition: METRIC_DEFINITIONS.retentionD1,
   });
+  });
 }
 
 export async function getMediAnalytics(query) {
   const range = parseAnalyticsRange(query);
   const key = rangeKey('medi', range);
-  const cached = cacheGet(key);
-  if (cached) return cached;
+  return cacheWrap(key, async () => {
 
   const [rows, prevRows, sessions, prevSessions, usersBefore] = await Promise.all([
     prisma.aiInteraction.findMany({
@@ -952,13 +985,13 @@ export async function getMediAnalytics(query) {
     byMode: [...byMode.entries()].map(([mode, count]) => ({ mode, count })).sort((a, b) => b.count - a.count),
     privacy: 'პირადი საუბრის ტექსტი აქედან არ ბრუნდება.',
   });
+  });
 }
 
 export async function getNotificationAnalytics(query) {
   const range = parseAnalyticsRange(query);
   const key = rangeKey('notifications', range);
-  const cached = cacheGet(key);
-  if (cached) return cached;
+  return cacheWrap(key, async () => {
 
   const [events, prevEvents, campaigns, decisions, prevDecisions, checkins, outcomes, prevOutcomes] = await Promise.all([
     prisma.pushEvent.findMany({
@@ -1101,12 +1134,14 @@ export async function getNotificationAnalytics(query) {
     syncedDecisions: decisions.length,
     syncedOutcomes: outcomes.length,
   });
+  });
 }
 
 export async function getSystemHealth() {
-  const key = 'system:health';
-  const cached = cacheGet(key);
-  if (cached) return cached;
+  return cacheWrap('system:health', computeSystemHealth);
+}
+
+async function computeSystemHealth() {
 
   const since24h = new Date(Date.now() - 86_400_000);
   const since7d = new Date(Date.now() - 7 * 86_400_000);
@@ -1143,7 +1178,7 @@ export async function getSystemHealth() {
   const days = enumerateYmds(addDaysYmd(tbilisiYmd(), -6), tbilisiYmd());
   const aiErrorSeries = fillDaySeries(days, ai7, (row) => createdAtToTbilisiYmd(row.createdAt));
 
-  return cacheSet(key, {
+  return {
     environment: env.NODE_ENV,
     appVersion: getMobileAppVersion(),
     refreshedAt: new Date().toISOString(),
@@ -1189,6 +1224,63 @@ export async function getSystemHealth() {
       lastSync,
       failedCampaigns24h: 0,
     }),
+  };
+}
+
+export async function getDashboardBundle(query = {}, { fresh = false } = {}) {
+  const range = parseAnalyticsRange(query);
+  const grain = query.grain || 'dau';
+  const key = rangeKey(`dash:${grain}`, range);
+  if (fresh) invalidateDashboardCaches();
+  const load = async () => {
+    const q = { ...query, grain };
+    const [overview, users, features, retention, notifications, system, geo] = await Promise.all([
+      getOverviewAnalytics(q),
+      getUserActivityAnalytics(q),
+      getFeatureAnalytics(q),
+      getRetentionAnalytics(q),
+      getNotificationAnalytics(q),
+      getSystemHealth(),
+      getUserGeoAnalytics().catch((err) => ({ error: err.message, countries: [] })),
+    ]);
+    return {
+      overview,
+      users,
+      features,
+      retention,
+      notifications,
+      system,
+      geo,
+      refreshedAt: overview.refreshedAt || system.refreshedAt || new Date().toISOString(),
+    };
+  };
+  if (fresh) return load();
+  return cacheWrap(key, load);
+}
+
+export async function getQualityBundle(query = {}) {
+  const range = parseAnalyticsRange(query);
+  const key = rangeKey('quality-bundle', range);
+  return cacheWrap(key, async () => {
+    const [quality, versions, permissions, extra] = await Promise.all([
+      getDataQuality(),
+      getVersionAnalytics(query),
+      getPermissionAnalytics(),
+      getWeeklyInsightMedication(query),
+    ]);
+    return { quality, versions, permissions, extra };
+  });
+}
+
+export async function getHealthBundle(query = {}) {
+  const range = parseAnalyticsRange(query);
+  const key = rangeKey('health-bundle', range);
+  return cacheWrap(key, async () => {
+    const [features, retention] = await Promise.all([
+      getFeatureAnalytics(query),
+      getFeatureRetentionAnalytics(query).catch(() => null),
+    ]);
+    return { features, retention };
   });
 }
 

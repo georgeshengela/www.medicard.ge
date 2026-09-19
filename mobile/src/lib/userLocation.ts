@@ -126,9 +126,6 @@ export async function getLocationPermissionState(): Promise<LocationPermissionSt
 }
 
 export async function requestLocationPermission(): Promise<LocationPermissionState> {
-  const current = await Location.getForegroundPermissionsAsync();
-  if (current.status === Location.PermissionStatus.GRANTED) return 'granted';
-  if (current.status === Location.PermissionStatus.DENIED && !current.canAskAgain) return 'denied';
   const next = await Location.requestForegroundPermissionsAsync();
   return mapPermission(next.status);
 }
@@ -336,8 +333,8 @@ export async function grantUserLocation(): Promise<{
   snapshot: UserLocationSnapshot;
   profile: HealthProfile | null;
 }> {
-  markLocationPromptedLocal();
   const permission = await requestLocationPermission();
+  markLocationPromptedLocal();
   if (permission !== 'granted') {
     const saved = await persistSnapshot(
       {

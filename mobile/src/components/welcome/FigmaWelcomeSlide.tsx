@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Dimensions,
   Image,
@@ -12,9 +12,18 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { BrandWordmark } from '@/components/ui/BrandWordmark';
+import { WelcomeCircleField } from '@/components/welcome/WelcomeCircleField';
 import {
   FIGMA_FRAME,
   FIGMA_HERO_TOP,
@@ -23,8 +32,8 @@ import {
   FIGMA_SHEET_RATIO,
   FIGMA_SHEET_RADIUS,
   FIGMA_SHEET_TOP,
+  LANDING_BRAND_FROM,
   LANDING_GRADIENT,
-  LANDING_GRADIENT_DARK,
   LANDING_LOGO_SIZE,
   WELCOME_HERO_BG,
   WELCOME_HERO_BG_DARK,
@@ -32,6 +41,7 @@ import {
   welcomeTopInset,
   type WelcomeProgressState,
 } from '@/constants/figmaWelcomeLayout';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ka } from '@/i18n/ka';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
@@ -68,7 +78,7 @@ export function FigmaWelcomeSlide({
   const colors = useThemeColors();
   const dark = useIsDark();
   const heroBg = dark ? WELCOME_HERO_BG_DARK : WELCOME_HERO_BG;
-  const canvas = kind === 'landing' ? colors.bg100 : heroBg;
+  const canvas = kind === 'landing' ? LANDING_BRAND_FROM : heroBg;
   const topInset = welcomeTopInset(insets.top);
   const sheetH = Math.round(SCREEN_H * FIGMA_SHEET_RATIO);
   const progressTop = topInset;
@@ -77,9 +87,9 @@ export function FigmaWelcomeSlide({
   const heroH = SCREEN_H - sheetH - heroTop;
 
   return (
-    <View style={{ width: SCREEN_W, height: SCREEN_H, backgroundColor: canvas }}>
+    <View style={{ width: SCREEN_W, height: SCREEN_H, backgroundColor: canvas, overflow: 'hidden' }}>
       {kind === 'landing' ? (
-        <LandingHero topInset={topInset} />
+        <LandingHero />
       ) : (
         <View
           pointerEvents="none"
@@ -145,33 +155,64 @@ export function FigmaWelcomeSlide({
   );
 }
 
-/** Landing — gradient + centered logo only (no Figma PNG circles / English copy). */
-function LandingHero({ topInset }: { topInset: number }) {
-  const dark = useIsDark();
-  const gradient = dark ? LANDING_GRADIENT_DARK : LANDING_GRADIENT;
+/** Landing — Figma 8846:211832 rings + white Medicard mark. */
+function LandingHero() {
+  const reduceMotion = usePrefersReducedMotion();
+  const enter = useSharedValue(reduceMotion ? 1 : 0);
+
+  useEffect(() => {
+    enter.value = withDelay(180, withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) }));
+  }, [enter]);
+
+  const markStyle = useAnimatedStyle(() => ({
+    opacity: enter.value,
+    transform: [{ scale: interpolate(enter.value, [0, 1], [0.88, 1]) }],
+  }));
+
   return (
     <>
       <LinearGradient
         pointerEvents="none"
-        colors={[...gradient.colors]}
-        locations={[...gradient.locations]}
+        colors={[...LANDING_GRADIENT.colors]}
+        locations={[...LANDING_GRADIENT.locations]}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
-      <View
+      <WelcomeCircleField />
+      <LinearGradient
         pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: topInset,
-          left: 0,
-          right: 0,
-          bottom: SCREEN_H * 0.42,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+        colors={['rgba(20,184,166,0)', LANDING_BRAND_FROM]}
+        style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: SCREEN_H * 0.28 }}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: SCREEN_H,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingBottom: 80,
+          },
+          markStyle,
+        ]}
       >
-        <BrandLogo size={LANDING_LOGO_SIZE} variant="plain" />
-        <BrandWordmark size={36} style={{ marginTop: 16 }} />
-      </View>
+        <View
+          style={{
+            width: 148,
+            height: 148,
+            borderRadius: 74,
+            backgroundColor: 'rgba(255,255,255,0.10)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <BrandLogo size={LANDING_LOGO_SIZE} variant="plain" inverse />
+        </View>
+        <BrandWordmark size={34} color="#FFFFFF" style={{ marginTop: 18 }} />
+      </Animated.View>
     </>
   );
 }
@@ -229,19 +270,35 @@ function LandingFooter({
         zIndex: 20,
       }}
     >
-      <Text className="text-center font-sans text-[16px] leading-6 text-text-200">{body}</Text>
-      <View className="mt-8">
-        <AuthPrimaryButton label={ka.onboarding.getStarted} onPress={onPrimary} />
+      <Text
+        style={{
+          textAlign: 'center',
+          fontFamily: 'NotoSansGeorgian_400Regular',
+          fontSize: 16,
+          lineHeight: 24,
+          color: 'rgba(255,255,255,0.88)',
+        }}
+      >
+        {body}
+      </Text>
+      <View style={{ marginTop: 32 }}>
+        <AuthPrimaryButton tone="inverse" label={ka.onboarding.getStarted} onPress={onPrimary} />
       </View>
       <Pressable
         accessibilityRole="button"
         onPress={onSignIn}
         hitSlop={12}
-        className="mt-5 items-center py-2 active:opacity-70"
+        style={{ marginTop: 20, alignItems: 'center', paddingVertical: 8 }}
       >
-        <Text className="font-sans text-[15px] text-text-200">
+        <Text
+          style={{
+            fontFamily: 'NotoSansGeorgian_400Regular',
+            fontSize: 15,
+            color: 'rgba(255,255,255,0.86)',
+          }}
+        >
           {ka.onboarding.alreadyHaveAccount}{' '}
-          <Text className="font-sans-bold text-primary-200">{ka.auth.signIn}</Text>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: '#FFFFFF' }}>{ka.auth.signIn}</Text>
         </Text>
       </Pressable>
     </View>

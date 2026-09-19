@@ -2,7 +2,7 @@ import { Server } from 'socket.io';
 import { prisma } from './prisma.js';
 import { tbilisiYmd } from './checkIn.js';
 import { loadAppActivityRows } from './appActivity.js';
-import { clearAdminAnalyticsCache } from './adminAnalytics.js';
+import { invalidateAdminAnalyticsPrefix } from './adminAnalytics.js';
 import { ADMIN_SOCKET_ROOM, authorizeSocketHandshake, userSocketRoom } from './socketAuth.js';
 import { registerQuestRealtimeEmitter } from './questRealtime.js';
 import { getTbilisiMovesLiveSnapshot, TBILISI_MOVES_LIVE_EVENT } from './tbilisiMoves/liveSnapshot.js';
@@ -72,7 +72,6 @@ export function notifyOpsActivity(row) {
   if (flushTimer) return;
   flushTimer = setTimeout(() => {
     flushTimer = null;
-    clearAdminAnalyticsCache();
     getOpsLiveSnapshot()
       .then((snap) => io.to(ROOM).emit('ops:live', snap))
       .catch(() => undefined);
@@ -134,7 +133,9 @@ export function notifyBrainSync(kind, count = 0) {
       outcomes: brainPending.outcomes,
     };
     brainPending = { decisions: 0, outcomes: 0 };
-    clearAdminAnalyticsCache();
+    invalidateAdminAnalyticsPrefix('notifications');
+    invalidateAdminAnalyticsPrefix('dash:');
+    invalidateAdminAnalyticsPrefix('quality-bundle:');
     io.to(ROOM).emit('brain:sync', payload);
   }, 1500);
 }
@@ -142,7 +143,7 @@ export function notifyBrainSync(kind, count = 0) {
 export async function getOpsLiveSnapshot() {
   const now = Date.now();
   const today = tbilisiYmd(new Date());
-  const rows = await loadAppActivityRows(today, today);
+  const rows = await loadAppActivityRows(today, today, { fresh: true });
   const active = new Set();
   const online = new Set();
   for (const row of rows) {

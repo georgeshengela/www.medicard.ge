@@ -8,6 +8,9 @@ generator client {
 }
 
 model User {
+  medipulsiPlayer       MedipulsiPlayer?
+  medipulsiSessions     MedipulsiSession[]
+  medipulsiClaims       MedipulsiClaim[]
   id               String               @id @default(uuid())
   email            String               @unique
   passwordHash     String
@@ -2106,4 +2109,118 @@ model TbilisiMovesAward {
   @@index([userId, date])
   @@index([date, awardKey, status])
   @@index([roundId, status])
+}
+
+model MedipulsiPlayer {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  state Json @default("{}")
+  settings Json @default("{}")
+  handle String @default("")
+  leaderboardOptIn Boolean @default(false)
+  activeSessionId String?
+  revision Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model MedipulsiSession {
+  id String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phase String @default("ACTIVE")
+  seq Int @default(0)
+  meters Float @default(0)
+  seconds Float @default(0)
+  steps Float @default(0)
+  newMeters Float @default(0)
+  movingSeconds Float @default(0)
+  maxSpeed Float @default(0)
+  rejected Int @default(0)
+  excluded Boolean @default(false)
+  reviewNote String @default("")
+  startedAt DateTime @default(now())
+  endedAt DateTime?
+  updatedAt DateTime @default(now()) @updatedAt
+  batches MedipulsiBatch[]
+  claims MedipulsiClaim[]
+  @@index([userId, startedAt])
+  @@index([startedAt])
+}
+
+model MedipulsiBatch {
+  id String
+  sessionId String
+  session MedipulsiSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  seq Int
+  digest String
+  accepted Int @default(0)
+  receivedAt DateTime @default(now())
+  @@id([sessionId, id])
+  @@unique([sessionId, seq])
+}
+
+model MedipulsiMission {
+  id String @id
+  data Json
+  published Boolean @default(false)
+  archived Boolean @default(false)
+  revision Int @default(0)
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model MedipulsiGift {
+  id String @id
+  title String
+  description String @default("")
+  longitude Float
+  latitude Float
+  pulseRadius Int @default(120)
+  revealRadius Int @default(20)
+  rewardKind String @default("DIGITAL")
+  stock Int @default(1)
+  allocated Int @default(0)
+  published Boolean @default(false)
+  archived Boolean @default(false)
+  startsAt DateTime
+  endsAt DateTime
+  revision Int @default(0)
+  updatedAt DateTime @default(now()) @updatedAt
+  claims MedipulsiClaim[]
+  @@index([published, endsAt])
+}
+
+model MedipulsiClaim {
+  id String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  giftId String
+  gift MedipulsiGift @relation(fields: [giftId], references: [id])
+  sessionId String
+  session MedipulsiSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  status String @default("PENDING")
+  code String @unique
+  reward Json
+  note String @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  @@unique([userId, giftId])
+  @@index([status, createdAt])
+}
+
+model MedipulsiConfig {
+  id String @id @default("main")
+  data Json @default("{}")
+  revision Int @default(0)
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model MedipulsiAudit {
+  id String @id
+  actorId String
+  action String
+  entityId String
+  details Json @default("{}")
+  createdAt DateTime @default(now())
+  @@index([createdAt])
 }

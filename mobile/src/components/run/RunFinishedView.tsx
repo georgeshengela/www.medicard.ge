@@ -37,9 +37,8 @@ export function RunFinishedView({ summary, title, headerLeft, footer }: Props) {
       radiusM: 28,
       fit: false,
     });
-    if (summary.path.length >= 2) {
-      map.current?.send({ type: 'trail', coords: summary.path.map((pt) => [pt.lng, pt.lat] as [number, number]) });
-    }
+    const segments=summary.segments || [summary.path];
+    map.current?.send({type:'paint',lines:segments.map(segment=>segment.map(pt=>[pt.lng,pt.lat] as [number,number]))});
     if (summary.reachedPin) map.current?.send({ type: 'reached' });
     const t = setTimeout(() => map.current?.send({ type: 'fit', bottom: 60 }), 250);
     return () => clearTimeout(t);
@@ -51,7 +50,7 @@ export function RunFinishedView({ summary, title, headerLeft, footer }: Props) {
     { icon: Gauge, value: formatPace(summary.paceSecPerKm), unit: ka.run.paceUnit, label: ka.run.pace },
     { icon: Flame, value: String(summary.calories), unit: ka.run.kcal, label: ka.run.calories },
     { icon: Footprints, value: formatThousands(summary.steps), unit: '', label: ka.run.stepsLabel },
-    { icon: Target, value: `${pct}%`, unit: '', label: targetLabel(summary.target) },
+    { icon: Target, value: summary.targetMeters>0?`${pct}%`:'✓', unit: '', label: targetLabel(summary.target) },
   ];
 
   return (
@@ -99,9 +98,8 @@ export function RunFinishedView({ summary, title, headerLeft, footer }: Props) {
                 color: summary.reachedPin ? (dark ? '#34D399' : '#059669') : colors.text300,
               }}
             >
-              {summary.reachedPin ? ka.run.summaryPinYes : ka.run.summaryPinNo}
-              {'  ·  '}
-              {summary.completedTarget ? ka.run.summaryTargetYes : ka.run.summaryTargetPct(pct)}
+              {summary.targetMeters===0?'გასეირნება შენახულია · შენი გზა შენთან რჩება':(summary.completedTarget?ka.run.summaryTargetYes:ka.run.summaryTargetPct(pct))}
+              {summary.pin?(' · '+(summary.reachedPin?ka.run.summaryPinYes:ka.run.summaryPinNo)):''}
             </Text>
           </View>
         </View>

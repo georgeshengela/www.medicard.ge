@@ -387,15 +387,16 @@ async function renderCommandCenter() {
   bindOpsRange(renderCommandCenter);
 
   const q = opsQs();
-  const [overview, users, features, retention, medi, notif, system] = await Promise.all([
-    api(`/analytics/overview?${q}`).catch((err) => ({ error: err.message })),
-    api(`/analytics/users?${q}&grain=${opsState.grain}`).catch((err) => ({ error: err.message })),
-    api(`/analytics/features?${q}`).catch((err) => ({ error: err.message })),
-    api(`/analytics/retention?${q}`).catch((err) => ({ error: err.message })),
+  const [bundle, medi] = await Promise.all([
+    api(`/analytics/dashboard?${q}&grain=${opsState.grain}`).catch((err) => ({ error: err.message })),
     api(`/analytics/medi?${q}`).catch((err) => ({ error: err.message })),
-    api(`/analytics/notifications?${q}`).catch((err) => ({ error: err.message })),
-    api('/system/health').catch((err) => ({ error: err.message })),
   ]);
+  const overview = bundle.overview || { error: bundle.error };
+  const users = bundle.users || { error: bundle.error };
+  const features = bundle.features || { error: bundle.error };
+  const retention = bundle.retention || { error: bundle.error };
+  const notif = bundle.notifications || { error: bundle.error };
+  const system = bundle.system || { error: bundle.error };
   if (gen !== opsFetchGen) return;
 
   if (overview.error) {
@@ -665,10 +666,14 @@ async function renderHealthOps() {
     + '</div>';
   bindOpsRange(renderHealthOps);
   try {
-    const [data, retention] = await Promise.all([
-      api('/analytics/features?' + opsQs()),
-      api('/analytics/feature-retention?' + opsQs()).catch(() => null),
-    ]);
+    const [data, retention] = await (async () => {
+      const bundle = await api('/analytics/health-bundle?' + opsQs()).catch(() => null);
+      if (bundle && bundle.features) return [bundle.features, bundle.retention];
+      return Promise.all([
+        api('/analytics/features?' + opsQs()),
+        api('/analytics/feature-retention?' + opsQs()).catch(() => null),
+      ]);
+    })();
     const feature = new URLSearchParams((location.hash || '').split('?')[1] || '').get('feature');
     const usable = (data.features || []).filter((f) => !f.unavailable).sort((a, b) => (b.users || 0) - (a.users || 0));
     const explicit = Boolean(feature && usable.some((f) => f.key === feature));
@@ -1439,12 +1444,18 @@ async function renderQualityOps() {
   `;
   bindOpsRange(renderQualityOps);
   try {
-    const [quality, versions, permissions, extra] = await Promise.all([
-      api('/analytics/quality'),
-      api(`/analytics/versions?${opsQs()}`),
-      api('/analytics/permissions'),
-      api(`/analytics/outcomes-extra?${opsQs()}`),
-    ]);
+    const [quality, versions, permissions, extra] = await (async () => {
+      const bundle = await api(`/analytics/quality-bundle?${opsQs()}`).catch(() => null);
+      if (bundle && bundle.quality) {
+        return [bundle.quality, bundle.versions, bundle.permissions, bundle.extra];
+      }
+      return Promise.all([
+        api('/analytics/quality'),
+        api(`/analytics/versions?${opsQs()}`),
+        api('/analytics/permissions'),
+        api(`/analytics/outcomes-extra?${opsQs()}`),
+      ]);
+    })();
     const issue = (label, count, href, sev = 'neutral') => `
       <button type="button" class="ops-issue ${sev}" data-href="${opsEscape(href || '#/quality')}">
         <span>${label}</span><strong>${opsFmt(count)}</strong>
@@ -1535,7 +1546,6 @@ function renderCommandPalette() {
     { tab: 'health', label: 'ჯანმრთელობა' },
     { tab: 'push', label: 'შეტყობინებები / Push' },
     { tab: 'quality', label: 'ხარისხი / სისტემა' },
-    { tab: 'cycleqa', label: 'ფაზები / QA' },
     { tab: 'push', label: 'Brain' },
     { tab: 'audit', label: 'აუდიტი' },
     { tab: 'orders', label: 'შეკვეთები' },
@@ -1637,6 +1647,7 @@ function patchOpsLive(snap) {
   if (onlineCard) {
     onlineCard.classList.toggle('is-empty', !(Number(snap.onlineNow) > 0));
   }
+  if (typeof setLivePill === 'function') setLivePill();
 }
 
 window.patchOpsLive = patchOpsLive;

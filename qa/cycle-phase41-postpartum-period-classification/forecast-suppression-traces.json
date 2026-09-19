@@ -1,7 +1,0 @@
-{
-  "phase": 41,
-  "postpartumForecastSuppressed": true,
-  "nextPeriodSnapshotFromClassification": false,
-  "observeNextPeriodPrediction": "false while mode=POSTPARTUM",
-  "arithmetic": "cycle.js formulas unchanged"
-}

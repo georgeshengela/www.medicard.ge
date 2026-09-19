@@ -789,7 +789,6 @@ html[data-theme="dark"] .v3-push .v3-notif-toast {
 .v3-pharmacy,
 .v3-quality,
 .v3-audit,
-.v3-cycleqa,
 .v3-tbilisi-moves,
 .v3-user-page,
 .v25-settings {
@@ -811,5 +810,47 @@ html[data-theme="dark"] .v3-push .v3-notif-toast {
   max-width: none !important;
   margin-inline: 0 !important;
   box-sizing: border-box;
+}
+
+/* Medi / v3 modules: modules.css flex override stacked toolbar over the body.
+   Keep a real grid so observatory KPIs and charts paint below the toolbar. */
+.v3-medi.v3-module,
+.v3-medi {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px !important;
+  align-content: start;
+}
+.v3-medi > *,
+.ai-page.v3-medi > *,
+.v3-module > * {
+  animation: none !important;
+  transform: none !important;
+}
+#medi-body,
+.v3-medi-body {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.v3-medi-kpis {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+@media (max-width: 1400px) {
+  .v3-medi-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .v3-medi-ops { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 720px) {
+  .v3-medi-kpis { grid-template-columns: 1fr !important; }
+}
+
+/* Hidden route panel stays out of a11y and paint */
+.panel.hidden {
+  display: none !important;
+}
+
+.workspace > .panel:not(.hidden) {
+  flex: 1 0 auto;
+  min-width: 0;
 }
 

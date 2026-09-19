@@ -2,6 +2,7 @@ import { env } from '../config/env.js';
 import { prisma } from './prisma.js';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
+const EXPO_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts';
 const CHUNK_SIZE = 100;
 
 export function isExpoPushToken(token) {
@@ -33,6 +34,59 @@ export function tokenPreview(token) {
   return `${value.slice(0, 22)}…${value.slice(-4)}`;
 }
 
+/** iOS APNs only accepts string values in `data`. */
+export function stringifyPushData(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  const out = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value == null) continue;
+    out[key] = typeof value === 'string' ? value : String(value);
+  }
+  return out;
+}
+
+export function normalizePushReceipts(payload) {
+  const data = payload?.data;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  return data;
+}
+
+export function applyPushReceipts(deliveries, receipts) {
+  const next = deliveries.map((row) => {
+    const receipt = row.ticketId ? receipts?.[row.ticketId] : null;
+    if (!receipt || typeof receipt !== 'object') return row;
+    const status = String(receipt.status || '').toLowerCase();
+    if (status === 'error') {
+      return {
+        ...row,
+        status: 'error',
+        receiptStatus: 'error',
+        error: receipt.message || receipt.details?.error || row.error,
+      };
+    }
+    return { ...row, receiptStatus: receipt.status || 'ok' };
+  });
+  let sent = 0;
+  let failed = 0;
+  for (const row of next) {
+    if (row.status === 'ok') sent += 1;
+    else failed += 1;
+  }
+  return { sent, failed, deliveries: next };
+}
+
+export async function fetchExpoPushReceipts(ids, { fetchImpl = fetch } = {}) {
+  const unique = [...new Set(ids.filter((id) => typeof id === 'string' && id.trim()))];
+  if (!unique.length) return {};
+  const response = await fetchImpl(EXPO_RECEIPTS_URL, {
+    method: 'POST',
+    headers: expoHeaders(),
+    body: JSON.stringify({ ids: unique }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  return normalizePushReceipts(payload);
+}
+
 function expoHeaders() {
   const headers = {
     Accept: 'application/json',
@@ -48,9 +102,9 @@ function expoHeaders() {
 /**
  * @param {string[]} tokens Expo push tokens
  * @param {{ title: string, body: string, data?: Record<string, unknown> }} message
- * @param {{ fetchImpl?: typeof fetch }} [opts]
+ * @param {{ fetchImpl?: typeof fetch, receiptWaitMs?: number }} [opts]
  */
-export async function sendExpoPush(tokens, { title, body, data }, { fetchImpl = fetch } = {}) {
+export async function sendExpoPush(tokens, { title, body, data }, { fetchImpl = fetch, receiptWaitMs = 0 } = {}) {
   const unique = [...new Set(tokens.filter((token) => isExpoPushToken(token)))];
   if (!unique.length) return { sent: 0, failed: 0, tickets: [], deliveries: [] };
 
@@ -58,6 +112,7 @@ export async function sendExpoPush(tokens, { title, body, data }, { fetchImpl = 
   let failed = 0;
   const tickets = [];
   const deliveries = [];
+  const payloadData = stringifyPushData(data ?? {});
 
   for (let i = 0; i < unique.length; i += CHUNK_SIZE) {
     const chunk = unique.slice(i, i + CHUNK_SIZE);
@@ -68,7 +123,7 @@ export async function sendExpoPush(tokens, { title, body, data }, { fetchImpl = 
       sound: 'default',
       priority: 'high',
       channelId: 'medicard-push',
-      data: data ?? {},
+      data: payloadData,
     }));
 
     const response = await fetchImpl(EXPO_PUSH_URL, {
@@ -106,6 +161,31 @@ export async function sendExpoPush(tokens, { title, body, data }, { fetchImpl = 
         where: { token: { in: stale } },
         data: { active: false },
       });
+    }
+  }
+
+  const ticketIds = deliveries.map((row) => row.ticketId).filter(Boolean);
+  if (ticketIds.length && receiptWaitMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, receiptWaitMs));
+    try {
+      const receipts = await fetchExpoPushReceipts(ticketIds, { fetchImpl });
+      const withReceipts = applyPushReceipts(deliveries, receipts);
+      sent = withReceipts.sent;
+      failed = withReceipts.failed;
+      deliveries.length = 0;
+      deliveries.push(...withReceipts.deliveries);
+      const staleFromReceipts = unique.filter((_, index) => {
+        const error = String(withReceipts.deliveries[index]?.error || '');
+        return /DeviceNotRegistered/i.test(error);
+      });
+      if (staleFromReceipts.length) {
+        await prisma.pushToken.updateMany({
+          where: { token: { in: staleFromReceipts } },
+          data: { active: false },
+        });
+      }
+    } catch (error) {
+      console.warn('[push] receipts', error);
     }
   }
 

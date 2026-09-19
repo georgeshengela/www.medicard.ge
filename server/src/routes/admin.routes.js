@@ -9,7 +9,7 @@ import { publicPackage, buildPackageAssignment } from '../lib/packages.js';
 import { renewSubscriptionDates } from '../lib/billing.js';
 import { getAppSettings, publicAppSettings } from '../lib/settings.js';
 import { getMobileAppVersion } from '../lib/mobileAppVersion.js';
-import { getUsage, resetUsage } from '../lib/usage.js';
+import { getUsage, peekListUsage, resetUsage, ROLLING_DAILY_KEY } from '../lib/usage.js';
 import { getPushStats, resolveSegmentTokens, sendExpoPush } from '../lib/push.js';
 import {
   listPushEvents,
@@ -47,6 +47,9 @@ import {
   getFeatureRetentionAnalytics,
   getPermissionAnalytics,
   getWeeklyInsightMedication,
+  getDashboardBundle,
+  getQualityBundle,
+  getHealthBundle,
 } from '../lib/adminAnalytics.js';
 import { getUserGeoAnalytics } from '../lib/adminUserGeo.js';
 import { getNotificationDecision, listNotificationDecisions } from '../lib/notificationDecisions.js';
@@ -55,14 +58,11 @@ import { loadActiveUserIds, loadAppActivityRows, loadLatestActivityMap } from '.
 import { getAppVersionPolicy } from '../lib/appVersionPolicy.js';
 import { isAppVersionBelow } from '../lib/appVersion.js';
 import { loadPermissionRows } from '../lib/notificationPermission.js';
-import { parseAnalyticsRange } from '../lib/adminAnalyticsRange.js';
+import { parseAnalyticsRange, addDaysYmd, tbilisiMidnight } from '../lib/adminAnalyticsRange.js';
 import { listAdminAudit, writeAdminAudit } from '../lib/adminAudit.js';
-import { buildCycleQaBoard, resolveContractFile, resolveQaFile } from '../lib/cycleQaBoard.js';
-import { createReadStream, readFileSync } from 'node:fs';
 import { enrichDecisions } from '../lib/clientContext.js';
 import { getUserInvestigation } from '../lib/adminUserInvestigation.js';
 import { tbilisiYmd } from '../lib/checkIn.js';
-import { addDaysYmd } from '../lib/adminAnalyticsRange.js';
 
 function emptyDayMap(startToday, days = 14) {
   const map = new Map();
@@ -244,10 +244,10 @@ adminRouter.get(
   }),
 );
 
-adminRouter.get(
-  '/stats',
-  requireAdmin,
-  asyncHandler(async (_req, res) => {
+const ADMIN_STATS_MS = 15_000;
+let adminStatsMemo = { at: 0, data: null, pending: null };
+
+async function computeAdminStatsSnapshot() {
     const now = new Date();
     const startToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const startWeek = new Date(startToday.getTime() - 6 * 86400000);
@@ -326,7 +326,7 @@ adminRouter.get(
     const chatTrend = bucketByDay(startToday, chatTrendRows);
     const recordTrend = bucketByDay(startToday, recordTrendRows);
 
-    res.json({
+    const payload = {
       users: {
         total: users,
         blocked,
@@ -364,7 +364,29 @@ adminRouter.get(
         records: recordTrend,
       },
       settings: adminAppSettings(await getAppSettings()),
-    });
+    };
+    return payload;
+}
+
+adminRouter.get(
+  '/stats',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const now = Date.now();
+    if (adminStatsMemo.data && now - adminStatsMemo.at < ADMIN_STATS_MS) {
+      return res.json(adminStatsMemo.data);
+    }
+    if (adminStatsMemo.pending) return res.json(await adminStatsMemo.pending);
+    adminStatsMemo.pending = computeAdminStatsSnapshot()
+      .then((payload) => {
+        adminStatsMemo = { at: Date.now(), data: payload, pending: null };
+        return payload;
+      })
+      .catch((err) => {
+        adminStatsMemo.pending = null;
+        throw err;
+      });
+    res.json(await adminStatsMemo.pending);
   }),
 );
 
@@ -384,62 +406,70 @@ adminRouter.get(
     const take = Math.min(Number(req.query.limit) || 50, 200);
     const skip = Math.max(Number(req.query.offset) || 0, 0);
     const where = await buildAdminUsersWhere(req.query);
+    const todayYmd = tbilisiYmd();
+    const todayStart = tbilisiMidnight(todayYmd);
+    const weekStart = tbilisiMidnight(addDaysYmd(todayYmd, -6));
 
-    const [total, users] = await Promise.all([
+    const [total, users, kpiTotal, kpiBlocked, kpiUltimate, kpiNewToday, kpiNewWeek] = await Promise.all([
       prisma.user.count({ where }),
       prisma.user.findMany({
         where,
         include: {
           package: true,
+          periodUsages: { where: { periodKey: ROLLING_DAILY_KEY }, take: 1 },
+          cycleProfile: { select: { userId: true } },
+          pushTokens: {
+            where: { active: true },
+            select: { platform: true, lastSeenAt: true },
+            orderBy: { lastSeenAt: 'desc' },
+            take: 1,
+          },
           _count: { select: { records: true, chats: true, medications: true } },
         },
         orderBy: { createdAt: 'desc' },
         take,
         skip,
       }),
+      prisma.user.count(),
+      prisma.user.count({ where: { status: 'BLOCKED' } }),
+      prisma.user.count({ where: { status: 'ACTIVE', package: { code: 'ULTIMATE' } } }),
+      prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
+      prisma.user.count({ where: { createdAt: { gte: weekStart } } }),
     ]);
 
     const ids = users.map((user) => user.id);
-    const [tokens, cycles, activityMap, permissions] = ids.length
-      ? await Promise.all([
-          prisma.pushToken.findMany({
-            where: { userId: { in: ids }, active: true },
-            select: { userId: true, platform: true, lastSeenAt: true },
-            orderBy: { lastSeenAt: 'desc' },
-          }),
-          prisma.cycleProfile.findMany({
-            where: { userId: { in: ids } },
-            select: { userId: true },
-          }),
-          loadLatestActivityMap(ids),
-          loadPermissionRows(),
-        ])
-      : [[], [], new Map(), []];
-    const platformByUser = new Map();
-    for (const token of tokens) {
-      if (!platformByUser.has(token.userId)) platformByUser.set(token.userId, token.platform);
-    }
-    const cycleUsers = new Set(cycles.map((row) => row.userId));
+    const [activityMap, permissions] = ids.length
+      ? await Promise.all([loadLatestActivityMap(ids), loadPermissionRows(ids)])
+      : [new Map(), []];
     const permByUser = new Map(permissions.map((row) => [row.userId, row.status]));
 
-    const rows = await Promise.all(
-      users.map(async (user) => {
-        const activity = activityMap.get(user.id);
-        return adminUserRow(
-          {
-            ...user,
-            platform: activity?.platform || platformByUser.get(user.id) || null,
-            hasCycle: cycleUsers.has(user.id),
-            lastActiveAt: activity?.lastAt || null,
-            appVersion: activity?.appVersion || null,
-            notificationPermission: permByUser.get(user.id) || 'unknown',
-          },
-          await getUsage(user.id),
-        );
-      }),
-    );
+    const rows = users.map((user) => {
+      const activity = activityMap.get(user.id);
+      return adminUserRow(
+        {
+          ...user,
+          platform: activity?.platform || user.pushTokens?.[0]?.platform || null,
+          hasCycle: Boolean(user.cycleProfile),
+          lastActiveAt: activity?.lastAt || null,
+          appVersion: activity?.appVersion || null,
+          notificationPermission: permByUser.get(user.id) || 'unknown',
+        },
+        peekListUsage(user.package, user.periodUsages),
+      );
+    });
 
-    res.json({ total, users: rows });
+    res.json({
+      total,
+      users: rows,
+      kpis: {
+        total: kpiTotal,
+        blocked: kpiBlocked,
+        active: kpiTotal - kpiBlocked,
+        ultimate: kpiUltimate,
+        newToday: kpiNewToday,
+        newWeek: kpiNewWeek,
+      },
+    });
   }),
 );
 
@@ -818,11 +848,21 @@ adminRouter.post(
       });
     }
 
-    const result = await sendExpoPush(tokens, {
-      title: body.title,
-      body: body.body,
-      data: { ...(body.data ?? {}), campaignId: campaign.id },
-    });
+    const result = await sendExpoPush(
+      tokens,
+      {
+        title: body.title,
+        body: body.body,
+        data: {
+          ...(body.data ?? {}),
+          campaignId: campaign.id,
+          type: 'admin_broadcast',
+          source: 'broadcast',
+          family: 'adminBroadcast',
+        },
+      },
+      { receiptWaitMs: 3500 },
+    );
 
     const saved = await prisma.pushCampaign.update({
       where: { id: campaign.id },
@@ -1292,6 +1332,19 @@ function sendAnalyticsError(res, error) {
 }
 
 adminRouter.get(
+  '/analytics/dashboard',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    try {
+      const fresh = String(req.query.fresh ?? '') === '1';
+      res.json(await getDashboardBundle(analyticsQuery(req), { fresh }));
+    } catch (error) {
+      sendAnalyticsError(res, error);
+    }
+  }),
+);
+
+adminRouter.get(
   '/analytics/overview',
   requireAdmin,
   asyncHandler(async (req, res) => {
@@ -1435,6 +1488,30 @@ adminRouter.get(
   requireAdmin,
   asyncHandler(async (_req, res) => {
     res.json(await getDataQuality());
+  }),
+);
+
+adminRouter.get(
+  '/analytics/quality-bundle',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    try {
+      res.json(await getQualityBundle(analyticsQuery(req)));
+    } catch (error) {
+      sendAnalyticsError(res, error);
+    }
+  }),
+);
+
+adminRouter.get(
+  '/analytics/health-bundle',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    try {
+      res.json(await getHealthBundle(analyticsQuery(req)));
+    } catch (error) {
+      sendAnalyticsError(res, error);
+    }
   }),
 );
 
@@ -1610,37 +1687,5 @@ adminRouter.get(
         q: req.query.q,
       }),
     );
-  }),
-);
-
-adminRouter.get(
-  '/cycle-qa',
-  requireAdmin,
-  asyncHandler(async (_req, res) => {
-    res.json(buildCycleQaBoard());
-  }),
-);
-
-adminRouter.get(
-  '/cycle-qa/file/:folder/:file',
-  requireAdmin,
-  asyncHandler(async (req, res) => {
-    const resolved = resolveQaFile(req.params.folder, req.params.file);
-    if (!resolved) return res.status(404).json({ error: 'ფაილი ვერ მოიძებნა.' });
-    res.setHeader('Content-Type', resolved.mime);
-    res.setHeader('Cache-Control', 'private, max-age=120');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    createReadStream(resolved.abs).pipe(res);
-  }),
-);
-
-adminRouter.get(
-  '/cycle-qa/contract/:file',
-  requireAdmin,
-  asyncHandler(async (req, res) => {
-    const resolved = resolveContractFile(req.params.file);
-    if (!resolved) return res.status(404).json({ error: 'კონტრაქტი ვერ მოიძებნა.' });
-    const markdown = readFileSync(resolved.abs, 'utf8');
-    res.json({ file: resolved.file, markdown: markdown.slice(0, 80_000) });
   }),
 );

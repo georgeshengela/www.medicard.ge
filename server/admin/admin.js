@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'cycleqa', 'tbilisi-moves', 'settings'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'tbilisi-moves', 'medipulsi', 'settings'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -769,19 +769,38 @@ function providerCardsHtml(balances) {
   return dashProvidersHtml(balances);
 }
 
+let lastLiveSettings = null;
+let adminSocketLive = null;
+
+function liveCountLabel() {
+  const n = window.__opsLiveSnap?.onlineNow;
+  if (n == null || n === '') return 'ცოცხალი';
+  const formatted = typeof opsFmt === 'function' ? opsFmt(n) : String(n);
+  return `ცოცხალი · ${formatted}`;
+}
+
 function setLivePill(settings) {
   const pill = $('live-pill');
-  if (!pill || !settings) return;
-  if (settings.maintenanceMode) {
+  if (!pill) return;
+  if (settings) lastLiveSettings = settings;
+  const s = settings || lastLiveSettings;
+  if (s?.maintenanceMode) {
     pill.className = 'status-pill bad';
     pill.innerHTML = `${icon('alert')} ოფლაინი · განახლება`;
-  } else if (settings.forceUpdate) {
+    return;
+  }
+  if (s?.forceUpdate) {
     pill.className = 'status-pill warn';
     pill.innerHTML = `${icon('zap')} იძულებითი განახლება`;
-  } else {
-    pill.className = 'status-pill ok';
-    pill.innerHTML = `${icon('check')} ცოცხალი`;
+    return;
   }
+  if (adminSocketLive === false) {
+    pill.className = 'status-pill warn';
+    pill.innerHTML = `${icon('alert')} კავშირი დაიკარგა`;
+    return;
+  }
+  pill.className = 'status-pill ok';
+  pill.innerHTML = `${icon('check')} ${liveCountLabel()}`;
 }
 
 async function boot() {
@@ -823,8 +842,8 @@ async function boot() {
     else if (tab === 'users' && userId !== state.userPageId) renderUsers();
     else if (tab === 'health' && typeof renderHealthOps === 'function') renderHealthOps();
     else if (tab === 'rewards' && typeof renderRewards === 'function') renderRewards();
-    else if (tab === 'cycleqa' && typeof renderCycleQa === 'function') renderCycleQa();
     else if (tab === 'tbilisi-moves' && typeof renderTbilisiMoves === 'function') renderTbilisiMoves();
+    else if (tab === 'medipulsi' && typeof renderMedipulsi === 'function') renderMedipulsi();
   });
   $('drawer-backdrop').addEventListener('click', async () => {
     if (window.AdminV3?.requestCloseOverlay) {
@@ -900,8 +919,11 @@ function unknownAdminRoute() {
 function showMissingRoute() {
   state.tab = 'missing';
   document.querySelectorAll('.nav').forEach((btn) => btn.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach((panel) => panel.classList.add('hidden'));
-  $('tab-missing')?.classList.remove('hidden');
+  document.querySelectorAll('.panel').forEach((panel) => {
+    const on = panel.id === 'tab-missing';
+    panel.classList.toggle('hidden', !on);
+    panel.setAttribute('aria-hidden', on ? 'false' : 'true');
+  });
   const greetEl = $('page-greeting');
   const subEl = $('page-subtitle');
   if (greetEl) greetEl.textContent = 'გვერდი ვერ მოიძებნა';
@@ -955,7 +977,7 @@ function writeTabHash(tab, query) {
   const params = query instanceof URLSearchParams
     ? query
     : new URLSearchParams(query && typeof query === 'object' ? query : {});
-  const inheritOpsRange = tab !== 'tbilisi-moves';
+  const inheritOpsRange = tab !== 'tbilisi-moves' && tab !== 'medipulsi';
   if (inheritOpsRange && typeof opsState !== 'undefined' && opsState.range && !params.get('range')) {
     params.set('range', opsState.range);
     if (opsState.range === 'custom') {
@@ -963,7 +985,7 @@ function writeTabHash(tab, query) {
       if (opsState.to) params.set('to', opsState.to);
     }
   }
-  if (inheritOpsRange && typeof opsState !== 'undefined' && opsState.grain && !params.get('grain')) {
+  if (tab === 'overview' && typeof opsState !== 'undefined' && opsState.grain && !params.get('grain')) {
     params.set('grain', opsState.grain);
   }
   const qs = params.toString();
@@ -1002,15 +1024,18 @@ async function switchTab(tab, opts = {}) {
   document.querySelectorAll('.nav').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
-  document.querySelectorAll('.panel').forEach((panel) => panel.classList.add('hidden'));
-  $(`tab-${tab}`).classList.remove('hidden');
+  document.querySelectorAll('.panel').forEach((panel) => {
+    const on = panel.id === `tab-${tab}`;
+    panel.classList.toggle('hidden', !on);
+    panel.setAttribute('aria-hidden', on ? 'false' : 'true');
+  });
 
   const copy = {
     overview: ['Overview', 'ოპერაციები', 'რა საჭიროებს ყურადღებას ახლა?', 'overview.status'],
     health: ['Health & Medi', 'ჯანმრთელობა', 'რომელი ჯანმრთელობის ფიჩერები გამოიყენება და ინახება?', 'health.page'],
     audit: ['Production', 'აუდიტი', 'ვინ შეცვალა რა და როდის?', 'audit.page'],
     quality: ['Production', 'ხარისხი', 'ვერსიები, ტელემეტრია და მონაცემები სანდოა?', 'quality.page'],
-    cycleqa: ['Production', 'ფაზები', 'რა გაყინულია, როგორ მიდის QA და რა დაფიქსირდა თითო ფაზაზე?', 'cycleqa.page'],
+    'medipulsi': ['Engagement', 'MEDIPULSI', 'გასეირნება, მისიები, აღმოჩენები და ჯილდოების მართვა.', ''],
     'tbilisi-moves': ['Engagement', 'თბილისი მოძრაობს', 'რაიონული სიარულის შეჯიბრის კონფიგურაცია და მიმოხილვა.', ''],
     orders: ['Operations', 'შეკვეთები', 'რა საჭიროებს ოპერაციულ დამუშავებას?', 'orders.page'],
     users: ['People', 'მომხმარებლები', 'ვინ არის ბაზაში, რა ანგარიშის მდგომარეობა აქვს და ვისი გამოძიება გჭირდება.', 'users.registry'],
@@ -1042,8 +1067,8 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'health' && typeof renderHealthOps === 'function') await renderHealthOps();
     if (tab === 'audit' && typeof renderAuditLog === 'function') await renderAuditLog();
     if (tab === 'quality' && typeof renderQualityOps === 'function') await renderQualityOps();
-    if (tab === 'cycleqa' && typeof renderCycleQa === 'function') await renderCycleQa();
     if (tab === 'tbilisi-moves' && typeof renderTbilisiMoves === 'function') await renderTbilisiMoves();
+    if (tab === 'medipulsi' && typeof renderMedipulsi === 'function') await renderMedipulsi();
     if (tab === 'settings') await renderSettings();
   }
   startAdminLive();
@@ -1083,6 +1108,8 @@ function startAdminLive() {
 
 let adminSocket = null;
 
+let lastLiveNewUsers = null;
+
 function connectAdminRealtime() {
   if (!state.token || typeof io !== 'function') return;
   if (adminSocket) {
@@ -1098,20 +1125,36 @@ function connectAdminRealtime() {
     reconnectionDelay: 1200,
   });
   adminSocket.on('connect', () => {
-    const pill = $('live-pill');
-    if (pill && !pill.classList.contains('bad') && !pill.classList.contains('warn')) {
-      pill.className = 'status-pill ok';
-      pill.innerHTML = `${icon('check')} ცოცხალი`;
-    }
-    if (typeof window.patchTbilisiMovesSocket === 'function') window.patchTbilisiMovesSocket('live');
+    adminSocketLive = true;
     window.__adminSocketConnected = true;
+    setLivePill();
+    if (typeof window.patchTbilisiMovesSocket === 'function') window.patchTbilisiMovesSocket('live');
   });
   adminSocket.on('disconnect', () => {
-    if (typeof window.patchTbilisiMovesSocket === 'function') window.patchTbilisiMovesSocket('offline');
+    adminSocketLive = false;
     window.__adminSocketConnected = false;
+    setLivePill();
+    if (typeof window.patchTbilisiMovesSocket === 'function') window.patchTbilisiMovesSocket('offline');
+  });
+  adminSocket.on('connect_error', () => {
+    adminSocketLive = false;
+    window.__adminSocketConnected = false;
+    setLivePill();
   });
   adminSocket.on('ops:live', (snap) => {
     if (typeof window.patchOpsLive === 'function') window.patchOpsLive(snap);
+    setLivePill();
+    const next = Number(snap?.newUsersToday);
+    if (
+      state.tab === 'users'
+      && Number.isFinite(next)
+      && lastLiveNewUsers != null
+      && next !== lastLiveNewUsers
+      && typeof window.__reloadUsers === 'function'
+    ) {
+      window.__reloadUsers();
+    }
+    if (Number.isFinite(next)) lastLiveNewUsers = next;
   });
   adminSocket.on('tbilisi-moves:live', (snap) => {
     if (typeof window.patchTbilisiMovesLive === 'function') window.patchTbilisiMovesLive(snap);
@@ -1135,17 +1178,23 @@ function disconnectAdminRealtime() {
   if (!adminSocket) return;
   adminSocket.disconnect();
   adminSocket = null;
+  adminSocketLive = false;
+  window.__adminSocketConnected = false;
+  setLivePill();
 }
 
 async function refreshAdminLive() {
   const tab = state.tab;
+  const socketLive = Boolean(adminSocketLive || window.__adminSocketConnected);
   if (tab === 'overview') {
+    if (socketLive) return;
     if (typeof window.refreshCommandCenterLive === 'function') {
       await window.refreshCommandCenterLive();
     }
     return;
   }
   if (tab === 'users' && typeof window.__reloadUsers === 'function') {
+    if (socketLive) return;
     await window.__reloadUsers();
     return;
   }
@@ -3044,6 +3093,9 @@ async function renderPush() {
 
   function campaignStatus(c) {
     if (c.status === 'SENT') return '<span class="badge ok">გაგზავნილი</span>';
+    if (c.status === 'FAILED' && !(c.targetCount > 0)) {
+      return '<span class="badge std">მოწყობილობა არ იყო</span>';
+    }
     if (c.status === 'FAILED') return '<span class="badge bad">შეცდომა</span>';
     if (c.status === 'SENDING') return '<span class="badge std">იგზავნება</span>';
     return `<span class="badge neutral">${escapeHtml(c.status)}</span>`;
@@ -3455,7 +3507,15 @@ async function renderPush() {
         method: 'POST',
         body: { title, body, segment },
       });
-      toast(`გაგზავნილია ${result.delivery?.sent ?? result.campaign?.sentCount ?? 0} მოწყობილობაზე`);
+      const sent = result.delivery?.sent ?? result.campaign?.sentCount ?? 0;
+      const failed = result.delivery?.failed ?? result.campaign?.failedCount ?? 0;
+      const firstError = (result.delivery?.deliveries || []).find((d) => d.error)?.error;
+      toast(
+        failed
+          ? `გაგზავნა: ${sent} OK, ${failed} ვერ მივიდა${firstError ? ` · ${firstError}` : ''}`
+          : `გაგზავნილია ${sent} მოწყობილობაზე`,
+        failed ? 'bad' : 'ok',
+      );
       pushStudioTab = 'compose';
       await renderPush();
     } catch (err) {
@@ -3655,7 +3715,7 @@ async function viewPushCampaign(id) {
     <p class="muted mono" style="font-size:11px">${escapeHtml(campaign.id)}</p>
     <div class="drawer-stats">
       <div class="drawer-stat"><div class="label">სეგმენტი</div><strong>${SEGMENTS[campaign.segment] || campaign.segment}</strong></div>
-      <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${campaign.status === 'SENT' ? 'გაგზავნილი' : campaign.status === 'FAILED' ? 'შეცდომა' : campaign.status === 'SENDING' ? 'იგზავნება' : escapeHtml(campaign.status)}</strong></div>
+      <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${campaign.status === 'SENT' ? 'გაგზავნილი' : campaign.status === 'FAILED' && !(campaign.targetCount > 0) ? 'მოწყობილობა არ იყო' : campaign.status === 'FAILED' ? 'შეცდომა' : campaign.status === 'SENDING' ? 'იგზავნება' : escapeHtml(campaign.status)}</strong></div>
       <div class="drawer-stat"><div class="label">მიწოდება</div><strong>${campaign.sentCount}/${campaign.targetCount}</strong></div>
       <div class="drawer-stat"><div class="label">შეცდომა</div><strong>${campaign.failedCount}</strong></div>
     </div>

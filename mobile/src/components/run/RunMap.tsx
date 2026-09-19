@@ -8,25 +8,8 @@ import { buildRunMapHtml, RUN_MAP_HTML_REV } from '@/lib/run/mapHtml';
 import { peekMapboxToken, resolveMapboxToken } from '@/lib/run/mapbox';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
-export type RunMapMessage =
-  | { type: 'init'; origin: LatLng; pin: LatLng | null; route: [number, number][] | null; radiusM?: number; fit?: boolean }
-  | { type: 'fix'; lat: number; lng: number; heading: number | null }
-  | { type: 'trail'; coords: [number, number][] }
-  | { type: 'fit'; bottom?: number }
-  | { type: 'follow' }
-  | { type: 'reached' }
-  | { type: 'theme'; dark: boolean };
-
-export type RunMapHandle = { send: (msg: RunMapMessage) => void };
-
-type Props = {
-  center: LatLng;
-  onReady?: () => void;
-  onFollowChange?: (following: boolean) => void;
-  onError?: (message: string) => void;
-  style?: object;
-  mapDark?: boolean;
-};
+import type {RunMapHandle,RunMapMessage,RunMapProps as Props} from '@/lib/run/mapTypes';
+export type {RunMapHandle,RunMapMessage} from '@/lib/run/mapTypes';
 
 function metroBaseUrl(): string {
   const host =
@@ -127,18 +110,19 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
           javaScriptEnabled
           domStorageEnabled
           allowsInlineMediaPlayback
-          mixedContentMode="always"
+          mixedContentMode="never"
+          onShouldStartLoadWithRequest={request=>request.url===baseUrl||request.url==='about:blank'||request.url.startsWith('about:srcdoc')}
           androidLayerType="hardware"
           overScrollMode="never"
           bounces={false}
           setSupportMultipleWindows={false}
           scrollEnabled={false}
-          allowFileAccess
-          allowFileAccessFromFileURLs
-          allowUniversalAccessFromFileURLs
+          allowFileAccess={false}
+          allowFileAccessFromFileURLs={false}
+          allowUniversalAccessFromFileURLs={false}
         />
       ) : null}
-      {(!ready || tokenMissing) && !failed ? (
+      {(!ready || tokenMissing || failed) ? (
         <View pointerEvents="none" style={[styles.fill, styles.center]}>
           {!tokenMissing ? <ActivityIndicator color={colors.primary200} /> : null}
           <Text
@@ -149,7 +133,7 @@ export const RunMap = forwardRef<RunMapHandle, Props>(function RunMap(
               color: colors.text300,
             }}
           >
-            {tokenMissing ? ka.run.noToken : ka.run.mapLoading}
+            {failed || (tokenMissing ? ka.run.noToken : ka.run.mapLoading)}
           </Text>
         </View>
       ) : null}

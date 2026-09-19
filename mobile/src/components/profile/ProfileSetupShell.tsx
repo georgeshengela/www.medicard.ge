@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -14,8 +13,10 @@ import { ChevronLeft } from 'lucide-react-native';
 import { AssessmentContinueButton } from '@/components/assessment/AssessmentContinueButton';
 import { AssessmentPhaseStepper } from '@/components/assessment/AssessmentPhaseStepper';
 import { KeyboardDoneAccessory } from '@/components/ui/KeyboardDoneAccessory';
+import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 import { useFigmaAssessmentIntro } from '@/constants/figmaAssessmentIntro';
 import { welcomeTopInset } from '@/constants/figmaWelcomeLayout';
+import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
 
 type Props = {
   title: string;
@@ -62,6 +63,11 @@ export function ProfileSetupShell({
   const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
   const insets = useSafeAreaInsets();
   const topInset = welcomeTopInset(insets.top);
+  const keyboardHeight = useKeyboardHeight();
+  const footerPadBottom =
+    Platform.OS === 'android' && keyboardHeight > 0
+      ? keyboardHeight
+      : Math.max(insets.bottom, 16);
 
   const handlePrimary = () => {
     Keyboard.dismiss();
@@ -109,11 +115,7 @@ export function ProfileSetupShell({
       >
         {showLogo ? (
           <View style={{ alignItems: 'center', paddingTop: 24, paddingBottom: 8 }}>
-            <Image
-              source={require('../../../assets/logo-light.png')}
-              style={{ width: 64, height: 64 }}
-              resizeMode="contain"
-            />
+            <MedicardLogoMark size={64} />
           </View>
         ) : null}
 
@@ -151,7 +153,7 @@ export function ProfileSetupShell({
         {children}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 16, paddingBottom: Math.max(insets.bottom, 16), gap: 12 }}>
+      <View style={{ paddingHorizontal: 16, paddingBottom: footerPadBottom, gap: 12 }}>
         {footerSlot}
         {!hidePrimary ? (
           <AssessmentContinueButton

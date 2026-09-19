@@ -410,18 +410,16 @@
       });
     };
 
-    const paintKpis = (stats) => {
-      if (!stats?.users) return;
-      const u = stats.users;
+    const paintKpis = (kpis) => {
+      if (!kpis) return;
       const set = (id, val) => { const el = $(id); if (el) el.textContent = fmtKa(val); };
-      set('users-kpi-total', u.total);
-      set('users-kpi-active', u.active);
-      set('users-kpi-blocked', u.blocked);
-      const ultimate = (stats.packages || []).find((p) => p.code === 'ULTIMATE')?.users ?? 0;
-      set('users-kpi-ultimate', ultimate);
-      set('users-kpi-week', u.newWeek);
+      set('users-kpi-total', kpis.total);
+      set('users-kpi-active', kpis.active);
+      set('users-kpi-blocked', kpis.blocked);
+      set('users-kpi-ultimate', kpis.ultimate);
+      set('users-kpi-week', kpis.newWeek);
       const hint = $('users-kpi-today-hint');
-      if (hint) hint.textContent = `დღეს ${fmtKa(u.newToday)}`;
+      if (hint) hint.textContent = `დღეს ${fmtKa(kpis.newToday)}`;
     };
 
     const load = async () => {
@@ -438,13 +436,10 @@
       if (f.activity) params.set('activity', f.activity);
       if (f.appVersion) params.set('appVersion', f.appVersion);
       try {
-        const [data, stats] = await Promise.all([
-          api(`/users?${params.toString()}`),
-          api('/stats').catch(() => null),
-        ]);
+        const data = await api(`/users?${params.toString()}`);
         state.users = data.users;
         state.total = data.total;
-        if (stats) paintKpis(stats);
+        paintKpis(data.kpis);
         paintTable();
       } catch (err) {
         toast(err.message, 'bad');

@@ -81,6 +81,7 @@ export async function sendSms({
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
+      signal: AbortSignal.timeout(8000),
     });
     const data = await parseJsonResponse(res);
     const ok = data.Success === true || data.ErrorCode === 0;

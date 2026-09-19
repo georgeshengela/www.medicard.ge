@@ -6,6 +6,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 
 const FILL_MS = 1600;
+const PERCENT_SIZE = 56;
+const PERCENT_LINE = 76;
+const LOGO = 52;
 
 /** Water-fill progress, then welcome. */
 export default function AuthSplash() {
@@ -80,13 +83,38 @@ export default function AuthSplash() {
         />
       </Animated.View>
 
-      <View className="flex-1 items-center justify-center px-10" style={{ zIndex: 2 }}>
+      <View
+        pointerEvents="none"
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingTop: insets.top + 12,
+          paddingBottom: insets.bottom + LOGO + 48,
+          paddingHorizontal: 24,
+          zIndex: 2,
+        }}
+      >
         <Text
-          className="font-sans-bold text-[56px] leading-none"
-          style={{ color: onWater ? '#FFFFFF' : '#0f1a1c' }}
+          style={{
+            fontFamily: 'NotoSansGeorgian_700Bold',
+            fontSize: PERCENT_SIZE,
+            lineHeight: PERCENT_LINE,
+            color: onWater ? '#FFFFFF' : '#0f1a1c',
+            textAlign: 'center',
+            includeFontPadding: false,
+            paddingTop: 8,
+          }}
         >
           {progress}
-          <Text className="font-sans text-[40px]" style={{ color: onWater ? 'rgba(255,255,255,0.75)' : '#7b8b8f' }}>
+          <Text
+            style={{
+              fontFamily: 'NotoSansGeorgian_400Regular',
+              fontSize: 40,
+              lineHeight: PERCENT_LINE,
+              color: onWater ? 'rgba(255,255,255,0.75)' : '#7b8b8f',
+            }}
+          >
             %
           </Text>
         </Text>
@@ -96,7 +124,7 @@ export default function AuthSplash() {
         className="absolute left-0 right-0 items-center"
         style={{ bottom: insets.bottom + 32, zIndex: 2 }}
       >
-        <MedicardLogoMark size={52} tone={progress >= 78 ? 'inverse' : 'brand'} />
+        <MedicardLogoMark size={LOGO} tone={progress >= 78 ? 'inverse' : 'brand'} />
       </View>
     </View>
   );

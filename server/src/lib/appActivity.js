@@ -86,7 +86,10 @@ export async function recordAppActivityFromRequest(req) {
   });
 }
 
-export async function loadAppActivityRows(fromYmd, toYmd) {
+const ROW_MEMO_MS = 4_000;
+const rowMemo = new Map();
+
+async function loadAppActivityRowsFromDb(fromYmd, toYmd) {
   await ensureAppActivityTable();
   try {
     return await prisma.$queryRaw`
@@ -99,6 +102,34 @@ export async function loadAppActivityRows(fromYmd, toYmd) {
     if (isMissingTable(error)) return [];
     throw error;
   }
+}
+
+export function clearAppActivityRowMemo() {
+  rowMemo.clear();
+}
+
+export async function loadAppActivityRows(fromYmd, toYmd, opts = {}) {
+  if (opts.fresh) return loadAppActivityRowsFromDb(fromYmd, toYmd);
+  const key = `${fromYmd}:${toYmd}`;
+  const now = Date.now();
+  const hit = rowMemo.get(key);
+  if (hit?.value && now - hit.at < ROW_MEMO_MS) return hit.value;
+  if (hit?.pending) return hit.pending;
+  const pending = loadAppActivityRowsFromDb(fromYmd, toYmd)
+    .then((value) => {
+      rowMemo.set(key, { at: Date.now(), value });
+      if (rowMemo.size > 24) {
+        const first = rowMemo.keys().next().value;
+        if (first !== key) rowMemo.delete(first);
+      }
+      return value;
+    })
+    .catch((error) => {
+      rowMemo.delete(key);
+      throw error;
+    });
+  rowMemo.set(key, { at: 0, pending });
+  return pending;
 }
 
 export async function loadActiveUserIds(fromYmd, toYmd) {

@@ -36,7 +36,7 @@ export default function RunSummaryScreen() {
       {celebrate ? <StepsGoalConfetti /> : null}
       <RunFinishedView
         summary={summary}
-        title={ka.run.summaryTitle}
+        title={summary.targetMeters===0?'გასეირნება დასრულდა':ka.run.summaryTitle}
         headerLeft={<BetaPill />}
         footer={
           <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginTop: 18 }}>

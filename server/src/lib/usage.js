@@ -73,6 +73,19 @@ export async function getUsage(userId) {
   return synced.usage;
 }
 
+/** Admin registry only — no window sync, no writes. */
+export function peekListUsage(pkg, periodRows = []) {
+  const limit = resolveConsumeLimit(pkg);
+  const rows = Array.isArray(periodRows) ? periodRows : [];
+  const row = rows.find((item) => item.periodKey === ROLLING_DAILY_KEY) || rows[0] || { count: 0, resetAt: null };
+  return shapeUsage({
+    used: Number(row.count) || 0,
+    limit: Number.isFinite(limit) ? limit : Number.POSITIVE_INFINITY,
+    resetsInMs: 0,
+    resetAt: row.resetAt ?? null,
+  });
+}
+
 /** Register/login must still return a JWT if quota rows are slow. */
 export async function getUsageSafe(userId) {
   try {

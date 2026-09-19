@@ -5,7 +5,7 @@ import {
   cancelNotificationsByPrefix,
   NOTIF_PREFIX,
   STEPS_CHANNEL_ID,
-  requestNotificationPermission,
+  getNotificationPermissionGranted,
 } from '@/lib/notifications';
 import { expoWeekdayFromMonday } from '@/lib/notificationPlan';
 import { getPreference, setPreference } from '@/lib/storage';
@@ -161,7 +161,7 @@ export async function syncStepsGoalReminders(goal: StepsGoal): Promise<void> {
   if (!goal.reminderEnabled || goal.reminderDays.length === 0) return;
   if (Platform.OS === 'web') return;
 
-  const granted = await requestNotificationPermission();
+  const granted = await getNotificationPermissionGranted();
   if (!granted) return;
 
   const todaySteps = await getCachedTodaySteps();

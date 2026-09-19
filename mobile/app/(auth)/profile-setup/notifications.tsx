@@ -9,7 +9,7 @@ import {
 } from '@/components/profile/ProfileSetupButtons';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { ka } from '@/i18n/ka';
-import { registerPushTokenWithServer, setPushOptedIn } from '@/lib/notifications';
+import { requestNotificationPermission, registerPushTokenWithServer, setPushOptedIn } from '@/lib/notifications';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
@@ -38,23 +38,29 @@ export default function ProfileSetupNotificationsScreen() {
 
   const goLocation = () => router.replace(onboardingStepHref('/(auth)/profile-setup/location', preview) as never);
 
-  const continueFlow = async (granted: boolean) => {
-    setBusy(true);
-    try {
+  const continueFlow = (granted: boolean) => {
+    void (async () => {
+      let osGranted = false;
       if (granted) {
-        await setPushOptedIn(true);
-        await registerPushTokenWithServer().catch(() => undefined);
-      } else {
-        await setPushOptedIn(false);
+        osGranted = await requestNotificationPermission();
       }
-      const updated = await patchProfileExtra(healthProfile, user, {
-        notificationsEnabled: granted,
-      });
-      setHealthProfile(updated);
-      goLocation();
-    } finally {
-      setBusy(false);
-    }
+      setBusy(true);
+      try {
+        if (granted) {
+          await setPushOptedIn(true);
+          if (osGranted) await registerPushTokenWithServer({ skipPermissionProbe: true }).catch(() => undefined);
+        } else {
+          await setPushOptedIn(false);
+        }
+        const updated = await patchProfileExtra(healthProfile, user, {
+          notificationsEnabled: osGranted,
+        });
+        setHealthProfile(updated);
+        goLocation();
+      } finally {
+        setBusy(false);
+      }
+    })();
   };
 
   return (
@@ -74,7 +80,7 @@ export default function ProfileSetupNotificationsScreen() {
             </Text>
           </View>
           <ProfileSetupPrimaryButton
-            label={ka.profileSetup.notificationsContinue}
+            label={ka.profileSetup.notificationsEnable}
             onPress={() => void continueFlow(true)}
             loading={busy}
             icon="arrow"

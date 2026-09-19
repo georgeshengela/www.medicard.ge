@@ -1,15 +1,12 @@
-import { Platform } from 'react-native';
-import { isRunningInExpoGo } from 'expo';
-
 /**
- * Expo Go Android (SDK 53+) throws on import of expo-notifications:
- * DevicePushTokenAutoRegistration calls addPushTokenListener at module load.
- * Do not import that package on Android Expo Go — even as `import type`.
- * Production / iOS / dev builds still load the real module.
+ * Load expo-notifications when the native module exists.
+ * Expo Go Android cannot register *remote* push tokens (SDK 53+);
+ * iOS Expo Go still can — do not stub getExpoPushTokenAsync when require() works.
+ * Local reminders use the real module on both.
  */
-const skipNative = Platform.OS === 'android' && isRunningInExpoGo();
-
 const emptySub = { remove() {} };
+
+let nativeAvailable = false;
 
 function expoGoStub() {
   const denied = {
@@ -59,6 +56,13 @@ function expoGoStub() {
       DENIED: 'denied',
       UNDETERMINED: 'undetermined',
     },
+    IosAuthorizationStatus: {
+      NOT_DETERMINED: 0,
+      DENIED: 1,
+      AUTHORIZED: 2,
+      PROVISIONAL: 3,
+      EPHEMERAL: 4,
+    },
   };
 }
 
@@ -82,7 +86,6 @@ function rewriteChannel(channel) {
 }
 
 function loadNotifications() {
-  if (skipNative) return expoGoStub();
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const loaded = require('expo-notifications');
@@ -94,10 +97,18 @@ function loadNotifications() {
     if (typeof setChannel === 'function') {
       loaded.setNotificationChannelAsync = (id, channel) => setChannel(id, rewriteChannel(channel));
     }
+    // iOS Expo Go can still mint an Expo push token. Android SDK 53+ cannot —
+    // let the native call fail there instead of blocking iOS registration.
+    nativeAvailable = true;
     return loaded;
   } catch {
+    nativeAvailable = false;
     return expoGoStub();
   }
 }
 
 export const Notifications = loadNotifications();
+
+export function isNotificationsNativeAvailable() {
+  return nativeAvailable;
+}

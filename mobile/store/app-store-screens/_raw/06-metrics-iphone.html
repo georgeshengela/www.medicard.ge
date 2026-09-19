@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@500;600;700;800&family=Inter:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    html, body { margin: 0; width: 1284px; height: 2778px; background: #041520; }
+    .canvas {
+      width: 1284px; height: 2778px; position: relative; overflow: hidden;
+      background:
+        radial-gradient(ellipse 130% 75% at 50% 112%, #22D3EE4D 0%, transparent 54%),
+        radial-gradient(circle 640px at 8% 6%, #67E8F924 0%, transparent 58%),
+        radial-gradient(circle 520px at 94% 14%, #22D3EE30 0%, transparent 56%),
+        linear-gradient(165deg, #041520 0%, #020617 48%, #030712 100%);
+    }
+    .grid {
+      position: absolute; inset: 0; opacity: 0.35; pointer-events: none;
+      background-image:
+        linear-gradient(#22D3EE14 1px, transparent 1px),
+        linear-gradient(90deg, #22D3EE14 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, #000 20%, transparent 75%);
+    }
+    .orb { position: absolute; border-radius: 999px; filter: blur(48px); pointer-events: none; }
+    .orb-a { width: 418px; height: 417px; left: -100px; top: 974px; background: #22D3EE40; }
+    .orb-b { width: 279px; height: 278px; right: -60px; top: 180px; background: #67E8F930; }
+    .brand {
+      position: absolute; left: 80px; top: 48px; z-index: 6;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .brand img {
+      width: 48px; height: 48px; border-radius: 14px;
+      box-shadow: 0 8px 28px #22D3EE55, 0 0 0 1px #ffffff18;
+    }
+    .brand-text {
+      font-family: Inter, system-ui, sans-serif;
+      font-weight: 700; font-size: 20px; letter-spacing: 0.22em;
+      color: #fff;
+    }
+    .brand-ver {
+      margin-left: 8px; font-weight: 600; font-size: 14px;
+      letter-spacing: 0.04em; color: #6B7280;
+    }
+    .copy {
+      position: absolute; left: 80px; right: 80px; top: 95px;
+      z-index: 3; text-align: left;
+    }
+    .kicker-wrap {
+      display: inline-flex; align-items: center; gap: 14px;
+      padding: 10px 22px 10px 18px; border-radius: 999px;
+      background: linear-gradient(135deg, #22D3EE22, #67E8F912);
+      border: 1px solid #22D3EE44;
+      backdrop-filter: blur(12px);
+      margin-bottom: 24px;
+    }
+    .kicker {
+      font-family: 'Noto Sans Georgian', Inter, sans-serif;
+      font-weight: 700; font-size: 26px; letter-spacing: 0.14em;
+      color: #67E8F9; margin: 0;
+    }
+    .kicker-dot {
+      width: 10px; height: 10px; border-radius: 99px; background: #22D3EE;
+      box-shadow: 0 0 18px #22D3EE;
+    }
+    .title {
+      font-family: 'Noto Sans Georgian', sans-serif;
+      font-weight: 800; font-size: 83px; line-height: 1.06;
+      color: #fff; margin: 0; white-space: pre-line;
+      text-shadow: 0 20px 60px #0009;
+      
+    }
+    .sub {
+      margin: 22px auto 0;
+      font-family: 'Noto Sans Georgian', sans-serif;
+      font-weight: 500; font-size: 30px; line-height: 1.45;
+      color: #D1D5DB;
+      max-width: 916px;
+    }
+    .phone {
+      position: absolute;
+      left: 50%;
+      top: 556px;
+      transform: translateX(-50%);
+      width: 1075px;
+      height: 2265px;
+      border-radius: 92px;
+      padding: 14px;
+      background: linear-gradient(145deg, #374151 0%, #111827 40%, #030712 100%);
+      box-shadow:
+        0 0 0 1px #4B5563,
+        0 40px 100px #22D3EE50,
+        0 12px 48px #000c,
+        inset 0 1px 0 #ffffff12;
+      z-index: 2;
+    }
+    .phone::after {
+      content: '';
+      position: absolute; left: 12%; right: 12%; bottom: -36px; height: 48px;
+      background: radial-gradient(ellipse at center, #22D3EE33 0%, transparent 70%);
+      filter: blur(20px); z-index: -1;
+    }
+    .screen {
+      width: 100%; height: 100%; border-radius: 78px; overflow: hidden;
+      background: #030712;
+    }
+    .screen img {
+      width: 100%; height: 100%; object-fit: cover; object-position: top center;
+      display: block;
+    }
+    .island {
+      position: absolute; left: 50%; top: 26px; transform: translateX(-50%);
+      width: 219px; height: 34px; border-radius: 20px;
+      background: #000; z-index: 4;
+      box-shadow: inset 0 0 0 1px #1f2937;
+    }
+    .fade {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 220px;
+      background: linear-gradient(180deg, transparent, #041520);
+      z-index: 5; pointer-events: none;
+    }
+    .footer {
+      position: absolute; left: 0; right: 0; bottom: 44px;
+      text-align: center; z-index: 6;
+      font-family: Inter, sans-serif; font-size: 18px; font-weight: 600;
+      letter-spacing: 0.12em; color: #6B7280;
+    }
+    .footer span { color: #67E8F9; }
+  </style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="grid"></div>
+    <div class="orb orb-a"></div>
+    <div class="orb orb-b"></div>
+    <div class="brand"><img src="file:///C:/Users/User/Desktop/www.medicard/mobile/assets/icon.png" alt="" /><span class="brand-text">MEDICARD</span><span class="brand-ver">v1.0.0.8.56</span></div>
+    <div class="copy">
+      <div class="kicker-wrap"><span class="kicker-dot"></span><p class="kicker">მაჩვენებლები</p></div>
+      <h1 class="title">ყველა მეტრიკა
+ერთად.</h1>
+      <p class="sub">წონა, ნაბიჯები, წყალი, ძილი</p>
+    </div>
+    <div class="phone">
+      <div class="island"></div>
+      <div class="screen"><img src="file:///C:/Users/User/Desktop/www.medicard/mobile/store/app-store-screens/_raw/06-metrics.png" alt="" /></div>
+    </div>
+    <div class="fade"></div>
+    <p class="footer">medicard<span>.ge</span> · ჯიბის სამედიცინო ასისტენტი</p>
+  </div>
+</body>
+</html>

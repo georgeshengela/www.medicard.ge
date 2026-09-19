@@ -188,7 +188,7 @@ export function ProfileTbilisiMovesSection() {
         setSnap((prev) => ({ ...prev, status: next }));
       }
     } catch {
-      setSnap(EMPTY);
+      setSnap((prev) => (prev.status ? prev : EMPTY));
     }
   }, []);
 

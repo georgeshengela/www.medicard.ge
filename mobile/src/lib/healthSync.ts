@@ -30,6 +30,15 @@ async function nativeImpl() {
   return null;
 }
 
+export async function preloadHealthNative(): Promise<void> {
+  try {
+    const impl = await nativeImpl();
+    if (impl && typeof impl.preload === 'function') await impl.preload();
+  } catch {
+    /* preload is best-effort so the tap can requestAuthorization first */
+  }
+}
+
 export async function connectHealthApp(): Promise<HealthConnectResult> {
   if (!isHealthPlatformSupported()) {
     return { ok: false, reason: 'unavailable' };

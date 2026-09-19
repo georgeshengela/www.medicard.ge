@@ -92,7 +92,11 @@ export default function TbilisiMovesHubScreen() {
     async (opts?: { refresh?: boolean }) => {
       setError(null);
       try {
-        const nextStatus = await api.tbilisiMoves.status();
+        let nextStatus = await api.tbilisiMoves.status();
+        if (!nextStatus.schemaReady || !nextStatus.featureEnabled) {
+          await new Promise((resolve) => setTimeout(resolve, 700));
+          nextStatus = await api.tbilisiMoves.status();
+        }
         setStatus(nextStatus);
         if (!nextStatus.schemaReady || !nextStatus.featureEnabled) {
           setMe(null);
@@ -134,7 +138,7 @@ export default function TbilisiMovesHubScreen() {
           setPeople(stored.people);
           setCached(true);
         }
-        if (caught instanceof ApiError && (caught.status === 404 || caught.status === 503)) {
+        if (caught instanceof ApiError && (caught.status === 404 || caught.status === 503) && !stored) {
           setError(caught.status === 503 ? ka.tbilisiMoves.schemaUnavailable : ka.tbilisiMoves.featureOff);
         } else {
           setError(stored ? ka.common.offlineCached : ka.tbilisiMoves.loadError);
@@ -270,6 +274,7 @@ export default function TbilisiMovesHubScreen() {
         {chrome}
         <ScrollView contentContainerStyle={{ padding: 16 }}>
           <EmptyState icon={Footprints} title={ka.tbilisiMoves.unavailableTitle} body={error || ka.tbilisiMoves.unavailableBody} />
+          <Button label={ka.tbilisiMoves.refresh} onPress={() => void load({ refresh: true })} />
         </ScrollView>
       </View>
     );

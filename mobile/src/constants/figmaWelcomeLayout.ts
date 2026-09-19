@@ -26,16 +26,85 @@ export const WELCOME_PROGRESS_SEGMENTS = 6;
 export const WELCOME_HERO_BG = '#E8F8F5';
 export const WELCOME_HERO_BG_DARK = '#042F2E';
 
-/** Landing hero — logo only, no Figma PNG. */
-export const LANDING_LOGO_SIZE = 112;
+/** Figma 8846:211832 — brand 500 → 400 splash. */
+export const LANDING_BRAND_FROM = '#14B8A6';
+export const LANDING_BRAND_TO = '#2DD4BF';
+export const LANDING_RING_COLOR = '#5EEAD4';
+export const LANDING_RING_STROKE = 48;
+export const LANDING_LOGO_SIZE = 80;
+
 export const LANDING_GRADIENT = {
-  colors: ['#C5EFE8', '#E2F7F3', '#FFFFFF'] as const,
-  locations: [0, 0.38, 0.72] as const,
+  colors: [LANDING_BRAND_FROM, LANDING_BRAND_TO] as const,
+  locations: [0, 1] as const,
 };
-export const LANDING_GRADIENT_DARK = {
-  colors: ['#042F2E', '#111827', '#030712'] as const,
-  locations: [0, 0.38, 0.72] as const,
-};
+
+/** Exact ellipse boxes from Figma 11334:71555–71557 / downloaded SVGs. */
+export const LANDING_RINGS = [
+  {
+    id: 'outer',
+    viewBox: 1353,
+    layout: 1305,
+    left: -974,
+    top: -384,
+    radius: 652.5,
+    opacity: 0.64,
+    durationMs: 48000,
+    direction: 1 as const,
+    driftX: 14,
+    driftY: -10,
+    scaleTo: 1.04,
+    progress: false,
+  },
+  {
+    id: 'middle',
+    viewBox: 691,
+    layout: 643,
+    left: 52,
+    top: 122,
+    radius: 321.5,
+    opacity: 1,
+    durationMs: 28000,
+    direction: -1 as const,
+    driftX: -10,
+    driftY: 12,
+    scaleTo: 1.035,
+    progress: true,
+  },
+  {
+    id: 'inner',
+    viewBox: 594,
+    layout: 546,
+    left: -351,
+    top: -51,
+    radius: 273,
+    opacity: 0.32,
+    durationMs: 36000,
+    direction: 1 as const,
+    driftX: 8,
+    driftY: 8,
+    scaleTo: 1.05,
+    progress: false,
+  },
+] as const;
+
+export type LandingRing = (typeof LANDING_RINGS)[number];
+
+export function landingCanvasScale(screenWidth: number): number {
+  return screenWidth / FIGMA_FRAME.width;
+}
+
+export function landingCanvasOffsetY(screenHeight: number, scale: number): number {
+  return (screenHeight - FIGMA_FRAME.height * scale) / 2;
+}
+
+export function landingRingBox(ring: LandingRing, scale: number, offsetY: number) {
+  const overflow = LANDING_RING_STROKE / 2;
+  return {
+    left: (ring.left - overflow) * scale,
+    top: (ring.top - overflow) * scale + offsetY,
+    size: ring.viewBox * scale,
+  };
+}
 
 /** Minimum top breathing room below Dynamic Island / notch. */
 export const WELCOME_TOP_INSET_MIN = 12;

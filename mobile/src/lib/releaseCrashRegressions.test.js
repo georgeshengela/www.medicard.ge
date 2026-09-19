@@ -76,6 +76,65 @@ describe('release crash regressions', () => {
     assert.match(hydrate, /runPostLoginSideEffects/);
   });
 
+  it('logged-in session shows a user-gesture permission gate', () => {
+    const auth = src('src/store/AuthContext.tsx');
+    const layout = src('app/_layout.tsx');
+    assert.doesNotMatch(auth, /bootstrapDeviceAccess/);
+    assert.match(layout, /PermissionGateHost/);
+  });
+
+  it('boot entry ignores RN LogBox toasts that cover Home CTAs', () => {
+    const text = src('index.js');
+    assert.match(text, /LogBox\.ignoreLogs/);
+    assert.match(text, /Open debugger to view warnings/);
+  });
+
+  it('OTP field covers the digit boxes instead of a 1px hit target', () => {
+    const text = src('src/components/auth/OtpCodeInput.tsx');
+    assert.match(text, /position: 'absolute'/);
+    assert.match(text, /height: box/);
+    assert.doesNotMatch(text, /width: 1/);
+  });
+
+  it('profile setup footer lifts above the Android IME', () => {
+    const text = src('src/components/profile/ProfileSetupShell.tsx');
+    assert.match(text, /useKeyboardHeight/);
+    assert.match(text, /footerPadBottom/);
+    assert.match(text, /Platform\.OS === 'android'/);
+  });
+
+  it('login CTA uses the same gutter above the IME as below the status bar', () => {
+    const shell = src('src/components/AuthShell.tsx');
+    assert.match(shell, /authFooterBottomPad/);
+    assert.match(shell, /authScrollTopPad/);
+    assert.match(shell, /useKeyboardMetrics/);
+    assert.doesNotMatch(shell, /KeyboardAvoidingView/);
+    assert.doesNotMatch(shell, /borderTopWidth/);
+  });
+
+  it('permissions toggle treats iOS authorized as granted and skips a second OS prompt', () => {
+    const helper = src('src/lib/notificationPermission.js');
+    const page = src('app/profile/permissions.tsx');
+    const notifications = src('src/lib/notifications.ts');
+    assert.match(helper, /IOS_ALLOWED/);
+    assert.match(notifications, /notificationResponseIsGranted/);
+    assert.match(page, /enablePushConnection/);
+    assert.doesNotMatch(page, /requestNotificationAccess/);
+    assert.match(page, /pushRegisterToken/);
+    assert.match(notifications, /admin_broadcast/);
+    assert.doesNotMatch(notifications, /development: true/);
+  });
+
+  it('login keyboard-open wordmark is not clipped and empty taps dismiss IME', () => {
+    const header = src('src/components/auth/AuthBrandHeader.tsx');
+    const shell = src('src/components/AuthShell.tsx');
+    assert.match(header, /BrandWordmark/);
+    assert.match(header, /includeFontPadding: false/);
+    assert.doesNotMatch(header, /overflow: 'hidden' \}, wordStyle/);
+    assert.match(shell, /keyboardShouldPersistTaps="handled"/);
+    assert.match(shell, /Keyboard\.dismiss/);
+  });
+
   it('root layout and custom entry install the boot guard', () => {
     const layout = src('app/_layout.tsx');
     const entry = src('index.js');

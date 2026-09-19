@@ -6,7 +6,14 @@ import { LogBox, Text, View } from 'react-native';
 
 // Expo SDK 57 treats sound: 'default' as a missing custom file in the native client.
 // The repeating LogBox toast covers Home chrome; ignore only that known message.
-LogBox.ignoreLogs(["Custom sound 'default' not found"]);
+LogBox.ignoreLogs([
+  "Custom sound 'default' not found",
+  /InteractionManager has been deprecated/,
+  /ProgressBarAndroid has been extracted from react-native core/,
+  /SafeAreaView has been deprecated/,
+  /Clipboard has been extracted from react-native core/,
+  /PushNotificationIOS has been extracted from react-native core/,
+]);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, useGlobalSearchParams, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -22,6 +29,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { QuotaReadyHost } from '@/components/QuotaReadyHost';
 import { LocationAskHost } from '@/components/location/LocationAskHost';
+import { PermissionGateHost } from '@/components/permissions/PermissionGateHost';
 import { QuestHost } from '@/components/quest/QuestHost';
 import { TbilisiMovesHost } from '@/components/tbilisiMoves/TbilisiMovesHost';
 import { useThemeColors } from '@/theme/colors';
@@ -315,6 +323,7 @@ function AppShell() {
               <Stack.Screen name="visits" options={{ headerShown: false }} />
               <Stack.Screen name="pets" options={{ headerShown: false }} />
               <Stack.Screen name="tbilisi-moves" options={{ headerShown: false }} />
+              <Stack.Screen name="medipulsi" options={{ headerShown: false }} />
               <Stack.Screen name="medications" options={{ headerShown: false }} />
               <Stack.Screen name="lab" options={{ headerShown: false }} />
               <Stack.Screen name="symptoms" options={{ headerShown: false }} />
@@ -333,6 +342,7 @@ function AppShell() {
           <QuestHost />
           <TbilisiMovesHost />
           <OfflineBanner />
+          <PermissionGateHost />
         </View>
       </AuthGate>
     </>

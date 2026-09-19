@@ -28,6 +28,7 @@ import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { HomeMediCompanionEntry } from '@/components/companion/HomeMediCompanionEntry';
 import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
 import { ProfileTbilisiMovesSection } from '@/components/tbilisiMoves/ProfileTbilisiMovesSection';
+import { ProfileMedipulsiSection } from '@/components/medipulsi/ProfileMedipulsiSection';
 import { DeleteAccountModal } from '@/components/profile/DeleteAccountModal';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { ProfileVersionCard } from '@/components/profile/ProfileVersionCard';
@@ -114,10 +115,10 @@ export default function Profile() {
       return;
     }
 
-    const granted = await requestNotificationPermission();
-    if (granted) {
+    const asked = await requestNotificationPermission();
+    if (asked) {
       await setPushOptedIn(true);
-      await registerPushTokenWithServer().catch(() => undefined);
+      await registerPushTokenWithServer({ skipPermissionProbe: true }).catch(() => undefined);
       setNotificationsOn(await isNotificationsEnabled());
       router.push('/profile/permissions');
       return;
@@ -291,7 +292,8 @@ export default function Profile() {
       </View>
 
       <ProfilePetsSection />
-      <ProfileTbilisiMovesSection />
+          <ProfileTbilisiMovesSection />
+          <ProfileMedipulsiSection />
 
       <View className="mt-5">
         <HomeSectionTitle title={ka.profile.appearance} />

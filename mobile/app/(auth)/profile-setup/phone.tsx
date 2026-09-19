@@ -1,9 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { ProfilePhoneField } from '@/components/profile/ProfilePhoneField';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
-import { useFigmaProfileSetup } from '@/constants/figmaProfileSetupLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
@@ -12,13 +11,13 @@ import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthC
 
 /** Profile setup — phone entry (Figma 8845:310502). */
 export default function ProfileSetupPhoneScreen() {
-  const FIGMA_PROFILE_SETUP = useFigmaProfileSetup();
   const router = useRouter();
   const preview = useOnboardingDevPreview();
   const { user, ready, healthProfile } = useAuth();
   const [local, setLocal] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   const normalised = useMemo(() => {
     const digits = local.replace(/\D/g, '').replace(/^995/, '').slice(0, 9);
@@ -42,6 +41,8 @@ export default function ProfileSetupPhoneScreen() {
       setError(ka.auth.invalidPhone);
       return;
     }
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
     setBusy(true);
     setError(null);
@@ -58,6 +59,7 @@ export default function ProfileSetupPhoneScreen() {
         Alert.alert(ka.auth.phoneTakenTitle, ka.auth.phoneTakenBody, [{ text: ka.common.close }]);
       }
     } finally {
+      submittingRef.current = false;
       setBusy(false);
     }
   };
@@ -77,16 +79,7 @@ export default function ProfileSetupPhoneScreen() {
         <ProfilePhoneField value={local} onChange={setLocal} error={error} />
       }
     >
-      <View style={{ alignItems: 'center', paddingVertical: 16 }}>
-        <Image
-          source={require('../../../assets/figma/profile-setup/phone-otp-illustration.png')}
-          style={{
-            width: FIGMA_PROFILE_SETUP.phoneIllustrationSize * 0.72,
-            height: FIGMA_PROFILE_SETUP.phoneIllustrationSize * 0.72,
-          }}
-          resizeMode="contain"
-        />
-      </View>
+      <View style={{ alignItems: 'center', paddingVertical: 16, minHeight: 120 }} />
     </ProfileSetupShell>
   );
 }

@@ -32,7 +32,13 @@ export type StoredHealthBundle = {
 async function ensureAccountScope() {
   if (localAccountId()) return;
   const snapshot = await loadSessionSnapshot();
-  if (snapshot?.user?.id) setLocalAccountId(snapshot.user.id);
+  if (snapshot?.user?.id) {
+    setLocalAccountId(snapshot.user.id);
+    return;
+  }
+  const token = await getToken();
+  const id = jwtSubject(token);
+  if (id) setLocalAccountId(id);
 }
 
 export async function getCachedHealthBundle(): Promise<StoredHealthBundle | null> {

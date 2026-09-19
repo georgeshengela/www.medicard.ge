@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolvePushOptedIn, resolvePushToggleOn } from './pushOptIn.ts';
+import { resolvePermissionsPageToggle, resolvePushOptedIn, resolvePushToggleOn } from './pushOptIn.ts';
 
 describe('pushOptIn', () => {
   it('treats an explicit off as off even when OS permission is granted', () => {
@@ -22,5 +22,14 @@ describe('pushOptIn', () => {
     assert.equal(resolvePushOptedIn('1', false), true);
     assert.equal(resolvePushToggleOn(false, true), false);
     assert.equal(resolvePushToggleOn(true, true), true);
+  });
+});
+
+describe('permissions page toggle', () => {
+  it('stays on after setup even if a later OS GET looks empty', () => {
+    assert.equal(resolvePermissionsPageToggle('1', false), true);
+    assert.equal(resolvePermissionsPageToggle('0', true), false);
+    assert.equal(resolvePermissionsPageToggle(null, true), true);
+    assert.equal(resolvePermissionsPageToggle(null, false), false);
   });
 });

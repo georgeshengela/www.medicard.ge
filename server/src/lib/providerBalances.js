@@ -187,36 +187,44 @@ export async function getEvidenceMdBalance() {
 }
 
 export async function getProviderBalances({ fresh = false } = {}) {
-  const now = Date.now();
-  if (!fresh && cache.data && now - cache.at < CACHE_MS) return cache.data;
+  if (!fresh && cache.data && Date.now() - cache.at < CACHE_MS) return cache.data;
+  if (!fresh && cache.pending) return cache.pending;
 
-  const [openrouter, evidencemd] = await Promise.all([
-    getOpenRouterBalance().catch((err) => ({
-      id: 'openrouter',
-      name: 'OpenRouter',
-      role: 'vision',
-      configured: Boolean(env.OPENROUTER_API_KEY),
-      ok: false,
-      remaining: null,
-      error: err.message,
-      dashboardUrl: 'https://openrouter.ai/settings/credits',
-      model: env.OPENROUTER_MODEL,
-      currency: 'USD',
-    })),
-    getEvidenceMdBalance().catch((err) => ({
-      id: 'evidencemd',
-      name: 'EvidenceMD',
-      role: 'chat',
-      configured: Boolean(env.EVIDENCEMD_API_KEY),
-      ok: false,
-      remaining: null,
-      error: err.message,
-      dashboardUrl: 'https://evidencemd.ai/developers',
-      model: env.EVIDENCEMD_MODEL,
-      currency: 'credits',
-    })),
-  ]);
+  const run = (async () => {
+    const [openrouter, evidencemd] = await Promise.all([
+      getOpenRouterBalance().catch((err) => ({
+        id: 'openrouter',
+        name: 'OpenRouter',
+        role: 'vision',
+        configured: Boolean(env.OPENROUTER_API_KEY),
+        ok: false,
+        remaining: null,
+        error: err.message,
+        dashboardUrl: 'https://openrouter.ai/settings/credits',
+        model: env.OPENROUTER_MODEL,
+        currency: 'USD',
+      })),
+      getEvidenceMdBalance().catch((err) => ({
+        id: 'evidencemd',
+        name: 'EvidenceMD',
+        role: 'chat',
+        configured: Boolean(env.EVIDENCEMD_API_KEY),
+        ok: false,
+        remaining: null,
+        error: err.message,
+        dashboardUrl: 'https://evidencemd.ai/developers',
+        model: env.EVIDENCEMD_MODEL,
+        currency: 'credits',
+      })),
+    ]);
+    const data = { openrouter, evidencemd, fetchedAt: new Date().toISOString() };
+    cache = { at: Date.now(), data, pending: null };
+    return data;
+  })().catch((err) => {
+    cache = { ...cache, pending: null };
+    throw err;
+  });
 
-  cache = { at: now, data: { openrouter, evidencemd, fetchedAt: new Date().toISOString() } };
-  return cache.data;
+  cache = { ...cache, pending: run };
+  return run;
 }

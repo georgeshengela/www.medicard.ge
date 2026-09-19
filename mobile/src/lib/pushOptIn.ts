@@ -8,3 +8,10 @@ export function resolvePushOptedIn(stored: string | null, permissionGranted: boo
 export function resolvePushToggleOn(permissionGranted: boolean, optedIn: boolean): boolean {
   return permissionGranted && optedIn;
 }
+
+/** ნებართვები toggle: honor an explicit in-app on even when a later GET lies. */
+export function resolvePermissionsPageToggle(stored: string | null, rememberedOsGrant: boolean): boolean {
+  if (stored === '1') return true;
+  if (stored === '0') return false;
+  return rememberedOsGrant === true;
+}

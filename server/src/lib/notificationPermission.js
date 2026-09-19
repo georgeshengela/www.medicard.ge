@@ -67,9 +67,16 @@ export async function upsertNotificationPermission(userId, body = {}, meta = {})
   return { ok: true, changed, status, previous };
 }
 
-export async function loadPermissionRows() {
+export async function loadPermissionRows(userIds) {
   await ensureNotificationPermissionTable();
   try {
+    if (Array.isArray(userIds)) {
+      if (!userIds.length) return [];
+      return await prisma.$queryRaw`
+        SELECT "userId", "status", "platform", "updatedAt" FROM "NotificationPermission"
+        WHERE "userId" = ANY(${userIds})
+      `;
+    }
     return await prisma.$queryRaw`
       SELECT "userId", "status", "platform", "updatedAt" FROM "NotificationPermission"
     `;
