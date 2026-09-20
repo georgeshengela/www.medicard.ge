@@ -19,6 +19,11 @@ const schema = z.object({
   OPENROUTER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
   OPENROUTER_MODEL: z.string().default('google/gemini-3.8-flash'),
 
+  // Optional Georgian reply voice. Keys stay on the server; never EXPO_PUBLIC.
+  AZURE_SPEECH_KEY: z.string().default(''),
+  AZURE_SPEECH_REGION: z.string().regex(/^[a-z0-9-]*$/).default(''),
+  AZURE_SPEECH_VOICE: z.enum(['ka-GE-EkaNeural', 'ka-GE-GiorgiNeural']).default('ka-GE-EkaNeural'),
+
   ANTHROPIC_API_KEY: z.string().default(''),
   ANTHROPIC_MODEL: z.string().default('claude-3-5-sonnet-latest'),
   OPENAI_API_KEY: z.string().default(''),
@@ -28,7 +33,8 @@ const schema = z.object({
   FREE_MONTHLY_AI_LIMIT: z.coerce.number().int().positive().default(90),
 
   ADMIN_EMAIL: z.string().email().default('admin@medicard.ge'),
-  ADMIN_PASSWORD: z.string().min(8).default('MedicardAdmin1!'),
+  // The seed policy requires an explicit secret for a new production admin.
+  ADMIN_PASSWORD: z.union([z.literal(''), z.string().min(8)]).default(''),
   ADMIN_FULL_NAME: z.string().default('Medicard Admin'),
 
   RESEND_API_KEY: z.string().default(''),

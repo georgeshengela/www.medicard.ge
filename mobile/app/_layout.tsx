@@ -32,6 +32,7 @@ import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { QuotaReadyHost } from '@/components/QuotaReadyHost';
 import { LocationAskHost } from '@/components/location/LocationAskHost';
 import { AiSharingConsentHost } from '@/components/AiSharingConsentHost';
+import { AssistantEntry } from '@/components/assistant/AssistantEntry';
 import { setLocationProfileListener, hydrateLocationFromProfile } from '@/lib/userLocation';
 import { localAccountId } from '@/lib/localAccount';
 import { PermissionGateHost } from '@/components/permissions/PermissionGateHost';
@@ -44,6 +45,7 @@ import { FontsProvider } from '@/store/FontsContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
 import { api } from '@/lib/api';
 import { APP_VERSION } from '@/lib/appVersion';
+import { startLivePresence, setLivePresenceScreen, stopLivePresence } from '@/lib/livePresence';
 import { rememberMapboxToken } from '@/lib/run/mapbox';
 import { consumePendingCycleShare, isCycleShareCode, savePendingCycleShare } from '@/lib/cycleSharePending';
 import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
@@ -207,7 +209,7 @@ function AppShell() {
     Boolean(user) &&
     !tabChromeHidden &&
     segments[0] === '(tabs)';
-  const chromeInteractive = showTabBar || activeRunChrome;
+  const chromeInteractive = Boolean(user) || activeRunChrome;
 
   useEffect(() => {
     if (!user) {
@@ -223,13 +225,11 @@ function AppShell() {
 
   useEffect(() => {
     if (!user) {
-      void import('@/lib/livePresence').then(({ stopLivePresence }) => stopLivePresence());
+      stopLivePresence();
       return;
     }
-    void import('@/lib/livePresence').then(({ startLivePresence, setLivePresenceScreen }) => {
-      startLivePresence();
-      setLivePresenceScreen(segments.filter(Boolean).join('/') || 'home');
-    });
+    startLivePresence();
+    setLivePresenceScreen(segments.filter(Boolean).join('/') || 'home');
   }, [user, segments]);
 
   useEffect(() => {
@@ -331,6 +331,7 @@ function AppShell() {
               <Stack.Screen name="medi-companion" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="chat" options={{ headerShown: false }} />
+              <Stack.Screen name="assistant" options={{ headerShown: false }} />
               <Stack.Screen name="module" options={{ headerShown: false }} />
               <Stack.Screen name="cycle" options={{ headerShown: false }} />
               <Stack.Screen name="share" options={{ headerShown: false }} />
@@ -346,8 +347,9 @@ function AppShell() {
             </Stack>
           </View>
           <AppChromeOverlay interactive={chromeInteractive}>
-            {user && !['run', 'medi-quest', 'medi-companion', 'pets'].includes(segments[0]) ? <FloatingTabBar visible={showTabBar} /> : null}
+            {user && !['run', 'medi-quest', 'medi-companion', 'pets', 'assistant'].includes(segments[0]) ? <FloatingTabBar visible={showTabBar} /> : null}
             {user ? <ActiveRunBadge /> : null}
+            {user ? <AssistantEntry tabBar={showTabBar} /> : null}
           </AppChromeOverlay>
           <DailyCheckInHost />
           <QuotaReadyHost />

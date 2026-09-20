@@ -102,6 +102,21 @@ model User {
   @@index([createdAt])
   @@index([lastCheckInDate])
   passwordResets    PasswordReset[]
+  assistantOperations AssistantOperation[]
+}
+
+/// Execution receipt only: no dictated text, health context or audio.
+model AssistantOperation {
+  id          String   @id @db.Uuid
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tool        String
+  payloadHash String
+  status      String
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @default(now()) @db.Timestamptz
+
+  @@index([userId, createdAt])
 }
 
 /// One row per user per Tbilisi calendar day. Unique constraint makes the claim idempotent.

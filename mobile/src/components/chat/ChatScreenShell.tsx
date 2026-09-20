@@ -8,11 +8,11 @@ const ChatKeyboard = createContext(false);
 export function useChatKeyboardOpen() { return useContext(ChatKeyboard); }
 
 /** The bottom inset belongs to the home indicator OR the keyboard, never both. */
-export function ChatActionDock({ children }: { children: React.ReactNode }) {
+export function ChatActionDock({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
   const C = useFigmaChat();
   const insets = useSafeAreaInsets();
   const open = useChatKeyboardOpen();
-  return <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: open ? 10 : Math.max(insets.bottom, 12), borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.white }}>{children}</View>;
+  return <View style={[{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: open ? 10 : Math.max(insets.bottom, 12), borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.white }, style]}>{children}</View>;
 }
 
 export function ChatScreenShell({ header, footer, children, style }: {

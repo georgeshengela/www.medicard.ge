@@ -8,6 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "test:assistant": "node --test src/lib/assistant.test.js src/lib/assistantSpeech.test.js",
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",

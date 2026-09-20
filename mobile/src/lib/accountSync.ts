@@ -1,8 +1,8 @@
 import { mergeLabPanelLists } from '@/lib/labMerge';
 import { loadCanonicalLabPanels, replaceLabPanels } from '@/lib/labStore';
 import { loadDoseLogs } from '@/lib/medications.shared';
-import { setScopedPreference } from '@/lib/localAccount';
-import { api, type AccountAppState } from '@/lib/api';
+import { setScopedPreference, localAccountId } from '@/lib/localAccount';
+import { api, assistantRequest, type AccountAppState } from '@/lib/api';
 import { loadRunHistory } from '@/lib/run/history';
 import { loadStepsGoal } from '@/lib/stepsGoal';
 import { loadReachedStepsGoals } from '@/lib/stepsGoalHistory';
@@ -18,6 +18,16 @@ const STEPS_HISTORY_KEY = 'medicard.steps.goal.history';
 const SYMPTOM_KEY = 'medicard.symptom-check-history';
 const WEIGHT_GOAL_KEY = 'medicard.weight.goal.v1';
 const WEIGHT_LOGS_KEY = 'medicard.weight.logs.v1';
+
+/** Authoritative read after a confirmed assistant write; never pushes an old goal back. */
+export async function refreshAssistantAccountState(owner: string): Promise<void> {
+  const state = await assistantRequest<Pick<AccountAppState, 'weightGoal' | 'stepsGoal'>>('state', owner);
+  if (localAccountId() !== owner) return;
+  await Promise.all([
+    setPreference(`${WEIGHT_GOAL_KEY}.${owner}`, state.weightGoal ? JSON.stringify(state.weightGoal) : ''),
+    setPreference(`${STEPS_KEY}.${owner}`, state.stepsGoal ? JSON.stringify(state.stepsGoal) : ''),
+  ]);
+}
 
 let pulledThisSession = false;
 let applyingRemote = false;

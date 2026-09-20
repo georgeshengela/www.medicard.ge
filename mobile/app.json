@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.10.9",
+    "version": "1.0.0.11.1",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -14,13 +14,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
-      "version": "1.10.9",
+      "version": "1.11.1",
       "buildNumber": "83",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD AI",
         "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის, ასევე MEDI RUN-ში ვირტუალური საჩუქრის აღმოსაჩენად.",
         "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა სამედიცინო დოკუმენტების, ანალიზებისა და ცხოველის ფოტოების ასატვირთად.",
-        "NSMicrophoneUsageDescription": "მიკროფონი საჭიროა ხმის ანალიზისთვის, თუ ამ ნაბიჯს გაივლით.",
+        "NSMicrophoneUsageDescription": "მიკროფონი გამოიყენება შენი სურვილით ხმოვანი ასისტენტისთვის და ხმის ანალიზისთვის.",
         "NSFaceIDUsageDescription": "MEDICARD AI-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად.",
         "NSLocationWhenInUseUsageDescription": "MEDICARD AI-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის და MEDIRUN-ში გავლილი გზისა და ახლომახლო საჩუქრების აღმოსაჩენად. ფონური წვდომა არ გამოიყენება.",
         "NSCalendarsUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
@@ -161,8 +161,8 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "მიკროფონი საჭიროა ხმის ანალიზისთვის, თუ ამ ნაბიჯს გაივლით.",
-          "recordAudioAndroid": false,
+          "microphonePermission": "მიკროფონი გამოიყენება შენი სურვილით ხმოვანი ასისტენტისთვის და ხმის ანალიზისთვის.",
+          "recordAudioAndroid": true,
           "enableBackgroundRecording": false,
           "enableBackgroundPlayback": false
         }
@@ -171,7 +171,7 @@
     ],
     "extra": {
       "router": {},
-      "medicardInternalVersion": "1.0.0.10.9",
+      "medicardInternalVersion": "1.0.0.11.1",
       "apiUrl": "https://medicard.ge",
       "privacyPolicyUrl": "https://medicard.ge/privacy",
       "termsOfServiceUrl": "https://medicard.ge/terms",

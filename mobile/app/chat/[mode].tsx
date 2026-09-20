@@ -21,6 +21,7 @@ import { localAccountId } from '@/lib/localAccount';
 import { useThemeColors } from '@/theme/colors';
 import { usePlanUsage } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
+import { consumeAssistantLaunch } from '@/lib/assistant';
 
 export default function ChatScreen() {
   const { user } = useAuth();
@@ -183,6 +184,12 @@ function ChatScreenContent() {
     },
     [historyState, task, mode, sessionId, applyUsage, scrollToEnd],
   );
+
+  useEffect(() => {
+    if (!user?.id || historyState !== 'ready' || params.sessionId) return;
+    const message = consumeAssistantLaunch(user.id, `/chat/${mode === 'CONSILIUM' ? 'consilium' : 'doctor'}`);
+    if (message) { setDraft(message); void send(message); }
+  }, [user?.id, historyState, params.sessionId, mode, send]);
 
   const submitFeedback = useCallback(async (index: number, rating: 1 | -1) => {
     const owner = localAccountId();

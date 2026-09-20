@@ -25,6 +25,7 @@ import { newPetsRequestId } from '@/lib/petsHealth';
 import { streamPetVetQuery } from '@/lib/petVetQueryStream';
 import { usePlanUsage } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
+import { consumeAssistantLaunch } from '@/lib/assistant';
 import { useThemeColors } from '@/theme/colors';
 
 const DISCLOSURE_KEY = 'medicard.pets.vetDisclosure.v1';
@@ -236,6 +237,13 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
     },
     [applyUsage, petId, plan.usage?.resetsInMs, loaded, disclosure, current, sessionId, scrollToEnd],
   );
+
+  useEffect(() => {
+    const owner = localAccountId();
+    if (!owner || !petId || !loaded || disclosure) return;
+    const message = consumeAssistantLaunch(owner, `/pets/${petId}/chat`);
+    if (message) { setDraft(message); void send(message); }
+  }, [petId, loaded, disclosure, send]);
 
   const confirmDisclosure = async () => {
     if (!current()) return;

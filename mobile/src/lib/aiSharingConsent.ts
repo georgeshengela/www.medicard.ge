@@ -43,6 +43,7 @@ export function useAiSharingPrompt() {
 }
 export function isAiSharingRequest(path: string, method = 'POST') {
   return method === 'POST' && (/^\/api\/ai\/(?!feedback(?:\?|$))/.test(path)
+    || /^\/api\/assistant\/(plan|transcribe|speak)(?:\?|$)/.test(path)
     || path.split('?')[0] === '/api/health-profile/onboarding-analysis'
     || path.split('?')[0] === '/api/cycle/insights'
     || /^\/api\/pets\/[^/]+\/chat\/query(?:\?|$)/.test(path));

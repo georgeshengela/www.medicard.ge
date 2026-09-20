@@ -1905,6 +1905,20 @@ type RequestOptions = {
   retryAuthConnection?: boolean;
 };
 
+/** Assistant calls keep the original account's token across consent and network awaits. */
+export async function assistantRequest<T>(path: 'catalog' | 'state' | 'plan' | 'prepare' | 'execute' | 'transcribe' | 'speak', owner: string,
+  body?: unknown, scope: 'human' | 'pet' = 'human'): Promise<T> {
+  const { localAccountId } = await import('@/lib/localAccount');
+  if (owner !== localAccountId()) throw new ApiError('ანგარიში შეიცვალა.', 401);
+  const token = await getToken();
+  if (!token || owner !== localAccountId()) throw new ApiError('გთხოვ, შეხვიდე ანგარიშში.', 401);
+  const result = await request<T>(`/api/assistant/${path}${path === 'catalog' ? `?scope=${scope}` : ''}`, {
+    token, method: path === 'catalog' || path === 'state' ? 'GET' : 'POST', body, timeoutMs: 120000,
+  });
+  if (owner !== localAccountId()) throw new ApiError('ანგარიში შეიცვალა.', 401);
+  return result;
+}
+
 export async function ensureAiSharingConsentForRequest(path: string, method = 'POST', suppliedToken?: string | null, settings = false) {
   const { isAiSharingRequest, requestAiSharingPrompt } = await import('@/lib/aiSharingConsent');
   if (!settings && !isAiSharingRequest(path, method)) return;

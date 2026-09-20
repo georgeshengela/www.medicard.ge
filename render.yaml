@@ -46,6 +46,12 @@ services:
         sync: false
       - key: OPENROUTER_API_KEY
         sync: false
+      - key: AZURE_SPEECH_KEY
+        sync: false
+      - key: AZURE_SPEECH_REGION
+        value: westeurope
+      - key: AZURE_SPEECH_VOICE
+        value: ka-GE-EkaNeural
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
