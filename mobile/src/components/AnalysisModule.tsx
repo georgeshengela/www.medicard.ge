@@ -108,7 +108,7 @@ export function AnalysisModule({
   }, [plan]);
 
   const acceptMany = useCallback(
-    async (assets: Array<{ uri: string; name?: string; fileName?: string; mimeType?: string | null; size?: number | null; fileSize?: number | null }>) => {
+    async (assets: Array<{ uri: string; name?: string; fileName?: string | null; mimeType?: string | null; size?: number | null; fileSize?: number | null }>) => {
       const next: Picked[] = [];
       for (const asset of assets) {
         try {

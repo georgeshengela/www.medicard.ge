@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/store/AuthContext';
 import { locationFromProfile } from '@/lib/userLocation';
+import { locationChangedMeaningfully } from '@/lib/weather/cache';
 import {
   getWeatherWellnessRecommendation,
   loadWeatherSnapshot,
@@ -61,7 +62,7 @@ export function useWeather() {
   useEffect(() => {
     let alive = true;
     void readWeatherCache().then((cached) => {
-      if (!alive || !cached?.snapshot || !city) return;
+      if (!alive || !cached?.snapshot || !city || lat == null || lng == null || locationChangedMeaningfully({ lat: cached.latitude, lng: cached.longitude }, { lat, lng })) return;
       setState((prev) => {
         if (prev.snapshot) return prev;
         const snapshot = {
@@ -74,18 +75,19 @@ export function useWeather() {
     return () => {
       alive = false;
     };
-  }, [city, user?.id]);
+  }, [city, lat, lng, user?.id]);
 
   const refresh = useCallback(
     async (force = false) => {
+      const ticket = ++seq.current;
       if (!ready || lat == null || lng == null) {
         setState({
           ...EMPTY,
-          loading: (!ready || awaitingFix),
+          loading: !ready,
+          unavailable: ready && awaitingFix,
         });
         return;
       }
-      const ticket = ++seq.current;
       setState((prev) => ({ ...prev, loading: !prev.snapshot, unavailable: false }));
 
       const loadOnce = async () => {
@@ -128,7 +130,9 @@ export function useWeather() {
   );
 
   useEffect(() => {
+    setState({ ...EMPTY, loading: !ready || (lat != null && lng != null) });
     void refresh(false);
+    return () => { seq.current += 1; };
   }, [refresh]);
 
   return { ...state, refresh };

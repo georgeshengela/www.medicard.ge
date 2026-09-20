@@ -9,10 +9,10 @@ describe('consumerPurchasesEnabledFromStatus', () => {
     assert.equal(consumerPurchasesEnabledFromStatus({ settings: { consumerPurchasesEnabled: false } }), false);
   });
 
-  it('enables purchase CTAs only when the server says so', () => {
+  it('legacy server flags cannot enable purchases in the free release', () => {
     assert.equal(
       consumerPurchasesEnabledFromStatus({ settings: { consumerPurchasesEnabled: true } }),
-      true,
+      false,
     );
   });
 });

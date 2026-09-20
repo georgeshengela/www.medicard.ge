@@ -12,6 +12,7 @@ import {
 import { onUsageReset } from '@/lib/quest/socket';
 import { useAuth } from '@/store/AuthContext';
 import type { Usage } from '@/lib/api';
+import { FREE_CONSUMER_RELEASE } from '@/lib/consumerAccess';
 
 export function QuotaReadyHost() {
   const { user, usage, refresh } = useAuth();
@@ -26,7 +27,7 @@ export function QuotaReadyHost() {
     const prev = prevRef.current;
     prevRef.current = usage;
     void syncQuotaResetNotification(usage);
-    if (!user || !usage || root === '(auth)') return;
+    if (FREE_CONSUMER_RELEASE || !user || !usage || root === '(auth)') return;
 
     const refillKey = usage.refilled && usage.refilledKey ? usage.refilledKey : null;
     const announce = shouldAnnounceQuotaReady(prev, usage);
@@ -42,7 +43,7 @@ export function QuotaReadyHost() {
   }, [usage, user, root]);
 
   useEffect(() => {
-    if (!user) return;
+    if (FREE_CONSUMER_RELEASE || !user) return;
     const offSocket = onUsageReset(() => {
       void refresh();
     });
@@ -62,7 +63,7 @@ export function QuotaReadyHost() {
 
   return (
     <QuotaReadySheet
-      visible={open}
+      visible={!FREE_CONSUMER_RELEASE && open}
       remaining={Math.max(0, remaining)}
       limit={Math.max(0, limit)}
       onClose={() => {

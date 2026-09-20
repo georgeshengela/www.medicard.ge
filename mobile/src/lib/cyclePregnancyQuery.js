@@ -24,6 +24,7 @@ export function emptyPregnancyQueryState(userId = null) {
  * Auth readiness must be known before any request. Mode comes from the loaded
  * Cycle profile — never from a guessed client flag or a pregnancy-test result.
  */
+/** @param {{authReady?: boolean, authenticated?: boolean, mode?: string | null, reachable?: boolean}} options */
 export function shouldFetchCyclePregnancy({
   authReady = false,
   authenticated = false,

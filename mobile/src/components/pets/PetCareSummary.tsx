@@ -1,8 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { AlertTriangle, ChevronRight, Syringe } from 'lucide-react-native';
-import { Card } from '@/components/ui/Card';
+import { localAccountId } from '@/lib/localAccount';
+import { Bone } from '@/components/ui/Skeleton';
+import { PetPanel as Card } from '@/components/pets/PetUi';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { careKindIcon } from '@/components/pets/PetCareChips';
 import { PetIconWell } from '@/components/pets/PetScreen';
@@ -13,6 +15,7 @@ import { completeLabel, kindLabel, petsCareErrorKind } from '@/lib/petsCare';
 import { useThemeColors } from '@/theme/colors';
 
 export function PetCareSummary({ pet }: { pet: Pet }) {
+  const generation = useRef(0);
   const colors = useThemeColors();
   const router = useRouter();
   const [overdue, setOverdue] = useState<PetCareOccurrence[]>([]);
@@ -22,29 +25,33 @@ export function PetCareSummary({ pet }: { pet: Pet }) {
   const [error, setError] = useState<unknown>(null);
 
   const load = useCallback(async () => {
+    const request = ++generation.current, owner = localAccountId();
     setError(null);
     try {
       const res = await api.pets.care.upcoming(pet.id);
+      if (request !== generation.current || owner !== localAccountId()) return;
       setOverdue(res.overdue);
       setDue(res.due);
       setUpcoming(res.upcoming);
     } catch (caught) {
+      if (request !== generation.current || owner !== localAccountId()) return;
       setOverdue([]);
       setDue([]);
       setUpcoming([]);
       setError(caught);
     } finally {
-      setReady(true);
+      if (request === generation.current && owner === localAccountId()) setReady(true);
     }
   }, [pet.id]);
 
   useFocusEffect(
     useCallback(() => {
       void load();
+      return () => { generation.current++; };
     }, [load]),
   );
 
-  if (!ready) return null;
+  if (!ready) return <Bone height={110} radius={24} />;
 
   if (error) {
     const kind = petsCareErrorKind(error);

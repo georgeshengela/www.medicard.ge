@@ -4,7 +4,6 @@ import { metersBetween, resolveNominatimAddress } from './geoPlace.js';
 import {
   didMoveFar,
   geocodeAppliesToRow,
-  isImplausibleJump,
   isStaleLocationFixAt,
   isHomePlaceWrite,
   isLiveLocationPing,
@@ -33,18 +32,15 @@ const NOMINATIM_GAP_MS = 1100;
 
 let tableReady = false;
 let lastNominatimAt = 0;
+let nominatimSlot = Promise.resolve();
 const upsertChains = new Map();
 
 function withUserLocationLock(userId, fn) {
   const prev = upsertChains.get(userId) || Promise.resolve();
   const run = prev.then(fn, fn);
-  upsertChains.set(
-    userId,
-    run.then(
-      () => undefined,
-      () => undefined,
-    ),
-  );
+  const tail = run.then(() => undefined, () => undefined);
+  upsertChains.set(userId, tail);
+  void tail.then(() => { if (upsertChains.get(userId) === tail) upsertChains.delete(userId); });
   return run;
 }
 
@@ -85,6 +81,18 @@ export async function ensureUserLocationTable() {
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS "UserLocation_countryCode_idx" ON "UserLocation"("countryCode")
   `);
+  // Also enforce ownership in the database: a GPS request already in flight must
+  // not recreate a location after its account has been deleted. NOT VALID leaves
+  // historical orphan cleanup separate while enforcing every new write.
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'UserLocation_userId_fkey' AND conrelid = '"UserLocation"'::regclass) THEN
+        ALTER TABLE "UserLocation" ADD CONSTRAINT "UserLocation_userId_fkey"
+          FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE NOT VALID;
+      END IF;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
+  `);
   tableReady = true;
 }
 
@@ -110,9 +118,13 @@ export async function loadUserLocationRow(userId) {
 }
 
 async function reverseGeocode(lat, lng) {
-  const wait = NOMINATIM_GAP_MS - (Date.now() - lastNominatimAt);
-  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-  lastNominatimAt = Date.now();
+  const slot = nominatimSlot.then(async () => {
+    const wait = NOMINATIM_GAP_MS - (Date.now() - lastNominatimAt);
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    lastNominatimAt = Date.now();
+  });
+  nominatimSlot = slot.catch(() => undefined);
+  await slot;
 
   const url = new URL('https://nominatim.openstreetmap.org/reverse');
   url.searchParams.set('lat', String(lat));
@@ -122,6 +134,7 @@ async function reverseGeocode(lat, lng) {
   url.searchParams.set('zoom', '14');
 
   const response = await fetch(url.toString(), {
+    signal: AbortSignal.timeout(6000),
     headers: {
       Accept: 'application/json',
       'Accept-Language': 'ka,en',
@@ -209,18 +222,17 @@ async function upsertUserLocationUnlocked(userId, input = {}) {
     return { location: current, profile: publicHealthProfile(profile) };
   }
 
-  let hasCoords = Number.isFinite(input.lat) && Number.isFinite(input.lng);
+  let hasCoords = Number.isFinite(input.lat) && Number.isFinite(input.lng)
+    && Math.abs(input.lat) <= 90 && Math.abs(input.lng) <= 180;
   if (hasCoords && isStaleLocationFixAt(input.fixAt, now.getTime())) {
     hasCoords = false;
   }
-  if (hasCoords && isImplausibleJump(row, input.lat, input.lng, now.getTime())) {
-    hasCoords = false;
-  }
-  if (hasCoords && isCachedCaucasusFix(input.lat, input.lng, input.timeZone)) {
-    hasCoords = false;
-  }
+  // A device timezone is a preference, not evidence that fresh GPS is wrong.
   if (hasCoords && !isHomePlaceWrite(source)) {
     hasCoords = false;
+  }
+  if (source === 'grant' && !hasCoords) {
+    throw Object.assign(new Error('მდებარეობის ახალი მონაცემი ვერ მივიღეთ. ხელახლა სცადეთ.'), { status: 400, code: 'LOCATION_FIX_REQUIRED' });
   }
 
   const prompted = input.prompted === true || current.prompted || hasCoords || input.enabled === true;
@@ -233,7 +245,7 @@ async function upsertUserLocationUnlocked(userId, input = {}) {
     ? { countryCode: null, countryKa: null, cityKa: null }
     : resolveStoredPlace({
         current,
-        geocoded: null,
+        geocoded: hasCoords && isHomePlaceWrite(source) ? input.place : null,
         movedFar,
       });
 
@@ -261,26 +273,23 @@ async function upsertUserLocationUnlocked(userId, input = {}) {
   };
 
   if (hasCoords || row || enabled || prompted) {
-    try {
-      await persistRow(userId, nextRow);
-    } catch (error) {
-      if (isMissingTable(error)) {
-        tableReady = false;
-      } else {
-        console.warn('[location] upsert failed', error?.message);
-      }
-    }
+    await persistRow(userId, nextRow);
   }
 
-  if (hasCoords && enabled && shouldRefreshPlace(row, input.lat, input.lng, input.source)) {
+  if (hasCoords && enabled && (!countryCode || !cityKa) && shouldRefreshPlace(row, input.lat, input.lng, input.source)) {
+    let geocoded = null;
     try {
-      const geocoded = await reverseGeocode(input.lat, input.lng);
+      geocoded = await reverseGeocode(input.lat, input.lng);
+    } catch {
+      console.warn('[location] reverse geocode unavailable');
+    }
+    if (geocoded) {
       const latest = await loadUserLocationRow(userId);
       if (geocodeAppliesToRow(latest, input.lat, input.lng)) {
         const placed = resolveStoredPlace({
           current: { countryCode, countryKa, cityKa },
           geocoded,
-          movedFar,
+          movedFar: false, // The old city's fields were already cleared/replaced above.
         });
         countryCode = placed.countryCode;
         countryKa = placed.countryKa;
@@ -295,8 +304,6 @@ async function upsertUserLocationUnlocked(userId, input = {}) {
           updatedAt: new Date(),
         });
       }
-    } catch (error) {
-      console.warn('[location] reverse geocode failed', error?.message);
     }
   }
 

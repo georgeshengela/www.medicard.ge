@@ -72,6 +72,8 @@ export type SymptomCheckResult = {
 
 export type SymptomCheckPayload = {
   symptoms: string[];
+  primarySymptom?: string;
+  includeHealthProfile?: boolean;
   method?: SymptomMethod;
   mode?: AnatomyMode | 'search';
   bodyPartId?: string;

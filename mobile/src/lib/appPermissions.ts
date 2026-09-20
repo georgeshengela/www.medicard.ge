@@ -1,3 +1,4 @@
+import type * as ExpoNotificationTypes from 'expo-notifications';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -80,7 +81,7 @@ export type AppPermissionsSnapshot = {
   };
 };
 
-function mapPermissionStatus(status: Notifications.PermissionStatus | ImagePicker.PermissionStatus): ExpoPermissionState {
+function mapPermissionStatus(status: ExpoNotificationTypes.PermissionStatus | ImagePicker.PermissionStatus): ExpoPermissionState {
   if (status === 'granted') return 'granted';
   if (status === 'denied') return 'denied';
   return 'undetermined';

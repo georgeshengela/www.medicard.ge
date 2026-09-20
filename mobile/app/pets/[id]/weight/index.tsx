@@ -1,15 +1,17 @@
+import { PetLoading } from '@/components/pets/PetUi';
 import React, { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Scale } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { PetButton as Button } from '@/components/pets/PetUi';
+import { PetPanel as Card } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
 import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { PetWeightTrend } from '@/components/pets/PetWeightTrend';
-import { WeightCircleProgress } from '@/components/weight/WeightCircleProgress';
+import { PetIconWell } from '@/components/pets/PetScreen';
+import { PetIntro } from '@/components/pets/PetUi';
 import { ka } from '@/i18n/ka';
 import { api, type Pet, type PetWeightLog } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -49,27 +51,21 @@ export default function PetWeightHistoryScreen() {
     }, [load]),
   );
 
-  if (!ready) return <View style={{ flex: 1, backgroundColor: colors.bg100 }} />;
+  if (!ready) return <PetLoading />;
   if (error && !items.length) {
     return <PetHealthStatus error={error} onRetry={() => void load()} />;
   }
 
-  const delta = petWeightDeltaPercent(items);
-  const circlePct = delta == null ? (latest ? 100 : 0) : Math.min(100, Math.abs(delta));
-  const circleLabel = latest
-    ? Number.isInteger(latest.weightKg)
-      ? String(latest.weightKg)
-      : latest.weightKg.toFixed(1)
-    : '—';
 
   return (
     <>
       <Stack.Screen options={{ title: pet ? `${ka.pets.weightTitle} · ${pet.name}` : ka.pets.weightTitle }} />
       <PetPageScroll>
+        <PetIntro title="პატარა ცვლილებებიც ჩანს." body="ჩაწერე რეალური გაზომვები. წონის ცვლილება ვეტერინართან ერთად შეაფასე." icon={Scale} />
         {latest ? (
           <Card>
             <View className="flex-row items-center">
-              <WeightCircleProgress percent={circlePct} label={circleLabel} />
+              <PetIconWell icon={Scale} size={56} />
               <View className="flex-1 pl-4">
                 <Text className="text-sm font-semibold text-text-200">{ka.pets.current}</Text>
                 <Text className="mt-1 text-3xl font-bold text-text-100" style={{ fontFamily: 'NotoSansGeorgian_700Bold' }}>

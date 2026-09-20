@@ -77,7 +77,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetHealthPullCache();
     });
     void import('@/lib/quest/socket').then(({ disconnectQuestSocket }) => disconnectQuestSocket());
-    void import('@/lib/tbilisiMoves/sync').then(({ cancelTbilisiMovesWork }) => cancelTbilisiMovesWork());
   }, []);
 
   const applyVisualSession = useCallback(() => {
@@ -293,6 +292,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           /* local cleanup still continues */
         }
         await api.auth.deleteAccount();
+        if (userId) {
+          await import('@/lib/petCareReminders').then(({ onPetCareLogout }) => onPetCareLogout(userId)).catch(() => undefined);
+        }
         if (userId) {
           void import('@/lib/pregnancyCareCalendar').then(({ wipePregnancyCareCalendarOwnership }) =>
             wipePregnancyCareCalendarOwnership(userId).catch(() => undefined),

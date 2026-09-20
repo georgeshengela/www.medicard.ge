@@ -1,4 +1,6 @@
+import { requireAiConsent } from '../lib/aiConsent.js';
 import { Router } from 'express';
+import { FREE_CONSUMER_RELEASE } from '../lib/consumerAccess.js';
 import multer from 'multer';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
@@ -17,13 +19,14 @@ import { alignLabAnalytes } from '../lib/labAlign.js';
 import { adviseWeight } from '../lib/weightAdvice.js';
 import { requireAuth } from '../middleware/auth.js';
 import { enforceAiQuota } from '../middleware/aiLimiter.js';
-import { getUsage } from '../lib/usage.js';
+import { getUsage, commitAiCredit } from '../lib/usage.js';
 import { asyncHandler } from '../middleware/error.js';
 import { QuestSignal, refreshQuestProgressForUser } from '../lib/quest.js';
 
 export const aiRouter = Router();
 
 aiRouter.use(requireAuth);
+aiRouter.use((req, res, next) => req.method === 'POST' && req.path !== '/feedback' ? requireAiConsent(req, res, next) : next());
 
 aiRouter.get(
   '/engines',
@@ -438,7 +441,7 @@ aiRouter.post(
   uploadMany.array('files', 8),
   (req, res, next) => {
     req.labAppend = isLabAppend(req.body);
-    if (req.labAppend) return next();
+    if (req.labAppend && !FREE_CONSUMER_RELEASE) return next();
     return enforceAiQuota(req, res, next);
   },
   asyncHandler(async (req, res) => {
@@ -880,6 +883,8 @@ aiRouter.post(
 );
 
 const symptomCheckSchema = z.object({
+  includeHealthProfile: z.boolean().default(false),
+  primarySymptom: z.string().trim().min(1).max(80).optional(),
   symptoms: z.array(z.string().trim().min(1).max(80)).min(1, 'აირჩიეთ მინიმუმ ერთი სიმპტომი').max(16),
   method: z.enum(['manual', 'anatomy']).optional(),
   mode: z.enum(['muscle', 'organ', 'search']).optional(),
@@ -898,13 +903,12 @@ aiRouter.post(
   asyncHandler(async (req, res) => {
     const data = symptomCheckSchema.parse(req.body);
     const age = calculateAge(req.user.birthDate);
-    const firstName = String(req.user.fullName || '').split(' ')[0];
-
     const prompt = buildSymptomPrompt({
-      firstName,
+      firstName: '',
       gender: req.user.gender,
       age,
       symptoms: data.symptoms,
+      primarySymptom: data.symptoms.includes(data.primarySymptom) ? data.primarySymptom : undefined,
       bodyPartKa: data.bodyPartKa,
       organKa: data.organKa,
       durationKa: data.durationKa,
@@ -921,7 +925,7 @@ aiRouter.post(
         const result = await runSymptomCheck({
           user: req.user,
           prompt,
-          patientContext: await withPatientAiContext(req.user),
+          patientContext: data.includeHealthProfile ? await withPatientAiContext(req.user) : null,
           symptoms: data.symptoms,
           bodyPartKa: data.bodyPartKa,
           notes: data.notes,
@@ -936,20 +940,14 @@ aiRouter.post(
 
     const payload = JSON.parse(answer.content);
     const result = payload.result ?? payload;
-    const record = await prisma.medicalRecord.create({
-      data: {
-        userId: req.user.id,
-        type: 'SYMPTOM',
-        aiAnalysis: formatSymptomRecordKa(result, data),
-      },
-    });
-
-    await prisma.aiInteraction.update({
-      where: { id: answer.interactionId },
-      data: { medicalRecordId: record.id },
-    });
-
-    const usage = await req.consumeAiCredit();
+    const { record, usage } = await req.settleAiOperation(() => prisma.$transaction(async tx => {
+      const record = await tx.medicalRecord.create({
+        data: { userId: req.user.id, type: 'SYMPTOM', aiAnalysis: formatSymptomRecordKa(result, data) },
+      });
+      await tx.aiInteraction.update({ where: { id: answer.interactionId }, data: { medicalRecordId: record.id } });
+      const usage = await commitAiCredit(req.user.id, tx);
+      return { record, usage };
+    }));
     return res.status(201).json({
       recordId: record.id,
       result,

@@ -398,13 +398,14 @@ export function pregnancyCareReminderEligibility(item, live = {}) {
   };
 }
 
+/** @param {{userId?: string, episodeId?: string | null, mode?: string, pregnancyActive?: boolean, episodeStatus?: string, items?: import('./api').CyclePregnancyCarePlanItem[], today?: string, now?: Date, timeZone?: string}} options */
 export function buildPregnancyCareReminderCandidates({
   userId,
   episodeId,
   mode,
   pregnancyActive,
   episodeStatus = 'ACTIVE',
-  items = [],
+  items = /** @type {import('./api').CyclePregnancyCarePlanItem[]} */ ([]),
   today,
   now,
   timeZone,

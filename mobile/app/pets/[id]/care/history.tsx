@@ -1,8 +1,9 @@
+import { PetLoading } from '@/components/pets/PetUi';
 import React, { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { History, Plus } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
+import { PetButton as Button } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
 import { careKindIcon } from '@/components/pets/PetCareChips';
 import { PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
@@ -39,7 +40,7 @@ export default function PetCareHistoryScreen() {
     }, [load]),
   );
 
-  if (!ready) return <View style={{ flex: 1, backgroundColor: colors.bg100 }} />;
+  if (!ready) return <PetLoading />;
   if (error && !items.length) {
     const kind = petsCareErrorKind(error);
     return (

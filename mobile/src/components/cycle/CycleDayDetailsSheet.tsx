@@ -73,7 +73,7 @@ export function CycleDayDetailsSheet({
     return {
       ...group,
       bits: group.bits.map((bit) =>
-        bit === ka.cycle.journalTitle ? `${ka.cycle.journalTitle}: ${log.notes.trim()}` : bit,
+        bit === ka.cycle.journalTitle ? `${ka.cycle.journalTitle}: ${(log.notes || '').trim()}` : bit,
       ),
     };
   });

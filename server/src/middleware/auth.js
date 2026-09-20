@@ -1,10 +1,12 @@
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
-import { publicPackage } from '../lib/packages.js';
+import { publicConsumerPackage } from '../lib/packages.js';
+import { FREE_CONSUMER_RELEASE } from '../lib/consumerAccess.js';
 import { getAppSettings } from '../lib/settings.js';
 import { toDateOnly, calculateAge } from '../lib/patient.js';
 import { normalizeAiEngine } from '../lib/aiEngine.js';
+import { withAiAccount } from '../lib/aiConsent.js';
 
 export function signToken(user) {
   const id = typeof user?.id === 'string' ? user.id.trim() : '';
@@ -26,8 +28,8 @@ export function enrichPublicUser(user) {
     birthDate: toDateOnly(user.birthDate),
     age: calculateAge(user.birthDate),
     status: user.status ?? 'ACTIVE',
-    package: publicPackage(user.package),
-    packageExpiresAt: user.packageExpiresAt ?? null,
+    package: publicConsumerPackage(user.package),
+    packageExpiresAt: FREE_CONSUMER_RELEASE ? null : user.packageExpiresAt ?? null,
     createdAt: user.createdAt,
     points: user.points ?? 0,
     currentStreak: user.currentStreak ?? 0,
@@ -82,8 +84,9 @@ export async function requireAuth(req, res, next) {
     }
 
     req.user = user;
-    return next();
+    return withAiAccount(user.id, () => next());
   } catch (error) {
+    if (!['TokenExpiredError', 'JsonWebTokenError', 'NotBeforeError'].includes(error?.name)) return next(error);
     const expired = error?.name === 'TokenExpiredError';
     return res.status(401).json({
       error: expired

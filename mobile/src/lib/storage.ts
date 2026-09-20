@@ -182,7 +182,8 @@ export async function setPreferenceStrict(key: string, value: string): Promise<v
   await runNativeStorage(async () => {
     await ensureIosSandbox();
     if (Platform.OS === 'ios') {
-      iosWritePref(key, value);
+      if (!iosSettingsOk()) throw new Error('preference_storage_unavailable');
+      Settings.set({ [prefStorageKey(key)]: value });
       return;
     }
     await androidSet(key, value);

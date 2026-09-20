@@ -17,7 +17,7 @@ export function PetChip({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityState={{ selected, checked: selected }}
       accessibilityLabel={label}
       onPress={onPress}
       className="active:opacity-80"

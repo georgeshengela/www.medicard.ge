@@ -293,7 +293,7 @@ export default function CyclePregnancyCarePlanScreen() {
     };
   }, [plan]);
 
-  async function save(status: string | null) {
+  async function save(status: Parameters<typeof api.cycle.upsertPregnancyCareItem>[1]['status']) {
     if (!detail || offline) {
       setError(copy.onlineRequired);
       return;

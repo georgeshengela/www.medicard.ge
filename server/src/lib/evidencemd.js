@@ -1,3 +1,4 @@
+import { consentedAiFetch } from './consentedAiFetch.js';
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
 import { DISCLAIMER_KA } from './prompts.js';
@@ -13,6 +14,7 @@ const client = new OpenAI({
   // but the OpenAI SDK insists on an apiKey being present.
   apiKey: env.EVIDENCEMD_API_KEY,
   baseURL: env.EVIDENCEMD_BASE_URL,
+  fetch: consentedAiFetch('evidencemd'),
   timeout: 180_000,
   maxRetries: 2,
   defaultHeaders: {
@@ -125,6 +127,7 @@ export async function askEvidenceMd({
       content,
       model: completion.model ?? env.EVIDENCEMD_MODEL,
       usage: completion.usage ?? null,
+      finishReason: completion.choices?.[0]?.finish_reason ?? null,
     };
   } catch (error) {
     if (error instanceof AiEngineError) throw error;

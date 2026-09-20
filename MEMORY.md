@@ -2,27 +2,12 @@
 
 ## Full-app release audit (2026-09-15)
 
-Handoffs: `docs/RELEASE_READINESS.md`, `docs/RELEASE_BLOCKERS.md`, `docs/RELEASE_RUNBOOK.md`. Server JS is **ready to deploy** (not executed). Limited beta submit **attempted 2026-09-15 night**: owner-tested `1.0.0.8.41` is AdHoc IPA + internal APK (commit `f3c4a51`); no store IPA/AAB in EAS. `eas submit --profile beta` failed (no `ascAppId` / no Play service account). Production EAS builds not started pending paid approval. Next candidate is tree `1.0.0.8.56` (includes reward-detail crash import). Purchase CTAs default off. Tbilisi finalizer still manual. Apple team on EAS: `7699S4PS73` George Shengelia (Individual).
+Handoffs: `docs/RELEASE_READINESS.md`, `docs/RELEASE_BLOCKERS.md`, `docs/RELEASE_RUNBOOK.md`. Server JS is **ready to deploy** (not executed). Limited beta submit **attempted 2026-09-15 night**: owner-tested `1.0.0.8.41` is AdHoc IPA + internal APK (commit `f3c4a51`); no store IPA/AAB in EAS. `eas submit --profile beta` failed (no `ascAppId` / no Play service account). Production EAS builds not started pending paid approval. Next candidate is tree `1.0.0.8.56` (includes reward-detail crash import). Purchase CTAs default off. Apple team on EAS: `7699S4PS73` George Shengelia (Individual).
 
-## თბილისი მოძრაობს (Phase 6 owner-pilot prep)
 
-Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Runbook: `docs/TBILISI_MOVES_OWNER_PILOT.md`. Evidence: `docs/TBILISI_MOVES_PILOT_VALIDATION.md`. **Hosted Neon SQL applied 2026-09-15** (phase2 → phase4). Live `https://medicard.ge` flags: feature+enrollment on, `pilotMode` true. **Owner override:** district war copies `HealthMetricDaily.steps` (same number as Home). Native builds still push Health → daily so Expo Go matches. No scheduler or map.
 
-## თბილისი მოძრაობს (Phase 5 isolated verification)
 
-Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Evidence: `docs/TBILISI_MOVES_PILOT_VALIDATION.md`. User-space Postgres 17 on `127.0.0.1:55433` / `medicard_tbilisi_moves_test` (not Windows services, not Neon). Migration A/B + HTTP + races + synthetic pilot **passed**. Native device still pending. Flags off on hosted DB. Runner not scheduled. No map, coins, version bump, or deploy. Next product phase after a human device pilot: licensed Mapbox district map.
 
-## თბილისი მოძრაობს (Phase 4 finalization)
-
-Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Phase 4: daily finalization, cosmetic awards, history, admin review/correct, runner command. Flags still off; **Neon SQL not applied**. Runner **not** scheduled. Isolated Postgres still unavailable here. No map, coins, version bump, or deploy. Next: isolated DB verification + controlled pilot; map only with licensed geometry.
-
-## თბილისი მოძრაობს (Phase 3 mobile)
-
-Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Phase 3: dedicated HealthKit/Health Connect adapter, Profile entry, enrollment, membership, real-data boards. Flags still off; **Neon SQL not applied**. No map, version bump, or deploy. Isolated Postgres was unavailable here (no Docker/WSL); HTTP isolation still skipped.
-
-## თბილისი მოძრაობს (Phase 2 foundation)
-
-Handoff: `docs/TBILISI_MOVES_ARCHITECTURE.md`. Runtime + Prisma models + operator SQL are in the tree; **Neon not applied**. Feature/enrollment default off. Dedicated observation API; personal `HealthMetricDaily` is not the ledger. Admin `#/tbilisi-moves`.
 
 ## Pets / Medi Vet (Phase 7.1 Android smoke)
 
@@ -61,3 +46,11 @@ In-app display and `/api/app/status` use `APP_VERSION` from `mobile/src/lib/appV
 - Default seed login: `ADMIN_EMAIL` / `ADMIN_PASSWORD` (see `server/.env.example`)
 - Packages: FREE (3/day), STANDARD (50/day), ULTIMATE (unlimited). Unused credits reset at Tbilisi midnight; hitting 0/N starts a 24h lock from that moment, then a refill ping (quiet hours → 08:15).
 - App settings: maintenance/offline mode, min version, force update, registrations gate, **QA OTP** (0000 phone / 000000 email). Settings flag may be on in non-production. **`NODE_ENV=production` never accepts the master OTP** (RA-01). `QA_OTP_CODE` env also enables it outside production. Turn the settings flag off after testers finish.
+
+## District competition retired (2026-09-19)
+
+Owner requested complete removal. Mobile routes, Profile entries, sensors/sync, backend routes, admin module and eleven hosted Neon competition tables are removed. One competition audit row was removed; no competition permissions, notifications or profile blobs remain. MEDIRUN stays on Home with its existing game data intact. Native version 1.0.0.9.5 / iOS 1.9.5. Local API :4000 serves the removal; production code requires a normal release.
+
+## MEDI QUEST redesign (2026-09-19)
+
+Owner requested merging the Companion and Quest pages and removing the Profile robot. Native `/medi-quest` now has Georgian Missions/Progress/Rewards tabs, detailed rules sheet, unified 25-stage journey and customizable geometric seal. Profile has one compact Quest card; old Companion routes redirect to progress/rewards. Existing server economy, milestones and owned items are retained. Daily completion contributes1 journey point; weekly3; XP/coins are awarded on claim. This owner-requested design supersedes older frozen Companion UI instructions. Fixed immediate claim state, error/retry and per-account caches. Version1.0.0.9.6/iOS1.9.6;89 scoped tests pass, iOS export and live Metro bundle pass, zero additional TS diagnostics. Browser fixture QA on375/430 widths in both themes; physical iPhone check pending user Reload. No database edits or public release this change.

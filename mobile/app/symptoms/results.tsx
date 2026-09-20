@@ -36,12 +36,12 @@ export default function SymptomResultsScreen() {
   const list =
     filter === 'all' ? state.result.conditions : state.result.conditions.filter((c) => c.risk === filter);
   const highCount = state.result.conditions.filter((c) => c.risk === 'high').length;
-  const treatCount = state.result.conditions.filter((c) => c.risk === 'high' || c.risk === 'medium').length;
+  const treatCount = state.result.conditions.filter((c) => c.needsTreatment).length;
 
-  if (showReady) {
+  if (showReady && !emergency) {
     return (
       <View style={{ flex: 1, backgroundColor: T.white, paddingBottom: insets.bottom }}>
-        <View style={{ flex: 1, justifyContent: 'center' }}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
           <View style={{ height: 311, alignItems: 'center', justifyContent: 'center' }}>
             <Image source={SYMPTOM_INTRO_ILLUSTRATION} style={{ width: 320, height: 320 }} resizeMode="contain" />
           </View>
@@ -76,7 +76,7 @@ export default function SymptomResultsScreen() {
               </View>
             </View>
           </View>
-        </View>
+        </ScrollView>
         <View style={{ padding: 16 }}>
           <SymptomCta label={ka.symptoms.seeResult} onPress={() => setShowReady(false)} />
         </View>
@@ -87,6 +87,7 @@ export default function SymptomResultsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: T.cardBg, paddingBottom: insets.bottom }}>
       <ScrollView showsVerticalScrollIndicator={false}>
+        {state.lastError ? <Text accessibilityRole="alert" style={{ color: T.textSecondary, padding: 16, fontSize: 14, lineHeight: 22 }}>{state.lastError}</Text> : null}
         <SymptomGradientHeader
           title={ka.symptoms.possibleConditionTitle}
           subtitle={ka.symptoms.possibleConditionSubtitle}
@@ -205,4 +206,3 @@ function RiskBadge({ risk }: { risk: SymptomRisk }) {
     </View>
   );
 }
-

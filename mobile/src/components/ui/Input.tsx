@@ -88,7 +88,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
               marginLeft: Icon ? 8 : 0,
               ...(Platform.OS === 'web'
                 ? {
-                    outlineStyle: 'none' as const,
+                    outlineWidth: 0,
                     backgroundColor: 'transparent',
                   }
                 : null),

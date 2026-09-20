@@ -30,7 +30,7 @@ export function LabAlignCard({
   const [quota, setQuota] = useState<number | undefined>(undefined);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [stage, setStage] = useState(ka.lab.alignStageCollect);
+  const [stage, setStage] = useState<string>(ka.lab.alignStageCollect);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
 

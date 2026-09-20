@@ -115,7 +115,7 @@ async function ensureReady(): Promise<HealthConnectResult> {
   return { ok: true };
 }
 
-let readyCache = null;
+let readyCache: Awaited<ReturnType<typeof ensureReady>> | null = null;
 
 export async function preload() {
   readyCache = await ensureReady();

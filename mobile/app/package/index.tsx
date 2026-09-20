@@ -18,6 +18,8 @@ import { api, type UserPackage } from '@/lib/api';
 import { consumerPurchasesEnabledFromStatus } from '@/lib/consumerPurchases';
 import { usePlanUsage, type PlanCode } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
+import { FREE_CONSUMER_RELEASE } from '@/lib/consumerAccess';
+import { FreeAccessScreen } from '@/components/FreeAccess';
 
 const FEATURE_ORDER = [
   'doctorChat',
@@ -90,6 +92,9 @@ function enabledFeatures(pkg: UserPackage): string[] {
 
 /** Figma 8846:137103 — package details & upgrade. */
 export default function PackageScreen() {
+  return FREE_CONSUMER_RELEASE ? <FreeAccessScreen /> : <MeteredPackageScreen />;
+}
+function MeteredPackageScreen() {
   const FIGMA_PLANS = useFigmaPlans();
   const router = useRouter();
   const insets = useSafeAreaInsets();

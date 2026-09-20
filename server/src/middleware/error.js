@@ -54,4 +54,10 @@ export function errorHandler(error, req, res, next) {
 }
 
 /** Removes the try/catch boilerplate from every async route handler. */
-export const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+export const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(async error => {
+  // A retry should see the failed request's slot released before it receives the error.
+  if (typeof req.releaseAiCredit === 'function') {
+    await req.releaseAiCredit().catch(() => console.warn('[ai] reservation cleanup failed'));
+  }
+  next(error);
+});

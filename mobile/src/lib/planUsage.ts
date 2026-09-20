@@ -2,10 +2,11 @@ import { ka } from '@/i18n/ka';
 import { formatDate, formatResetSentence } from '@/lib/format';
 import type { Usage } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
+import { FREE_CONSUMER_RELEASE, freeConsumerUsage } from '@/lib/consumerAccess';
 
 export type PlanCode = 'FREE' | 'STANDARD' | 'ULTIMATE';
 
-export function planMeta(code: PlanCode) {
+export function planMeta(code: PlanCode): { title: string; detail: string; accent: 'success' | 'brand' | 'neutral' } {
   if (code === 'ULTIMATE') {
     return { title: ka.profile.ultimatePlan, detail: ka.profile.ultimatePlanDetail, accent: 'success' as const };
   }
@@ -45,6 +46,12 @@ function consumeLimitFromPackage(pkg: { monthlyAiLimit?: number; dailyAiLimit?: 
 }
 
 export function buildPlanUsage(user: ReturnType<typeof useAuth>['user'], usage: Usage | null): PlanUsageSnapshot {
+  if (FREE_CONSUMER_RELEASE) return {
+    code: 'FREE', meta: { title: 'უფასო წვდომა', detail: 'ყველა ფუნქცია ხელმისაწვდომია', accent: 'brand' },
+    usage: usage ? { ...usage, ...freeConsumerUsage(usage) } : null, limit: -1, unlimited: true, remaining: null, used: 0,
+    exhausted: false, progress: 1, started: null, expires: null, expired: false,
+    quotaLabel: 'უფასო და შეუზღუდავი', resetLabel: null,
+  };
   const code = (user?.package?.code ?? 'FREE') as PlanCode;
   const meta = planMeta(code);
   const pkgLimit = consumeLimitFromPackage(user?.package ?? null);

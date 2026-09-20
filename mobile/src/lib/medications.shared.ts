@@ -94,12 +94,13 @@ export async function saveDoseLog(entry: MedicationDoseLog, source: 'app' | 'not
   void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
   void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
   if (entry.status === 'taken' || entry.status === 'skipped') {
+    const status = entry.status;
     void import('@/lib/productObservability').then(({ syncDoseEvent }) =>
       syncDoseEvent({
         medicationId: entry.medicationId,
         date: entry.date,
         time: entry.time,
-        status: entry.status,
+        status,
         source,
         occurredAt: entry.updatedAt,
       }),

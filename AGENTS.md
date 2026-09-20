@@ -1,8 +1,12 @@
 # Medicard.GE agent notes
 
+## MEDI QUEST unified hub (2026-09-19)
+
+Owner explicitly replaced the Profile robot and separate Companion pages with one native `/medi-quest` hub (missions/progress/rewards). Profile uses `QuestProfileCard`; Companion routes are compatibility redirects. Keep the geometric progress seal, existing ownership/equipment and journey math (completed daily=1/weekly=3), separate from claimed XP/coins. Do not restore the robot entry or old separate home based on older notes. Quest/Companion cache reads and late responses must stay scoped to the captured account. Global bottom navigation stays hidden on Quest routes. Native version1.0.0.9.6 / iOS1.9.6; no DB schema change.
+
 ## Release readiness (2026-09-15)
 
-Beta execution 2026-09-15: owner-tested EAS preview `1.0.0.8.41` is AdHoc IPA / internal APK — not TestFlight/Play. `eas submit --profile beta` did not upload. Store-distribution EAS production builds were not started (paid). Do not treat Expo Go as store proof. Do not silently disable Pets or Tbilisi on production — scope claims instead. Tbilisi daily finalization is a Render cron the owner must register; a runner file is not a schedule. Do not remount a global `/api` request-count limiter. Auth writes are IP-limited; GET `/api/auth/me` is skipped. Seed must not rotate an existing admin `passwordHash` (Render runs seed on every deploy). Consumer purchase CTAs stay off unless `CONSUMER_PURCHASES_ENABLED=true`.
+Beta execution 2026-09-15: owner-tested EAS preview `1.0.0.8.41` is AdHoc IPA / internal APK — not TestFlight/Play. `eas submit --profile beta` did not upload. Store-distribution EAS production builds were not started (paid). Do not treat Expo Go as store proof. Do not silently disable Pets on production — scope claims instead. Do not remount a global `/api` request-count limiter. Auth writes are IP-limited; GET `/api/auth/me` is skipped. Seed must not rotate an existing admin `passwordHash` (Render runs seed on every deploy). Consumer purchase CTAs stay off unless `CONSUMER_PURCHASES_ENABLED=true`.
 
 ## OS permissions (iOS 26)
 
@@ -16,10 +20,6 @@ The in-app AI is **Medi**. Never write Nightingale in user-facing copy (chat tit
 
 Hub copy is **ჩემი ცხოველები**. The pet assistant is **Medi Vet**. Profile **ყველას ნახვა** opens `/pets` manage hub (swipe right edit / swipe left archive, product/care/Medi Vet/weight tiles for the featured pet). Phase 5 local care reminders are implemented on the Notification Brain (`pets:`). Phase 6 Medi Vet is isolated OpenRouter chat (`/api/pets/:petId/chat/query`, never EvidenceMD / `withPatientAiContext`). Phase 7 local SQL/HTTP verification ran against disposable Postgres `127.0.0.1:55432` / `medicard_pets_phase7`. Phase 7.1: bird/unsupported-species is a bounded COMPLETE (not 502); COMPLETE+quota are one transaction; Pixel_8 development APK talked to isolated `:4010`; **OS notification banners were not observed**. **Hosted Neon Pets SQL is applied** (phase2 → phase7, additive `db execute` only — never `db push`). Owner-reported 2026-09-15: dog create, weight, allergies, Medi Vet chat on production. Do not re-apply SQL. Do not hang pets on `HealthProfile`, `ChatSession`, `MedicationSchedule`, `DoctorVisit`, or Home. Do not add a fifth bottom tab.
 
-## თბილისი მოძრაობს / Tbilisi Moves
-
-District walking competition (activity, not a medical ranking). Never “healthiest district.” **Hosted Neon Tbilisi Moves SQL is applied** (phase2 → phase4, additive `db execute` only — never `db push`). Live `https://medicard.ge` status is `schemaReady` + `featureEnabled` + `enrollmentOpen` with `pilotMode=true`. **District steps = Home `HealthMetricDaily.steps` for the same date** (copied on `/api/health-metrics/sync` and `GET /me`). Native HealthKit/Health Connect still write personal daily so Expo Go can see the same number; they are not a separate competition sensor. Expo Go can enroll, browse, and show credited daily steps. Runner exists but is **not** scheduled. Keep `healthKitSensor.ts` / `healthConnectSensor.ts` files. Do not auto-select district from GPS/`UserLocation`. Do not hang it on Home or a fifth tab. Do not revive Medi Hunt. Map polygons must be licensed.
-
 ## Expo Router app directory
 
 Routes live in `mobile/app/`. **Never create `mobile/src/app`** (even empty). Expo Router prefers `src/app` if that folder exists and shows the stock “Welcome to Expo” screen instead of Medicard.
@@ -30,7 +30,7 @@ Tab selector and active tab content must share the **same left/right edges** —
 
 **Every admin page body is full workspace width** (`--v3-page-max: none`). Do not cap Settings / forms / modules at 720px, 920px, 1440px, or 1600px. Login cards, drawers, dialogs, toasts, and table-cell clips may stay constrained.
 
-Applies to Push (`#/push` subnav ↔ panels), user investigation (`#/users/:id` `.user-tabs` ↔ `.user-body`), Settings, Tbilisi Moves, and any future admin subnav.
+Applies to Push (`#/push` subnav ↔ panels), user investigation (`#/users/:id` `.user-tabs` ↔ `.user-body`), Settings and any future admin subnav.
 
 ```css
 /* Pattern */
@@ -96,3 +96,7 @@ On every **store-facing** mobile change, update `mobile/app.json` `expo.version`
 - **Rare product generation** → first number + 1 (`1.0.0.7.71` → `2.0.0.0.0`)
 
 See `MEMORY.md` for details. Cycle phase numbers stay in contracts / QA only.
+
+## Retired district competition (2026-09-19)
+
+The owner removed the district walking competition completely. Do not recreate its screens, sync, admin module, or database tables. MEDIRUN / MEDIPULSI remains the worldwide exploration game, accessible from Home; its duplicate Profile block is removed. Shared health totals and Pets remain independent.

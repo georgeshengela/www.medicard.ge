@@ -1,3 +1,4 @@
+import { requireAiConsent } from '../lib/aiConsent.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
@@ -55,7 +56,7 @@ async function persistVetComplete({ tx = prisma, assistantRow, session, message,
 }
 
 async function persistAndSettleVetComplete(req, args) {
-  const billed = await prisma.$transaction(async (tx) => {
+  const billed = await req.settleAiOperation(() => prisma.$transaction(async (tx) => {
     await persistVetComplete({ ...args, tx });
     if (typeof globalThis.__medicardVetSettleBeforeCommit === 'function') {
       await globalThis.__medicardVetSettleBeforeCommit(tx);
@@ -64,7 +65,7 @@ async function persistAndSettleVetComplete(req, args) {
       return req.usage;
     }
     return commitAiCredit(req.user.id, tx);
-  });
+  }));
   if (typeof req.markAiCreditSettled === 'function') req.markAiCreditSettled();
   req.usage = billed || req.usage;
   return req.usage;
@@ -265,6 +266,7 @@ petsChatRouter.post(
 
 petsChatRouter.post(
   '/:petId/chat/query',
+  requireAiConsent,
   enforceAiQuota,
   asyncHandler(async (req, res) => {
     const pet = await requireActivePet(req, res);

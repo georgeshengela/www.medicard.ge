@@ -18,8 +18,6 @@ web-build/
 android/
 ios/
 
-# Isolated Tbilisi Moves owner-pilot login (local disposable DB only)
-server/.tbilisi-moves-pilot-account.json
 
 # Server
 server/uploads/

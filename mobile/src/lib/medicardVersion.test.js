@@ -15,13 +15,13 @@ const here = dirname(fileURLToPath(import.meta.url));
 const appJson = JSON.parse(readFileSync(join(here, '../../app.json'), 'utf8'));
 
 describe('Medicard five-part version', () => {
-  it('starts the public identity at 1.0.0.8.80', () => {
-    assert.equal(appJson.expo.version, '1.0.0.8.80');
-    assert.equal(appJson.expo.extra.medicardInternalVersion, '1.0.0.8.80');
-    assert.equal(appJson.expo.ios.version, '1.8.80');
-    assert.equal(appJson.expo.ios.buildNumber, '81');
-    assert.equal(appJson.expo.android.versionCode, 81);
-    assert.equal(DEFAULT_MEDICARD_VERSION, '1.0.0.8.80');
+  it('keeps native marketing, public display and fallback versions synchronized', () => {
+    assert.equal(parseMedicardVersion(appJson.expo.version)?.kind, 'five');
+    assert.equal(appJson.expo.extra.medicardInternalVersion, appJson.expo.version);
+    assert.equal(appJson.expo.ios.version, iosMarketingVersion(appJson.expo.version));
+    assert.ok(Number(appJson.expo.ios.buildNumber) > 0);
+    assert.equal(Number(appJson.expo.ios.buildNumber), appJson.expo.android.versionCode);
+    assert.equal(DEFAULT_MEDICARD_VERSION, appJson.expo.version);
   });
 
   it('parses G.0.0.B.R and compresses iOS marketing to G.B.R', () => {

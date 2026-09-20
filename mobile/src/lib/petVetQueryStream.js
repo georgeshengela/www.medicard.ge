@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
-import { API_BASE_URL, ApiError } from '@/lib/api';
+import { API_BASE_URL, ApiError, ensureAiSharingConsentForRequest } from '@/lib/api';
 import { consumeSseBuffer } from '@/lib/sseParse';
 import { getToken } from '@/lib/storage';
 
@@ -59,6 +59,8 @@ function applyEvents(events, onDelta) {
 export async function streamPetVetQuery(petId, body, { onDelta, signal } = {}) {
   try {
     const token = await getToken();
+    await ensureAiSharingConsentForRequest(`/api/pets/${petId}/chat/query`, 'POST', token);
+    if (signal?.aborted) throw new ApiError('მოთხოვნა გაუქმდა.', 499);
     const { fetch: expoFetch } = await import('expo/fetch');
     const response = await expoFetch(`${API_BASE_URL}/api/pets/${petId}/chat/query`, {
       method: 'POST',

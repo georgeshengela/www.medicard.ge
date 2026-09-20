@@ -2,8 +2,9 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { PetIntro, PetLoading } from '@/components/pets/PetUi';
+import { PetButton as Button } from '@/components/pets/PetUi';
+import { PetPanel as Card } from '@/components/pets/PetUi';
 import { PetCareReminderCard } from '@/components/pets/PetCareReminderCard';
 import { careKindIcon } from '@/components/pets/PetCareChips';
 import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll } from '@/components/pets/PetScreen';
@@ -27,6 +28,7 @@ export default function PetScheduleDetailScreen() {
 
   const load = useCallback(async () => {
     if (!id || !scheduleId) return;
+    setError(null);
     const [petRes, sched] = await Promise.all([api.pets.get(id), api.pets.schedules.get(id, scheduleId)]);
     setPet(petRes.pet);
     setSchedule(sched.schedule);
@@ -36,26 +38,10 @@ export default function PetScheduleDetailScreen() {
     void load().catch((caught) => setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError })));
   }, [load]);
 
-  const complete = async () => {
-    if (!id || !schedule || !schedule.nextDueOn || saving) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const timePart = schedule.nextDueTime || 'date';
-      const occurrenceKey = `r${schedule.revision}|${schedule.nextDueOn}|${timePart}|${schedule.nextSequence ?? 0}`;
-      await api.pets.schedules.complete(id, schedule.id, {
-        occurrenceKey,
-        revision: schedule.revision,
-        administeredOn: todayIsoLocal(),
-        clientRequestId: requestId,
-      });
-      await reconcilePetCareReminders({ reason: 'complete' });
-      await load();
-    } catch (caught) {
-      setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError }));
-    } finally {
-      setSaving(false);
-    }
+  const complete = () => {
+    if (!id || !schedule || !schedule.nextDueOn) return;
+    const occurrenceKey = `r${schedule.revision}|${schedule.nextDueOn}|${schedule.nextDueTime || 'date'}|${schedule.nextSequence ?? 0}`;
+    router.push({ pathname: '/pets/[id]/care/complete', params: { id, scheduleId: schedule.id, occurrenceKey, revision: String(schedule.revision) } });
   };
 
   const cancel = () => {
@@ -68,7 +54,7 @@ export default function PetScheduleDetailScreen() {
         onPress: async () => {
           try {
             await api.pets.schedules.cancel(id, schedule.id);
-            await reconcilePetCareReminders({ reason: 'cancel' });
+            void reconcilePetCareReminders({ reason: 'cancel' }).catch(() => undefined);
             router.replace(`/pets/${id}/care`);
           } catch (caught) {
             setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError }));
@@ -79,7 +65,7 @@ export default function PetScheduleDetailScreen() {
   };
 
   if (!schedule) {
-    return <View style={{ flex: 1, backgroundColor: colors.bg100 }} />;
+    return error ? <PetPageScroll><PetIntro title="გეგმა ვერ ჩაიტვირთა" body="ხელახლა სცადე, რომ შენახული დეტალები ნახო." /><PetErrorText message={error} /><Button label="ხელახლა ცდა" onPress={() => void load().catch(caught => setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError })))} /></PetPageScroll> : <PetLoading />;
   }
 
   return (

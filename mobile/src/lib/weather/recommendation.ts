@@ -135,11 +135,8 @@ function pickPushCandidate(
 ): WeatherPushCandidate | null {
   if (stale) return null;
   if (category === 'storm' || category === 'very_hot' || category === 'very_cold') return null;
-  if (ctx.loggedPain && category !== 'weather_hot_hydration') {
-    /* walk pushes stay off when pain is present */
-  }
-  if (category === 'rain_soon') return 'weather_rain_soon';
-  if ((category === 'hot' || category === 'very_hot') && hydrationBehind(ctx)) {
+if (category === 'rain_soon') return 'weather_rain_soon';
+  if (category === 'hot' && hydrationBehind(ctx)) {
     return 'weather_hot_hydration';
   }
   if (category === 'high_uv' && !ctx.loggedPain) return 'weather_high_uv';
@@ -148,8 +145,7 @@ function pickPushCandidate(
     category === 'good_outdoor' ||
     category === 'okay_outdoor' ||
     category === 'morning' ||
-    category === 'evening' ||
-    category === 'rain_soon';
+    category === 'evening';
   if (
     walkish &&
     !ctx.loggedPain &&

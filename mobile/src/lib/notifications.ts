@@ -1,3 +1,4 @@
+import type * as ExpoNotificationTypes from 'expo-notifications';
 import { Notifications } from '@/lib/expoNotifications';
 export { isNotificationsNativeAvailable } from '@/lib/expoNotifications';
 import * as Device from 'expo-device';
@@ -378,7 +379,7 @@ async function fetchExpoPushToken(): Promise<string | null> {
     PUSH_TOKEN_WAIT_MS,
     'expo push token timeout',
   );
-  const token = typeof tokenResult === 'string' ? tokenResult : tokenResult?.data;
+  const token = typeof tokenResult === 'string' ? tokenResult : tokenResult && typeof tokenResult === 'object' && 'data' in tokenResult ? tokenResult.data : null;
   return typeof token === 'string' && isExpoPushToken(token) ? token : null;
 }
 
@@ -570,7 +571,7 @@ export type ScheduledReminderRow = {
   trigger: string;
 };
 
-function describeTrigger(trigger: Notifications.NotificationTrigger | null): string {
+function describeTrigger(trigger: ExpoNotificationTypes.NotificationTrigger | null): string {
   if (!trigger || typeof trigger !== 'object') return 'none';
   const row = trigger as Record<string, unknown>;
   if (row.type === 'daily' || row.hour != null && row.weekday == null && row.seconds == null && !row.date) {

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,61 +7,89 @@ import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
+import { localAccountId } from '@/lib/localAccount';
+import { useAuth } from '@/store/AuthContext';
+import { bodyPartById, DURATION_OPTIONS, organById } from '@/constants/symptomCatalog';
 import { api } from '@/lib/api';
 import { getSymptomSession, loadSymptomHistory, type SavedSymptomSession } from '@/lib/symptomResultStorage';
-import { updateSymptomChecker } from '@/lib/symptomCheckerStore';
+import { resetSymptomChecker, updateSymptomChecker } from '@/lib/symptomCheckerStore';
 import { formatDateTime } from '@/lib/format';
 
 export default function SymptomHistoryScreen() {
   const T = useFigmaSymptoms();
   const router = useRouter();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<SavedSymptomSession[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const focused = useRef(false);
+  const generation = useRef(0);
+  const opening = useRef(false);
+  const [error, setError] = useState<string | null>(null);
+
   useFocusEffect(
     useCallback(() => {
+      focused.current = true;
+      const ticket = ++generation.current;
+      opening.current = false;
+      const owner = localAccountId();
+      setItems([]);
       setLoading(true);
       void loadSymptomHistory().then((list) => {
+        if (!focused.current || ticket !== generation.current || owner !== localAccountId()) return;
         setItems(list);
         setLoading(false);
       });
+      return () => { focused.current = false; generation.current++; };
     }, []),
   );
 
   const open = async (recordId: string) => {
-    let session = await getSymptomSession(recordId);
-    if (!session) {
-      try {
+    const owner = localAccountId();
+    if (!owner || opening.current) return;
+    opening.current = true;
+    const ticket = generation.current;
+    setError(null);
+    const current = () => focused.current && ticket === generation.current && owner === localAccountId();
+    try {
+      let session = await getSymptomSession(recordId);
+      if (!current()) return;
+      if (!session) {
         const remote = await api.ai.symptomResult(recordId);
+        if (!current()) return;
+        const input = remote.input;
+        const part = bodyPartById(input?.bodyPartId), organ = organById(input?.organId);
         session = {
-          recordId,
-          createdAt: new Date().toISOString(),
-          symptoms: remote.input?.symptoms ?? [],
-          durationId: null,
-          painLevel: remote.input?.painLevel ?? null,
-          bodyPartKa: remote.input?.bodyPartKa,
-          organKa: remote.input?.organKa,
+          recordId, createdAt: new Date().toISOString(), symptoms: input?.symptoms ?? [],
+          primarySymptom: input?.primarySymptom ?? null,
+          durationId: DURATION_OPTIONS.find(d => d.labelKa === input?.durationKa)?.id ?? null,
+          painLevel: input?.painLevel ?? null, bodyPartKa: input?.bodyPartKa, organKa: input?.organKa,
           result: remote.result,
+          draft: { gender: user?.gender === 'FEMALE' ? 'FEMALE' : 'MALE', method: input?.method ?? 'manual', mode: input?.mode === 'organ' ? 'organ' : 'muscle',
+            side: part?.side === 'back' || organ?.side === 'back' ? 'back' : 'front',
+            selectedPartId: part?.id ?? null, selectedOrganId: organ?.id ?? null,
+            pastConditions: '', notes: input?.notes ?? '', shareToNightingale: input?.includeHealthProfile === true },
         };
-      } catch {
-        return;
       }
-    }
-    updateSymptomChecker({
-      symptoms: session.symptoms,
-      primarySymptom: session.primarySymptom ?? null,
-      durationId: session.durationId ?? null,
-      painLevel: session.painLevel ?? null,
-      result: session.result,
-      recordId: session.recordId,
-    });
-    router.push('/symptoms/results' as never);
+      if (!current() || !Array.isArray(session.result?.conditions)) return;
+      resetSymptomChecker(session.draft?.gender ?? user?.gender);
+      updateSymptomChecker({
+        ...session.draft, symptoms: session.symptoms,
+        primarySymptom: session.symptoms.includes(session.primarySymptom || '') ? session.primarySymptom : session.symptoms[0] ?? null,
+        durationId: session.durationId ?? null, painLevel: session.painLevel ?? null,
+        result: session.result, recordId: session.recordId,
+      });
+      router.push('/symptoms/results' as never);
+    } catch {
+      if (current()) setError('შედეგი ვერ ჩაიტვირთა. სცადე ხელახლა.');
+    } finally { if (ticket === generation.current) opening.current = false; }
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.white, paddingBottom: insets.bottom }}>
       <SymptomNavHeader title={ka.symptoms.historyTitle} onBack={() => router.back()} />
+      {error ? <Text accessibilityRole="alert" style={{ color: T.danger, padding: 16 }}>{error}</Text> : null}
       {loading ? (
         <View style={{ flex: 1, paddingTop: 16 }}>
           <ListRowsSkeleton rows={5} />

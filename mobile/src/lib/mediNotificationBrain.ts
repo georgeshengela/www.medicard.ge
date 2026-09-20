@@ -1,3 +1,4 @@
+import type { EngageLiveSignals } from './mediNotificationRevalidate';
 import { Platform } from 'react-native';
 import { Notifications } from '@/lib/expoNotifications';
 import type { HealthProfile, User } from '@/lib/api';
@@ -103,8 +104,8 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
   let recentVisit: EngageSnapshot['recentVisit'] = null;
   let scheduleGap: UnfinishedDraft | null = null;
   try {
-    const chats = await api.chats.list();
-    const latest = chats?.[0];
+    const { sessions } = await api.chats.list();
+    const latest = sessions?.[0];
     if (latest?.updatedAt) {
       lastChatAt = new Date(latest.updatedAt).getTime();
       lastChatId = latest.id;
@@ -171,7 +172,7 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
         const { readDevQuestWeather } = await import('@/lib/weather/devFixture');
         const devWx = readDevQuestWeather(now);
         if (devWx !== undefined) {
-          questWeather = devWx;
+          questWeather = devWx ? { ...devWx, stale: false } : null;
         } else {
           const { loadWeatherWellnessContext } = await import('@/lib/weather/context');
           const { getWeatherWellnessRecommendation } = await import('@/lib/weather');
@@ -515,7 +516,7 @@ async function deliverPregnancyCareReminder(data: Record<string, unknown>): Prom
     maskNotifications: prefs.maskNotifications,
     discreet: Boolean(engage?.discreet),
   });
-  return pregnancyCareReminderDeliveryDecision(
+  const decision = pregnancyCareReminderDeliveryDecision(
     {
       type: 'pregnancy_care_plan',
       careItemId: String(data.careItemId || ''),
@@ -532,6 +533,7 @@ async function deliverPregnancyCareReminder(data: Record<string, unknown>): Prom
     live,
     mask,
   );
+  return { ...decision, reason: decision.reason ?? null };
 }
 
 async function deliverPetCareReminder(data: Record<string, unknown>): Promise<{
@@ -617,8 +619,8 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
   let weatherWindowGone = false;
   let weatherRainChanged = false;
   let stepsGoalReached = false;
-  let questDaily: Array<Record<string, unknown>> = [];
-  let questWeekly: Array<Record<string, unknown>> = [];
+  let questDaily: NonNullable<EngageLiveSignals['daily']> = [];
+  let questWeekly: NonNullable<EngageLiveSignals['weekly']> = [];
   let questWeather: {
     category: string;
     severity?: string | null;
@@ -660,7 +662,7 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
       const nowLive = new Date();
       const devWx = readDevQuestWeather(nowLive);
       if (devWx !== undefined) {
-        questWeather = devWx;
+        questWeather = devWx ? { ...devWx, stale: false } : null;
       } else {
         const { readWeatherCache, isCacheFresh } = await import('@/lib/weather/cache');
         const { getWeatherWellnessRecommendation } = await import('@/lib/weather');

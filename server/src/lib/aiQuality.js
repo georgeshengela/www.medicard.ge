@@ -50,40 +50,7 @@ ${(assistantReply ?? '—').slice(0, 3000)}
 }
 
 async function judgeInteraction({ mode, userPrompt, assistantReply }) {
-  const prompt = buildJudgePrompt({ mode, userPrompt, assistantReply });
-
-  if (env.OPENROUTER_API_KEY) {
-    const base = env.OPENROUTER_BASE_URL.replace(/\/$/, '');
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), JUDGE_TIMEOUT_MS);
-    try {
-      const res = await fetch(`${base}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          model: env.OPENROUTER_MODEL,
-          temperature: 0,
-          max_tokens: 600,
-          messages: [
-            { role: 'system', content: 'Return valid JSON only. No markdown fences.' },
-            { role: 'user', content: prompt },
-          ],
-        }),
-        signal: ctrl.signal,
-      });
-      const payload = await res.json().catch(() => ({}));
-      const raw = payload?.choices?.[0]?.message?.content?.trim();
-      if (!raw) throw new Error('Judge returned empty response');
-      return parseJudgeJson(raw);
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
+  // Quality audits stay local: consumer consent does not authorize a secondary external review.
   return heuristicJudge({ mode, assistantReply });
 }
 

@@ -52,7 +52,7 @@ export function observationExplainCopy(
       body: `${ka.cycle.explainLowerBody}\n\n${ka.cycle.explainMeaningBody}\n\n${ka.cycle.explainRateShownBody}\n\n${ka.cycle.explainRecordedOnly}`,
     };
   }
-  const parts = [
+  const parts: string[] = [
     ka.cycle.explainMeaningBody,
     ka.cycle.explainRateShownBody,
     ka.cycle.explainUnansweredDays,

@@ -29,9 +29,11 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { QuotaReadyHost } from '@/components/QuotaReadyHost';
 import { LocationAskHost } from '@/components/location/LocationAskHost';
+import { AiSharingConsentHost } from '@/components/AiSharingConsentHost';
+import { setLocationProfileListener, hydrateLocationFromProfile } from '@/lib/userLocation';
+import { localAccountId } from '@/lib/localAccount';
 import { PermissionGateHost } from '@/components/permissions/PermissionGateHost';
 import { QuestHost } from '@/components/quest/QuestHost';
-import { TbilisiMovesHost } from '@/components/tbilisiMoves/TbilisiMovesHost';
 import { useThemeColors } from '@/theme/colors';
 import { AuthProvider, useAuth, needsHealthAssessment, needsProfileSetup } from '@/store/AuthContext';
 import { routeFromNotificationData } from '@/lib/notificationPlan';
@@ -189,7 +191,7 @@ function AppShell() {
   const showTabBar =
     Boolean(user) &&
     !tabChromeHidden &&
-    (segments[0] === '(tabs)' || (segments[0] === 'run' && (segments.length === 1 || segments[1] === 'index')));
+    segments[0] === '(tabs)';
   const chromeInteractive = showTabBar || activeRunChrome;
 
   useEffect(() => {
@@ -207,10 +209,6 @@ function AppShell() {
   useEffect(() => {
     if (!user) {
       void import('@/lib/livePresence').then(({ stopLivePresence }) => stopLivePresence());
-      void import('@/lib/userLocation').then(({ setLocationProfileListener, stopLiveLocationWatch }) => {
-        setLocationProfileListener(null);
-        stopLiveLocationWatch();
-      });
       return;
     }
     void import('@/lib/livePresence').then(({ startLivePresence, setLivePresenceScreen }) => {
@@ -220,12 +218,13 @@ function AppShell() {
   }, [user, segments]);
 
   useEffect(() => {
-    if (!user) return;
-    void import('@/lib/userLocation').then(({ setLocationProfileListener, startLiveLocationIfEnabled }) => {
-      setLocationProfileListener(setHealthProfile);
-      void startLiveLocationIfEnabled(healthProfile);
-    });
-  }, [user, Boolean(healthProfile), setHealthProfile]);
+    const owner = user?.id;
+    setLocationProfileListener(owner ? profile => {
+      if (localAccountId() === owner) setHealthProfile(profile);
+    } : null);
+    if (owner && localAccountId() === owner) hydrateLocationFromProfile(healthProfile);
+    return () => setLocationProfileListener(null);
+  }, [user?.id, healthProfile, setHealthProfile]);
 
   useEffect(() => {
     const openFromData = (raw: unknown) => {
@@ -322,7 +321,6 @@ function AppShell() {
               <Stack.Screen name="share" options={{ headerShown: false }} />
               <Stack.Screen name="visits" options={{ headerShown: false }} />
               <Stack.Screen name="pets" options={{ headerShown: false }} />
-              <Stack.Screen name="tbilisi-moves" options={{ headerShown: false }} />
               <Stack.Screen name="medipulsi" options={{ headerShown: false }} />
               <Stack.Screen name="medications" options={{ headerShown: false }} />
               <Stack.Screen name="lab" options={{ headerShown: false }} />
@@ -333,16 +331,16 @@ function AppShell() {
             </Stack>
           </View>
           <AppChromeOverlay interactive={chromeInteractive}>
-            {user ? <FloatingTabBar visible={showTabBar} /> : null}
+            {user && !['run', 'medi-quest', 'medi-companion', 'pets'].includes(segments[0]) ? <FloatingTabBar visible={showTabBar} /> : null}
             {user ? <ActiveRunBadge /> : null}
           </AppChromeOverlay>
           <DailyCheckInHost />
           <QuotaReadyHost />
           <LocationAskHost />
           <QuestHost />
-          <TbilisiMovesHost />
           <OfflineBanner />
           <PermissionGateHost />
+          <AiSharingConsentHost />
         </View>
       </AuthGate>
     </>

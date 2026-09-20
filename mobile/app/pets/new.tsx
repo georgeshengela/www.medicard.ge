@@ -1,70 +1,47 @@
-import React, { useCallback, useState } from 'react';
-import { View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PetForm, formToBody, hydratePetForm, type LocalPhoto, type PetFormValue } from '@/components/pets/PetForm';
-import { ka } from '@/i18n/ka';
+import { PetLoading } from '@/components/pets/PetUi';
 import { ApiError, api } from '@/lib/api';
 import { clearPetsDraft, loadPetsDraft, savePetsDraft } from '@/lib/petsDraft';
-import { useThemeColors } from '@/theme/colors';
+import { localAccountId } from '@/lib/localAccount';
+import { useAuth } from '@/store/AuthContext';
 
-export default function NewPetScreen() {
-  const colors = useThemeColors();
-  const router = useRouter();
-  const [initial, setInitial] = useState<PetFormValue | undefined>(undefined);
-  const [ready, setReady] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  React.useEffect(() => {
-    void (async () => {
-      const draft = await loadPetsDraft();
-      if (draft && typeof draft === 'object') setInitial(hydratePetForm(draft as PetFormValue));
-      else setInitial(hydratePetForm());
-      setReady(true);
-    })();
-  }, []);
-
+export default function NewPetScreen() { const { user } = useAuth(); return user ? <NewPetForm key={user.id} owner={user.id} /> : <PetLoading />; }
+function NewPetForm({ owner }: { owner: string }) {
+  const router = useRouter(), lock = useRef(false), alive = useRef(true), saved = useRef(false);
+  const pending = useRef<ReturnType<typeof setTimeout> | null>(null), writes = useRef(Promise.resolve());
+  const [initial, setInitial] = useState<PetFormValue | null>(null), [submitting, setSubmitting] = useState(false), [error, setError] = useState<string | null>(null);
+  const current = () => alive.current && owner === localAccountId();
+  useEffect(() => {
+    alive.current = true;
+    void loadPetsDraft(owner).catch(() => null).then(draft => { if (current()) setInitial(hydratePetForm(draft)); });
+    return () => { alive.current = false; };
+  }, [owner]);
   const onChange = useCallback((value: PetFormValue) => {
-    void savePetsDraft(value);
-  }, []);
-
-  const onSubmit = async (value: PetFormValue, photo: LocalPhoto | null, _removePhoto: boolean) => {
-    if (submitting) return;
-    setSubmitting(true);
-    setError(null);
+    if (saved.current || lock.current) return;
+    if (pending.current) clearTimeout(pending.current);
+    pending.current = setTimeout(() => { pending.current = null; if (!saved.current && owner === localAccountId()) writes.current = writes.current.catch(() => undefined).then(() => savePetsDraft(value, owner)).catch(() => undefined); }, 300);
+  }, [owner]);
+  const onSubmit = async (value: PetFormValue, photo: LocalPhoto | null) => {
+    if (lock.current || !current()) return;
+    lock.current = true; setSubmitting(true); setError(null);
     try {
       const { pet } = await api.pets.create(formToBody(value));
-      if (photo) {
-        try {
-          await api.pets.uploadPhoto(pet.id, photo);
-        } catch {
-          /* profile can retry photo */
-        }
-      }
-      await clearPetsDraft();
+      saved.current = true;
+      if (pending.current) clearTimeout(pending.current);
+      await writes.current.catch(() => undefined);
+      await clearPetsDraft(owner).catch(() => undefined);
+      if (!current()) return;
+      let photoFailed = false;
+      if (photo) { try { await api.pets.uploadPhoto(pet.id, photo); } catch { photoFailed = true; } }
+      if (!current()) return;
       router.replace(`/pets/${pet.id}`);
+      if (photoFailed) Alert.alert('პროფილი შენახულია', 'ფოტო ვერ აიტვირთა. პროფილის რედაქტირებიდან შეგიძლია ხელახლა დაამატო.');
     } catch (caught) {
-      const message = caught instanceof ApiError ? caught.message : ka.common.networkError;
-      setError(message);
-    } finally {
-      setSubmitting(false);
-    }
+      if (current()) setError(caught instanceof ApiError ? caught.message : 'შენახვა ვერ მოხერხდა. შეამოწმე ინტერნეტი და სცადე ხელახლა.');
+    } finally { lock.current = false; if (current()) setSubmitting(false); }
   };
-
-  if (!ready) {
-    return <View style={{ flex: 1, backgroundColor: colors.bg100 }} />;
-  }
-
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.bg100 }}>
-      <PetForm
-        initial={initial}
-        submitting={submitting}
-        error={error}
-        submitLabel={ka.pets.save}
-        onChange={onChange}
-        onSubmit={onSubmit}
-      />
-    </View>
-  );
+  return initial ? <PetForm wizard initial={initial} submitting={submitting} error={error} submitLabel="პროფილის შექმნა" onChange={onChange} onSubmit={onSubmit} /> : <PetLoading />;
 }

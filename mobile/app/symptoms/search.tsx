@@ -1,6 +1,6 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Plus, Search } from 'lucide-react-native';
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
@@ -15,6 +15,7 @@ import {
   getSymptomCheckerState,
   removeSymptom,
   toggleSymptom,
+  updateSymptomChecker,
   useSymptomChecker,
 } from '@/lib/symptomCheckerStore';
 import { useAuth } from '@/store/AuthContext';
@@ -26,7 +27,10 @@ export default function SymptomSearchScreen() {
   const { user } = useAuth();
   const state = useSymptomChecker();
   const [query, setQuery] = useState('');
+  const [inputError, setInputError] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
+  const navigating = useRef(false);
+  useFocusEffect(useCallback(() => { navigating.current = false; }, []));
   const firstName = user?.fullName?.split(' ')[0] ?? '';
   const typed = query.trim();
 
@@ -41,12 +45,14 @@ export default function SymptomSearchScreen() {
   const score = Math.min(92, 28 + state.symptoms.length * 12 + (typed && !alreadyAdded ? 12 : 0));
 
   const commitTyped = () => {
-    if (typed) addSymptom(typed);
+    if (typed && !addSymptom(typed)) { setInputError('ერთ შემოწმებაში მაქსიმუმ 16 სიმპტომი შეგიძლია დაამატო.'); return false; }
+    setInputError(null);
     setQuery('');
+    return true;
   };
 
   const goDetails = () => {
-    commitTyped();
+    if (!commitTyped()) return;
     if (getSymptomCheckerState().symptoms.length === 0) {
       inputRef.current?.focus();
       return;
@@ -55,11 +61,13 @@ export default function SymptomSearchScreen() {
   };
 
   const goAnalyze = () => {
-    commitTyped();
+    if (navigating.current) return;
+    if (!commitTyped()) return;
     if (getSymptomCheckerState().symptoms.length === 0) {
       inputRef.current?.focus();
       return;
     }
+    navigating.current = true;
     router.push('/symptoms/analyzing' as never);
   };
 
@@ -190,10 +198,11 @@ export default function SymptomSearchScreen() {
           </View>
         </ScrollView>
 
+        {inputError ? <Text accessibilityRole="alert" style={{ color: T.danger, paddingHorizontal: 16, paddingVertical: 8 }}>{inputError}</Text> : null}
         <SymptomComposer
           score={score}
           onFocusInput={() => inputRef.current?.focus()}
-          onAnatomy={() => router.push('/symptoms/body' as never)}
+          onAnatomy={() => { updateSymptomChecker({ method: 'anatomy' }); router.push('/symptoms/body' as never); }}
           onSettings={goDetails}
           sendDisabled={state.symptoms.length === 0 && !typed}
           onSend={goAnalyze}

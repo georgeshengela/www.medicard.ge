@@ -25,10 +25,7 @@ import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { PlanDetailCard } from '@/components/PlanUsageCard';
 import { ProfileStreakCard } from '@/components/check-in/ProfilePointsCard';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
-import { HomeMediCompanionEntry } from '@/components/companion/HomeMediCompanionEntry';
 import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
-import { ProfileTbilisiMovesSection } from '@/components/tbilisiMoves/ProfileTbilisiMovesSection';
-import { ProfileMedipulsiSection } from '@/components/medipulsi/ProfileMedipulsiSection';
 import { DeleteAccountModal } from '@/components/profile/DeleteAccountModal';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { ProfileVersionCard } from '@/components/profile/ProfileVersionCard';
@@ -37,7 +34,7 @@ import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constant
 import { SUPPORT_MAILTO } from '@/constants/legal';
 import { resolveConditionLabel } from '@/constants/conditionCatalog';
 import { ka } from '@/i18n/ka';
-import { ApiError, type Gender } from '@/lib/api';
+import { ApiError, ensureAiSharingConsentForRequest, type Gender } from '@/lib/api';
 import { isoToDisplay, parseBirthDate } from '@/lib/birthdate';
 import { displayWeightForUnit } from '@/lib/assessmentForm';
 import { cmToInches, formatHeightInches } from '@/components/assessment/HeightWheelPicker';
@@ -219,7 +216,7 @@ export default function Profile() {
                   style={{ width: 70, height: 70, borderRadius: 35 }}
                 />
               ) : (
-                <Text className="text-xl font-bold text-primary-100">{initials || '�'}</Text>
+                <Text className="text-xl font-bold text-primary-100">{initials || '·'}</Text>
               )}
             </View>
           </View>
@@ -287,13 +284,10 @@ export default function Profile() {
       />
 
       <View style={{ position: 'relative', marginTop: 8 }}>
-        <HomeMediCompanionEntry edgeInset={0} />
         <HomeMediQuestSection edgeInset={0} />
       </View>
 
       <ProfilePetsSection />
-          <ProfileTbilisiMovesSection />
-          <ProfileMedipulsiSection />
 
       <View className="mt-5">
         <HomeSectionTitle title={ka.profile.appearance} />
@@ -316,8 +310,8 @@ export default function Profile() {
         {user?.gender && user?.birthDate && !editingMedical ? (
           <Card>
             <FactRow label={ka.auth.gender} value={GENDER_LABELS[user.gender]} />
-            <FactRow label={ka.profile.age} value={`${user.age ?? '�'} ${ka.profile.years}`} />
-            <FactRow label={ka.auth.birthDate} value={isoToDisplay(user.birthDate)} />
+            <FactRow label={ka.profile.age} value={`${user.age ?? '·'} ${ka.profile.years}`} />
+            <FactRow label={ka.auth.birthDate} value={(isoToDisplay(user.birthDate) || '')} />
             {healthProfile?.heightCm != null ? (
               <FactRow
                 label={ka.profile.height}
@@ -343,7 +337,7 @@ export default function Profile() {
             {bmi != null ? (
               <FactRow
                 label={ka.profile.bmi}
-                value={`${bmi.toFixed(1)} � ${ka.home.bmi.categories[bmiCategory(bmi)]}`}
+                value={`${bmi.toFixed(1)} · ${ka.home.bmi.categories[bmiCategory(bmi)]}`}
               />
             ) : null}
             {healthProfile?.bloodType ? (
@@ -388,13 +382,16 @@ export default function Profile() {
       </View>
 
       <View className="mt-5">
-        <HomeSectionTitle title={ka.profile.subscription} />
+        <HomeSectionTitle title="შენი წვდომა" />
         <PlanDetailCard />
       </View>
 
       <View className="mt-5">
         <HomeSectionTitle title={ka.profile.settings} />
         <Card padded={false}>
+          <ProfileMenuRow icon={ShieldCheck} label="AI მონაცემების გაზიარება" onPress={() => {
+            void ensureAiSharingConsentForRequest('', 'GET', undefined, true).catch(error => Alert.alert('მონაცემების გაზიარება', error.message));
+          }} />
           <ProfileMenuRow
             icon={ShieldCheck}
             label={ka.profile.permissions}
@@ -533,7 +530,7 @@ function MedicalProfileCard({
   const { user, updateProfile } = useAuth();
 
   const [gender, setGender] = useState<Gender | null>(user?.gender ?? null);
-  const [birthDate, setBirthDate] = useState(user?.birthDate ? isoToDisplay(user.birthDate) : '');
+  const [birthDate, setBirthDate] = useState(user?.birthDate ? (isoToDisplay(user.birthDate) || '') : '');
   const [errors, setErrors] = useState<{ gender?: string; birthDate?: string; form?: string }>({});
   const [busy, setBusy] = useState(false);
 

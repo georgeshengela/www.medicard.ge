@@ -29,6 +29,8 @@ export function QuestCard({
   weekly,
   offline,
   claiming,
+  claimDisabled,
+  action,
   onClaim,
   onOpenMedi,
   index = 0,
@@ -45,6 +47,8 @@ export function QuestCard({
   weekly?: boolean;
   offline?: boolean;
   claiming?: boolean;
+  claimDisabled?: boolean;
+  action?: { label: string; onPress: () => void };
   onClaim?: () => void;
   onOpenMedi?: () => void;
   /** Position in the list, drives the stagger. */
@@ -224,13 +228,19 @@ export function QuestCard({
 
       {claimable ? (
         <Animated.View entering={reduce ? undefined : FadeIn.duration(QUEST.motion.fast)} style={{ marginTop: 14 }}>
-          <QuestClaimButton label={copy.claim} loading={claiming} disabled={offline} onPress={onClaim} />
+          <QuestClaimButton label={copy.claimReward} loading={claiming} disabled={offline || claimDisabled} onPress={onClaim} />
           {offline ? (
             <Text style={{ marginTop: 8, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 16, color: colors.text300 }}>
               {copy.connectToClaim}
             </Text>
           ) : null}
         </Animated.View>
+      ) : null}
+
+      {active && action ? (
+        <Pressable accessibilityRole="button" onPress={action.onPress} className="active:opacity-75" style={{ marginTop: 12, minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 14, backgroundColor: colors.surfaceRaised }}>
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, color: dark ? '#99F6E4' : '#0F766E' }}>{action.label}</Text>
+        </Pressable>
       ) : null}
 
       {conversational ? (

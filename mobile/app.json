@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.9.0",
+    "version": "1.0.0.10.0",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -14,8 +14,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
-      "version": "1.9.0",
-      "buildNumber": "82",
+      "version": "1.10.0",
+      "buildNumber": "83",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD AI",
         "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის, ასევე MEDI RUN-ში ვირტუალური საჩუქრის აღმოსაჩენად.",
@@ -33,7 +33,7 @@
     },
     "android": {
       "package": "ge.medicard.app",
-      "versionCode": 82,
+      "versionCode": 83,
       "adaptiveIcon": {
         "backgroundColor": "#14B8A6",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -171,7 +171,7 @@
     ],
     "extra": {
       "router": {},
-      "medicardInternalVersion": "1.0.0.8.80",
+      "medicardInternalVersion": "1.0.0.10.0",
       "apiUrl": "https://medicard.ge",
       "privacyPolicyUrl": "https://medicard.ge/privacy",
       "termsOfServiceUrl": "https://medicard.ge/terms",

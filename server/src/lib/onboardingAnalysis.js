@@ -1,3 +1,4 @@
+import { consentedAiFetch } from './consentedAiFetch.js';
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
 import { withOpenRouterModelFallback } from './aiEngine.js';
@@ -8,6 +9,7 @@ const openrouter = env.OPENROUTER_API_KEY
   ? new OpenAI({
       apiKey: env.OPENROUTER_API_KEY,
       baseURL: env.OPENROUTER_BASE_URL,
+      fetch: consentedAiFetch('openrouter'),
       timeout: 120_000,
       maxRetries: 1,
       defaultHeaders: {
@@ -210,7 +212,6 @@ function buildPatientContext(profile, user, extras = {}, extrasContext = {}) {
     extra.fitnessLevel != null ? `fitnessLevel: ${extra.fitnessLevel}` : null,
     extra.sleepLevel != null ? `sleepLevel: ${extra.sleepLevel}` : null,
     extra.checkupFrequency ? `checkupFrequency: ${extra.checkupFrequency}` : null,
-    extra.legalName ? `legalName: ${extra.legalName}` : null,
     extra.healthNote ? `healthNote: ${String(extra.healthNote).slice(0, 400)}` : null,
     extra.takesMedications != null ? `takesMedications: ${extra.takesMedications}` : null,
     extra.hasConditions != null ? `hasConditions: ${extra.hasConditions}` : null,

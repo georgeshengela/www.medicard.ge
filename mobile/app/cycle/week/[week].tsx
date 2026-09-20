@@ -87,7 +87,7 @@ export default function CyclePregnancyWeekScreen() {
 
   const isCurrent = currentWeek != null && week === currentWeek;
   const isFuture = currentWeek != null && week > currentWeek;
-  const facts = development?.developmentFactKeys || [];
+  const facts: string[] = development?.developmentFactKeys || [];
 
   function go(next: number) {
     if (next < PREGNANCY_WEEK_CATALOG_MIN || next > PREGNANCY_WEEK_CATALOG_MAX) return;

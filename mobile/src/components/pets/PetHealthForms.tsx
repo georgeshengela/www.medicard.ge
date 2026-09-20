@@ -16,9 +16,9 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { DateField } from '@/components/ui/DateField';
-import { Input } from '@/components/ui/Input';
+import { PetButton as Button } from '@/components/pets/PetUi';
+import { PetDateField as DateField } from '@/components/pets/PetDateField';
+import { PetInput as Input } from '@/components/pets/PetUi';
 import {
   PetChipRow,
   PetErrorText,
@@ -184,7 +184,7 @@ export function PetAllergyForm({
   const [status, setStatus] = useState<PetAllergyStatus>(initial?.reportedStatus || 'suspected');
   const [reaction, setReaction] = useState(initial?.reaction || '');
   const [notes, setNotes] = useState(initial?.notes || '');
-  const [dateDigits, setDateDigits] = useState(isoToDigits(initial?.notedOn));
+  const [dateDigits, setDateDigits] = useState(isoToDigits(initial?.notedOn ?? null));
   const [fieldError, setFieldError] = useState<string | null>(null);
 
   const categories = useMemo(
@@ -322,8 +322,8 @@ export function PetConditionForm({
   const [name, setName] = useState(initial?.name || '');
   const [status, setStatus] = useState<PetConditionStatus>(initial?.status || 'active');
   const [basis, setBasis] = useState<PetConditionBasis>(initial?.reportedBasis || 'owner_reported');
-  const [onsetDigits, setOnsetDigits] = useState(isoToDigits(initial?.onsetOn));
-  const [resolvedDigits, setResolvedDigits] = useState(isoToDigits(initial?.resolvedOn));
+  const [onsetDigits, setOnsetDigits] = useState(isoToDigits(initial?.onsetOn ?? null));
+  const [resolvedDigits, setResolvedDigits] = useState(isoToDigits(initial?.resolvedOn ?? null));
   const [notes, setNotes] = useState(initial?.notes || '');
   const [fieldError, setFieldError] = useState<string | null>(null);
 
@@ -333,15 +333,16 @@ export function PetConditionForm({
       return;
     }
     const onsetOn = onsetDigits ? digitsToIso(onsetDigits) : null;
-    const resolvedOn = resolvedDigits ? digitsToIso(resolvedDigits) : null;
+    const resolvedOn = status === 'resolved' && resolvedDigits ? digitsToIso(resolvedDigits) : null;
     if (onsetDigits && onsetOn === '') {
       setFieldError(ka.pets.conditionOnset);
       return;
     }
-    if (resolvedDigits && resolvedOn === '') {
+    if (status === 'resolved' && resolvedDigits && resolvedOn === '') {
       setFieldError(ka.pets.conditionResolvedOn);
       return;
     }
+    if (onsetOn && resolvedOn && resolvedOn < onsetOn) { setFieldError('დასრულების თარიღი დაწყებამდე ვერ იქნება.'); return; }
     setFieldError(null);
     onSubmit({
       name: name.trim(),

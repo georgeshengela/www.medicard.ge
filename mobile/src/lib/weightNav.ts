@@ -1,6 +1,6 @@
-import type { Router } from 'expo-router';
+import type { router } from 'expo-router';
 
-type WeightRouter = Pick<Router, 'replace' | 'push'> & {
+type WeightRouter = Pick<typeof router, 'replace' | 'push'> & {
   dismissTo?: (href: string) => void;
 };
 

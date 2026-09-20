@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { Card } from '@/components/ui/Card';
+import { PetPanel as Card } from '@/components/pets/PetUi';
 import { PetPhoto } from '@/components/pets/PetPhoto';
 import { ka } from '@/i18n/ka';
 import type { Pet } from '@/lib/api';

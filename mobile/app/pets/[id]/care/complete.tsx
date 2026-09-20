@@ -1,10 +1,11 @@
+import { PetLoading } from '@/components/pets/PetUi';
 import React, { useCallback, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { DateField } from '@/components/ui/DateField';
+import { PetButton as Button } from '@/components/pets/PetUi';
+import { PetPanel as Card } from '@/components/pets/PetUi';
+import { PetDateField as DateField } from '@/components/pets/PetDateField';
 import { careKindIcon } from '@/components/pets/PetCareChips';
 import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
@@ -36,6 +37,7 @@ export default function PetCareCompleteScreen() {
     revision?: string;
     action?: string;
   }>();
+  const saveLock = useRef(false);
   const requestId = useRef(newPetsRequestId()).current;
   const [pet, setPet] = useState<Pet | null>(null);
   const [schedule, setSchedule] = useState<PetCareSchedule | null>(null);
@@ -51,6 +53,8 @@ export default function PetCareCompleteScreen() {
         api.pets.get(params.id),
         api.pets.schedules.get(params.id, params.scheduleId),
       ]);
+      setStale(null);
+      setError(null);
       setPet(petRes.pet);
       setSchedule(sched.schedule);
       if (params.revision && Number(params.revision) !== sched.schedule.revision) {
@@ -70,11 +74,13 @@ export default function PetCareCompleteScreen() {
   const skip = params.action === 'skip';
 
   const submit = async (kind: 'complete' | 'skip') => {
-    if (!params.id || !params.scheduleId || !params.occurrenceKey || !schedule || saving) return;
+    if (!params.id || !params.scheduleId || !params.occurrenceKey || !schedule || saveLock.current || stale || !user || localAccountId() !== user.id) return;
+    const owner = user.id;
     if (kind === 'complete' && !administeredOn) {
       setError(ka.pets.administeredOn);
       return;
     }
+    saveLock.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -92,9 +98,11 @@ export default function PetCareCompleteScreen() {
           clientRequestId: requestId,
         });
       }
-      await reconcilePetCareReminders({ reason: kind });
+      if (localAccountId() !== owner) return;
+      void reconcilePetCareReminders({ reason: kind }).catch(() => undefined);
       router.replace(`/pets/${params.id}/care`);
     } catch (caught) {
+      if (localAccountId() !== owner) return;
       const kindKind = petsCareErrorKind(caught);
       if (caught instanceof ApiError && caught.status === 409) {
         const why = conflictExplanation(caught.code || '');
@@ -109,7 +117,7 @@ export default function PetCareCompleteScreen() {
         return;
       }
       if (kindKind === 'offline') {
-        const userId = localAccountId();
+        const userId = owner;
         if (userId && administeredOn) {
           await queuePetCareConfirm({
             userId,
@@ -128,12 +136,13 @@ export default function PetCareCompleteScreen() {
       }
       setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError }));
     } finally {
+      saveLock.current = false;
       setSaving(false);
     }
   };
 
   if (!ready || !user) {
-    return <View style={{ flex: 1, backgroundColor: colors.bg100 }} />;
+    return <PetLoading />;
   }
 
   return (
@@ -142,6 +151,7 @@ export default function PetCareCompleteScreen() {
       <PetPageScroll>
         <PetErrorText message={error} />
         <PetErrorText message={stale} />
+        {stale ? <Button variant="secondary" label="განახლებული გეგმის ნახვა" onPress={() => router.replace(`/pets/${params.id}/care`)} /> : !schedule && error ? <Button label="ხელახლა ცდა" onPress={() => void load()} /> : null}
         <Card>
           {schedule ? (
             <View className="mb-3 flex-row items-center gap-3">
@@ -171,6 +181,7 @@ export default function PetCareCompleteScreen() {
             icon={Check}
             label={skip ? ka.pets.skipOccurrence : completeLabel(schedule.kind, ka.pets)}
             loading={saving}
+            disabled={Boolean(stale)}
             onPress={() => void submit(skip ? 'skip' : 'complete')}
           />
         ) : null}

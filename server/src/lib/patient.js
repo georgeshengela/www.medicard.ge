@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { prisma } from './prisma.js';
 import { publicExtraAnswers } from './appState.js';
 import { resolvePackageAiLimit } from './packages.js';
+import { FREE_CONSUMER_RELEASE, freeConsumerPackage } from './consumerAccess.js';
 import { normalizeAiEngine } from './aiEngine.js';
 import { cycleModeForPatientAiContext } from './cycleModes.js';
 import { wrapUntrustedAiBlock } from './clinicalMessages.js';
@@ -121,9 +122,9 @@ export function publicUser(user) {
     birthDate: toDateOnly(user.birthDate),
     age: calculateAge(user.birthDate),
     status: user.status ?? 'ACTIVE',
-    package: pkg,
-    packageStartedAt: user.packageStartedAt ?? null,
-    packageExpiresAt: user.packageExpiresAt ?? null,
+    package: FREE_CONSUMER_RELEASE ? freeConsumerPackage() : pkg,
+    packageStartedAt: FREE_CONSUMER_RELEASE ? null : user.packageStartedAt ?? null,
+    packageExpiresAt: FREE_CONSUMER_RELEASE ? null : user.packageExpiresAt ?? null,
     createdAt: user.createdAt,
     points: user.points ?? 0,
     currentStreak: user.currentStreak ?? 0,
@@ -148,8 +149,6 @@ export function accountFirstName(fullName) {
 export function buildPatientProfile(user) {
   const lines = [];
 
-  const firstName = accountFirstName(user?.fullName);
-  if (firstName) lines.push(`- სახელი: ${firstName}`);
 
   const gender = GENDER_KA[user?.gender];
   if (gender) lines.push(`- სქესი: ${gender}`);

@@ -40,7 +40,7 @@ export function CareChipField({ label, children }: { label: string; children: Re
   );
 }
 
-export function careKindIcon(kind: PetCareKind): LucideIcon {
+export function careKindIcon(kind: PetCareKind | null | undefined): LucideIcon {
   switch (kind) {
     case 'VACCINATION':
       return Syringe;
@@ -65,7 +65,7 @@ export function CareKindChips({
   return (
     <CareChipField label={ka.pets.careKind}>
       <PetChipRow>
-        {CARE_KINDS.map((kind) => (
+        {(CARE_KINDS as readonly PetCareKind[]).map((kind) => (
           <PetFilterChip
             key={kind}
             label={kindLabel(kind, ka.pets)}

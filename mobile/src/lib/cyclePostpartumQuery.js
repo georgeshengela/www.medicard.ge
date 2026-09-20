@@ -19,6 +19,7 @@ export function emptyPostpartumQueryState(userId = null) {
   };
 }
 
+/** @param {{authReady?: boolean, authenticated?: boolean, mode?: string | null, reachable?: boolean}} options */
 export function shouldFetchCyclePostpartum({
   authReady = false,
   authenticated = false,

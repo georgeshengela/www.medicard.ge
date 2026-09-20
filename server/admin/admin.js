@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'tbilisi-moves', 'medipulsi', 'settings'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'medipulsi', 'settings'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -842,7 +842,6 @@ async function boot() {
     else if (tab === 'users' && userId !== state.userPageId) renderUsers();
     else if (tab === 'health' && typeof renderHealthOps === 'function') renderHealthOps();
     else if (tab === 'rewards' && typeof renderRewards === 'function') renderRewards();
-    else if (tab === 'tbilisi-moves' && typeof renderTbilisiMoves === 'function') renderTbilisiMoves();
     else if (tab === 'medipulsi' && typeof renderMedipulsi === 'function') renderMedipulsi();
   });
   $('drawer-backdrop').addEventListener('click', async () => {
@@ -977,7 +976,7 @@ function writeTabHash(tab, query) {
   const params = query instanceof URLSearchParams
     ? query
     : new URLSearchParams(query && typeof query === 'object' ? query : {});
-  const inheritOpsRange = tab !== 'tbilisi-moves' && tab !== 'medipulsi';
+  const inheritOpsRange = tab !== 'medipulsi';
   if (inheritOpsRange && typeof opsState !== 'undefined' && opsState.range && !params.get('range')) {
     params.set('range', opsState.range);
     if (opsState.range === 'custom') {
@@ -1036,7 +1035,6 @@ async function switchTab(tab, opts = {}) {
     audit: ['Production', 'აუდიტი', 'ვინ შეცვალა რა და როდის?', 'audit.page'],
     quality: ['Production', 'ხარისხი', 'ვერსიები, ტელემეტრია და მონაცემები სანდოა?', 'quality.page'],
     'medipulsi': ['Engagement', 'MEDIPULSI', 'გასეირნება, მისიები, აღმოჩენები და ჯილდოების მართვა.', ''],
-    'tbilisi-moves': ['Engagement', 'თბილისი მოძრაობს', 'რაიონული სიარულის შეჯიბრის კონფიგურაცია და მიმოხილვა.', ''],
     orders: ['Operations', 'შეკვეთები', 'რა საჭიროებს ოპერაციულ დამუშავებას?', 'orders.page'],
     users: ['People', 'მომხმარებლები', 'ვინ არის ბაზაში, რა ანგარიშის მდგომარეობა აქვს და ვისი გამოძიება გჭირდება.', 'users.registry'],
     packages: ['Commerce', 'პაკეტები', 'ტარიფები, ლიმიტები და უფლებები.', 'packages.page'],
@@ -1067,7 +1065,6 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'health' && typeof renderHealthOps === 'function') await renderHealthOps();
     if (tab === 'audit' && typeof renderAuditLog === 'function') await renderAuditLog();
     if (tab === 'quality' && typeof renderQualityOps === 'function') await renderQualityOps();
-    if (tab === 'tbilisi-moves' && typeof renderTbilisiMoves === 'function') await renderTbilisiMoves();
     if (tab === 'medipulsi' && typeof renderMedipulsi === 'function') await renderMedipulsi();
     if (tab === 'settings') await renderSettings();
   }
@@ -1128,13 +1125,11 @@ function connectAdminRealtime() {
     adminSocketLive = true;
     window.__adminSocketConnected = true;
     setLivePill();
-    if (typeof window.patchTbilisiMovesSocket === 'function') window.patchTbilisiMovesSocket('live');
   });
   adminSocket.on('disconnect', () => {
     adminSocketLive = false;
     window.__adminSocketConnected = false;
     setLivePill();
-    if (typeof window.patchTbilisiMovesSocket === 'function') window.patchTbilisiMovesSocket('offline');
   });
   adminSocket.on('connect_error', () => {
     adminSocketLive = false;
@@ -1155,9 +1150,6 @@ function connectAdminRealtime() {
       window.__reloadUsers();
     }
     if (Number.isFinite(next)) lastLiveNewUsers = next;
-  });
-  adminSocket.on('tbilisi-moves:live', (snap) => {
-    if (typeof window.patchTbilisiMovesLive === 'function') window.patchTbilisiMovesLive(snap);
   });
   adminSocket.on('brain:sync', () => {
     if (state.tab !== 'push' || pushStudioTab !== 'brain') return;

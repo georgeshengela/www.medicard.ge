@@ -6,6 +6,7 @@ import { applyPushCopy } from '@/lib/pushCopy';
 import { quotaResetKey, QUOTA_RESET_PREF, QUOTA_RESET_ROUTE, appendShownKey, parseShownKeys } from '@/lib/quotaReset';
 import { getPreference, setPreference } from '@/lib/storage';
 import type { Usage } from '@/lib/api';
+import { FREE_CONSUMER_RELEASE } from '@/lib/consumerAccess';
 
 export const QUOTA_RESET_ID = 'quota:reset';
 export const QUOTA_NOTIF_CATEGORY = 'medi-quota';
@@ -39,7 +40,7 @@ async function resolveFireAt(resetAt: Date): Promise<Date> {
 /** Schedule a one-shot ping at the next refill. Keeps an already-queued morning ping if usage is already full. */
 export async function syncQuotaResetNotification(usage: Usage | null | undefined): Promise<boolean> {
   if (Platform.OS === 'web') return false;
-  if (!usage || usage.unlimited || usage.limit <= 0) {
+  if (FREE_CONSUMER_RELEASE || !usage || usage.unlimited || usage.limit <= 0) {
     await cancelQuotaResetNotification();
     return false;
   }

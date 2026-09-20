@@ -49,7 +49,7 @@ export function MediJourneyUnlockToast({ celebration, onDismiss, locale = 'ka' }
         accessibilityLabel={`${title}. ${copy.viewJourney}`}
         onPress={() => {
           onDismiss();
-          router.push('/medi-companion/journey' as never);
+          router.push('/medi-quest?tab=progress' as never);
         }}
         className="active:opacity-90"
         style={{

@@ -1,4 +1,5 @@
-import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
+import { getScopedPreference, setScopedPreference, localAccountId } from '@/lib/localAccount';
+import { getPreference, setPreference } from '@/lib/storage';
 import type { QuestDashboard } from './api';
 import type { AchievementsOverview } from './achievements';
 
@@ -6,9 +7,10 @@ const DASH_KEY = 'medicard.quest.dashboard.v1';
 const SYNC_KEY = 'medicard.quest.sync.v1';
 const ACH_KEY = 'medicard.quest.achievements.v1';
 
-export async function readQuestCache(): Promise<{ dashboard: QuestDashboard; savedAt: number } | null> {
-  const raw = await getScopedPreference(DASH_KEY);
-  if (!raw) return null;
+export async function readQuestCache(ownerId = localAccountId()): Promise<{ dashboard: QuestDashboard; savedAt: number } | null> {
+  if (!ownerId || ownerId !== localAccountId()) return null;
+  const raw = await getPreference(`${DASH_KEY}.${ownerId}`);
+  if (!raw || ownerId !== localAccountId()) return null;
   try {
     const parsed = JSON.parse(raw) as { dashboard: QuestDashboard; savedAt: number };
     return parsed?.dashboard ? parsed : null;
@@ -17,15 +19,17 @@ export async function readQuestCache(): Promise<{ dashboard: QuestDashboard; sav
   }
 }
 
-export async function writeQuestCache(dashboard: QuestDashboard): Promise<void> {
+export async function writeQuestCache(dashboard: QuestDashboard, ownerId = localAccountId()): Promise<void> {
+  if (!ownerId || ownerId !== localAccountId()) return;
   let prevDash: QuestDashboard | null = null;
   try {
-    const prev = await readQuestCache();
+    const prev = await readQuestCache(ownerId);
     prevDash = prev?.dashboard ?? null;
   } catch {
     prevDash = null;
   }
-  await setScopedPreference(DASH_KEY, JSON.stringify({ dashboard, savedAt: Date.now() }));
+  if (ownerId !== localAccountId()) return;
+  await setPreference(`${DASH_KEY}.${ownerId}`, JSON.stringify({ dashboard, savedAt: Date.now() }));
   try {
     const { crossedQuestProgressThreshold } = await import('./questSmartEngage.js');
     const prevMove = prevDash?.daily?.quests?.find(
@@ -129,17 +133,20 @@ export function subscribeQuestLevelUp(listener: (payload: QuestLevelUpShow) => v
 /* ── Phase 7.2: Medi Coin balance bus (same-device immediate consistency) ─ */
 
 let mediCoinHint: number | null = null;
+let mediCoinOwner: string | null = null;
 const coinListeners = new Set<(coins: number | null) => void>();
 
 async function patchQuestCacheCoins(coins: number) {
+  const ownerId = localAccountId();
+  if (!ownerId) return;
   try {
-    const cached = await readQuestCache();
-    if (!cached?.dashboard?.profile) return;
+    const cached = await readQuestCache(ownerId);
+    if (!cached?.dashboard?.profile || ownerId !== localAccountId()) return;
     const next = {
       ...cached.dashboard,
       profile: { ...cached.dashboard.profile, coinBalance: coins },
     };
-    await setScopedPreference(DASH_KEY, JSON.stringify({ dashboard: next, savedAt: Date.now() }));
+    await setPreference(`${DASH_KEY}.${ownerId}`, JSON.stringify({ dashboard: next, savedAt: Date.now() }));
   } catch {
     /* cache patch is best-effort */
   }
@@ -147,7 +154,7 @@ async function patchQuestCacheCoins(coins: number) {
 
 /** Last authoritative Medi Coin balance published on this device (may be null). */
 export function getMediCoinBalanceHint(): number | null {
-  return mediCoinHint;
+  return mediCoinOwner === localAccountId() ? mediCoinHint : null;
 }
 
 /**
@@ -159,6 +166,7 @@ export function publishMediCoinBalance(coins: number) {
   const n = Math.floor(Number(coins));
   if (!Number.isFinite(n) || n < 0) return;
   mediCoinHint = n;
+  mediCoinOwner = localAccountId();
   void patchQuestCacheCoins(n);
   coinListeners.forEach((fn) => {
     try {
@@ -180,6 +188,7 @@ export function invalidateMediCoinBalance(options?: { coins?: number }) {
     return;
   }
   mediCoinHint = null;
+  mediCoinOwner = null;
   coinListeners.forEach((fn) => {
     try {
       fn(null);
@@ -192,7 +201,7 @@ export function invalidateMediCoinBalance(options?: { coins?: number }) {
 
 export function subscribeMediCoinBalance(listener: (coins: number | null) => void) {
   coinListeners.add(listener);
-  return () => coinListeners.delete(listener);
+  return () => { coinListeners.delete(listener); };
 }
 
 const entitlementRefreshListeners = new Set<() => void>();

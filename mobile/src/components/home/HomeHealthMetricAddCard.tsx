@@ -14,7 +14,7 @@ export function HomeHealthMetricAddCard({ label, onPress }: Props) {
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}
+      style={({ opacity: 1 })}
     >
       <View
         style={{

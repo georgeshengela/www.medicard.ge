@@ -120,7 +120,7 @@ export function DateField({
         >
           {display || placeholder || ka.auth.birthDatePlaceholder}
         </Text>
-        {showAge && parsed.ok && 'age' in parsed ? (
+        {showAge && parsed.ok && 'age' in parsed && typeof parsed.age === 'number' ? (
           <View className="rounded-full bg-accent-100 px-2.5 py-1">
             <Text className="text-xs font-bold text-primary-100">{ka.auth.yearsOld(parsed.age)}</Text>
           </View>
@@ -223,7 +223,7 @@ function BirthCalendar({
               <Text className="text-xl font-bold text-text-100">{ka.auth.birthDate}</Text>
               <Text className="mt-0.5 text-sm text-text-300">
                 {parsedDraft.ok
-                  ? civil || !('age' in parsedDraft)
+                  ? civil || !('age' in parsedDraft && typeof parsedDraft.age === 'number')
                     ? formatBirthDateInput(draft)
                     : `${formatBirthDateInput(draft)} · ${ka.auth.yearsOld(parsedDraft.age)}`
                   : ka.auth.birthDatePlaceholder}

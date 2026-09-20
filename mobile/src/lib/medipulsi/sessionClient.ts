@@ -2,6 +2,7 @@ import {acceptFix,createJourney,loadJourney} from './core/journey';
 import {advanceMission,emptyBook} from './core/missions';
 import {pauseJourney,resetSession} from './core/session';
 import {EMPTY_SIGNAL} from './types';
+import {normalizePulseFix,repairRejectedBatch} from './fixNormalization';
 import type {Snapshot,PulseFix,GiftSignal,PulseSettings,Claim} from './types';
 
 type Operation={path:string;body?:unknown};
@@ -47,7 +48,21 @@ export class PulseSessionClient {
     if(this.sessionId){try{await this.adapter.request(`/sessions/${this.sessionId}/pause`,'POST');}catch(error){if(![404,409].includes((error as {status?:number}).status||0))throw error;this.sessionId=null;this.seq=0;}}
     const snapshot=await this.adapter.request<Snapshot>('/bootstrap');if(this.disposed)return;
     this.apply(snapshot,true);this.sessionId=snapshot.session?.id||null;this.seq=snapshot.session?.seq||0;this.loaded=true;await this.persist();
-   }catch(e){this.set({loading:false,message:(e as Error).message});throw e;}
+   }catch(e){
+    if(this.disposed)return;
+    // A rejected upload must not hide already-saved walks, gifts or map coverage.
+    // Keep the outbox and its sequence intact; reading never pauses its server session.
+    if(this.queue.length||this.fixes.length){
+     try{
+      const snapshot=await this.adapter.request<Snapshot>('/bootstrap');if(this.disposed)return;
+      const local=this.view.journey,seen=new Set((snapshot.state.journey.trail||[]).map(line=>JSON.stringify(line)));
+      const trail=[...(snapshot.state.journey.trail||[]),...(local.trail||[]).filter(line=>!seen.has(JSON.stringify(line)))];
+      this.apply(snapshot,false);this.set({journey:{...pauseJourney(local,'reload'),trail},loading:false,message:'შენახული პროგრესი ჩაიტვირთა. ტელეფონში დარჩენილი ჩანაწერები გაგზავნას ელოდება.'});
+      this.loaded=true;await this.persist();return;
+     }catch{/* Preserve the original upload error if the server cannot be read either. */}
+    }
+    this.set({loading:false,message:(e as Error).message});throw e;
+   }
   })().finally(()=>{this.opening=null;});return this.opening;
  }
  private seal(){if(!this.sessionId||!this.fixes.length)return;for(let i=0;i<this.fixes.length;i+=60)this.queue.push({path:`/sessions/${this.sessionId}/batches`,body:{id:this.adapter.id(),seq:++this.seq,fixes:this.fixes.slice(i,i+60)}});this.fixes=[];void this.persist();}
@@ -58,12 +73,20 @@ export class PulseSessionClient {
     const op=this.queue[0];
     try{const result=await this.adapter.request<Snapshot|{seq:number}>(op.path,'POST',op.body);if(this.disposed)return;if('userId' in result)this.apply(result);this.queue.shift();await this.persist();}
     catch(error){const status=(error as {status?:number}).status;
+     if(this.disposed)return;
+     if(status===400&&op.path.endsWith('/batches')){
+      const repaired=repairRejectedBatch(op.body);
+      if(repaired){
+       await this.adapter.archive(JSON.stringify({operation:op,reason:'native-gps-format-repair',at:Date.now()}));
+       op.body=repaired;await this.persist();continue;
+      }
+     }
      if(status===409||status===404){
       await this.adapter.archive(JSON.stringify({queue:this.queue,fixes:this.fixes,sessionId:this.sessionId,at:Date.now()}));
       this.queue=[];this.fixes=[];this.sessionId=null;this.seq=0;
       this.set({running:false,signal:EMPTY_SIGNAL,conflict:true,journey:pauseJourney(this.view.journey),message:'სესია სხვა მოწყობილობაზე შეიცვალა. ჩანაწერი ადგილობრივად დარჩა. გააგრძელე ერთი მოწყობილობიდან.'});await this.persist();return;
      }
-     this.set({message:'კავშირი შეწყდა · ჩანაწერი გაგზავნას ელოდება'});await this.persist();throw error;
+     this.set({message:status===400?'GPS ჩანაწერის გაგზავნა ვერ მოხერხდა · ასლი ტელეფონში შენარჩუნებულია':'კავშირი შეწყდა · ჩანაწერი გაგზავნას ელოდება'});await this.persist();throw error;
     }
    }
    if(!this.view.conflict)this.set({message:'ანგარიშში შენახულია'});
@@ -79,6 +102,9 @@ export class PulseSessionClient {
  }
  ingest(fix:PulseFix){
   if(!this.view.running||!this.sessionId||this.disposed)return this.view.journey;
+  const normalized=normalizePulseFix(fix);
+  if(!normalized){this.set({journey:{...this.view.journey,rejected:this.view.journey.rejected+1,status:'invalid',speed:0},message:'ზუსტ GPS ჩანაწერს ველოდებით'});return this.view.journey;}
+  fix=normalized;
   this.fixes.push(fix);
   const before=this.view.journey;
   const journey=fix.mocked?{...before,rejected:before.rejected+1,status:'invalid',speed:0}:acceptFix(before,fix,.72,fix.timestamp);
@@ -94,7 +120,7 @@ export class PulseSessionClient {
   void this.persist();void this.flush().catch(()=>{});
  }
  async tick(){this.seal();try{await this.flush();if(this.view.running){const signal=await this.adapter.request<GiftSignal>('/nearby');this.set({signal});}}catch{this.set({signal:EMPTY_SIGNAL});}}
- async refresh(){await this.init();const snapshot=await this.adapter.request<Snapshot>('/bootstrap');this.apply(snapshot,!this.view.running&&!this.queue.length&&!this.fixes.length);return snapshot;}
+ async refresh(){await this.init();if(!this.view.running&&(this.queue.length||this.fixes.length)){this.seal();try{await this.flush();}catch{/* Reading saved progress remains available while an upload waits. */}}const snapshot=await this.adapter.request<Snapshot>('/bootstrap');this.apply(snapshot,!this.view.running&&!this.queue.length&&!this.fixes.length);await this.persist();return snapshot;}
  async selectMission(id:string|null){this.seal();await this.flush();const snapshot=await this.adapter.request<Snapshot>('/mission','PUT',{id});this.apply(snapshot);this.set({book:snapshot.state.book});await this.persist();}
  async settings(value:PulseSettings|{handle:string;leaderboardOptIn:boolean}){const snapshot=await this.adapter.request<Snapshot>('/settings','PATCH',value);this.apply(snapshot);await this.persist();}
  async claim(id:string){this.seal();await this.flush();const claim=await this.adapter.request<Claim>(`/gifts/${id}/claim`,'POST');if(this.view.snapshot)this.apply({...this.view.snapshot,claims:[claim,...this.view.snapshot.claims.filter(c=>c.id!==claim.id)]});this.set({signal:EMPTY_SIGNAL});await this.persist();return claim;}

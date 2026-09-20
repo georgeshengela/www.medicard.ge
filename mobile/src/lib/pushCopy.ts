@@ -185,7 +185,7 @@ export async function logPushEvent(opts: {
   body: string;
 }): Promise<void> {
   try {
-    await api.push.logEvent(redactCyclePushLog(opts));
+    await api.push.logEvent({ source: opts.source, ...redactCyclePushLog(opts) });
   } catch {
     /* admin log is best-effort */
   }

@@ -65,7 +65,7 @@ export function PregnancyCarePlannedPlace({
       return;
     }
     if ((next || null) === saved) return;
-    onSave(next);
+    onSave(next ?? null);
   }
 
   return (

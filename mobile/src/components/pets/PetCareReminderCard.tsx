@@ -1,8 +1,8 @@
 import React from 'react';
 import { Linking, Pressable, Switch, Text, View } from 'react-native';
 import { Clock } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { PetButton as Button } from '@/components/pets/PetUi';
+import { PetInput as Input } from '@/components/pets/PetUi';
 import { ka } from '@/i18n/ka';
 import { api, type PetCareSchedule } from '@/lib/api';
 import { getNotificationPermissionGranted, requestNotificationPermission } from '@/lib/notifications';
@@ -71,7 +71,7 @@ export function PetCareReminderCard({
   }, [schedule]);
 
   React.useEffect(() => {
-    void load();
+    void load().catch(() => { setStatus('sync_failed'); setNextAlertAt(null); });
   }, [load]);
 
   const statusCopy =

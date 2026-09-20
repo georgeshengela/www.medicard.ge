@@ -1,3 +1,4 @@
+import type * as ExpoNotificationTypes from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Notifications } from '@/lib/expoNotifications';
 import { addHydrationLog, todayYmd } from '@/lib/hydration';
@@ -79,7 +80,7 @@ function isDefaultAction(id: string): boolean {
   );
 }
 
-async function snooze(content: Notifications.NotificationContent, minutes = 20): Promise<void> {
+async function snooze(content: ExpoNotificationTypes.NotificationContent, minutes = 20): Promise<void> {
   const data = (content.data ?? {}) as Record<string, unknown>;
   await Notifications.scheduleNotificationAsync({
     identifier: `snooze:${Date.now()}`,
@@ -88,7 +89,7 @@ async function snooze(content: Notifications.NotificationContent, minutes = 20):
       body: content.body ?? '',
       sound: 'default',
       data,
-      categoryIdentifier: content.categoryIdentifier,
+      categoryIdentifier: content.categoryIdentifier ?? undefined,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -98,7 +99,7 @@ async function snooze(content: Notifications.NotificationContent, minutes = 20):
 }
 
 export async function handleNotificationAction(
-  response: Notifications.NotificationResponse,
+  response: ExpoNotificationTypes.NotificationResponse,
 ): Promise<NotificationActionResult> {
   const content = response.notification.request.content;
   const data = (content.data ?? {}) as Record<string, unknown>;

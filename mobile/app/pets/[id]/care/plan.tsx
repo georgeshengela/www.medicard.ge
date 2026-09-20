@@ -1,11 +1,12 @@
+import { parsePetDate, petCarePlanError } from '@/lib/petsPresentation';
 import React, { useCallback, useRef, useState } from 'react';
 import { Text } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, Clock, Hash, Package, Pill } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { DateField } from '@/components/ui/DateField';
-import { Input } from '@/components/ui/Input';
+import { PetButton as Button } from '@/components/pets/PetUi';
+import { PetPanel as Card } from '@/components/pets/PetUi';
+import { PetDateField as DateField } from '@/components/pets/PetDateField';
+import { PetInput as Input } from '@/components/pets/PetUi';
 import {
   BasisChips,
   CareKindChips,
@@ -25,14 +26,14 @@ import {
   type PetRecurrenceBasis,
   type PetRecurrenceKind,
 } from '@/lib/api';
-import { isoToDigits, parseCivilDate } from '@/lib/birthdate';
+import { isoToDigits } from '@/lib/birthdate';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
-import { newPetsRequestId, petsCareErrorMessage, summarizePlanKa } from '@/lib/petsCare';
+import { kindLabel, newPetsRequestId, petsCareErrorMessage, summarizePlanKa } from '@/lib/petsCare';
 import { todayIsoLocal } from '@/lib/visitReminders';
 
 function digitsToIso(digits: string): string | null {
   if (!digits) return null;
-  const parsed = parseCivilDate(digits);
+  const parsed = parsePetDate(digits, { allowFuture: true });
   return parsed.ok ? parsed.iso : '';
 }
 
@@ -67,6 +68,7 @@ export default function PetCarePlanScreen() {
   const [dose, setDose] = useState(params.dose || '');
   const [doseUnit, setDoseUnit] = useState(params.doseUnit || '');
   const [route, setRoute] = useState<PetCareRoute | null>(null);
+  const saveLock = useRef(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,20 +94,24 @@ export default function PetCarePlanScreen() {
   const matchingProducts = products.filter((row) => !kind || row.kind === kind);
 
   const save = async () => {
-    if (!params.id || !kind || !startOn || saving) return;
+    if (!params.id || saveLock.current) return;
+    const validation = petCarePlanError({ kind, startDigits: dateDigits, endDigits: courseEnds, dueTime, times, recurrence: recurrenceKind, interval: intervalCount, limit });
+    if (validation) { setError(validation); return; }
+    if (!kind || !startOn) return;
+    saveLock.current = true;
     setSaving(true);
     setError(null);
     try {
       await api.pets.schedules.create(params.id, {
         kind,
-        title: title.trim() || selected?.name || kind,
+        title: title.trim() || selected?.name || kindLabel(kind, ka.pets),
         productId,
         startOn,
-        dueTime: dueTime.trim() || null,
+        dueTime: recurrenceKind === 'DAILY_COURSE' ? null : dueTime.trim() || null,
         times: recurrenceKind === 'DAILY_COURSE' ? times.split(',').map((item) => item.trim()).filter(Boolean) : null,
         recurrenceKind,
         intervalCount: recurrenceKind === 'ONCE' || recurrenceKind === 'DAILY_COURSE' ? undefined : Number(intervalCount),
-        recurrenceBasis: recurrenceKind === 'ONCE' ? 'NONE' : basis,
+        recurrenceBasis: recurrenceKind === 'ONCE' ? 'NONE' : recurrenceKind === 'DAILY_COURSE' ? 'FIXED_CALENDAR' : basis,
         source,
         courseEndsOn: courseEndsOn || null,
         occurrenceLimit: limit ? Number(limit) : null,
@@ -114,10 +120,12 @@ export default function PetCarePlanScreen() {
         route,
         clientRequestId: requestId,
       });
+      void import('@/lib/petCareReminders').then(module => module.reconcilePetCareReminders({ reason: 'plan-created' })).catch(() => undefined);
       router.replace(`/pets/${params.id}/care`);
     } catch (caught) {
       setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError }));
     } finally {
+      saveLock.current = false;
       setSaving(false);
     }
   };
@@ -127,12 +135,12 @@ export default function PetCarePlanScreen() {
       ? summarizePlanKa(
           {
             kind,
-            title: title.trim() || selected?.name || kind,
+            title: title.trim() || selected?.name || kindLabel(kind, ka.pets),
             productName: selected?.name || title,
             startOn,
             recurrenceKind,
             intervalCount: Number(intervalCount) || 1,
-            recurrenceBasis: basis,
+            recurrenceBasis: recurrenceKind === 'DAILY_COURSE' ? 'FIXED_CALENDAR' : basis,
             courseEndsOn,
             occurrenceLimit: limit ? Number(limit) : null,
           },
@@ -150,12 +158,13 @@ export default function PetCarePlanScreen() {
             icon={Check}
             label={saving ? ka.pets.saving : ka.pets.confirmPlan}
             loading={saving}
-            disabled={!kind || !startOn || saving}
+            disabled={saving}
             onPress={() => void save()}
           />
         </>
       }
     >
+      <Text style={{ fontFamily: "NotoSansGeorgian_400Regular", fontSize: 14, lineHeight: 22 }} className="text-text-200">დაგეგმე მომავალი მოვლა. დოზა და სიხშირე მიუთითე ვეტერინარის დანიშნულების ან პროდუქტის ინსტრუქციის მიხედვით.</Text>
       <CareKindChips
         value={kind}
         onChange={(next) => {
@@ -184,7 +193,7 @@ export default function PetCarePlanScreen() {
         onAddNew={() => router.push(`/pets/${params.id}/care/products/new?returnTo=plan`)}
       />
 
-      <DateField figma label={ka.pets.firstDate} value={dateDigits} onChangeText={setDateDigits} showAge={false} />
+      <DateField allowFuture figma label={ka.pets.firstDate} value={dateDigits} onChangeText={setDateDigits} showAge={false} />
       <Input
         figma
         icon={Clock}
@@ -211,7 +220,7 @@ export default function PetCarePlanScreen() {
       {recurrenceKind === 'DAILY_COURSE' ? (
         <Input figma icon={Clock} label={ka.pets.times} value={times} onChangeText={setTimes} placeholder="08:00,20:00" />
       ) : null}
-      <DateField figma label={ka.pets.courseEndsOn} value={courseEnds} onChangeText={setCourseEnds} showAge={false} />
+      <DateField allowFuture figma label={ka.pets.courseEndsOn} value={courseEnds} onChangeText={setCourseEnds} showAge={false} />
       <Input
         figma
         icon={Hash}

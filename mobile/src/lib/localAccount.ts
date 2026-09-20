@@ -1,4 +1,5 @@
 import { deletePreference, getPreference, setPreference, setPreferenceStrict } from '@/lib/storage';
+import { resetSymptomChecker } from '@/lib/symptomCheckerStore';
 
 /** Device-global leftovers from before per-account keys — never replay User A into User B. */
 const LEGACY_UNSCOPED = [
@@ -13,7 +14,9 @@ const LEGACY_UNSCOPED = [
 let accountId: string | null = null;
 
 export function setLocalAccountId(userId: string | null) {
-  accountId = userId && userId.length > 0 ? userId : null;
+  const next = userId && userId.length > 0 ? userId : null;
+  if (next !== accountId) resetSymptomChecker();
+  accountId = next;
 }
 
 export function localAccountId(): string | null {
@@ -51,4 +54,11 @@ export async function deleteScopedPreference(base: string): Promise<void> {
 
 export async function wipeLegacyUnscopedHealthCaches(): Promise<void> {
   await Promise.all(LEGACY_UNSCOPED.map((key) => deletePreference(key)));
+}
+
+/** Compatibility cleanup for a removed feature; no live feature code remains. */
+export async function wipeRetiredFeaturePreferences(userId: string): Promise<void> {
+  if (!userId) return;
+  const keys = ['installId', 'queue', 'cache', 'history', 'awards', 'sourceConflict', 'lastSyncOk', 'sequence'];
+  await Promise.all(keys.map((key) => deletePreference(`medicard.tbilisiMoves.${key}.${userId}`)));
 }

@@ -1,3 +1,4 @@
+import { consentedAiFetch } from './consentedAiFetch.js';
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
 import { withOpenRouterModelFallback } from './aiEngine.js';
@@ -7,6 +8,7 @@ const openrouter = env.OPENROUTER_API_KEY
   ? new OpenAI({
       apiKey: env.OPENROUTER_API_KEY,
       baseURL: env.OPENROUTER_BASE_URL,
+      fetch: consentedAiFetch('openrouter'),
       timeout: 45_000,
       maxRetries: 1,
       defaultHeaders: {

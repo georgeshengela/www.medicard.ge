@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { PetIntro, PetLoading } from '@/components/pets/PetUi';
+import { PetButton as Button } from '@/components/pets/PetUi';
+import { PetPanel as Card } from '@/components/pets/PetUi';
 import { careKindIcon } from '@/components/pets/PetCareChips';
 import { PetErrorText, PetFactRow, PetIconWell, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
@@ -21,6 +22,7 @@ export default function PetCareEventScreen() {
 
   const load = useCallback(async () => {
     if (!id || !eventId) return;
+    setError(null);
     const [petRes, ev] = await Promise.all([api.pets.get(id), api.pets.events.get(id, eventId)]);
     setPet(petRes.pet);
     setEvent(ev.event);
@@ -48,8 +50,7 @@ export default function PetCareEventScreen() {
                 {
                   text: ka.pets.confirmRecalc,
                   onPress: async () => {
-                    await api.pets.events.void(id, event.id, { confirmRecalculate: true });
-                    router.replace(`/pets/${id}/care/history`);
+                    try { await api.pets.events.void(id, event.id, { confirmRecalculate: true }); router.replace(`/pets/${id}/care/history`); } catch (caught) { setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError })); }
                   },
                 },
               ]);
@@ -62,7 +63,7 @@ export default function PetCareEventScreen() {
     ]);
   };
 
-  if (!event) return <View style={{ flex: 1, backgroundColor: colors.bg100 }} />;
+  if (!event) return error ? <PetPageScroll><PetIntro title="ჩანაწერი ვერ ჩაიტვირთა" body="ხელახლა სცადე. შენი ისტორია არ წაშლილა." /><PetErrorText message={error} /><Button label="ხელახლა ცდა" onPress={() => void load().catch(caught => setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError })))} /></PetPageScroll> : <PetLoading />;
 
   return (
     <>

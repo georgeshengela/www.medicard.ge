@@ -130,7 +130,7 @@ export default function SymptomBodyScreen() {
         selectedPartId={state.selectedPartId}
         selectedOrganId={state.selectedOrganId}
         symptoms={state.symptoms}
-        onToggleSide={() => updateSymptomChecker({ side: state.side === 'front' ? 'back' : 'front' })}
+        onToggleSide={() => updateSymptomChecker({ side: state.side === 'front' ? 'back' : 'front', selectedPartId: null, selectedOrganId: null })}
         onSelectPart={(id) => {
           updateSymptomChecker({ selectedPartId: id, selectedOrganId: null, side: sideFor(id) ?? state.side });
           setSymptomSheet(true);
@@ -271,4 +271,3 @@ export default function SymptomBodyScreen() {
     </View>
   );
 }
-

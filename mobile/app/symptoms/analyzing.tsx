@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Animated, Easing, Text, View } from 'react-native';
 
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -10,38 +10,41 @@ import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 
-import { bodyPartById, DURATION_OPTIONS, organById } from '@/constants/symptomCatalog';
+import { buildSymptomRequest } from '@/lib/symptomRequest';
 
 import { ka } from '@/i18n/ka';
 
 import { api, ApiError } from '@/lib/api';
+import { localAccountId } from '@/lib/localAccount';
 
 import { saveSymptomSession } from '@/lib/symptomResultStorage';
 
 import { useAuth } from '@/store/AuthContext';
 
-import type { SymptomCheckPayload } from '@/types/symptoms';
+
 
 import { updateSymptomChecker, useSymptomChecker } from '@/lib/symptomCheckerStore';
-
-
 
 export default function SymptomAnalyzingScreen() {
   const T = useFigmaSymptoms();
 
   const router = useRouter();
 
-  const { applyUsage } = useAuth();
+  const { user, applyUsage } = useAuth();
 
   const state = useSymptomChecker();
+  const input = useRef(state).current;
+  const alive = useRef(true);
+  useFocusEffect(useCallback(() => {
+    alive.current = true;
+    return () => { alive.current = false; };
+  }, []));
 
   const started = useRef(false);
 
   const [step, setStep] = useState(0);
 
   const steps = [ka.symptoms.stepDatabase, ka.symptoms.stepLlm, ka.symptoms.stepCompile];
-
-
 
   useEffect(() => {
 
@@ -57,55 +60,24 @@ export default function SymptomAnalyzingScreen() {
 
   }, []);
 
-
-
   useEffect(() => {
 
     if (started.current) return;
 
     started.current = true;
+    const owner = user?.id;
+    const current = () => alive.current && !!owner && owner === localAccountId();
+    if (!owner || !input.symptoms.length) { router.replace('/symptoms/search' as never); return; }
 
-
-
-    const durationKa = DURATION_OPTIONS.find((d) => d.id === state.durationId)?.labelKa;
-
-    const part = bodyPartById(state.selectedPartId);
-
-    const organ = organById(state.selectedOrganId);
-
-    const snapshot: SymptomCheckPayload = {
-
-      symptoms: state.symptoms,
-
-      method: state.method ?? 'manual',
-
-      mode: state.mode === 'organ' ? 'organ' : state.method === 'anatomy' ? 'muscle' : 'search',
-
-      bodyPartId: part?.id,
-
-      bodyPartKa: part?.labelKa,
-
-      organId: organ?.id,
-
-      organKa: organ?.labelKa,
-
-      durationKa,
-
-      painLevel: state.painLevel ?? undefined,
-
-      notes: [state.pastConditions.trim() && `${ka.symptoms.pastConditions}: ${state.pastConditions.trim()}`, state.notes.trim()]
-        .filter(Boolean)
-        .join('\n') || undefined,
-
-    };
-
-
+    const snapshot = buildSymptomRequest(input);
+    updateSymptomChecker({ lastError: null, result: null, recordId: null, interactionId: null });
 
     void (async () => {
 
       try {
 
         const res = await api.ai.symptomCheck(snapshot);
+        if (!current()) return;
         applyUsage(res.usage);
 
         updateSymptomChecker({
@@ -124,25 +96,31 @@ export default function SymptomAnalyzingScreen() {
 
           createdAt: new Date().toISOString(),
 
-          symptoms: state.symptoms,
+          symptoms: input.symptoms,
 
-          primarySymptom: state.primarySymptom,
+          primarySymptom: input.primarySymptom,
 
-          durationId: state.durationId,
+          durationId: input.durationId,
 
-          painLevel: state.painLevel,
+          painLevel: input.painLevel,
 
-          bodyPartKa: part?.labelKa,
+          bodyPartKa: snapshot.bodyPartKa,
 
-          organKa: organ?.labelKa,
+          organKa: snapshot.organKa,
+          draft: { gender: input.gender, method: input.method, mode: input.mode, side: input.side,
+            selectedPartId: input.selectedPartId, selectedOrganId: input.selectedOrganId,
+            pastConditions: input.pastConditions, notes: input.notes, shareToNightingale: input.shareToNightingale },
 
           result: res.result,
 
+        }, owner).catch(() => {
+          if (current()) updateSymptomChecker({ lastError: 'შედეგი მზადაა, თუმცა ამ მოწყობილობაზე ისტორიის შენახვა ვერ მოხერხდა.' });
         });
 
-        router.replace('/symptoms/results?ready=1' as never);
+        if (current()) router.replace('/symptoms/results?ready=1' as never);
 
       } catch (err) {
+        if (!current()) return;
         if (err instanceof ApiError && err.isQuotaExceeded && err.usage) applyUsage(err.usage);
         const message =
           err instanceof ApiError
@@ -156,9 +134,7 @@ export default function SymptomAnalyzingScreen() {
 
     })();
 
-  }, [router, state, applyUsage]);
-
-
+  }, [router, input, applyUsage, user?.id]);
 
   return (
 
@@ -174,8 +150,6 @@ export default function SymptomAnalyzingScreen() {
 
       />
 
-
-
       <View style={{ paddingHorizontal: 16, gap: 24, alignItems: 'center' }}>
 
         {steps.map((label, i) => (
@@ -185,8 +159,6 @@ export default function SymptomAnalyzingScreen() {
         ))}
 
       </View>
-
-
 
       <View style={{ position: 'absolute', bottom: 48 }}>
 
@@ -200,14 +172,10 @@ export default function SymptomAnalyzingScreen() {
 
 }
 
-
-
 function AnalyzingLine({ label, active, done }: { label: string; active: boolean; done: boolean }) {
   const T = useFigmaSymptoms();
 
   const fade = useRef(new Animated.Value(active ? 1 : done ? 0.55 : 0.28)).current;
-
-
 
   useEffect(() => {
 
@@ -224,8 +192,6 @@ function AnalyzingLine({ label, active, done }: { label: string; active: boolean
     }).start();
 
   }, [active, done, fade]);
-
-
 
   return (
 
@@ -258,5 +224,3 @@ function AnalyzingLine({ label, active, done }: { label: string; active: boolean
   );
 
 }
-
-

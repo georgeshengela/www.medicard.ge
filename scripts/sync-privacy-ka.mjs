@@ -123,17 +123,17 @@ const body = `export type LegalSection = {
 };
 
 /** Medicard.GE — კონფიდენციალურობის პოლიტიკა. Synced from scripts/privacy-source.md */
-export const PRIVACY_POLICY_KA = ${JSON.stringify(
+export const PRIVACY_POLICY_KA: { title: string; effectiveDate: string; intro: string; highlight: string; sections: LegalSection[] } = ${JSON.stringify(
   {
     title: "კონფიდენციალურობის პოლიტიკა",
-    effectiveDate: "4 სექტემბერი, 2026",
+    effectiveDate: "20 სექტემბერი, 2026",
     intro,
     highlight: "MEDICARD არ ყიდის თქვენს ჯანმრთელობის მონაცემებს. სრული პოლიტიკა: medicard.ge/privacy.",
     sections,
   },
   null,
   2,
-)} as const;
+)};
 
 export type PrivacySection = LegalSection;
 `;

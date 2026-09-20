@@ -6,6 +6,7 @@ import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming } from '
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ka } from '@/i18n/ka';
 import { usePlanUsage } from '@/lib/planUsage';
+import { FREE_CONSUMER_RELEASE } from '@/lib/consumerAccess';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -43,7 +44,7 @@ export function HomePackageQuotaBadge({ onPress }: Props) {
     strokeDashoffset: CIRC * (1 - anim.value),
   }));
 
-  if (!usage) return null;
+  if (FREE_CONSUMER_RELEASE || !usage) return null;
 
   const valueLabel = unlimited ? '∞' : String(remaining ?? 0);
   const fill = exhausted ? '#FECDD3' : '#FFFFFF';
@@ -58,12 +59,12 @@ export function HomePackageQuotaBadge({ onPress }: Props) {
         exhausted ? ka.usage.exhaustedTitle : unlimited ? ka.usage.unlimitedBanner : ka.usage.remainingQueries(remaining ?? 0, limit)
       }
       onPress={onPress}
-      style={({ pressed }) => ({
+      style={({
         height: HEIGHT,
         borderRadius: HEIGHT / 2,
         overflow: 'hidden',
-        opacity: pressed ? 0.88 : 1,
-        transform: [{ scale: pressed ? 0.97 : 1 }],
+        opacity: 1,
+        transform: [{ scale: 1 }],
       })}
     >
       <LinearGradient

@@ -10,6 +10,7 @@ import { ka } from '@/i18n/ka';
 import { formatResetSentence } from '@/lib/format';
 import { usePlanUsage } from '@/lib/planUsage';
 import { useIsDark } from '@/theme/colors';
+import { FREE_CONSUMER_RELEASE } from '@/lib/consumerAccess';
 
 function useResetClock(resetsInMs: number | undefined, resetAt: string | null | undefined, visible: boolean) {
   const [remaining, setRemaining] = useState(() => Math.max(0, resetsInMs ?? 0));
@@ -44,7 +45,7 @@ export function QuotaSheet({
   const AUTH = useFigmaAuth();
   const plan = usePlanUsage();
   const remainingMs = useResetClock(resetsInMs ?? plan.usage?.resetsInMs, plan.usage?.resetAt, visible);
-  const showClock = (resetsInMs ?? plan.usage?.resetsInMs ?? 0) > 0 || Boolean(plan.usage?.resetAt);
+  const showClock = !FREE_CONSUMER_RELEASE && ((resetsInMs ?? plan.usage?.resetsInMs ?? 0) > 0 || Boolean(plan.usage?.resetAt));
 
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
@@ -105,7 +106,7 @@ export function QuotaSheet({
                     textAlign: 'center',
                   }}
                 >
-                  {ka.usage.exhaustedTitle}
+                  {FREE_CONSUMER_RELEASE ? 'ცოტა ხანში სცადე' : ka.usage.exhaustedTitle}
                 </Text>
                 {!plan.unlimited ? (
                   <Text
@@ -129,13 +130,13 @@ export function QuotaSheet({
                     textAlign: 'center',
                   }}
                 >
-                  {plan.usage?.resetAt ? formatResetSentence(plan.usage.resetAt) : ka.usage.exhaustedBody}
+                  {FREE_CONSUMER_RELEASE ? 'მოთხოვნა ახლა ვერ შესრულდა. წვდომა უფასოა — დახურე ფანჯარა და ხელახლა სცადე.' : plan.usage?.resetAt ? formatResetSentence(plan.usage.resetAt) : ka.usage.exhaustedBody}
                 </Text>
               </View>
             </View>
 
             <View style={{ gap: 10 }}>
-              <Pressable
+              {!FREE_CONSUMER_RELEASE ? <Pressable
                 accessibilityRole="button"
                 onPress={onUpgrade}
                 style={{
@@ -159,7 +160,7 @@ export function QuotaSheet({
                 >
                   {ka.usage.upsellCta}
                 </Text>
-              </Pressable>
+              </Pressable> : null}
               <Pressable
                 accessibilityRole="button"
                 onPress={onClose}
@@ -183,7 +184,7 @@ export function QuotaSheet({
                     color: FIGMA.textPrimary,
                   }}
                 >
-                  {ka.usage.waitCta}
+                  {FREE_CONSUMER_RELEASE ? ka.common.close : ka.usage.waitCta}
                 </Text>
               </Pressable>
             </View>

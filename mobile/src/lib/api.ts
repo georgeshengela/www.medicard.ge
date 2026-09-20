@@ -4,24 +4,12 @@ import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { publicApiErrorMessage } from './rateLimitCopy.js';
 import { getToken } from './storage';
-import type {
-  TbilisiMovesAward,
-  TbilisiMovesCatalog,
-  TbilisiMovesDayResults,
-  TbilisiMovesDistrictBoard,
-  TbilisiMovesHistory,
-  TbilisiMovesMe,
-  TbilisiMovesObservationBody,
-  TbilisiMovesObservationResult,
-  TbilisiMovesPeopleBoard,
-  TbilisiMovesStatus,
-} from '@/lib/tbilisiMoves/types';
-
 /**
  * Resolves the API base URL.
  *
- * Default (Expo Go, dev, preview, production): https://medicard.ge (Render)
- * Override only when explicitly set via EXPO_PUBLIC_API_URL (e.g. local backend).
+ * Hosted default: https://medicard.ge (Render).
+ * Local Expo QA can override EXPO_PUBLIC_API_URL in the ignored .env.development;
+ * EAS preview and production set their hosted URL explicitly in eas.json.
  */
 const PRODUCTION_API_DEFAULT = 'https://medicard.ge';
 
@@ -1612,7 +1600,7 @@ export type CyclePregnancyTimeline = {
   nextMilestone: { id: string; week: number; titleKey: string; sourceKey: string } | null;
   beyondStandardTerm: boolean;
   estimatedDueDate: { date: string; estimated: true } | null;
-  trimesterBands: Array<{ trimester: number; fromWeek: number; toWeek: number }>;
+  trimesterBands: ReadonlyArray<{ trimester: number; fromWeek: number; toWeek: number }>;
   milestones: CyclePregnancyTimelineMilestone[];
 };
 
@@ -1914,9 +1902,35 @@ type RequestOptions = {
   cache?: RequestCache;
 };
 
+export async function ensureAiSharingConsentForRequest(path: string, method = 'POST', suppliedToken?: string | null, settings = false) {
+  const { isAiSharingRequest, requestAiSharingPrompt } = await import('@/lib/aiSharingConsent');
+  if (!settings && !isAiSharingRequest(path, method)) return;
+  const { localAccountId } = await import('@/lib/localAccount');
+  const owner = localAccountId(), token = suppliedToken !== undefined ? suppliedToken : await getToken();
+  if (!owner || !token) throw new ApiError('გთხოვ, შეხვიდე ანგარიშში.', 401);
+  const status = await request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', { token, timeoutMs: 15_000 });
+  if (owner !== localAccountId()) throw new ApiError('ანგარიში შეიცვალა.', 401);
+  if (!status.accepted || settings) {
+    const accepted = await requestAiSharingPrompt(owner, status, async (decision, version) => {
+      try { return await request('/api/ai-consent', { method: 'PUT', body: { decision, version }, token, timeoutMs: 15_000 }); }
+      catch (error) {
+        if (error instanceof ApiError && error.status === 409) {
+          const consentStatus = await request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', { token, timeoutMs: 15_000 });
+          throw Object.assign(new Error('გაზიარების პირობები განახლდა. წაიკითხე ახალი ტექსტი და ხელახლა აირჩიე.'), { consentStatus });
+        }
+        throw error;
+      }
+    }, settings);
+    if (!accepted && !settings) throw new ApiError('AI-სთან მონაცემების გაზიარება არ არის ნებადართული. არჩევანის შეცვლა პროფილის პარამეტრებიდან შეგიძლია.', 403, { code: 'AI_CONSENT_DECLINED' });
+  }
+  if (owner !== localAccountId() || token !== await getToken()) throw new ApiError('ანგარიში შეიცვალა.', 401);
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, formData, timeoutMs = 180_000, cache } = options;
   const token = options.token !== undefined ? options.token : await getToken();
+  // Check before starting upload/stream timers; the person can read at their own pace.
+  if (!path.startsWith('/api/ai-consent')) await ensureAiSharingConsentForRequest(path, method, token);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -2011,6 +2025,7 @@ async function uploadNativeMultipart<T>(
   parameters: Record<string, string> = {},
 ): Promise<T> {
   const token = await getToken();
+  await ensureAiSharingConsentForRequest(path, 'POST', token);
   try {
     const result = await FileSystem.uploadAsync(`${API_BASE_URL}${path}`, file.uri, {
       httpMethod: 'POST',
@@ -2341,10 +2356,13 @@ export const api = {
       prompted?: boolean;
       source?: 'grant' | 'skip' | 'heartbeat' | 'watch' | 'revoke';
       timeZone?: string;
-    }) =>
+      place?: { countryCode: string | null; countryKa: string | null; cityKa: string | null };
+    }, token?: string | null) =>
       request<{ ok: boolean; location: UserLocationSnapshot; profile: HealthProfile | null }>('/api/location', {
         method: 'POST',
         body,
+        token,
+        timeoutMs: 20_000,
       }),
   },
 
@@ -2576,62 +2594,6 @@ export const api = {
     remove: (id: string) => request<{ deleted: boolean }>(`/api/visits/${id}`, { method: 'DELETE' }),
     geocode: (q: string) =>
       request<{ results: GeocodeResult[] }>(`/api/visits/geocode?q=${encodeURIComponent(q)}`),
-  },
-
-  tbilisiMoves: {
-    status: () =>
-      request<TbilisiMovesStatus>('/api/tbilisi-moves/status', { token: null }),
-    catalog: () => request<TbilisiMovesCatalog>('/api/tbilisi-moves/catalog'),
-    me: () => request<TbilisiMovesMe>('/api/tbilisi-moves/me'),
-    patchMe: (body: { publicHandle?: string; publicAvatarId?: string | null }) =>
-      request<{ membership: TbilisiMovesMe['membership'] }>('/api/tbilisi-moves/me', { method: 'PATCH', body }),
-    enroll: (body: {
-      districtId: string;
-      publicHandle: string;
-      publicAvatarId?: string | null;
-      acceptLock: true;
-      acceptPublicBoard: true;
-    }) => request<{ membership: TbilisiMovesMe['membership'] }>('/api/tbilisi-moves/enroll', { method: 'POST', body }),
-    districtChange: (body: { districtId: string; acceptLock: true }) =>
-      request<{ membership: TbilisiMovesMe['membership'] }>('/api/tbilisi-moves/district-change', {
-        method: 'POST',
-        body,
-      }),
-    cancelDistrictChange: () =>
-      request<{ membership: TbilisiMovesMe['membership'] }>('/api/tbilisi-moves/district-change/cancel', {
-        method: 'POST',
-      }),
-    leave: () => request<{ membership: TbilisiMovesMe['membership'] }>('/api/tbilisi-moves/leave', { method: 'POST' }),
-    putObservation: (body: TbilisiMovesObservationBody) =>
-      request<TbilisiMovesObservationResult>('/api/tbilisi-moves/observations', { method: 'PUT', body }),
-    districts: (date: string) =>
-      request<TbilisiMovesDistrictBoard>(`/api/tbilisi-moves/rounds/${date}/districts`),
-    people: (date: string, districtId: string, params?: { limit?: number; offset?: number }) => {
-      const qs = new URLSearchParams();
-      if (params?.limit) qs.set('limit', String(params.limit));
-      if (params?.offset) qs.set('offset', String(params.offset));
-      const query = qs.toString();
-      return request<TbilisiMovesPeopleBoard>(
-        `/api/tbilisi-moves/rounds/${date}/districts/${districtId}/people${query ? `?${query}` : ''}`,
-      );
-    },
-    history: (params?: { limit?: number; before?: string }) => {
-      const qs = new URLSearchParams();
-      if (params?.limit) qs.set('limit', String(params.limit));
-      if (params?.before) qs.set('before', params.before);
-      const query = qs.toString();
-      return request<TbilisiMovesHistory>(`/api/tbilisi-moves/history${query ? `?${query}` : ''}`);
-    },
-    results: (date: string) => request<TbilisiMovesDayResults>(`/api/tbilisi-moves/results/${date}`),
-    awards: (params?: { limit?: number; offset?: number }) => {
-      const qs = new URLSearchParams();
-      if (params?.limit) qs.set('limit', String(params.limit));
-      if (params?.offset) qs.set('offset', String(params.offset));
-      const query = qs.toString();
-      return request<{ total: number; awards: TbilisiMovesAward[] }>(
-        `/api/tbilisi-moves/awards${query ? `?${query}` : ''}`,
-      );
-    },
   },
 
   pets: {

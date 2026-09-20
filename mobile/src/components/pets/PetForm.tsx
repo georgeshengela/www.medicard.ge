@@ -1,779 +1,102 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Image, Keyboard, Pressable, ScrollView, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import {
-  Bird,
-  Building2,
-  CalendarDays,
-  Camera,
-  Cat,
-  ChevronDown,
-  CircleQuestionMark,
-  Clock,
-  Dog,
-  Fence,
-  Fish,
-  MapPin,
-  Mars,
-  PawPrint,
-  Pencil,
-  Phone,
-  Rabbit,
-  Rat,
-  Search,
-  Stethoscope,
-  Turtle,
-  Venus,
-  X,
-  type LucideIcon,
-} from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { DateField } from '@/components/ui/DateField';
-import { Input } from '@/components/ui/Input';
+import { Bird, Camera, Cat, Check, ChevronRight, Dog, Fish, PawPrint, Rabbit, Rat, Search, Stethoscope, Turtle, Fence, type LucideIcon } from 'lucide-react-native';
+import { PetInput as Input } from '@/components/pets/PetUi';
 import { SelectField } from '@/components/ui/SelectField';
-import { PetPhoto } from '@/components/pets/PetPhoto';
-import {
-  PetChipRow,
-  PetErrorText,
-  PetFilterChip,
-  PetFormScroll,
-  PetSectionLabel,
-  PetSheet,
-} from '@/components/pets/PetScreen';
+import { PetPhoto } from './PetPhoto';
+import { PetDateField } from './PetDateField';
+import { PetChipRow, PetErrorText, PetFilterChip, PetFormScroll, PetSectionLabel, PetSheet } from './PetScreen';
+import { PetButton, PetIntro, PetPanel, PetText } from './PetUi';
 import { ka } from '@/i18n/ka';
 import type { Pet, PetAgeKind, PetSex, PetWriteBody } from '@/lib/api';
 import { IMAGE_PICKER_OPTIONS, toUploadableImage } from '@/lib/imageUpload';
-import { isoToDigits, parseBirthDate } from '@/lib/birthdate';
-import { ageToApproxBirth, approxBirthToAge, approxBirthYears } from '@/lib/petsAge';
+import { isoToDigits } from '@/lib/birthdate';
 import { getSpecies, searchBreeds, SPECIES } from '@/lib/petsCatalog';
-import { useFigmaAuth } from '@/constants/figmaAuthLayout';
-import { useIsDark, useThemeColors } from '@/theme/colors';
+import { approximateAgeError, identityAgeBody, parsePetDate, petBreedLabel } from '@/lib/petsPresentation';
+import { useThemeColors } from '@/theme/colors';
 
 export type LocalPhoto = { uri: string; name: string; mimeType: string };
-
 export type PetFormValue = {
-  name: string;
-  speciesId: string;
-  breedId: string;
-  customBreed: string;
-  sex: PetSex;
-  neutered: boolean | null;
-  ageKind: PetAgeKind;
-  birthDigits: string;
-  approxYears: string;
-  approxMonths: string;
-  vetClinicName: string;
-  vetName: string;
-  vetPhone: string;
-  vetAddress: string;
-  vetNotes: string;
+  name: string; speciesId: string; breedId: string; customBreed: string; sex: PetSex; neutered: boolean | null;
+  ageKind: PetAgeKind; birthDigits: string; approxYears: string; approxMonths: string; approxAgeRecordedOn?: string | null;
+  vetClinicName: string; vetName: string; vetPhone: string; vetAddress: string; vetNotes: string;
 };
-
-const EMPTY: PetFormValue = {
-  name: '',
-  speciesId: 'dog',
-  breedId: 'unknown',
-  customBreed: '',
-  sex: 'UNKNOWN',
-  neutered: null,
-  ageKind: 'UNKNOWN',
-  birthDigits: '',
-  approxYears: '',
-  approxMonths: '',
-  vetClinicName: '',
-  vetName: '',
-  vetPhone: '',
-  vetAddress: '',
-  vetNotes: '',
-};
-
-/** Figma 11416:83303 ring geometry — 5.33 stroke, round caps, teal on gray track. */
-const RING_SIZE = 120;
-const RING_STROKE = 5.33333;
-const PHOTO_SIZE = 96;
-
-function speciesIcon(id: string): LucideIcon {
-  switch (id) {
-    case 'dog':
-      return Dog;
-    case 'cat':
-      return Cat;
-    case 'bird':
-      return Bird;
-    case 'rabbit':
-      return Rabbit;
-    case 'rodent':
-      return Rat;
-    case 'fish':
-      return Fish;
-    case 'reptile':
-      return Turtle;
-    case 'horse':
-      return Fence;
-    default:
-      return PawPrint;
-  }
-}
-
-export function hydratePetForm(raw?: Partial<PetFormValue> | null): PetFormValue {
-  return {
-    ...EMPTY,
-    ...raw,
-    speciesId: raw?.speciesId || 'dog',
-  };
-}
-
+const EMPTY: PetFormValue = { name: '', speciesId: 'dog', breedId: 'unknown', customBreed: '', sex: 'UNKNOWN', neutered: null, ageKind: 'UNKNOWN', birthDigits: '', approxYears: '', approxMonths: '', vetClinicName: '', vetName: '', vetPhone: '', vetAddress: '', vetNotes: '' };
+export function hydratePetForm(raw?: Partial<PetFormValue> | null): PetFormValue { return { ...EMPTY, ...raw, speciesId: raw?.speciesId || 'dog' }; }
 export function petToForm(pet: Pet): PetFormValue {
-  return {
-    name: pet.name,
-    speciesId: pet.speciesId,
-    breedId: pet.breedId,
-    customBreed: pet.customBreed ?? '',
-    sex: pet.sex,
-    neutered: pet.neutered,
-    ageKind: pet.ageKind,
-    birthDigits: isoToDigits(pet.birthDate),
-    approxYears: pet.approxAgeYears == null ? '' : String(pet.approxAgeYears),
-    approxMonths: pet.approxAgeMonths == null ? '' : String(pet.approxAgeMonths),
-    vetClinicName: pet.vetClinicName ?? '',
-    vetName: pet.vetName ?? '',
-    vetPhone: pet.vetPhone ?? '',
-    vetAddress: pet.vetAddress ?? '',
-    vetNotes: pet.vetNotes ?? '',
-  };
+  return { name: pet.name, speciesId: pet.speciesId, breedId: pet.breedId, customBreed: pet.customBreed ?? '', sex: pet.sex, neutered: pet.neutered, ageKind: pet.ageKind, birthDigits: isoToDigits(pet.birthDate), approxYears: pet.approxAgeYears == null ? '' : String(pet.approxAgeYears), approxMonths: pet.approxAgeMonths == null ? '' : String(pet.approxAgeMonths), approxAgeRecordedOn: pet.approxAgeRecordedOn, vetClinicName: pet.vetClinicName ?? '', vetName: pet.vetName ?? '', vetPhone: pet.vetPhone ?? '', vetAddress: pet.vetAddress ?? '', vetNotes: pet.vetNotes ?? '' };
 }
-
 export function formToBody(value: PetFormValue): PetWriteBody {
-  const body: PetWriteBody = {
-    name: value.name.trim(),
-    speciesId: value.speciesId,
-    breedId: value.breedId || 'unknown',
-    customBreed: value.breedId === 'custom' ? value.customBreed.trim() : null,
-    sex: value.sex,
-    neutered: value.neutered,
-    ageKind: value.ageKind,
-    vetClinicName: value.vetClinicName.trim() || null,
-    vetName: value.vetName.trim() || null,
-    vetPhone: value.vetPhone.trim() || null,
-    vetAddress: value.vetAddress.trim() || null,
-    vetNotes: value.vetNotes.trim() || null,
-  };
-  if (value.ageKind === 'EXACT') {
-    const parsed = parseBirthDate(value.birthDigits);
-    body.birthDate = parsed.ok ? parsed.iso : '';
-  } else if (value.ageKind === 'APPROXIMATE') {
-    body.approxAgeYears = value.approxYears === '' ? null : Number(value.approxYears);
-    body.approxAgeMonths = value.approxMonths === '' ? null : Number(value.approxMonths);
-  }
-  return body;
+  return { name: value.name.trim(), speciesId: value.speciesId, breedId: value.breedId || 'unknown', customBreed: value.breedId === 'custom' ? value.customBreed.trim() : null, sex: value.sex, neutered: value.neutered, ...identityAgeBody(value.ageKind, value.birthDigits, value.approxYears, value.approxMonths, value.approxAgeRecordedOn), vetClinicName: value.vetClinicName.trim() || null, vetName: value.vetName.trim() || null, vetPhone: value.vetPhone.trim() || null, vetAddress: value.vetAddress.trim() || null, vetNotes: value.vetNotes.trim() || null };
 }
+export const petSpeciesIcon = (id: string): LucideIcon => ({ dog: Dog, cat: Cat, bird: Bird, rabbit: Rabbit, rodent: Rat, fish: Fish, reptile: Turtle, horse: Fence }[id] ?? PawPrint);
 
-function petFormProgress(value: PetFormValue, hasPhoto: boolean): number {
-  let filled = 0;
-  if (value.name.trim()) filled += 1;
-  if (value.speciesId) filled += 1;
-  if (value.breedId && value.breedId !== 'unknown') {
-    if (value.breedId !== 'custom' || value.customBreed.trim()) filled += 1;
-  }
-  if (value.sex !== 'UNKNOWN') filled += 1;
-  if (value.ageKind !== 'UNKNOWN') filled += 1;
-  if (hasPhoto) filled += 1;
-  return filled / 6;
-}
-
-function PetPhotoProgress({
-  localUri,
-  existingPhotoUrl,
-  name,
-  progress,
-  onPress,
-}: {
-  localUri: string | null;
-  existingPhotoUrl: string | null;
-  name: string;
-  progress: number;
-  onPress: () => void;
-}) {
-  const colors = useThemeColors();
-  const dark = useIsDark();
-  const auth = useFigmaAuth();
-  const r = (RING_SIZE - RING_STROKE) / 2;
-  const c = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(1, progress));
-  const dash = c * pct;
-  const track = dark ? colors.bg300 : '#E5E7EB';
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={ka.pets.photo}
-      accessibilityValue={{ now: Math.round(pct * 100), min: 0, max: 100 }}
-      onPress={onPress}
-      style={{ width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' }}
-    >
-      <Svg width={RING_SIZE} height={RING_SIZE} style={{ position: 'absolute' }}>
-        <Circle
-          cx={RING_SIZE / 2}
-          cy={RING_SIZE / 2}
-          r={r}
-          stroke={track}
-          strokeWidth={RING_STROKE}
-          fill="none"
-        />
-        <Circle
-          cx={RING_SIZE / 2}
-          cy={RING_SIZE / 2}
-          r={r}
-          stroke={colors.primary200}
-          strokeWidth={RING_STROKE}
-          fill="none"
-          strokeDasharray={`${dash} ${c}`}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-        />
-      </Svg>
-      {localUri ? (
-        <Image
-          source={{ uri: localUri }}
-          style={{ width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: PHOTO_SIZE / 2 }}
-        />
-      ) : (
-        <PetPhoto photoUrl={existingPhotoUrl} name={name || ' '} size={PHOTO_SIZE} />
-      )}
-      <View
-        style={{
-          position: 'absolute',
-          right: 2,
-          bottom: 2,
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: auth.primaryBg,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderWidth: 2,
-          borderColor: colors.surface,
-        }}
-      >
-        <Camera size={16} color={colors.onPrimary} strokeWidth={2.2} />
-      </View>
-    </Pressable>
-  );
-}
-
-export function PetForm({
-  initial,
-  existingPhotoUrl,
-  submitting,
-  error,
-  submitLabel,
-  onChange,
-  onSubmit,
-}: {
-  initial?: PetFormValue;
-  existingPhotoUrl?: string | null;
-  submitting: boolean;
-  error: string | null;
-  submitLabel: string;
-  onChange?: (value: PetFormValue) => void;
-  onSubmit: (value: PetFormValue, photo: LocalPhoto | null, removePhoto: boolean) => void;
-}) {
-  const colors = useThemeColors();
-  const [value, setValue] = useState<PetFormValue>(() => hydratePetForm(initial));
-  const [localPhoto, setLocalPhoto] = useState<LocalPhoto | null>(null);
-  const [removePhoto, setRemovePhoto] = useState(false);
-  const [speciesOpen, setSpeciesOpen] = useState(false);
-  const [breedOpen, setBreedOpen] = useState(false);
-  const [yearOpen, setYearOpen] = useState(false);
-  const [monthOpen, setMonthOpen] = useState(false);
-  const [breedQuery, setBreedQuery] = useState('');
-  const [showVet, setShowVet] = useState(Boolean(initial?.vetClinicName || initial?.vetName));
-  const [fieldError, setFieldError] = useState<string | null>(null);
-  const [approxCal, setApproxCal] = useState<{ year: number | null; month: number | null }>(() => {
-    const seeded = hydratePetForm(initial);
-    return ageToApproxBirth(seeded.approxYears, seeded.approxMonths) ?? { year: null, month: null };
-  });
-
-  useEffect(() => {
-    onChange?.(value);
-  }, [value, onChange]);
-
+export function PetForm({ initial, existingPhotoUrl, submitting, error, submitLabel, onChange, onSubmit, wizard = false }: { initial?: PetFormValue; existingPhotoUrl?: string | null; submitting: boolean; error: string | null; submitLabel: string; onChange?: (value: PetFormValue) => void; onSubmit: (value: PetFormValue, photo: LocalPhoto | null, removePhoto: boolean) => void; wizard?: boolean }) {
+  const colors = useThemeColors(), scrollRef = useRef<ScrollView>(null);
+  const [value, setValue] = useState(() => hydratePetForm(initial));
+  const [photo, setPhoto] = useState<LocalPhoto | null>(null), [removePhoto, setRemovePhoto] = useState(false);
+  const [step, setStep] = useState(0), [fieldError, setFieldError] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<'species' | 'breed' | null>(null), [query, setQuery] = useState('');
+  const [showVet, setShowVet] = useState(Boolean(initial?.vetClinicName || initial?.vetName || initial?.vetPhone || initial?.vetAddress || initial?.vetNotes));
+  const [picking, setPicking] = useState(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { onChange?.(value); }, [value, onChange]);
+  const patch = (next: Partial<PetFormValue>) => { setFieldError(null); setValue(prev => ({ ...prev, ...next })); };
   const species = getSpecies(value.speciesId);
-  const breedOptions = useMemo(
-    () => (value.speciesId ? searchBreeds(value.speciesId, breedQuery) : []),
-    [value.speciesId, breedQuery],
-  );
-  const yearOptions = useMemo(() => approxBirthYears(), []);
-
-  const patch = (next: Partial<PetFormValue>) => setValue((prev) => ({ ...prev, ...next }));
-
-  const applyApproxBirth = (year: number | null, month: number | null) => {
-    setApproxCal({ year, month });
-    if (year == null || month == null) {
-      patch({ approxYears: '', approxMonths: '' });
-      return;
-    }
-    const age = approxBirthToAge(year, month);
-    if (!age) {
-      patch({ approxYears: '', approxMonths: '' });
-      return;
-    }
-    patch({ approxYears: String(age.years), approxMonths: String(age.months) });
+  const breeds = useMemo(() => searchBreeds(value.speciesId, query), [value.speciesId, query]);
+  const pick = async (camera: boolean) => {
+    setPicking(true);
+    try {
+      const permission = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) { Alert.alert(ka.upload.permissionDenied); return; }
+      const result = camera ? await ImagePicker.launchCameraAsync(IMAGE_PICKER_OPTIONS) : await ImagePicker.launchImageLibraryAsync(IMAGE_PICKER_OPTIONS);
+      if (!result.canceled && result.assets[0]) { const next = await toUploadableImage(result.assets[0]); if (mounted.current) { setPhoto(next); setRemovePhoto(false); } }
+    } catch { if (mounted.current) setFieldError('ფოტოს გახსნა ვერ მოხერხდა. სცადე სხვა ფოტო.'); }
+    finally { if (mounted.current) setPicking(false); }
   };
-
-  const onSpecies = (id: string) => {
-    patch({ speciesId: id, breedId: 'unknown', customBreed: '' });
-    setBreedQuery('');
-    setSpeciesOpen(false);
-  };
-
-  const pickPhoto = () => {
-    Alert.alert(ka.pets.photo, undefined, [
-      { text: ka.common.cancel, style: 'cancel' },
-      {
-        text: ka.upload.fromCamera,
-        onPress: async () => {
-          const perm = await ImagePicker.requestCameraPermissionsAsync();
-          if (!perm.granted) {
-            Alert.alert(ka.upload.permissionDenied);
-            return;
-          }
-          const result = await ImagePicker.launchCameraAsync(IMAGE_PICKER_OPTIONS);
-          if (result.canceled || !result.assets?.[0]) return;
-          const file = await toUploadableImage(result.assets[0]);
-          setLocalPhoto({ uri: file.uri, name: file.name, mimeType: file.mimeType });
-          setRemovePhoto(false);
-        },
-      },
-      {
-        text: ka.upload.fromGallery,
-        onPress: async () => {
-          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!perm.granted) {
-            Alert.alert(ka.upload.permissionDenied);
-            return;
-          }
-          const result = await ImagePicker.launchImageLibraryAsync(IMAGE_PICKER_OPTIONS);
-          if (result.canceled || !result.assets?.[0]) return;
-          const file = await toUploadableImage(result.assets[0]);
-          setLocalPhoto({ uri: file.uri, name: file.name, mimeType: file.mimeType });
-          setRemovePhoto(false);
-        },
-      },
-    ]);
-  };
-
-  const validate = (): string | null => {
-    if (!value.name.trim()) return ka.pets.nameRequired;
-    if (!value.speciesId) return ka.pets.speciesRequired;
-    if (value.breedId === 'custom' && !value.customBreed.trim()) return ka.pets.customBreed;
-    if (value.ageKind === 'EXACT') {
-      const parsed = parseBirthDate(value.birthDigits);
-      if (!parsed.ok) return parsed.error;
-    }
-    if (value.ageKind === 'APPROXIMATE') {
-      if (approxCal.year == null) return ka.pets.approxYearPick;
-      if (approxCal.month == null) return ka.pets.approxMonthPick;
-      if (!approxBirthToAge(approxCal.year, approxCal.month)) return ka.pets.ageApproximate;
-    }
+  const pickPhoto = () => { if (picking || submitting) return; Keyboard.dismiss(); Alert.alert('ცხოველის ფოტო', 'აირჩიე მკაფიო ფოტო, რომ პროფილი ადვილად იცნო.', [{ text: ka.common.cancel, style: 'cancel' }, { text: ka.upload.fromCamera, onPress: () => void pick(true) }, { text: ka.upload.fromGallery, onPress: () => void pick(false) }]); };
+  const validate = (details: boolean) => {
+    if (!value.name.trim()) return 'ჯერ შენი ცხოველის სახელი ჩაწერე.';
+    if (!species) return 'აირჩიე ცხოველის სახეობა.';
+    if (details && value.breedId === 'custom' && !value.customBreed.trim()) return 'ჩაწერე ჯიში ან აირჩიე „არ ვიცი“.';
+    if (details && value.ageKind === 'EXACT') { const date = parsePetDate(value.birthDigits); if (!date.ok) return date.error; const born = new Date(`${date.iso}T12:00:00`), oldest = new Date(); oldest.setFullYear(oldest.getFullYear() - 80); if (born < oldest) return 'შეამოწმე დაბადების წელი — ასაკი 80 წელს არ უნდა აღემატებოდეს.'; }
+    if (details && value.ageKind === 'APPROXIMATE') return approximateAgeError(value.approxYears, value.approxMonths);
     return null;
   };
-
-  const submit = () => {
-    if (submitting) return;
-    const problem = validate();
-    if (problem) {
-      setFieldError(problem);
-      return;
-    }
-    setFieldError(null);
-    onSubmit(value, localPhoto, removePhoto);
-  };
-
-  const breedSummary = () => {
-    if (value.breedId === 'custom' && value.customBreed) return value.customBreed;
-    if (value.breedId === 'mixed') return ka.pets.breedMixed;
-    if (value.breedId === 'unknown' || !value.breedId) return ka.pets.breedUnknown;
-    return species?.breeds.find((row) => row.id === value.breedId)?.label || ka.pets.breedUnknown;
-  };
-
-  const photoUri = localPhoto?.uri || (!removePhoto ? existingPhotoUrl : null);
-  const hasPhoto = Boolean(localPhoto || (existingPhotoUrl && !removePhoto));
-  const progress = petFormProgress(value, hasPhoto);
-  const SpeciesIcon = speciesIcon(value.speciesId);
-  const breedIcon =
-    value.breedId === 'custom'
-      ? Pencil
-      : value.breedId === 'mixed'
-        ? PawPrint
-        : value.breedId === 'unknown' || !value.breedId
-          ? CircleQuestionMark
-          : SpeciesIcon;
-
-  const pickBreed = (breedId: string) => {
-    patch({ breedId, customBreed: breedId === 'custom' ? value.customBreed : '' });
-    setBreedOpen(false);
-  };
-
-  const fields = (
-    <>
-      <View className="items-center">
-        <PetPhotoProgress
-          localUri={localPhoto?.uri ?? null}
-          existingPhotoUrl={removePhoto ? null : existingPhotoUrl ?? null}
-          name={value.name}
-          progress={progress}
-          onPress={pickPhoto}
-        />
-        <Text className="mt-3 text-sm font-semibold text-primary-200">
-          {photoUri && !removePhoto ? ka.pets.photoChange : ka.pets.photoAdd}
-        </Text>
-        {hasPhoto ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={ka.pets.photoRemove}
-            onPress={() => {
-              setRemovePhoto(true);
-              setLocalPhoto(null);
-            }}
-            className="mt-1 min-h-11 justify-center active:opacity-80"
-          >
-            <Text className="text-sm text-text-300">{ka.pets.photoRemove}</Text>
-          </Pressable>
-        ) : null}
-        <Text className="mt-1 text-center text-xs text-text-300">{ka.pets.photoHint}</Text>
-      </View>
-
-      <Input
-        figma
-        icon={PawPrint}
-        label={ka.pets.name}
-        value={value.name}
-        onChangeText={(name) => patch({ name })}
-        placeholder={ka.pets.namePh}
-        maxLength={40}
-        autoCapitalize="words"
-      />
-
-      <SelectField
-        label={ka.pets.species}
-        value={species?.labelKa || ''}
-        placeholder={ka.pets.species}
-        icon={SpeciesIcon}
-        onPress={() => setSpeciesOpen(true)}
-      />
-
-      <View className="gap-3">
-        <SelectField
-          label={ka.pets.breed}
-          value={breedSummary()}
-          icon={breedIcon}
-          onPress={() => setBreedOpen(true)}
-          hint={ka.pets.catalogCoverage}
-        />
-        {value.breedId === 'custom' ? (
-          <Input
-            figma
-            icon={Pencil}
-            label={ka.pets.customBreed}
-            value={value.customBreed}
-            onChangeText={(customBreed) => patch({ customBreed })}
-            placeholder={ka.pets.customBreedPh}
-            maxLength={80}
-          />
-        ) : null}
-      </View>
-
-      <View style={{ gap: 12 }}>
-        <PetSectionLabel label={ka.pets.sex} />
-        <PetChipRow>
-          <PetFilterChip
-            label={ka.pets.sexMale}
-            icon={Mars}
-            selected={value.sex === 'MALE'}
-            onPress={() => patch({ sex: 'MALE' })}
-          />
-          <PetFilterChip
-            label={ka.pets.sexFemale}
-            icon={Venus}
-            selected={value.sex === 'FEMALE'}
-            onPress={() => patch({ sex: 'FEMALE' })}
-          />
-          <PetFilterChip
-            label={ka.pets.sexUnknown}
-            icon={CircleQuestionMark}
-            selected={value.sex === 'UNKNOWN'}
-            onPress={() => patch({ sex: 'UNKNOWN' })}
-          />
-        </PetChipRow>
-      </View>
-
-      <View style={{ gap: 12 }}>
-        <PetSectionLabel label={ka.pets.neutered} />
-        <PetChipRow>
-          <PetFilterChip
-            label={ka.pets.neuteredYes}
-            icon={Stethoscope}
-            selected={value.neutered === true}
-            onPress={() => patch({ neutered: true })}
-          />
-          <PetFilterChip
-            label={ka.pets.neuteredNo}
-            icon={X}
-            selected={value.neutered === false}
-            onPress={() => patch({ neutered: false })}
-          />
-          <PetFilterChip
-            label={ka.pets.neuteredUnknown}
-            icon={CircleQuestionMark}
-            selected={value.neutered == null}
-            onPress={() => patch({ neutered: null })}
-          />
-        </PetChipRow>
-      </View>
-
-      <View style={{ gap: 12 }}>
-        <PetSectionLabel label={ka.pets.age} />
-        <PetChipRow>
-          <PetFilterChip
-            label={ka.pets.ageExact}
-            icon={CalendarDays}
-            selected={value.ageKind === 'EXACT'}
-            onPress={() => patch({ ageKind: 'EXACT' })}
-          />
-          <PetFilterChip
-            label={ka.pets.ageApproximate}
-            icon={Clock}
-            selected={value.ageKind === 'APPROXIMATE'}
-            onPress={() => patch({ ageKind: 'APPROXIMATE' })}
-          />
-          <PetFilterChip
-            label={ka.pets.ageUnknown}
-            icon={CircleQuestionMark}
-            selected={value.ageKind === 'UNKNOWN'}
-            onPress={() => patch({ ageKind: 'UNKNOWN' })}
-          />
-        </PetChipRow>
-      </View>
-      {value.ageKind === 'EXACT' ? (
-        <DateField
-          figma
-          label={ka.pets.birthDate}
-          value={value.birthDigits}
-          onChangeText={(birthDigits) => patch({ birthDigits })}
-        />
-      ) : null}
-      {value.ageKind === 'APPROXIMATE' ? (
-        <View className="flex-row gap-3">
-          <View className="flex-1">
-            <SelectField
-              label={ka.pets.approxYears}
-              value={approxCal.year == null ? '' : String(approxCal.year)}
-              placeholder={ka.pets.approxYearPick}
-              icon={CalendarDays}
-              onPress={() => setYearOpen(true)}
-            />
-          </View>
-          <View className="flex-1">
-            <SelectField
-              label={ka.pets.approxMonths}
-              value={approxCal.month == null ? '' : ka.auth.months[approxCal.month - 1]}
-              placeholder={ka.pets.approxMonthPick}
-              icon={Clock}
-              onPress={() => setMonthOpen(true)}
-            />
-          </View>
-        </View>
-      ) : null}
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: showVet }}
-        onPress={() => setShowVet((open) => !open)}
-        className="min-h-11 flex-row items-center justify-between active:opacity-80"
-      >
-        <Text className="text-sm font-semibold text-primary-200">{ka.pets.vetSection}</Text>
-        <ChevronDown
-          size={18}
-          color={colors.primary200}
-          strokeWidth={2.2}
-          style={{ transform: [{ rotate: showVet ? '180deg' : '0deg' }] }}
-        />
-      </Pressable>
-      {showVet ? (
-        <View className="gap-4">
-          <Input
-            figma
-            icon={Building2}
-            label={ka.pets.vetClinic}
-            value={value.vetClinicName}
-            onChangeText={(vetClinicName) => patch({ vetClinicName })}
-          />
-          <Input
-            figma
-            icon={Stethoscope}
-            label={ka.pets.vetDoctor}
-            value={value.vetName}
-            onChangeText={(vetName) => patch({ vetName })}
-          />
-          <Input
-            figma
-            icon={Phone}
-            label={ka.pets.vetPhone}
-            value={value.vetPhone}
-            onChangeText={(vetPhone) => patch({ vetPhone })}
-            keyboardType="phone-pad"
-          />
-          <Input
-            figma
-            icon={MapPin}
-            label={ka.pets.vetAddress}
-            value={value.vetAddress}
-            onChangeText={(vetAddress) => patch({ vetAddress })}
-          />
-          <Input
-            figma
-            icon={Pencil}
-            label={ka.pets.vetNotes}
-            value={value.vetNotes}
-            onChangeText={(vetNotes) => patch({ vetNotes })}
-            multiline
-          />
-        </View>
-      ) : null}
-    </>
-  );
-
-  const sheets = (
-    <>
-      <PetSheet visible={speciesOpen} title={ka.pets.species} onClose={() => setSpeciesOpen(false)}>
-        <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
-          <View style={{ gap: 8, paddingBottom: 8 }}>
-            {SPECIES.map((row) => (
-              <PetFilterChip
-                key={row.id}
-                fill
-                label={row.labelKa}
-                icon={speciesIcon(row.id)}
-                selected={value.speciesId === row.id}
-                onPress={() => onSpecies(row.id)}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      </PetSheet>
-
-      <PetSheet visible={breedOpen} title={ka.pets.breed} onClose={() => setBreedOpen(false)}>
-        <View style={{ gap: 8 }}>
-          {species && species.breeds.length > 0 ? (
-            <Input
-              figma
-              icon={Search}
-              value={breedQuery}
-              onChangeText={setBreedQuery}
-              placeholder={ka.pets.breedSearchPh}
-              autoCapitalize="none"
-            />
-          ) : (
-            <Text className="text-sm text-text-300">{ka.pets.catalogLimited}</Text>
-          )}
-          <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
-            <View style={{ gap: 8, paddingBottom: 8 }}>
-              <PetFilterChip
-                fill
-                label={ka.pets.breedUnknown}
-                icon={CircleQuestionMark}
-                selected={value.breedId === 'unknown'}
-                onPress={() => pickBreed('unknown')}
-              />
-              {species?.allowsMixed ? (
-                <PetFilterChip
-                  fill
-                  label={ka.pets.breedMixed}
-                  icon={PawPrint}
-                  selected={value.breedId === 'mixed'}
-                  onPress={() => pickBreed('mixed')}
-                />
-              ) : null}
-              <PetFilterChip
-                fill
-                label={ka.pets.breedCustom}
-                icon={Pencil}
-                selected={value.breedId === 'custom'}
-                onPress={() => pickBreed('custom')}
-              />
-              {breedOptions.map((row) => (
-                <PetFilterChip
-                  key={row.id}
-                  fill
-                  label={row.label}
-                  icon={speciesIcon(value.speciesId)}
-                  selected={value.breedId === row.id}
-                  onPress={() => pickBreed(row.id)}
-                />
-              ))}
-              <Text className="mt-1 text-xs text-text-300">{ka.pets.catalogAttribution}</Text>
-            </View>
-          </ScrollView>
-        </View>
-      </PetSheet>
-      <PetSheet visible={yearOpen} title={ka.pets.approxYears} onClose={() => setYearOpen(false)}>
-        <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
-          <View style={{ gap: 8, paddingBottom: 8 }}>
-            {yearOptions.map((year) => (
-              <PetFilterChip
-                key={year}
-                fill
-                label={String(year)}
-                icon={CalendarDays}
-                selected={approxCal.year === year}
-                onPress={() => {
-                  const month =
-                    approxCal.month != null && approxBirthToAge(year, approxCal.month) ? approxCal.month : null;
-                  applyApproxBirth(year, month);
-                  setYearOpen(false);
-                }}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      </PetSheet>
-      <PetSheet visible={monthOpen} title={ka.pets.approxMonths} onClose={() => setMonthOpen(false)}>
-        <View style={{ gap: 8, paddingBottom: 8 }}>
-          {ka.auth.months.map((label, index) => {
-            const month = index + 1;
-            if (approxCal.year != null && !approxBirthToAge(approxCal.year, month)) return null;
-            return (
-              <PetFilterChip
-                key={label}
-                fill
-                label={label}
-                icon={Clock}
-                selected={approxCal.month === month}
-                onPress={() => {
-                  applyApproxBirth(approxCal.year, month);
-                  setMonthOpen(false);
-                }}
-              />
-            );
-          })}
-        </View>
-      </PetSheet>
-    </>
-  );
-
-  const footer = (
-    <>
-      <PetErrorText message={fieldError || error} />
-      <Button label={submitLabel} loading={submitting} disabled={submitting} onPress={submit} />
-    </>
-  );
-
-  return (
-    <>
-      <PetFormScroll footer={footer}>{fields}</PetFormScroll>
-      {sheets}
-    </>
-  );
+  const go = (next: number) => { Keyboard.dismiss(); setFieldError(null); setStep(next); requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 0, animated: false })); };
+  const advance = () => { const problem = validate(!wizard || step > 0); if (problem) { setFieldError(problem); return; } if (wizard && step < 2) go(step + 1); else onSubmit(value, photo, removePhoto); };
+  const sex = value.sex === 'MALE' ? 'მამრი' : value.sex === 'FEMALE' ? 'მდედრი' : 'სქესი უცნობია';
+  const age = value.ageKind === 'EXACT' ? value.birthDigits.replace(/(\d{2})(\d{2})(\d{4})/, '$1.$2.$3') : value.ageKind === 'APPROXIMATE' ? `დაახლოებით ${value.approxYears || 0} წელი და ${value.approxMonths || 0} თვე` : 'ასაკს მოგვიანებით დაამატებ';
+  const photoView = <Pressable disabled={picking || submitting} accessibilityRole="button" accessibilityLabel="ცხოველის ფოტოს არჩევა" onPress={pickPhoto} style={{ alignSelf: 'flex-start' }}>{photo ? <Image source={{ uri: photo.uri }} style={{ width: 88, height: 88, borderRadius: 28 }} /> : <PetPhoto photoUrl={removePhoto ? null : existingPhotoUrl ?? null} name={value.name || ' '} size={88} />}<View style={{ position: 'absolute', right: -4, bottom: -4, width: 32, height: 32, borderRadius: 16, backgroundColor: '#0D9488', borderWidth: 3, borderColor: colors.bg100, alignItems: 'center', justifyContent: 'center' }}><Camera size={15} color="#FFFFFF" /></View></Pressable>;
+  const identity = <View style={{ gap: 22 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>{photoView}<View style={{ flex: 1, gap: 5 }}><PetText bold>გავიცნოთ შენი მეგობარი</PetText><PetText size={13} muted>ფოტო სურვილისამებრ. შეცვლა ყოველთვის შეგიძლია.</PetText>{photo || (!removePhoto && existingPhotoUrl) ? <Pressable accessibilityRole="button" onPress={() => { setPhoto(null); setRemovePhoto(true); }} style={{ minHeight: 44, justifyContent: 'center' }}><PetText size={12} color={colors.danger}>ფოტოს წაშლა</PetText></Pressable> : null}</View></View>
+    <Input figma label="რა ჰქვია? *" accessibilityLabel="ცხოველის სახელი" placeholder="მაგალითად, ლუნა" value={value.name} onChangeText={name => patch({ name })} maxLength={40} autoCapitalize="words" returnKeyType="done" />
+    <View style={{ gap: 10 }}><PetSectionLabel label="სახეობა *" /><PetChipRow>{SPECIES.slice(0, 4).map(item => <PetFilterChip key={item.id} label={item.labelKa} icon={petSpeciesIcon(item.id)} selected={value.speciesId === item.id} onPress={() => patch({ speciesId: item.id, breedId: 'unknown', customBreed: '' })} />)}</PetChipRow><PetButton variant="secondary" label={SPECIES.slice(0, 4).some(s => s.id === value.speciesId) ? 'სხვა სახეობები' : species?.labelKa || 'სახეობის არჩევა'} icon={PawPrint} onPress={() => setSheet('species')} /></View>
+    <PetText size={12} muted>* მხოლოდ სახელი და სახეობაა აუცილებელი.</PetText>
+  </View>;
+  const details = <View style={{ gap: 22 }}>
+    <SelectField label="ჯიში" value={petBreedLabel({ speciesId: value.speciesId, breedId: value.breedId, customBreed: value.customBreed })} onPress={() => { setQuery(''); setSheet('breed'); }} />
+    {value.breedId === 'custom' ? <Input figma label="ჩაწერე ჯიში" value={value.customBreed} onChangeText={customBreed => patch({ customBreed })} maxLength={80} /> : null}
+    <View style={{ gap: 10 }}><PetSectionLabel label="სქესი" /><PetChipRow>{([{ value: 'MALE', label: 'მამრი' }, { value: 'FEMALE', label: 'მდედრი' }, { value: 'UNKNOWN', label: 'არ ვიცი' }] as const).map(item => <PetFilterChip key={item.value} label={item.label} selected={value.sex === item.value} onPress={() => patch({ sex: item.value })} />)}</PetChipRow></View>
+    <View style={{ gap: 10 }}><PetSectionLabel label="სტერილიზაცია / კასტრაცია" /><PetChipRow>{[{ value: true, label: 'კი' }, { value: false, label: 'არა' }, { value: null, label: 'არ ვიცი' }].map(item => <PetFilterChip key={item.label} label={item.label} selected={value.neutered === item.value} onPress={() => patch({ neutered: item.value })} />)}</PetChipRow></View>
+    <View style={{ gap: 10 }}><PetSectionLabel label="ასაკი" /><PetChipRow>{([{ value: 'EXACT', label: 'ვიცი თარიღი' }, { value: 'APPROXIMATE', label: 'დაახლოებით' }, { value: 'UNKNOWN', label: 'არ ვიცი' }] as const).map(item => <PetFilterChip key={item.value} label={item.label} selected={value.ageKind === item.value} onPress={() => patch({ ageKind: item.value })} />)}</PetChipRow></View>
+    {value.ageKind === 'EXACT' ? <PetDateField label="დაბადების თარიღი" value={value.birthDigits} onChangeText={birthDigits => patch({ birthDigits })} /> : null}
+    {value.ageKind === 'APPROXIMATE' ? <View style={{ gap: 10 }}><View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input figma label="წელი" value={value.approxYears} keyboardType="number-pad" maxLength={2} onChangeText={approxYears => patch({ approxYears, approxAgeRecordedOn: null })} placeholder="0" /></View><View style={{ flex: 1 }}><Input figma label="თვე" value={value.approxMonths} keyboardType="number-pad" maxLength={2} onChangeText={approxMonths => patch({ approxMonths, approxAgeRecordedOn: null })} placeholder="0–11" /></View></View><PetText size={12} muted>{value.approxAgeRecordedOn ? `ეს შეფასება ჩაიწერა ${value.approxAgeRecordedOn.slice(0, 10)}-ს. შეცვლისას მიუთითე დღევანდელი ასაკი.` : 'მიუთითე დღევანდელი სავარაუდო ასაკი.'}</PetText></View> : null}
+    <PetPanel><Pressable accessibilityRole="button" accessibilityState={{ expanded: showVet }} onPress={() => setShowVet(!showVet)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}><Stethoscope size={23} color={colors.primary100} /><View style={{ flex: 1 }}><PetText bold>ვეტერინარის კონტაქტი</PetText><PetText size={12} muted>სურვილისამებრ · ყველაფერი ერთ ადგილას</PetText></View><ChevronRight size={18} color={colors.text300} style={{ transform: [{ rotate: showVet ? '90deg' : '0deg' }] }} /></Pressable>{showVet ? <View style={{ gap: 16, marginTop: 18 }}>{([{ key: 'vetClinicName', label: 'კლინიკა', max: 160 }, { key: 'vetName', label: 'ვეტერინარის სახელი', max: 80 }, { key: 'vetPhone', label: 'ტელეფონი', max: 40 }, { key: 'vetAddress', label: 'მისამართი', max: 300 }, { key: 'vetNotes', label: 'შენიშვნა', max: 500 }] as const).map(item => <Input key={item.key} figma label={item.label} value={value[item.key]} maxLength={item.max} keyboardType={item.key === 'vetPhone' ? 'phone-pad' : 'default'} multiline={item.key === 'vetNotes'} onChangeText={text => patch({ [item.key]: text })} />)}</View> : null}</PetPanel>
+  </View>;
+  return <>
+    <PetFormScroll scrollRef={scrollRef} footer={<><PetErrorText message={fieldError || error} /><View style={{ flexDirection: 'row', gap: 10 }}>{wizard && step > 0 ? <PetButton label="უკან" variant="secondary" fullWidth={false} disabled={submitting} onPress={() => go(step - 1)} /> : null}<View style={{ flex: 1 }}><PetButton label={wizard && step < 2 ? 'გაგრძელება' : submitLabel} icon={wizard && step < 2 ? ChevronRight : Check} loading={submitting} disabled={picking} onPress={advance} /></View></View></>}>
+      {wizard ? <View style={{ gap: 10 }}><View style={{ flexDirection: 'row', gap: 6 }}>{[0, 1, 2].map(index => <View key={index} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: index <= step ? colors.primary200 : colors.bg300 }} />)}</View><PetText size={12} muted>ნაბიჯი {step + 1} / 3 · {['გაცნობა', 'დეტალები', 'გადამოწმება'][step]}</PetText></View> : null}
+      <PetIntro title={wizard ? ['პატარა მეგობარი, დიდი ზრუნვა.', 'ის, რაც მის შესახებ იცი.', 'მისი სივრცე მზადაა.'][step] : 'მისი ამბავი, განახლებული.'} body={wizard ? ['დაუმატე შენს ოჯახს ცხოველის პირადი პროფილი.', 'ეს დეტალები არჩევითია. რაც არ იცი, მოგვიანებით შეავსე.', 'გადაამოწმე მონაცემები. შენახვის შემდეგ შეძლებ მოვლისა და ჯანმრთელობის ჩანაწერების დამატებას.'][step] : 'შეცვალე ინფორმაცია და შეინახე. სხვა ჩანაწერები შენარჩუნდება.'} />
+      {!wizard || step === 0 ? identity : null}
+      {!wizard || step === 1 ? details : null}
+      {wizard && step === 2 ? <><PetPanel><View style={{ gap: 16 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>{photoView}<View style={{ flex: 1, gap: 4 }}><PetText size={23} bold>{value.name.trim()}</PetText><PetText muted>{species?.labelKa} · {sex}</PetText></View></View><View style={{ height: 1, backgroundColor: colors.bg300 }} /><PetText>{petBreedLabel({ speciesId: value.speciesId, breedId: value.breedId, customBreed: value.customBreed })}</PetText><PetText muted>{age}</PetText>{value.vetName || value.vetClinicName ? <PetText muted>{value.vetName || value.vetClinicName}</PetText> : null}</View></PetPanel><PetPanel><PetText bold>შემდეგი ნაბიჯი — ზრუნვა</PetText><PetText muted>შეინახე წონა და ჯანმრთელობის ისტორია, დაგეგმე მოვლა და დაუსვი შეკითხვები Medi Vet-ს. ცხოველის ჩანაწერები შენს ჯანმრთელობის მონაცემებს არ ერევა.</PetText></PetPanel><PetButton label="დეტალების შეცვლა" variant="ghost" onPress={() => go(1)} /></> : null}
+    </PetFormScroll>
+    <PetSheet visible={sheet !== null} title={sheet === 'species' ? 'აირჩიე სახეობა' : 'აირჩიე ჯიში'} onClose={() => setSheet(null)}>
+      {sheet === 'breed' ? <View style={{ paddingBottom: 12 }}><Input figma icon={Search} accessibilityLabel="ჯიშის ძებნა" placeholder="მოძებნე ჯიში" value={query} onChangeText={setQuery} /></View> : null}
+      <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 360, flexShrink: 1 }} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>{sheet === 'species' ? SPECIES.map(item => <PetFilterChip fill key={item.id} label={item.labelKa} icon={petSpeciesIcon(item.id)} selected={item.id === value.speciesId} onPress={() => { patch({ speciesId: item.id, breedId: 'unknown', customBreed: '' }); setSheet(null); }} />) : <>{[{ id: 'unknown', label: 'არ ვიცი' }, ...(species?.allowsMixed ? [{ id: 'mixed', label: 'შერეული ჯიში' }] : []), { id: 'custom', label: 'თავად ჩავწერ' }, ...breeds.filter(item => !['unknown', 'mixed', 'custom'].includes(item.id))].map(item => <PetFilterChip fill key={item.id} label={item.label} selected={item.id === value.breedId} onPress={() => { patch({ breedId: item.id }); setSheet(null); }} />)}{query && !breeds.length ? <PetText muted>ჯიში ვერ მოიძებნა. შეგიძლია თავად ჩაწერო.</PetText> : null}</>}</ScrollView>
+    </PetSheet>
+  </>;
 }

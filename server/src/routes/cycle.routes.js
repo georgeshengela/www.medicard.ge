@@ -1,3 +1,4 @@
+import { assertAiConsent } from '../lib/aiConsent.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
@@ -1915,6 +1916,7 @@ cycleRouter.post(
       });
     }
 
+    await assertAiConsent(req.user.id);
     // Only enforce AI quota when we actually call EvidenceMD.
     // Await the middleware itself — a 429 sends the body and never calls next().
     await enforceAiQuota(req, res, () => undefined);

@@ -25,7 +25,7 @@ export function loggedCycleCount(bundle: CycleBundle): number {
 }
 
 export function cycleConfidenceLabel(bundle: CycleBundle): 'low' | 'medium' | 'high' {
-  return bundle.predictions?.confidence ?? bundle.summary?.confidence ?? bundle.trends?.confidence ?? 'low';
+  return bundle.predictions?.confidence ?? bundle.trends?.confidence ?? 'low';
 }
 
 export function formatRecurrenceKa(

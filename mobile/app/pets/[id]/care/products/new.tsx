@@ -1,21 +1,22 @@
+import { parsePetDate } from '@/lib/petsPresentation';
 import React, { useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, Hash, Package, Pencil } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { DateField } from '@/components/ui/DateField';
-import { Input } from '@/components/ui/Input';
+import { PetButton as Button } from '@/components/pets/PetUi';
+import { PetDateField as DateField } from '@/components/pets/PetDateField';
+import { PetInput as Input } from '@/components/pets/PetUi';
 import { CareKindChips } from '@/components/pets/PetCareChips';
 import { PetErrorText, PetFormScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type PetCareKind, type PetProduct } from '@/lib/api';
-import { isoToDigits, parseCivilDate } from '@/lib/birthdate';
+import { isoToDigits } from '@/lib/birthdate';
 import { newPetsRequestId, petsCareErrorMessage } from '@/lib/petsCare';
 import { useThemeColors } from '@/theme/colors';
 
 function digitsToIso(digits: string): string | null {
   if (!digits) return null;
-  const parsed = parseCivilDate(digits);
+  const parsed = parsePetDate(digits, { allowFuture: true });
   return parsed.ok ? parsed.iso : '';
 }
 
@@ -39,6 +40,7 @@ export function PetProductForm({
     expiresOn: string | null;
   }) => void;
 }) {
+  const [fieldError, setFieldError] = useState<string | null>(null);
   const [kind, setKind] = useState<PetCareKind>(initial?.kind || 'FLEA_TICK');
   const [name, setName] = useState(initial?.name || '');
   const [formulation, setFormulation] = useState(initial?.formulation || '');
@@ -50,31 +52,28 @@ export function PetProductForm({
     <PetFormScroll
       footer={
         <>
-          <PetErrorText message={error} />
+          <PetErrorText message={fieldError || error} />
           <Button
             icon={Check}
             label={saving ? ka.pets.saving : ka.pets.save}
             loading={saving}
-            onPress={() =>
-              onSubmit({
-                kind,
-                name,
-                formulation: formulation.trim() || null,
-                batchId: batchId.trim() || null,
-                notes: notes.trim() || null,
-                expiresOn: digitsToIso(expires),
-              })
-            }
+            onPress={() => {
+              if (saving) return;
+              if (!name.trim()) { setFieldError('მიუთითე პროდუქტის სახელი.'); return; }
+              if (expires && !digitsToIso(expires)) { setFieldError('შეამოწმე ვარგისიანობის თარიღი.'); return; }
+              setFieldError(null);
+              onSubmit({ kind, name: name.trim(), formulation: formulation.trim() || null, batchId: batchId.trim() || null, notes: notes.trim() || null, expiresOn: digitsToIso(expires) });
+            }}
           />
           {footer}
         </>
       }
     >
       <CareKindChips value={kind} onChange={setKind} />
-      <Input figma icon={Package} label={ka.pets.productName} value={name} onChangeText={setName} placeholder={ka.pets.productNamePh} />
+      <Input figma icon={Package} maxLength={160} label={ka.pets.productName} value={name} onChangeText={setName} placeholder={ka.pets.productNamePh} />
       <Input figma icon={Pencil} label={ka.pets.formulation} value={formulation} onChangeText={setFormulation} />
       <Input figma icon={Hash} label={ka.pets.batchId} value={batchId} onChangeText={setBatchId} />
-      <DateField figma label={ka.pets.expiresOn} value={expires} onChangeText={setExpires} showAge={false} hint={ka.pets.expiresHint} />
+      <DateField allowFuture figma label={ka.pets.expiresOn} value={expires} onChangeText={setExpires} showAge={false} hint={ka.pets.expiresHint} />
       <Input figma icon={Pencil} label={ka.pets.note} value={notes} onChangeText={setNotes} />
     </PetFormScroll>
   );

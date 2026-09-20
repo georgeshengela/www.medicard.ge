@@ -13,7 +13,6 @@
     '#/ai': 'Medi',
     '#/quality': 'ხარისხი',
     '#/push': 'Push & Brain',
-    '#/tbilisi-moves': 'თბილისი მოძრაობს',
     '#/settings': 'რეჟიმი',
     '#/sms': 'SMS',
     '#/pharmacy': 'ფარმაცია',

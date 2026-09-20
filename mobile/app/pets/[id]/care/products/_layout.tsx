@@ -1,10 +1,11 @@
 import { Stack } from 'expo-router';
 import { ka } from '@/i18n/ka';
-import { STACK_PUSH } from '@/theme/stackMotion';
+import { usePetStackOptions } from '@/components/pets/PetUi';
 
 export default function PetCareProductsLayout() {
+  const options = usePetStackOptions();
   return (
-    <Stack screenOptions={{ headerBackTitle: ka.common.back, headerTitleStyle: { fontWeight: '700' }, ...STACK_PUSH }}>
+    <Stack screenOptions={options}>
       <Stack.Screen name="index" options={{ title: ka.pets.productsTitle }} />
       <Stack.Screen name="new" options={{ title: ka.pets.productAdd }} />
       <Stack.Screen name="[productId]" options={{ title: ka.pets.productEdit }} />

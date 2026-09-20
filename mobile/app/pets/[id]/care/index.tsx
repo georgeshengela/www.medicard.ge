@@ -2,12 +2,13 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AlertTriangle, ChevronRight, History, Package, Plus, Syringe } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { PetButton as Button } from '@/components/pets/PetUi';
+import { PetPanel as Card } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { careKindIcon } from '@/components/pets/PetCareChips';
-import { PetIconWell, PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
+import { PetIntro, PetLoading } from '@/components/pets/PetUi';
+import { PetErrorText, PetIconWell, PetListRow, PetPageScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type Pet, type PetCareOccurrence } from '@/lib/api';
 import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
@@ -101,31 +102,12 @@ export default function PetCareHubScreen() {
     router.push(`/pets/${id}/care/add`);
   };
 
-  const complete = async (row: PetCareOccurrence) => {
-    if (!id || completing) return;
-    setCompleting(row.occurrenceKey);
-    try {
-      await api.pets.schedules.complete(id, row.scheduleId, {
-        occurrenceKey: row.occurrenceKey,
-        revision: row.revision,
-        administeredOn: todayIsoLocal(),
-        clientRequestId: requestId.current,
-      });
-      requestId.current = newPetsRequestId();
-      await import('@/lib/petCareReminders').then(({ reconcilePetCareReminders }) =>
-        reconcilePetCareReminders({ reason: 'complete' }),
-      );
-      await load();
-    } catch (caught) {
-      const kind = petsCareErrorKind(caught);
-      Alert.alert(kind === 'conflict' ? ka.pets.careConflict : ka.pets.saveError, petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError }));
-      if (kind === 'conflict') void load();
-    } finally {
-      setCompleting(null);
-    }
+  const complete = (row: PetCareOccurrence) => {
+    if (!id) return;
+    router.push({ pathname: '/pets/[id]/care/complete', params: { id, scheduleId: row.scheduleId, occurrenceKey: row.occurrenceKey, revision: String(row.revision) } });
   };
 
-  if (!ready) return <View style={{ flex: 1, backgroundColor: colors.bg100 }} />;
+  if (!ready) return <PetLoading />;
   if (error && !pet) {
     const kind = petsCareErrorKind(error);
     return (
@@ -161,6 +143,8 @@ export default function PetCareHubScreen() {
         }}
       />
       <PetPageScroll>
+        <PetIntro title="ზრუნვა, თავისი დროით." body="დაგეგმილი პროცედურა შესრულებულად მხოლოდ შენი დადასტურების შემდეგ ჩაიწერება. მიუთითე ჩატარების რეალური თარიღი." />
+        {error ? <><PetErrorText message={petsCareErrorMessage(error, { ...ka.pets, offline: ka.common.networkError })} /><Button label="განახლება" variant="secondary" onPress={() => void load()} /></> : null}
         {overdue.length ? (
           <View className="gap-2">
             <HomeSectionTitle title={ka.pets.overdue} />

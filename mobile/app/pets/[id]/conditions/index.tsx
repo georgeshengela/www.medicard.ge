@@ -1,8 +1,9 @@
+import { PetLoading } from '@/components/pets/PetUi';
 import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Stethoscope } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
+import { PetButton as Button } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
@@ -52,7 +53,7 @@ export default function PetConditionsScreen() {
     }, [load]),
   );
 
-  if (!ready) return <View style={{ flex: 1, backgroundColor: colors.bg100 }} />;
+  if (!ready) return <PetLoading />;
   if (error && !items.length) return <PetHealthStatus error={error} onRetry={() => void load()} />;
 
   const active = items.filter((row) => row.status !== 'resolved');

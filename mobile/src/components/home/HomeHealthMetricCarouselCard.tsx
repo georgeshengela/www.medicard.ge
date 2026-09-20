@@ -95,7 +95,7 @@ export function HomeHealthMetricCarouselCard({
   if (!onPress) return body;
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ opacity: 1 })}>
       {body}
     </Pressable>
   );

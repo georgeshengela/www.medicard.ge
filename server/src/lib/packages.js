@@ -1,6 +1,11 @@
 import { prisma } from './prisma.js';
 import { env } from '../config/env.js';
 import { buildSubscriptionDates } from './billing.js';
+import { FREE_CONSUMER_RELEASE, freeConsumerPackage } from './consumerAccess.js';
+
+export function publicConsumerPackage(pkg) {
+  return FREE_CONSUMER_RELEASE ? freeConsumerPackage() : publicPackage(pkg);
+}
 
 /**
  * Canonical monthly AI cap.
@@ -113,6 +118,7 @@ export async function getUserPackage(userId) {
 }
 
 export async function resolveMonthlyLimit(userId) {
+  if (FREE_CONSUMER_RELEASE) return Number.POSITIVE_INFINITY;
   const { package: pkg, expired } = (await getUserPackage(userId)) ?? {};
   if (!pkg || expired) {
     const free = await prisma.package.findUnique({ where: { code: 'FREE' } });
@@ -122,6 +128,7 @@ export async function resolveMonthlyLimit(userId) {
 }
 
 export async function resolveUserConsumeLimit(userId) {
+  if (FREE_CONSUMER_RELEASE) return Number.POSITIVE_INFINITY;
   const { package: pkg, expired } = (await getUserPackage(userId)) ?? {};
   if (!pkg || expired) {
     const free = await prisma.package.findUnique({ where: { code: 'FREE' } });

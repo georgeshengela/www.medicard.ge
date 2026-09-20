@@ -1,163 +1,70 @@
 import React, { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ScrollView, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Flame, Footprints, Gauge, MapPin, Route, Sparkles, Target, Timer } from 'lucide-react-native';
+import { ScrollView, View } from 'react-native';
+import { Check, Flag, Flame, Footprints, Gauge, MapPin, Route, Timer } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RunMap, type RunMapHandle } from '@/components/run/RunMap';
-import { ka } from '@/i18n/ka';
+import { RunMap, type RunMapHandle } from './RunMap';
+import { MediRunLogo } from './PulseIdentity';
+import { Card, Copy } from './PulseUi';
 import { formatClock, formatKm, formatPace, formatThousands } from '@/lib/run/geo';
 import { targetLabel } from '@/lib/run/labels';
+import { formatRunDate } from '@/lib/run/presentation';
 import type { RunSummary } from '@/lib/run/history';
-import { useIsDark, useThemeColors } from '@/theme/colors';
+import { useThemeColors } from '@/theme/colors';
 
-type Props = {
-  summary: RunSummary;
-  title: string;
-  headerLeft?: ReactNode;
-  footer?: ReactNode;
-};
+type Props = { summary: RunSummary; title: string; headerLeft?: ReactNode; footer?: ReactNode };
 
 export function RunFinishedView({ summary, title, headerLeft, footer }: Props) {
-  const colors = useThemeColors();
-  const dark = useIsDark();
-  const insets = useSafeAreaInsets();
+  const c = useThemeColors(), insets = useSafeAreaInsets();
   const map = useRef<RunMapHandle>(null);
   const [mapReady, setMapReady] = useState(false);
-  const accent = dark ? '#5EEAD4' : colors.primary100;
-  const pct = summary.targetMeters > 0 ? Math.min(100, Math.round((summary.distanceM / summary.targetMeters) * 100)) : 100;
+  const pct = summary.targetMeters > 0 ? Math.min(100, Math.round(summary.distanceM / summary.targetMeters * 100)) : 0;
   const mapCenter = summary.origin ?? summary.pin ?? summary.path[0] ?? null;
 
   useEffect(() => {
     if (!mapReady || !mapCenter) return;
-    map.current?.send({
-      type: 'init',
-      origin: mapCenter,
-      pin: summary.pin,
-      route: null,
-      radiusM: 28,
-      fit: false,
-    });
-    const segments=summary.segments || [summary.path];
-    map.current?.send({type:'paint',lines:segments.map(segment=>segment.map(pt=>[pt.lng,pt.lat] as [number,number]))});
+    map.current?.send({ type: 'init', origin: mapCenter, pin: summary.pin, route: null, radiusM: 28, fit: false });
+    const segments = summary.segments || [summary.path];
+    map.current?.send({ type: 'paint', lines: segments.map(segment => segment.map(pt => [pt.lng, pt.lat] as [number, number])) });
+    map.current?.send({ type: 'options', rotate: false, threeD: false });
     if (summary.reachedPin) map.current?.send({ type: 'reached' });
-    const t = setTimeout(() => map.current?.send({ type: 'fit', bottom: 60 }), 250);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => map.current?.send({ type: 'fit', top: 36, bottom: 42, paintOnly: true }), 250);
+    return () => clearTimeout(timer);
   }, [mapReady, mapCenter, summary]);
 
   const stats = [
-    { icon: Route, value: formatKm(summary.distanceM), unit: ka.run.km, label: ka.run.distance },
-    { icon: Timer, value: formatClock(summary.movingMs), unit: '', label: ka.run.time },
-    { icon: Gauge, value: formatPace(summary.paceSecPerKm), unit: ka.run.paceUnit, label: ka.run.pace },
-    { icon: Flame, value: String(summary.calories), unit: ka.run.kcal, label: ka.run.calories },
-    { icon: Footprints, value: formatThousands(summary.steps), unit: '', label: ka.run.stepsLabel },
-    { icon: Target, value: summary.targetMeters>0?`${pct}%`:'✓', unit: '', label: targetLabel(summary.target) },
+    { icon: Timer, value: formatClock(summary.movingMs), label: 'აქტიური დრო' },
+    { icon: Gauge, value: formatPace(summary.paceSecPerKm), label: 'ტემპი · წთ/კმ' },
+    { icon: Footprints, value: formatThousands(summary.steps), label: 'სავარაუდო ნაბიჯები' },
+    { icon: Flame, value: String(summary.calories), label: 'სავარაუდო კკალ' },
   ];
 
-  return (
-    <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
-      <View style={{ height: 300 + insets.top, backgroundColor: dark ? '#030712' : '#e5eef0' }}>
-        {mapCenter ? <RunMap ref={map} center={mapCenter} onReady={() => setMapReady(true)} /> : null}
-        <LinearGradient
-          pointerEvents="none"
-          colors={['transparent', colors.bg100]}
-          style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 120 }}
-        />
-        {headerLeft ? (
-          <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + 8, left: 12, right: 12 }}>
-            {headerLeft}
-          </View>
-        ) : null}
+  return <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: Math.max(24, insets.bottom + 12), paddingHorizontal: 20, gap: 20 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      {headerLeft}
+      <View style={{ flex: 1, gap: 2 }}><MediRunLogo size={23} /><Copy muted size={11}>ყოველი გზა შენი ისტორიაა</Copy></View>
+      <View style={{ width: 42, height: 42, borderRadius: 16, backgroundColor: c.accent100, alignItems: 'center', justifyContent: 'center' }}><Check size={21} color={c.primary100} /></View>
+    </View>
+
+    <View style={{ gap: 5 }}><Copy bold size={25} style={{ lineHeight: 35 }}>{title}</Copy><Copy muted size={12}>{formatRunDate(summary.startedAt)} · {summary.targetMeters === 0 ? 'თავისუფალი გასეირნება' : targetLabel(summary.target)}</Copy></View>
+
+    <Card style={{ padding: 0, borderRadius: 28, overflow: 'hidden', gap: 0 }}>
+      <View style={{ padding: 20, paddingBottom: 17, gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}><Route size={16} color={c.primary100} /><Copy size={12} muted>შენი გავლილი გზა</Copy></View>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 9 }}><Copy bold size={46} style={{ lineHeight: 61, letterSpacing: -1.5, fontVariant: ['tabular-nums'], flexShrink: 1 }}>{formatKm(summary.distanceM)}</Copy><Copy bold size={17} style={{ color: c.primary100 }}>კმ</Copy></View>
       </View>
-
-      <View style={{ paddingHorizontal: 20, marginTop: -26 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: summary.reachedPin ? (dark ? '#064E3B' : '#D1FAE5') : dark ? '#422006' : '#FEF3C7',
-            }}
-          >
-            <MapPin
-              size={20}
-              color={summary.reachedPin ? (dark ? '#34D399' : '#059669') : dark ? '#FBBF24' : '#D97706'}
-              strokeWidth={2.4}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, lineHeight: 30, letterSpacing: -0.4, color: colors.text100 }}>
-              {title}
-            </Text>
-            <Text
-              style={{
-                fontFamily: 'NotoSansGeorgian_600SemiBold',
-                fontSize: 12.5,
-                color: summary.reachedPin ? (dark ? '#34D399' : '#059669') : colors.text300,
-              }}
-            >
-              {summary.targetMeters===0?'გასეირნება შენახულია · შენი გზა შენთან რჩება':(summary.completedTarget?ka.run.summaryTargetYes:ka.run.summaryTargetPct(pct))}
-              {summary.pin?(' · '+(summary.reachedPin?ka.run.summaryPinYes:ka.run.summaryPinNo)):''}
-            </Text>
-          </View>
-        </View>
+      <View style={{ height: 240, backgroundColor: c.bg200 }}>
+        {mapCenter ? <RunMap ref={map} center={mapCenter} onReady={() => setMapReady(true)} /> : <View style={{ flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 12 }}><MapPin size={28} color={c.primary100} /><Copy muted size={12}>ამ ჩანაწერს მარშრუტი არ ახლავს</Copy></View>}
       </View>
+    </Card>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, marginTop: 18 }}>
-        {stats.map((st) => (
-          <View
-            key={st.label}
-            style={{
-              width: '31.5%',
-              flexGrow: 1,
-              alignItems: 'center',
-              gap: 3,
-              paddingVertical: 14,
-              borderRadius: 18,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.bg300,
-            }}
-          >
-            <st.icon size={15} color={accent} strokeWidth={2.3} />
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-              <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 19, color: colors.text100, letterSpacing: -0.3 }}>
-                {st.value}
-              </Text>
-              {st.unit ? <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 10, color: colors.text300 }}>{st.unit}</Text> : null}
-            </View>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 10.5, color: colors.text300 }}>
-              {st.label}
-            </Text>
-          </View>
-        ))}
-      </View>
+    <View style={{ gap: 10 }}><Copy bold size={16}>გასეირნება რიცხვებში</Copy><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+      {stats.map(stat => <Card key={stat.label} style={{ flexBasis: '46%', flexGrow: 1, padding: 15, borderRadius: 21, gap: 6 }}><stat.icon size={18} color={c.primary100} /><Copy bold size={23} style={{ lineHeight: 32, fontVariant: ['tabular-nums'] }}>{stat.value}</Copy><Copy size={10} muted>{stat.label}</Copy></Card>)}
+    </View></View>
 
-      <View
-        style={{
-          marginHorizontal: 16,
-          marginTop: 14,
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          gap: 10,
-          padding: 14,
-          borderRadius: 18,
-          backgroundColor: dark ? '#042F2E' : colors.accent100,
-        }}
-      >
-        <Sparkles size={16} color={accent} strokeWidth={2.4} style={{ marginTop: 1 }} />
-        <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 19, color: dark ? '#99F6E4' : colors.primary100 }}>
-          {ka.run.summaryMedi(formatKm(summary.distanceM), summary.calories)}
-        </Text>
-      </View>
+    {summary.targetMeters > 0 ? <Card style={{ gap: 10 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><Flag color={c.primary100} size={20} /><View style={{ flex: 1 }}><Copy bold size={14}>{summary.completedTarget ? 'მიზანი შესრულებულია' : 'ყოველი ნაბიჯი წინსვლაა'}</Copy><Copy muted size={12}>{targetLabel(summary.target)}</Copy></View><Copy bold size={22} style={{ color: c.primary100 }}>{pct}%</Copy></View><View accessibilityRole="progressbar" accessibilityLabel="ვარჯიშის მიზანი" accessibilityValue={{ min: 0, max: 100, now: pct }} style={{ height: 5, backgroundColor: c.bg200, borderRadius: 5, overflow: 'hidden' }}><View style={{ width: `${pct}%`, height: 5, backgroundColor: '#14B8A6' }} /></View></Card> : null}
 
-      <Text style={{ marginHorizontal: 24, marginTop: 10, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, color: colors.text300, textAlign: 'center' }}>
-        {ka.run.estimated} · {ka.run.disclaimer}
-      </Text>
-
-      {footer}
-    </ScrollView>
-  );
+    {summary.pin ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><MapPin size={17} color={c.primary100} /><Copy muted size={12} style={{ flex: 1 }}>{summary.reachedPin ? 'დანიშნულების ადგილს მიაღწიე' : 'დანიშნულების ადგილამდე ამ სესიაში ვერ მიხვედი'}</Copy></View> : null}
+    <Copy muted size={11}>ნაბიჯები და კალორია შეფასებითია. შეინარჩუნე შენთვის კომფორტული ტემპი.</Copy>
+    {footer}
+  </ScrollView>;
 }

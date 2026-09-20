@@ -473,7 +473,7 @@ export default function CycleHome() {
     const caps = cycleModeCapabilities(bundle?.profile.mode);
     if (caps.showPregnancyOverview) {
       const queryAge = (pregnancyQuery.data as CyclePregnancyPayload | null)?.estimatedGestationalAge;
-      const age = bundle.pregnancy?.age ?? (queryAge ? { week: queryAge.week, day: queryAge.day } : null);
+      const age = bundle?.pregnancy?.age ?? (queryAge ? { week: queryAge.week, day: queryAge.day } : null);
       if (age) return ka.cycle.pregnancyWeekDay(age.week, age.day);
       return ka.cycle.pregnancyModeTitle;
     }

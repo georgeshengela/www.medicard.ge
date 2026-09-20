@@ -9,8 +9,8 @@ describe('consumerPurchasesEnabled', () => {
     assert.equal(consumerPurchasesEnabled({ CONSUMER_PURCHASES_ENABLED: 'false' }), false);
   });
 
-  it('turns on only for an explicit truthy flag', () => {
-    assert.equal(consumerPurchasesEnabled({ CONSUMER_PURCHASES_ENABLED: 'true' }), true);
-    assert.equal(consumerPurchasesEnabled({ CONSUMER_PURCHASES_ENABLED: '1' }), true);
+  it('legacy truthy flags cannot enable purchases in the free release', () => {
+    assert.equal(consumerPurchasesEnabled({ CONSUMER_PURCHASES_ENABLED: 'true' }), false);
+    assert.equal(consumerPurchasesEnabled({ CONSUMER_PURCHASES_ENABLED: '1' }), false);
   });
 });

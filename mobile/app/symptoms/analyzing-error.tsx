@@ -6,12 +6,13 @@ import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 import { updateSymptomChecker, useSymptomChecker } from '@/lib/symptomCheckerStore';
+import { FREE_CONSUMER_RELEASE } from '@/lib/consumerAccess';
 
 export default function SymptomAnalyzingErrorScreen() {
   const T = useFigmaSymptoms();
   const router = useRouter();
   const { lastError } = useSymptomChecker();
-  const isQuota = lastError?.includes('ლიმიტი') ?? false;
+  const isQuota = !FREE_CONSUMER_RELEASE && (lastError?.includes('ლიმიტი') ?? false);
 
   return (
     <View style={{ flex: 1, backgroundColor: T.white }}>

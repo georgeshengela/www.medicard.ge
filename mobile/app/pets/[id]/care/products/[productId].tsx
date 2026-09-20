@@ -1,7 +1,10 @@
+import { PetLoading } from '@/components/pets/PetUi';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Button } from '@/components/ui/Button';
+import { PetIntro } from '@/components/pets/PetUi';
+import { PetErrorText, PetPageScroll } from '@/components/pets/PetScreen';
+import { PetButton as Button } from '@/components/pets/PetUi';
 import { PetProductForm } from './new';
 import { ka } from '@/i18n/ka';
 import { api, type PetProduct } from '@/lib/api';
@@ -17,14 +20,16 @@ export default function PetProductEditScreen() {
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
+    setReady(false); setError(null);
     if (!id || !productId) return;
     void api.pets.products
       .get(id, productId)
       .then((res) => setProduct(res.product))
       .catch((caught) => setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError })))
       .finally(() => setReady(true));
-  }, [id, productId]);
+  }, [id, productId, retry]);
 
   const archive = useCallback(() => {
     if (!id || !productId) return;
@@ -45,7 +50,9 @@ export default function PetProductEditScreen() {
     ]);
   }, [id, productId, router]);
 
-  if (!ready) return <View style={{ flex: 1, backgroundColor: colors.bg100 }} />;
+  if (!ready) return <PetLoading />;
+
+  if (!product) return <PetPageScroll><PetIntro title="პროდუქტი ვერ ჩაიტვირთა" body="თავიდან სცადე შენახული ინფორმაციის გახსნა." /><PetErrorText message={error} /><Button label="ხელახლა ცდა" onPress={() => setRetry(value => value + 1)} /></PetPageScroll>;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg100 }}>

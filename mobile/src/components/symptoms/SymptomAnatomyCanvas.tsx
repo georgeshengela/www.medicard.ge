@@ -3,10 +3,10 @@ import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
+import { SymptomBodyArtwork } from './SymptomBodyArtwork';
 import { Minus, Plus, RotateCcw, RotateCw } from 'lucide-react-native';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
-import { SYMPTOM_BODY_VIEWS } from '@/constants/symptomBodyPaths';
+import { ANATOMICAL_BODY_VIEWS } from '@/lib/symptomBodyGeometry';
 import { bodyPartById, type OrganDef } from '@/constants/symptomCatalog';
 import { ka } from '@/i18n/ka';
 import type { BodyPartId, BodySide, OrganId, SymptomGender } from '@/types/symptoms';
@@ -41,7 +41,7 @@ export function SymptomAnatomyCanvas({
   renderOrganPin,
 }: Props) {
   const T = useFigmaSymptoms();
-  const view = SYMPTOM_BODY_VIEWS[gender][side];
+  const view = ANATOMICAL_BODY_VIEWS[gender][side];
   const canvasW = useSharedValue(1);
   const canvasH = useSharedValue(1);
   const scale = useSharedValue(1);
@@ -53,7 +53,7 @@ export function SymptomAnatomyCanvas({
   const [box, setBox] = React.useState({ w: 0, h: 0 });
 
   const fit = useMemo(() => {
-    if (!box.w || !box.h) return { w: 0, h: 0 };
+    if (box.w <= 40 || box.h <= 40) return { w: 0, h: 0 };
     const pad = 20;
     const maxW = box.w - pad * 2;
     const maxH = box.h - pad * 2;
@@ -95,32 +95,6 @@ export function SymptomAnatomyCanvas({
     resetZoom();
   }, [gender, side, resetZoom]);
 
-  const handleTap = useCallback(
-    (x: number, y: number) => {
-      if (!fit.w || mode !== 'muscle') return;
-      const ox = (box.w - fit.w) / 2;
-      const oy = (box.h - fit.h) / 2;
-      const lx = x - ox;
-      const ly = y - oy;
-      if (lx < 0 || ly < 0 || lx > fit.w || ly > fit.h) return;
-      const sx = (lx / fit.w) * view.w;
-      const sy = (ly / fit.h) * view.h;
-      let best: { id: BodyPartId; area: number } | null = null;
-      for (const p of view.paths) {
-        if (p.fill === 'none') continue;
-        const area = (p.maxX - p.minX) * (p.maxY - p.minY);
-        if (area < 40) continue;
-        if (sx >= p.minX && sx <= p.maxX && sy >= p.minY && sy <= p.maxY) {
-          if (!best || area < best.area) best = { id: p.partId, area };
-        }
-      }
-      if (!best) return;
-      void Haptics.selectionAsync();
-      onSelectPart(best.id);
-    },
-    [box, fit, mode, onSelectPart, view],
-  );
-
   const pinch = Gesture.Pinch()
     .onUpdate((e) => {
       const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, savedScale.value * e.scale));
@@ -154,19 +128,13 @@ export function SymptomAnatomyCanvas({
       savedTy.value = ty.value;
     });
 
-  const tap = Gesture.Tap()
-    .maxDistance(10)
-    .onEnd((e) => {
-      runOnJS(handleTap)(e.x, e.y);
-    });
-
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .onEnd(() => {
       runOnJS(resetZoom)();
     });
 
-  const composed = Gesture.Simultaneous(pinch, pan, Gesture.Exclusive(doubleTap, tap));
+  const composed = Gesture.Simultaneous(pinch, pan, doubleTap);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
@@ -180,7 +148,7 @@ export function SymptomAnatomyCanvas({
   };
 
   const selectedCentroid = useMemo(() => {
-    const paths = view.paths.filter((p) => p.partId === selectedPartId && p.fill !== 'none');
+    const paths = view.paths.filter((p) => p.partId === selectedPartId && p.selectable);
     if (!paths.length) return null;
     return {
       x: paths.reduce((s, p) => s + p.cx, 0) / paths.length,
@@ -199,30 +167,9 @@ export function SymptomAnatomyCanvas({
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               {fit.w ? (
                 <View style={{ width: fit.w, height: fit.h }}>
-                  <Svg width={fit.w} height={fit.h} viewBox={`0 0 ${view.w} ${view.h}`}>
-                    {view.paths.map((p, i) => {
-                      const on = mode === 'muscle' && p.partId === selectedPartId;
-                      return (
-                        <Path
-                          key={`${p.partId}-${i}`}
-                          d={p.d}
-                          fill={on ? T.composerPrimary : p.fill === 'none' ? 'transparent' : p.fill}
-                          stroke={on ? T.brand : '#9CA3AF'}
-                          strokeWidth={on ? 1.6 : 1}
-                          strokeLinejoin="round"
-                          strokeMiterlimit={10}
-                          onPress={
-                            mode === 'muscle'
-                              ? () => {
-                                  void Haptics.selectionAsync();
-                                  onSelectPart(p.partId);
-                                }
-                              : undefined
-                          }
-                        />
-                      );
-                    })}
-                  </Svg>
+                  <SymptomBodyArtwork gender={gender} side={side} width={fit.w} height={fit.h}
+                    selected={mode === 'muscle' ? selectedPartId : null} fill={T.composerPrimary} stroke={T.brand}
+                    onSelect={mode === 'muscle' ? id => { void Haptics.selectionAsync().catch(() => undefined); onSelectPart(id); } : undefined} />
 
                   {mode === 'muscle' && selectedPartId && selectedCentroid ? (
                     <View
@@ -254,8 +201,10 @@ export function SymptomAnatomyCanvas({
                           }}
                         >
                           <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={organ.labelKa}
                             onPress={() => {
-                              void Haptics.selectionAsync();
+                              void Haptics.selectionAsync().catch(() => undefined);
                               onSelectOrgan(organ.id);
                             }}
                           >
@@ -315,20 +264,8 @@ export function SymptomAnatomyCanvas({
             ...T.shadowXs,
           }}
         >
-          <Svg width={36} height={64} viewBox={`0 0 ${view.w} ${view.h}`}>
-            {view.paths.map((p, i) => {
-              const on = mode === 'muscle' && p.partId === selectedPartId;
-              return (
-                <Path
-                  key={`mini-${i}`}
-                  d={p.d}
-                  fill={on ? T.brand : p.fill === 'none' ? 'transparent' : p.fill}
-                  stroke={on ? T.brandDark : '#D1D5DB'}
-                  strokeWidth={1.2}
-                />
-              );
-            })}
-          </Svg>
+          <SymptomBodyArtwork gender={gender} side={side} width={36} height={64}
+            selected={mode === 'muscle' ? selectedPartId : null} fill={T.brand} stroke={T.brandDark} mini />
         </Pressable>
 
         <View style={{ position: 'absolute', right: 16, top: '44%', gap: 12 }}>
@@ -355,7 +292,7 @@ export function SymptomAnatomyCanvas({
                 paddingVertical: 8,
               }}
             >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: T.white, textAlign: 'center' }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: T.textOnBrand, textAlign: 'center' }}>
                 {ka.symptoms.tapBody}
               </Text>
             </View>
@@ -448,7 +385,7 @@ function ZoomBtn({
   return (
     <Pressable
       onPress={() => {
-        void Haptics.selectionAsync();
+        void Haptics.selectionAsync().catch(() => undefined);
         onPress();
       }}
       accessibilityLabel={label}

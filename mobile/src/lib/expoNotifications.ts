@@ -25,12 +25,12 @@ function expoGoStub() {
     getExpoPushTokenAsync: async () => {
       throw new Error('Expo Go cannot register remote push tokens on SDK 53+');
     },
-    scheduleNotificationAsync: async () => 'expo-go-stub',
+    scheduleNotificationAsync: async () => { throw new Error('Native notifications unavailable'); },
     cancelScheduledNotificationAsync: async () => undefined,
     cancelAllScheduledNotificationsAsync: async () => undefined,
     getAllScheduledNotificationsAsync: async () => [],
     setNotificationChannelAsync: async () => null,
-    setNotificationCategoryAsync: async () => null,
+    setNotificationCategoryAsync: async () => { throw new Error('Native notifications unavailable'); },
     AndroidImportance: {
       UNKNOWN: 0,
       UNSPECIFIED: 1,
@@ -66,7 +66,9 @@ function expoGoStub() {
   };
 }
 
-function rewriteScheduleRequest(request) {
+type NotificationApi = Pick<typeof import('expo-notifications'), keyof ReturnType<typeof expoGoStub>>;
+
+function rewriteScheduleRequest(request: Parameters<NotificationApi['scheduleNotificationAsync']>[0]) {
   if (request?.content?.sound !== 'default') return request;
   return {
     ...request,
@@ -78,17 +80,17 @@ function rewriteScheduleRequest(request) {
   };
 }
 
-function rewriteChannel(channel) {
+function rewriteChannel(channel: Parameters<NotificationApi['setNotificationChannelAsync']>[1]) {
   if (!channel || channel.sound !== 'default') return channel;
   const next = { ...channel };
   delete next.sound;
   return next;
 }
 
-function loadNotifications() {
+function loadNotifications(): NotificationApi {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const loaded = require('expo-notifications');
+    const loaded = { ...require('expo-notifications') } as NotificationApi;
     const schedule = loaded.scheduleNotificationAsync?.bind(loaded);
     if (typeof schedule === 'function') {
       loaded.scheduleNotificationAsync = (request) => schedule(rewriteScheduleRequest(request));
@@ -103,7 +105,7 @@ function loadNotifications() {
     return loaded;
   } catch {
     nativeAvailable = false;
-    return expoGoStub();
+    return expoGoStub() as NotificationApi;
   }
 }
 

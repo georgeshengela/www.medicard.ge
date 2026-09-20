@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { AlertCircle, RefreshCcw } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
+import { PetButton as Button } from '@/components/pets/PetUi';
 import { EmptyState } from '@/components/EmptyState';
 import { ka } from '@/i18n/ka';
 import { petsHealthErrorKind } from '@/lib/petsHealth';

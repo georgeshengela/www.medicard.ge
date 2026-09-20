@@ -1,0 +1,322 @@
+{
+  "companion": {
+    "poseKey": "pose.stage_1",
+    "environmentKey": "env.day",
+    "daypart": "day",
+    "reducedMotion": false,
+    "level": 3,
+    "stage": "STAGE_1",
+    "moodKey": "FOCUSED",
+    "messageKey": "COMPANION_QUEST_PROGRESS"
+  },
+  "journey": {
+    "units": 4,
+    "chapterKey": "CHAPTER_1",
+    "currentMilestoneKey": "MILESTONE_02",
+    "nextMilestoneKey": "MILESTONE_03",
+    "nextAt": 5,
+    "milestones": [
+      {
+        "key": "MILESTONE_01",
+        "at": 1,
+        "chapterKey": "CHAPTER_1",
+        "titleKey": "companion.journey.milestone.milestone_01.title",
+        "descriptionKey": "companion.journey.milestone.milestone_01.description",
+        "major": false,
+        "unlocked": true,
+        "cosmeticKey": "COSMETIC_MILESTONE_01"
+      },
+      {
+        "key": "MILESTONE_02",
+        "at": 3,
+        "chapterKey": "CHAPTER_1",
+        "titleKey": "companion.journey.milestone.milestone_02.title",
+        "descriptionKey": "companion.journey.milestone.milestone_02.description",
+        "major": false,
+        "unlocked": true,
+        "cosmeticKey": "COSMETIC_MILESTONE_02"
+      },
+      {
+        "key": "MILESTONE_03",
+        "at": 5,
+        "chapterKey": "CHAPTER_1",
+        "titleKey": "companion.journey.milestone.milestone_03.title",
+        "descriptionKey": "companion.journey.milestone.milestone_03.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_03"
+      },
+      {
+        "key": "MILESTONE_04",
+        "at": 8,
+        "chapterKey": "CHAPTER_1",
+        "titleKey": "companion.journey.milestone.milestone_04.title",
+        "descriptionKey": "companion.journey.milestone.milestone_04.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_04"
+      },
+      {
+        "key": "MILESTONE_05",
+        "at": 12,
+        "chapterKey": "CHAPTER_1",
+        "titleKey": "companion.journey.milestone.milestone_05.title",
+        "descriptionKey": "companion.journey.milestone.milestone_05.description",
+        "major": true,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_05"
+      },
+      {
+        "key": "MILESTONE_06",
+        "at": 17,
+        "chapterKey": "CHAPTER_2",
+        "titleKey": "companion.journey.milestone.milestone_06.title",
+        "descriptionKey": "companion.journey.milestone.milestone_06.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_06"
+      },
+      {
+        "key": "MILESTONE_07",
+        "at": 23,
+        "chapterKey": "CHAPTER_2",
+        "titleKey": "companion.journey.milestone.milestone_07.title",
+        "descriptionKey": "companion.journey.milestone.milestone_07.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_07"
+      },
+      {
+        "key": "MILESTONE_08",
+        "at": 30,
+        "chapterKey": "CHAPTER_2",
+        "titleKey": "companion.journey.milestone.milestone_08.title",
+        "descriptionKey": "companion.journey.milestone.milestone_08.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_08"
+      },
+      {
+        "key": "MILESTONE_09",
+        "at": 38,
+        "chapterKey": "CHAPTER_2",
+        "titleKey": "companion.journey.milestone.milestone_09.title",
+        "descriptionKey": "companion.journey.milestone.milestone_09.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_09"
+      },
+      {
+        "key": "MILESTONE_10",
+        "at": 47,
+        "chapterKey": "CHAPTER_2",
+        "titleKey": "companion.journey.milestone.milestone_10.title",
+        "descriptionKey": "companion.journey.milestone.milestone_10.description",
+        "major": true,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_10"
+      },
+      {
+        "key": "MILESTONE_11",
+        "at": 57,
+        "chapterKey": "CHAPTER_3",
+        "titleKey": "companion.journey.milestone.milestone_11.title",
+        "descriptionKey": "companion.journey.milestone.milestone_11.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_11"
+      },
+      {
+        "key": "MILESTONE_12",
+        "at": 68,
+        "chapterKey": "CHAPTER_3",
+        "titleKey": "companion.journey.milestone.milestone_12.title",
+        "descriptionKey": "companion.journey.milestone.milestone_12.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_12"
+      },
+      {
+        "key": "MILESTONE_13",
+        "at": 80,
+        "chapterKey": "CHAPTER_3",
+        "titleKey": "companion.journey.milestone.milestone_13.title",
+        "descriptionKey": "companion.journey.milestone.milestone_13.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_13"
+      },
+      {
+        "key": "MILESTONE_14",
+        "at": 93,
+        "chapterKey": "CHAPTER_3",
+        "titleKey": "companion.journey.milestone.milestone_14.title",
+        "descriptionKey": "companion.journey.milestone.milestone_14.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_14"
+      },
+      {
+        "key": "MILESTONE_15",
+        "at": 107,
+        "chapterKey": "CHAPTER_3",
+        "titleKey": "companion.journey.milestone.milestone_15.title",
+        "descriptionKey": "companion.journey.milestone.milestone_15.description",
+        "major": true,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_15"
+      },
+      {
+        "key": "MILESTONE_16",
+        "at": 122,
+        "chapterKey": "CHAPTER_4",
+        "titleKey": "companion.journey.milestone.milestone_16.title",
+        "descriptionKey": "companion.journey.milestone.milestone_16.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_16"
+      },
+      {
+        "key": "MILESTONE_17",
+        "at": 138,
+        "chapterKey": "CHAPTER_4",
+        "titleKey": "companion.journey.milestone.milestone_17.title",
+        "descriptionKey": "companion.journey.milestone.milestone_17.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_17"
+      },
+      {
+        "key": "MILESTONE_18",
+        "at": 155,
+        "chapterKey": "CHAPTER_4",
+        "titleKey": "companion.journey.milestone.milestone_18.title",
+        "descriptionKey": "companion.journey.milestone.milestone_18.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_18"
+      },
+      {
+        "key": "MILESTONE_19",
+        "at": 173,
+        "chapterKey": "CHAPTER_4",
+        "titleKey": "companion.journey.milestone.milestone_19.title",
+        "descriptionKey": "companion.journey.milestone.milestone_19.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_19"
+      },
+      {
+        "key": "MILESTONE_20",
+        "at": 192,
+        "chapterKey": "CHAPTER_4",
+        "titleKey": "companion.journey.milestone.milestone_20.title",
+        "descriptionKey": "companion.journey.milestone.milestone_20.description",
+        "major": true,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_20"
+      },
+      {
+        "key": "MILESTONE_21",
+        "at": 212,
+        "chapterKey": "CHAPTER_5",
+        "titleKey": "companion.journey.milestone.milestone_21.title",
+        "descriptionKey": "companion.journey.milestone.milestone_21.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_21"
+      },
+      {
+        "key": "MILESTONE_22",
+        "at": 233,
+        "chapterKey": "CHAPTER_5",
+        "titleKey": "companion.journey.milestone.milestone_22.title",
+        "descriptionKey": "companion.journey.milestone.milestone_22.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_22"
+      },
+      {
+        "key": "MILESTONE_23",
+        "at": 255,
+        "chapterKey": "CHAPTER_5",
+        "titleKey": "companion.journey.milestone.milestone_23.title",
+        "descriptionKey": "companion.journey.milestone.milestone_23.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_23"
+      },
+      {
+        "key": "MILESTONE_24",
+        "at": 278,
+        "chapterKey": "CHAPTER_5",
+        "titleKey": "companion.journey.milestone.milestone_24.title",
+        "descriptionKey": "companion.journey.milestone.milestone_24.description",
+        "major": false,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_24"
+      },
+      {
+        "key": "MILESTONE_25",
+        "at": 302,
+        "chapterKey": "CHAPTER_5",
+        "titleKey": "companion.journey.milestone.milestone_25.title",
+        "descriptionKey": "companion.journey.milestone.milestone_25.description",
+        "major": true,
+        "unlocked": false,
+        "cosmeticKey": "COSMETIC_MILESTONE_25"
+      }
+    ],
+    "newlyUnlockedKeys": [],
+    "aggregateUnlockCount": 0
+  },
+  "equipment": {
+    "accent": "COSMETIC_DEFAULT_ACCENT",
+    "accessory": null,
+    "background": "COSMETIC_DEFAULT_BACKGROUND",
+    "decoration": null
+  },
+  "collection": [
+    {
+      "key": "COSMETIC_DEFAULT_ACCENT",
+      "type": "COMPANION_ACCENT",
+      "styleTier": "COMMON",
+      "assetKey": "accent.teal_core",
+      "titleKey": "companion.cosmetic.default_accent.title",
+      "descriptionKey": "companion.cosmetic.default_accent.description",
+      "slot": "accent",
+      "unlocked": true
+    },
+    {
+      "key": "COSMETIC_DEFAULT_BACKGROUND",
+      "type": "HOME_BACKGROUND",
+      "styleTier": "COMMON",
+      "assetKey": "bg.calm_navy",
+      "titleKey": "companion.cosmetic.default_bg.title",
+      "descriptionKey": "companion.cosmetic.default_bg.description",
+      "slot": "background",
+      "unlocked": true
+    },
+    {
+      "key": "COSMETIC_MILESTONE_01",
+      "type": "COMPANION_POSE",
+      "styleTier": "COMMON",
+      "assetKey": "pose.wave",
+      "titleKey": "companion.cosmetic.cosmetic_milestone_01.title",
+      "descriptionKey": "companion.cosmetic.cosmetic_milestone_01.description",
+      "slot": "accessory",
+      "unlocked": true
+    },
+    {
+      "key": "COSMETIC_MILESTONE_02",
+      "type": "HOME_DECORATION",
+      "styleTier": "COMMON",
+      "assetKey": "decor.plant",
+      "titleKey": "companion.cosmetic.cosmetic_milestone_02.title",
+      "descriptionKey": "companion.cosmetic.cosmetic_milestone_02.description",
+      "slot": "decoration",
+      "unlocked": true
+    }
+  ],
+  "recentUnlocks": []
+}

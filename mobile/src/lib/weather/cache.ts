@@ -1,5 +1,6 @@
 import { metersBetween } from '@/lib/geoPlace';
 import { deletePreference, getPreference, setPreference } from '@/lib/storage';
+import { localAccountId } from '@/lib/localAccount';
 import { fetchOpenMeteoSnapshot } from './openMeteo.ts';
 import {
   WEATHER_CACHE_TTL_MS,
@@ -10,7 +11,8 @@ import {
 
 const CACHE_KEY = 'medicard.weather.cache.v2';
 
-let memory: WeatherCacheRecord | null = null;
+let memory: { owner: string; record: WeatherCacheRecord } | null = null;
+let generation = 0;
 
 export function locationChangedMeaningfully(
   a: { lat: number; lng: number },
@@ -22,37 +24,42 @@ export function locationChangedMeaningfully(
 
 export function isCacheFresh(record: WeatherCacheRecord | null, now = Date.now()): boolean {
   if (!record) return false;
-  return now - record.fetchedAt < WEATHER_CACHE_TTL_MS;
+  return Number.isFinite(record.fetchedAt) && now >= record.fetchedAt && now - record.fetchedAt < WEATHER_CACHE_TTL_MS;
 }
 
-export async function readWeatherCache(): Promise<WeatherCacheRecord | null> {
-  if (memory) return memory;
-  const raw = await getPreference(CACHE_KEY);
+export async function readWeatherCache(owner = localAccountId()): Promise<WeatherCacheRecord | null> {
+  if (!owner || owner !== localAccountId()) return null;
+  if (memory?.owner === owner) return memory.record;
+  const ticket = generation;
+  const raw = await getPreference(`${CACHE_KEY}.${owner}`);
+  if (owner !== localAccountId() || ticket !== generation) return null;
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as WeatherCacheRecord;
     if (!parsed?.snapshot || !Number.isFinite(parsed.latitude) || !Number.isFinite(parsed.longitude)) {
       return null;
     }
-    memory = parsed;
+    memory = { owner, record: parsed };
     return parsed;
   } catch {
     return null;
   }
 }
 
-export async function writeWeatherCache(record: WeatherCacheRecord): Promise<void> {
-  memory = record;
-  await setPreference(CACHE_KEY, JSON.stringify(record));
+export async function writeWeatherCache(record: WeatherCacheRecord, owner = localAccountId()): Promise<void> {
+  if (!owner || owner !== localAccountId()) return;
+  memory = { owner, record };
+  await setPreference(`${CACHE_KEY}.${owner}`, JSON.stringify(record));
 }
 
-export async function clearWeatherCache(): Promise<void> {
-  memory = null;
-  await deletePreference(CACHE_KEY);
+export async function clearWeatherCache(owner = localAccountId()): Promise<void> {
+  generation++;
+  if (memory?.owner === owner) memory = null;
+  if (owner) await deletePreference(`${CACHE_KEY}.${owner}`);
 }
 
 export function peekWeatherMemory(): WeatherCacheRecord | null {
-  return memory;
+  return memory?.owner === localAccountId() ? memory.record : null;
 }
 
 export async function loadWeatherSnapshot(input: {
@@ -63,7 +70,9 @@ export async function loadWeatherSnapshot(input: {
   now?: number;
 }): Promise<{ snapshot: WeatherSnapshot; fromCache: boolean; stale: boolean }> {
   const now = input.now ?? Date.now();
-  const cached = await readWeatherCache();
+  const owner = localAccountId(), ticket = generation;
+  const cached = await readWeatherCache(owner);
+  if (owner !== localAccountId() || ticket !== generation) throw new Error('weather_request_superseded');
   const samePlace =
     cached &&
     !locationChangedMeaningfully(
@@ -83,14 +92,16 @@ export async function loadWeatherSnapshot(input: {
 
   try {
     const snapshot = await fetchOpenMeteoSnapshot(input.latitude, input.longitude, input.city);
-    await writeWeatherCache({
+    if (owner !== localAccountId() || ticket !== generation) throw new Error('weather_request_superseded');
+    if (owner === localAccountId() && ticket === generation) await writeWeatherCache({
       latitude: input.latitude,
       longitude: input.longitude,
       snapshot,
       fetchedAt: now,
-    });
+    }, owner);
     return { snapshot, fromCache: false, stale: false };
   } catch {
+    if (owner !== localAccountId() || ticket !== generation) throw new Error('weather_request_superseded');
     if (samePlace && cached) {
       return {
         snapshot: {

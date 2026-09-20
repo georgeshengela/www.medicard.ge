@@ -1,3 +1,4 @@
+import { requireAiConsent } from '../lib/aiConsent.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
@@ -106,6 +107,7 @@ healthProfileRouter.put(
 
 healthProfileRouter.post(
   '/onboarding-analysis',
+  requireAiConsent,
   asyncHandler(async (req, res) => {
     const profile = await loadProfile(req.user.id);
     if (!profile) {

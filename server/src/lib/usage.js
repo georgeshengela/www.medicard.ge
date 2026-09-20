@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { prisma } from './prisma.js';
 import { getBillingPeriod } from './billing.js';
 import { getUserPackage, resolveConsumeLimit } from './packages.js';
+import { FREE_CONSUMER_RELEASE } from './consumerAccess.js';
 import {
   applyConsume,
   applyExpiration,
@@ -92,7 +93,7 @@ export async function getUsageSafe(userId) {
     return await getUsage(userId);
   } catch (error) {
     console.warn('[quota] getUsageSafe failed', error?.message);
-    return emptyUsage();
+    return FREE_CONSUMER_RELEASE ? unlimitedUsage() : emptyUsage();
   }
 }
 
@@ -161,6 +162,7 @@ export async function markQuotaNotified(userId) {
 async function loadLimit(userId) {
   const { user, package: pkg, expired } = (await getUserPackage(userId)) ?? {};
   if (!user) return { user: null, pkg: null, limit: 0 };
+  if (FREE_CONSUMER_RELEASE) return { user, pkg, limit: Number.POSITIVE_INFINITY };
   const effectivePkg = expired ? await prisma.package.findUnique({ where: { code: 'FREE' } }) : pkg;
   return { user, pkg: effectivePkg, limit: resolveConsumeLimit(effectivePkg) };
 }
@@ -250,17 +252,16 @@ async function ensureUsageRow(userId) {
 export async function reserveAiCredit(userId) {
   const ctx = await loadLimit(userId);
   if (!ctx.user) throw new Error('User not found');
-  if (!Number.isFinite(ctx.limit)) {
-    return { ok: true, reserved: false, unlimited: true, usage: unlimitedUsage(), reason: null };
-  }
+  const unlimited = !Number.isFinite(ctx.limit);
 
   if (!noteAiProviderStart(userId)) {
     const usage = await getUsage(userId);
-    return { ok: false, reserved: false, unlimited: false, usage, reason: 'RATE_LIMITED' };
+    return { ok: false, reserved: false, unlimited, usage, reason: 'RATE_LIMITED' };
   }
 
   const now = new Date();
-  await readWindow(userId, ctx.user, ctx.pkg, ctx.limit, now);
+  if (unlimited) await sweepStaleAiReservations(userId, now);
+  else await readWindow(userId, ctx.user, ctx.pkg, ctx.limit, now);
   await ensureUsageRow(userId);
 
   const rows = await prisma.$queryRaw`
@@ -269,20 +270,20 @@ export async function reserveAiCredit(userId) {
         "reservedAt" = ${now}
     WHERE "userId" = ${userId}
       AND "periodKey" = ${ROLLING_DAILY_KEY}
-      AND "count" + "reserved" < ${ctx.limit}
+      AND (${unlimited} OR "count" + "reserved" < ${unlimited ? 0 : ctx.limit})
       AND "reserved" < ${MAX_AI_IN_FLIGHT_PER_USER}
     RETURNING "count", "reserved", "resetAt", "notifyAt"
   `;
   const row = Array.isArray(rows) ? rows[0] : null;
   if (!row) {
     const usage = await getUsage(userId);
-    return { ok: false, reserved: false, unlimited: false, usage, reason: 'DAILY_LIMIT_REACHED' };
+    return { ok: false, reserved: false, unlimited, usage, reason: unlimited || !usage.exceeded ? 'AI_BUSY' : 'DAILY_LIMIT_REACHED' };
   }
   return {
     ok: true,
     reserved: true,
-    unlimited: false,
-    usage: shapeFromRow(row, ctx.limit, now),
+    unlimited,
+    usage: unlimited ? unlimitedUsage() : shapeFromRow(row, ctx.limit, now),
     reason: null,
   };
 }
@@ -290,7 +291,16 @@ export async function reserveAiCredit(userId) {
 export async function commitAiCredit(userId, db = prisma) {
   const ctx = await loadLimit(userId);
   if (!ctx.user) throw new Error('User not found');
-  if (!Number.isFinite(ctx.limit)) return unlimitedUsage();
+  if (!Number.isFinite(ctx.limit)) {
+    const released = await db.$executeRaw`
+      UPDATE "PeriodUsage"
+      SET "reserved" = GREATEST("reserved" - 1, 0),
+          "reservedAt" = CASE WHEN "reserved" <= 1 THEN NULL ELSE "reservedAt" END
+      WHERE "userId" = ${userId} AND "periodKey" = ${ROLLING_DAILY_KEY} AND "reserved" > 0
+    `;
+    if (!released) throw new Error('AI_CREDIT_COMMIT_WITHOUT_RESERVATION');
+    return unlimitedUsage();
+  }
   const now = new Date();
   const rows = await db.$queryRaw`
     UPDATE "PeriodUsage"
@@ -321,7 +331,7 @@ export async function commitAiCredit(userId, db = prisma) {
 
 export async function releaseAiCredit(userId) {
   const ctx = await loadLimit(userId);
-  if (!ctx.user || !Number.isFinite(ctx.limit)) return;
+  if (!ctx.user) return;
   await prisma.$executeRaw`
     UPDATE "PeriodUsage"
     SET "reserved" = GREATEST("reserved" - 1, 0),

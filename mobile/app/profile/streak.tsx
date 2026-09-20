@@ -58,12 +58,12 @@ export default function StreakScreen() {
           accessibilityLabel={ka.common.back}
           onPress={() => router.back()}
           hitSlop={10}
-          style={({ pressed }) => ({
+          style={({
             width: 44,
             height: 44,
             alignItems: 'flex-start',
             justifyContent: 'center',
-            opacity: pressed ? 0.55 : 1,
+            opacity: 1,
           })}
         >
           <ChevronLeft size={24} color={FIGMA.textPrimary} strokeWidth={2.2} />

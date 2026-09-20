@@ -2,22 +2,25 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { FlatList, Linking, Pressable, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Stethoscope } from 'lucide-react-native';
+import { ChevronLeft, Info, Stethoscope } from 'lucide-react-native';
 import { ChatBubbleAssistant, ChatBubbleUser } from '@/components/chat/ChatBubble';
 import { ChatEmptyHero, ChatSuggestionChip } from '@/components/chat/ChatExtras';
 import { ChatInputBar } from '@/components/chat/ChatInputBar';
 import { ChatScreenShell } from '@/components/chat/ChatScreenShell';
 import { PetPhoto } from '@/components/pets/PetPhoto';
 import { QuotaSheet } from '@/components/QuotaSheet';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { PetSheet } from '@/components/pets/PetScreen';
+import { PetButton as Button } from '@/components/pets/PetUi';
+import { PetPanel as Card } from '@/components/pets/PetUi';
+import { PetIntro, PetLoading, PetText } from '@/components/pets/PetUi';
+import { kindLabel } from '@/lib/petsCare';
+import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
+import { PetErrorText, PetSheet } from '@/components/pets/PetScreen';
 import { Markdown } from '@/components/ui/Markdown';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type Pet, type PetChatMessage, type PetCareDraft } from '@/lib/api';
 import { getPetVetChatProfile } from '@/lib/chatUiConfig';
-import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
+import { getScopedPreference, localAccountId, setScopedPreference } from '@/lib/localAccount';
 import { newPetsRequestId } from '@/lib/petsHealth';
 import { streamPetVetQuery } from '@/lib/petVetQueryStream';
 import { usePlanUsage } from '@/lib/planUsage';
@@ -30,7 +33,7 @@ function toUiMessage(row: PetChatMessage): PetChatMessage {
   return {
     ...row,
     timestamp: row.timestamp || row.createdAt || new Date().toISOString(),
-    streaming: row.status === 'PARTIAL' || row.status === 'PENDING',
+    streaming: false,
   };
 }
 
@@ -51,7 +54,7 @@ function DraftCard({ draft, petId }: { draft: PetCareDraft; petId: string }) {
     <Card>
       <Text className="text-base font-bold text-text-100">{ka.pets.vetDraftTitle}</Text>
       <Text className="mt-1 text-sm text-text-200">
-        {[draft.kind, draft.title, draft.dose, draft.doseUnit, draft.startOn].filter(Boolean).join(' · ') || '—'}
+        {[draft.kind ? kindLabel(draft.kind, ka.pets) : null, draft.title, draft.dose, draft.doseUnit, draft.startOn ? formatCycleDateKa(draft.startOn) : null].filter(Boolean).join(' · ') || '—'}
       </Text>
       {draft.incomplete ? <Text className="mt-1 text-sm text-state-warning">{ka.pets.vetDraftIncomplete}</Text> : null}
       <Text className="mt-1 text-sm text-text-300">{ka.pets.vetDraftNotSaved}</Text>
@@ -67,16 +70,22 @@ function DraftCard({ draft, petId }: { draft: PetCareDraft; petId: string }) {
 }
 
 export default function PetVetChatScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
+  return user && id ? <PetVetChat key={user.id + ':' + id} petId={id} owner={user.id} /> : <PetLoading />;
+}
+function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
   const FIGMA_CHAT = useFigmaChat();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ id: string }>();
-  const petId = typeof params.id === 'string' ? params.id : '';
   const { applyUsage } = useAuth();
   const plan = usePlanUsage();
   const listRef = useRef<FlatList<PetChatMessage>>(null);
+  const alive = useRef(true), sendLock = useRef(false);
+  const current = useCallback(() => alive.current && localAccountId() === owner, [owner]);
+  const [loaded, setLoaded] = useState(false), [reload, setReload] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   const [pet, setPet] = useState<Pet | null>(null);
@@ -87,6 +96,7 @@ export default function PetVetChatScreen() {
   const [error, setError] = useState<string | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
   const [disclosure, setDisclosure] = useState(false);
+  const [disclosureSeen, setDisclosureSeen] = useState(false);
 
   const titledProfile = useMemo(() => getPetVetChatProfile(pet?.name), [pet?.name]);
 
@@ -95,43 +105,28 @@ export default function PetVetChatScreen() {
   }, [navigation]);
 
   useEffect(() => {
-    if (!petId) return;
-    api.pets
-      .get(petId)
-      .then((res) => setPet(res.pet))
-      .catch(() => undefined);
-    void (async () => {
-      const seen = await getScopedPreference(DISCLOSURE_KEY);
-      if (seen !== '1') setDisclosure(true);
-    })();
-  }, [petId]);
-
-  useEffect(() => {
-    if (!petId) return;
+    alive.current = true;
     let cancelled = false;
+    const active = () => !cancelled && current();
+    setLoaded(false); setError(null);
     void (async () => {
       try {
-        const listed = await api.pets.chats.list(petId);
-        const existing = listed.sessions[0];
-        const session = existing || (await api.pets.chats.create(petId)).session;
-        if (cancelled) return;
-        setSessionId(session.id);
+        const seen = await getScopedPreference(DISCLOSURE_KEY);
+        if (!active()) return;
+        setDisclosureSeen(seen === '1');
+        if (seen !== '1') setDisclosure(true);
+        const [profile, listed] = await Promise.all([api.pets.get(petId), api.pets.chats.list(petId)]);
+        if (!active()) return;
+        setPet(profile.pet);
+        const session = listed.sessions[0] || (await api.pets.chats.create(petId)).session;
+        if (!active()) return;
         const loaded = await api.pets.chats.messages(petId, session.id);
-        if (cancelled) return;
-        setMessages((loaded.messages || []).map(toUiMessage));
-      } catch (err) {
-        if (cancelled) return;
-        if (err instanceof ApiError && (err.isChatSchemaUnavailable || err.isSchemaUnavailable)) {
-          setError(ka.pets.vetUnavailable);
-          return;
-        }
-        setError(err instanceof ApiError ? err.message : ka.common.error);
-      }
+        if (!active()) return;
+        setSessionId(session.id); setMessages((loaded.messages || []).map(toUiMessage)); setLoaded(true);
+      } catch (error) { if (active()) setError(error instanceof ApiError ? error.isChatSchemaUnavailable || error.isSchemaUnavailable ? ka.pets.vetUnavailable : error.message : ka.pets.vetFailed); }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [petId]);
+    return () => { cancelled = true; alive.current = false; abortRef.current?.abort(); };
+  }, [petId, current, reload]);
 
   const remainingLabel = useMemo(() => {
     if (plan.unlimited) return ka.usage.unlimitedBanner;
@@ -147,7 +142,8 @@ export default function PetVetChatScreen() {
   const send = useCallback(
     async (text: string) => {
       const message = text.trim();
-      if (message.length < 2 || sending || !petId) return;
+      if (message.length < 2 || sendLock.current || !loaded || disclosure || !petId || !current()) return;
+      sendLock.current = true;
       const userAt = new Date().toISOString();
       const requestId = newPetsRequestId();
       setDraft('');
@@ -166,7 +162,7 @@ export default function PetVetChatScreen() {
         flushTimer = null;
         const extra = pending.current;
         pending.current = '';
-        if (!extra) return;
+        if (!extra || !current()) return;
         setMessages((prev) => {
           const next = [...prev];
           const last = next[next.length - 1];
@@ -176,6 +172,7 @@ export default function PetVetChatScreen() {
         });
       };
       const onDelta = (chunk: string) => {
+        if (!current()) return;
         pending.current += chunk;
         if (!flushTimer) flushTimer = setTimeout(flushDeltas, 40);
       };
@@ -190,6 +187,7 @@ export default function PetVetChatScreen() {
         );
         if (flushTimer) clearTimeout(flushTimer);
         flushDeltas();
+        if (!current()) return;
         setSessionId(response.sessionId);
         if (response.usage) applyUsage?.(response.usage);
         setMessages((prev) => {
@@ -210,6 +208,7 @@ export default function PetVetChatScreen() {
         });
       } catch (err) {
         if (flushTimer) clearTimeout(flushTimer);
+        if (!current()) return;
         const apiErr = err instanceof ApiError ? err : null;
         if (apiErr?.status === 429) {
           setQuotaBlock(Number(apiErr.usage?.resetsInMs) || plan.usage?.resetsInMs);
@@ -230,16 +229,18 @@ export default function PetVetChatScreen() {
           return next;
         });
       } finally {
-        abortRef.current = null;
-        setSending(false);
+        if (flushTimer) clearTimeout(flushTimer);
+        abortRef.current = null; sendLock.current = false;
+        if (current()) setSending(false);
       }
     },
-    [applyUsage, petId, plan.usage?.resetsInMs, sending, sessionId, scrollToEnd],
+    [applyUsage, petId, plan.usage?.resetsInMs, loaded, disclosure, current, sessionId, scrollToEnd],
   );
 
   const confirmDisclosure = async () => {
-    await setScopedPreference(DISCLOSURE_KEY, '1');
-    setDisclosure(false);
+    if (!current()) return;
+    await setScopedPreference(DISCLOSURE_KEY, '1').catch(() => undefined);
+    if (current()) { setDisclosureSeen(true); setDisclosure(false); }
   };
 
   return (
@@ -260,7 +261,7 @@ export default function PetVetChatScreen() {
               gap: 12,
             }}
           >
-            <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel={ka.common.back} style={{ padding: 4 }}>
+            <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel={ka.common.back} accessibilityRole="button" style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}>
               <ChevronLeft size={24} color={FIGMA_CHAT.textPrimary} />
             </Pressable>
             <PetPhoto photoUrl={pet?.photoUrl || null} name={pet?.name || 'M'} size={40} />
@@ -272,6 +273,7 @@ export default function PetVetChatScreen() {
                 {pet?.name || titledProfile.subtitle}
               </Text>
             </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Medi Vet — როგორ მუშაობს" onPress={() => setDisclosure(true)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Info size={21} color={colors.primary100} /></Pressable>
             {remainingLabel ? (
               <Text style={{ fontSize: 12, color: FIGMA_CHAT.textSecondary }}>{remainingLabel}</Text>
             ) : null}
@@ -291,7 +293,7 @@ export default function PetVetChatScreen() {
               value={draft}
               onChangeText={setDraft}
               onSend={() => void send(draft)}
-              sending={sending}
+              sending={sending || !loaded || disclosure}
               placeholder={titledProfile.inputPlaceholder}
               showTools={false}
             />
@@ -310,10 +312,10 @@ export default function PetVetChatScreen() {
           ItemSeparatorComponent={() => <View style={{ height: FIGMA_CHAT.messageGap }} />}
           ListEmptyComponent={
             <View style={{ gap: FIGMA_CHAT.messageGap }}>
-              <ChatBubbleAssistant icon={Stethoscope} timestamp={new Date().toISOString()}>
-                <ChatEmptyHero title={titledProfile.emptyTitle} body={titledProfile.emptyBody} />
-              </ChatBubbleAssistant>
-              {titledProfile.suggestions.map((suggestion) => (
+<PetIntro icon={Stethoscope} eyebrow="MEDI VET · AI" title={pet?.name ? `${pet.name} — უკეთ გავიცნოთ.` : "მისთვისაც აქ ვართ."} body="მოვლა, შენახული ჩანაწერები და შეკითხვები შენს ცხოველზე. აღწერე, რისი გაგება გინდა." />
+              <Card><PetText bold>აქ საუბარი შენს ცხოველს ეხება</PetText><PetText size={13} muted>{ka.pets.vetDisclaimer}</PetText></Card>
+              {!loaded && !error ? <PetText muted>ისტორია იტვირთება…</PetText> : null}
+              {loaded && titledProfile.suggestions.map((suggestion) => (
                 <ChatSuggestionChip key={suggestion} label={suggestion} onPress={() => void send(suggestion)} />
               ))}
             </View>
@@ -355,7 +357,8 @@ export default function PetVetChatScreen() {
           }
           ListFooterComponent={
             <View style={{ gap: FIGMA_CHAT.messageGap, paddingTop: messages.length ? FIGMA_CHAT.messageGap : 0 }}>
-              {error ? <Text style={{ color: '#DC2626' }}>{error}</Text> : null}
+              {error ? <PetErrorText message={error} /> : null}
+              {!loaded && error ? <Button variant="secondary" label="ისტორიის ხელახლა ჩატვირთვა" onPress={() => setReload(value => value + 1)} /> : null}
               {messages.length > 0 ? (
                 <Text style={{ fontSize: 12, color: colors.text300 }}>{ka.pets.vetDisclaimer}</Text>
               ) : null}
@@ -374,7 +377,7 @@ export default function PetVetChatScreen() {
         }}
       />
 
-      <PetSheet visible={disclosure} title={ka.pets.vetDisclosureTitle} onClose={() => void confirmDisclosure()}>
+      <PetSheet visible={disclosure} title={ka.pets.vetDisclosureTitle} onClose={() => { setDisclosure(false); if (!disclosureSeen) router.back(); }}>
         <Text className="mb-4 text-base leading-6 text-text-200">{ka.pets.vetDisclosureBody}</Text>
         <Button label={ka.pets.vetDisclosureConfirm} onPress={() => void confirmDisclosure()} />
       </PetSheet>

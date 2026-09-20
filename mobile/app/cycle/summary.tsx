@@ -51,7 +51,7 @@ export default function CycleSummary() {
   const [reportLocale, setReportLocale] = useState<'ka' | 'en' | 'fr' | 'ru'>('ka');
   const copy = doctorSummaryCopy(reportLocale);
   const reportTitleFont = reportLocale === 'ka' ? 'NotoSansGeorgian_700Bold' : undefined;
-  const localeNames = {
+  const localeNames: Record<string, string> = {
     ka: copy.localeKa,
     en: copy.localeEn,
     fr: copy.localeFr,

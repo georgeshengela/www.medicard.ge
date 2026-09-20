@@ -5,12 +5,14 @@ import { getRealtimeIo } from './adminRealtime.js';
 import { userSocketRoom } from './socketAuth.js';
 import { markQuotaNotified, syncWindow, ensureQuotaNotifyColumn } from './usage.js';
 import { ROLLING_DAILY_KEY } from './usageWindow.js';
+import { FREE_CONSUMER_RELEASE } from './consumerAccess.js';
 
 const SWEEP_MS = 30_000;
 let timer = null;
 let running = false;
 
 export function startQuotaResetSweeper() {
+  if (FREE_CONSUMER_RELEASE) return;
   if (timer) return;
   void ensureQuotaNotifyColumn().then(() => sweepQuotaResets());
   timer = setInterval(() => {
@@ -25,6 +27,7 @@ export function stopQuotaResetSweeper() {
 }
 
 export async function sweepQuotaResets(now = new Date()) {
+  if (FREE_CONSUMER_RELEASE) return { scanned: 0, notified: 0 };
   if (running) return { scanned: 0, notified: 0 };
   running = true;
   try {
@@ -53,6 +56,7 @@ export async function sweepQuotaResets(now = new Date()) {
 }
 
 export async function processQuotaReset(userId, now = new Date()) {
+  if (FREE_CONSUMER_RELEASE) return false;
   const synced = await syncWindow(userId, now);
   if (!synced.notifyDue || synced.usage.unlimited) return false;
 

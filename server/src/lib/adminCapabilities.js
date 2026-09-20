@@ -14,13 +14,6 @@ export const REWARDS_CAPABILITIES = Object.freeze([
   'REWARDS_ANALYTICS_VIEW',
 ]);
 
-export const TBILISI_MOVES_CAPABILITIES = Object.freeze([
-  'TBILISI_MOVES_VIEW',
-  'TBILISI_MOVES_MANAGE',
-  'TBILISI_MOVES_REVIEW',
-  'TBILISI_MOVES_CORRECT',
-]);
-
 export const MEDIPULSI_CAPABILITIES = Object.freeze(['MEDIPULSI_VIEW','MEDIPULSI_MANAGE','MEDIPULSI_REVIEW']);
 
 export function normalizeCapabilities(raw) {

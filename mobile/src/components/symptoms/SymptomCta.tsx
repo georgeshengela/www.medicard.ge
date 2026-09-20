@@ -17,9 +17,12 @@ export function SymptomCta({ label, onPress, disabled, loading }: Props) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: !!inactive, busy: !!loading }}
+      disabled={!!inactive}
       onPress={inactive ? undefined : onPress}
       style={{
-        height: T.btnH,
+        minHeight: T.btnH,
+        paddingVertical: 12,
         borderRadius: T.btnRadius,
         backgroundColor: T.brand,
         flexDirection: 'row',
@@ -32,11 +35,11 @@ export function SymptomCta({ label, onPress, disabled, loading }: Props) {
       }}
     >
       {loading ? (
-        <ActivityIndicator color={T.white} />
+        <ActivityIndicator color={T.textOnBrand} />
       ) : (
         <>
-          <Text style={{ color: T.white, fontSize: 16, lineHeight: 22, fontWeight: '600' }}>{label}</Text>
-          <ArrowRight size={20} color={T.white} strokeWidth={2.2} />
+          <Text style={{ color: T.textOnBrand, fontSize: 16, lineHeight: 22, fontWeight: '600', flexShrink: 1, textAlign: 'center' }}>{label}</Text>
+          <ArrowRight size={20} color={T.textOnBrand} strokeWidth={2.2} />
         </>
       )}
     </Pressable>

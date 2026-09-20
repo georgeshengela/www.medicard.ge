@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { List } from 'lucide-react-native';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
@@ -41,6 +41,8 @@ export function SymptomBodyMap({
   onContinue,
 }: Props) {
   const T = useFigmaSymptoms();
+  const { height } = useWindowDimensions();
+  const compact = height < 740;
   const organs = useMemo(() => organsForView(gender, side), [gender, side]);
   const selectedOrgan = organs.find((o) => o.id === selectedOrganId) ?? null;
   const areaSymptoms = symptomsForSelection(mode, selectedPartId, selectedOrganId);
@@ -75,8 +77,8 @@ export function SymptomBodyMap({
             borderRadius: T.cardRadius,
             borderWidth: 1,
             borderColor: T.border,
-            padding: 16,
-            gap: 16,
+            padding: compact ? 10 : 16,
+            gap: compact ? 6 : 12,
             ...T.shadowCard,
           }}
         >
@@ -107,13 +109,13 @@ export function SymptomBodyMap({
           </View>
           <View style={{ height: 1, backgroundColor: T.border }} />
           <Text style={{ fontSize: 14, fontWeight: '600', color: T.textPrimary }}>{ka.symptoms.mySymptoms}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <ScrollView style={{ maxHeight: compact ? 48 : 96 }} nestedScrollEnabled contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {symptoms.length ? (
               symptoms.map((s) => <SymptomChip key={s} label={s} onRemove={() => onRemoveSymptom(s)} />)
             ) : (
               <Text style={{ fontSize: 13, color: T.textMuted }}>{ka.symptoms.emptySymptoms}</Text>
             )}
-          </View>
+          </ScrollView>
           {onContinue ? (
             <SymptomCta label={ka.common.continue} disabled={symptoms.length === 0} onPress={onContinue} />
           ) : null}

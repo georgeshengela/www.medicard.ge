@@ -24,6 +24,7 @@ export function emptyTtcQueryState(userId = null) {
  * Auth readiness must be known before any request. Mode comes from the loaded
  * Cycle profile — never from a guessed client flag.
  */
+/** @param {{authReady?: boolean, authenticated?: boolean, mode?: string | null, reachable?: boolean}} options */
 export function shouldFetchCycleTtc({
   authReady = false,
   authenticated = false,

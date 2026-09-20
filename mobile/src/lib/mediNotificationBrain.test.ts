@@ -109,7 +109,7 @@ describe('mediNotificationBrain', () => {
     const rows = evaluateEngageCandidates(snap());
     const re = rows.filter((row) => row.family === 'reengage');
     assert.ok(re.length >= 1);
-    assert.ok(re.every((row) => row.fireAt.getTime() > Date.now()));
+    assert.ok(re.every((row) => row.fireAt.getTime() > snap().now.getTime()));
   });
 
   it('blocks a second hydration by category cooldown even on ხშირად', () => {

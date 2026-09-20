@@ -31,7 +31,7 @@ const READ_TYPES = [
   'HKQuantityTypeIdentifierStepCount',
 ] as const;
 
-let kitMod = null;
+let kitMod: typeof import('@kingstinct/react-native-healthkit') | null = null;
 
 async function loadHealthKit() {
   if (!kitMod) kitMod = await import('@kingstinct/react-native-healthkit');

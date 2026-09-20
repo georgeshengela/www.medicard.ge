@@ -11,7 +11,7 @@ import {
 import { describePersonalStepsOrigin } from '@/lib/personalStepsOrigin.js';
 import { buildStepsBundle, sinceDateForPeriod } from '@/lib/stepsMetrics.shared';
 import { isHealthSyncEnabled, setHealthSyncEnabled, getHealthPlatform } from '@/lib/healthSync';
-import { tbilisiYmd } from '@/lib/tbilisiMoves/civilTime.js';
+import { tbilisiYmd } from '@/lib/tbilisiDate.js';
 import type { StepChartPeriod, StepSample, StepsMetricsBundle } from '@/types/stepsMetrics';
 
 function isExpoGo(): boolean {

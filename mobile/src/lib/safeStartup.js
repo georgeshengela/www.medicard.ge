@@ -28,6 +28,9 @@ export function schedulePostLoginWork(label, work) {
 /** Side effects that must not run in the same tick as session state updates (socket, push, sync). */
 export function runPostLoginSideEffects(user, healthProfile) {
   if (!user?.id) return;
+  schedulePostLoginWork('retired-preferences', () =>
+    import('@/lib/localAccount').then(({ wipeRetiredFeaturePreferences }) => wipeRetiredFeaturePreferences(user.id)),
+  );
   schedulePostLoginWork('cycle', () =>
     import('@/lib/cycleOffline').then(({ flushCycleQueue }) =>
       flushCycleQueue(user.id).catch(() => undefined),

@@ -24,6 +24,42 @@ test('mock GPS never gives the native player distance',async()=>{const h=harness
 test('completed cached session recovers instead of an infinite 409 retry',async()=>{const h=harness();await h.client.begin();h.client.dispose();h.server.session=null;const recovered=new PulseSessionClient(h.adapter);await recovered.init();assert.equal(recovered.getSnapshot().loading,false);await recovered.begin();assert.ok(recovered.getSnapshot().running);recovered.dispose();});
 test('disposed account cannot apply a late response to the current view',async()=>{const pending=defer(),h=harness(),client=new PulseSessionClient({...h.adapter,request:()=>pending.promise});const init=client.init();await Promise.resolve();client.dispose();pending.resolve(h.server);await init;assert.equal(client.getSnapshot().snapshot,null);});
 
+test('iOS fractional GPS timestamps satisfy the actual server batch contract',async()=>{
+ const {batchSchema}=await import('../../server/src/lib/medipulsi/schema.js');
+ const h=harness(),client=new PulseSessionClient({...h.adapter,id:()=>require('node:crypto').randomUUID(),request:async(url,method,body)=>{if(url.endsWith('/batches'))batchSchema.parse(body);return h.adapter.request(url,method,body);}});
+ await client.begin();fixes(client,[5.585,50.639],5,Date.now()-20000+.375);await client.flush();
+ const batch=h.requests.find(r=>r.url.endsWith('/batches')).body;assert(batch.fixes.every(f=>Number.isInteger(f.timestamp)));assert.equal(h.server.session.seq,1);client.dispose();
+});
+
+test('a rejected legacy fractional batch is repaired once without changing its identity or sequence',async()=>{
+ const {batchSchema}=await import('../../server/src/lib/medipulsi/schema.js');const h=harness(),id=require('node:crypto').randomUUID();
+ await h.client.begin();const sessionId=h.server.session.id;h.client.dispose();
+ const body={id,seq:1,fixes:[{position:[5.585,50.639],accuracy:5,timestamp:Date.now()-9000+.25,speed:1.25},{position:[5.58506,50.639],accuracy:5,timestamp:Date.now()-5000+.25,speed:1.25}]};
+ await h.adapter.write(JSON.stringify({v:1,queue:[{path:`/sessions/${sessionId}/batches`,body}],fixes:[],sessionId,seq:1,snapshot:h.server,journey:h.server.state.journey,book:h.server.state.book}));
+ const attempts=[];const recovered=new PulseSessionClient({...h.adapter,request:async(url,method,body)=>{if(url.endsWith('/batches')){attempts.push(structuredClone(body));const parsed=batchSchema.safeParse(body);if(!parsed.success)throw Object.assign(new Error('შევსებული მონაცემები არასწორია.'),{status:400,fields:parsed.error.issues});}return h.adapter.request(url,method,body);}});
+ await recovered.init();assert.equal(attempts.length,2);assert(attempts.every(b=>b.id===id&&b.seq===1));assert(attempts[1].fixes.every(f=>Number.isInteger(f.timestamp)));assert.equal(h.server.session.seq,1);assert.equal(recovered.getSnapshot().pending,0);assert.equal(h.server.session.phase,'PAUSED');recovered.dispose();
+});
+
+test('server history remains readable when an unrelated pending upload is rejected',async()=>{
+ const h=harness();await h.client.begin();const sessionId=h.server.session.id;h.client.dispose();h.server.history=[{id:'saved-walk',meters:11076,seconds:8860,steps:15384,startedAt:new Date().toISOString(),newMeters:0}];
+ await h.adapter.write(JSON.stringify({v:1,queue:[{path:`/sessions/${sessionId}/batches`,body:{id:'malformed-id',seq:1,fixes:[]}}],fixes:[],sessionId,seq:1}));
+ const client=new PulseSessionClient({...h.adapter,request:(url,method,body)=>url.endsWith('/batches')?Promise.reject(Object.assign(new Error('შევსებული მონაცემები არასწორია.'),{status:400})):h.adapter.request(url,method,body)});
+ await client.init();assert.equal(client.getSnapshot().snapshot.history[0].meters,11076);assert.equal(client.getSnapshot().loading,false);assert.equal(client.getSnapshot().pending,1);assert.equal(client.getSnapshot().running,false);assert.equal(h.server.session.phase,'ACTIVE');client.dispose();
+});
+
+test('unknown iOS accuracy is not treated as a precise fix and invalid coordinates are not uploaded',()=>{
+ const {normalizePulseFix}=load(root+'/lib/medipulsi/fixNormalization.ts');const sample={position:[5.585,50.639],timestamp:Date.now()+.75,accuracy:-1,speed:-1};
+ const normalized=normalizePulseFix(sample);assert.equal(normalized.accuracy,999);assert.equal(normalized.speed,null);assert(Number.isInteger(normalized.timestamp));assert.equal(normalizePulseFix({...sample,position:[NaN,50.639]}),null);assert.equal(normalizePulseFix({...sample,timestamp:Infinity}),null);
+});
+
+test('an uncertain upload retains its exact payload and cannot trigger format repair',async()=>{
+ const h=harness();await h.client.begin();const sessionId=h.server.session.id;h.client.dispose();
+ const body={id:require('node:crypto').randomUUID(),seq:1,fixes:[{position:[5.585,50.639],accuracy:5,timestamp:Date.now()+.125,speed:1}]};
+ await h.adapter.write(JSON.stringify({v:1,queue:[{path:`/sessions/${sessionId}/batches`,body}],fixes:[],sessionId,seq:1}));
+ const client=new PulseSessionClient({...h.adapter,request:(url,method,data)=>url.endsWith('/batches')?Promise.reject(new Error('response lost')):h.adapter.request(url,method,data)});
+ await client.init();assert.deepEqual(JSON.parse(h.stored).queue[0].body,body);assert.equal(h.archived.length,0);assert.equal(client.getSnapshot().pending,1);client.dispose();
+});
+
 function storeHarness(snapshotLoader=async()=>null){const h=harness();let callback,headingCallback,removed=0,requested=0,watchCalls=0,saved=null,subscriptionGate=null;const app={currentState:'active',addEventListener:()=>({remove(){}})};
  const location={Accuracy:{High:4,BestForNavigation:6},getForegroundPermissionsAsync:async()=>({granted:true}),getCurrentPositionAsync:async()=>({coords:{latitude:40.77,longitude:-73.97,accuracy:5}}),watchPositionAsync:async(_opts,fn)=>{watchCalls++;callback=fn;if(subscriptionGate)await subscriptionGate.promise;return {remove(){removed++;}};},watchHeadingAsync:async fn=>{headingCallback=fn;return {remove(){}};}};
  const geo=load(root+'/lib/run/geo.ts'),modules={react:{useSyncExternalStore:()=>{}},'react-native':{AppState:app},'expo-location':location,'@/lib/medipulsi/client':{getPulseClient:()=>h.client,resetPulseClient:()=>h.client.dispose()},'@/lib/run/activePersist':{clearActiveRun:async()=>{},saveActiveRun:async()=>{},loadActiveRun:snapshotLoader},'@/lib/run/history':{downsamplePath:p=>p,saveRunSummary:async s=>{saved=s;}},'@/lib/run/mapbox':{generateTargetPin:async()=>{throw new Error('Free walk must not request a city-specific route');}},'@/lib/userLocation':{requestLocationPermission:async()=>{requested++;return 'granted';}}};

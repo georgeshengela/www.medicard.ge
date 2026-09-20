@@ -1,3 +1,4 @@
+import { consentedAiFetch } from './consentedAiFetch.js';
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
@@ -18,6 +19,7 @@ const openrouter = env.OPENROUTER_API_KEY
   ? new OpenAI({
       apiKey: env.OPENROUTER_API_KEY,
       baseURL: env.OPENROUTER_BASE_URL,
+      fetch: consentedAiFetch('openrouter'),
       timeout: 120_000,
       maxRetries: 1,
       defaultHeaders: {
@@ -28,11 +30,11 @@ const openrouter = env.OPENROUTER_API_KEY
   : null;
 
 const anthropic = env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, timeout: 120_000, maxRetries: 1 })
+  ? new Anthropic({ fetch: consentedAiFetch('anthropic'), apiKey: env.ANTHROPIC_API_KEY, timeout: 120_000, maxRetries: 1 })
   : null;
 
 const openai = env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: env.OPENAI_API_KEY, timeout: 120_000, maxRetries: 1 })
+  ? new OpenAI({ fetch: consentedAiFetch('openai'), apiKey: env.OPENAI_API_KEY, timeout: 120_000, maxRetries: 1 })
   : null;
 
 export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];

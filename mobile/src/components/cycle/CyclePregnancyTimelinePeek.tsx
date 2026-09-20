@@ -40,7 +40,7 @@ export function CyclePregnancyCalendarRail({
       >
         <View
           style={{
-            width: pregnancyTimelineProgressWidth(fraction),
+            width: pregnancyTimelineProgressWidth(fraction) as `${number}%`,
             height: 6,
             borderRadius: 99,
             backgroundColor: c.rose,

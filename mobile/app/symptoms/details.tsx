@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar, ChevronDown, Pencil, Pill, Search, Stethoscope } from 'lucide-react-native';
 import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
@@ -26,6 +26,8 @@ export default function SymptomDetailsScreen() {
   const { medications } = useMedications();
   const firstName = user?.fullName?.split(' ')[0] ?? '';
   const [durationOpen, setDurationOpen] = useState(false);
+  const navigating = useRef(false);
+  useFocusEffect(useCallback(() => { navigating.current = false; }, []));
   const durationLabel = DURATION_OPTIONS.find((d) => d.id === state.durationId)?.labelKa;
 
   const medSummary =
@@ -103,6 +105,7 @@ export default function SymptomDetailsScreen() {
             <Stethoscope size={20} color={T.textSecondary} strokeWidth={1.8} />
             <TextInput
               value={state.pastConditions}
+              maxLength={800}
               onChangeText={(pastConditions) => updateSymptomChecker({ pastConditions })}
               placeholder={ka.symptoms.pastConditionsPlaceholder}
               placeholderTextColor={T.textMuted}
@@ -176,7 +179,7 @@ export default function SymptomDetailsScreen() {
             }}
           >
             <Text style={{ flex: 1, fontSize: 14, lineHeight: 20, fontWeight: '600', color: T.textPrimary }}>
-              {ka.symptoms.sendToMedi}
+              ჩემი ჯანმრთელობის პროფილის გათვალისწინება
             </Text>
             <Switch
               value={state.shareToNightingale}
@@ -198,6 +201,7 @@ export default function SymptomDetailsScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() => {
+            if (navigating.current) return;
             if (state.symptoms.length === 0) {
               router.push('/symptoms/search' as never);
               return;
@@ -205,6 +209,7 @@ export default function SymptomDetailsScreen() {
             if (!state.primarySymptom) {
               updateSymptomChecker({ primarySymptom: state.symptoms[0] });
             }
+            navigating.current = true;
             router.push('/symptoms/analyzing' as never);
           }}
           style={{
@@ -218,8 +223,8 @@ export default function SymptomDetailsScreen() {
             ...T.shadowXs,
           }}
         >
-          <Text style={{ color: T.white, fontSize: 16, lineHeight: 22, fontWeight: '600' }}>{ka.symptoms.analyzeSymptom}</Text>
-          <Search size={20} color={T.white} strokeWidth={2.2} />
+          <Text style={{ color: T.textOnBrand, fontSize: 16, lineHeight: 22, fontWeight: '600' }}>{ka.symptoms.analyzeSymptom}</Text>
+          <Search size={20} color={T.textOnBrand} strokeWidth={2.2} />
         </Pressable>
       </SymptomFooter>
       </KeyboardAvoidingView>

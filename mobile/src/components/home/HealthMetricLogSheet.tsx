@@ -177,7 +177,7 @@ export function HealthMetricLogSheet({ visible, onClose, onSaved, initialKey }: 
                         key={opt.key}
                         accessibilityRole="button"
                         onPress={() => setSelected(opt)}
-                        style={({ pressed }) => ({
+                        style={({
                           flexDirection: 'row',
                           alignItems: 'center',
                           gap: 12,
@@ -187,7 +187,7 @@ export function HealthMetricLogSheet({ visible, onClose, onSaved, initialKey }: 
                           backgroundColor: FIGMA_HEALTH_METRICS.cardBg,
                           borderWidth: 1,
                           borderColor: FIGMA_HEALTH_METRICS.border,
-                          opacity: pressed ? 0.9 : 1,
+                          opacity: 1,
                         })}
                       >
                         <View
@@ -322,12 +322,12 @@ export function HealthMetricLogSheet({ visible, onClose, onSaved, initialKey }: 
                 accessibilityRole="button"
                 disabled={!canSave || saving}
                 onPress={() => void save()}
-                style={({ pressed }) => ({
+                style={({
                   backgroundColor: FIGMA_HEALTH_METRICS.brand,
                   borderRadius: 16,
                   paddingVertical: 16,
                   alignItems: 'center',
-                  opacity: !canSave || saving || pressed ? 0.85 : 1,
+                  opacity: !canSave || saving ? 0.85 : 1,
                 })}
               >
                 {saving ? (

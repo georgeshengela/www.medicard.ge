@@ -15,6 +15,11 @@ const pingSchema = z.object({
   prompted: z.boolean().optional(),
   source: z.enum(['grant', 'skip', 'heartbeat', 'watch', 'revoke']).optional(),
   timeZone: z.string().min(1).max(80).optional(),
+  place: z.object({
+    countryCode: z.string().regex(/^[A-Z]{2}$/).nullable(),
+    countryKa: z.string().trim().min(1).max(120).nullable(),
+    cityKa: z.string().trim().min(1).max(160).nullable(),
+  }).optional(),
 });
 
 locationRouter.get(

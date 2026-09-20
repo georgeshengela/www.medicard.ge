@@ -9,6 +9,8 @@ import { api } from '@/lib/api';
 import Constants from 'expo-constants';
 import { useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { useThemeColors, type Palette } from '@/theme/colors';
+import { FREE_CONSUMER_RELEASE } from '@/lib/consumerAccess';
+import { FreeAccessCard } from '@/components/FreeAccess';
 
 function ProgressBar({
   progress,
@@ -69,7 +71,7 @@ function PlanPill({ code, colors }: { code: PlanCode; colors: Palette }) {
 export function UsageBanner({ compact = false }: { compact?: boolean }) {
   const colors = useThemeColors();
   const data = usePlanUsage();
-  if (!data.usage) return null;
+  if (FREE_CONSUMER_RELEASE || !data.usage) return null;
 
   const { code, unlimited, remaining, limit, exhausted, progress } = data;
   const tone = exhausted ? 'warning' : unlimited ? 'success' : 'default';
@@ -114,6 +116,9 @@ export function UsageBanner({ compact = false }: { compact?: boolean }) {
 
 /** Full plan card for profile. */
 export function PlanDetailCard() {
+  return FREE_CONSUMER_RELEASE ? <FreeAccessCard /> : <MeteredPlanDetailCard />;
+}
+function MeteredPlanDetailCard() {
   const colors = useThemeColors();
   const auth = useFigmaAuth();
   const data = usePlanUsage();

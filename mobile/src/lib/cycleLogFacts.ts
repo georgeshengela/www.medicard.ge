@@ -65,7 +65,7 @@ export function cycleLogFactBits(log?: CycleLog | null): string[] {
   if (log.sexualActivity) bits.push(ka.cycle.loggedSex);
   if (log.libido != null) bits.push(`${ka.cycle.libido} ${log.libido}`);
   if (log.sleepQuality) bits.push(`${ka.cycle.sleep}: ${sleepLabel(log.sleepQuality)}`);
-  if (log.stressLevel) bits.push(`${ka.cycle.stress}: ${stressLabel(log.stressLevel)}`);
+  if (log.stressLevel) bits.push(`${ka.cycle.stress}: ${stressLabel(log.stressLevel || '')}`);
   if (log.exerciseLevel) bits.push(`${ka.cycle.exercise}: ${exerciseLabel(log.exerciseLevel)}`);
   if (log.caffeine) bits.push(caffeineLabel(log.caffeine));
   if (log.alcohol) bits.push(alcoholLabel(log.alcohol));
@@ -111,7 +111,7 @@ export function cycleLogFactGroups(
   const energy = log.energy ?? log.observations?.energy;
   if (energy) buckets.energy.push(`${ka.cycle.energy}: ${energyLabel(energy)}`);
   if (log.sleepQuality) buckets.energy.push(`${ka.cycle.sleep}: ${sleepLabel(log.sleepQuality)}`);
-  if (log.stressLevel) buckets.mood.push(`${ka.cycle.stress}: ${stressLabel(log.stressLevel)}`);
+  if (log.stressLevel) buckets.mood.push(`${ka.cycle.stress}: ${stressLabel(log.stressLevel || '')}`);
   if (isTestResult(log.ovulationTest)) {
     buckets.fertility.push(ka.cycle.loggedOpk(ka.cycle.testResult[log.ovulationTest]));
   }
@@ -188,8 +188,8 @@ export function cycleLogFactGroups(
     buckets.physical.push(...buckets.digestion.splice(0, buckets.digestion.length));
     buckets.physical.push(...buckets.skin.splice(0, buckets.skin.length));
     if (log.stressLevel) {
-      buckets.mood = buckets.mood.filter((bit) => bit !== `${ka.cycle.stress}: ${stressLabel(log.stressLevel)}`);
-      buckets.energy.push(`${ka.cycle.stress}: ${stressLabel(log.stressLevel)}`);
+      buckets.mood = buckets.mood.filter((bit) => bit !== `${ka.cycle.stress}: ${stressLabel(log.stressLevel || '')}`);
+      buckets.energy.push(`${ka.cycle.stress}: ${stressLabel(log.stressLevel || '')}`);
     }
   }
 

@@ -3,6 +3,7 @@ import { getAppSettings, publicAppSettings } from '../lib/settings.js';
 import { isAppVersionBelow } from '../lib/appVersion.js';
 import { mapboxPublicToken } from '../lib/adminUserGeo.js';
 import { publicPackage } from '../lib/packages.js';
+import { FREE_CONSUMER_RELEASE, freeConsumerPackage } from '../lib/consumerAccess.js';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/error.js';
 
@@ -16,14 +17,15 @@ appRouter.get(
     const clientVersion = String(req.query.version ?? '0.0.0');
     const needsUpdate = isAppVersionBelow(clientVersion, settings.minAppVersion) === true;
 
-    const packages = await prisma.package.findMany({
+    const packages = FREE_CONSUMER_RELEASE ? [] : await prisma.package.findMany({
       where: { active: true },
       orderBy: { sortOrder: 'asc' },
     });
 
     res.json({
       settings: publicAppSettings(settings),
-      packages: packages.map(publicPackage),
+      packages: FREE_CONSUMER_RELEASE ? [freeConsumerPackage()] : packages.map(publicPackage),
+      accessMode: FREE_CONSUMER_RELEASE ? 'free' : 'paid',
       mapboxToken: mapboxPublicToken(),
       client: {
         version: clientVersion,

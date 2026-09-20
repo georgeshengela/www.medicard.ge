@@ -11,7 +11,7 @@ function emit() {
 
 export function subscribeDeviceAccessGate(fn) {
   listeners.add(fn);
-  return () => listeners.delete(fn);
+  return () => { listeners.delete(fn); };
 }
 
 export function isDeviceAccessGateFinished() {

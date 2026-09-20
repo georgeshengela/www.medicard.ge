@@ -7,6 +7,6 @@ export type RunMapMessage =
  | {type:'mission';center:[number,number]|null;radius?:number}
  | {type:'gift';position:[number,number]|null}
  | {type:'options';rotate:boolean;threeD:boolean}
- | {type:'fit';bottom?:number}|{type:'follow'}|{type:'reached'}|{type:'theme';dark:boolean};
+ | {type:'fit';bottom?:number;top?:number;paintOnly?:boolean}|{type:'follow'}|{type:'reached'}|{type:'theme';dark:boolean};
 export type RunMapHandle={send:(message:RunMapMessage)=>void};
 export type RunMapProps={center:LatLng;onReady?:()=>void;onFollowChange?:(following:boolean)=>void;onError?:(message:string)=>void;style?:object;mapDark?:boolean};

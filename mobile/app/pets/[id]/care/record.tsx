@@ -1,15 +1,15 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, Clock, Package, Pencil, Pill } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
-import { DateField } from '@/components/ui/DateField';
-import { Input } from '@/components/ui/Input';
+import { PetButton as Button } from '@/components/pets/PetUi';
+import { PetDateField as DateField } from '@/components/pets/PetDateField';
+import { PetInput as Input } from '@/components/pets/PetUi';
 import { CareIntentChips, CareKindChips, CareProductPicker, RouteChips } from '@/components/pets/PetCareChips';
 import { PetErrorText, PetFormScroll } from '@/components/pets/PetScreen';
 import { ka } from '@/i18n/ka';
 import { api, type PetCareKind, type PetCareRoute, type PetProduct } from '@/lib/api';
 import { isoToDigits, parseCivilDate } from '@/lib/birthdate';
-import { localUtcOffsetMinutes, newPetsRequestId, petsCareErrorMessage } from '@/lib/petsCare';
+import { kindLabel, localUtcOffsetMinutes, newPetsRequestId, petsCareErrorMessage } from '@/lib/petsCare';
 import { todayIsoLocal } from '@/lib/visitReminders';
 
 function digitsToIso(digits: string): string | null {
@@ -33,6 +33,7 @@ export default function PetCareRecordScreen() {
   const [doseUnit, setDoseUnit] = useState('');
   const [route, setRoute] = useState<PetCareRoute | null>(null);
   const [notes, setNotes] = useState('');
+  const saveLock = useRef(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,7 +65,8 @@ export default function PetCareRecordScreen() {
   };
 
   const save = async () => {
-    if (!id || !kind || saving) return;
+    if (!id || saveLock.current) return;
+    if (!kind) { setError('აირჩიე მოვლის ტიპი.'); return; }
     if (mode === 'plan') {
       goPlan();
       return;
@@ -73,12 +75,14 @@ export default function PetCareRecordScreen() {
       setError(ka.pets.administeredOn);
       return;
     }
+    if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time.trim())) { setError('საათი ჩაწერე ფორმატით სს:წწ, მაგალითად 09:00.'); return; }
+    saveLock.current = true;
     setSaving(true);
     setError(null);
     try {
       await api.pets.events.create(id, {
         kind,
-        title: title.trim() || selected?.name || kind,
+        title: title.trim() || selected?.name || kindLabel(kind, ka.pets),
         productId,
         administeredOn: iso,
         administeredTime: time.trim() || null,
@@ -93,6 +97,7 @@ export default function PetCareRecordScreen() {
     } catch (caught) {
       setError(petsCareErrorMessage(caught, { ...ka.pets, offline: ka.common.networkError }));
     } finally {
+      saveLock.current = false;
       setSaving(false);
     }
   };
@@ -106,7 +111,7 @@ export default function PetCareRecordScreen() {
             icon={Check}
             label={mode === 'plan' ? ka.pets.planCare : saving ? ka.pets.saving : ka.pets.save}
             loading={saving}
-            disabled={!kind || saving}
+            disabled={saving}
             onPress={() => void save()}
           />
           {mode === 'given' && kind ? (

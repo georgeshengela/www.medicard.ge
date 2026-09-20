@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,11 +35,19 @@ type GateStep = 'notifications' | 'health';
  */
 export function PermissionGateHost() {
   const { user } = useAuth();
+  return <PermissionGateForAccount key={user?.id || 'signed-out'} />;
+}
+
+function PermissionGateForAccount() {
+  const { user } = useAuth();
   const segments = useSegments();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<GateStep | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const busyRef = useRef(false), alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
   const onAuth = segments[0] === '(auth)';
   const readyForGate = Boolean(user && !onAuth && !isQuestVisualSession());
@@ -51,12 +59,14 @@ export function PermissionGateHost() {
   }, [user]);
 
   const finish = useCallback(() => {
+    if (!alive.current) return;
     setStep(null);
     markDeviceAccessGateFinished();
   }, []);
 
   const advanceFromNotifications = useCallback(async () => {
     const needs = await inspectDeviceAccessNeeds();
+    if (!alive.current) return;
     if (needs.health) {
       setStep('health');
       setDeviceAccessGateBlocking(true);
@@ -105,47 +115,56 @@ export function PermissionGateHost() {
   }, [step]);
 
   const enableNotifications = () => {
+    if (busyRef.current) return;
+    busyRef.current = true; setBusy(true); setError(null);
     void (async () => {
-      const granted = await requestNotificationPermission();
-      setBusy(true);
       try {
+        const granted = await requestNotificationPermission();
+        if (!alive.current) return;
         if (granted) {
           await setPushOptedIn(true);
+          if (!alive.current) return;
           await registerPushTokenWithServer({ skipPermissionProbe: true }).catch(() => undefined);
           await advanceFromNotifications();
-        }
+        } else setError('ნებართვა არ ჩაირთო. შეგიძლია მოგვიანებით გაააქტიურო ტელეფონის პარამეტრებიდან.');
+      } catch {
+        if (alive.current) setError('ნებართვა ვერ ჩაირთო. სცადე ხელახლა ან გააგრძელე მოგვიანებით.');
       } finally {
-        setBusy(false);
+        busyRef.current = false;
+        if (alive.current) setBusy(false);
       }
     })();
   };
 
   const enableHealth = () => {
+    if (busyRef.current) return;
+    busyRef.current = true; setBusy(true); setError(null);
     void (async () => {
-      const result = await connectHealthApp();
-      setBusy(true);
       try {
+        const result = await connectHealthApp();
+        if (!alive.current) return;
         if (result.ok) {
           if (user?.id) {
             void import('@/lib/stepsMetrics').then(({ fetchStepsMetrics }) =>
               fetchStepsMetrics('1d', { force: true }).catch(() => undefined),
             );
-            void import('@/lib/tbilisiMoves/sync').then(({ runCompetitionSync }) =>
-              runCompetitionSync({ userId: user.id, reason: 'refresh', force: true }),
-            );
           }
           finish();
-        }
+        } else setError('ჯანმრთელობის მონაცემებზე წვდომა ვერ ჩაირთო. შეგიძლია მოგვიანებით დაუბრუნდე.');
+      } catch {
+        if (alive.current) setError('დაკავშირება ვერ მოხერხდა. სცადე ხელახლა ან გააგრძელე მოგვიანებით.');
       } finally {
-        setBusy(false);
+        busyRef.current = false;
+        if (alive.current) setBusy(false);
       }
     })();
   };
 
   const skip = () => {
-    if (busy) return;
+    if (busyRef.current) return;
     if (step === 'notifications') {
-      void advanceFromNotifications();
+      busyRef.current = true; setBusy(true); setError(null);
+      void advanceFromNotifications().catch(finish).finally(() => { busyRef.current = false; if (alive.current) setBusy(false); });
       return;
     }
     finish();
@@ -234,6 +253,7 @@ export function PermissionGateHost() {
             </Text>
           </View>
 
+          {error ? <Text accessibilityRole="alert" style={{ color: colors.text200, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 22 }}>{error}</Text> : null}
           <ProfileSetupPrimaryButton
             label={ka.permissions.gateEnable}
             onPress={isNotifications ? enableNotifications : enableHealth}

@@ -8,6 +8,8 @@ generator client {
 }
 
 model User {
+  aiConsent UserAiConsent?
+  aiConsentEvents AiConsentEvent[]
   medipulsiPlayer       MedipulsiPlayer?
   medipulsiSessions     MedipulsiSession[]
   medipulsiClaims       MedipulsiClaim[]
@@ -94,12 +96,6 @@ model User {
   /// Phase 6 — Medi Vet (isolated from human ChatSession)
   petChatSessions      PetChatSession[]
   petChatMessages       PetChatMessage[]
-  /// Phase 2 — თბილისი მოძრაობს (competition, not HealthMetricDaily)
-  tbilisiMovesMembership TbilisiMovesMembership?
-  tbilisiMovesPeriods    TbilisiMovesMembershipPeriod[]
-  tbilisiMovesCredits    TbilisiMovesCredit[]
-  tbilisiMovesObservations TbilisiMovesObservation[]
-  tbilisiMovesAwards     TbilisiMovesAward[]
 
   @@index([status])
   @@index([packageId])
@@ -1850,267 +1846,6 @@ model PetChatMessage {
   @@index([userId, petId, status])
 }
 
-/// თბილისი მოძრაობს Phase 2 — singleton scoring + operational controls. Not AppSettings.
-model TbilisiMovesConfig {
-  id                     String   @id @default("default")
-  featureEnabled         Boolean  @default(false)
-  enrollmentOpen         Boolean  @default(false)
-  /// Immediate operational pause. Not a scoring snapshot.
-  ingestionPaused        Boolean  @default(false)
-  competitionPaused      Boolean  @default(false)
-  /// Cosmetic reward policy. Snapshotted onto each round at open. Issuance is Phase 4.
-  rewardsEnabled         Boolean  @default(true)
-  leaderRecognitionEnabled Boolean @default(true)
-  /// Dense ranks 1..N in each district. Ties at a rewarded rank all qualify.
-  leaderRewardedRanks    Int      @default(3)
-  districtGoalBadgeEnabled Boolean @default(true)
-  /// Always true for this ingestion. Admin cannot flip this into “verified”.
-  pilotMode              Boolean  @default(true)
-  defaultDailyTarget     Int      @default(100000)
-  competitiveCap         Int      @default(10000)
-  cooldownDays           Int      @default(30)
-  minParticipantsForRank Int      @default(5)
-  lateSyncGraceHours     Int      @default(8)
-  sanityMaxRawSteps      Int      @default(80000)
-  correctionDropFlagPct  Int      @default(40)
-  geometryAssetVersion   String?
-  revision               Int      @default(1)
-  updatedAt              DateTime @updatedAt
-}
-
-/// Ten Tbilisi raioni. Never hard-delete once credits/periods exist.
-model TbilisiMovesDistrict {
-  id                  String   @id @default(uuid())
-  slug                String   @unique
-  nameKa              String
-  sortOrder           Int
-  /// ACTIVE | ARCHIVED
-  status              String   @default("ACTIVE")
-  dailyTargetOverride Int?
-  geometryVersion     String?
-  revision            Int      @default(1)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  memberships         TbilisiMovesMembership[]
-  pendingMemberships  TbilisiMovesMembership[] @relation("TbilisiMovesPendingDistrict")
-  periods             TbilisiMovesMembershipPeriod[]
-  credits             TbilisiMovesCredit[]
-  districtDays        TbilisiMovesDistrictDay[]
-  awards              TbilisiMovesAward[]
-
-  @@index([status, sortOrder])
-}
-
-/// Current membership + at most one pending midnight switch.
-model TbilisiMovesMembership {
-  userId               String    @id
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// ACTIVE | LEFT
-  status               String    @default("ACTIVE")
-  optedInAt            DateTime
-  publicBoardConsentAt DateTime
-  districtId           String
-  district             TbilisiMovesDistrict @relation(fields: [districtId], references: [id])
-  publicHandle         String
-  publicAvatarId       String?
-  enrolledAt           DateTime
-  /// First Tbilisi date a new change may be requested.
-  lockUntilDate        String
-  pendingDistrictId    String?
-  pendingDistrict      TbilisiMovesDistrict? @relation("TbilisiMovesPendingDistrict", fields: [pendingDistrictId], references: [id])
-  pendingEffectiveDate String?
-  pendingRequestedAt   DateTime?
-  leftAt               DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-
-  @@index([districtId, status])
-  @@index([pendingEffectiveDate])
-}
-
-/// Inclusive startDate, exclusive endDate (null = current). Historical credits never move.
-model TbilisiMovesMembershipPeriod {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  districtId String
-  district   TbilisiMovesDistrict @relation(fields: [districtId], references: [id])
-  startDate  String
-  endDate    String?
-  createdAt  DateTime @default(now())
-
-  @@index([userId, startDate])
-  @@index([districtId, startDate])
-}
-
-/// One Tbilisi civil day. Snapshots freeze scoring + reward rules.
-model TbilisiMovesRound {
-  id                      String   @id @default(uuid())
-  date                    String   @unique
-  /// PROVISIONAL | FINALIZED
-  status                  String   @default("PROVISIONAL")
-  rulesSnapshot           Json
-  districtTargetsSnapshot Json
-  openedAt                DateTime
-  graceEndsAt             DateTime
-  lastObservationAt       DateTime?
-  lastAggregatedAt        DateTime?
-  finalizedAt             DateTime?
-  /// 0 = no published result yet.
-  resultRevision          Int      @default(0)
-  latestResultId          String?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  credits                 TbilisiMovesCredit[]
-  observations            TbilisiMovesObservation[]
-  districtDays            TbilisiMovesDistrictDay[]
-  results                 TbilisiMovesResultRevision[]
-  awards                  TbilisiMovesAward[]
-}
-
-model TbilisiMovesDistrictDay {
-  id               String   @id @default(uuid())
-  roundId          String
-  round            TbilisiMovesRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  districtId       String
-  district         TbilisiMovesDistrict @relation(fields: [districtId], references: [id])
-  target           Int
-  eligibleStepsSum Int      @default(0)
-  contributorCount Int      @default(0)
-  enrolledCount    Int      @default(0)
-  updatedAt        DateTime @updatedAt
-
-  @@unique([roundId, districtId])
-  @@index([roundId])
-}
-
-/// Competition ledger. Unique user/day. Never written by /api/health-metrics.
-model TbilisiMovesCredit {
-  id                     String    @id @default(uuid())
-  userId                 String
-  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date                   String
-  roundId                String
-  round                  TbilisiMovesRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  districtId             String
-  district               TbilisiMovesDistrict @relation(fields: [districtId], references: [id])
-  rawObservedSteps       Int
-  eligibleSteps          Int
-  capSnapshot            Int
-  authoritativeProvider  String
-  sourceInstallationId   String
-  lastRecordedAt         DateTime
-  lastClientSequence     Int       @default(0)
-  lastObservationId      String
-  publicHandleSnapshot   String
-  publicAvatarIdSnapshot String?
-  excludedAt             DateTime?
-  excludedReason         String?
-  flaggedAt              DateTime?
-  flagReason             String?
-  correctionCount        Int       @default(0)
-  acceptedAt             DateTime
-  updatedAt              DateTime  @updatedAt
-
-  @@unique([userId, date])
-  @@index([date, districtId, eligibleSteps])
-  @@index([date, eligibleSteps])
-}
-
-/// Append-only observation log. Unique clientObservationId per user.
-model TbilisiMovesObservation {
-  id                   String   @id @default(uuid())
-  userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clientObservationId  String
-  roundId              String
-  round                TbilisiMovesRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  date                 String
-  provider             String
-  sourceInstallationId String
-  intervalStart        DateTime
-  intervalEnd          DateTime
-  cumulativeSteps      Int
-  recordedAt           DateTime
-  clientSequence       Int      @default(0)
-  payloadHash          String
-  receivedAt           DateTime
-  applied              Boolean  @default(true)
-  ignoreReason         String?
-
-  @@unique([userId, clientObservationId])
-  @@index([userId, date, receivedAt])
-  @@index([roundId, receivedAt])
-}
-
-/// Immediate ingest pause windows. Full-day cumulatives that overlap a hold are rejected.
-model TbilisiMovesIngestHold {
-  id        String    @id @default(uuid())
-  startedAt DateTime
-  endedAt   DateTime?
-  createdAt DateTime  @default(now())
-
-  @@index([startedAt, endedAt])
-}
-
-/// Immutable published result. Correction inserts a new revision; previous rows stay.
-model TbilisiMovesResultRevision {
-  id              String   @id @default(uuid())
-  roundId         String
-  round           TbilisiMovesRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  date            String
-  revision        Int
-  /// INITIAL | CORRECTION
-  kind            String
-  previewHash     String
-  rulesSnapshot   Json
-  districtResults Json
-  peopleResults   Json
-  awardPlan       Json
-  eligibleCreditCount Int  @default(0)
-  awardCount      Int      @default(0)
-  reason          String?
-  createdByAdminId String?
-  publishedAt     DateTime
-  createdAt       DateTime @default(now())
-
-  @@unique([roundId, revision])
-  @@index([date, revision])
-  @@index([previewHash])
-}
-
-/// Cosmetic entitlement only. Not coins, cash, or redeemable currency.
-model TbilisiMovesAward {
-  id                     String    @id @default(uuid())
-  userId                 String
-  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date                   String
-  roundId                String
-  round                  TbilisiMovesRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  districtId             String
-  district               TbilisiMovesDistrict @relation(fields: [districtId], references: [id])
-  /// DISTRICT_LEADER | DISTRICT_GOAL
-  awardKey               String
-  rank                   Int?
-  resultRevision         Int
-  /// ACTIVE | REVOKED
-  status                 String    @default("ACTIVE")
-  titleKa                String
-  reasonKa               String
-  publicHandleSnapshot   String
-  publicAvatarIdSnapshot String?
-  entitledAt             DateTime
-  revokedAt              DateTime?
-  revokedReason          String?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-
-  @@unique([userId, date, awardKey, districtId])
-  @@index([userId, date])
-  @@index([date, awardKey, status])
-  @@index([roundId, status])
-}
-
 model MedipulsiPlayer {
   userId String @id
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -2223,4 +1958,22 @@ model MedipulsiAudit {
   details Json @default("{}")
   createdAt DateTime @default(now())
   @@index([createdAt])
+}
+
+
+model UserAiConsent {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  version String
+  decision String
+  updatedAt DateTime @default(now())
+}
+model AiConsentEvent {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  version String
+  decision String
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
 }

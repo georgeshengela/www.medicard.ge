@@ -4,6 +4,7 @@ import { PawPrint } from 'lucide-react-native';
 import { API_BASE_URL } from '@/lib/api';
 import { privateFileImageSource } from '@/lib/privateFile';
 import { getToken } from '@/lib/storage';
+import { localAccountId } from '@/lib/localAccount';
 import { useThemeColors } from '@/theme/colors';
 
 export function PetPhoto({
@@ -18,24 +19,28 @@ export function PetPhoto({
   const colors = useThemeColors();
   const [source, setSource] = useState<{ uri: string; headers: { Authorization: string } } | null>(null);
   const [failed, setFailed] = useState(false);
+  const owner = localAccountId();
+  const [loadedKey, setLoadedKey] = useState('');
+  const sourceKey = `${owner}:${photoUrl}`;
 
   useEffect(() => {
     let cancelled = false;
     setFailed(false);
+    setSource(null);
     void (async () => {
       const token = await getToken();
       const next = privateFileImageSource(photoUrl, token, API_BASE_URL);
-      if (!cancelled) setSource(next);
-    })();
+      if (!cancelled && localAccountId() === owner) { setSource(next); setLoadedKey(sourceKey); }
+    })().catch(() => { if (!cancelled) setSource(null); });
     return () => {
       cancelled = true;
     };
-  }, [photoUrl]);
+  }, [photoUrl, owner, sourceKey]);
 
   const letter = (name || '?').trim().slice(0, 1).toUpperCase();
   const radius = size / 2;
 
-  if (!source || failed) {
+  if (!source || failed || sourceKey !== loadedKey) {
     return (
       <View
         accessibilityRole="image"

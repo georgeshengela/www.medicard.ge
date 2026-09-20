@@ -1,5 +1,5 @@
 import type {LatLng} from './geo';
-export const RUN_MAP_HTML_REV=9;
+export const RUN_MAP_HTML_REV=11;
 
 /** Only Mapbox rendering lives here. Auth, GPS, game logic and every control are native. */
 export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;channel?:string}):string{
@@ -52,7 +52,7 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
   raf=requestAnimationFrame(frame);follow();
  }
  function circle(c,r){var points=[];for(var i=0;i<=64;i++){var angle=i/64*Math.PI*2;points.push([c[0]+Math.cos(angle)*r/(111195*Math.cos(c[1]*Math.PI/180)),c[1]+Math.sin(angle)*r/111195]);}return {type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[points]}};}
- function fit(bottom){var coords=(retained.route&&retained.route.geometry&&retained.route.geometry.coordinates)||[];if(!coords.length&&retained.trail&&retained.trail.geometry)coords=retained.trail.geometry.coordinates;if(!coords.length&&retained.paint)coords=retained.paint.features.reduce(function(all,f){return all.concat(f.geometry.coordinates);},[]);if(!coords.length){follow();return;}var bounds=new mapboxgl.LngLatBounds(coords[0],coords[0]);coords.forEach(function(p){bounds.extend(p);});following=false;post({type:'follow',value:false});map.fitBounds(bounds,{padding:{top:120,bottom:bottom||230,left:45,right:45},maxZoom:17,pitch:threeD?40:0,duration:reduced?0:900});}
+ function fit(bottom,paintOnly,top){var coords=paintOnly?[]:(retained.route&&retained.route.geometry&&retained.route.geometry.coordinates)||[];if(!paintOnly&&!coords.length&&retained.trail&&retained.trail.geometry)coords=retained.trail.geometry.coordinates;if(!coords.length&&retained.paint)coords=retained.paint.features.reduce(function(all,f){return all.concat(f.geometry.coordinates);},[]);if(!coords.length){follow();return;}var bounds=new mapboxgl.LngLatBounds(coords[0],coords[0]);coords.forEach(function(p){bounds.extend(p);});following=false;post({type:'follow',value:false});map.fitBounds(bounds,{padding:{top:typeof top==='number'?top:120,bottom:bottom||230,left:45,right:45},maxZoom:17,pitch:threeD?40:0,duration:reduced?0:900});}
  function handle(m){switch(m.type){
   case 'init':position=[m.origin.lng,m.origin.lat];if(!user)user=puck();else user.setLngLat(position);setData('route',line(m.route));if(goal)goal.remove();goal=null;if(m.pin){var el=document.createElement('div');el.className='goal';el.textContent='⚑';goal=new mapboxgl.Marker({element:el}).setLngLat([m.pin.lng,m.pin.lat]).addTo(map);}if(m.fit)fit();else follow();break;
   case 'fix':move([m.lng,m.lat],typeof m.heading==='number'?m.heading:heading);break;
@@ -62,7 +62,7 @@ export function buildRunMapHtml(opts:{token:string;center:LatLng;dark:boolean;ch
   case 'gift':if(gift)gift.remove();gift=null;if(m.position){var box=document.createElement('div');box.className='gift';box.innerHTML='<svg viewBox="0 0 64 72" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="64" rx="20" ry="5" fill="#030712" opacity=".2"/><path d="M9 29 L32 18 L55 29 L55 53 L32 66 L9 53Z" fill="#0D9488"/><path d="M32 42 L55 29 L55 53 L32 66Z" fill="#0F766E"/><path d="M6 26 L32 13 L58 26 L32 40Z" fill="#5EEAD4"/><path d="M6 26 L6 33 L32 47 L58 33 L58 26 L32 40Z" fill="#14B8A6"/><path d="M26 37 L34 41 L34 64 L26 60Z M16 21 L40 34 L47 30 L23 17Z" fill="#CCFBF1"/><path d="M31 17 C8 17 18 0 27 9 L32 17 C53 17 44 0 36 9Z" fill="none" stroke="#CCFBF1" stroke-width="4"/></svg>';gift=new mapboxgl.Marker({element:box,anchor:'bottom'}).setLngLat(m.position).addTo(map);}break;
   case 'options':rotate=m.rotate;threeD=m.threeD;follow();break;
   case 'follow':following=true;post({type:'follow',value:true});follow();break;
-  case 'fit':fit(m.bottom);break;
+  case 'fit':fit(m.bottom,m.paintOnly,m.top);break;
   case 'reached':if(goal)goal.getElement().style.background='#5EEAD4';break;
   case 'theme':dark=m.dark;try{map.setConfigProperty('basemap','lightPreset',dark?'night':'day');}catch(e){}break;
  }}

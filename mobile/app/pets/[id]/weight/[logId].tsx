@@ -1,8 +1,9 @@
+import { PetLoading } from '@/components/pets/PetUi';
 import React, { useCallback, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Trash2 } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
+import { PetButton as Button } from '@/components/pets/PetUi';
 import { PetHealthStatus } from '@/components/pets/PetHealthStatus';
 import { PetWeightForm } from '@/components/pets/PetHealthForms';
 import { ka } from '@/i18n/ka';
@@ -60,7 +61,7 @@ export default function PetWeightEditScreen() {
     ]);
   };
 
-  if (!ready) return <View style={{ flex: 1, backgroundColor: colors.bg100 }} />;
+  if (!ready) return <PetLoading />;
   if (loadError || !log) {
     return <PetHealthStatus error={loadError || { status: 404 }} onRetry={() => void load()} />;
   }

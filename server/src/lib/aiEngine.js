@@ -1,3 +1,4 @@
+import { consentedAiFetch } from './consentedAiFetch.js';
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
 import { looksLikeBrokenDoctorReply } from './prompts.js';
@@ -19,6 +20,7 @@ const openrouter = env.OPENROUTER_API_KEY
   ? new OpenAI({
       apiKey: env.OPENROUTER_API_KEY,
       baseURL: env.OPENROUTER_BASE_URL,
+      fetch: consentedAiFetch('openrouter'),
       timeout: 180_000,
       maxRetries: 2,
       defaultHeaders: {
@@ -79,6 +81,7 @@ export function buildOpenRouterChatPayload({
   temperature = 0.2,
   maxTokens = 2400,
   stream = false,
+  responseFormat,
 }) {
   const reasoning = openRouterReasoningFor(model);
   return {
@@ -87,6 +90,7 @@ export function buildOpenRouterChatPayload({
     temperature,
     max_tokens: maxTokens,
     stream,
+    ...(responseFormat ? { response_format: responseFormat } : {}),
     ...(reasoning ? { reasoning } : {}),
   };
 }
@@ -211,6 +215,7 @@ export async function askOpenRouterPrepared({
   skipDisclaimer = false,
   onDelta,
   signal,
+  responseFormat,
 }) {
   if (typeof globalThis.__medicardAskOpenRouterPrepared === 'function') {
     return globalThis.__medicardAskOpenRouterPrepared({
@@ -221,6 +226,7 @@ export async function askOpenRouterPrepared({
       skipDisclaimer,
       onDelta,
       signal,
+      responseFormat,
     });
   }
   if (!openrouter) {
@@ -235,6 +241,7 @@ export async function askOpenRouterPrepared({
       temperature,
       maxTokens,
       stream,
+      responseFormat,
     });
     let completion;
     try {
@@ -254,6 +261,7 @@ export async function askOpenRouterPrepared({
         model: completion.model ?? model,
         usage: completion.usage ?? null,
         engine: 'openrouter',
+        finishReason: completion.choices?.[0]?.finish_reason ?? null,
       };
     }
 
@@ -293,6 +301,7 @@ export async function askOpenRouterChat({
   skipDisclaimer = false,
   onDelta,
   signal,
+  responseFormat,
 }) {
   return askOpenRouterPrepared({
     model,
@@ -302,6 +311,7 @@ export async function askOpenRouterChat({
     skipDisclaimer,
     onDelta,
     signal,
+    responseFormat,
   });
 }
 
@@ -319,9 +329,10 @@ export async function askAi({
   skipDisclaimer = false,
   onDelta,
   signal,
+  responseFormat,
 }) {
   const engine = resolveAiEngine(user);
-  const opts = { mode, messages, context, trustedContext, temperature, maxTokens, skipDisclaimer, onDelta, signal };
+  const opts = { mode, messages, context, trustedContext, temperature, maxTokens, skipDisclaimer, onDelta, signal, responseFormat };
 
   if (engine.id === 'evidencemd') {
     const result = await askEvidenceMd(opts);

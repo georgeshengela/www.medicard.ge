@@ -6,7 +6,7 @@ export const SMS_LOG_REDACTED_CONTENT = '[redacted]';
 
 /** Audit rows stay, but OTP / message bodies must not survive account deletion. */
 export function smsLogAccountDeletePatch() {
-  return { userId: null, content: SMS_LOG_REDACTED_CONTENT };
+  return { userId: null, content: SMS_LOG_REDACTED_CONTENT, destination: '[deleted]', reference: null, providerMsg: null };
 }
 
 /**
@@ -20,6 +20,7 @@ export async function deleteUserAccount(userId) {
       id: true,
       fullName: true,
       email: true,
+      phone: true,
       _count: {
         select: { records: true, chats: true, medications: true },
       },
@@ -47,10 +48,14 @@ export async function deleteUserAccount(userId) {
     if (!(error?.code === 'P2021' || /does not exist/i.test(error?.message || ''))) throw error;
   }
 
+  const locationTable = await prisma.$queryRaw`SELECT to_regclass('"UserLocation"')::text AS name`;
   await prisma.$transaction([
+    ...(locationTable[0]?.name ? [prisma.$executeRaw`DELETE FROM "UserLocation" WHERE "userId" = ${userId}`] : []),
     prisma.dailyUsage.deleteMany({ where: { userId } }),
-    prisma.phoneVerification.deleteMany({ where: { userId } }),
-    prisma.smsLog.updateMany({ where: { userId }, data: smsLogAccountDeletePatch() }),
+    prisma.phoneVerification.deleteMany({ where: { OR: [{ userId }, ...(user.phone ? [{ userId: null, phone: user.phone }] : [])] } }),
+    prisma.smsLog.updateMany({ where: { OR: [{ userId }, ...(user.phone ? [{ userId: null, destination: user.phone }] : [])] }, data: smsLogAccountDeletePatch() }),
+    prisma.aiEvalResult.deleteMany({ where: { interaction: { userId } } }),
+    prisma.pushEvent.deleteMany({ where: { userId } }),
     prisma.user.delete({ where: { id: userId } }),
   ]);
 

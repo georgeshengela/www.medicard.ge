@@ -23,6 +23,7 @@ function meta() {
   };
 }
 
+/** @returns {import('./api').CyclePregnancyTimelineMilestone} */
 function shapeMilestone(row, currentWeek) {
   return {
     id: row.id,
@@ -73,7 +74,7 @@ export function presentPregnancyTimeline({ mode, pregnancyActive, dating } = {})
   const age = dating.estimatedGestationalAge;
   const week = age.week;
   const day = age.day;
-  const trimester = age.trimester;
+  const trimester = age.trimester ?? null;
   const milestones = PREGNANCY_TIMELINE_MILESTONES.map((row) => shapeMilestone(row, week));
   const current = milestones.find((row) => row.status === 'CURRENT') || null;
   const next = milestones.find((row) => row.status === 'UPCOMING') || null;
@@ -81,7 +82,7 @@ export function presentPregnancyTimeline({ mode, pregnancyActive, dating } = {})
   const fraction = calendarProgressFraction(week, day, PREGNANCY_STANDARD_TERM_WEEKS);
   const beyondStandardTerm = week > PREGNANCY_STANDARD_TERM_WEEKS;
   const due = dating.estimatedDueDate?.date
-    ? { date: dating.estimatedDueDate.date, estimated: true }
+    ? { date: dating.estimatedDueDate.date, estimated: /** @type {true} */ (true) }
     : null;
 
   return {
@@ -92,7 +93,7 @@ export function presentPregnancyTimeline({ mode, pregnancyActive, dating } = {})
     currentDay: day,
     trimester,
     progress: {
-      kind: 'gestational_calendar',
+      kind: /** @type {'gestational_calendar'} */ ('gestational_calendar'),
       currentWeek: week,
       currentDay: day,
       ofWeeks: PREGNANCY_STANDARD_TERM_WEEKS,

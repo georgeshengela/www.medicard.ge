@@ -64,9 +64,9 @@ export async function syncPregnancyCareReminders(opts: {
     if (!check.ok) continue;
     const exact = candidate.reminderMode === REMINDER_MODE.EXACT_TIME;
     const date = exact
-      ? new Date(candidate.fireAtMs)
+      ? new Date(candidate.fireAtMs ?? NaN)
       : reminderDate(candidate.eventDate, engage?.quietStart ?? '22:00', engage?.quietEnd ?? '08:00');
-    if (date.getTime() <= Date.now()) continue;
+    if (!Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) continue;
     const itemTitle = pregnancyCareCopy(
       plan.items.find((row) => row.id === candidate.careItemId)?.titleKey || '',
     );

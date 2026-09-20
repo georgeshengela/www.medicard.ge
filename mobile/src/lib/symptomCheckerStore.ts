@@ -62,6 +62,11 @@ export function resetSymptomChecker(gender?: string | null) {
 }
 
 export function updateSymptomChecker(patch: Partial<SymptomCheckerState>) {
+  if (patch.mode && patch.mode !== state.mode) {
+    patch = { selectedPartId: null, selectedOrganId: null, ...patch };
+  }
+  if (patch.selectedOrganId) patch = { ...patch, selectedPartId: null, method: 'anatomy' };
+  if (patch.selectedPartId) patch = { ...patch, selectedOrganId: null, method: 'anatomy' };
   setState(patch);
 }
 
@@ -97,7 +102,8 @@ export function toggleSymptom(label: string) {
 }
 
 export function removeSymptom(label: string) {
-  setState({ symptoms: state.symptoms.filter((s) => s !== label) });
+  const remaining = state.symptoms.filter(s => s.toLowerCase() !== label.trim().toLowerCase());
+  setState({ symptoms: remaining, primarySymptom: remaining.includes(state.primarySymptom || '') ? state.primarySymptom : remaining[0] ?? null });
 }
 
 export function getSymptomCheckerState() {

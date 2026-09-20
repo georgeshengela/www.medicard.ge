@@ -76,7 +76,7 @@ export default function WeekWithMediScreen() {
         <Pressable
           onPress={() => router.back()}
           hitSlop={10}
-          style={({ pressed }) => ({ width: 44, height: 44, justifyContent: 'center', opacity: pressed ? 0.55 : 1 })}
+          style={({ width: 44, height: 44, justifyContent: 'center', opacity: 1 })}
         >
           <ChevronLeft size={24} color={FIGMA.textPrimary} strokeWidth={2.2} />
         </Pressable>

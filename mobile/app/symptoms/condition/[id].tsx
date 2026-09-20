@@ -38,7 +38,7 @@ export default function SymptomConditionScreen() {
         title={condition.nameKa}
         onBack={() => router.back()}
         trailing={
-          <Pressable hitSlop={12} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={ka.symptoms.viewHistory} onPress={() => router.push('/symptoms/history' as never)} hitSlop={12} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
             <Bookmark size={22} color={T.textPrimary} strokeWidth={2} />
           </Pressable>
         }
@@ -166,4 +166,3 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </View>
   );
 }
-

@@ -300,7 +300,7 @@ export function buildPetCareReminderCandidates({
   occurrence,
   prefs,
   nowMs,
-  timeZone,
+  timeZone = undefined,
   quietStart,
   quietEnd,
   bumpOutOfQuiet,
@@ -475,7 +475,7 @@ export function neverEvictMedicationReminders(cancelIds) {
   return (cancelIds || []).every((id) => !String(id).startsWith('med:'));
 }
 
-export function diffPetCareNotifications({ desired, pendingIds, lastGoodIds, apiFailed, cancelAll }) {
+export function diffPetCareNotifications({ desired, pendingIds, lastGoodIds, apiFailed, cancelAll = false }) {
   const pending = [...new Set(pendingIds || [])];
   const desiredIds = new Set((desired || []).map((row) => row.identifier));
   if (cancelAll) {
