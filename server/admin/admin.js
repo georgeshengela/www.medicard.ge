@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'medipulsi', 'settings'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'medipulsi', 'poster-studio', 'settings'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -206,6 +206,7 @@ function rememberAdmin(admin, token) {
 }
 
 function logout(reason) {
+  $('tab-poster-studio')?.replaceChildren();
   disconnectAdminRealtime();
   state.token = '';
   state.admin = null;
@@ -976,7 +977,7 @@ function writeTabHash(tab, query) {
   const params = query instanceof URLSearchParams
     ? query
     : new URLSearchParams(query && typeof query === 'object' ? query : {});
-  const inheritOpsRange = tab !== 'medipulsi';
+  const inheritOpsRange = !['medipulsi', 'poster-studio'].includes(tab);
   if (inheritOpsRange && typeof opsState !== 'undefined' && opsState.range && !params.get('range')) {
     params.set('range', opsState.range);
     if (opsState.range === 'custom') {
@@ -1035,6 +1036,7 @@ async function switchTab(tab, opts = {}) {
     audit: ['Production', 'აუდიტი', 'ვინ შეცვალა რა და როდის?', 'audit.page'],
     quality: ['Production', 'ხარისხი', 'ვერსიები, ტელემეტრია და მონაცემები სანდოა?', 'quality.page'],
     testing: ['Production', 'ტესტირების სივრცე', 'ეტაპები, შედეგები და დაცული სქრინები.', 'quality.page'],
+    'poster-studio': ['MEDICARD Studio', 'პოსტერების სტუდია', 'შეცვალე წარწერები და მოამზადე პოსტები სოციალური ქსელებისთვის.', ''],
     'medipulsi': ['Engagement', 'MEDIPULSI', 'გასეირნება, მისიები, აღმოჩენები და ჯილდოების მართვა.', ''],
     orders: ['Operations', 'შეკვეთები', 'რა საჭიროებს ოპერაციულ დამუშავებას?', 'orders.page'],
     users: ['People', 'მომხმარებლები', 'ვინ არის ბაზაში, რა ანგარიშის მდგომარეობა აქვს და ვისი გამოძიება გჭირდება.', 'users.registry'],
@@ -1068,6 +1070,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'quality' && typeof renderQualityOps === 'function') await renderQualityOps();
     if (tab === 'testing' && typeof renderTesting === 'function') await renderTesting();
     if (tab === 'medipulsi' && typeof renderMedipulsi === 'function') await renderMedipulsi();
+    if (tab === 'poster-studio') await window.renderPosterStudio();
     if (tab === 'settings') await renderSettings();
   }
   startAdminLive();
