@@ -29,7 +29,7 @@ export function SkincareTypeList({ value, onChange }: TypeProps) {
           <Pressable
             key={type}
             accessibilityRole="radio"
-            accessibilityState={{ selected: active }}
+            accessibilityState={{ checked: active }}
             onPress={() => {
               if (type !== value) pickerSelectionTick();
               onChange(type);

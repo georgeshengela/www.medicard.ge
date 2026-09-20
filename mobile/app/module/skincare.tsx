@@ -1,12 +1,12 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, Moon, Sparkles, Sun } from 'lucide-react-native';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { ChatAiAvatar } from '@/components/chat/ChatAiAvatar';
 import { ChatTypingBubble } from '@/components/chat/ChatBubble';
-import { ChatScreenShell } from '@/components/chat/ChatScreenShell';
+import { ChatActionDock, ChatFormScroll, ChatScreenShell } from '@/components/chat/ChatScreenShell';
 import { ChatTopNav } from '@/components/chat/ChatTopNav';
 import { Disclaimer } from '@/components/Disclaimer';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
@@ -17,6 +17,9 @@ import { KEYBOARD_DONE_ACCESSORY_ID, KeyboardDoneAccessory } from '@/components/
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
+import { SKINCARE_PRODUCTS_LIMIT, requireAnalysisText, IncompleteAnalysisError } from '@/lib/analysisFlow';
+import { localAccountId } from '@/lib/localAccount';
+import { useAnalysisTask } from '@/lib/useAnalysisTask';
 import { formatRelative } from '@/lib/format';
 import { usePlanUsage } from '@/lib/planUsage';
 import {
@@ -28,10 +31,17 @@ import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
 
 export default function SkincareModule() {
+  const { user } = useAuth();
+  return <SkincareModuleContent key={user?.id ?? 'guest'} />;
+}
+
+function SkincareModuleContent() {
   const FIGMA = useFigmaChat();
   const colors = useThemeColors();
   const router = useRouter();
-  const { applyUsage } = useAuth();
+  const { user, applyUsage } = useAuth();
+  const task = useAnalysisTask(`${user?.id}:skincare`);
+  const historyRevision = useRef(0);
   const plan = usePlanUsage();
 
   const [skinType, setSkinType] = useState<string>(ka.modules.skincare.skinTypes[0]);
@@ -54,35 +64,27 @@ export default function SkincareModule() {
   useFocusEffect(
     useCallback(() => {
       let alive = true;
-      void getLatestSkincareRoutine().then((saved) => {
-        if (!alive || !saved) return;
-        setLastRoutine((prev) => {
-          if (prev && prev.recordId === saved.recordId) return prev;
-          return { ...saved, analysis: prev?.analysis ?? '' };
+      const owner = localAccountId();
+      const revision = historyRevision.current;
+      void Promise.allSettled([getLatestSkincareRoutine(), api.records.list('SKINCARE')]).then(([local, remote]) => {
+        if (!alive || localAccountId() !== owner || revision !== historyRevision.current) return;
+        const saved = local.status === 'fulfilled' ? local.value : null;
+        const latest = remote.status === 'fulfilled' ? remote.value.records[0] : null;
+        setLastRoutine(prev => {
+          if (latest) {
+            if (prev?.recordId === latest.id && prev.analysis) return prev;
+            if (prev && new Date(prev.createdAt) > new Date(latest.createdAt)) return prev;
+            const metadata = saved?.recordId === latest.id ? saved : null;
+            return { recordId: latest.id, createdAt: latest.createdAt,
+              skinType: metadata?.skinType ?? 'შენახული რუტინა', concerns: metadata?.concerns ?? [],
+              products: metadata?.products, analysis: latest.aiAnalysis ?? '' };
+          }
+          if (!saved) return prev;
+          if (prev?.recordId === saved.recordId) return prev;
+          return { ...saved, analysis: '' };
         });
       });
-      void api.records
-        .list('SKINCARE')
-        .then(({ records }) => {
-          if (!alive || !records[0]) return;
-          const latest = records[0];
-          setLastRoutine((prev) => {
-            if (prev && prev.recordId === latest.id && prev.analysis) return prev;
-            if (prev && new Date(prev.createdAt).getTime() > new Date(latest.createdAt).getTime()) return prev;
-            return {
-              recordId: latest.id,
-              createdAt: latest.createdAt,
-              skinType: prev?.skinType ?? ka.modules.skincare.skinTypes[0],
-              concerns: prev?.concerns ?? [],
-              products: prev?.products,
-              analysis: latest.aiAnalysis,
-            };
-          });
-        })
-        .catch(() => undefined);
-      return () => {
-        alive = false;
-      };
+      return () => { alive = false; };
     }, []),
   );
 
@@ -98,17 +100,23 @@ export default function SkincareModule() {
       setResult(routine);
       return;
     }
+    const operation = task.begin();
+    if (!operation) return;
+    historyRevision.current += 1;
     setHydrating(true);
     setError(null);
     try {
       const { record } = await api.records.get(routine.recordId);
-      const next = { ...routine, analysis: record.aiAnalysis, createdAt: record.createdAt };
+      if (!operation.current()) return;
+      const next = { ...routine, analysis: requireAnalysisText(record.aiAnalysis), createdAt: record.createdAt };
       setLastRoutine(next);
       setResult(next);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : ka.common.error);
+      if (!operation.current()) return;
+      setError((err instanceof ApiError || err instanceof IncompleteAnalysisError) ? err.message : ka.common.error);
     } finally {
-      setHydrating(false);
+      if (operation.current()) setHydrating(false);
+      operation.finish();
     }
   };
 
@@ -122,6 +130,10 @@ export default function SkincareModule() {
       return;
     }
 
+    const operation = task.begin();
+    if (!operation) return;
+    historyRevision.current += 1;
+    Keyboard.dismiss();
     setBusy(true);
     setError(null);
     try {
@@ -130,6 +142,8 @@ export default function SkincareModule() {
         concerns,
         currentProducts: products.trim() || undefined,
       });
+      if (!operation.current()) return;
+      const analysis = requireAnalysisText(response.analysis);
       applyUsage(response.usage);
       const routine: SavedSkincareRoutine = {
         recordId: response.recordId,
@@ -137,26 +151,30 @@ export default function SkincareModule() {
         skinType,
         concerns,
         products: products.trim() || undefined,
-        analysis: response.analysis,
+        analysis,
       };
-      await saveSkincareRoutine(routine);
       setLastRoutine(routine);
       setResult(routine);
+      await saveSkincareRoutine(routine);
+      if (!operation.current()) return;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } catch (err) {
+      if (!operation.current()) return;
       if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuotaBlock(err.usage?.resetsInMs);
         if (err.usage) applyUsage(err.usage);
       } else {
-        setError(err instanceof ApiError ? err.message : ka.common.error);
+        setError((err instanceof ApiError || err instanceof IncompleteAnalysisError) ? err.message : ka.common.error);
       }
     } finally {
-      setBusy(false);
+      if (operation.current()) setBusy(false);
+      operation.finish();
     }
   };
 
   return (
     <ChatScreenShell
+      footer={!result && !busy ? <ChatActionDock><AuthPrimaryButton label={ka.modules.skincare.build} loading={hydrating} disabled={concerns.length === 0 || hydrating} onPress={() => void build()} /></ChatActionDock> : undefined}
       header={
         <ChatTopNav
           title={ka.modules.skincare.title}
@@ -229,7 +247,7 @@ export default function SkincareModule() {
           <ChatTypingBubble icon={Sparkles} />
         </View>
       ) : (
-        <ScrollView
+        <ChatFormScroll
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32, paddingTop: 16, gap: 20 }}
           keyboardShouldPersistTaps="handled"
@@ -243,7 +261,7 @@ export default function SkincareModule() {
               borderRadius: 24,
               padding: 16,
               gap: 16,
-              ...FIGMA.shadowXs,
+
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -293,7 +311,7 @@ export default function SkincareModule() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 12,
-                  ...FIGMA.shadowXs,
+
                 }}
               >
                 <View
@@ -345,12 +363,12 @@ export default function SkincareModule() {
           ) : null}
 
           <View>
-            <HomeSectionTitle title={ka.modules.skincare.skinTypeLabel} />
+            <HomeSectionTitle title={`01  ${ka.modules.skincare.skinTypeLabel}`} />
             <SkincareTypeList value={skinType} onChange={setSkinType} />
           </View>
 
           <View>
-            <HomeSectionTitle title={ka.modules.skincare.concernsLabel} />
+            <HomeSectionTitle title={`02  ${ka.modules.skincare.concernsLabel}`} />
             <Text
               style={{
                 fontFamily: 'NotoSansGeorgian_400Regular',
@@ -367,8 +385,10 @@ export default function SkincareModule() {
           </View>
 
           <View>
-            <HomeSectionTitle title={ka.modules.skincare.productsLabel} />
+            <HomeSectionTitle title={`03  ${ka.modules.skincare.productsLabel}`} />
             <TextInput
+              accessibilityLabel={ka.modules.skincare.productsLabel}
+              maxLength={SKINCARE_PRODUCTS_LIMIT}
               value={products}
               onChangeText={setProducts}
               placeholder={ka.modules.skincare.productsPlaceholder}
@@ -378,6 +398,7 @@ export default function SkincareModule() {
               inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
               style={{
                 minHeight: 88,
+                maxHeight: 140,
                 borderRadius: 16,
                 borderWidth: 1,
                 borderColor: FIGMA.border,
@@ -387,7 +408,7 @@ export default function SkincareModule() {
                 fontSize: 15,
                 lineHeight: 22,
                 color: FIGMA.textPrimary,
-                ...FIGMA.shadowXs,
+
               }}
             />
           </View>
@@ -415,15 +436,9 @@ export default function SkincareModule() {
             </View>
           ) : null}
 
-          <AuthPrimaryButton
-            label={ka.modules.skincare.build}
-            loading={busy}
-            disabled={concerns.length === 0}
-            onPress={() => void build()}
-          />
 
           <Disclaimer />
-        </ScrollView>
+        </ChatFormScroll>
       )}
 
       <KeyboardDoneAccessory />

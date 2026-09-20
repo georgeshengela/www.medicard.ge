@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.10.0",
+    "version": "1.0.0.10.9",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
-      "version": "1.10.0",
+      "version": "1.10.9",
       "buildNumber": "83",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD AI",
@@ -22,7 +22,7 @@
         "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა სამედიცინო დოკუმენტების, ანალიზებისა და ცხოველის ფოტოების ასატვირთად.",
         "NSMicrophoneUsageDescription": "მიკროფონი საჭიროა ხმის ანალიზისთვის, თუ ამ ნაბიჯს გაივლით.",
         "NSFaceIDUsageDescription": "MEDICARD AI-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად.",
-        "NSLocationWhenInUseUsageDescription": "MEDICARD AI-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის და MEDIPULSI-ში გავლილი გზისა და ახლომახლო საჩუქრების აღმოსაჩენად. ფონური წვდომა არ გამოიყენება.",
+        "NSLocationWhenInUseUsageDescription": "MEDICARD AI-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის და MEDIRUN-ში გავლილი გზისა და ახლომახლო საჩუქრების აღმოსაჩენად. ფონური წვდომა არ გამოიყენება.",
         "NSCalendarsUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
         "NSCalendarsFullAccessUsageDescription": "კალენდარში შენ მიერ არჩეული ჩანაწერის დასამატებლად საჭიროა კალენდარზე წვდომა.",
         "UIBackgroundModes": [
@@ -95,14 +95,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Medicard-ს სჭირდება კამერაზე წვდომა სამედიცინო და ცხოველის ფოტოსთვის."
+          "cameraPermission": "კამერა საჭიროა ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის, ასევე MEDI RUN-ში ვირტუალური საჩუქრის აღმოსაჩენად."
         }
       ],
       [
         "expo-image-picker",
         {
           "photosPermission": "Medicard-ს სჭირდება გალერეაზე წვდომა ანალიზების, დოკუმენტებისა და ცხოველის ფოტოების ასატვირთად.",
-          "cameraPermission": "Medicard-ს სჭირდება კამერაზე წვდომა სამედიცინო და ცხოველის ფოტოს გადასაღებად."
+          "cameraPermission": "კამერა საჭიროა ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის, ასევე MEDI RUN-ში ვირტუალური საჩუქრის აღმოსაჩენად."
         }
       ],
       [
@@ -144,7 +144,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Medicard-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის. ფონური წვდომა არ გამოიყენება.",
+          "locationWhenInUsePermission": "MEDICARD AI-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის და MEDIRUN-ში გავლილი გზისა და ახლომახლო საჩუქრების აღმოსაჩენად. ფონური წვდომა არ გამოიყენება.",
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false
         }
@@ -171,7 +171,7 @@
     ],
     "extra": {
       "router": {},
-      "medicardInternalVersion": "1.0.0.10.0",
+      "medicardInternalVersion": "1.0.0.10.9",
       "apiUrl": "https://medicard.ge",
       "privacyPolicyUrl": "https://medicard.ge/privacy",
       "termsOfServiceUrl": "https://medicard.ge/terms",

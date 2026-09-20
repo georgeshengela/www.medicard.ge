@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ChevronLeft, Settings2 } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
@@ -41,7 +42,9 @@ function IconBtn({
         borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: filled ? c.cta : 'transparent',
+        backgroundColor: c.card,
+        borderWidth: 1,
+        borderColor: c.border,
       }}
     >
       {children}
@@ -61,15 +64,15 @@ export function CycleHomeHeader({
   return (
     <View
       style={{
-        paddingTop: topInset + 4,
+        paddingTop: topInset + 8,
         paddingHorizontal: 16,
-        paddingBottom: 8,
+        paddingBottom: 12,
         backgroundColor: 'transparent',
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <IconBtn onPress={onBack} label={ka.common.back}>
-          <ChevronLeft size={24} color={c.ink} strokeWidth={2.2} />
+          <ChevronLeft size={20} color={c.ink} strokeWidth={2} />
         </IconBtn>
 
         <View style={{ flex: 1, minWidth: 0, alignItems: 'center', paddingHorizontal: 8 }}>
@@ -77,9 +80,9 @@ export function CycleHomeHeader({
             numberOfLines={1}
             style={{
               color: c.ink,
-              fontFamily: 'NotoSansGeorgian_700Bold',
-              fontSize: 18,
-              lineHeight: 24,
+              fontFamily: 'NotoSansGeorgian_600SemiBold',
+              fontSize: 16,
+              lineHeight: 22,
             }}
           >
             {monthLabel}
@@ -87,7 +90,7 @@ export function CycleHomeHeader({
           <Text
             numberOfLines={2}
             style={{
-              color: c.muted,
+              color: c.mutedSoft,
               fontFamily: 'NotoSansGeorgian_500Medium',
               fontSize: 12,
               lineHeight: 16,
@@ -100,7 +103,7 @@ export function CycleHomeHeader({
         </View>
 
         <IconBtn onPress={onSettings} label={ka.cycle.settings} filled>
-          <Settings2 size={20} color="#FFFFFF" strokeWidth={2.2} />
+          <Settings2 size={18} color={c.brand} strokeWidth={2} />
         </IconBtn>
       </View>
     </View>

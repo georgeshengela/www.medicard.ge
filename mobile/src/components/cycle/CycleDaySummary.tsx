@@ -1,6 +1,7 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { NotebookPen, Plus } from 'lucide-react-native';
+import { Text, View } from 'react-native';
+import { ChevronRight, NotebookPen, Plus } from 'lucide-react-native';
 import { cycleLogFactBits, cycleLogHasFacts } from '@/lib/cycleLogFacts';
 import { ka } from '@/i18n/ka';
 import type { CycleLog } from '@/lib/api';
@@ -30,21 +31,21 @@ export function CycleDaySummary({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        minHeight: 56,
-        borderRadius: 16,
+        minHeight: 80,
+        borderRadius: 24,
         borderWidth: 1,
         borderColor: c.border,
         backgroundColor: c.card,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
       }}
     >
       <View
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 12,
-          backgroundColor: hasContent ? c.roseSoft : c.cardSoft,
+          width: 40,
+          height: 40,
+          borderRadius: 16,
+          backgroundColor: c.cardSoft,
           alignItems: 'center',
           justifyContent: 'center',
           marginRight: 12,
@@ -95,9 +96,7 @@ export function CycleDaySummary({
           </Text>
         )}
       </View>
-      <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13 }}>
-        {hasContent ? ka.common.edit : ka.cycle.logFab}
-      </Text>
+      <ChevronRight size={18} color={c.mutedSoft} style={{marginLeft:8}} />
     </Pressable>
   );
 }

@@ -1,18 +1,19 @@
 import { Stack } from 'expo-router';
 import { ka } from '@/i18n/ka';
-import { STACK_PUSH } from '@/theme/stackMotion';
+import { useStackMotion } from '@/hooks/useStackMotion';
 
 export default function VisitsLayout() {
+  const motion = useStackMotion();
   return (
     <Stack
       screenOptions={{
         headerBackTitle: ka.common.back,
         headerTitleStyle: { fontWeight: '700' },
-        ...STACK_PUSH,
+        ...motion,
       }}
     >
       <Stack.Screen name="index" options={{ title: ka.visits.title }} />
-      <Stack.Screen name="editor" options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen name="editor" options={{ headerShown: false }} />
     </Stack>
   );
 }

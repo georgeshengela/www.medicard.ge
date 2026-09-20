@@ -52,18 +52,17 @@ export function CyclePmsHeatmap({ bundle, compact }: Props) {
           const count = byDay[day]?.count ?? 0;
           const barH = count ? Math.max(8, Math.round((count / max) * (compact ? 36 : 56))) : 4;
           return (
-            <View key={day} style={{ flex: 1, alignItems: 'center' }}>
+            <View key={day} accessible accessibilityLabel={`${day} დღით ადრე: ${count} ჩანაწერი`} style={{ flex: 1, alignItems: 'center' }}>
               <View
                 style={{
                   width: '100%',
                   maxWidth: 22,
                   height: barH,
                   borderRadius: 6,
-                  backgroundColor: c.rose,
-                  opacity: count ? 0.35 + (count / max) * 0.65 : 0.12,
+                  backgroundColor: count ? c.period : c.gaugeTrack,
                 }}
               />
-              <Text style={{ color: c.mutedSoft, fontSize: 8, marginTop: 4, fontWeight: '700' }}>{day}</Text>
+              <Text style={{ color: c.mutedSoft, fontSize: 10, marginTop: 4, fontWeight: '700' }}>{day}</Text>
             </View>
           );
         })}

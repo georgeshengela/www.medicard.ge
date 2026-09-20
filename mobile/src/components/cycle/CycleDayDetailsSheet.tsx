@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
@@ -417,7 +418,7 @@ export function CycleDayDetailsSheet({
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ color: c.white, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>
+              <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>
                 {log ? ka.common.edit : ka.cycle.logFab}
               </Text>
             </Pressable>

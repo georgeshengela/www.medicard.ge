@@ -1,6 +1,9 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
+import { Alert, Platform, Text, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useAnalysisTask } from '@/lib/useAnalysisTask';
+import { ChatScreenShell, useChatKeyboardOpen } from '@/components/chat/ChatScreenShell';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { CycleLogTabs, type CycleLogForm } from '@/components/cycle/CycleLogTabs';
@@ -19,7 +22,16 @@ import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
 import { useCycleColors } from '@/theme/cycle';
 
-export default function CycleLogScreen() {
+export default function CycleLogRoute() {
+  const { user } = useAuth();
+  const { date } = useLocalSearchParams<{date?:string}>();
+  return <CycleLogScreen key={`${user?.id}:${date}`} />;
+}
+function CycleLogDock({children}:{children:React.ReactNode}) {
+  const c=useCycleColors(),insets=useSafeAreaInsets(),open=useChatKeyboardOpen();
+  return <View style={{paddingHorizontal:20,paddingTop:12,paddingBottom:open?12:Math.max(insets.bottom,12),backgroundColor:c.cream,borderTopWidth:1,borderTopColor:c.border}}>{children}</View>;
+}
+function CycleLogScreen() {
   const { date: paramDate, tab: paramTab, prefillNote } = useLocalSearchParams<{
     date?: string;
     tab?: string;
@@ -44,7 +56,7 @@ export default function CycleLogScreen() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [footerH, setFooterH] = useState(96);
+  const task = useAnalysisTask(`cycle-log:${user?.id}:${date}`);
   const [form, setForm] = useState(EMPTY_CYCLE_LOG);
   const [customTags, setCustomTags] = useState<CycleCustomTag[]>([]);
   const [creatingTag, setCreatingTag] = useState(false);
@@ -108,14 +120,23 @@ export default function CycleLogScreen() {
   };
 
   const save = async () => {
+    if (saving || loading) return;
+    const ticket = task.begin();
+    if (!ticket) return;
     setSaving(true);
+    setSaved(null);
     setError(null);
     try {
       if (!user?.id) throw new ApiError(ka.common.error, 401);
       const result = await persistCycleLog(user.id, date, form);
+      if (!ticket.current()) return;
       if (result.view && !result.view.stale && result.view.pendingCount === 0) {
-        const prefs = await getCycleReminderPrefs();
-        await syncCycleReminders(result.view.canonical, prefs);
+        try {
+          const prefs = await getCycleReminderPrefs();
+          if (!ticket.current()) return;
+          await syncCycleReminders(result.view.canonical, prefs);
+        } catch { /* A reminder failure does not undo the saved journal entry. */ }
+        if (!ticket.current()) return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       if (result.synced) setSaved(ka.cycle.logSaved);
@@ -131,11 +152,12 @@ export default function CycleLogScreen() {
         ]);
         return;
       }
-      setTimeout(() => router.back(), 400);
+      router.back();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : ka.common.error);
+      if (ticket.current()) setError(err instanceof Error ? err.message : ka.common.error);
     } finally {
-      setSaving(false);
+      if (ticket.current()) setSaving(false);
+      ticket.finish();
     }
   };
 
@@ -147,21 +169,25 @@ export default function CycleLogScreen() {
         style: 'destructive',
         onPress: () => {
           void (async () => {
+            const ticket = task.begin();
+            if (!ticket) return;
             setSaving(true);
             setError(null);
             try {
               if (!user?.id) throw new ApiError(ka.common.error, 401);
               const result = await queueRemoveCycleLog(user.id, date);
+              if (!ticket.current()) return;
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
               if (result.synced) setSaved(ka.cycle.deleteLogDone);
               else if (result.persistedLocally) setSaved(ka.cycle.savedOnDevice);
               else if (result.sessionOnly) setSaved(ka.cycle.savedSessionOnly);
-              else setError(ka.cycle.saveNotPersisted);
-              setTimeout(() => router.back(), 400);
+              else { setError(ka.cycle.saveNotPersisted); return; }
+              router.back();
             } catch (err) {
-              setError(err instanceof ApiError ? err.message : ka.common.error);
+              if (ticket.current()) setError(err instanceof ApiError ? err.message : ka.common.error);
             } finally {
-              setSaving(false);
+              if (ticket.current()) setSaving(false);
+              ticket.finish();
             }
           })();
         },
@@ -173,11 +199,7 @@ export default function CycleLogScreen() {
 
   return (
     <CycleAtmosphere>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 8 : 0}
-      >
+      <ChatScreenShell header={null} style={{ backgroundColor: c.cream }}>
         {error ? (
           <View
             style={{
@@ -212,28 +234,14 @@ export default function CycleLogScreen() {
           mode={mode}
           form={form}
           onChange={patchForm}
-          bottomInset={footerH}
+          bottomInset={0}
           initialTab={initialTab}
           customTags={customTags}
           onCreateTag={createTag}
           creatingTag={creatingTag}
         />
 
-        <View
-          onLayout={(e) => setFooterH(e.nativeEvent.layout.height)}
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            paddingHorizontal: 20,
-            paddingTop: 12,
-            paddingBottom: Math.max(insets.bottom, 16),
-            backgroundColor: c.cream,
-            borderTopWidth: 1,
-            borderTopColor: c.border,
-          }}
-        >
+        <CycleLogDock>
           <CyclePrimaryButton
             label={saving ? ka.common.loading : ka.cycle.saveLog}
             onPress={save}
@@ -244,6 +252,9 @@ export default function CycleLogScreen() {
             <Pressable
               onPress={remove}
               disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel={ka.cycle.deleteLog}
+              accessibilityState={{ disabled: saving }}
               style={{
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -254,8 +265,8 @@ export default function CycleLogScreen() {
               <Text style={{ color: c.danger, fontWeight: '700' }}>{ka.cycle.deleteLog}</Text>
             </Pressable>
           ) : null}
-        </View>
-      </KeyboardAvoidingView>
+        </CycleLogDock>
+      </ChatScreenShell>
     </CycleAtmosphere>
   );
 }

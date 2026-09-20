@@ -1,9 +1,12 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { CycleGaugeExplainSheet, type GaugeExplain } from '@/components/cycle/CycleGaugeExplainSheet';
 import { CycleStatusGauge } from '@/components/cycle/CycleStatusGauge';
+import { CycleCardAtmosphere } from '@/components/cycle/CycleCardAtmosphere';
 import { PredictionBadge, ConfidenceHint } from '@/components/cycle/CycleBadges';
-import { formatCycleDateKa } from '@/components/cycle/CycleUI';
+import { CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
+import { Plus } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import type { CycleBundle } from '@/lib/api';
 import {
@@ -23,6 +26,7 @@ import {
   suppressCycleLengthChrome,
 } from '@/lib/cycleForecastEligibility';
 import { useCycleColors } from '@/theme/cycle';
+import { hasPmsPattern } from '@/lib/cycleAnalytics';
 
 type Props = {
   bundle: CycleBundle;
@@ -151,13 +155,16 @@ export function CycleHero({
       });
 
   return (
-    <View style={{ paddingBottom: 8 }}>
+    <View style={{ paddingTop: 12, paddingBottom: 14, borderRadius: 24, borderWidth: 1, borderColor: c.border, backgroundColor: c.card }}>
+      <CycleCardAtmosphere />
       <CycleStatusGauge
         day={hideLengthChrome ? null : day}
         cycleLength={cycleLength}
         hideLengthChrome={hideLengthChrome}
         phaseHint={phaseHint}
         periodActive={onPeriod}
+        recordedPeriodDays={cycleStart && !hideLengthChrome ? bundle.logs.filter(log => isBleedFlow(log.flow)).map(log => daysBetween(cycleStart, log.date) + 1).filter(d => d >= 1 && d <= cycleLength) : []}
+        pmsPattern={hasPmsPattern(bundle) && !hidePredicted && phase === 'luteal'}
         fertileDays={overlays.fertileDays}
         a11yLabel={gaugeA11y}
         onInfo={hideLengthChrome ? undefined : onInfo}
@@ -170,9 +177,9 @@ export function CycleHero({
           <Text
             style={{
               color: onPeriod ? c.period : c.ink,
-              fontFamily: 'NotoSansGeorgian_700Bold',
-              fontSize: 18,
-              lineHeight: 25,
+              fontFamily: 'NotoSansGeorgian_600SemiBold',
+              fontSize: 16,
+              lineHeight: 23,
               textAlign: 'center',
               paddingHorizontal: 4,
             }}
@@ -239,22 +246,7 @@ export function CycleHero({
         <View style={{ marginTop: 14, gap: 8 }}>
           {onPeriod ? (
             <>
-              <Pressable
-                onPress={onLog}
-                accessibilityRole="button"
-                accessibilityLabel={ka.cycle.logTodayFlow}
-                style={{
-                  minHeight: 48,
-                  borderRadius: 18,
-                  backgroundColor: c.cta,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ color: c.white, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
-                  {ka.cycle.logTodayFlow}
-                </Text>
-              </Pressable>
+              <CyclePrimaryButton label={ka.cycle.logTodayFlow} onPress={onLog} icon={Plus} />
               <Pressable
                 onPress={onEnd}
                 accessibilityRole="button"
@@ -276,22 +268,7 @@ export function CycleHero({
               </Pressable>
             </>
           ) : (
-            <Pressable
-              onPress={onLog}
-              accessibilityRole="button"
-              accessibilityLabel={ka.cycle.logTodayCta}
-              style={{
-                minHeight: 48,
-                borderRadius: 18,
-                backgroundColor: c.cta,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text style={{ color: c.white, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
-                {ka.cycle.logTodayCta}
-              </Text>
-            </Pressable>
+            <CyclePrimaryButton label={ka.cycle.logTodayCta} onPress={onLog} icon={Plus} />
           )}
         </View>
       </View>

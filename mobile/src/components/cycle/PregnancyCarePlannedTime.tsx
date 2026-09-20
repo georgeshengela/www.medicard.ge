@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { formatClockTime, isClockTime, parseClockTime } from '@/lib/pregnancyCareAppointmentTimeContract.js';
 import { isCivilDateKey } from '@/lib/pregnancyCareCatalog.js';
@@ -9,7 +10,7 @@ type Colors = {
   muted: string;
   border: string;
   card: string;
-  roseSoft: string;
+  accentSoft: string;
   brand: string;
 };
 
@@ -106,7 +107,7 @@ export function PregnancyCarePlannedTime({
             minHeight: 44,
             paddingHorizontal: 14,
             borderRadius: 12,
-            backgroundColor: c.roseSoft,
+            backgroundColor: c.accentSoft,
             justifyContent: 'center',
           }}
         >

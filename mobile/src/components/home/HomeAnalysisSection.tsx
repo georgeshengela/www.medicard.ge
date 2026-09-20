@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useThemeColors } from '@/theme/colors';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
@@ -13,14 +14,6 @@ type Props = {
   tiles: ModuleTile[];
   onPress: (tile: ModuleTile) => void;
 };
-
-const ICON_SHADOW = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.05,
-  shadowRadius: 2,
-  elevation: 1,
-} as const;
 
 /** Figma 11423:86807 — one 24-radius list card, circular icon wells, quota in the trailing slot. */
 export function HomeAnalysisSection({ tiles, onPress }: Props) {
@@ -97,6 +90,7 @@ function AnalysisRow({
 }) {
   const FIGMA = useFigmaHomeDashboard();
   const Icon = tile.icon;
+  const colors = useThemeColors();
   const quotaLabel = unlimited ? '∞' : ka.usage.quotaOf(remaining ?? 0, limit);
 
   return (
@@ -119,16 +113,15 @@ function AnalysisRow({
           style={{
             width: 48,
             height: 48,
-            borderRadius: 999,
-            backgroundColor: FIGMA.badgeBg,
+            borderRadius: 16,
+            backgroundColor: colors.accent100,
             borderWidth: 1,
             borderColor: FIGMA.borderTertiary,
             alignItems: 'center',
             justifyContent: 'center',
-            ...ICON_SHADOW,
           }}
         >
-          <Icon size={24} color={FIGMA.textSecondary} strokeWidth={2} />
+          <Icon size={24} color={colors.primary200} strokeWidth={1.8} />
         </View>
 
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
@@ -139,7 +132,7 @@ function AnalysisRow({
               lineHeight: 20,
               color: FIGMA.textPrimary,
             }}
-            numberOfLines={1}
+            numberOfLines={2}
           >
             {tile.title}
           </Text>

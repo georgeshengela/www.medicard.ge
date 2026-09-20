@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
+import React, { useEffect, useState } from 'react';
+import { Image, Text, useWindowDimensions, View } from 'react-native';
 import { ka } from '@/i18n/ka';
-import { pregnancySizeAsset } from '@/lib/pregnancySizeAssets';
+import { pregnancyDevelopmentAsset } from '@/lib/pregnancyDevelopmentAssets';
 import { formatLengthCm, formatWeightGrams } from '@/lib/pregnancyWeekData.js';
-import {
-  pregnancyComparisonLine,
-  pregnancyComparisonName,
-} from '@/lib/pregnancyWeekCopy.js';
 import { useCycleColors } from '@/theme/cycle';
+import { ArrowUpRight, Ruler, Sprout, Weight } from 'lucide-react-native';
 
 export type WeekDevelopmentView = {
   week: number;
@@ -48,21 +46,14 @@ export function PregnancySizeIllustration({
   week: number;
   size?: number;
 }) {
+  const c = useCycleColors();
   const [failed, setFailed] = useState(false);
-  const source = failed ? pregnancySizeAsset('placeholder') : pregnancySizeAsset(comparisonKey || 'placeholder');
-  const name = pregnancyComparisonName(comparisonKey);
-  const label = name
-    ? ka.cycle.pregnancySizeA11y(name, week)
-    : ka.cycle.pregnancySizePlaceholderA11y;
-  return (
-    <Image
-      source={source}
-      accessibilityLabel={label}
-      onError={() => setFailed(true)}
-      resizeMode="contain"
-      style={{ width: size, height: size, alignSelf: 'center' }}
-    />
-  );
+  const art = pregnancyDevelopmentAsset(week);
+  useEffect(() => { setFailed(false); }, [art?.stage]);
+  if (!art || failed) return <View accessible accessibilityLabel="განვითარების ილუსტრაცია მიუწვდომელია"
+    style={{width:size,height:size,alignItems:'center',justifyContent:'center'}}><Sprout size={40} color={c.brand}/></View>;
+  return <Image source={art.source} accessibilityLabel={`განვითარების ზოგადი ილუსტრაცია, დაახლოებით ${art.stage} კვირა. ეს არ არის შენი ბავშვის გამოსახულება.`}
+    onError={() => setFailed(true)} resizeMode="contain" style={{width:size,height:size,alignSelf:'center'}}/>;
 }
 
 export function PregnancyWeekMetrics({
@@ -73,12 +64,39 @@ export function PregnancyWeekMetrics({
   compact?: boolean;
 }) {
   const c = useCycleColors();
+  const { width, fontScale } = useWindowDimensions();
+  const stackMetrics = width < 360 || fontScale >= 1.25;
   if (!development) return null;
   const length = pregnancyLengthText(development.lengthCm);
   const weight = pregnancyWeightText(development.weightGrams);
-  const comparison = pregnancyComparisonLine(development.comparisonKey);
-  const showArt = Boolean(development.comparisonKey) || development.kind === 'analogy';
-  const informational = development.kind === 'informational';
+  const illustration = pregnancyDevelopmentAsset(development.week);
+  const comparison = illustration ? 'განვითარების ეტაპი' : null;
+  const showArt = Boolean(illustration);
+  const informational = development.kind === 'informational' || !showArt;
+
+  if (compact) return (
+    <View style={{borderRadius:24,backgroundColor:c.cardSoft,padding:16}}>
+      <View style={{flexDirection:stackMetrics?'column':'row',alignItems:'center',gap:16}}>
+        {showArt ? <View style={{width:104,height:128,alignItems:'center',justifyContent:'center'}}>
+          <PregnancySizeIllustration comparisonKey={development.comparisonKey} week={development.week} size={128}/>
+        </View> : null}
+        <View style={{flex:stackMetrics?undefined:1,width:stackMetrics?'100%':undefined,minWidth:0,gap:12,alignItems:stackMetrics?'center':undefined}}>
+          {comparison ? <Text style={{color:c.ink,fontFamily:'NotoSansGeorgian_600SemiBold',fontSize:16,lineHeight:24,textAlign:stackMetrics?'center':'left'}}>{comparison}</Text>
+            : informational ? <Text style={{color:c.muted,fontSize:14,lineHeight:22}}>{ka.cycle.pregnancyWeekInformational}</Text> : null}
+          {length ? <View style={{gap:4,alignSelf:'stretch'}}>
+            <View style={{flexDirection:'row',gap:6,alignItems:'center'}}><Ruler size={14} color={c.mutedSoft}/><Text style={{flex:1,color:c.mutedSoft,fontSize:11,lineHeight:16,textAlign:stackMetrics?'center':'left'}}>{pregnancyLengthLabel(development.measurementType)}</Text></View>
+            <Text style={{color:c.ink,fontFamily:'NotoSansGeorgian_700Bold',fontSize:16,lineHeight:24,textAlign:stackMetrics?'center':'left'}}>{length}</Text>
+          </View> : null}
+          {weight ? <View style={{gap:4,alignItems:stackMetrics?'center':undefined}}>
+            <View style={{flexDirection:'row',gap:6,alignItems:'center'}}><Weight size={14} color={c.mutedSoft}/><Text style={{color:c.mutedSoft,fontSize:11,lineHeight:16}}>{ka.cycle.pregnancyWeight}</Text></View>
+            <Text style={{color:c.ink,fontFamily:'NotoSansGeorgian_700Bold',fontSize:16,lineHeight:24}}>{weight}</Text>
+          </View> : null}
+        </View>
+      </View>
+      {illustration ? <Text style={{color:c.mutedSoft,fontSize:11,lineHeight:17,marginTop:12}}>{`ზოგადი ილუსტრაცია · დაახლოებით ${illustration.stage} კვირა. ზომები შეესაბამება არჩეულ კვირას.`}</Text> : null}
+      {development.week === 19 && !length ? <Text style={{color:c.muted,fontSize:13,lineHeight:20,marginTop:8}}>{ka.cycle.pregnancyWeek19Length}</Text> : null}
+    </View>
+  );
 
   return (
     <View>
@@ -86,7 +104,7 @@ export function PregnancyWeekMetrics({
         <PregnancySizeIllustration
           comparisonKey={development.comparisonKey}
           week={development.week}
-          size={compact ? 112 : 188}
+          size={232}
         />
       ) : null}
       {comparison ? (
@@ -107,6 +125,7 @@ export function PregnancyWeekMetrics({
           {ka.cycle.pregnancyWeekInformational}
         </Text>
       ) : null}
+      {illustration ? <Text style={{color:c.mutedSoft,fontSize:12,lineHeight:18,textAlign:'center',marginTop:8}}>{`ზოგადი ილუსტრაცია · დაახლოებით ${illustration.stage} კვირა. ზომები შეესაბამება არჩეულ კვირას.`}</Text> : null}
       {development.week === 19 && !length ? (
         <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 6 }}>
           {ka.cycle.pregnancyWeek19Length}
@@ -173,19 +192,20 @@ export function PregnancyWeekOpenCta({ onPress }: { onPress: () => void }) {
       accessibilityLabel={ka.cycle.pregnancyWeekCta}
       style={{
         minHeight: 44,
-        marginTop: 14,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: c.border,
-        backgroundColor: c.cardSoft,
+        marginTop: 8,
+        borderRadius: 16,
+        backgroundColor: 'transparent',
+        flexDirection: 'row',
+        gap: 8,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 16,
       }}
     >
-      <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>
+      <Text style={{ flexShrink:1,color: c.brand, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14,lineHeight:22 }}>
         {ka.cycle.pregnancyWeekCta}
       </Text>
+      <ArrowUpRight size={18} color={c.brand}/>
     </Pressable>
   );
 }

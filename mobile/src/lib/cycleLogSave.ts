@@ -119,6 +119,7 @@ export async function persistCycleLog(
   } catch {
     /* Health is best-effort and must not drop a queued observation */
   }
-  void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
+  // Optional notification refresh must never turn a saved observation into an unhandled rejection.
+  void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh()).catch(() => undefined);
   return result;
 }

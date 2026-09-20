@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { CycleDateField } from '@/components/cycle/CycleDateField';
@@ -122,9 +123,9 @@ export function CyclePostpartumOnboarding({ visible, fromMode, onClose, onComple
             }}
           >
             {saving ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={c.onPrimary} />
             ) : (
-              <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
+              <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
                 {ka.cycle.postpartumOnboardDone}
               </Text>
             )}

@@ -1,12 +1,11 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Pressable,
   RefreshControl,
   ScrollView,
   Text,
-  View,
-} from 'react-native';
+  View} from 'react-native';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -95,6 +94,9 @@ import {
 } from '@/lib/cyclePostpartumQuery';
 import { useAuth } from '@/store/AuthContext';
 import { useCycleColors } from '@/theme/cycle';
+import { needsCycleOnboarding } from '@/lib/cycleExperience';
+import { localAccountId } from '@/lib/localAccount';
+import { CycleJourneyGuide } from '@/components/cycle/CycleJourneyGuide';
 
 type CyclePane = 'overview' | 'calendar' | 'journal';
 
@@ -119,8 +121,8 @@ function PaneSwitcher({
         flexDirection: 'row',
         marginHorizontal: 16,
         marginBottom: 12,
-        backgroundColor: c.cardSoft,
-        borderRadius: 16,
+        backgroundColor: c.card,
+        borderRadius: 20,
         padding: 4,
         borderWidth: 1,
         borderColor: c.border,
@@ -140,18 +142,18 @@ function PaneSwitcher({
             accessibilityLabel={p.label}
             style={{
               flex: 1,
-              minHeight: 52,
+              minHeight: 44,
               paddingVertical: 8,
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: 12,
-              backgroundColor: active ? c.card : 'transparent',
+              borderRadius: 16,
+              backgroundColor: active ? c.cardSoft : 'transparent',
             }}
           >
             <Text
               numberOfLines={2}
               style={{
-                color: active ? c.ink : c.muted,
+                color: active ? c.brand : c.muted,
                 fontFamily: active ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium',
                 fontSize: 13,
                 lineHeight: 20,
@@ -453,8 +455,7 @@ export default function CycleHome() {
   const needsOnboarding =
     Boolean(bundle) &&
     user?.gender === 'FEMALE' &&
-    !supportsCycleCapability(bundle?.profile.mode, 'showPostpartumOverview') &&
-    (!lastPeriod || holdOnboarding);
+    needsCycleOnboarding(bundle?.profile.mode, lastPeriod, holdOnboarding);
   const cycleTodayKey = cycleToday(bundle, todayKey());
   const cycleLen = bundle ? usedCycleLength(bundle) : 28;
   const today = cycleTodayKey;
@@ -527,9 +528,11 @@ export default function CycleHome() {
   );
 
   const saveLastPeriod = async (iso: string) => {
+    const owner = user?.id;
+    if (!owner || onboardSaving) return false;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
       setSaveError(ka.cycle.pickDate);
-      return;
+      return false;
     }
     setOnboardSaving(true);
     setSaveError(null);
@@ -540,9 +543,11 @@ export default function CycleHome() {
       let data: CycleBundle | null = null;
       try {
         data = await api.cycle.setLastPeriod(iso);
-      } catch {
+      } catch (err) {
+        if (!(err instanceof ApiError) || ![404, 405].includes(err.status)) throw err;
         data = await api.cycle.updateProfile({ lastPeriodStart: iso });
       }
+      if (localAccountId() !== owner) return false;
       const stamped = data?.profile?.lastPeriodStart || iso;
       const next =
         data?.predictions && data?.profile
@@ -564,8 +569,10 @@ export default function CycleHome() {
       } catch {
         /* Haptics must not fail a saved date. */
       }
+      return true;
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : ka.common.error);
+      return false;
     } finally {
       setOnboardSaving(false);
     }
@@ -623,7 +630,7 @@ export default function CycleHome() {
                 width: 64,
                 height: 64,
                 borderRadius: 22,
-                backgroundColor: c.roseSoft,
+                backgroundColor: c.accentSoft,
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: 16,
@@ -661,7 +668,7 @@ export default function CycleHome() {
                 borderRadius: 16,
               }}
             >
-              <Text style={{ color: '#fff', fontWeight: '700' }}>{ka.profile.title}</Text>
+              <Text style={{ color: c.onPrimary, fontWeight: '700' }}>{ka.profile.title}</Text>
             </Pressable>
           </View>
         </View>
@@ -677,6 +684,8 @@ export default function CycleHome() {
         userName={user?.fullName}
         error={saveError}
         onSave={saveLastPeriod}
+        onBack={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/home')}
+        onChooseMode={() => router.push('/cycle/settings')}
         onFinishContraception={async ({ method, startedAt }) => {
           setOnboardSaving(true);
           setSaveError(null);
@@ -796,11 +805,10 @@ export default function CycleHome() {
         <ScrollView
           style={{
             flex: 1,
-            marginBottom:
-              !daySheetOpen && !quickOpen ? insets.bottom + 84 : 0,
+            marginBottom: 0,
           }}
           contentContainerStyle={{
-            paddingBottom: pane === 'calendar' ? 28 : 24,
+            paddingBottom: insets.bottom + 100,
           }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={load} tintColor={c.brand} />
@@ -909,6 +917,7 @@ export default function CycleHome() {
                 )}
               </Animated.View>
 
+              <CycleJourneyGuide mode={bundle.profile.mode} />
               <View style={{ paddingHorizontal: 16 }}>
                 <CycleSection title={ka.cycle.todaySection} delay={20}>
                   <CycleDaySummary log={todayLog} onPress={() => openQuickLog(today)} />
@@ -929,7 +938,7 @@ export default function CycleHome() {
                       paddingVertical: 8,
                       marginBottom: 8,
                       borderRadius: 16,
-                      backgroundColor: c.roseSoft,
+                      backgroundColor: c.accentSoft,
                       borderWidth: 1,
                       borderColor: c.border,
                     }}
@@ -1006,7 +1015,7 @@ export default function CycleHome() {
 
               {modeCaps.showClassicCycleOverview ? (
               <View style={{ paddingHorizontal: 16 }}>
-                <CycleInsightsPanel
+                {forecastPresentationAllowed(bundle) ? <CycleInsightsPanel
                   seed={(bundle.profile.aiInsights as never) || bundle.localInsights || null}
                   phase={suppressCycleLengthChrome(bundle) ? { ...todayPhase, day: null } : todayPhase}
                   mode={bundle.profile.mode}
@@ -1016,7 +1025,7 @@ export default function CycleHome() {
                   isIrregular={bundle.profile.isIrregular}
                   offline={Boolean(cycleView?.stale)}
                   maxCards={1}
-                />
+                /> : null}
 
                 {/* Quiet Medi entry (§17) — a row, never a card wall. */}
                 <Pressable
@@ -1032,7 +1041,7 @@ export default function CycleHome() {
                     marginTop: 8,
                     marginBottom: 8,
                     borderRadius: 16,
-                    backgroundColor: c.roseSoft,
+                    backgroundColor: c.accentSoft,
                     borderWidth: 1,
                     borderColor: c.border,
                   }}
@@ -1148,8 +1157,8 @@ export default function CycleHome() {
         </ScrollView>
       </View>
 
-      {!needsOnboarding && pane !== 'journal' && !daySheetOpen && !quickOpen ? (
-        <View style={{ position: 'absolute', left: 16, bottom: insets.bottom + 18 }}>
+      {!needsOnboarding && pane === 'calendar' && !daySheetOpen && !quickOpen ? (
+        <View style={{ position: 'absolute', right: 16, bottom: insets.bottom + 18 }}>
           <CycleFab
             label={ka.cycle.logFab}
             onPress={() => openQuickLog(pane === 'calendar' ? selected : today)}
@@ -1170,7 +1179,13 @@ export default function CycleHome() {
             setBundle(view.display);
             if (authReady && user?.id) {
               const gen = ++ttcGen.current;
-              void refreshTtc(view, user.id, gen);
+              pregnancyGen.current = gen;
+              postpartumGen.current = gen;
+              void Promise.all([
+                refreshTtc(view, user.id, gen),
+                refreshPregnancy(view, user.id, gen),
+                refreshPostpartum(view, user.id, gen),
+              ]);
             }
             return;
           }

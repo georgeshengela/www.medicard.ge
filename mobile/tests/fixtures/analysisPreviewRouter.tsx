@@ -1,0 +1,11 @@
+import React, { useEffect } from 'react';
+import { preview } from './analysisPreviewRuntime';
+export const router = { push: (_: any) => {}, back: () => {}, replace: (_: any) => {} };
+export const useRouter = () => router;
+const navigation = { setOptions: (_: any) => {} };
+export const useNavigation = () => navigation;
+export const useLocalSearchParams = (): any => ({ mode: 'doctor' });
+export const usePathname = () => '/module/' + preview.screen;
+export const useFocusEffect = (callback: () => void | (() => void)) => useEffect(callback, [callback]);
+export const Stack = { Screen: (_: any) => null };
+export const Link = ({ children }: any) => <>{children}</>;

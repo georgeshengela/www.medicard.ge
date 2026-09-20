@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import {
   CALENDAR_EXPORT_UI,
   CALENDAR_TITLE_MODE,
@@ -23,8 +24,9 @@ type Colors = {
   border: string;
   card: string;
   cta: string;
+  onPrimary: string;
   brand: string;
-  roseSoft: string;
+  accentSoft: string;
 };
 
 type Copy = {
@@ -284,7 +286,7 @@ export function PregnancyCareCalendarExport({
               style={btn({
                 borderWidth: 1,
                 borderColor: c.border,
-                backgroundColor: titleMode === CALENDAR_TITLE_MODE.GENERIC ? c.roseSoft : c.card,
+                backgroundColor: titleMode === CALENDAR_TITLE_MODE.GENERIC ? c.accentSoft : c.card,
               })}
             >
               <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
@@ -300,7 +302,7 @@ export function PregnancyCareCalendarExport({
               style={btn({
                 borderWidth: 1,
                 borderColor: c.border,
-                backgroundColor: titleMode === CALENDAR_TITLE_MODE.DETAILED ? c.roseSoft : c.card,
+                backgroundColor: titleMode === CALENDAR_TITLE_MODE.DETAILED ? c.accentSoft : c.card,
               })}
             >
               <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
@@ -325,7 +327,7 @@ export function PregnancyCareCalendarExport({
             accessibilityRole="button"
             accessibilityLabel={addLabel}
             disabled={busy}
-            style={btn({ backgroundColor: c.roseSoft })}
+            style={btn({ backgroundColor: c.accentSoft })}
           >
             <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold' }}>{copy.calendarAdd}</Text>
           </Pressable>
@@ -349,11 +351,11 @@ export function PregnancyCareCalendarExport({
             accessibilityRole="button"
             accessibilityLabel={copy.calendarUpdate}
             disabled={busy}
-            style={btn({ backgroundColor: ui === CALENDAR_EXPORT_UI.DATE_DIFFERS ? c.cta : c.roseSoft })}
+            style={btn({ backgroundColor: ui === CALENDAR_EXPORT_UI.DATE_DIFFERS ? c.cta : c.accentSoft })}
           >
             <Text
               style={{
-                color: ui === CALENDAR_EXPORT_UI.DATE_DIFFERS ? '#fff' : c.brand,
+                color: ui === CALENDAR_EXPORT_UI.DATE_DIFFERS ? c.onPrimary : c.brand,
                 fontFamily: 'NotoSansGeorgian_700Bold',
               }}
             >

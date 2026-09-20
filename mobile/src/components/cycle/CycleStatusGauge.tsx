@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useMemo } from 'react';
-import { Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import Animated, {
   Easing,
@@ -9,11 +10,9 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { Info } from 'lucide-react-native';
-import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
+import { Cloud, Droplets, Info } from 'lucide-react-native';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ka } from '@/i18n/ka';
-import { useIsDark } from '@/theme/colors';
 import { useCycleColors } from '@/theme/cycle';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -24,14 +23,11 @@ const CX = 158;
 const CY = 158;
 const R = 128;
 const TRACK = 32;
-const GLOW = 40;
 const INNER_R = 93;
 const SEGMENTS = 4;
 const GAP_DEG = 16.2;
 const SEG_SWEEP = (360 - SEGMENTS * GAP_DEG) / SEGMENTS;
 const SEG_LEN = R * ((SEG_SWEEP * Math.PI) / 180);
-const TRACK_FILL = '#FFE4E6';
-const DOT_FILL = '#FDA4AF';
 
 function clamp01(t: number) {
   return Math.min(1, Math.max(0, t));
@@ -122,6 +118,8 @@ type Props = {
   hideLengthChrome?: boolean;
   phaseHint?: string;
   periodActive?: boolean;
+  recordedPeriodDays?: number[];
+  pmsPattern?: boolean;
   fertileDays?: { from: number; to: number } | null;
   a11yLabel?: string;
   onInfo?: () => void;
@@ -134,28 +132,27 @@ export function CycleStatusGauge({
   hideLengthChrome,
   phaseHint,
   periodActive,
+  recordedPeriodDays = [],
+  pmsPattern = false,
   fertileDays,
   a11yLabel,
   onInfo,
   onPressFertile,
 }: Props) {
   const c = useCycleColors();
-  const dark = useIsDark();
   const reduceMotion = usePrefersReducedMotion();
   const { width: screenW, height: screenH, fontScale } = useWindowDimensions();
   const largeText = fontScale >= 1.25;
   const shortScreen = screenH < 720;
-  const width = Math.min(screenW - 24, largeText || shortScreen ? 220 : 316);
+  const width = Math.min(screenW - 48, largeText || shortScreen ? 204 : 240);
   const height = width;
-  const phaseOutside = largeText || shortScreen;
   const length = hideLengthChrome ? 0 : Math.max(14, Math.round(cycleLength) || 28);
   const progress = hideLengthChrome || !day || !length ? 0 : clamp01(day / length);
   const anim = useSharedValue(reduceMotion ? progress : 0);
   const knob = knobOnTrack(progress);
   const segments = useMemo(() => Array.from({ length: SEGMENTS }, (_, i) => segmentPath(i)), []);
-  const track = dark ? c.blush : TRACK_FILL;
-  const dots = dark ? c.rose : DOT_FILL;
-  const fill = periodActive ? c.period : c.brand;
+  const track = c.gaugeTrack;
+  const fill = periodActive ? c.period : c.gaugeProgress;
   const fertilePaths = useMemo(
     () =>
       fertileDays && length
@@ -185,18 +182,6 @@ export function CycleStatusGauge({
           style={{ width, height }}
         >
           <Svg width={width} height={height} viewBox={`0 0 ${VB} ${VB}`}>
-            <Circle
-              cx={CX}
-              cy={CY}
-              r={158}
-              stroke={c.blush}
-              strokeWidth={1}
-              strokeDasharray="2 10"
-              fill="none"
-              opacity={0.45}
-            />
-            <Circle cx={CX} cy={CY} r={R} stroke={c.white} strokeWidth={GLOW} fill="none" opacity={dark ? 0.08 : 0.95} />
-
             {segments.map((d, i) => (
               <Path
                 key={`trk-${i}`}
@@ -205,18 +190,6 @@ export function CycleStatusGauge({
                 strokeWidth={TRACK}
                 strokeLinecap="round"
                 fill="none"
-              />
-            ))}
-            {segments.map((d, i) => (
-              <Path
-                key={`dot-${i}`}
-                d={d}
-                stroke={dots}
-                strokeWidth={4}
-                strokeLinecap="round"
-                strokeDasharray="1 32"
-                fill="none"
-                opacity={0.95}
               />
             ))}
             {segments.map((d, i) => (
@@ -234,15 +207,21 @@ export function CycleStatusGauge({
                 onPress={onPressFertile}
               />
             ))}
+            {fertilePaths.map((d,i) => <Path key={`estimate-pattern-${i}`} d={d} stroke={c.card}
+              strokeWidth={3} strokeLinecap="round" strokeDasharray="1 10" fill="none" pointerEvents="none"/>)}
+            {recordedPeriodDays.flatMap(d => fertileSegmentPaths(d, d, length)).map((d, i) => (
+              <Path key={`recorded-${i}`} d={d} stroke={c.period} strokeWidth={TRACK} strokeLinecap="round" fill="none"/>
+            ))}
 
             {progress > 0.015 ? (
               <>
-                <Circle cx={knob.x} cy={knob.y} r={12} fill={c.white} />
-                <Circle cx={knob.x} cy={knob.y} r={10} stroke={fill} strokeWidth={2.5} fill={c.white} />
+                <Circle cx={knob.x} cy={knob.y} r={13} fill={c.card} />
+                <Circle cx={knob.x} cy={knob.y} r={10} stroke={c.todayRing} strokeWidth={3} fill={c.card} />
+                <Circle cx={knob.x} cy={knob.y} r={4} fill={c.todayRing} />
               </>
             ) : null}
 
-            <Circle cx={CX} cy={CY} r={INNER_R} fill={c.card} />
+            <Circle cx={CX} cy={CY} r={INNER_R} fill={c.card} stroke={c.gaugeProgress} strokeWidth={1} strokeOpacity={0.12} />
           </Svg>
 
           <View
@@ -257,15 +236,13 @@ export function CycleStatusGauge({
               justifyContent: 'center',
             }}
           >
-            <View pointerEvents="none" style={{ position: 'absolute', opacity: 0.08 }}>
-              <MedicardLogoMark size={Math.round(96 * (width / VB))} color={fill} />
-            </View>
+            <Text style={{color:c.mutedSoft,fontFamily:'NotoSansGeorgian_500Medium',fontSize:12,lineHeight:18,textAlign:'center'}}>{ka.cycle.cycleDay}</Text>
             <Text
               style={{
                 color: c.ink,
                 fontFamily: 'NotoSansGeorgian_700Bold',
-                fontSize: Math.round(60 * (width / VB)),
-                lineHeight: Math.round(68 * (width / VB)),
+                fontSize: Math.round(66 * (width / VB)),
+                lineHeight: Math.round(76 * (width / VB)),
                 letterSpacing: -1,
                 textAlign: 'center',
                 fontVariant: ['tabular-nums'],
@@ -276,8 +253,8 @@ export function CycleStatusGauge({
             {hideLengthChrome ? null : (
             <Text
               style={{
-                color: c.ink,
-                fontFamily: 'NotoSansGeorgian_600SemiBold',
+                color: c.muted,
+                fontFamily: 'NotoSansGeorgian_500Medium',
                 fontSize: Math.round(16 * (width / VB)),
                 lineHeight: Math.round(22 * (width / VB)),
                 marginTop: 4,
@@ -287,70 +264,15 @@ export function CycleStatusGauge({
               {ka.cycle.outOf(length)}
             </Text>
             )}
-            {phaseHint && !phaseOutside ? (
-              onInfo ? (
-                <Pressable
-                  onPress={onInfo}
-                  accessibilityRole="button"
-                  accessibilityLabel={ka.cycle.howCalculated}
-                  hitSlop={8}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    marginTop: 8,
-                    maxWidth: '90%',
-                    paddingHorizontal: 4,
-                    paddingVertical: 4,
-                  }}
-                >
-                  <Text
-                    numberOfLines={2}
-                    style={{
-                      color: periodActive ? c.period : c.muted,
-                      fontFamily: 'NotoSansGeorgian_400Regular',
-                      fontSize: Math.round(12 * (width / VB)),
-                      lineHeight: Math.round(16 * (width / VB)),
-                      textAlign: 'center',
-                      flexShrink: 1,
-                    }}
-                  >
-                    {phaseHint}
-                  </Text>
-                  <Info size={16} color={c.muted} strokeWidth={2} />
-                </Pressable>
-              ) : (
-                <Text
-                  numberOfLines={2}
-                  style={{
-                    color: periodActive ? c.period : c.muted,
-                    fontFamily: 'NotoSansGeorgian_400Regular',
-                    fontSize: Math.round(12 * (width / VB)),
-                    lineHeight: Math.round(16 * (width / VB)),
-                    marginTop: 8,
-                    textAlign: 'center',
-                    maxWidth: '88%',
-                  }}
-                >
-                  {phaseHint}
-                </Text>
-              )
-            ) : onInfo ? (
-              <Pressable
-                onPress={onInfo}
-                accessibilityRole="button"
-                accessibilityLabel={ka.cycle.howCalculated}
-                hitSlop={10}
-                style={{ marginTop: 8, padding: 6 }}
-              >
-                <Info size={16} color={c.muted} strokeWidth={2} />
-              </Pressable>
-            ) : null}
+
           </View>
         </View>
       </View>
-      {phaseHint && phaseOutside ? (
+      {periodActive || pmsPattern ? <View style={{flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:12,paddingVertical:6,borderRadius:16,backgroundColor:periodActive?c.periodSoft:c.cardSoft,marginTop:4}}>
+        {periodActive?<Droplets size={16} color={c.period}/>:<Cloud size={16} color={c.muted}/>}
+        <Text style={{color:periodActive?c.period:c.muted,fontSize:12,lineHeight:18,fontFamily:'NotoSansGeorgian_500Medium'}}>{periodActive?'სისხლდენა აღრიცხულია':'PMS · შენს წინა ჩანაწერებში'}</Text>
+      </View> : null}
+      {phaseHint ? (
         <Pressable
           onPress={onInfo}
           disabled={!onInfo}
@@ -364,6 +286,7 @@ export function CycleStatusGauge({
             marginTop: 4,
             marginBottom: 4,
             paddingHorizontal: 16,
+            minHeight: 44,
           }}
         >
           <Text
@@ -371,8 +294,8 @@ export function CycleStatusGauge({
             style={{
               color: periodActive ? c.period : c.ink,
               fontFamily: 'NotoSansGeorgian_600SemiBold',
-              fontSize: 15,
-              lineHeight: 21,
+              fontSize: 13,
+              lineHeight: 19,
               textAlign: 'center',
               flexShrink: 1,
             }}

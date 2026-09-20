@@ -4,7 +4,7 @@ import { ChevronRight, PawPrint, type LucideIcon } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { Bone } from '@/components/ui/Skeleton';
-import { STACK_PUSH } from '@/theme/stackMotion';
+import { useStackMotion } from '@/hooks/useStackMotion';
 
 export const PET_FONT = { regular: 'NotoSansGeorgian_400Regular', medium: 'NotoSansGeorgian_500Medium', bold: 'NotoSansGeorgian_700Bold' };
 export function PetInput(props: React.ComponentProps<typeof Input>) {
@@ -36,6 +36,7 @@ export function PetAction({ title, body, icon: Icon, onPress, compact = false }:
 }
 export function PetLoading() { const c = useThemeColors(); return <View style={{ flex: 1, padding: 16, gap: 18, backgroundColor: c.bg100 }} accessibilityLabel="იტვირთება"><Bone height={150} radius={24} /><Bone height={92} radius={24} /><Bone height={92} radius={24} /></View>; }
 export function usePetStackOptions() {
+  const motion = useStackMotion();
   const c = useThemeColors();
-  return { ...STACK_PUSH, headerBackTitle: 'უკან', headerTitleStyle: { fontFamily: PET_FONT.bold, fontSize: 16 }, headerStyle: { backgroundColor: c.bg100 }, headerTintColor: c.text100, headerShadowVisible: false, contentStyle: { backgroundColor: c.bg100 } };
+  return { ...motion, headerBackTitle: 'უკან', headerTitleStyle: { fontFamily: PET_FONT.bold, fontSize: 16 }, headerStyle: { backgroundColor: c.bg100 }, headerTintColor: c.text100, headerShadowVisible: false, contentStyle: { backgroundColor: c.bg100 } };
 }

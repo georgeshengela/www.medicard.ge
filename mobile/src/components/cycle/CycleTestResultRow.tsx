@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { CYCLE_TEST_OPTIONS } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
@@ -40,7 +41,7 @@ export function CycleTestResultRow({ value, onChange, accent }: Props) {
           >
             <Text
               style={{
-                color: on ? c.white : c.ink,
+                color: on ? c.onPrimary : c.ink,
                 fontFamily: 'NotoSansGeorgian_700Bold',
                 fontSize: 13,
               }}

@@ -1,19 +1,14 @@
-/** Shared native-stack motion. Keep this on every Stack so pages glide the same way. */
-export const STACK_PUSH = {
-  animation: 'slide_from_right' as const,
-  animationDuration: 280,
-  animationTypeForReplace: 'push' as const,
-  freezeOnBlur: true,
-};
+export type StackMotionIntent = 'detail' | 'peer' | 'completion';
 
-export const STACK_FADE = {
-  animation: 'fade' as const,
-  animationDuration: 200,
-  freezeOnBlur: true,
-};
-
-export const STACK_REDUCED = {
-  animation: 'fade' as const,
-  animationDuration: 140,
-  freezeOnBlur: true,
-};
+/** Motion describes the relationship, not the feature's branding.
+ * Native detail transitions retain iOS interactive back and Android defaults.
+ * Peers/completions have no horizontal direction. Reduced Motion is immediate.
+ * Duration only customizes animations supported by the native stack (e.g. fade).
+ */
+export function stackMotion(intent: StackMotionIntent, reduced: boolean) {
+  if (reduced) return { animation: 'none' as const, freezeOnBlur: true };
+  if (intent === 'peer' || intent === 'completion') {
+    return { animation: 'fade' as const, animationDuration: 180, freezeOnBlur: true };
+  }
+  return { animation: 'default' as const, freezeOnBlur: true };
+}

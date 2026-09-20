@@ -1,17 +1,22 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
+import { useAnalysisTask } from '@/lib/useAnalysisTask';
+import { ChatScreenShell, ChatFormScroll } from '@/components/chat/ChatScreenShell';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
   useWindowDimensions,
-  View,
-} from 'react-native';
+  View} from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { X, Activity, CalendarDays, Check, Droplets, Heart, Smile } from 'lucide-react-native';
+import { CycleVisualChoice, CycleLogSectionHeading } from './CycleVisualChoice';
+import { CyclePrimaryButton } from './CycleUI';
+import { CycleObservationIcon } from './CycleObservationIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { CycleFlowPicker } from '@/components/cycle/CycleFlowPicker';
@@ -74,12 +79,15 @@ export function CycleQuickLogSheet({
   const [recentIds, setRecentIds] = useState<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const saveTask = useAnalysisTask(`cycle-quick:${user?.id}:${date}:${visible}`);
 
   useEffect(() => {
     if (!visible) return;
     let alive = true;
     if (!user?.id) return;
     setSaveError(null);
+    setSaving(false);
     setHydrated(false);
     setMode(null);
     void loadCycleView(user.id)
@@ -98,9 +106,12 @@ export function CycleQuickLogSheet({
     return () => {
       alive = false;
     };
-  }, [visible, date, user?.id]);
+  }, [visible, date, user?.id, loadAttempt]);
 
   const save = async (markStart?: boolean) => {
+    if (!visible || !hydrated || saving) return;
+    const ticket = saveTask.begin();
+    if (!ticket) return;
     setSaving(true);
     setSaveError(null);
     try {
@@ -113,6 +124,7 @@ export function CycleQuickLogSheet({
       };
       if (!user?.id) return;
       const result = await persistCycleLog(user.id, date, next, { markStart });
+      if (!ticket.current()) return;
       if (!result.view && !result.synced && !result.persistedLocally && !result.sessionOnly) {
         setSaveError(ka.cycle.saveNotPersisted);
         return;
@@ -120,8 +132,11 @@ export function CycleQuickLogSheet({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       onSaved(result.view);
       onClose();
+    } catch (err) {
+      if (ticket.current()) setSaveError(err instanceof Error ? err.message : ka.cycle.saveNotPersisted);
     } finally {
-      setSaving(false);
+      if (ticket.current()) setSaving(false);
+      ticket.finish();
     }
   };
 
@@ -129,19 +144,10 @@ export function CycleQuickLogSheet({
 
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
-      >
-        <Pressable
-          style={{ flex: 1, backgroundColor: c.overlay, justifyContent: 'flex-end' }}
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel={ka.common.close}
-        >
-          <Pressable
-            onPress={() => undefined}
+      <ChatScreenShell header={null} style={{ backgroundColor: c.overlay }}>
+        <View style={{ flex: 1, minHeight: 0, justifyContent: 'flex-end' }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={ka.common.close} onPress={onClose} style={{ position: 'absolute', inset: 0 }} />
+          <View role="dialog" aria-modal={true} accessibilityLabel={ka.cycle.quickLogTitle} accessibilityViewIsModal
             style={{
               backgroundColor: c.card,
               borderTopLeftRadius: 24,
@@ -152,23 +158,29 @@ export function CycleQuickLogSheet({
               borderColor: c.border,
             }}
           >
-            <ScrollView
+            <ChatFormScroll style={{ flexShrink: 1 }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ padding: 20, paddingBottom: sheetPad }}
+              contentContainerStyle={{ padding: 16, paddingBottom: 16 }}
             >
-              <Text style={{ color: c.ink, fontSize: 18, fontFamily: 'NotoSansGeorgian_700Bold' }}>
+              <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
+              <View style={{width:30,height:34,borderRadius:12,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center'}}><CalendarDays size={18} color={c.brand}/></View>
+              <Text style={{ flex:1, color: c.ink, fontSize: 18, lineHeight:26, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
                 {ka.cycle.quickLogTitle}
               </Text>
+              <Pressable onPress={onClose} disabled={saving} accessibilityRole="button" accessibilityLabel={ka.common.close}
+                style={{width:44,height:44,borderRadius:22,backgroundColor:c.cardSoft,alignItems:'center',justifyContent:'center'}}><X size={20} color={c.muted}/></Pressable>
+              </View>
               {!hydrated || !caps ? (
                 <View style={{ minHeight: 120, justifyContent: 'center', alignItems: 'center', paddingVertical: 24 }}>
-                  <ActivityIndicator color={c.brand} />
+                  {!saveError ? <ActivityIndicator color={c.brand} /> : null}
                   <Text
                     accessibilityLabel={ka.common.loading}
                     style={{ color: c.muted, fontSize: 13, marginTop: 10 }}
                   >
-                    {ka.common.loading}
+                    {saveError || ka.common.loading}
                   </Text>
+                  {saveError ? <CyclePrimaryButton label="ხელახლა ცდა" onPress={() => setLoadAttempt(n => n + 1)}/> : null}
                 </View>
               ) : (
               <>
@@ -202,6 +214,7 @@ export function CycleQuickLogSheet({
                 />
               ) : (
                 <View>
+              <CycleLogSectionHeading icon={Droplets}>{ka.cycle.flow}</CycleLogSectionHeading>
               <CycleFlowPicker
                 value={form.flow}
                 disabled={saving}
@@ -259,7 +272,7 @@ export function CycleQuickLogSheet({
                       minHeight: 44,
                       borderRadius: 12,
                       borderWidth: 1,
-                      borderColor: c.border,
+                      borderColor: c.controlBorder,
                       backgroundColor: c.cardSoft,
                       color: c.ink,
                       paddingHorizontal: 12,
@@ -298,7 +311,7 @@ export function CycleQuickLogSheet({
                             justifyContent: 'center',
                             backgroundColor: on ? c.card : c.cardSoft,
                             borderWidth: 1,
-                            borderColor: on ? c.ink : c.border,
+                            borderColor: on ? c.brand : c.border,
                           }}
                         >
                           <Text style={{ color: c.ink, fontSize: 13 }}>{opt.label}</Text>
@@ -324,73 +337,25 @@ export function CycleQuickLogSheet({
                 </View>
               ) : null}
 
-              <Text
-                style={{
-                  color: c.ink,
-                  fontFamily: 'NotoSansGeorgian_700Bold',
-                  fontSize: 13,
-                  marginTop: 16,
-                  marginBottom: 8,
-                }}
-              >
-                {ka.cycle.pain}
-              </Text>
+              <CycleLogSectionHeading icon={Activity}>{ka.cycle.pain}</CycleLogSectionHeading>
               <CyclePainEditor
                 compact
                 entries={form.painEntries}
                 onChange={(painEntries) => setForm((prev) => ({ ...prev, painEntries }))}
               />
 
-              <Text
-                style={{
-                  color: c.ink,
-                  fontFamily: 'NotoSansGeorgian_700Bold',
-                  fontSize: 13,
-                  marginTop: 14,
-                  marginBottom: 8,
-                }}
-              >
-                {ka.cycle.moods}
-              </Text>
+              <CycleLogSectionHeading icon={Smile}>{ka.cycle.moods}</CycleLogSectionHeading>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {QUICK_MOODS.map((opt) => {
                   const on = form.moods.includes(opt.id);
                   return (
-                    <Pressable
-                      key={opt.id}
-                      onPress={() => setForm((prev) => ({ ...prev, moods: toggle(prev.moods, opt.id) }))}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: on }}
-                      accessibilityLabel={opt.label}
-                      style={{
-                        minHeight: 44,
-                        paddingHorizontal: 12,
-                        borderRadius: 12,
-                        justifyContent: 'center',
-                        backgroundColor: on ? c.cta : c.cardSoft,
-                        borderWidth: 1,
-                        borderColor: on ? c.ink : c.border,
-                      }}
-                    >
-                      <Text style={{ color: on ? c.white : c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12 }}>
-                        {opt.label}
-                      </Text>
-                    </Pressable>
+                    <CycleVisualChoice key={opt.id} id={opt.id} label={opt.label} selected={on} disabled={saving}
+                      onPress={() => setForm((prev) => ({ ...prev, moods: toggle(prev.moods, opt.id) }))} />
                   );
                 })}
               </View>
 
-              <Text
-                style={{
-                  color: c.ink,
-                  fontFamily: 'NotoSansGeorgian_700Bold',
-                  fontSize: 13,
-                  marginTop: 16,
-                  marginBottom: 8,
-                }}
-              >
-                {ka.cycle.symptoms}
-              </Text>
+              <CycleLogSectionHeading icon={Heart}>{ka.cycle.symptoms}</CycleLogSectionHeading>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {(recentIds.length
                   ? PHYSICAL_SYMPTOMS.filter((o) => recentIds.includes(o.id) && !PAIN_MANAGED_SYMPTOM_IDS.has(o.id))
@@ -398,26 +363,8 @@ export function CycleQuickLogSheet({
                 ).map((opt) => {
                   const on = form.symptoms.includes(opt.id);
                   return (
-                    <Pressable
-                      key={opt.id}
-                      onPress={() => setForm((prev) => ({ ...prev, ...applySymptomChipToggle(prev, opt.id) }))}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: on }}
-                      accessibilityLabel={opt.label}
-                      style={{
-                        minHeight: 44,
-                        paddingHorizontal: 12,
-                        borderRadius: 12,
-                        justifyContent: 'center',
-                        backgroundColor: on ? c.cta : c.cardSoft,
-                        borderWidth: 1,
-                        borderColor: on ? c.ink : c.border,
-                      }}
-                    >
-                      <Text style={{ color: on ? c.white : c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12 }}>
-                        {opt.label}
-                      </Text>
-                    </Pressable>
+                    <CycleVisualChoice key={opt.id} id={opt.id} label={opt.label} selected={on} disabled={saving}
+                      onPress={() => setForm((prev) => ({ ...prev, ...applySymptomChipToggle(prev, opt.id) }))} />
                   );
                 })}
               </View>
@@ -436,7 +383,7 @@ export function CycleQuickLogSheet({
               {saveError ? (
                 <Text
                   style={{
-                    color: c.period,
+                    color: c.danger,
                     fontFamily: 'NotoSansGeorgian_600SemiBold',
                     fontSize: 13,
                     marginTop: 12,
@@ -446,45 +393,21 @@ export function CycleQuickLogSheet({
                 </Text>
               ) : null}
 
-              <Pressable
-                disabled={saving}
-                onPress={() => void save(isPeriodStart)}
-                accessibilityRole="button"
-                accessibilityLabel={ka.cycle.saveLog}
-                style={{
-                  marginTop: 16,
-                  minHeight: 48,
-                  borderRadius: 14,
-                  backgroundColor: c.cta,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {saving ? (
-                  <ActivityIndicator color={c.white} />
-                ) : (
-                  <Text style={{ color: c.white, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
-                    {isPeriodStart && caps.showClassicCycleOverview ? ka.cycle.quickLogStart : ka.cycle.saveLog}
-                  </Text>
-                )}
-              </Pressable>
 
-              {onOpenFull ? (
-                <Pressable
-                  onPress={onOpenFull}
-                  accessibilityRole="button"
-                  accessibilityLabel={ka.cycle.fullLog}
-                  style={{ marginTop: 10, minHeight: 44, justifyContent: 'center', alignItems: 'center' }}
-                >
-                  <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.fullLog}</Text>
-                </Pressable>
-              ) : null}
               </>
               )}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </KeyboardAvoidingView>
+            </ChatFormScroll>
+            {hydrated && caps ? <View style={{paddingHorizontal:16,paddingTop:10,paddingBottom:Math.max(insets.bottom,8),borderTopWidth:1,borderColor:c.border,backgroundColor:c.card,gap:0}}>
+              <CyclePrimaryButton label={isPeriodStart && caps.showClassicCycleOverview ? ka.cycle.quickLogStart : ka.cycle.saveLog}
+                loading={saving} onPress={() => void save(isPeriodStart)} icon={Check}/>
+              {onOpenFull ? <Pressable onPress={onOpenFull} disabled={saving} accessibilityRole="button" accessibilityLabel={ka.cycle.fullLog}
+                style={{minHeight:44,alignItems:'center',justifyContent:'center'}}>
+                <Text style={{color:c.brand,fontSize:13,lineHeight:20,fontFamily:'NotoSansGeorgian_600SemiBold'}}>{ka.cycle.fullLog}</Text>
+              </Pressable> : null}
+            </View> : null}
+          </View>
+        </View>
+      </ChatScreenShell>
     </Modal>
   );
 }

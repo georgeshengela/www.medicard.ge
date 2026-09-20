@@ -1,13 +1,13 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
+import { ChatScreenShell, ChatFormScroll } from '@/components/chat/ChatScreenShell';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
   Modal,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
-  View,
-} from 'react-native';
+  View} from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CycleAtmosphere, cycleNavHeader } from '@/components/cycle/CycleUI';
@@ -531,7 +531,8 @@ export default function CyclePregnancyCarePlanScreen() {
       </ScrollView>
 
       <Modal visible={Boolean(detail)} {...APP_MODAL_PROPS} onRequestClose={() => setDetail(null)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: APP_MODAL_OVERLAY }}>
+        <ChatScreenShell header={null} style={{ backgroundColor: APP_MODAL_OVERLAY }}>
+        <View style={{ flex: 1, minHeight: 0, justifyContent: 'flex-end' }}>
           <Pressable style={{ flex: 1 }} onPress={() => setDetail(null)} accessibilityLabel={ka.common.close} />
           <View
             style={{
@@ -545,7 +546,7 @@ export default function CyclePregnancyCarePlanScreen() {
             }}
           >
             {detail ? (
-              <ScrollView>
+              <ChatFormScroll style={{ flexShrink: 1 }}>
                 <Text style={{ color: c.mutedSoft, fontSize: 11, lineHeight: 16 }}>
                   {pregnancyCareCategoryLabel(detail.category)}
                 </Text>
@@ -623,7 +624,7 @@ export default function CyclePregnancyCarePlanScreen() {
                   style={{
                     minHeight: 44,
                     borderWidth: 1,
-                    borderColor: c.border,
+                    borderColor: c.controlBorder,
                     borderRadius: 12,
                     paddingHorizontal: 12,
                     color: c.ink,
@@ -659,7 +660,7 @@ export default function CyclePregnancyCarePlanScreen() {
                   style={{
                     minHeight: 44,
                     borderWidth: 1,
-                    borderColor: c.border,
+                    borderColor: c.controlBorder,
                     borderRadius: 12,
                     paddingHorizontal: 12,
                     color: c.ink,
@@ -677,7 +678,7 @@ export default function CyclePregnancyCarePlanScreen() {
                   style={{
                     minHeight: 72,
                     borderWidth: 1,
-                    borderColor: c.border,
+                    borderColor: c.controlBorder,
                     borderRadius: 12,
                     paddingHorizontal: 12,
                     paddingVertical: 8,
@@ -715,7 +716,7 @@ export default function CyclePregnancyCarePlanScreen() {
                           borderRadius: 12,
                           borderWidth: 1,
                           borderColor: c.border,
-                          backgroundColor: detail.userState.reminderEnabled ? c.card : c.roseSoft,
+                          backgroundColor: detail.userState.reminderEnabled ? c.card : c.accentSoft,
                           justifyContent: 'center',
                         }}
                       >
@@ -731,13 +732,13 @@ export default function CyclePregnancyCarePlanScreen() {
                           minHeight: 44,
                           paddingHorizontal: 14,
                           borderRadius: 12,
-                          backgroundColor: detail.userState.reminderEnabled ? c.cta : c.roseSoft,
+                          backgroundColor: detail.userState.reminderEnabled ? c.cta : c.accentSoft,
                           justifyContent: 'center',
                         }}
                       >
                         <Text
                           style={{
-                            color: detail.userState.reminderEnabled ? '#fff' : c.brand,
+                            color: detail.userState.reminderEnabled ? c.onPrimary : c.brand,
                             fontFamily: 'NotoSansGeorgian_700Bold',
                           }}
                         >
@@ -772,7 +773,7 @@ export default function CyclePregnancyCarePlanScreen() {
                                   borderWidth: 1,
                                   borderColor: c.border,
                                   backgroundColor:
-                                    detail.userState.reminderMode !== 'EXACT_TIME' ? c.roseSoft : c.card,
+                                    detail.userState.reminderMode !== 'EXACT_TIME' ? c.accentSoft : c.card,
                                   justifyContent: 'center',
                                 }}
                               >
@@ -801,7 +802,7 @@ export default function CyclePregnancyCarePlanScreen() {
                                   borderWidth: 1,
                                   borderColor: c.border,
                                   backgroundColor:
-                                    detail.userState.reminderMode === 'EXACT_TIME' ? c.roseSoft : c.card,
+                                    detail.userState.reminderMode === 'EXACT_TIME' ? c.accentSoft : c.card,
                                   justifyContent: 'center',
                                 }}
                               >
@@ -838,7 +839,7 @@ export default function CyclePregnancyCarePlanScreen() {
                                   borderRadius: 12,
                                   borderWidth: 1,
                                   borderColor: c.border,
-                                  backgroundColor: detail.userState?.reminderOffset === offset ? c.roseSoft : c.card,
+                                  backgroundColor: detail.userState?.reminderOffset === offset ? c.accentSoft : c.card,
                                   justifyContent: 'center',
                                 }}
                               >
@@ -872,7 +873,7 @@ export default function CyclePregnancyCarePlanScreen() {
                                   borderWidth: 1,
                                   borderColor: c.border,
                                   backgroundColor:
-                                    detail.userState?.exactReminderOffsetMinutes === minutes ? c.roseSoft : c.card,
+                                    detail.userState?.exactReminderOffsetMinutes === minutes ? c.accentSoft : c.card,
                                   justifyContent: 'center',
                                 }}
                               >
@@ -947,7 +948,7 @@ export default function CyclePregnancyCarePlanScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={copy.markPlanned}
                     disabled={saving}
-                    style={{ minHeight: 44, paddingHorizontal: 14, borderRadius: 12, backgroundColor: c.roseSoft, justifyContent: 'center' }}
+                    style={{ minHeight: 44, paddingHorizontal: 14, borderRadius: 12, backgroundColor: c.accentSoft, justifyContent: 'center' }}
                   >
                     <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold' }}>{copy.markPlanned}</Text>
                   </Pressable>
@@ -958,7 +959,7 @@ export default function CyclePregnancyCarePlanScreen() {
                     disabled={saving}
                     style={{ minHeight: 44, paddingHorizontal: 14, borderRadius: 12, backgroundColor: c.cta, justifyContent: 'center' }}
                   >
-                    <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold' }}>{copy.markCompleted}</Text>
+                    <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold' }}>{copy.markCompleted}</Text>
                   </Pressable>
                   <Pressable
                     onPress={() => void save('DISMISSED')}
@@ -997,10 +998,11 @@ export default function CyclePregnancyCarePlanScreen() {
                 >
                   <Text style={{ color: c.muted }}>{ka.common.close}</Text>
                 </Pressable>
-              </ScrollView>
+              </ChatFormScroll>
             ) : null}
           </View>
         </View>
+        </ChatScreenShell>
       </Modal>
 
       <Modal visible={Boolean(sourcesItem)} {...APP_MODAL_PROPS} onRequestClose={() => setSourcesItem(null)}>

@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Text, View } from 'react-native';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
@@ -44,7 +45,7 @@ export function CycleTtcConflictSheet({ visible, onKeepTtc, onSwitchTrack, onClo
             onPress={onKeepTtc}
             style={{ marginTop: 20, backgroundColor: c.cta, borderRadius: 16, paddingVertical: 14, alignItems: 'center' }}
           >
-            <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.contraceptionKeepTtc}</Text>
+            <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.contraceptionKeepTtc}</Text>
           </Pressable>
           <Pressable
             onPress={onSwitchTrack}

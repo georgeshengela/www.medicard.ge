@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
 import type { CycleObservationExplainability, CycleObservationExposure, CycleObservationExposureComparison } from '@/lib/api';
 import type { ObservationExplainTopic } from '@/lib/cycleObservationExplainabilityCopy';

@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
@@ -95,9 +96,9 @@ export function CyclePostpartumBleedClassifySheet({ visible, date, classified, o
             }}
           >
             {saving ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={c.onPrimary} />
             ) : (
-              <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
+              <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15 }}>
                 {classified ? ka.cycle.postpartumUnclassify : ka.cycle.postpartumClassifyConfirm}
               </Text>
             )}

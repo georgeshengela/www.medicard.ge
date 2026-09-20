@@ -1,6 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import {
   Baby,
   ChevronRight,
@@ -42,17 +42,17 @@ function toneVisual(
 ) {
   switch (tone) {
     case 'care':
-      return { accent: c.rose, wash: c.roseSoft, Icon: Droplets };
+      return { accent: c.period, wash: c.periodSoft, Icon: Droplets };
     case 'energy':
-      return { accent: c.brand, wash: c.roseSoft, Icon: Sun };
+      return { accent: c.brand, wash: c.accentSoft, Icon: Sun };
     case 'fertile':
       return { accent: c.fertile, wash: c.lavenderSoft, Icon: Heart };
     case 'pregnancy':
-      return { accent: c.rose, wash: c.roseSoft, Icon: Baby };
+      return { accent: c.brand, wash: c.accentSoft, Icon: Baby };
     case 'mood':
       return { accent: c.lavender, wash: c.lavenderSoft, Icon: Sparkles };
     default:
-      return { accent: c.brand, wash: c.roseSoft, Icon: Moon };
+      return { accent: c.brand, wash: c.accentSoft, Icon: Moon };
   }
 }
 
@@ -162,10 +162,9 @@ export function CycleInsightsPanel({
   /* §4.2.4 / §44: Overview shows max one insight — never an AI feed. */
   const rest = maxCards === 1 ? [] : cards.slice(1);
   const heroTone = featured
-    ? toneVisual(c, c.roseSoft, featured.tone)
-    : toneVisual(c, c.roseSoft, 'calm');
+    ? toneVisual(c, c.accentSoft, featured.tone)
+    : toneVisual(c, c.accentSoft, 'calm');
   const HeroIcon = heroTone.Icon;
-  const fadeTo = dark ? 'rgba(17,24,39,0)' : 'rgba(255,255,255,0)';
 
   const cardRadius = 20;
 
@@ -196,7 +195,7 @@ export function CycleInsightsPanel({
               width: 36,
               height: 36,
               borderRadius: 18,
-              backgroundColor: c.roseSoft,
+              backgroundColor: c.accentSoft,
               borderWidth: 1,
               borderColor: c.border,
               alignItems: 'center',
@@ -243,10 +242,7 @@ export function CycleInsightsPanel({
             accessibilityLabel={`${featured.title}. ${ka.cycle.aiViewDetails}`}
             className="active:opacity-95"
           >
-            <LinearGradient
-              colors={[heroTone.wash, c.card]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
               style={[
                 styles.heroShell,
                 {
@@ -260,12 +256,6 @@ export function CycleInsightsPanel({
                 },
               ]}
             >
-            <LinearGradient
-              colors={[hexAlpha(heroTone.accent, dark ? 0.22 : 0.12), fadeTo]}
-              start={{ x: 1, y: 0 }}
-              end={{ x: 0.15, y: 1 }}
-              style={[StyleSheet.absoluteFill, { borderRadius: cardRadius }]}
-            />
 
             <View pointerEvents="none" style={StyleSheet.absoluteFill}>
               <View
@@ -316,7 +306,7 @@ export function CycleInsightsPanel({
                     width: 46,
                     height: 46,
                     borderRadius: 15,
-                    backgroundColor: hexAlpha(heroTone.accent, dark ? 0.22 : 0.14),
+                    backgroundColor: heroTone.wash,
                     borderWidth: 1,
                     borderColor: hexAlpha(heroTone.accent, 0.28),
                     alignItems: 'center',
@@ -328,7 +318,7 @@ export function CycleInsightsPanel({
                 <View
                   style={{
                     marginLeft: 10,
-                    backgroundColor: c.roseSoft,
+                    backgroundColor: c.accentSoft,
                     borderRadius: 999,
                     paddingHorizontal: 10,
                     paddingVertical: 5,
@@ -379,7 +369,7 @@ export function CycleInsightsPanel({
                     <View
                       key={chip}
                       style={{
-                        backgroundColor: hexAlpha(heroTone.accent, dark ? 0.18 : 0.1),
+                        backgroundColor: heroTone.wash,
                         borderWidth: 1,
                         borderColor: hexAlpha(heroTone.accent, 0.28),
                         paddingHorizontal: 10,
@@ -418,7 +408,7 @@ export function CycleInsightsPanel({
                 <Text
                   style={{
                     flex: 1,
-                    color: c.white,
+                    color: c.onPrimary,
                     fontFamily: 'NotoSansGeorgian_700Bold',
                     fontSize: 14,
                     lineHeight: 18,
@@ -427,10 +417,10 @@ export function CycleInsightsPanel({
                 >
                   {featured.action || ka.cycle.aiViewDetails}
                 </Text>
-                <ChevronRight size={18} color={c.white} strokeWidth={2.4} />
+                <ChevronRight size={18} color={c.onPrimary} strokeWidth={2.4} />
               </View>
             </View>
-            </LinearGradient>
+            </View>
           </Pressable>
         ) : null}
 
@@ -439,7 +429,7 @@ export function CycleInsightsPanel({
         {rest.length ? (
           <View style={styles.rail}>
             {rest.map((card, idx) => {
-              const tone = toneVisual(c, c.roseSoft, card.tone);
+              const tone = toneVisual(c, c.accentSoft, card.tone);
               const Icon = tone.Icon;
               const last = idx === rest.length - 1;
               return (

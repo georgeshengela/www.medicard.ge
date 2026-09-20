@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
@@ -12,9 +12,11 @@ type Props = {
   value?: string;
   onConfirm: (ymd: string) => void;
   onClose: () => void;
+  saving?: boolean;
+  error?: string | null;
 };
 
-export function LabDateSheet({ visible, value, onConfirm, onClose }: Props) {
+export function LabDateSheet({ visible, value, onConfirm, onClose, saving = false, error }: Props) {
   const T = useFigmaLab();
   const insets = useSafeAreaInsets();
   const today = todayYmd();
@@ -31,7 +33,7 @@ export function LabDateSheet({ visible, value, onConfirm, onClose }: Props) {
 
   const [year, month] = cursor.split('-').map(Number);
   const label = useMemo(
-    () => new Date(year, month - 1, 1).toLocaleDateString('ka-GE', { month: 'long', year: 'numeric' }),
+    () => `${ka.auth.months[month - 1]} ${year}`,
     [month, year],
   );
   const cells = useMemo(() => monthCells(year, month - 1), [month, year]);
@@ -48,8 +50,10 @@ export function LabDateSheet({ visible, value, onConfirm, onClose }: Props) {
             padding: 20,
             paddingBottom: Math.max(insets.bottom, 16),
             gap: 16,
+            maxHeight: '92%',
           }}
         >
+          <ScrollView contentContainerStyle={{ gap: 16 }} showsVerticalScrollIndicator={false}>
           <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, color: T.textPrimary }}>
             {ka.lab.dateTitle}
           </Text>
@@ -112,6 +116,9 @@ export function LabDateSheet({ visible, value, onConfirm, onClose }: Props) {
           </View>
           <Pressable
             onPress={() => onConfirm(picked)}
+            accessibilityRole="button"
+            disabled={saving}
+            accessibilityState={{ disabled: saving, busy: saving }}
             style={{
               backgroundColor: T.brand,
               minHeight: 52,
@@ -120,8 +127,14 @@ export function LabDateSheet({ visible, value, onConfirm, onClose }: Props) {
               justifyContent: 'center',
             }}
           >
+            {saving ? <ActivityIndicator color="#FFFFFF" /> : null}
             <Text style={{ color: '#FFFFFF', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16 }}>{ka.lab.dateSave}</Text>
           </Pressable>
+          {error ? <Text accessibilityRole="alert" style={{ fontFamily: 'NotoSansGeorgian_400Regular', color: T.textPrimary, fontSize: 14, lineHeight: 21 }}>{error}</Text> : null}
+          <Pressable accessibilityRole="button" disabled={saving} onPress={onClose} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', color: T.textSecondary }}>მოგვიანებით</Text>
+          </Pressable>
+          </ScrollView>
         </View>
       </View>
     </Modal>

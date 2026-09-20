@@ -25,6 +25,7 @@ export function PredictionBadge({ date }: { date: string }) {
         paddingHorizontal: 12,
         paddingVertical: 7,
         gap: 6,
+        maxWidth: '100%',
       }}
     >
       <View
@@ -38,8 +39,8 @@ export function PredictionBadge({ date }: { date: string }) {
         }}
       />
       <Text
-        numberOfLines={1}
         style={{
+          flexShrink: 1,
           color: c.ink,
           fontFamily: 'NotoSansGeorgian_600SemiBold',
           fontSize: 12,
@@ -63,12 +64,10 @@ export function ConfidenceHint({ label }: { label: string }) {
       accessible
       accessibilityLabel={label}
       style={{
-        borderRadius: 999,
-        backgroundColor: c.cardSoft,
-        borderWidth: 1,
-        borderColor: c.border,
+        borderRadius: 12,
+        backgroundColor: 'transparent',
         paddingHorizontal: 12,
-        paddingVertical: 7,
+        paddingVertical: 4,
         maxWidth: '100%',
       }}
     >

@@ -2,6 +2,8 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  Linking,
   Image,
   Pressable,
   ScrollView,
@@ -15,8 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Camera, FileText, ImageIcon, RefreshCw, Sparkles, X, type LucideIcon } from 'lucide-react-native';
 import { ChatBubbleAssistant, ChatBubbleUser, ChatTypingBubble } from '@/components/chat/ChatBubble';
-import { ChatWidgetCard } from '@/components/chat/ChatExtras';
-import { ChatScreenShell } from '@/components/chat/ChatScreenShell';
+import { ChatActionDock, ChatFormScroll, ChatScreenShell } from '@/components/chat/ChatScreenShell';
 import { ChatTopNav } from '@/components/chat/ChatTopNav';
 import { Disclaimer } from '@/components/Disclaimer';
 import { LabDateSheet } from '@/components/lab/LabDateSheet';
@@ -25,6 +26,11 @@ import { LabLogRow } from '@/components/lab/LabLogRow';
 import { Markdown } from '@/components/ui/Markdown';
 import { QuotaSheet } from '@/components/QuotaSheet';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
+import { KeyboardDoneAccessory, KEYBOARD_DONE_ACCESSORY_ID } from '@/components/ui/KeyboardDoneAccessory';
+import { ANALYSIS_CONTEXT_LIMIT, requireAnalysisText, IncompleteAnalysisError } from '@/lib/analysisFlow';
+import { useAnalysisTask } from '@/lib/useAnalysisTask';
+import { useThemeColors } from '@/theme/colors';
+import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type MedicalRecord } from '@/lib/api';
 import { getAnalysisChatProfile, type AnalysisChatKind } from '@/lib/chatUiConfig';
@@ -54,7 +60,12 @@ type Props = {
   regionRequired?: string;
 };
 
-export function AnalysisModule({
+export function AnalysisModule(props: Props) {
+  const { user } = useAuth();
+  return <AnalysisModuleContent key={`${user?.id ?? 'guest'}:${props.kind}`} {...props} />;
+}
+
+function AnalysisModuleContent({
   kind,
   icon,
   uploadTitle,
@@ -70,7 +81,13 @@ export function AnalysisModule({
   const router = useRouter();
   const profile = useMemo(() => getAnalysisChatProfile(kind), [kind]);
   const plan = usePlanUsage();
-  const { applyUsage } = useAuth();
+  const { user, applyUsage } = useAuth();
+  const task = useAnalysisTask(`${user?.id}:${kind}`);
+  const colors = useThemeColors();
+  const [preparing, setPreparing] = useState(false);
+  const [savingDate, setSavingDate] = useState(false);
+  const [dateError, setDateError] = useState<string | null>(null);
+  const labBatch = useRef<{ signature: string; next: number; record: MedicalRecord | null; extracts: LabExtract[]; notes: string } | null>(null);
   const isLab = kind === 'LAB';
 
   const [files, setFiles] = useState<Picked[]>([]);
@@ -107,81 +124,69 @@ export function AnalysisModule({
     return undefined;
   }, [plan]);
 
-  const acceptMany = useCallback(
-    async (assets: Array<{ uri: string; name?: string; fileName?: string | null; mimeType?: string | null; size?: number | null; fileSize?: number | null }>) => {
+  const pick = useCallback(async (source: 'camera' | 'gallery' | 'pdf') => {
+    if (busy || explaining || savingDate || (isLab && files.length >= MAX_LAB_FILES)) return;
+    const operation = task.begin();
+    if (!operation) return;
+    setPreparing(true);
+    setError(null);
+    type Asset = { uri: string; name?: string; fileName?: string | null; mimeType?: string | null; size?: number | null; fileSize?: number | null };
+    try {
+      let assets: Asset[] = [];
+      if (source === 'pdf') {
+        const selected = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true, multiple: isLab });
+        if (!operation.current() || selected.canceled) return;
+        assets = selected.assets;
+      } else {
+        // The OS permission request starts directly in the button gesture.
+        const permission = await (source === 'camera' ? ImagePicker.requestCameraPermissionsAsync() : ImagePicker.requestMediaLibraryPermissionsAsync());
+        if (!operation.current()) return;
+        if (!permission.granted) {
+          Alert.alert('ფოტოზე წვდომა', ka.upload.permissionDenied, [
+            { text: ka.common.cancel, style: 'cancel' },
+            { text: 'პარამეტრები', onPress: () => { void Linking.openSettings().catch(() => setError(ka.upload.permissionDenied)); } },
+          ]);
+          return;
+        }
+        const selected = await (source === 'camera' ? ImagePicker.launchCameraAsync(IMAGE_PICKER_OPTIONS) : ImagePicker.launchImageLibraryAsync({
+          ...IMAGE_PICKER_OPTIONS, allowsMultipleSelection: isLab, selectionLimit: isLab ? MAX_LAB_FILES - files.length : 1,
+        }));
+        if (!operation.current() || selected.canceled) return;
+        assets = selected.assets ?? [];
+      }
+      const slots = isLab ? MAX_LAB_FILES - files.length : 1;
       const next: Picked[] = [];
-      for (const asset of assets) {
+      const issues: string[] = [];
+      if (assets.length > slots) issues.push('ერთ ჯერზე მაქსიმუმ 8 გვერდი შეგიძლია დაამატო.');
+      for (const asset of assets.slice(0, slots)) {
+        if (!operation.current()) return;
         try {
           const file = isLab ? await prepareLabImage(asset) : await toUploadableImage(asset);
-          if (file.size && file.size > MAX_BYTES) {
-            setError(ka.upload.fileTooLarge);
-            continue;
-          }
+          if (!operation.current()) return;
+          if (file.size != null && file.size > MAX_BYTES) { issues.push(ka.upload.fileTooLarge); continue; }
+          if (file.mimeType === 'application/pdf' && !allowPdf) { issues.push('ამ სექციაში ატვირთე ფოტო. PDF გამოიყენე ანალიზების სექციაში.'); continue; }
           next.push({ uri: file.uri, name: file.name, mimeType: file.mimeType, isPdf: file.mimeType === 'application/pdf' });
-        } catch (err) {
-          setError(err instanceof Error ? err.message : ka.upload.prepareFailed);
-        }
+        } catch { issues.push(ka.upload.prepareFailed); }
       }
-      if (!next.length) return;
-      setFiles((prev) => {
-        const merged = isLab ? [...prev, ...next].slice(0, MAX_LAB_FILES) : next.slice(0, 1);
-        return merged;
-      });
-      setResult(null);
-      setSubmitted(false);
-      setSavedMeta(null);
-      setError(null);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    },
-    [isLab],
-  );
-
-  const pickFromCamera = useCallback(async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(ka.common.error, ka.upload.permissionDenied);
-      return;
+      if (!operation.current()) return;
+      if (next.length) {
+        setFiles(prev => isLab ? [...prev, ...next] : next);
+        setResult(null); setSubmitted(false); setSavedMeta(null); setPendingExtract(null);
+        setShowAnotherShot(source === 'camera' && isLab);
+        labBatch.current = null;
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+      }
+      setError(issues.length ? [...new Set(issues)].join(' ') : null);
+    } catch {
+      if (operation.current()) setError(ka.upload.prepareFailed);
+    } finally {
+      if (operation.current()) setPreparing(false);
+      operation.finish();
     }
-    const pickResult = await ImagePicker.launchCameraAsync(IMAGE_PICKER_OPTIONS);
-    if (pickResult.canceled) return;
-    const asset = pickResult.assets[0];
-    await acceptMany([asset]);
-    if (isLab) setShowAnotherShot(true);
-  }, [acceptMany, isLab]);
-
-  const pickFromGallery = useCallback(async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(ka.common.error, ka.upload.permissionDenied);
-      return;
-    }
-    const pickResult = await ImagePicker.launchImageLibraryAsync({
-      ...IMAGE_PICKER_OPTIONS,
-      allowsMultipleSelection: isLab,
-      selectionLimit: isLab ? MAX_LAB_FILES : 1,
-    });
-    if (pickResult.canceled) return;
-    setShowAnotherShot(false);
-    await acceptMany(pickResult.assets);
-  }, [acceptMany, isLab]);
-
-  const pickPdf = useCallback(async () => {
-    const pickResult = await DocumentPicker.getDocumentAsync({
-      type: 'application/pdf',
-      copyToCacheDirectory: true,
-      multiple: isLab,
-    });
-    if (pickResult.canceled) return;
-    setShowAnotherShot(false);
-    acceptMany(
-      pickResult.assets.map((asset) => ({
-        uri: asset.uri,
-        name: asset.name,
-        mimeType: asset.mimeType ?? 'application/pdf',
-        size: asset.size,
-      })),
-    );
-  }, [acceptMany, isLab]);
+  }, [allowPdf, busy, explaining, files.length, isLab, savingDate, task]);
+  const pickFromCamera = () => { void pick('camera'); };
+  const pickFromGallery = () => { void pick('gallery'); };
+  const pickPdf = () => { void pick('pdf'); };
 
   const persistLab = useCallback(
     async (date: string, extract: LabExtract, analysis: string, recordIds: string[], visionNotes?: string) => {
@@ -218,6 +223,9 @@ export function AnalysisModule({
       return;
     }
 
+    const operation = task.begin();
+    if (!operation) return;
+    Keyboard.dismiss();
     setBusy(true);
     setError(null);
     setSubmitted(true);
@@ -235,10 +243,14 @@ export function AnalysisModule({
 
     try {
       if (isLab) {
-        const extracts: LabExtract[] = [];
-        let notes = '';
-        let record: MedicalRecord | null = null;
-        for (let i = 0; i < files.length; i += 1) {
+        const signature = JSON.stringify([files.map(file => file.uri), combinedContext]);
+        if (labBatch.current?.signature !== signature) labBatch.current = { signature, next: 0, record: null, extracts: [], notes: '' };
+        const batch = labBatch.current;
+        const extracts = batch.extracts;
+        let notes = batch.notes;
+        let record = batch.record;
+        for (let i = batch.next; i < files.length; i += 1) {
+          if (!operation.current()) return;
           const file = files[i];
           setWaitIndex(i);
           setStage(ka.lab.readingPage(i + 1, files.length));
@@ -248,11 +260,13 @@ export function AnalysisModule({
             recordId: record?.id,
             append: i > 0,
           });
+          if (!operation.current()) return;
           applyUsage(response.usage);
           record = response.record;
           notes = response.notes;
           if (response.labExtract) extracts.push(response.labExtract);
           extracts.push(parseLabExtract(response.notes));
+          batch.next = i + 1; batch.record = record; batch.notes = notes;
         }
         const merged = mergeLabExtracts(extracts);
         const saved = record ?? {
@@ -270,7 +284,9 @@ export function AnalysisModule({
         });
         if (merged.parameters.length) {
           if (merged.date) {
+            setPendingExtract({ extract: merged, analysis: '', recordIds: saved.id ? [saved.id] : [], visionNotes: notes });
             await persistLab(merged.date, merged, '', saved.id ? [saved.id] : [], notes);
+            if (operation.current()) setPendingExtract(null);
           } else {
             setPendingExtract({
               extract: merged,
@@ -293,23 +309,25 @@ export function AnalysisModule({
         kind,
         context: combinedContext,
       });
+      if (!operation.current()) return;
+      const analysis = requireAnalysisText(response.analysis);
       applyUsage(response.usage);
-      setResult({ analysis: response.analysis, record: response.record });
+      setResult({ analysis, record: response.record });
     } catch (err) {
+      if (!operation.current()) return;
       if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuotaBlock(err.usage?.resetsInMs);
         if (err.usage) applyUsage(err.usage);
       } else {
-        const message = err instanceof ApiError ? err.message : ka.common.error;
-        console.warn('[lab-extract]', message, err);
+        const message = (err instanceof ApiError || err instanceof IncompleteAnalysisError) ? err.message : ka.common.error;
         setError(message);
       }
       setSubmitted(false);
     } finally {
-      setBusy(false);
-      setStage('');
+      if (operation.current()) { setBusy(false); setStage(''); }
+      operation.finish();
     }
-  }, [files, context, kind, bodyRegions, regionId, regionRequired, applyUsage, isLab, persistLab, plan]);
+  }, [files, context, kind, bodyRegions, regionId, regionRequired, applyUsage, isLab, persistLab, plan, task]);
 
   const askMedi = useCallback(async () => {
     const extract = result?.extract ?? pendingExtract?.extract;
@@ -319,6 +337,8 @@ export function AnalysisModule({
       return;
     }
 
+    const operation = task.begin();
+    if (!operation) return;
     setExplaining(true);
     setError(null);
     try {
@@ -329,6 +349,8 @@ export function AnalysisModule({
         context: context.trim() || undefined,
         recordId: result.record.id,
       });
+      if (!operation.current()) return;
+      requireAnalysisText(response.analysis);
       applyUsage(response.usage);
       setResult({ ...result, analysis: response.analysis });
       if (pendingExtract) {
@@ -338,18 +360,22 @@ export function AnalysisModule({
         await setLabPanelAnalysis(savedMeta.date, response.analysis);
       }
     } catch (err) {
+      if (!operation.current()) return;
       if (err instanceof ApiError && err.isQuotaExceeded) {
         setQuotaBlock(err.usage?.resetsInMs);
         if (err.usage) applyUsage(err.usage);
       } else {
-        setError(err instanceof ApiError ? err.message : ka.common.error);
+        setError((err instanceof ApiError || err instanceof IncompleteAnalysisError) ? err.message : ka.common.error);
       }
     } finally {
-      setExplaining(false);
+      if (operation.current()) setExplaining(false);
+      operation.finish();
     }
-  }, [applyUsage, context, pendingExtract, plan, result, savedMeta]);
+  }, [applyUsage, context, pendingExtract, plan, result, savedMeta, task]);
 
   const reset = useCallback(() => {
+    if (busy || explaining || preparing || savingDate) return;
+    labBatch.current = null;
     setFiles([]);
     setRegionId(null);
     setContext('');
@@ -361,7 +387,7 @@ export function AnalysisModule({
     setAskDate(false);
     setShowAnotherShot(false);
     setExplaining(false);
-  }, []);
+  }, [busy, explaining, preparing, savingDate]);
 
   const userMessage = files.length
     ? files.every((file) => file.isPdf)
@@ -384,18 +410,24 @@ export function AnalysisModule({
         />
       }
       footer={
-        isLab && !result ? (
+        !result ? isLab ? (
           <LabAnalyzeDock
             busy={busy}
             waitIndex={waitIndex}
             total={files.length}
-            disabled={busy || !files.length}
+            disabled={busy || preparing || !files.length}
             onPress={analyze}
           />
+        ) : (
+          <ChatActionDock>
+            <AuthPrimaryButton label={busy ? stage || ka.common.analyzing : ka.common.analyze}
+              loading={busy || preparing} disabled={!files.length || Boolean(bodyRegions?.length && !regionId)}
+              onPress={() => void analyze()} />
+          </ChatActionDock>
         ) : undefined
       }
     >
-      <ScrollView
+      <ChatFormScroll
         ref={scrollRef}
         style={{ flex: 1, backgroundColor: FIGMA_CHAT.cardBg }}
         contentContainerStyle={{ padding: 16, gap: FIGMA_CHAT.messageGap, paddingBottom: 16 }}
@@ -405,10 +437,9 @@ export function AnalysisModule({
           {isLab && !result ? (
             <LabDecodeStudio
               files={files}
-              busy={busy}
+              busy={busy || preparing}
               waitIndex={waitIndex}
               stage={stage}
-              error={error}
               allowPdf={allowPdf}
               context={context}
               contextLabel={contextLabel}
@@ -425,16 +456,17 @@ export function AnalysisModule({
               }}
               onAnotherShotNo={() => setShowAnotherShot(false)}
             />
-          ) : (
-          <ChatBubbleAssistant icon={icon} timestamp={new Date().toISOString()}>
-            <Text style={{ fontSize: 14, lineHeight: 20, color: FIGMA_CHAT.textPrimary, fontWeight: '600' }}>{uploadTitle}</Text>
+          ) : !result ? (
+          <View style={{ borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: FIGMA_CHAT.border, backgroundColor: FIGMA_CHAT.white }}>
+            <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: FIGMA_CHAT.brandQuaternary, alignItems: 'center', justifyContent: 'center' }}>{React.createElement(icon, { size: 24, color: FIGMA_CHAT.brand })}</View>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 28, color: FIGMA_CHAT.textPrimary }}>{uploadTitle}</Text>
             <Text style={{ fontSize: 14, lineHeight: 20, color: FIGMA_CHAT.textSecondary }}>{uploadHint}</Text>
-            <ChatWidgetCard>
+            <View pointerEvents={busy || preparing ? 'none' : 'auto'} style={{ gap: 18, opacity: busy || preparing ? 0.6 : 1 }}>
               {files.length ? (
                 <FilePreview
                   files={files}
                   multi={false}
-                  onRemove={(index) => setFiles((prev) => prev.filter((_, i) => i !== index))}
+                  onRemove={(index) => { if (!busy && !preparing) setFiles((prev) => prev.filter((_, i) => i !== index)); }}
                   onAddCamera={pickFromCamera}
                   onAddGallery={pickFromGallery}
                 />
@@ -448,13 +480,16 @@ export function AnalysisModule({
 
               {bodyRegions?.length ? (
                 <View style={{ gap: 8 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: FIGMA_CHAT.textPrimary }}>{regionLabel}</Text>
+                  <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: FIGMA_CHAT.textPrimary }}>{regionLabel}</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {bodyRegions.map((item) => {
                       const selected = regionId === item.id;
                       return (
                         <Pressable
                           key={item.id}
+                          accessibilityRole="radio"
+                          disabled={busy || preparing}
+                          accessibilityState={{ checked: selected }}
                           onPress={() => {
                             setRegionId(item.id);
                             setError(null);
@@ -462,10 +497,10 @@ export function AnalysisModule({
                           style={{
                             borderRadius: 999,
                             paddingHorizontal: 12,
-                            paddingVertical: 8,
+                            paddingVertical: 12,
                             borderWidth: 1,
                             borderColor: selected ? FIGMA_CHAT.brand : FIGMA_CHAT.border,
-                            backgroundColor: selected ? FIGMA_CHAT.brand : FIGMA_CHAT.white,
+                            backgroundColor: selected ? '#0D9488' : FIGMA_CHAT.cardBg,
                           }}
                         >
                           <Text style={{ fontSize: 14, fontWeight: '600', color: selected ? FIGMA_CHAT.textOnBrand : FIGMA_CHAT.textSecondary }}>
@@ -484,6 +519,10 @@ export function AnalysisModule({
                   <Text style={{ fontWeight: '400', color: FIGMA_CHAT.textMuted }}>({ka.common.optional})</Text>
                 </Text>
                 <TextInput
+                  accessibilityLabel={contextLabel}
+                  editable={!busy && !preparing}
+                  maxLength={ANALYSIS_CONTEXT_LIMIT}
+                  inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
                   value={context}
                   onChangeText={setContext}
                   placeholder={contextPlaceholder}
@@ -491,7 +530,9 @@ export function AnalysisModule({
                   multiline
                   textAlignVertical="top"
                   style={{
-                    minHeight: 72,
+                    fontFamily: 'NotoSansGeorgian_400Regular',
+                    minHeight: 88,
+                    maxHeight: 132,
                     borderRadius: 12,
                     borderWidth: 1,
                     borderColor: FIGMA_CHAT.border,
@@ -504,26 +545,9 @@ export function AnalysisModule({
                 />
               </View>
 
-              <Pressable
-                onPress={analyze}
-                disabled={busy || !files.length || Boolean(bodyRegions?.length && !regionId)}
-                style={{
-                  backgroundColor: FIGMA_CHAT.brand,
-                  borderRadius: 12,
-                  minHeight: 48,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'row',
-                  gap: 8,
-                  opacity: busy || !files.length || Boolean(bodyRegions?.length && !regionId) ? 0.55 : 1,
-                }}
-              >
-                {busy ? <ActivityIndicator color="#fff" /> : <Sparkles size={18} color="#fff" strokeWidth={2.2} />}
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>{busy ? stage || ka.common.analyzing : ka.common.analyze}</Text>
-              </Pressable>
-            </ChatWidgetCard>
-          </ChatBubbleAssistant>
-          )}
+            </View>
+          </View>
+          ) : null}
 
           {submitted && files.length && !isLab ? (
             <ChatBubbleUser content={userMessage} timestamp={new Date().toISOString()} userInitials="M" />
@@ -543,13 +567,14 @@ export function AnalysisModule({
                   gap: 12,
                 }}
               >
+                {pendingExtract && !askDate ? <AuthPrimaryButton label="ანალიზის თარიღის არჩევა" onPress={() => { setDateError(null); setAskDate(true); }} /> : null}
                 {savedMeta ? (
                   <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: FIGMA_CHAT.textPrimary }}>
                     {ka.lab.savedOn(formatLabDateKa(savedMeta.date), savedMeta.count)}
                   </Text>
                 ) : result.extract?.parameters.length ? (
                   <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: FIGMA_CHAT.textPrimary }}>
-                    {ka.lab.extractedTitle}
+                    ამოკითხული მაჩვენებლები
                   </Text>
                 ) : (
                   <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: FIGMA_CHAT.textSecondary }}>{ka.lab.noParams}</Text>
@@ -558,10 +583,11 @@ export function AnalysisModule({
                   <LabLogRow
                     key={row.key}
                     title={`${row.nameKa || row.nameEn}  ${row.display} ${row.unit}`.trim()}
-                    subtitle={row.unit || row.nameEn}
+                    subtitle={row.nameEn}
                     flag={row.flag}
                     onPress={() => {
                       if (savedMeta) router.push(`/lab/param/${encodeURIComponent(row.key)}` as never);
+                      else if (pendingExtract) setAskDate(true);
                     }}
                   />
                 ))}
@@ -573,6 +599,7 @@ export function AnalysisModule({
                       {ka.lab.askMediHint}
                     </Text>
                     <Pressable
+                      accessibilityRole="button"
                       onPress={() => void askMedi()}
                       disabled={explaining}
                       style={{
@@ -594,6 +621,7 @@ export function AnalysisModule({
                   </View>
                 ) : null}
                 <Pressable
+                  accessibilityRole="button"
                   onPress={() => router.push((savedMeta ? `/lab/${savedMeta.date}` : '/lab') as never)}
                   style={{
                     backgroundColor: result.analysis || !result.extract?.parameters.length ? FIGMA_CHAT.brand : FIGMA_CHAT.white,
@@ -615,14 +643,16 @@ export function AnalysisModule({
                     {ka.lab.openLab}
                   </Text>
                 </Pressable>
-                <Pressable onPress={reset} style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}>
+                <Pressable disabled={explaining || savingDate} onPress={reset} style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}>
                   <RefreshCw size={16} color={FIGMA_CHAT.brand} strokeWidth={2.2} />
                   <Text style={{ fontSize: 14, fontFamily: 'NotoSansGeorgian_600SemiBold', color: FIGMA_CHAT.brand }}>{ka.chat.newAnalysis}</Text>
                 </Pressable>
               </View>
             ) : (
             <ChatBubbleAssistant icon={icon} timestamp={new Date().toISOString()}>
+              <View style={{ paddingVertical: 6 }}><Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: FIGMA_CHAT.textPrimary }}>შენი შედეგი</Text></View>
               <Markdown content={result.analysis} />
+              <AuthPrimaryButton label="შენახული ჩანაწერის ნახვა" onPress={() => router.push(`/record/${result.record.id}` as never)} />
               <Pressable
                 onPress={reset}
                 style={{
@@ -642,34 +672,38 @@ export function AnalysisModule({
           ) : null}
 
           {error ? (
-            <View style={{ padding: 12, borderRadius: 16, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' }}>
-              <Text style={{ fontSize: 14, color: '#DC2626' }}>{error}</Text>
+            <View accessibilityLiveRegion="polite" style={{ padding: 14, borderRadius: 16, backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: colors.danger }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 21, color: colors.danger }}>{error}</Text>
             </View>
           ) : null}
 
           <Disclaimer />
-      </ScrollView>
+      </ChatFormScroll>
+      <KeyboardDoneAccessory />
 
       <LabDateSheet
         visible={askDate}
+        saving={savingDate}
+        error={dateError}
         onClose={() => {
-          if (pendingExtract) return;
+          if (savingDate) return;
           setAskDate(false);
         }}
         onConfirm={async (ymd) => {
-          if (!pendingExtract) {
-            setAskDate(false);
-            return;
+          if (!pendingExtract || savingDate) return;
+          const operation = task.begin();
+          if (!operation) return;
+          setSavingDate(true); setDateError(null);
+          try {
+            await persistLab(ymd, pendingExtract.extract, pendingExtract.analysis, pendingExtract.recordIds, pendingExtract.visionNotes);
+            if (!operation.current()) return;
+            setPendingExtract(null); setAskDate(false);
+          } catch {
+            if (operation.current()) setDateError('თარიღი ვერ შეინახა. შედეგი შენარჩუნებულია — სცადე ხელახლა.');
+          } finally {
+            if (operation.current()) setSavingDate(false);
+            operation.finish();
           }
-          await persistLab(
-            ymd,
-            pendingExtract.extract,
-            pendingExtract.analysis,
-            pendingExtract.recordIds,
-            pendingExtract.visionNotes,
-          );
-          setPendingExtract(null);
-          setAskDate(false);
         }}
       />
 
@@ -711,7 +745,7 @@ function FilePreview({
             </Text>
           </View>
         ) : (
-          <Image source={{ uri: picked.uri }} style={{ width: '100%', height: 180, borderRadius: 8 }} resizeMode="cover" />
+          <Image source={{ uri: picked.uri }} style={{ width: '100%', height: 180, borderRadius: 8 }} resizeMode="contain" />
         )}
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
           {onAddCamera ? (
@@ -726,7 +760,7 @@ function FilePreview({
               <Text style={{ fontSize: 13, fontWeight: '600', color: FIGMA_CHAT.brand }}>{ka.upload.fromGallery}</Text>
             </Pressable>
           ) : null}
-          <Pressable onPress={() => onRemove(0)} hitSlop={8}>
+          <Pressable accessibilityRole="button" accessibilityLabel="ფოტოს წაშლა" onPress={() => onRemove(0)} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
             <X size={18} color={FIGMA_CHAT.textMuted} strokeWidth={2.4} />
           </Pressable>
         </View>
@@ -738,6 +772,8 @@ function SourceButton({ icon: Icon, label, onPress }: { icon: LucideIcon; label:
   const FIGMA_CHAT = useFigmaChat();
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
       onPress={onPress}
       style={{
         flex: 1,

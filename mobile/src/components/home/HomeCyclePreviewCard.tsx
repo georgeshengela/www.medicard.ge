@@ -7,7 +7,7 @@ import { todayKey } from '@/components/cycle/CycleCalendar';
 import { WEEKDAYS_KA } from '@/constants/cycle';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
-import { useIsDark } from '@/theme/colors';
+import { useCycleColors } from '@/theme/cycle';
 import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import type { CycleBundle, CycleDayMark } from '@/lib/api';
 import { loadCycleView } from '@/lib/cycleOffline';
@@ -21,21 +21,9 @@ import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { forecastPresentationAllowed, suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
 import { useAuth } from '@/store/AuthContext';
 
-const ROSE = '#E11D48';
-const ROSE_SOFT = '#FFF1F2';
-const ROSE_BORDER = '#FECDD3';
-const ROSE_CTA = '#E11D48';
 const RING = 88;
 const STROKE = 8;
 
-const PHASE_COLOR: Record<string, string> = {
-  period: '#E11D48',
-  fertile: '#C026D3',
-  ovulation: '#A21CAF',
-  follicular: '#14B8A6',
-  luteal: '#FB7185',
-  unknown: '#9CA3AF',
-};
 
 type Props = {
   onPress: () => void;
@@ -59,6 +47,7 @@ function MiniRing({
   caption: string;
 }) {
   const FIGMA_CHAT = useFigmaChat();
+  const c = useCycleColors();
   const r = (RING - STROKE) / 2;
   const circ = 2 * Math.PI * r;
   const clamped = Math.min(1, Math.max(0, progress));
@@ -70,7 +59,7 @@ function MiniRing({
           cx={RING / 2}
           cy={RING / 2}
           r={r}
-          stroke={FIGMA_CHAT.border}
+          stroke={c.border}
           strokeWidth={STROKE}
           fill="none"
         />
@@ -93,7 +82,7 @@ function MiniRing({
             fontFamily: 'NotoSansGeorgian_700Bold',
             fontSize: 22,
             lineHeight: 26,
-            color: FIGMA_CHAT.textPrimary,
+            color: c.ink,
             letterSpacing: -0.4,
           }}
         >
@@ -104,7 +93,7 @@ function MiniRing({
             fontFamily: 'NotoSansGeorgian_500Medium',
             fontSize: 10,
             lineHeight: 13,
-            color: FIGMA_CHAT.textSecondary,
+            color: c.muted,
           }}
         >
           {caption}
@@ -116,6 +105,7 @@ function MiniRing({
 
 function WeekDots({ today, marks }: { today: string; marks: Record<string, CycleDayMark> }) {
   const FIGMA_CHAT = useFigmaChat();
+  const c = useCycleColors();
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDaysToKey(today, i - 3)), [today]);
 
   return (
@@ -123,7 +113,7 @@ function WeekDots({ today, marks }: { today: string; marks: Record<string, Cycle
       {days.map((key) => {
         const mark = marks[key];
         const isToday = key === today;
-        const fill = mark?.period ? ROSE : mark?.ovulation ? '#A21CAF' : mark?.fertile ? '#E879F9' : FIGMA_CHAT.border;
+        const fill = mark?.period ? c.period : mark?.ovulation ? c.ovulation : mark?.fertile ? c.fertile : c.border;
         const { d } = parseDateKey(key);
 
         return (
@@ -133,7 +123,7 @@ function WeekDots({ today, marks }: { today: string; marks: Record<string, Cycle
                 fontFamily: 'NotoSansGeorgian_500Medium',
                 fontSize: 10,
                 lineHeight: 13,
-                color: isToday ? ROSE : FIGMA_CHAT.textSecondary,
+                color: isToday ? c.period : c.muted,
               }}
             >
               {weekdayShort(key)}
@@ -147,14 +137,14 @@ function WeekDots({ today, marks }: { today: string; marks: Record<string, Cycle
                 justifyContent: 'center',
                 backgroundColor: mark?.period || mark?.ovulation || mark?.fertile ? `${fill}22` : FIGMA_CHAT.white,
                 borderWidth: isToday ? 2 : 1,
-                borderColor: isToday ? ROSE : fill,
+                borderColor: isToday ? c.period : fill,
               }}
             >
               <Text
                 style={{
                   fontFamily: 'NotoSansGeorgian_600SemiBold',
                   fontSize: 11,
-                  color: mark?.period ? ROSE : FIGMA_CHAT.textPrimary,
+                  color: mark?.period ? c.period : c.ink,
                 }}
               >
                 {d}
@@ -170,9 +160,9 @@ function WeekDots({ today, marks }: { today: string; marks: Record<string, Cycle
 export function HomeCyclePreviewCard({ onPress }: Props) {
   const { user } = useAuth();
   const FIGMA_CHAT = useFigmaChat();
-  const dark = useIsDark();
-  const roseFill = dark ? '#4c0519' : ROSE_SOFT;
-  const roseLine = dark ? '#9f1239' : ROSE_BORDER;
+  const c = useCycleColors();
+  const roseFill = c.accentSoft;
+  const roseLine = c.border;
   const [bundle, setBundle] = useState<CycleBundle | null>(null);
   const [offline, setOffline] = useState(false);
   const [privacyLocked, setPrivacyLocked] = useState(false);
@@ -248,7 +238,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
     return ka.home.cycleNextIn(n);
   }, [bundle?.predictions?.nextPeriodStart, today]);
 
-  const phaseColor = PHASE_COLOR[phase.phase] ?? ROSE;
+  const phaseColor = ({period:c.period,fertile:c.fertile,ovulation:c.ovulation,follicular:c.follicular,luteal:c.luteal,unknown:c.mutedSoft})[phase.phase] ?? c.gaugeProgress;
   const progress = pregnancy?.age
     ? Math.min(1, pregnancy.age.dayOfPregnancy / 280)
     : hideLengthChrome
@@ -269,7 +259,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
               fontFamily: 'NotoSansGeorgian_600SemiBold',
               fontSize: 16,
               lineHeight: 22,
-              color: FIGMA_CHAT.textPrimary,
+              color: c.ink,
             }}
           >
             {title}
@@ -288,7 +278,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
             fontFamily: 'NotoSansGeorgian_600SemiBold',
             fontSize: 16,
             lineHeight: 22,
-            color: FIGMA_CHAT.textPrimary,
+            color: c.ink,
           }}
         >
           {title}
@@ -308,9 +298,9 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
         <View
           pointerEvents="none"
           style={{
-            backgroundColor: FIGMA_CHAT.cardBg,
+            backgroundColor: c.card,
             borderWidth: 1,
-            borderColor: FIGMA_CHAT.border,
+            borderColor: c.border,
             borderRadius: 24,
             padding: 16,
             gap: 16,
@@ -334,7 +324,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                   justifyContent: 'center',
                 }}
               >
-                <CalendarHeart size={24} color={ROSE} strokeWidth={2} />
+                <CalendarHeart size={24} color={c.period} strokeWidth={2} />
               </View>
               <Text
                 style={{
@@ -342,7 +332,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                   fontFamily: 'NotoSansGeorgian_400Regular',
                   fontSize: 14,
                   lineHeight: 20,
-                  color: FIGMA_CHAT.textPrimary,
+                  color: c.ink,
                 }}
               >
                 {privacyLocked ? ka.cycle.privacyLockTitle : ka.home.cycleSetupBody}
@@ -356,7 +346,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                     fontFamily: 'NotoSansGeorgian_700Bold',
                     fontSize: 16,
                     lineHeight: 22,
-                    color: FIGMA_CHAT.textPrimary,
+                    color: c.ink,
                   }}
                   numberOfLines={2}
                 >
@@ -367,7 +357,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                     fontFamily: 'NotoSansGeorgian_400Regular',
                     fontSize: 13,
                     lineHeight: 18,
-                    color: FIGMA_CHAT.textSecondary,
+                    color: c.muted,
                   }}
                 >
                   {offline
@@ -389,7 +379,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                     fontFamily: 'NotoSansGeorgian_700Bold',
                     fontSize: 16,
                     lineHeight: 22,
-                    color: FIGMA_CHAT.textPrimary,
+                    color: c.ink,
                   }}
                   numberOfLines={2}
                 >
@@ -400,7 +390,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                     fontFamily: 'NotoSansGeorgian_400Regular',
                     fontSize: 13,
                     lineHeight: 18,
-                    color: FIGMA_CHAT.textSecondary,
+                    color: c.muted,
                   }}
                 >
                   {offline
@@ -416,7 +406,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <MiniRing
                   progress={progress}
-                  color={pregnancy ? '#C026D3' : hideLengthChrome ? '#9CA3AF' : phaseColor}
+                  color={pregnancy ? c.gaugeProgress : hideLengthChrome ? c.mutedSoft : phaseColor}
                   center={
                     pregnancy?.age
                       ? String(pregnancy.age.week)
@@ -434,7 +424,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                       fontFamily: 'NotoSansGeorgian_700Bold',
                       fontSize: 16,
                       lineHeight: 22,
-                      color: FIGMA_CHAT.textPrimary,
+                      color: c.ink,
                     }}
                     numberOfLines={2}
                   >
@@ -453,7 +443,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                       fontFamily: 'NotoSansGeorgian_400Regular',
                       fontSize: 13,
                       lineHeight: 18,
-                      color: FIGMA_CHAT.textSecondary,
+                      color: c.muted,
                     }}
                   >
                     {offline
@@ -474,7 +464,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                         fontFamily: 'NotoSansGeorgian_500Medium',
                         fontSize: 12,
                         lineHeight: 17,
-                        color: FIGMA_CHAT.textSecondary,
+                        color: c.muted,
                       }}
                     >
                       {ka.cycle.homeTtcLabel}
@@ -486,7 +476,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                         fontFamily: 'NotoSansGeorgian_600SemiBold',
                         fontSize: 13,
                         lineHeight: 18,
-                        color: ROSE_CTA,
+                        color: c.brand,
                       }}
                     >
                       {nextLine}
@@ -499,7 +489,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
             </>
           )}
 
-          <View style={{ height: 1, backgroundColor: FIGMA_CHAT.border }} />
+          <View style={{ height: 1, backgroundColor: c.border }} />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Text
@@ -507,12 +497,12 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                 fontFamily: 'NotoSansGeorgian_600SemiBold',
                 fontSize: 14,
                 lineHeight: 20,
-                color: ROSE_CTA,
+                color: c.brand,
               }}
             >
               {cta}
             </Text>
-            <CalendarHeart size={20} color={ROSE_CTA} strokeWidth={2} />
+            <CalendarHeart size={20} color={c.brand} strokeWidth={2} />
           </View>
         </View>
       </TouchableOpacity>

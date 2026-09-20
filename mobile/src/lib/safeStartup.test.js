@@ -19,7 +19,8 @@ describe('safe startup', () => {
     const hydrate = text.slice(text.indexOf('const hydrate = useCallback'), text.indexOf('}, [applyVisualSession, resetSession]);'));
     assert.doesNotMatch(hydrate, /setUser\(snapshot\.user\)/);
     assert.doesNotMatch(hydrate, /saveSessionSnapshot/);
-    assert.match(hydrate, /api\.auth\.me\(\)/);
+    assert.match(hydrate, /api\.auth\.me\(token\)/);
+    assert.match(hydrate, /if \(await getToken\(\) !== token\) return/);
     assert.match(hydrate, /runPostLoginSideEffects/);
   });
 });

@@ -4,6 +4,8 @@ import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { publicApiErrorMessage } from './rateLimitCopy.js';
 import { getToken } from './storage';
+import { UploadTimeoutError, uploadWithDeadline } from './uploadDeadline';
+import { withAuthConnectionRetry } from './authConnection';
 /**
  * Resolves the API base URL.
  *
@@ -1900,6 +1902,7 @@ type RequestOptions = {
   token?: string | null;
   timeoutMs?: number;
   cache?: RequestCache;
+  retryAuthConnection?: boolean;
 };
 
 export async function ensureAiSharingConsentForRequest(path: string, method = 'POST', suppliedToken?: string | null, settings = false) {
@@ -1936,23 +1939,28 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      method,
-      cache: cache ?? 'no-store',
-      signal: controller.signal,
-      headers: {
-        Accept: 'application/json',
-        'X-Medicard-Platform': Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web',
-        'X-Medicard-App-Version': String(Constants.expoConfig?.version || ''),
-        ...clientTimezoneHeaders(),
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: formData ?? (body ? JSON.stringify(body) : undefined),
-    });
+    const perform = async () => {
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        method,
+        cache: cache ?? 'no-store',
+        signal: controller.signal,
+        headers: {
+          Accept: 'application/json',
+          'X-Medicard-Platform': Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web',
+          'X-Medicard-App-Version': String(Constants.expoConfig?.version || ''),
+          ...clientTimezoneHeaders(),
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData ?? (body ? JSON.stringify(body) : undefined),
+      });
 
-    const text = await response.text();
-    return parseJsonBody<T>(response.status, text, response.headers.get('Retry-After'));
+      const text = await response.text();
+      return parseJsonBody<T>(response.status, text, response.headers.get('Retry-After'));
+    };
+    return await (options.retryAuthConnection
+      ? withAuthConnectionRetry(perform, controller.signal)
+      : perform());
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if ((error as Error)?.name === 'AbortError') {
@@ -2027,7 +2035,7 @@ async function uploadNativeMultipart<T>(
   const token = await getToken();
   await ensureAiSharingConsentForRequest(path, 'POST', token);
   try {
-    const result = await FileSystem.uploadAsync(`${API_BASE_URL}${path}`, file.uri, {
+    const task = FileSystem.createUploadTask(`${API_BASE_URL}${path}`, file.uri, {
       httpMethod: 'POST',
       uploadType: FileSystem.FileSystemUploadType.MULTIPART,
       fieldName,
@@ -2035,12 +2043,17 @@ async function uploadNativeMultipart<T>(
       sessionType: FileSystem.FileSystemSessionType.FOREGROUND,
       headers: {
         Accept: 'application/json',
+        'X-Medicard-Platform': Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web',
+        'X-Medicard-App-Version': String(Constants.expoConfig?.version || ''),
+        ...clientTimezoneHeaders(),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       parameters,
     });
+    const result = await uploadWithDeadline(task);
     return parseJsonBody<T>(result.status, result.body, headerLookup(result.headers, 'Retry-After'));
   } catch (error) {
+    if (error instanceof UploadTimeoutError) throw new ApiError(error.message, 408);
     if (error instanceof ApiError) throw error;
     console.warn('[api-upload]', path, (error as Error)?.message ?? error);
     throw new ApiError(ka.upload.failed, 0);
@@ -2096,7 +2109,7 @@ export const api = {
       }),
 
     login: (body: { email: string; password: string }) =>
-      request<AuthResponse>('/api/auth/login', { method: 'POST', body, token: null, timeoutMs: 15_000 }),
+      request<AuthResponse>('/api/auth/login', { method: 'POST', body, token: null, timeoutMs: 30_000, retryAuthConnection: true }),
 
     phoneStart: (phone: string) =>
       request<{ sent: boolean; phone: string; message: string; devCode?: string; cooldownSec?: number }>(
@@ -2156,7 +2169,8 @@ export const api = {
         pointsAwarded?: number;
       }>('/api/auth/me', {
         ...(token !== undefined ? { token } : {}),
-        timeoutMs: 15_000,
+        timeoutMs: 20_000,
+        retryAuthConnection: true,
       }),
 
     updateProfile: (body: {

@@ -3,12 +3,12 @@ import { Stack } from 'expo-router';
 import { ka } from '@/i18n/ka';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useThemeColors } from '@/theme/colors';
-import { STACK_PUSH, STACK_REDUCED } from '@/theme/stackMotion';
+import { useStackMotion } from '@/hooks/useStackMotion';
 
 /** Tab screens only. The pill lives in the root layout, outside this stack. */
 export default function TabsLayout() {
   const colors = useThemeColors();
-  const reduceMotion = usePrefersReducedMotion();
+  const motion = useStackMotion('peer');
 
   return (
     <Stack
@@ -18,7 +18,7 @@ export default function TabsLayout() {
         headerShadowVisible: false,
         headerTintColor: colors.primary200,
         contentStyle: { backgroundColor: colors.bg100 },
-        ...(reduceMotion ? STACK_REDUCED : STACK_PUSH),
+        ...motion,
       }}
     >
       <Stack.Screen name="home" options={{ headerShown: false }} />

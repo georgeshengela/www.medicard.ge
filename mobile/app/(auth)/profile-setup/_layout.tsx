@@ -1,9 +1,10 @@
 import { Stack } from 'expo-router';
-import { STACK_PUSH } from '@/theme/stackMotion';
+import { useStackMotion } from '@/hooks/useStackMotion';
 
 export default function ProfileSetupLayout() {
+  const motion = useStackMotion();
   return (
-    <Stack screenOptions={{ headerShown: false, ...STACK_PUSH }}>
+    <Stack screenOptions={{ headerShown: false, ...motion }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="avatar" />
       <Stack.Screen name="phone" />

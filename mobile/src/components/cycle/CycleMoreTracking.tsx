@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { ChevronDown, ChevronRight, Lock, Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
@@ -63,10 +64,10 @@ function Chip({
         gap: 6,
       }}
     >
-      {selected ? <Check size={14} color={c.white} strokeWidth={3} /> : null}
+      {selected ? <Check size={14} color={c.onPrimary} strokeWidth={3} /> : null}
       <Text
         style={{
-          color: selected ? c.white : c.ink,
+          color: selected ? c.onPrimary : c.ink,
           fontFamily: selected ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_600SemiBold',
           fontSize: 13,
         }}
@@ -202,7 +203,7 @@ export function CycleMoreTracking({ form, onChange, compact, mode }: Props) {
                     minHeight: 44,
                     borderRadius: 12,
                     borderWidth: 1,
-                    borderColor: c.border,
+                    borderColor: c.controlBorder,
                     backgroundColor: c.cardSoft,
                     color: c.ink,
                     paddingHorizontal: 12,
@@ -322,7 +323,7 @@ export function CycleMoreTracking({ form, onChange, compact, mode }: Props) {
                         minHeight: 44,
                         borderRadius: 12,
                         borderWidth: 1,
-                        borderColor: c.border,
+                        borderColor: c.controlBorder,
                         backgroundColor: c.cardSoft,
                         color: c.ink,
                         paddingHorizontal: 12,

@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { CycleCard, formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { MUCUS_OPTIONS } from '@/constants/cycle';

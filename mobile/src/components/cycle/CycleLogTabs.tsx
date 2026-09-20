@@ -1,12 +1,13 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
+import { ChatFormScroll } from '@/components/chat/ChatScreenShell';
 import React, { useMemo, useState } from 'react';
 import {
-  Pressable,
   ScrollView,
   Text,
   TextInput,
-  View,
-} from 'react-native';
-import Animated, { FadeInRight } from 'react-native-reanimated';
+  View} from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { Check, ChevronRight, Droplets, Heart, Lock, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import type { LucideIcon } from 'lucide-react-native';
@@ -116,6 +117,7 @@ export function CycleLogTabs({
   creatingTag,
 }: Props) {
   const c = useCycleColors();
+  const reduceMotion = usePrefersReducedMotion();
   const [tab, setTab] = useState<TabId>(initialTab ?? 'flow');
   const [feelPane, setFeelPane] = useState<FeelPane>('symptoms');
   const [symQuery, setSymQuery] = useState('');
@@ -209,6 +211,9 @@ export function CycleLogTabs({
             return (
               <Pressable
                 key={t.id}
+                accessibilityRole="tab"
+                accessibilityLabel={t.label}
+                accessibilityState={{ selected: active }}
                 onPress={() => {
                   Haptics.selectionAsync().catch(() => undefined);
                   setTab(t.id);
@@ -242,7 +247,7 @@ export function CycleLogTabs({
                       width: 8,
                       height: 8,
                       borderRadius: 4,
-                      backgroundColor: c.brand,
+                      backgroundColor: c.cta,
                     }}
                   />
                 ) : null}
@@ -252,13 +257,13 @@ export function CycleLogTabs({
         </View>
       </View>
 
-      <ScrollView
+      <ChatFormScroll
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: bottomInset + 24 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {tab === 'flow' ? (
-          <Animated.View entering={FadeInRight.duration(280)}>
+          <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(160)}>
             <Text
               style={{
                 color: c.ink,
@@ -280,7 +285,7 @@ export function CycleLogTabs({
         ) : null}
 
         {tab === 'feel' ? (
-          <Animated.View entering={FadeInRight.duration(280)}>
+          <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(160)}>
             {assessmentKeys.length ? (
               <CycleObservationAssessment keys={assessmentKeys} form={form} onChange={onChange} ready />
             ) : null}
@@ -306,6 +311,9 @@ export function CycleLogTabs({
                 return (
                   <Pressable
                     key={pane.id}
+                    accessibilityRole="tab"
+                    accessibilityLabel={pane.label}
+                    accessibilityState={{ selected: active }}
                     onPress={() => setFeelPane(pane.id)}
                     style={{
                       flex: 1,
@@ -333,6 +341,7 @@ export function CycleLogTabs({
               <>
                 <TextInput
                   value={symQuery}
+                  accessibilityLabel="სიმპტომების ძებნა"
                   onChangeText={setSymQuery}
                   placeholder="ძებნა…"
                   placeholderTextColor={c.mutedSoft}
@@ -344,7 +353,7 @@ export function CycleLogTabs({
                     color: c.ink,
                     fontSize: 15,
                     borderWidth: 1.5,
-                    borderColor: c.border,
+                    borderColor: c.controlBorder,
                     marginBottom: 12,
                   }}
                 />
@@ -367,8 +376,8 @@ export function CycleLogTabs({
         ) : null}
 
         {tab === 'more' ? (
-          <Animated.View entering={FadeInRight.duration(280)}>
-            <Block title={ka.cycle.lifestyle} hint={ka.cycle.lifestyleHint}>
+          <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(160)}>
+            <Block title={ka.cycle.lifestyle}>
               <CycleLifestyleFields
                 sleepQuality={form.sleepQuality}
                 stressLevel={form.stressLevel}
@@ -430,6 +439,9 @@ export function CycleLogTabs({
                   return (
                     <View key={String(opt.val)} style={{ flex: 1, marginHorizontal: 5 }}>
                       <Pressable
+                        accessibilityRole="radio"
+                        accessibilityLabel={opt.label}
+                        accessibilityState={{ checked: active }}
                         onPress={() => {
                           Haptics.selectionAsync().catch(() => undefined);
                           onChange({ sexual: opt.val, sexTags: opt.val ? form.sexTags : [] });
@@ -444,7 +456,7 @@ export function CycleLogTabs({
                           borderColor: c.border,
                         }}
                       >
-                        <Text style={{ color: active ? '#fff' : c.ink, fontWeight: '800' }}>
+                        <Text style={{ color: active ? c.onPrimary : c.ink, fontWeight: '800' }}>
                           {opt.label}
                         </Text>
                       </Pressable>
@@ -514,6 +526,7 @@ export function CycleLogTabs({
                 <Block title={ka.cycle.bbt} hint="°C">
                   <TextInput
                     value={form.bbt}
+                    accessibilityLabel={ka.cycle.bbt}
                     onChangeText={(bbt) => onChange({ bbt })}
                     keyboardType="decimal-pad"
                     placeholder="36.5"
@@ -527,7 +540,7 @@ export function CycleLogTabs({
                       fontSize: 20,
                       fontWeight: '800',
                       borderWidth: 1.5,
-                      borderColor: c.border,
+                      borderColor: c.controlBorder,
                     }}
                   />
                 </Block>
@@ -550,12 +563,14 @@ export function CycleLogTabs({
             ) : null}
           </Animated.View>
         ) : null}
-      </ScrollView>
+      </ChatFormScroll>
 
       {tabIndex < TABS.length - 1 ? (
         <View style={{ position: 'absolute', right: 20, bottom: bottomInset + 76 }}>
           <Pressable
             onPress={goNext}
+            accessibilityRole="button"
+            accessibilityLabel={ka.cycle.logNext}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -665,7 +680,7 @@ function FlowMeter({
                         height: 10,
                         borderRadius: 5,
                         borderWidth: 2,
-                        borderColor: selected ? '#fff' : c.mutedSoft,
+                        borderColor: selected ? c.onPrimary : c.mutedSoft,
                       }}
                     />
                   ) : (
@@ -676,7 +691,7 @@ function FlowMeter({
                           width: 10,
                           height: 10,
                           borderRadius: 5,
-                          backgroundColor: selected ? '#fff' : accent,
+                          backgroundColor: selected ? c.onPrimary : accent,
                           opacity: selected ? 1 : 0.35 + i * 0.15,
                           marginBottom: 3,
                         }}
@@ -745,11 +760,15 @@ function ToggleList({
               Haptics.selectionAsync().catch(() => undefined);
               onToggle(opt.id);
             }}
+            accessibilityRole="checkbox"
+            accessibilityLabel={opt.label}
+            accessibilityState={{ checked: on }}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               paddingHorizontal: 16,
-              paddingVertical: 15,
+              paddingVertical: 12,
+              minHeight: 48,
               backgroundColor: on ? withAlpha(accent, 0.1) : c.card,
               borderBottomWidth: idx < options.length - 1 ? 1 : 0,
               borderBottomColor: c.border,
@@ -759,8 +778,8 @@ function ToggleList({
               style={{
                 flex: 1,
                 color: c.ink,
-                fontWeight: on ? '800' : '600',
-                fontSize: 15,
+                fontWeight: on ? '600' : '500',
+                fontSize: 13,
                 paddingRight: 12,
               }}
             >
@@ -768,17 +787,17 @@ function ToggleList({
             </Text>
             <View
               style={{
-                width: 28,
-                height: 28,
-                borderRadius: 14,
+                width: 22,
+                height: 22,
+                borderRadius: 11,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: on ? accent : 'transparent',
+                backgroundColor: on ? c.cta : 'transparent',
                 borderWidth: on ? 0 : 2,
                 borderColor: c.mutedSoft,
               }}
             >
-              {on ? <Check size={16} color="#fff" strokeWidth={3} /> : null}
+              {on ? <Check size={16} color={c.onPrimary} strokeWidth={3} /> : null}
             </View>
           </Pressable>
         );
@@ -806,6 +825,9 @@ function MucusRow({
           return (
             <Pressable
               key={opt.id}
+              accessibilityRole="radio"
+              accessibilityLabel={opt.label}
+              accessibilityState={{ checked: on }}
               onPress={() => {
                 Haptics.selectionAsync().catch(() => undefined);
                 onChange(on ? null : opt.id);
@@ -815,12 +837,13 @@ function MucusRow({
                 paddingHorizontal: 16,
                 paddingVertical: 12,
                 borderRadius: 24,
-                backgroundColor: on ? accent : c.cardSoft,
-                borderWidth: on ? 0 : 1.5,
-                borderColor: c.border,
+                minHeight: 44,
+                backgroundColor: on ? c.accentSoft : c.cardSoft,
+                borderWidth: 1,
+                borderColor: on ? accent : c.controlBorder,
               }}
             >
-              <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '800', fontSize: 13 }}>
+              <Text style={{ color: c.ink, fontWeight: on ? '600' : '500', fontSize: 13 }}>
                 {opt.label}
               </Text>
             </Pressable>

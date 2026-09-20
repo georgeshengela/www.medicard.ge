@@ -1,10 +1,12 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { CyclePregnancyPayload } from '@/lib/api';
 import { pregnancyEmptyCopyAllowed, pregnancyQueryPending } from '@/lib/cyclePregnancyQuery';
 import { pregnancyObservationLines } from '@/lib/pregnancyObservationPresent';
-import { formatCycleDateKa } from '@/components/cycle/CycleUI';
+import { CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
+import { CalendarDays, Check, Heart, Plus } from 'lucide-react-native';
 import { PregnancyWeekMetrics, PregnancyWeekOpenCta } from '@/components/cycle/CyclePregnancyWeekVisual';
 import { useCycleColors } from '@/theme/cycle';
 
@@ -101,23 +103,26 @@ export function CyclePregnancyCard({
       accessibilityRole="summary"
       accessibilityLabel={ka.cycle.pregnancyModeTitle}
       style={{
-        borderRadius: 16,
+        borderRadius: 24,
         borderWidth: 1,
         borderColor: c.border,
         backgroundColor: c.card,
         padding: 16,
       }}
     >
+      <View style={{flexDirection:'row',alignItems:'center',gap:8}}>
+      <Heart size={16} color={c.brand} strokeWidth={1.8}/>
       <Text
         style={{
-          color: c.ink,
-          fontFamily: 'NotoSansGeorgian_700Bold',
-          fontSize: 16,
-          lineHeight: 22,
+          color: c.brand,
+          fontFamily: 'NotoSansGeorgian_600SemiBold',
+          fontSize: 12,
+          lineHeight: 20,
         }}
       >
         {ka.cycle.pregnancyModeTitle}
       </Text>
+      </View>
       {pregnancy?.reviewRequired ? (
         <Text
           accessibilityLabel={ka.cycle.pregnancyReviewRequired}
@@ -132,7 +137,7 @@ export function CyclePregnancyCard({
             color: c.ink,
             fontFamily: 'NotoSansGeorgian_700Bold',
             fontSize: 22,
-            lineHeight: 28,
+            lineHeight: 30,
             marginTop: 8,
           }}
         >
@@ -140,26 +145,29 @@ export function CyclePregnancyCard({
         </Text>
       ) : null}
       {due && !pregnancy?.reviewRequired ? (
+        <View style={{flexDirection:'row',gap:8,alignItems:'flex-start',marginTop:8}}>
+        <CalendarDays size={16} color={c.mutedSoft} style={{marginTop:2}}/>
         <Text
           accessibilityLabel={ka.cycle.pregnancyDueA11y(formatCycleDateKa(due))}
-          style={{ color: c.muted, fontSize: 13, lineHeight: 19, marginTop: 6 }}
+          style={{ flex:1,color: c.muted, fontSize: 12, lineHeight: 20 }}
         >
           {ka.cycle.pregnancyEstimatedDue}: {formatCycleDateKa(due)}
         </Text>
+        </View>
       ) : null}
       {source ? (
         <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 17, marginTop: 4 }}>{source}</Text>
       ) : null}
       {pregnancy?.weekDevelopment && !pregnancy?.reviewRequired ? (
-        <View style={{ marginTop: 14 }}>
-          <PregnancyWeekMetrics development={pregnancy.weekDevelopment} />
+        <View style={{ marginTop: 16 }}>
+          <PregnancyWeekMetrics development={pregnancy.weekDevelopment} compact />
           {onOpenWeek ? <PregnancyWeekOpenCta onPress={onOpenWeek} /> : null}
         </View>
       ) : null}
-      <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginTop: 10 }}>
+      <Text style={{ color: c.mutedSoft, fontSize: 11, lineHeight: 18, marginTop: 8 }}>
         {ka.cycle.pregnancyNotDiagnosis}
       </Text>
-      <View style={{ marginTop: 12 }}>
+      <View style={{ marginTop: 16,paddingTop:16,borderTopWidth:1,borderColor:c.border }}>
         <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13 }}>
           {ka.cycle.pregnancyTodayTitle}
         </Text>
@@ -168,31 +176,20 @@ export function CyclePregnancyCard({
             {ka.cycle.pregnancyTodayEmpty}
           </Text>
         ) : hasToday ? (
-          <View style={{ marginTop: 6, gap: 2 }}>
+          <View style={{ marginTop: 8, gap: 8,flexDirection:'row',flexWrap:'wrap' }}>
             {todayBits.map((bit) => (
-              <Text key={bit} style={{ color: c.ink, fontSize: 13, lineHeight: 19 }}>
+              <View key={bit} style={{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:10,paddingVertical:6,borderRadius:12,backgroundColor:c.cardSoft,maxWidth:'100%'}}>
+              <Check size={13} color={c.todayRing}/>
+              <Text style={{flexShrink:1,color: c.ink, fontSize: 12, lineHeight: 20 }}>
                 {bit}
               </Text>
+              </View>
             ))}
           </View>
         ) : null}
       </View>
       {onLog ? (
-        <Pressable
-          onPress={onLog}
-          accessibilityRole="button"
-          accessibilityLabel={ka.cycle.logFab}
-          style={{
-            minHeight: 44,
-            marginTop: 12,
-            borderRadius: 14,
-            backgroundColor: c.cta,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.logFab}</Text>
-        </Pressable>
+        <View style={{marginTop:16}}><CyclePrimaryButton label={ka.cycle.logFab} onPress={onLog} icon={Plus}/></View>
       ) : null}
     </View>
   );

@@ -3,9 +3,11 @@ import { Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 import { useIsDark, useThemeColors } from '@/theme/colors';
-import { STACK_PUSH } from '@/theme/stackMotion';
+import { useStackMotion } from '@/hooks/useStackMotion';
 
 export default function AuthLayout() {
+  const motion = useStackMotion();
+  const peerMotion = useStackMotion('peer');
   const colors = useThemeColors();
   const dark = useIsDark();
   const segments = useSegments();
@@ -14,11 +16,11 @@ export default function AuthLayout() {
   return (
     <>
       <StatusBar style={brandSplash || dark ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface }, ...STACK_PUSH }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="welcome" options={{ contentStyle: { backgroundColor: '#14B8A6' } }} />
-        <Stack.Screen name="sign-in" />
-        <Stack.Screen name="sign-up" />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface }, ...motion }}>
+        <Stack.Screen name="index" options={peerMotion} />
+        <Stack.Screen name="welcome" options={{ ...peerMotion, contentStyle: { backgroundColor: '#14B8A6' } }} />
+        <Stack.Screen name="sign-in" options={peerMotion} />
+        <Stack.Screen name="sign-up" options={peerMotion} />
         <Stack.Screen name="forgot-password" />
         <Stack.Screen name="assessment/index" />
         <Stack.Screen name="profile-setup" />

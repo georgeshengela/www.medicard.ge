@@ -1977,3 +1977,49 @@ model AiConsentEvent {
   createdAt DateTime @default(now())
   @@index([userId, createdAt])
 }
+model QaRun {
+  id          String @id @default(uuid())
+  title       String
+  module      String
+  version     String
+  environment String
+  device      String
+  status      String @default("OPEN")
+  notes       String @default("")
+  createdBy   String
+  revision    Int @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  checks      QaCheck[]
+  @@index([module, createdAt])
+}
+model QaCheck {
+  id          String @id @default(uuid())
+  runId       String
+  run         QaRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  caseKey     String
+  title       String
+  stage       String
+  steps       String
+  expected    String
+  status      String @default("PENDING")
+  actual      String @default("")
+  method      String @default("MANUAL")
+  revision    Int @default(0)
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+  evidence    QaEvidence[]
+  @@unique([runId, caseKey])
+}
+model QaEvidence {
+  id        String @id @default(uuid())
+  checkId   String
+  check     QaCheck @relation(fields: [checkId], references: [id], onDelete: Cascade)
+  caption   String
+  mimeType  String
+  sha256    String
+  bytes     Bytes
+  createdBy String
+  createdAt DateTime @default(now())
+  @@index([checkId, createdAt])
+}

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { ChatBubbleAssistant, ChatBubbleUser } from '@/components/chat/ChatBubble';
 import { ChatEmptyHero, ChatSuggestionChip } from '@/components/chat/ChatExtras';
@@ -15,10 +15,20 @@ import { ka } from '@/i18n/ka';
 import { ApiError, api, type ChatMessage } from '@/lib/api';
 import { streamAiQuery } from '@/lib/aiQueryStream';
 import { getConversationalChatProfile } from '@/lib/chatUiConfig';
+import { CHAT_MESSAGE_LIMIT, requireAnalysisText, IncompleteAnalysisError } from '@/lib/analysisFlow';
+import { useAnalysisTask } from '@/lib/useAnalysisTask';
+import { localAccountId } from '@/lib/localAccount';
+import { useThemeColors } from '@/theme/colors';
 import { usePlanUsage } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
 
 export default function ChatScreen() {
+  const { user } = useAuth();
+  const params = useLocalSearchParams<{ mode?: string; sessionId?: string }>();
+  return <ChatScreenContent key={`${user?.id}:${params.mode}:${params.sessionId ?? 'new'}`} />;
+}
+
+function ChatScreenContent() {
   const FIGMA_CHAT = useFigmaChat();
   const router = useRouter();
   const navigation = useNavigation();
@@ -27,6 +37,15 @@ export default function ChatScreen() {
   const mode = profile.apiMode ?? 'DOCTOR';
 
   const { user, applyUsage } = useAuth();
+  const colors = useThemeColors();
+  const task = useAnalysisTask(`${user?.id}:${params.mode}:${params.sessionId ?? 'new'}`);
+  const abort = useRef<AbortController | null>(null);
+  const alive = useRef(true);
+  const nearBottom = useRef(true);
+  const [scrolledUp, setScrolledUp] = useState(false);
+  const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'error'>(params.sessionId ? 'loading' : 'ready');
+  const [historyAttempt, setHistoryAttempt] = useState(0);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; abort.current?.abort(); }; }, []);
   const plan = usePlanUsage();
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
@@ -37,6 +56,7 @@ export default function ChatScreen() {
   const [draft, setDraft] = useState(typeof params.prefill === 'string' ? params.prefill : '');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
 
   useLayoutEffect(() => {
@@ -60,23 +80,35 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (!params.sessionId) return;
-    api.chats
-      .get(params.sessionId)
-      .then((response) => setMessages(response.session.messages ?? []))
-      .catch(() => undefined);
-  }, [params.sessionId]);
+    let current = true;
+    const owner = localAccountId();
+    setHistoryState('loading');
+    api.chats.get(params.sessionId).then(response => {
+      if (!current || localAccountId() !== owner) return;
+      setMessages(response.session.messages ?? []);
+      setHistoryState('ready');
+    }).catch(() => { if (current && localAccountId() === owner) setHistoryState('error'); });
+    return () => { current = false; };
+  }, [params.sessionId, historyAttempt]);
 
   const scrollToEnd = useCallback(() => {
-    requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    if (!nearBottom.current) return;
+    requestAnimationFrame(() => { if (alive.current && nearBottom.current) listRef.current?.scrollToEnd({ animated: false }); });
   }, []);
 
   const send = useCallback(
     async (text: string) => {
       const message = text.trim();
-      if (message.length < 2 || sending) return;
+      if (message.length < 2 || message.length > CHAT_MESSAGE_LIMIT || historyState !== 'ready') return;
+      const operation = task.begin();
+      if (!operation) return;
+      const controller = new AbortController();
+      abort.current = controller;
+      nearBottom.current = true; setScrolledUp(false);
 
       const userAt = new Date().toISOString();
-      setDraft('');
+      setDraft(current => current.trim() === message ? '' : current);
+      setFailedMessage(null);
       setError(null);
       setSending(true);
       setMessages((prev) => [
@@ -92,7 +124,7 @@ export default function ChatScreen() {
         flushTimer = null;
         const extra = pending.current;
         pending.current = '';
-        if (!extra) return;
+        if (!extra || !operation.current()) return;
         setMessages((prev) => {
           const next = [...prev];
           const last = next[next.length - 1];
@@ -102,12 +134,15 @@ export default function ChatScreen() {
         });
       };
       const onDelta = (chunk: string) => {
+        if (!operation.current()) return;
         pending.current += chunk;
         if (!flushTimer) flushTimer = setTimeout(flushDeltas, 40);
       };
 
       try {
-        const response = await streamAiQuery({ message, mode, sessionId }, { onDelta });
+        const response = await streamAiQuery({ message, mode, sessionId }, { onDelta, signal: controller.signal });
+        if (!operation.current()) return;
+        requireAnalysisText(response.answer);
         if (flushTimer) clearTimeout(flushTimer);
         flushDeltas();
         setSessionId(response.sessionId);
@@ -125,27 +160,32 @@ export default function ChatScreen() {
           return next;
         });
         if (response.usage) applyUsage(response.usage);
-        void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
+        void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh()).catch(() => undefined);
       } catch (err) {
         if (flushTimer) clearTimeout(flushTimer);
+        if (!operation.current()) return;
         setMessages((prev) => prev.slice(0, -2));
-        setDraft(message);
+        setDraft(current => current.trim() ? current : message);
+        setFailedMessage(message);
 
         if (err instanceof ApiError && err.isQuotaExceeded) {
           setQuotaBlock(err.usage?.resetsInMs);
           if (err.usage) applyUsage(err.usage);
         } else {
-          setError(err instanceof ApiError ? err.message : ka.common.error);
+          setError((err instanceof ApiError || err instanceof IncompleteAnalysisError) ? err.message : ka.common.error);
         }
       } finally {
-        setSending(false);
-        scrollToEnd();
+        if (flushTimer) clearTimeout(flushTimer);
+        if (operation.current()) { setSending(false); scrollToEnd(); }
+        if (abort.current === controller) abort.current = null;
+        operation.finish();
       }
     },
-    [sending, mode, sessionId, applyUsage, scrollToEnd],
+    [historyState, task, mode, sessionId, applyUsage, scrollToEnd],
   );
 
   const submitFeedback = useCallback(async (index: number, rating: 1 | -1) => {
+    const owner = localAccountId();
     const message = messages[index];
     if (!message?.interactionId || message.feedbackRating) return;
 
@@ -154,7 +194,8 @@ export default function ChatScreen() {
     try {
       await api.ai.feedback({ interactionId: message.interactionId, rating });
     } catch {
-      setMessages((prev) => prev.map((item, i) => (i === index ? { ...item, feedbackRating: undefined } : item)));
+      if (!alive.current || localAccountId() !== owner) return;
+      setMessages(prev => prev.map(item => item.interactionId === message.interactionId ? { ...item, feedbackRating: undefined } : item));
     }
   }, [messages]);
 
@@ -172,7 +213,7 @@ export default function ChatScreen() {
             onSettings={() => router.push('/package' as never)}
           />
         }
-        footer={<ChatInputBar value={draft} onChangeText={setDraft} onSend={() => send(draft)} sending={sending} />}
+        footer={<ChatInputBar value={draft} onChangeText={setDraft} onSend={() => send(draft)} sending={sending} disabled={historyState !== 'ready'} />}
       >
         <FlatList
           ref={listRef}
@@ -182,10 +223,26 @@ export default function ChatScreen() {
           contentContainerStyle={{ padding: 16, paddingBottom: 8, flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={scrollToEnd}
+          onLayout={scrollToEnd}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          automaticallyAdjustKeyboardInsets={false}
+          scrollEventThrottle={100}
+          onScroll={event => {
+            const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+            const near = contentSize.height - layoutMeasurement.height - contentOffset.y < 100;
+            nearBottom.current = near;
+            setScrolledUp(!near);
+          }}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: FIGMA_CHAT.messageGap }} />}
-          ListEmptyComponent={
-            <View style={{ gap: 12 }}>
+          ListEmptyComponent={historyState === 'loading' ? <View style={{ padding: 28, gap: 12, alignItems: 'center' }}><ActivityIndicator color={FIGMA_CHAT.brand} /><Text style={{ color: FIGMA_CHAT.textSecondary }}>საუბარი იტვირთება…</Text></View> : historyState === 'error' ? (
+            <View style={{ padding: 20, gap: 12 }}>
+              <Text style={{ color: colors.danger, fontFamily: 'NotoSansGeorgian_400Regular' }}>საუბარი ვერ ჩაიტვირთა. შეამოწმე კავშირი და სცადე ხელახლა.</Text>
+              <Pressable accessibilityRole="button" onPress={() => setHistoryAttempt(n => n + 1)} style={{ minHeight: 48, padding: 12, borderRadius: 14, backgroundColor: FIGMA_CHAT.brandQuaternary }}>
+                <Text style={{ color: FIGMA_CHAT.brand, textAlign: 'center', fontFamily: 'NotoSansGeorgian_600SemiBold' }}>ხელახლა ცდა</Text>
+              </Pressable>
+            </View>
+          ) : <View style={{ gap: 12 }}>
               <ChatBubbleAssistant icon={profile.icon} timestamp={new Date().toISOString()}>
                 <ChatEmptyHero title={profile.emptyTitle} body={profile.emptyBody} />
               </ChatBubbleAssistant>
@@ -218,18 +275,24 @@ export default function ChatScreen() {
                   style={{
                     padding: 12,
                     borderRadius: FIGMA_CHAT.bubbleRadius,
-                    backgroundColor: '#FEF2F2',
+                    backgroundColor: colors.dangerBg,
                     borderWidth: 1,
-                    borderColor: '#FECACA',
+                    borderColor: colors.danger,
                   }}
                 >
-                  <Text style={{ fontSize: 14, color: '#DC2626' }}>{error}</Text>
+                  <Text style={{ fontSize: 14, color: colors.danger, fontFamily: 'NotoSansGeorgian_400Regular', lineHeight: 21 }}>{error}</Text>
+                  {failedMessage ? <Pressable accessibilityRole="button" disabled={sending} onPress={() => void send(failedMessage)} style={{ minHeight: 44, justifyContent: 'center', marginTop: 4 }}>
+                    <Text style={{ color: colors.danger, fontFamily: 'NotoSansGeorgian_700Bold' }}>ხელახლა გაგზავნა</Text>
+                  </Pressable> : null}
                 </View>
               ) : null}
               {messages.length > 0 ? <Disclaimer /> : null}
             </View>
           }
         />
+        {scrolledUp && messages.length > 0 ? <Pressable accessibilityRole="button" accessibilityLabel="ბოლო შეტყობინებაზე გადასვლა" onPress={() => { nearBottom.current = true; setScrolledUp(false); scrollToEnd(); }} style={{ alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 10, marginVertical: 4, borderRadius: 18, borderWidth: 1, borderColor: FIGMA_CHAT.brandBorderLight, backgroundColor: FIGMA_CHAT.brandQuaternary }}>
+          <Text style={{ color: FIGMA_CHAT.brand, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>↓ ბოლო შეტყობინება</Text>
+        </Pressable> : null}
       </ChatScreenShell>
 
       <QuotaSheet

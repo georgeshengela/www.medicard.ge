@@ -78,8 +78,10 @@ export const TERMS_OF_USE_KA = {
     {
       title: '10. კონტაქტი',
       paragraphs: [
+        'მომსახურების მიმწოდებელი: გიორგი შენგელია (George Shengelia), ფიზიკური პირი.',
+        'საქმიანობის ქვეყანა და ქალაქი: საქართველო, თბილისი.',
         'კითხვებისთვის: support@medicard.ge',
-        'Medicard.GE — ჯანმრთელობის ციფრული პლატფორმა, საქართველო.',
+        'MEDICARD — ჯანმრთელობის ციფრული პლატფორმა. ვებგვერდი: https://medicard.ge',
       ],
     },
   ] satisfies LegalSection[],

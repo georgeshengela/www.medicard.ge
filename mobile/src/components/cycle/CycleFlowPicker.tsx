@@ -1,6 +1,8 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { CycleFlowGlyph } from './CycleFlowGlyph';
 import { Check } from 'lucide-react-native';
 import { FLOW_OPTIONS } from '@/constants/cycle';
 import { CycleCard } from '@/components/cycle/CycleUI';
@@ -25,19 +27,21 @@ type Props = {
 
 export function CycleFlowPicker({ value, onChange, disabled, options, hint }: Props) {
   const c = useCycleColors();
+  const { width, fontScale } = useWindowDimensions();
+  const compact = width < 360 || fontScale >= 1.25;
   const items = options || FLOW_OPTIONS;
   return (
-    <CycleCard padded={false} style={{ padding: 12, overflow: 'hidden' }}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {items.map((opt, index) => {
+    <CycleCard padded={false} style={{ padding: 8, overflow: 'hidden' }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: compact ? 8 : 6 }}>
+        {items.map((opt) => {
           const selected = value === opt.id;
           const level = FLOW_LEVEL[opt.id] ?? 0;
           return (
             <View
               key={opt.id}
               style={{
-                flex: 1,
-                marginLeft: index === 0 ? 0 : 6,
+                flex: compact ? undefined : 1,
+                width: compact ? '30%' : undefined,
                 alignItems: 'center',
               }}
             >
@@ -47,63 +51,37 @@ export function CycleFlowPicker({ value, onChange, disabled, options, hint }: Pr
                   Haptics.selectionAsync().catch(() => undefined);
                   onChange(opt.id);
                 }}
-                accessibilityRole="button"
+                accessibilityRole="radio"
                 accessibilityLabel={opt.label}
-                accessibilityState={{ selected, disabled: Boolean(disabled) }}
+                accessibilityState={{ checked: selected, disabled: Boolean(disabled) }}
                 style={{
                   width: '100%',
-                  borderRadius: 16,
-                  paddingVertical: 12,
+                  borderRadius: 14,
+                  paddingVertical: 8,
                   paddingHorizontal: 4,
                   alignItems: 'center',
-                  backgroundColor: selected ? c.period : c.cardSoft,
-                  borderWidth: selected ? 2 : 1.5,
-                  borderColor: selected ? c.ink : c.border,
-                  minHeight: 88,
+                  backgroundColor: selected ? c.accentSoft : c.cardSoft,
+                  borderWidth: 1,
+                  borderColor: selected ? c.brand : c.controlBorder,
+                  minHeight: 60,
                   justifyContent: 'center',
                 }}
               >
                 {selected ? (
                   <View style={{ position: 'absolute', top: 6, right: 6 }}>
-                    <Check size={12} color={c.white} strokeWidth={3} />
+                    <Check size={12} color={c.brand} strokeWidth={3} />
                   </View>
                 ) : null}
-                <View style={{ height: 36, justifyContent: 'flex-end', alignItems: 'center' }}>
-                  {level === 0 ? (
-                    <View
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        borderWidth: 2,
-                        borderColor: selected ? c.white : c.mutedSoft,
-                      }}
-                    />
-                  ) : (
-                    Array.from({ length: level }).map((_, i) => (
-                      <View
-                        key={i}
-                        style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: 5,
-                          backgroundColor: selected ? c.white : c.period,
-                          opacity: selected ? 1 : 0.35 + i * 0.15,
-                          marginBottom: 3,
-                        }}
-                      />
-                    ))
-                  )}
-                </View>
+                <CycleFlowGlyph level={level} selected={selected}/>
               </Pressable>
               <Text
                 style={{
                   marginTop: 8,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontFamily: selected ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium',
-                  color: selected ? c.period : c.muted,
+                  color: selected ? c.brand : c.muted,
                   textAlign: 'center',
-                  lineHeight: 13,
+                  lineHeight: 16,
                 }}
                 numberOfLines={2}
               >

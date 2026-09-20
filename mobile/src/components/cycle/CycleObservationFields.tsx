@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Check, X } from 'lucide-react-native';
 import type { CycleCustomTag, CyclePainEntry, CyclePainSeverity, CyclePainType } from '@/lib/api';
@@ -58,23 +59,23 @@ function ChipRow<T extends string>({
             accessibilityLabel={on ? `${labelFor(id)}, ${ka.cycle.pregnancySelected}` : labelFor(id)}
             style={{
               minHeight: 44,
-              paddingHorizontal: 14,
+              paddingHorizontal: 10,
               borderRadius: 14,
               justifyContent: 'center',
-              backgroundColor: on ? c.cta : c.cardSoft,
-              borderWidth: 1.5,
-              borderColor: on ? c.ink : c.border,
+              backgroundColor: on ? c.accentSoft : c.cardSoft,
+              borderWidth: 1,
+              borderColor: on ? c.brand : c.controlBorder,
               flexDirection: 'row',
               alignItems: 'center',
-              gap: 6,
+              gap: 4,
             }}
           >
-            {on ? <Check size={14} color={c.white} strokeWidth={3} /> : null}
+            {on ? <Check size={12} color={c.brand} strokeWidth={2.5} /> : null}
             <Text
               style={{
-                color: on ? c.white : c.ink,
-                fontFamily: on ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_600SemiBold',
-                fontSize: 13,
+                color: on ? c.brand : c.ink,
+                fontFamily: 'NotoSansGeorgian_500Medium',
+                fontSize: 12,
               }}
             >
               {labelFor(id)}
@@ -221,10 +222,10 @@ export function CyclePainEditor({
               paddingHorizontal: 14,
               borderRadius: 14,
               justifyContent: 'center',
-              backgroundColor: c.brand,
+              backgroundColor: c.cta,
             }}
           >
-            <Text style={{ color: c.white, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13 }}>
+            <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13 }}>
               {painSeverityLabel(severity)}
             </Text>
           </Pressable>
@@ -360,7 +361,7 @@ export function CycleTagPicker({
                     borderColor: c.mutedSoft,
                   }}
                 >
-                  {on ? <Check size={16} color="#fff" strokeWidth={3} /> : null}
+                  {on ? <Check size={16} color={c.onPrimary} strokeWidth={3} /> : null}
                 </View>
               </Pressable>
             );
@@ -383,7 +384,7 @@ export function CycleTagPicker({
                 minHeight: 48,
                 borderRadius: 14,
                 borderWidth: 1.5,
-                borderColor: c.border,
+                borderColor: c.controlBorder,
                 backgroundColor: c.cardSoft,
                 color: c.ink,
                 paddingHorizontal: 14,
@@ -408,7 +409,7 @@ export function CycleTagPicker({
                 opacity: creating || !name.trim() ? 0.5 : 1,
               }}
             >
-              <Text style={{ color: c.white, fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.customTagAdd}</Text>
+              <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.customTagAdd}</Text>
             </Pressable>
           </View>
         </View>
@@ -446,7 +447,7 @@ export function CycleJournalField({
           minHeight: 140,
           textAlignVertical: 'top',
           borderWidth: 1.5,
-          borderColor: c.border,
+          borderColor: c.controlBorder,
           fontSize: 15,
           lineHeight: 22,
         }}

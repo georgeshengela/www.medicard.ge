@@ -1,15 +1,16 @@
 import { Stack } from 'expo-router';
-import { STACK_PUSH } from '@/theme/stackMotion';
+import { useStackMotion } from '@/hooks/useStackMotion';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 
 export default function SymptomsLayout() {
+  const motion = useStackMotion();
   const FIGMA_SYMPTOMS = useFigmaSymptoms();
   return (
     <Stack
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: FIGMA_SYMPTOMS.white },
-        ...STACK_PUSH,
+        ...motion,
       }}
     />
   );

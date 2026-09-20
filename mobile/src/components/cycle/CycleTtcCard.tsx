@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import type { CycleBundle, CycleLog } from '@/lib/api';
 import { isCycleTestResult, prioritizeTtcActions } from '@/lib/cycleFertility';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';

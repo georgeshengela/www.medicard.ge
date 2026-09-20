@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { resetRunMemory } from '@/lib/run/store';
 import { ka } from '@/i18n/ka';
@@ -8,6 +8,7 @@ import { needsHealthAssessment as needsHealthAssessmentFromLib, needsProfileSetu
 import { clearSessionSnapshot, loadSessionSnapshot, saveSessionSnapshot } from '@/lib/sessionSnapshot';
 import { clearToken, getToken, setToken } from '@/lib/storage';
 import { runPostLoginSideEffects } from '@/lib/safeStartup';
+import { authErrorMessage } from '@/lib/authErrorMessage';
 import {
   isQuestDevEnabled,
   isQuestVisualSession,
@@ -29,6 +30,8 @@ export type SignUpInput = {
 
 type AuthState = {
   ready: boolean;
+  sessionRestoreError: string | null;
+  restoringSession: boolean;
   user: User | null;
   usage: Usage | null;
   stats: Stats | null;
@@ -58,13 +61,19 @@ const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [sessionRestoreError, setSessionRestoreError] = useState<string | null>(null);
+  const [restoringSession, setRestoringSession] = useState(false);
+  const restoreInFlight = useRef<Promise<void> | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [healthProfile, setHealthProfile] = useState<HealthProfile | null>(null);
+  const healthProfileRef = useRef<HealthProfile | null>(healthProfile);
+  healthProfileRef.current = healthProfile;
   const [pendingDailyBonus, setPendingDailyBonus] = useState<CheckInState | null>(null);
 
   const resetSession = useCallback(() => {
+    setSessionRestoreError(null);
     resetRunMemory();
     setLocalAccountId(null);
     setUser(null);
@@ -89,41 +98,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPendingDailyBonus(null);
   }, []);
 
-  const hydrate = useCallback(async () => {
-    try {
-    if (isQuestVisualSession()) {
-      applyVisualSession();
-      return;
-    }
+  const hydrate = useCallback(() => {
+    if (restoreInFlight.current) return restoreInFlight.current;
+    const task = (async () => {
+      setRestoringSession(true);
+      try {
+        if (isQuestVisualSession()) {
+          applyVisualSession();
+          return;
+        }
 
-    const token = await getToken();
-    if (!token) {
-      await clearSessionSnapshot();
-      resetSession();
-      return;
-    }
+        const token = await getToken();
+        if (!token) {
+          await clearSessionSnapshot();
+          resetSession();
+          return;
+        }
 
-    try {
-      const me = await api.auth.me();
-      setLocalAccountId(me.user.id);
-      setUser(me.user);
-      setUsage(me.usage);
-      setStats(me.stats);
-      setHealthProfile(me.healthProfile ?? null);
-      if (me.checkInAwarded && me.checkIn) setPendingDailyBonus(me.checkIn);
-      runPostLoginSideEffects(me.user, me.healthProfile ?? null);
-    } catch (error) {
-      if (error instanceof ApiError && error.isUnauthorized) {
-        await clearToken();
-        await clearSessionSnapshot();
+        try {
+          const me = await api.auth.me(token);
+          if (await getToken() !== token) return;
+          setSessionRestoreError(null);
+          setLocalAccountId(me.user.id);
+          setUser(me.user);
+          setUsage(me.usage);
+          setStats(me.stats);
+          setHealthProfile(me.healthProfile ?? null);
+          if (me.checkInAwarded && me.checkIn) setPendingDailyBonus(me.checkIn);
+          runPostLoginSideEffects(me.user, me.healthProfile ?? null);
+        } catch (error) {
+          if (await getToken() !== token) return;
+          if (error instanceof ApiError && (error.isUnauthorized || error.code === 'ACCOUNT_BLOCKED')) {
+            await clearToken();
+            await clearSessionSnapshot();
+            resetSession();
+          } else {
+            // A connection failure is not a logout. Keep the token and offer a retry.
+            setSessionRestoreError(authErrorMessage(error));
+          }
+        }
+      } catch {
+        await clearToken().catch(() => undefined);
+        await clearSessionSnapshot().catch(() => undefined);
         resetSession();
+      } finally {
+        setRestoringSession(false);
       }
-    }
-    } catch {
-      await clearToken().catch(() => undefined);
-      await clearSessionSnapshot().catch(() => undefined);
-      resetSession();
-    }
+    })();
+    restoreInFlight.current = task;
+    void task.finally(() => { if (restoreInFlight.current === task) restoreInFlight.current = null; });
+    return task;
   }, [applyVisualSession, resetSession]);
 
   useEffect(() => {
@@ -162,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const adopt = useCallback(
     async (result: { token: string; user: User; usage: Usage }) => {
+      setSessionRestoreError(null);
       setQuestVisualSession(false);
       if (!result?.token || !result.user?.id) {
         throw new ApiError(ka.auth.registerNotConfirmed, 0);
@@ -176,7 +201,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await wipeLegacyUnscopedHealthCaches();
       await setToken(result.token);
 
-      const emptyStats = { records: 0, chats: 0, activeMedications: 0 };
       const settle = async (user: User, usage: Usage, stats: Stats, healthProfile: HealthProfile | null) => {
         setLocalAccountId(user.id);
         setUser(user);
@@ -186,8 +210,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await saveSessionSnapshot({ user, usage, stats, healthProfile });
         runPostLoginSideEffects(user, healthProfile);
       };
-
-      await settle(result.user, result.usage, emptyStats, null);
 
       const readMe = async () => {
         const me = await api.auth.me(result.token);
@@ -207,40 +229,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await new Promise((resolve) => setTimeout(resolve, 150));
           me = await readMe();
         }
+        if (await getToken() !== result.token) return;
         await settle(me.user, me.usage, me.stats, me.healthProfile ?? null);
       } catch (error) {
-        if (error instanceof ApiError && error.isUnauthorized) {
+        if (await getToken() !== result.token) return;
+        if (error instanceof ApiError && (error.isUnauthorized || error.code === 'ACCOUNT_BLOCKED')) {
           await clearToken();
           await clearSessionSnapshot();
           resetSession();
           throw error;
         }
-        // 429 / timeout / network — account exists. Stay signed in on the register payload.
+        // Credentials are valid, but the profile is not available yet. Do not
+        // publish an empty profile and accidentally send an existing user to onboarding.
+        setSessionRestoreError(authErrorMessage(error));
       }
     },
     [resetSession],
   );
 
   const refreshHealthProfile = useCallback(async () => {
-    if (isQuestVisualSession()) return healthProfile;
+    if (isQuestVisualSession()) return healthProfileRef.current;
+    const token = await getToken();
+    if (!token) return null;
     try {
       const { profile } = await api.healthProfile.get();
+      if (await getToken() !== token) return null;
       setHealthProfile(profile);
       const snapshot = await loadSessionSnapshot();
-      if (snapshot) {
+      if (snapshot && await getToken() === token) {
         await saveSessionSnapshot({ ...snapshot, healthProfile: profile });
       }
       return profile;
     } catch {
       return null;
     }
-  }, [healthProfile]);
+    // Assessment and AuthGate depend on this function: a received profile must
+    // not change its identity and start another loading effect indefinitely.
+  }, []);
 
   const consumeDailyBonus = useCallback(() => setPendingDailyBonus(null), []);
 
   const value = useMemo<AuthState>(
     () => ({
       ready,
+      sessionRestoreError,
+      restoringSession,
       user,
       usage,
       stats,
@@ -319,6 +352,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       ready,
+      sessionRestoreError,
+      restoringSession,
       user,
       usage,
       stats,

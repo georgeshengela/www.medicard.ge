@@ -1,423 +1,98 @@
-import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
+import React, { useEffect, useRef, useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { CalendarHeart, ChevronRight } from 'lucide-react-native';
-import { CycleCalendar } from '@/components/cycle/CycleCalendar';
-import { CycleAtmosphere, formatCycleDateKa } from '@/components/cycle/CycleUI';
-import type { CycleContraceptionMethod, CycleDayMark } from '@/lib/api';
+import { CalendarHeart, ChevronLeft, ShieldCheck, SlidersHorizontal } from 'lucide-react-native';
+import { CycleCalendar } from './CycleCalendar';
+import { CycleAtmosphere, CyclePrimaryButton, formatCycleDateKa } from './CycleUI';
+import { cycleDatePickable } from '@/lib/cycleExperience';
+import type { CycleContraceptionMethod } from '@/lib/api';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
-import { useThemeColors } from '@/theme/colors';
-
-const METHODS = Object.keys(ka.cycle.contraceptionMethod) as CycleContraceptionMethod[];
-const OTHER_METHODS = METHODS.filter((id) => id !== 'NONE');
 
 type Props = {
-  visible: boolean;
-  saving?: boolean;
-  userName?: string | null;
-  error?: string | null;
-  onSave: (iso: string) => void | Promise<void>;
-  onFinishContraception?: (input: {
-    method: CycleContraceptionMethod | null;
-    startedAt: string | null;
-  }) => void | Promise<void>;
+ visible:boolean; saving?:boolean; userName?:string|null; error?:string|null;
+ onSave:(iso:string)=>Promise<boolean>;
+ onBack?:()=>void; onChooseMode?:()=>void;
+ onFinishContraception?:(input:{method:CycleContraceptionMethod|null;startedAt:string|null})=>void|Promise<void>;
 };
-
-function firstName(full?: string | null) {
-  const part = (full || '').trim().split(/\s+/)[0];
-  return part || '';
-}
-
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-}
-
-function canPickPeriodStart(iso: string, now = new Date()) {
-  const [y, m, day] = iso.split('-').map(Number);
-  if (!y || !m || !day) return false;
-  const t = startOfDay(new Date(y, m - 1, day));
-  if (t > startOfDay(now)) return false;
-  const min = new Date(now.getFullYear(), now.getMonth() - 18, 1);
-  return t >= startOfDay(min);
-}
-
-function shiftMonth(year: number, month: number, delta: number) {
-  const next = new Date(year, month + delta, 1);
-  return { year: next.getFullYear(), month: next.getMonth() };
-}
-
-function monthTooOld(year: number, month: number, now = new Date()) {
-  const min = new Date(now.getFullYear(), now.getMonth() - 18, 1);
-  return new Date(year, month, 1) < min;
-}
-
-function monthTooNew(year: number, month: number, now = new Date()) {
-  return new Date(year, month, 1) > new Date(now.getFullYear(), now.getMonth(), 1);
-}
-
-/** First-visit gate: pick last period on the same calendar used in the hub. */
-export function CycleOnboarding({ visible, saving, userName, error, onSave, onFinishContraception }: Props) {
-  const c = useCycleColors();
-  const theme = useThemeColors();
-  const insets = useSafeAreaInsets();
-  const now = useMemo(() => new Date(), []);
-  const [date, setDate] = useState('');
-  const [step, setStep] = useState<'date' | 'contraception'>('date');
-  const [method, setMethod] = useState<CycleContraceptionMethod | null>(null);
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
-  const name = firstName(userName);
-  const greeting = name ? `${ka.cycle.onboardHi}, ${name}` : ka.cycle.onboardHi;
-  const title = step === 'date' ? ka.cycle.modePeriod : ka.cycle.contraceptionAsk;
-  const lead = step === 'date' ? ka.cycle.onboardLead : ka.cycle.contraceptionLead;
-
-  const marks = useMemo<Record<string, CycleDayMark>>(
-    () => (date ? { [date]: { period: true } } : {}),
-    [date],
-  );
-
-  if (!visible) return null;
-
-  const goPrev = () => {
-    const next = shiftMonth(year, month, -1);
-    if (monthTooOld(next.year, next.month, now)) return;
-    setYear(next.year);
-    setMonth(next.month);
-  };
-
-  const goNext = () => {
-    const next = shiftMonth(year, month, 1);
-    if (monthTooNew(next.year, next.month, now)) return;
-    setYear(next.year);
-    setMonth(next.month);
-  };
-
-  const pickDay = (iso: string) => {
-    if (!canPickPeriodStart(iso, now)) return;
-    Haptics.selectionAsync().catch(() => undefined);
-    setDate(iso);
-  };
-
-  const header = (
-    <Animated.View entering={FadeIn.duration(280)} style={{ alignItems: 'center', paddingTop: 8 }}>
-      <View
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: 36,
-          backgroundColor: theme.accent100,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 16,
-        }}
-      >
-        <CalendarHeart size={32} color={c.brand} strokeWidth={2.1} />
-      </View>
-      <Text
-        style={{
-          color: c.muted,
-          fontSize: 14,
-          lineHeight: 20,
-          textAlign: 'center',
-          fontFamily: 'NotoSansGeorgian_500Medium',
-        }}
-      >
-        {greeting}
-      </Text>
-      <Text
-        style={{
-          color: c.ink,
-          fontSize: 26,
-          lineHeight: 32,
-          marginTop: 6,
-          textAlign: 'center',
-          fontFamily: 'NotoSansGeorgian_700Bold',
-          letterSpacing: -0.5,
-        }}
-      >
-        {title}
-      </Text>
-      <Text
-        style={{
-          color: c.muted,
-          fontSize: 14,
-          lineHeight: 20,
-          marginTop: 10,
-          paddingHorizontal: 18,
-          textAlign: 'center',
-          fontFamily: 'NotoSansGeorgian_500Medium',
-        }}
-      >
-        {lead}
-      </Text>
-      <View style={{ flexDirection: 'row', gap: 6, marginTop: 14 }}>
-        {(['date', 'contraception'] as const).map((s) => (
-          <View
-            key={s}
-            style={{
-              width: step === s ? 18 : 6,
-              height: 6,
-              borderRadius: 3,
-              backgroundColor: step === s ? c.cta : c.border,
-            }}
-          />
-        ))}
-      </View>
-    </Animated.View>
-  );
-
-  const footerNote = (
-    <Text
-      style={{
-        color: c.mutedSoft,
-        fontSize: 11,
-        lineHeight: 16,
-        textAlign: 'center',
-        paddingTop: 12,
-        fontFamily: 'NotoSansGeorgian_500Medium',
-      }}
-    >
-      {ka.cycle.onboardPrivacy}
+export function CycleOnboarding({visible,saving,userName,error,onSave,onBack,onChooseMode,onFinishContraception}:Props){
+ const c=useCycleColors(),insets=useSafeAreaInsets(),now=new Date();
+ const [date,setDate]=useState(''),[step,setStep]=useState<'date'|'contraception'>('date');
+ const [method,setMethod]=useState<CycleContraceptionMethod|null>(null);
+ const [cursor,setCursor]=useState(()=>({y:now.getFullYear(),m:now.getMonth()}));
+ const [localError,setLocalError]=useState<string|null>(null);
+ const busy=useRef(false),alive=useRef(true);
+ useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
+ if(!visible)return null;
+ const advance=async()=>{
+  if(busy.current||saving||!date)return;
+  busy.current=true;setLocalError(null);
+  try{if(await onSave(date)&&alive.current)setStep('contraception');}
+  catch{if(alive.current)setLocalError(ka.common.error);}
+  finally{busy.current=false;}
+ };
+ const finish=async(skip=false)=>{
+  if(busy.current||saving)return;busy.current=true;setLocalError(null);
+  try{await onFinishContraception?.({method:skip?null:method,startedAt:null});}
+  catch{if(alive.current)setLocalError(ka.common.error);}
+  finally{busy.current=false;}
+ };
+ const move=(delta:number)=>{
+  const d=new Date(cursor.y,cursor.m+delta,1),min=new Date(now.getFullYear(),now.getMonth()-18,1),max=new Date(now.getFullYear(),now.getMonth(),1);
+  if(d>=min&&d<=max)setCursor({y:d.getFullYear(),m:d.getMonth()});
+ };
+ const name=(userName||'').trim().split(/\s+/)[0];
+ return <CycleAtmosphere>
+  <View style={{flex:1,paddingTop:insets.top+6,minHeight:0}}>
+   <View style={{flexDirection:'row',alignItems:'center',paddingHorizontal:16,gap:12}}>
+    <Pressable accessibilityRole="button" accessibilityLabel={ka.common.back} disabled={saving}
+     onPress={()=>step==='contraception'?setStep('date'):onBack?.()} style={{width:44,height:44,borderRadius:16,alignItems:'center',justifyContent:'center',backgroundColor:c.card}}>
+     <ChevronLeft size={22} color={c.ink}/>
+    </Pressable>
+    <Text style={{flex:1,color:c.muted,fontSize:12,fontFamily:'NotoSansGeorgian_600SemiBold'}}>შენი ციკლის სივრცე</Text>
+    <Text style={{color:c.brand,fontSize:12,fontFamily:'NotoSansGeorgian_700Bold'}}>{step==='date'?'01':'02'} / 02</Text>
+   </View>
+   <View style={{flexDirection:'row',gap:8,marginHorizontal:20,marginTop:16}}>{[0,1].map(i=><View key={i} style={{flex:1,height:3,borderRadius:3,backgroundColor:i===0||step==='contraception'?c.brand:c.gaugeTrack}}/>)}</View>
+   <ScrollView style={{flex:1}} contentContainerStyle={{padding:20,paddingBottom:24}} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <View style={{width:56,height:56,borderRadius:20,backgroundColor:c.accentSoft,alignItems:'center',justifyContent:'center',marginBottom:16}}>
+     <CalendarHeart size={27} color={c.brand}/>
+    </View>
+    <Text style={{color:c.muted,fontSize:13,fontFamily:'NotoSansGeorgian_500Medium'}}>{name?name+', ეს შენი სივრცეა':'ეს შენი სივრცეა'}</Text>
+    <Text accessibilityRole="header" style={{color:c.ink,fontSize:28,lineHeight:38,fontFamily:'NotoSansGeorgian_600SemiBold',marginTop:6}}>
+     {step==='date'?'შენი რიტმი.\nშენი უკეთ გაგება.':ka.cycle.contraceptionAsk}
     </Text>
-  );
-
-  return (
-    <CycleAtmosphere>
-      <View
-        style={{
-          flex: 1,
-          paddingTop: insets.top + 8,
-          paddingBottom: insets.bottom + 14,
-          paddingHorizontal: 16,
-        }}
-      >
-        {header}
-
-        {step === 'date' ? (
-          <>
-            <Animated.View
-              entering={FadeInDown.duration(320)}
-              style={{ flex: 1, justifyContent: 'center' }}
-            >
-              <CycleCalendar
-                year={year}
-                month={month}
-                marks={marks}
-                selected={date || null}
-                onSelect={pickDay}
-                onPrev={goPrev}
-                onNext={goNext}
-                canSelect={(iso) => canPickPeriodStart(iso, now)}
-              />
-
-              <View
-                style={{
-                  alignSelf: 'center',
-                  marginTop: 16,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
-                  borderRadius: 999,
-                  backgroundColor: date ? c.roseSoft : c.card,
-                  borderWidth: 1,
-                  borderColor: date ? c.period : c.border,
-                }}
-              >
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: date ? c.period : c.mutedSoft,
-                  }}
-                />
-                <Text
-                  style={{
-                    color: date ? c.ink : c.muted,
-                    fontSize: 14,
-                    fontFamily: 'NotoSansGeorgian_700Bold',
-                  }}
-                >
-                  {date ? formatCycleDateKa(date) : ka.cycle.pickDate}
-                </Text>
-              </View>
-            </Animated.View>
-
-            {error ? (
-              <Text
-                style={{
-                  color: c.danger,
-                  marginBottom: 10,
-                  textAlign: 'center',
-                  fontFamily: 'NotoSansGeorgian_600SemiBold',
-                  fontSize: 13,
-                  lineHeight: 18,
-                }}
-              >
-                {error}
-              </Text>
-            ) : null}
-
-            <Pressable
-              disabled={!date || saving}
-              onPress={() => {
-                if (!date) return;
-                void Promise.resolve(onSave(date)).then(() => setStep('contraception'));
-              }}
-              style={{
-                minHeight: 52,
-                borderRadius: 28,
-                backgroundColor: c.cta,
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'row',
-                gap: 6,
-                opacity: !date || saving ? 0.45 : 1,
-              }}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Text
-                    style={{
-                      color: '#fff',
-                      fontFamily: 'NotoSansGeorgian_700Bold',
-                      fontSize: 16,
-                    }}
-                  >
-                    {ka.cycle.onboardCta}
-                  </Text>
-                  {date ? <ChevronRight size={18} color="#fff" strokeWidth={2.6} /> : null}
-                </>
-              )}
-            </Pressable>
-            {footerNote}
-          </>
-        ) : (
-          <ScrollView
-            style={{ flex: 1, marginTop: 18 }}
-            contentContainerStyle={{ flexGrow: 1, paddingBottom: 8 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <Animated.View entering={FadeInDown.duration(280)}>
-              <Pressable
-                onPress={() => setMethod('NONE')}
-                style={{
-                  minHeight: 48,
-                  borderRadius: 28,
-                  paddingHorizontal: 16,
-                  justifyContent: 'center',
-                  backgroundColor: method === 'NONE' ? c.cta : c.card,
-                  borderWidth: 1,
-                  borderColor: method === 'NONE' ? c.cta : c.border,
-                  marginBottom: 10,
-                }}
-              >
-                <Text
-                  style={{
-                    color: method === 'NONE' ? '#fff' : c.ink,
-                    fontFamily: 'NotoSansGeorgian_700Bold',
-                    fontSize: 14,
-                  }}
-                >
-                  {ka.cycle.contraceptionMethod.NONE}
-                </Text>
-              </Pressable>
-
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 }}>
-                {OTHER_METHODS.map((id) => {
-                  const on = method === id;
-                  return (
-                    <Pressable
-                      key={id}
-                      onPress={() => setMethod(id)}
-                      style={{
-                        width: '48.5%',
-                        minHeight: 48,
-                        paddingHorizontal: 10,
-                        paddingVertical: 8,
-                        borderRadius: 16,
-                        backgroundColor: on ? c.cta : c.card,
-                        borderWidth: 1,
-                        borderColor: on ? c.cta : c.border,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text
-                        numberOfLines={2}
-                        style={{
-                          color: on ? '#fff' : c.ink,
-                          fontFamily: 'NotoSansGeorgian_600SemiBold',
-                          fontSize: 12,
-                          lineHeight: 16,
-                          textAlign: 'center',
-                        }}
-                      >
-                        {ka.cycle.contraceptionMethod[id]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {error ? (
-                <Text
-                  style={{
-                    color: c.danger,
-                    marginTop: 12,
-                    textAlign: 'center',
-                    fontFamily: 'NotoSansGeorgian_600SemiBold',
-                    fontSize: 13,
-                    lineHeight: 18,
-                  }}
-                >
-                  {error}
-                </Text>
-              ) : null}
-
-              <Pressable
-                disabled={saving}
-                onPress={() => void onFinishContraception?.({ method, startedAt: null })}
-                style={{
-                  marginTop: 16,
-                  minHeight: 52,
-                  borderRadius: 28,
-                  backgroundColor: c.cta,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: saving ? 0.5 : 1,
-                }}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16 }}>
-                    {ka.cycle.onboardCta}
-                  </Text>
-                )}
-              </Pressable>
-              <Pressable
-                disabled={saving}
-                onPress={() => void onFinishContraception?.({ method: null, startedAt: null })}
-                style={{ marginTop: 8, paddingVertical: 10, alignItems: 'center' }}
-              >
-                <Text style={{ color: c.muted, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13 }}>
-                  {ka.cycle.contraceptionSkip}
-                </Text>
-              </Pressable>
-            </Animated.View>
-            <View style={{ marginTop: 'auto' }}>{footerNote}</View>
-          </ScrollView>
-        )}
-      </View>
-    </CycleAtmosphere>
-  );
+    <Text style={{color:c.muted,fontSize:14,lineHeight:22,fontFamily:'NotoSansGeorgian_400Regular',marginTop:10,marginBottom:20}}>
+     {step==='date'?'მონიშნე ბოლო მენსტრუაციის პირველი დღე. ყოველდღიური ჩანაწერები დაგეხმარება შენი ციკლისა და შეგრძნებების უკეთ დანახვაში.':ka.cycle.contraceptionLead}
+    </Text>
+    {step==='date'?<>
+     <CycleCalendar year={cursor.y} month={cursor.m} marks={date?{[date]:{period:true}}:{}} selected={date||null}
+      onSelect={iso=>{if(cycleDatePickable(iso))setDate(iso);}} onPrev={()=>move(-1)} onNext={()=>move(1)} canSelect={cycleDatePickable}/>
+     <View style={{padding:14,borderRadius:16,backgroundColor:c.card,borderWidth:1,borderColor:date?c.period:c.border,marginTop:16}}>
+      <Text style={{color:c.muted,fontSize:11,fontFamily:'NotoSansGeorgian_500Medium'}}>ბოლო მენსტრუაციის პირველი დღე</Text>
+      <Text style={{color:c.ink,fontSize:15,lineHeight:22,fontFamily:'NotoSansGeorgian_700Bold',marginTop:4}}>{date?formatCycleDateKa(date):'აირჩიე კალენდარში'}</Text>
+     </View>
+     <Pressable onPress={onChooseMode} disabled={saving} accessibilityRole="button" accessibilityLabel="სხვა რეჟიმის არჩევა"
+      style={{flexDirection:'row',gap:12,paddingVertical:18,alignItems:'center'}}>
+      <SlidersHorizontal size={20} color={c.lavender}/>
+      <View style={{flex:1}}><Text style={{color:c.ink,fontSize:13,fontFamily:'NotoSansGeorgian_600SemiBold'}}>სხვა ეტაპზე ხარ?</Text>
+       <Text style={{color:c.muted,fontSize:12,lineHeight:19,marginTop:3}}>ორსულობა, მშობიარობის შემდგომი პერიოდი ან სხვა რეჟიმი</Text></View>
+     </Pressable>
+    </>:<View style={{gap:8}}>
+     {(Object.keys(ka.cycle.contraceptionMethod) as CycleContraceptionMethod[]).map(id=><Pressable key={id} onPress={()=>setMethod(id)}
+      accessibilityRole="radio" accessibilityState={{checked:method===id}} style={{minHeight:52,borderRadius:16,padding:14,backgroundColor:method===id?c.accentSoft:c.card,borderWidth:1,borderColor:method===id?c.period:c.border,flexDirection:'row',alignItems:'center',gap:12}}>
+      <View style={{width:20,height:20,borderRadius:10,borderWidth:2,borderColor:method===id?c.period:c.border,alignItems:'center',justifyContent:'center'}}>{method===id?<View style={{width:10,height:10,borderRadius:5,backgroundColor:c.period}}/>:null}</View>
+      <Text style={{flex:1,color:c.ink,fontSize:13,lineHeight:20,fontFamily:'NotoSansGeorgian_600SemiBold'}}>{ka.cycle.contraceptionMethod[id]}</Text>
+     </Pressable>)}
+    </View>}
+    <View style={{flexDirection:'row',gap:8,marginTop:14,alignItems:'flex-start'}}><ShieldCheck size={16} color={c.todayRing}/>
+     <Text style={{flex:1,color:c.muted,fontSize:11,lineHeight:18}}>{ka.cycle.onboardPrivacy}</Text></View>
+   </ScrollView>
+   <View style={{paddingHorizontal:20,paddingTop:12,paddingBottom:Math.max(insets.bottom,12),borderTopWidth:1,borderColor:c.border,backgroundColor:c.card}}>
+    {error||localError?<Text accessibilityRole="alert" style={{color:c.danger,fontSize:12,lineHeight:18,marginBottom:10}}>{error||localError}</Text>:null}
+    <CyclePrimaryButton label={step==='date'?'გაგრძელება':'ჩემი სივრცის გახსნა'} onPress={()=>void(step==='date'?advance():finish())} loading={saving} disabled={step==='date'&&!date}/>
+    {step==='contraception'?<Pressable accessibilityRole="button" disabled={saving} onPress={()=>void finish(true)} style={{minHeight:44,alignItems:'center',justifyContent:'center'}}><Text style={{color:c.muted,fontSize:12}}>{ka.cycle.contraceptionSkip}</Text></Pressable>:null}
+   </View>
+  </View>
+ </CycleAtmosphere>;
 }

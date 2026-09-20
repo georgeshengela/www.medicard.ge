@@ -1,6 +1,8 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Check } from 'lucide-react-native';
+import { CycleObservationIcon } from './CycleObservationIcon';
 import * as Haptics from 'expo-haptics';
 import { CycleFlowPicker } from '@/components/cycle/CycleFlowPicker';
 import { CyclePainEditor } from '@/components/cycle/CycleObservationFields';
@@ -47,17 +49,17 @@ function ObservationChip({
         justifyContent: 'center',
         backgroundColor: selected ? c.cta : c.cardSoft,
         borderWidth: 1.5,
-        borderColor: selected ? c.ink : c.border,
+        borderColor: selected ? c.cta : c.controlBorder,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
         maxWidth: '100%',
       }}
     >
-      {selected ? <Check size={14} color={c.white} strokeWidth={3} /> : null}
+      <CycleObservationIcon label={label} selected={selected} color={selected?c.onPrimary:c.muted} size={18}/>
       <Text
         style={{
-          color: selected ? c.white : c.ink,
+          color: selected ? c.onPrimary : c.ink,
           fontFamily: selected ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_600SemiBold',
           fontSize: 13,
         }}

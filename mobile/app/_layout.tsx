@@ -26,6 +26,8 @@ import { FloatingTabBar } from '@/components/navigation/FloatingTabBar';
 import { useTabChromeHidden } from '@/components/navigation/tabChrome';
 import { ActiveRunBadge, useActiveRunChrome } from '@/components/run/ActiveRunBadge';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { Button } from '@/components/ui/Button';
+import { WifiOff } from 'lucide-react-native';
 import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { QuotaReadyHost } from '@/components/QuotaReadyHost';
 import { LocationAskHost } from '@/components/location/LocationAskHost';
@@ -45,8 +47,7 @@ import { APP_VERSION } from '@/lib/appVersion';
 import { rememberMapboxToken } from '@/lib/run/mapbox';
 import { consumePendingCycleShare, isCycleShareCode, savePendingCycleShare } from '@/lib/cycleSharePending';
 import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
-import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { STACK_PUSH, STACK_REDUCED } from '@/theme/stackMotion';
+import { useStackMotion } from '@/hooks/useStackMotion';
 
 // Native screens = GPU stack transitions. Do not set this to false — that is
 // what made page changes feel like a late pop. Tab chrome stays above via AppChromeOverlay.
@@ -57,7 +58,7 @@ SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 /** Redirects between the auth stack and the app shell as the session changes. */
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { ready: authReady, user, healthProfile, refreshHealthProfile } = useAuth();
+  const { ready: authReady, user, healthProfile, refreshHealthProfile, sessionRestoreError, restoringSession, refresh } = useAuth();
   const { ready: themeReady } = useTheme();
   const ready = authReady && themeReady;
   const colors = useThemeColors();
@@ -102,6 +103,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       splashHidden.current = true;
       SplashScreen.hideAsync().catch(() => undefined);
     }
+    if (sessionRestoreError && !user) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const parts = segments as string[];
@@ -155,7 +157,20 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         router.replace(resolveInitialRoute(landing, user.gender) as never);
       })();
     }
-  }, [ready, user, segments, router, gate.kind, healthProfile, refreshHealthProfile, qaPreview]);
+  }, [ready, user, segments, router, gate.kind, healthProfile, refreshHealthProfile, qaPreview, sessionRestoreError]);
+
+  if (ready && sessionRestoreError && !user) {
+    // No cached medical data is displayed until the server verifies this session.
+    return <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.bg100, padding: 28 }}>
+      <View style={{ width: '100%', maxWidth: 400, alignSelf: 'center', gap: 16 }}>
+        <WifiOff size={30} color={colors.text200} />
+        <Text accessibilityRole="header" style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 21, color: colors.text100 }}>კავშირი შეფერხდა</Text>
+        <Text accessibilityRole="alert" style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 23, color: colors.text200 }}>{sessionRestoreError}</Text>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 21, color: colors.text200 }}>შესვლის მონაცემები შენახულია. კავშირის აღდგენის შემდეგ ხელახლა სცადე — პაროლის თავიდან შეყვანა საჭირო არ არის.</Text>
+        <Button label="ხელახლა ცდა" style={{ backgroundColor: '#0F766E' }} loading={restoringSession} onPress={() => void refresh()} />
+      </View>
+    </View>;
+  }
 
   if (gate.kind !== 'ok') {
     return (
@@ -184,8 +199,8 @@ function AppShell() {
   const { user, healthProfile, setHealthProfile } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const reduceMotion = usePrefersReducedMotion();
-  const stackMotion = reduceMotion ? STACK_REDUCED : STACK_PUSH;
+  const stackMotion = useStackMotion();
+  const peerMotion = useStackMotion('peer');
   const tabChromeHidden = useTabChromeHidden();
   const activeRunChrome = useActiveRunChrome();
   const showTabBar =
@@ -307,8 +322,8 @@ function AppShell() {
               }}
             >
               <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false, ...peerMotion }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false, ...peerMotion }} />
               <Stack.Screen name="package" options={{ headerShown: false }} />
               <Stack.Screen name="health-metrics" options={{ headerShown: false }} />
               <Stack.Screen name="weather" options={{ headerShown: false }} />

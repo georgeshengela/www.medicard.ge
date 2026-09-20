@@ -1,13 +1,12 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
-  Pressable,
   Text,
   View,
   useWindowDimensions,
   type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native';
+  type NativeSyntheticEvent} from 'react-native';
 import * as Haptics from 'expo-haptics';
 import type { CycleDayMark } from '@/lib/api';
 import { WEEKDAYS_KA } from '@/constants/cycle';
@@ -206,7 +205,7 @@ export function CycleDayStrip({
             >
               <Text
                 style={{
-                  color: active ? c.brand : c.mutedSoft,
+                  color: isToday ? c.todayRing : active ? c.ink : c.mutedSoft,
                   fontSize: 10,
                   fontFamily: 'NotoSansGeorgian_600SemiBold',
                   letterSpacing: 0.2,
@@ -251,7 +250,7 @@ export function CycleDayStrip({
                 >
                   <Text
                     style={{
-                      color: layers.loggedPeriod ? c.white : layers.predictedPeriod ? c.period : c.ink,
+                      color: layers.loggedPeriod ? c.onPeriod : layers.predictedPeriod ? c.period : c.ink,
                       fontFamily: 'NotoSansGeorgian_700Bold',
                       fontSize: 15,
                       fontVariant: ['tabular-nums'],

@@ -1,12 +1,13 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useCallback, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
 import { Lock } from 'lucide-react-native';
 import { CycleLoading } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import { requireCycleUnlock } from '@/lib/cyclePrivacy';
 import { useCycleColors } from '@/theme/cycle';
-import { STACK_PUSH } from '@/theme/stackMotion';
+import { useStackMotion } from '@/hooks/useStackMotion';
 
 function CyclePrivacyGate({ children }: { children: React.ReactNode }) {
   const c = useCycleColors();
@@ -42,7 +43,7 @@ function CyclePrivacyGate({ children }: { children: React.ReactNode }) {
             width: 72,
             height: 72,
             borderRadius: 24,
-            backgroundColor: c.roseSoft,
+            backgroundColor: c.accentSoft,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -70,7 +71,7 @@ function CyclePrivacyGate({ children }: { children: React.ReactNode }) {
             borderRadius: 16,
           }}
         >
-          <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.privacyUnlock}</Text>
+          <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.privacyUnlock}</Text>
         </Pressable>
       </View>
     );
@@ -80,9 +81,11 @@ function CyclePrivacyGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function CycleLayout() {
+  const motion = useStackMotion();
+  const c = useCycleColors();
   return (
     <CyclePrivacyGate>
-      <Stack screenOptions={{ headerBackTitle: ka.common.back, ...STACK_PUSH }} />
+      <Stack screenOptions={{ headerBackTitle: ka.common.back, contentStyle: { backgroundColor: c.cream }, ...motion }} />
     </CyclePrivacyGate>
   );
 }

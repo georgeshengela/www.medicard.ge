@@ -1,36 +1,27 @@
-import React from 'react';
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
+import React, { useState } from 'react';
+import { CycleObservationIcon } from './CycleObservationIcon';
 import {
   ActivityIndicator,
-  Pressable,
   StyleSheet,
   Text,
   View,
   type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+  type ViewStyle} from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, type LucideIcon } from 'lucide-react-native';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { CyclePageSkeleton } from '@/components/ui/Skeleton';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useIsDark } from '@/theme/colors';
 import { cycleHexAlpha, cycleShadow, useCycleColors, type CyclePalette } from '@/theme/cycle';
 
-/** Cycle canvas — Figma 9001:283189 blush wash on light, navy on dark. */
+/** Velvet Rhythm canvas and quiet aubergine night surfaces. */
 export function CycleAtmosphere({ children }: { children: React.ReactNode }) {
   const c = useCycleColors();
-  const dark = useIsDark();
   return (
     <View style={{ flex: 1, backgroundColor: c.cream }}>
-      {dark ? null : (
-        <LinearGradient
-          pointerEvents="none"
-          colors={['rgba(244,63,94,0.16)', 'rgba(255,247,248,0)']}
-          locations={[0, 0.58]}
-          style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 440 }}
-        />
-      )}
       {children}
     </View>
   );
@@ -56,13 +47,14 @@ export function CycleCard({
   delay?: number;
 }) {
   const c = useCycleColors();
+  const reduceMotion = usePrefersReducedMotion();
   return (
     <Animated.View
-      entering={FadeInUp.delay(delay).duration(420)}
+      entering={reduceMotion ? undefined : FadeInUp.delay(delay).duration(220)}
       style={[
         {
           backgroundColor: c.card,
-          borderRadius: 16,
+          borderRadius: 24,
           padding: padded ? 16 : 0,
           overflow: 'hidden',
           borderWidth: 1,
@@ -91,8 +83,9 @@ export function CycleSection({
   action?: React.ReactNode;
 }) {
   const c = useCycleColors();
+  const reduceMotion = usePrefersReducedMotion();
   return (
-    <Animated.View entering={FadeInDown.delay(delay).duration(380)} style={{ marginBottom: 20 }}>
+    <Animated.View entering={reduceMotion ? undefined : FadeInDown.delay(delay).duration(220)} style={{ marginBottom: 24 }}>
       <View
         style={{
           flexDirection: 'row',
@@ -141,7 +134,7 @@ export function CycleChip({
   );
 }
 
-/** Symmetric centered tile — selected = solid fill, unselected = soft card. */
+/** Choice tiles use an accent border, subtle tint and selected accessibility state. */
 function CycleOptionTile({
   label,
   selected,
@@ -162,26 +155,28 @@ function CycleOptionTile({
       }}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      className="active:opacity-90"
+      
       style={{
-        minHeight: 58,
+        minHeight: 56,
         borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 10,
-        paddingVertical: 14,
-        backgroundColor: selected ? accent : c.cardSoft,
-        borderWidth: selected ? 0 : 1,
-        borderColor: c.border,
+        paddingVertical: 10,
+        backgroundColor: selected ? cycleHexAlpha(accent, 0.12) : c.card,
+        gap:6,
+        borderWidth: 1,
+        borderColor: selected ? accent : c.controlBorder,
         ...(selected ? cycleShadow.soft : {}),
       }}
     >
+      <CycleObservationIcon label={label} color={selected?accent:c.muted} size={20} selected={selected}/>
       <Text
         style={{
           textAlign: 'center',
-          color: selected ? '#fff' : c.ink,
+          color: c.ink,
           fontFamily: selected ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium',
-          fontSize: 14,
+          fontSize: 13,
           lineHeight: 18,
         }}
         numberOfLines={2}
@@ -366,21 +361,21 @@ export function CycleScalePicker({
                 }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                className="active:opacity-90"
+                
                 style={{
                   height: 56,
                   borderRadius: 16,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: on ? accent : c.cardSoft,
-                  borderWidth: on ? 0 : 1,
-                  borderColor: c.border,
+                  backgroundColor: on ? cycleHexAlpha(accent, 0.12) : c.card,
+                  borderWidth: 1,
+                  borderColor: on ? accent : c.border,
                   ...(on ? cycleShadow.soft : {}),
                 }}
               >
                 <Text
                   style={{
-                    color: on ? '#fff' : c.ink,
+                    color: c.ink,
                     fontFamily: 'NotoSansGeorgian_700Bold',
                     fontSize: 18,
                   }}
@@ -458,47 +453,52 @@ export function CyclePrimaryButton({
 }) {
   const c = useCycleColors();
   const blocked = disabled || loading;
+  const [pressed,setPressed]=useState(false),[hovered,setHovered]=useState(false);
+  const foreground=disabled ? c.onDisabled : c.onPrimary;
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={()=>setPressed(true)} onPressOut={()=>setPressed(false)}
+      onHoverIn={()=>setHovered(true)} onHoverOut={()=>setHovered(false)}
       disabled={blocked}
       accessibilityRole="button"
       accessibilityLabel={label}
-      className={blocked ? undefined : 'active:opacity-90'}
+      accessibilityState={{ disabled: Boolean(blocked), busy: Boolean(loading) }}
       style={{
         width: '100%',
-        opacity: blocked ? 0.5 : 1,
-        borderRadius: 16,
+        borderRadius: 24,
         overflow: 'hidden',
         ...cycleShadow.soft,
       }}
     >
       <View
         style={{
-          minHeight: 56,
-          borderRadius: 16,
-          paddingVertical: 16,
-          paddingHorizontal: 20,
+          minHeight: 48,
+          borderRadius: 24,
+          borderWidth: 1,
+          borderColor: c.ctaBorder,
+          paddingVertical: 12,
+          paddingHorizontal: 16,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: c.cta,
+          backgroundColor: disabled ? c.disabledFill : pressed ? c.ctaPressed : hovered ? c.ctaHover : c.cta,
         }}
       >
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={foreground} />
         ) : (
           <View style={{ flexDirection: 'row', alignItems: 'center', maxWidth: '100%', flexShrink: 1 }}>
             {Icon ? (
               <View style={{ marginRight: 8 }}>
-                <Icon size={18} color="#fff" strokeWidth={2.4} />
+                <Icon size={18} color={foreground} strokeWidth={2.4} />
               </View>
             ) : null}
             <Text
               style={{
-                color: '#fff',
+                color: foreground,
                 fontFamily: 'NotoSansGeorgian_700Bold',
-                fontSize: 16,
+                fontSize: 14,
                 includeFontPadding: false,
                 flexShrink: 1,
                 textAlign: 'center',
@@ -528,19 +528,7 @@ export function CycleFab({
   const c = useCycleColors();
   const text = label || 'აღრიცხვა';
   return (
-    <View style={{ alignSelf: 'flex-start' }}>
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          left: -5,
-          right: -5,
-          top: -5,
-          bottom: -5,
-          borderRadius: 27,
-          backgroundColor: cycleHexAlpha(c.cta, 0.16),
-        }}
-      />
+    <View style={{ alignSelf: 'flex-end' }}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={text}
@@ -548,18 +536,18 @@ export function CycleFab({
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
           onPress();
         }}
-        className="active:opacity-90"
+        
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          height: 44,
-          paddingLeft: 7,
-          paddingRight: 12,
-          borderRadius: 22,
+          minHeight: 48,
+          paddingLeft: 12,
+          paddingRight: 20,
+          borderRadius: 26,
           backgroundColor: c.cta,
           borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.28)',
-          gap: 7,
+          borderColor: c.ctaBorder,
+          gap: 8,
         }}
       >
         <View
@@ -572,14 +560,14 @@ export function CycleFab({
             justifyContent: 'center',
           }}
         >
-          <Plus size={15} color="#FFFFFF" strokeWidth={2.7} />
+          <Plus size={15} color={c.onPrimary} strokeWidth={2.7} />
         </View>
         <Text
           numberOfLines={1}
           style={{
-            color: '#FFFFFF',
+            color: c.onPrimary,
             fontFamily: 'NotoSansGeorgian_700Bold',
-            fontSize: 12,
+            fontSize: 14,
             letterSpacing: 0.15,
             includeFontPadding: false,
           }}
@@ -627,13 +615,14 @@ export function CycleActionRow({
   last?: boolean;
 }) {
   const c = useCycleColors();
+  const reduceMotion = usePrefersReducedMotion();
   return (
-    <Animated.View entering={FadeInUp.delay(delay).duration(360)}>
+    <Animated.View entering={reduceMotion ? undefined : FadeInUp.delay(delay).duration(220)}>
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={`${title}. ${subtitle}`}
-        className="active:opacity-90"
+        
         style={{
           flexDirection: 'row',
           alignItems: 'center',

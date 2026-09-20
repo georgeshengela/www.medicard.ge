@@ -1,9 +1,10 @@
 import { Stack } from 'expo-router';
 import { MedicationNavHeader } from '@/components/medications/MedicationNavHeader';
 import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
-import { STACK_PUSH } from '@/theme/stackMotion';
+import { useStackMotion } from '@/hooks/useStackMotion';
 
 export default function MedicationsLayout() {
+  const motion = useStackMotion();
   const FIGMA_MEDS = useFigmaMeds();
   return (
     <Stack
@@ -11,7 +12,7 @@ export default function MedicationsLayout() {
         header: (props) => <MedicationNavHeader {...props} />,
         headerShadowVisible: false,
         contentStyle: { flex: 1, backgroundColor: FIGMA_MEDS.pageBg },
-        ...STACK_PUSH,
+        ...motion,
       }}
     />
   );

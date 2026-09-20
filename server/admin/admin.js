@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'medipulsi', 'settings'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'medipulsi', 'settings'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -1034,6 +1034,7 @@ async function switchTab(tab, opts = {}) {
     health: ['Health & Medi', 'ჯანმრთელობა', 'რომელი ჯანმრთელობის ფიჩერები გამოიყენება და ინახება?', 'health.page'],
     audit: ['Production', 'აუდიტი', 'ვინ შეცვალა რა და როდის?', 'audit.page'],
     quality: ['Production', 'ხარისხი', 'ვერსიები, ტელემეტრია და მონაცემები სანდოა?', 'quality.page'],
+    testing: ['Production', 'ტესტირების სივრცე', 'ეტაპები, შედეგები და დაცული სქრინები.', 'quality.page'],
     'medipulsi': ['Engagement', 'MEDIPULSI', 'გასეირნება, მისიები, აღმოჩენები და ჯილდოების მართვა.', ''],
     orders: ['Operations', 'შეკვეთები', 'რა საჭიროებს ოპერაციულ დამუშავებას?', 'orders.page'],
     users: ['People', 'მომხმარებლები', 'ვინ არის ბაზაში, რა ანგარიშის მდგომარეობა აქვს და ვისი გამოძიება გჭირდება.', 'users.registry'],
@@ -1065,6 +1066,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'health' && typeof renderHealthOps === 'function') await renderHealthOps();
     if (tab === 'audit' && typeof renderAuditLog === 'function') await renderAuditLog();
     if (tab === 'quality' && typeof renderQualityOps === 'function') await renderQualityOps();
+    if (tab === 'testing' && typeof renderTesting === 'function') await renderTesting();
     if (tab === 'medipulsi' && typeof renderMedipulsi === 'function') await renderMedipulsi();
     if (tab === 'settings') await renderSettings();
   }

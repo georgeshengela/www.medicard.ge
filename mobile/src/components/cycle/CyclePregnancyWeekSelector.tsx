@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useRef } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { milestoneWeeks } from '@/lib/pregnancyWeekData.js';
 import { useCycleColors } from '@/theme/cycle';
@@ -49,7 +50,7 @@ export function CyclePregnancyWeekSelector({
               borderRadius: 14,
               borderWidth: 1,
               borderColor: selected ? c.rose : c.border,
-              backgroundColor: selected ? c.roseSoft : c.card,
+              backgroundColor: selected ? c.accentSoft : c.card,
               alignItems: 'center',
               justifyContent: 'center',
             }}

@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { CycleCard, CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
@@ -281,7 +282,7 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
                                     backgroundColor: on ? c.cta : c.card,
                                   }}
                                 >
-                                  <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 12 }}>
+                                  <Text style={{ color: on ? c.onPrimary : c.ink, fontWeight: '700', fontSize: 12 }}>
                                     {opt.label}
                                   </Text>
                                 </Pressable>
@@ -353,7 +354,7 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
                     borderColor: on ? c.ink : c.border,
                   }}
                 >
-                  <Text style={{ color: on ? c.white : c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12 }}>
+                  <Text style={{ color: on ? c.onPrimary : c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12 }}>
                     {opt.label}
                   </Text>
                 </Pressable>
@@ -375,7 +376,7 @@ export function CyclePeriodHistory({ bundle, onChanged }: Props) {
                   backgroundColor: days === n ? c.cta : c.cardSoft,
                 }}
               >
-                <Text style={{ color: days === n ? '#fff' : c.ink, fontWeight: '700' }}>{n}</Text>
+                <Text style={{ color: days === n ? c.onPrimary : c.ink, fontWeight: '700' }}>{n}</Text>
               </Pressable>
             ))}
           </View>

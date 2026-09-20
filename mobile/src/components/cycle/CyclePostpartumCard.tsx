@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
 import type { CyclePostpartumPayload } from '@/lib/api';
 import { cycleChipLabel } from '@/lib/cycleLabels';
@@ -159,7 +160,7 @@ export function CyclePostpartumCard({ postpartum, status, errorKind, onRetry, on
             marginTop: 14,
           }}
         >
-          <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>
+          <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>
             {ka.cycle.quickLogTitle}
           </Text>
         </Pressable>

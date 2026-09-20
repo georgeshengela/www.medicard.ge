@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ChatActionDock } from '@/components/chat/ChatScreenShell';
+import { ANALYSIS_CONTEXT_LIMIT } from '@/lib/analysisFlow';
+import { KEYBOARD_DONE_ACCESSORY_ID } from '@/components/ui/KeyboardDoneAccessory';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, Check, FileText, ImageIcon, Sparkles, X, type LucideIcon } from 'lucide-react-native';
 import Animated, {
@@ -13,7 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
-import { useIsDark } from '@/theme/colors';
+import { useThemeColors, useIsDark } from '@/theme/colors';
 
 export type LabStudioFile = { uri: string; name: string; mimeType: string; isPdf: boolean };
 
@@ -58,9 +60,10 @@ export function LabDecodeStudio({
 }: Props) {
   const C = useFigmaChat();
   const dark = useIsDark();
+  const colors = useThemeColors();
   const cta = dark ? '#0D9488' : '#14B8A6';
   const current = files[Math.min(waitIndex, Math.max(files.length - 1, 0))];
-  const progress = files.length ? (busy ? (waitIndex + 0.42) / files.length : files.length ? 0 : 0) : 0;
+  const progress = files.length ? (busy ? waitIndex / files.length : files.length ? 0 : 0) : 0;
 
   return (
     <View
@@ -97,12 +100,12 @@ export function LabDecodeStudio({
             style={{
               borderRadius: 16,
               padding: 12,
-              backgroundColor: '#FEF2F2',
+              backgroundColor: colors.dangerBg,
               borderWidth: 1,
-              borderColor: '#FECACA',
+              borderColor: colors.danger,
             }}
           >
-            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: '#DC2626' }}>{error}</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.danger }}>{error}</Text>
           </View>
         ) : null}
 
@@ -161,6 +164,9 @@ export function LabDecodeStudio({
               <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', color: C.textMuted }}>({ka.common.optional})</Text>
             </Text>
             <TextInput
+              maxLength={ANALYSIS_CONTEXT_LIMIT}
+              accessibilityLabel={contextLabel}
+              inputAccessoryViewID={KEYBOARD_DONE_ACCESSORY_ID}
               value={context}
               onChangeText={onContext}
               placeholder={contextPlaceholder}
@@ -168,7 +174,8 @@ export function LabDecodeStudio({
               multiline
               textAlignVertical="top"
               style={{
-                minHeight: 64,
+                minHeight: 80,
+                maxHeight: 132,
                 borderRadius: 14,
                 borderWidth: 1,
                 borderColor: C.border,
@@ -190,54 +197,24 @@ export function LabDecodeStudio({
 function ReadyHeader({ count }: { count: number }) {
   const C = useFigmaChat();
   return (
-    <LinearGradient colors={[C.brandQuaternary, C.white]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
+    <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
       <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: C.textPrimary }}>{ka.lab.pagesReady(count)}</Text>
       <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: C.textSecondary, marginTop: 4 }}>
         {ka.lab.studioReady}
       </Text>
-    </LinearGradient>
+    </View>
   );
 }
 
 function EmptyHero() {
   const C = useFigmaChat();
-  const pulse = useSharedValue(0);
-  useEffect(() => {
-    pulse.value = withRepeat(withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.sin) }), -1, true);
-  }, [pulse]);
-  const frame = useAnimatedStyle(() => ({
-    opacity: interpolate(pulse.value, [0, 1], [0.45, 1]),
-    transform: [{ scale: interpolate(pulse.value, [0, 1], [0.98, 1.02]) }],
-  }));
-
-  return (
-    <LinearGradient colors={[C.brandQuaternary, C.white]} start={{ x: 0.2, y: 0 }} end={{ x: 1, y: 1 }} style={{ padding: 20, alignItems: 'center', gap: 12 }}>
-      <Animated.View
-        style={[
-          {
-            width: 88,
-            height: 88,
-            borderRadius: 28,
-            borderWidth: 2,
-            borderStyle: 'dashed',
-            borderColor: C.brand,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: C.white,
-          },
-          frame,
-        ]}
-      >
-        <Camera size={32} color={C.brand} strokeWidth={1.8} />
-      </Animated.View>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, color: C.textPrimary, textAlign: 'center' }}>
-        {ka.lab.studioEmpty}
-      </Text>
-      <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: C.textSecondary, textAlign: 'center' }}>
-        {ka.modules.lab.uploadHint}
-      </Text>
-    </LinearGradient>
-  );
+  return <View style={{ padding: 20, gap: 12 }}>
+    <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: C.brandQuaternary, alignItems: 'center', justifyContent: 'center' }}><FileText size={24} color={C.brand} /></View>
+    <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 28, color: C.textPrimary }}>{ka.lab.studioEmpty}</Text>
+    <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 21, color: C.textSecondary }}>{ka.modules.lab.uploadHint}</Text>
+    <Text style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 19, color: C.textSecondary }}>01 ატვირთე · 02 გადაამოწმე · 03 მიიღე განმარტება</Text>
+    <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: C.textMuted }}>ერთად ატვირთე ერთი თარიღის ანალიზები · მაქსიმუმ 8 ფაილი · თითოეული 12 მბ-მდე</Text>
+  </View>;
 }
 
 function ScanTheater({
@@ -273,7 +250,7 @@ function ScanTheater({
         <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, color: '#99F6E4', letterSpacing: 0.4 }}>
           {ka.lab.scanLive}
         </Text>
-        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12, color: '#FFFFFF' }}>{pct}%</Text>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 12, color: '#FFFFFF' }}>{index + 1} / {total}</Text>
       </View>
       <View style={{ height: 200, borderRadius: 18, overflow: 'hidden', backgroundColor: '#111827' }}>
         {file.isPdf ? (
@@ -375,6 +352,8 @@ function PhotoRail({
               ) : null}
               {!busy ? (
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`გვერდი ${index + 1} — წაშლა`}
                   onPress={() => onRemove(index)}
                   hitSlop={8}
                   style={{
@@ -443,6 +422,8 @@ function SourceCard({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
       onPress={onPress}
       style={{
         flex: 1,
@@ -456,7 +437,7 @@ function SourceCard({
         gap: 10,
         paddingVertical: 14,
         paddingHorizontal: 6,
-        ...C.shadowXs,
+
       }}
     >
       <View
@@ -502,17 +483,18 @@ export function LabAnalyzeDock({
 }) {
   const dark = useIsDark();
   const C = useFigmaChat();
-  const insets = useSafeAreaInsets();
   const cta = dark ? '#0D9488' : '#14B8A6';
-  const pct = total ? Math.min(99, Math.round(((waitIndex + (busy ? 0.42 : 0)) / total) * 100)) : 0;
+  const pct = total ? Math.min(99, Math.round((waitIndex / total) * 100)) : 0;
   return (
-    <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: Math.max(insets.bottom, 12), backgroundColor: C.cardBg, borderTopWidth: 1, borderTopColor: C.border }}>
+    <ChatActionDock>
       {busy ? (
         <View style={{ height: 4, borderRadius: 99, backgroundColor: C.border, overflow: 'hidden', marginBottom: 10 }}>
           <View style={{ width: `${pct}%`, height: '100%', backgroundColor: C.brand }} />
         </View>
       ) : null}
       <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: disabled || busy, busy }}
         onPress={onPress}
         disabled={disabled || busy}
         style={{
@@ -531,6 +513,6 @@ export function LabAnalyzeDock({
           {busy ? ka.lab.readingPage(Math.min(waitIndex + 1, Math.max(total, 1)), Math.max(total, 1)) : ka.lab.extractCta}
         </Text>
       </Pressable>
-    </View>
+    </ChatActionDock>
   );
 }

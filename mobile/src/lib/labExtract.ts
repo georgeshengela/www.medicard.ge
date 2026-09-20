@@ -234,12 +234,8 @@ export function mergeLabExtracts(parts: LabExtract[]): LabExtract {
 export function formatLabDateKa(ymd: string): string {
   const [y, m, d] = ymd.split('-').map(Number);
   if (!y || !m || !d) return ymd;
-  return new Date(y, m - 1, d).toLocaleDateString('ka-GE', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const months = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
+  return months[m - 1] ? `${d} ${months[m - 1]} ${y}` : ymd;
 }
 
 export function isTodayYmd(ymd: string): boolean {

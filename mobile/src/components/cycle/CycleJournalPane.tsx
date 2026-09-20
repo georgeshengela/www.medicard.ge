@@ -1,7 +1,8 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { FileText } from 'lucide-react-native';
+import { BookOpen, FileText } from 'lucide-react-native';
 import { CycleObservationTrends } from '@/components/cycle/CycleObservationTrends';
 import { CyclePeriodHistory } from '@/components/cycle/CyclePeriodHistory';
 import { CyclePredictionHistoryCard } from '@/components/cycle/CyclePredictionHistoryCard';
@@ -112,6 +113,7 @@ export function CycleJournalPane({
         ) : null}
         {history.showPredictionHistory ? (
           <CyclePredictionHistoryCard
+            currentEstimateActive={caps.showFertileEstimates}
             refreshKey={(bundle.inferred?.periodStarts || []).join('|')}
           />
         ) : null}
@@ -121,6 +123,17 @@ export function CycleJournalPane({
 
   return (
     <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+      <CycleActionPanel>
+        <CycleActionRow
+          icon={BookOpen}
+          title="პირადი დღიური"
+          subtitle="შენი შენიშვნები და ჩანაწერების ძებნა"
+          color={c.brand}
+          onPress={() => router.push('/cycle/journal' as never)}
+          last
+        />
+      </CycleActionPanel>
+      <View style={{ height: 20 }} />
       {caps.showPregnancyOverview ? (
         <CyclePregnancyJournalSection
           pregnancy={pregnancy ?? null}
@@ -141,7 +154,7 @@ export function CycleJournalPane({
       ) : null}
 
       {/* Stats band — engine values, hidden below threshold (§9). Hidden in peri: unclamped variability is above. */}
-      {caps.showPerimenopauseTracking || caps.showPostpartumTracking ? null : stats.length ? (
+      {caps.showPregnancyOverview || caps.showPerimenopauseTracking || caps.showPostpartumTracking ? null : stats.length ? (
         <View style={{ marginBottom: 20 }}>
           <View
             style={{
@@ -215,6 +228,7 @@ export function CycleJournalPane({
 
       {history.showPredictionHistory ? (
         <CyclePredictionHistoryCard
+          currentEstimateActive={caps.showFertileEstimates}
           refreshKey={(bundle.inferred?.periodStarts || []).join('|')}
         />
       ) : null}

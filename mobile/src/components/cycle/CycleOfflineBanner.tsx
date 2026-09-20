@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
 import {
   formatCycleCachedAtKa,

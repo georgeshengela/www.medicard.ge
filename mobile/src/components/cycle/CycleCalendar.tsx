@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import type { CycleDayMark } from '@/lib/api';
@@ -52,7 +53,7 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
   const reduceMotion = usePrefersReducedMotion();
   const today = todayProp || todayKey();
   const selectedSoft = cycleHexAlpha(c.ink, 0.07);
-  const selectedRing = cycleHexAlpha(c.ink, 0.38);
+  const selectedRing = c.controlBorder;
 
   const cells = useMemo(() => {
     const first = new Date(year, month, 1);
@@ -91,7 +92,7 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
           marginBottom: 14,
         }}
       >
-        <NavBtn onPress={onPrev} c={c}>
+        <NavBtn onPress={onPrev} c={c} label="წინა თვე">
           <ChevronLeft size={22} color={c.brand} strokeWidth={2.4} />
         </NavBtn>
         <Text
@@ -106,7 +107,7 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
         >
           {MONTHS_KA[month]} {year}
         </Text>
-        <NavBtn onPress={onNext} c={c}>
+        <NavBtn onPress={onNext} c={c} label="შემდეგი თვე">
           <ChevronRight size={22} color={c.brand} strokeWidth={2.4} />
         </NavBtn>
       </View>
@@ -148,7 +149,7 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
                 ? selectedSoft
                 : 'transparent';
           const textColor = layers.loggedPeriod
-            ? c.white
+            ? c.onPeriod
             : layers.predictedPeriod
               ? c.period
               : c.ink;
@@ -275,7 +276,9 @@ function NavBtn({
   onPress,
   children,
   c,
+  label,
 }: {
+  label: string;
   onPress: () => void;
   children: React.ReactNode;
   c: ReturnType<typeof useCycleColors>;
@@ -284,6 +287,7 @@ function NavBtn({
     <Pressable
       onPress={onPress}
       hitSlop={10}
+      accessibilityLabel={label}
       accessibilityRole="button"
       style={{
         width: 44,

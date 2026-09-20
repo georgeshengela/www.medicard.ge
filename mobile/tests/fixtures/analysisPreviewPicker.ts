@@ -1,0 +1,11 @@
+import { preview, sampleImage } from './analysisPreviewRuntime';
+export const IMAGE_PICKER_OPTIONS = {};
+export const UIImagePickerPreferredAssetRepresentationMode = { Compatible: 'compatible' };
+export const requestCameraPermissionsAsync = async () => ({ granted: preview.scenario !== 'denied' });
+export const requestMediaLibraryPermissionsAsync = requestCameraPermissionsAsync;
+const pick = async () => ({ canceled: preview.scenario === 'cancel', assets: Array.from({ length: preview.scenario === 'partial' ? 3 : 1 }, (_, i) => ({ uri: sampleImage, name: `synthetic-${Date.now()}-${i}.jpg`, mimeType: 'image/jpeg', size: preview.scenario === 'oversized' ? 20 * 1024 * 1024 : 1000 })) });
+export const launchCameraAsync = pick;
+export const launchImageLibraryAsync = pick;
+export const getDocumentAsync = pick;
+export const toUploadableImage = async (asset: any) => asset;
+export const prepareLabImage = toUploadableImage;

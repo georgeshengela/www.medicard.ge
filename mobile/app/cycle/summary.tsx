@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, Switch, Text, View } from 'react-native';
+import { Platform, ScrollView, Share, Switch, Text, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -209,14 +210,14 @@ export default function CycleSummary() {
                           borderRadius: 14,
                           alignItems: 'center',
                           justifyContent: 'center',
-                          backgroundColor: selected ? c.brand : c.card,
+                          backgroundColor: selected ? c.cta : c.card,
                           borderWidth: 1,
                           borderColor: selected ? c.brand : c.border,
                         }}
                       >
                         <Text
                           style={{
-                            color: selected ? '#fff' : c.ink,
+                            color: selected ? c.onPrimary : c.ink,
                             fontWeight: '700',
                             fontSize: 13,
                           }}

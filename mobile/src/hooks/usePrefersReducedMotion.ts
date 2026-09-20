@@ -2,15 +2,20 @@ import { useEffect, useState } from 'react';
 import { AccessibilityInfo } from 'react-native';
 
 export function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(false);
+  // Avoid a full-screen slide before the asynchronous OS preference arrives.
+  const [reduced, setReduced] = useState(true);
   useEffect(() => {
     let alive = true;
+    let changed = false;
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (value) => {
+      changed = true;
+      if (alive) setReduced(value);
+    });
     AccessibilityInfo.isReduceMotionEnabled()
       .then((value) => {
-        if (alive) setReduced(value);
+        if (alive && !changed) setReduced(value);
       })
       .catch(() => undefined);
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
     return () => {
       alive = false;
       sub.remove();

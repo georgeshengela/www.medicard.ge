@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { TouchableOpacity, View, type LayoutChangeEvent } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { CalendarClock, FolderHeart, Footprints, House, User, type LucideIcon } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
@@ -10,6 +10,7 @@ import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
 import { getRunState } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 
 export const TAB_BAR_HEIGHT = 58;
 export const TAB_BAR_SIDE = 20;
@@ -41,8 +42,6 @@ const RIGHT_TABS: TabDef[] = [
   { href: '/(tabs)/profile', name: 'profile', title: ka.tabs.profile, Icon: User },
 ];
 
-const SPRING = { damping: 22, stiffness: 260, mass: 0.7 };
-
 function openLiveRun(router: ReturnType<typeof useRouter>) {
   const phase = getRunState().phase;
   if (phase === 'running' || phase === 'paused' || phase === 'ready' || phase === 'preparing') {
@@ -58,6 +57,7 @@ function openLiveRun(router: ReturnType<typeof useRouter>) {
  */
 export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
   const colors = useThemeColors();
+  const reduceMotion = usePrefersReducedMotion();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -66,14 +66,14 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
 
   useEffect(() => {
     reveal.value = withTiming(visible ? 1 : 0, {
-      duration: visible ? 220 : 0,
+      duration: visible && !reduceMotion ? 180 : 0,
       easing: Easing.out(Easing.cubic),
     });
-  }, [reveal, visible]);
+  }, [reveal, visible, reduceMotion]);
 
   const barRevealStyle = useAnimatedStyle(() => ({
     opacity: reveal.value,
-    transform: [{ translateY: (1 - reveal.value) * 18 }],
+    transform: [{ translateY: reduceMotion ? 0 : (1 - reveal.value) * 10 }],
   }));
   const segs = segments as string[];
   const onRunHub = segs[0] === 'run' && (segs.length === 1 || segs[1] === 'index');
@@ -94,8 +94,9 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
 
   useEffect(() => {
     if (tabWidth === 0 || activeSlot < 0) return;
-    translateX.value = withSpring(innerPad + activeSlot * tabWidth, SPRING);
-  }, [activeSlot, tabWidth, translateX]);
+    const position = innerPad + activeSlot * tabWidth;
+    translateX.value = reduceMotion ? position : withTiming(position, { duration: 180, easing: Easing.out(Easing.cubic) });
+  }, [activeSlot, tabWidth, translateX, reduceMotion]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],

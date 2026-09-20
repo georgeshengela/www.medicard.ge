@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Switch, Text, View } from 'react-native';
 import { Activity, ExternalLink } from 'lucide-react-native';
 import { CycleCard } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
@@ -133,8 +134,8 @@ export function CycleHealthConnectCard({ onConnected }: Props) {
           <Switch
             value={enabled}
             onValueChange={onToggle}
-            trackColor={{ true: c.cta, false: c.creamDeep }}
-            thumbColor="#fff"
+            trackColor={{ true: c.cta, false: c.controlBorder }}
+            thumbColor={c.onPrimary}
           />
         )}
       </View>
@@ -161,7 +162,7 @@ export function CycleHealthConnectCard({ onConnected }: Props) {
       {Platform.OS === 'android' && enabled ? (
         <Pressable
           onPress={() => openHealthAppSettings().catch(() => undefined)}
-          className="active:opacity-90"
+          
           style={{
             marginTop: 12,
             flexDirection: 'row',

@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, Sparkles, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -300,7 +301,7 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
               <Pressable
                 onPress={runAuto}
                 disabled={busy}
-                className="active:opacity-90"
+                
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',

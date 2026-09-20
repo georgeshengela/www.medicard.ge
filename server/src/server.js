@@ -34,6 +34,7 @@ import { adminRouter } from './routes/admin.routes.js';
 import { adminRewardsRouter } from './routes/adminRewards.routes.js';
 import { medipulsiRouter } from './routes/medipulsi.routes.js';
 import { adminMedipulsiRouter } from './routes/adminMedipulsi.routes.js';
+import { adminQaRouter } from './routes/adminQa.routes.js';
 import { appRouter } from './routes/app.routes.js';
 import { aiConsentRouter } from './routes/ai-consent.routes.js';
 import { accountRouter } from './routes/account.routes.js';
@@ -233,6 +234,7 @@ app.use('/api/ai-consent', aiConsentRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/rewards', adminRewardsRouter);
 app.use('/api/admin/medipulsi', adminMedipulsiRouter);
+app.use('/api/admin/qa', adminQaRouter);
 
 app.get(['/medipulsi', '/medipulsi/', '/medipulsi/index.html'], (_req,res) => {
   const file=path.resolve(__dirname,'../public/medipulsi/index.html');

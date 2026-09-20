@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { pregnancyCareCopy } from '@/i18n/cycle/pregnancyCare.js';
 import type { CyclePregnancyCarePlannerSummary } from '@/lib/api';
@@ -37,7 +38,7 @@ export function CyclePregnancyCarePlannerCard({
     <View
       style={{
         marginTop: 12,
-        borderRadius: 16,
+        borderRadius: 24,
         borderWidth: 1,
         borderColor: c.border,
         backgroundColor: c.card,
@@ -94,7 +95,7 @@ export function CyclePregnancyCarePlannerCard({
           borderRadius: 14,
           borderWidth: 1,
           borderColor: c.border,
-          backgroundColor: c.roseSoft,
+          backgroundColor: c.cardSoft,
           alignItems: 'center',
           justifyContent: 'center',
           paddingHorizontal: 12,

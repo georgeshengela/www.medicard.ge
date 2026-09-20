@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { ka } from '@/i18n/ka';
@@ -39,7 +40,7 @@ function Choice({
       : c.cta
     : c.cardSoft;
   const border = selected ? c.ink : c.border;
-  const color = selected && state !== ASSESSMENT_STATES.UNKNOWN ? c.white : c.ink;
+  const color = selected && state !== ASSESSMENT_STATES.UNKNOWN ? c.onPrimary : c.ink;
   return (
     <Pressable
       onPress={() => {

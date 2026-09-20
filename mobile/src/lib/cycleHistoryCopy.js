@@ -54,6 +54,7 @@ export function cycleHistoryPresentation(mode) {
 export function cycleLoggedBleedLabel(mode, copy) {
   const presentation = cycleHistoryPresentation(mode);
   if (!presentation.ready) return copy.logged;
+  if (presentationCapabilitiesForProfileMode(mode).showPregnancyOverview) return copy.pregnancyBleeding;
   return presentation.usePostpartumBleedLabel ? copy.postpartumBleeding : copy.legendPeriod;
 }
 

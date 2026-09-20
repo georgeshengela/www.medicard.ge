@@ -1,13 +1,14 @@
 import { Stack } from 'expo-router';
 import { ka } from '@/i18n/ka';
-import { STACK_PUSH } from '@/theme/stackMotion';
+import { useStackMotion } from '@/hooks/useStackMotion';
 
 export default function PharmacyLayout() {
+  const motion = useStackMotion();
   return (
     <Stack
       screenOptions={{
         headerBackTitle: ka.common.back,
-        ...STACK_PUSH,
+        ...motion,
       }}
     >
       <Stack.Screen name="index" options={{ title: ka.pharmacy.title }} />

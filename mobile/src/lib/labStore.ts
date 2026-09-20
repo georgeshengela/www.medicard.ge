@@ -1,4 +1,4 @@
-import { getScopedPreference, setScopedPreferenceStrict } from '@/lib/localAccount';
+import { getScopedPreference, setScopedPreferenceStrict, localAccountId } from '@/lib/localAccount';
 import { mergeLabPanelLists } from '@/lib/labMerge';
 import { resolveCanonicalLabKey, titledLabPanel } from '@/lib/labNames';
 import type { LabPanel } from '@/types/lab';
@@ -27,26 +27,29 @@ export async function loadLabPanels(): Promise<LabPanel[]> {
 
 /** Rewrite French/OCR keys onto the Georgian catalog and persist if anything moved. */
 export async function loadCanonicalLabPanels(): Promise<LabPanel[]> {
+  const owner = localAccountId();
   const current = await loadLabPanels();
   const next = current.map(titledLabPanel);
-  if (fingerprint(current) !== fingerprint(next)) await saveLabPanels(next);
+  if (fingerprint(current) !== fingerprint(next)) await saveLabPanels(next, owner);
   return next;
 }
 
 /** Merge server-seeded history without overwriting a date the user already scanned. */
 export async function mergeImportedLabPanels(incoming: LabPanel[]): Promise<LabPanel[]> {
+  const owner = localAccountId();
   const valid = incoming.filter((row) => row?.id && row.date && Array.isArray(row.parameters));
   if (!valid.length) return loadCanonicalLabPanels();
 
   const current = await loadLabPanels();
   const next = mergeLabPanelLists(current, valid);
-  if (fingerprint(current) !== fingerprint(next)) await saveLabPanels(next);
+  if (fingerprint(current) !== fingerprint(next)) await saveLabPanels(next, owner);
   return next;
 }
 
-export async function saveLabPanels(panels: LabPanel[]): Promise<void> {
+export async function saveLabPanels(panels: LabPanel[], owner = localAccountId()): Promise<void> {
+  if (!owner || localAccountId() !== owner) return;
   await setScopedPreferenceStrict(KEY, JSON.stringify(panels));
-  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
+  void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => { if (localAccountId() === owner) scheduleAccountSyncPush(); }).catch(() => undefined);
 }
 
 export async function replaceLabPanels(panels: LabPanel[]): Promise<LabPanel[]> {
@@ -56,6 +59,7 @@ export async function replaceLabPanels(panels: LabPanel[]): Promise<LabPanel[]> 
 }
 
 export async function upsertLabPanel(panel: LabPanel): Promise<LabPanel[]> {
+  const owner = localAccountId();
   const current = await loadLabPanels();
   const existing = current.find((row) => row.date === panel.date);
   if (existing) {
@@ -70,28 +74,31 @@ export async function upsertLabPanel(panel: LabPanel): Promise<LabPanel[]> {
       parameters: [...params.values()],
     };
     const next = [merged, ...current.filter((row) => row.id !== existing.id)];
-    await saveLabPanels(next);
+    await saveLabPanels(next, owner);
     return next;
   }
   const next = [titledLabPanel(panel), ...current.filter((row) => row.id !== panel.id)];
-  await saveLabPanels(next);
+  await saveLabPanels(next, owner);
   return next;
 }
 
 export async function setLabPanelAnalysis(date: string, analysis: string): Promise<LabPanel[]> {
+  const owner = localAccountId();
   const current = await loadLabPanels();
   const next = current.map((row) => (row.date === date ? { ...row, analysis } : row));
-  await saveLabPanels(next);
+  await saveLabPanels(next, owner);
   return next;
 }
 
 export async function removeLabPanel(id: string): Promise<LabPanel[]> {
+  const owner = localAccountId();
   const next = (await loadLabPanels()).filter((row) => row.id !== id);
-  await saveLabPanels(next);
+  await saveLabPanels(next, owner);
   return next;
 }
 
 export async function removeLabParameter(panelId: string, key: string): Promise<LabPanel[]> {
+  const owner = localAccountId();
   const current = await loadLabPanels();
   const next = current
     .map((row) =>
@@ -103,6 +110,6 @@ export async function removeLabParameter(panelId: string, key: string): Promise<
         : row,
     )
     .filter((row) => row.parameters.length > 0);
-  await saveLabPanels(next);
+  await saveLabPanels(next, owner);
   return next;
 }

@@ -1,9 +1,11 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { isCivilDateKey } from '@/lib/pregnancyCareCatalog.js';
 import { PLANNED_PLACE_MAX, normalizePlannedPlace } from '@/lib/pregnancyCareVisitPlaceContract.js';
 
 type Colors = {
+  controlBorder: string;
   ink: string;
   muted: string;
   mutedSoft: string;
@@ -94,7 +96,7 @@ export function PregnancyCarePlannedPlace({
         style={{
           minHeight: 44,
           borderWidth: 1,
-          borderColor: c.border,
+          borderColor: c.controlBorder,
           borderRadius: 12,
           paddingHorizontal: 12,
           paddingVertical: 10,

@@ -1,4 +1,5 @@
 import { consentedAiFetch } from './consentedAiFetch.js';
+import { assertVisionCompletion } from './visionCompletion.js';
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
@@ -216,6 +217,7 @@ async function describeWithClaude({ base64, mimeType, prompt }) {
     ],
   });
 
+  assertVisionCompletion(response, 'anthropic');
   const notes = response.content
     .filter((block) => block.type === 'text')
     .map((block) => block.text)
@@ -266,6 +268,7 @@ async function describeWithOpenAiCompatible({
     ],
   });
 
+  assertVisionCompletion(response, provider);
   const notes = response.choices?.[0]?.message?.content?.trim();
   if (!notes) throw new Error('empty response');
   return { notes, provider, model: response.model ?? model };

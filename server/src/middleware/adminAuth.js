@@ -69,9 +69,9 @@ export function requireAdmin(req, res, next) {
               if (!admin) {
                 return res.status(401).json({ error: 'ადმინისტრატორი ვერ მოიძებნა.' });
               }
-              const next = { ...admin, capabilities: null };
-              writeCachedAdmin(payload.sub, next);
-              req.admin = next;
+              const compatibleAdmin = { ...admin, capabilities: null };
+              writeCachedAdmin(payload.sub, compatibleAdmin);
+              req.admin = compatibleAdmin;
               return next();
             })
             .catch(next);

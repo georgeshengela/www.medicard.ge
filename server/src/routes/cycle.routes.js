@@ -120,6 +120,7 @@ import {
 } from '../lib/cyclePredictionHistory.js';
 import {
   assertCycleDateKey,
+  isValidCycleDateKey,
   DEFAULT_BLEED_FLOW,
   logHasExtras,
   planEndPeriod,
@@ -865,7 +866,7 @@ cycleRouter.get(
       err.status = 404;
       throw err;
     }
-    const week = z.coerce.number().int().parse(req.params.week);
+    const week = z.coerce.number().int().min(0).max(44).parse(req.params.week);
     const weekDevelopment = weekDevelopmentForCompletedWeek(week);
     if (!weekDevelopment) {
       const err = new Error('კვირა არასწორია.');
@@ -1178,7 +1179,7 @@ cycleRouter.post(
   }),
 );
 
-const DATE_KEY = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const DATE_KEY = z.string().refine(isValidCycleDateKey, 'თარიღი არასწორია.');
 
 const profileUpdateSchema = z.object({
   mode: z.enum(MODES).optional(),
@@ -1230,6 +1231,9 @@ async function respondWithBundle(req, res, fallback) {
 async function applyProfileUpdate(req, res) {
   assertFemale(req.user);
   const body = profileUpdateSchema.parse(req.body ?? {});
+  const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+  if (body.lastPeriodStart) assertCycleDateKey(body.lastPeriodStart, clock.today);
+  if (body.contraceptionStartedAt) assertCycleDateKey(body.contraceptionStartedAt, clock.today);
 
   const data = {};
   if (body.mode !== undefined) data.mode = body.mode;
@@ -1257,7 +1261,6 @@ async function applyProfileUpdate(req, res) {
   await getOrCreateProfile(req.user.id);
   const current = await prisma.cycleProfile.findUnique({ where: { userId: req.user.id } });
   const nextMode = body.mode ?? current?.mode;
-  const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
   const pregnancyWrite =
     body.mode === 'PREGNANCY' ||
     current?.mode === 'PREGNANCY' ||
@@ -1321,6 +1324,7 @@ cycleRouter.post(
     assertFemale(req.user);
     const date = DATE_KEY.parse(req.body?.date ?? req.body?.lastPeriodStart);
     const clock = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+    assertCycleDateKey(date, clock.today);
     await getOrCreateProfile(req.user.id);
     await prisma.cycleProfile.update({
       where: { userId: req.user.id },
@@ -1842,7 +1846,8 @@ cycleRouter.put(
   '/pregnancy/:date',
   asyncHandler(async (req, res) => {
     assertFemale(req.user);
-    const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).parse(req.params.date);
+    const { today } = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+    const date = assertCycleDateKey(req.params.date, today);
     const body = z
       .object({
         currentWeek: z.number().int().min(1).max(42).nullable().optional(),

@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
@@ -78,7 +79,7 @@ export function CycleDateField({
         accessibilityRole="button"
         accessibilityHint={ka.cycle.onboardTapHint}
         onPress={() => setOpen(true)}
-        className="active:opacity-90"
+        
         style={
           hero
             ? {
@@ -87,7 +88,7 @@ export function CycleDateField({
                 paddingVertical: 16,
                 paddingHorizontal: 16,
                 borderWidth: 1,
-                borderColor: displayKa ? c.brand : c.border,
+                borderColor: displayKa ? c.brand : c.controlBorder,
                 borderStyle: displayKa ? 'solid' : 'dashed',
               }
             : {
@@ -98,7 +99,7 @@ export function CycleDateField({
                 paddingHorizontal: 16,
                 paddingVertical: 15,
                 borderWidth: 1,
-                borderColor: displayKa ? c.brand : c.border,
+                borderColor: displayKa ? c.brand : c.controlBorder,
                 ...cycleShadow.card,
               }
         }
@@ -169,7 +170,7 @@ export function CycleDateField({
                 justifyContent: 'center',
               }}
             >
-              <ChevronRight size={18} color="#fff" strokeWidth={2.6} />
+              <ChevronRight size={18} color={c.onPrimary} strokeWidth={2.6} />
             </View>
           </View>
         ) : (
@@ -454,11 +455,14 @@ function CycleCalendarModal({
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-            <NavBtn c={c} onPress={() => !yearPicker && shiftMonth(-1)}>
+            <NavBtn c={c} label="წინა თვე" onPress={() => !yearPicker && shiftMonth(-1)}>
               <ChevronLeft size={18} color={c.ink} strokeWidth={2.2} />
             </NavBtn>
             <Pressable
               onPress={() => setYearPicker((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel="წლის არჩევა"
+              accessibilityState={{ expanded: yearPicker }}
               style={{
                 flex: 1,
                 marginHorizontal: 8,
@@ -477,7 +481,7 @@ function CycleCalendarModal({
               </Text>
               <ChevronDown size={16} color={c.brand} style={{ marginLeft: 6 }} />
             </Pressable>
-            <NavBtn c={c} onPress={() => !yearPicker && shiftMonth(1)}>
+            <NavBtn c={c} label="შემდეგი თვე" onPress={() => !yearPicker && shiftMonth(1)}>
               <ChevronRight size={18} color={c.ink} strokeWidth={2.2} />
             </NavBtn>
           </View>
@@ -489,6 +493,9 @@ function CycleCalendarModal({
                 return (
                   <Pressable
                     key={year}
+                    accessibilityRole="button"
+                    accessibilityLabel={String(year)}
+                    accessibilityState={{ selected }}
                     onPress={() => {
                       setCursor((cur) => ({ ...cur, year }));
                       setYearPicker(false);
@@ -501,7 +508,7 @@ function CycleCalendarModal({
                       backgroundColor: selected ? c.cta : c.cardSoft,
                     }}
                   >
-                    <Text style={{ color: selected ? '#fff' : c.ink, fontWeight: '800', fontSize: 16 }}>
+                    <Text style={{ color: selected ? c.onPrimary : c.ink, fontWeight: '800', fontSize: 16 }}>
                       {year}
                     </Text>
                   </Pressable>
@@ -527,6 +534,9 @@ function CycleCalendarModal({
                     >
                       <Pressable
                         disabled={cell.disabled}
+                        accessibilityRole="button"
+                        accessibilityLabel={formatCycleDateKa(isoFromDigits(cell.digits)!)}
+                        accessibilityState={{ selected, disabled: cell.disabled }}
                         onPress={() => {
                           if (cell.disabled) return;
                           pickDay(cell.digits, cell.year, cell.month, cell.day);
@@ -565,6 +575,9 @@ function CycleCalendarModal({
             <View style={{ marginTop: 18, paddingBottom: Math.max(insets.bottom, 16) }}>
               <Pressable
                 disabled={!draftOk}
+                accessibilityRole="button"
+                accessibilityLabel={ka.auth.birthDateConfirm}
+                accessibilityState={{ disabled: !draftOk }}
                 onPress={() => {
                   if (draftOk) onConfirm(draft);
                 }}
@@ -579,8 +592,8 @@ function CycleCalendarModal({
                   ...cycleShadow.soft,
                 }}
               >
-                <Check size={18} color="#fff" strokeWidth={2.6} />
-                <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, marginLeft: 8 }}>
+                <Check size={18} color={draftOk ? c.onPrimary : c.mutedSoft} strokeWidth={2.6} />
+                <Text style={{ color: draftOk ? c.onPrimary : c.mutedSoft, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, marginLeft: 8 }}>
                   {ka.auth.birthDateConfirm}
                 </Text>
               </Pressable>
@@ -600,7 +613,9 @@ function CycleCalendarModal({
           onPress={onClose}
           style={[StyleSheet.absoluteFill, { backgroundColor: c.overlay }]}
         />
-        {sheet}
+        <ScrollView style={{ maxHeight: '94%', flexGrow: 0 }} bounces={false} keyboardShouldPersistTaps="handled">
+          {sheet}
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -612,16 +627,20 @@ const styles = StyleSheet.create({
 
 function NavBtn({
   c,
+  label,
   onPress,
   children,
 }: {
   c: ReturnType<typeof useCycleColors>;
+  label: string;
   onPress: () => void;
   children: React.ReactNode;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={{
         width: 44,
         height: 44,

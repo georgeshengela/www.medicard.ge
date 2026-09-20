@@ -17,6 +17,7 @@ export const IMAGE_PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
 export function normalizeUploadMime(mime?: string | null, name?: string | null): string {
   const raw = String(mime ?? '').toLowerCase().trim();
   const ext = String(name ?? '').split('.').pop()?.toLowerCase() ?? '';
+  if (HEIC.test(raw)) return 'image/heic';
   if (raw === 'application/pdf' || ext === 'pdf') return 'application/pdf';
   if (raw === 'image/jpg' || raw === 'image/pjpeg' || ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
   if (raw === 'image/png' || ext === 'png') return 'image/png';
@@ -28,7 +29,15 @@ export function normalizeUploadMime(mime?: string | null, name?: string | null):
 }
 
 export function needsJpegTranscode(mime: string, name?: string | null): boolean {
-  return HEIC.test(mime) || HEIC.test(name ?? '');
+  return HEIC.test(mime) || HEIC.test(name ?? '') || !['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'].includes(mime);
+}
+
+async function preparedSize(uri: string, fallback?: number): Promise<number | undefined> {
+  if (!uri.startsWith('file://')) return fallback;
+  try {
+    const info = await FileSystem.getInfoAsync(uri);
+    return info.exists && 'size' in info ? info.size : fallback;
+  } catch { return fallback; }
 }
 
 function jpegName(name: string): string {
@@ -70,7 +79,8 @@ export async function toUploadableImage(asset: {
   const mime = normalizeUploadMime(asset.mimeType, name);
   const size = asset.size ?? asset.fileSize ?? undefined;
   if (mime === 'application/pdf') {
-    return { uri: await mustCache(asset.uri, name), name, mimeType: mime, size };
+    const uri = await mustCache(asset.uri, name);
+    return { uri, name, mimeType: mime, size: await preparedSize(uri, size) };
   }
 
   if (needsJpegTranscode(mime, name)) {
@@ -79,13 +89,15 @@ export async function toUploadableImage(asset: {
         compress: 0.85,
         format: ImageManipulator.SaveFormat.JPEG,
       });
-      return { uri: out.uri, name: jpegName(name), mimeType: 'image/jpeg' };
+      return { uri: out.uri, name: jpegName(name), mimeType: 'image/jpeg', size: await preparedSize(out.uri) };
     } catch {
-      return { uri: await mustCache(asset.uri, jpegName(name)), name: jpegName(name), mimeType: 'image/jpeg', size };
+      // Relabelling HEIC bytes as JPEG doesn't convert the image.
+      throw new Error(ka.upload.prepareFailed);
     }
   }
 
-  return { uri: await mustCache(asset.uri, name), name, mimeType: mime, size };
+  const uri = await mustCache(asset.uri, name);
+  return { uri, name, mimeType: mime, size: await preparedSize(uri, size) };
 }
 
 /** Shrink lab sheets so OpenRouter can read the printed range without a huge upload. */
@@ -104,7 +116,7 @@ export async function prepareLabImage(asset: {
       compress: 0.72,
       format: ImageManipulator.SaveFormat.JPEG,
     });
-    return { uri: out.uri, name: jpegName(file.name), mimeType: 'image/jpeg' };
+    return { uri: out.uri, name: jpegName(file.name), mimeType: 'image/jpeg', size: await preparedSize(out.uri) };
   } catch {
     try {
       const copied = await asCachedFile(file.uri, jpegName(file.name));
@@ -112,9 +124,9 @@ export async function prepareLabImage(asset: {
         compress: 0.72,
         format: ImageManipulator.SaveFormat.JPEG,
       });
-      return { uri: out.uri, name: jpegName(file.name), mimeType: 'image/jpeg' };
+      return { uri: out.uri, name: jpegName(file.name), mimeType: 'image/jpeg', size: await preparedSize(out.uri) };
     } catch {
-      return { uri: await mustCache(file.uri, jpegName(file.name)), name: jpegName(file.name), mimeType: 'image/jpeg' };
+      return file;
     }
   }
 }

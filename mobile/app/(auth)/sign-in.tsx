@@ -39,7 +39,8 @@ export default function SignIn() {
     Keyboard.dismiss();
     const next: typeof errors = {};
     const emailValue = cleanEmail(email);
-    const passwordValue = password.replace(/\u00a0/g, ' ').trim();
+    // Registration preserves these characters; changing them here rejects valid passwords.
+    const passwordValue = password;
     if (!/^\S+@\S+\.\S+$/.test(emailValue)) next.email = ka.auth.invalidEmail;
     if (passwordValue.length < 1) next.password = ka.common.required;
 
@@ -50,7 +51,7 @@ export default function SignIn() {
     setBusy(true);
     try {
       await signIn(emailValue, passwordValue);
-      router.replace('/(tabs)/home');
+      // AuthGate owns the destination (onboarding, saved Home, or a pending share).
     } catch (error) {
       const message = authErrorMessage(error);
       const shown = message.includes('არასწორი') ? ka.auth.loginError : message;

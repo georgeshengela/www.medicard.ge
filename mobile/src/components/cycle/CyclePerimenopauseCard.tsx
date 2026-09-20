@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import type { CyclePerimenopausePayload } from '@/lib/api';
@@ -131,7 +132,7 @@ export function CyclePerimenopauseCard({ peri, onLog }: Props) {
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: '#fff', fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>
+          <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>
             {ka.cycle.periQuickLog}
           </Text>
         </Pressable>

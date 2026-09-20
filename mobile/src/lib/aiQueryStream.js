@@ -54,16 +54,23 @@ function applyEvents(events, onDelta) {
  * Streams POST /api/ai/query. Tokens arrive via onDelta as Medi writes.
  */
 export async function streamAiQuery(body, { onDelta, signal } = {}) {
+  const controller = new AbortController();
+  let timedOut = false;
+  let timeout;
+  const cancel = () => controller.abort();
+  signal?.addEventListener('abort', cancel, { once: true });
   try {
     const token = await getToken();
     await ensureAiSharingConsentForRequest('/api/ai/query', 'POST', token);
     if (signal?.aborted) throw new ApiError('მოთხოვნა გაუქმდა.', 499);
+    // Start the deadline after consent; give the user time to read the disclosure.
+    timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 180_000);
     const { fetch: expoFetch } = await import('expo/fetch');
     const response = await expoFetch(`${API_BASE_URL}/api/ai/query`, {
       method: 'POST',
       headers: authHeaders(token),
       body: JSON.stringify({ ...body, stream: true }),
-      signal,
+      signal: controller.signal,
     });
 
     const contentType = String(response.headers.get('content-type') || '');
@@ -110,8 +117,12 @@ export async function streamAiQuery(body, { onDelta, signal } = {}) {
     }
     return done;
   } catch (error) {
+    if (timedOut) throw new ApiError('პასუხის მოლოდინის დრო ამოიწურა. გთხოვ, სცადე ხელახლა.', 408);
     if (error instanceof ApiError) throw error;
     if (error?.name === 'AbortError') throw new ApiError('მოთხოვნა გაუქმდა.', 499);
     throw new ApiError(ka.common.networkError, 0);
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', cancel);
   }
 }

@@ -100,8 +100,8 @@ export function SkincareResultCard({ routine, onNew, onOpenRecord }: Props) {
       </View>
 
       {sections.length > 0 ? (
-        sections.map((section) => (
-          <RoutineSection key={section.title} title={section.title} body={section.body} />
+        sections.map((section, index) => (
+          <RoutineSection key={`${index}:${section.title}`} title={section.title} body={section.body} />
         ))
       ) : (
         <View

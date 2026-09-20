@@ -1,0 +1,29 @@
+.qa-workspace{--qa-card:var(--surface,#fff);--qa-ink:var(--text,#0f1a1c);display:flex;flex-direction:column;gap:20px;width:100%;max-width:none;color:var(--qa-ink)}
+.qa-hero{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:28px;border:1px solid var(--border,#dde3e4);border-radius:24px;background:var(--qa-card)}
+.qa-hero h2{font-size:26px;line-height:1.4;margin:8px 0}.qa-hero p{margin:0 0 12px;color:var(--muted,#64748b)}
+.qa-eyebrow{font-size:11px;letter-spacing:.06em;color:#0d9488;font-weight:700}
+.qa-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.qa-metrics article,.qa-check,.qa-run,.qa-empty{background:var(--qa-card);border:1px solid var(--border,#dde3e4);border-radius:20px;padding:22px;min-width:0}
+.qa-metrics strong{display:block;font-size:32px;margin-top:10px}.qa-metrics span{font-size:12px;color:var(--muted,#64748b)}
+.qa-row,.qa-actions{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.qa-actions{justify-content:flex-start}.qa-run-grid,.qa-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.qa-run{text-align:left;cursor:pointer;color:inherit;font:inherit;transition:border-color .15s}.qa-run:hover{border-color:#14b8a6}
+.qa-run h3,.qa-check h3{font-size:18px;margin:14px 0;line-height:1.55}.qa-run p,.qa-run small,.qa-check small{color:var(--muted,#64748b)}
+.qa-mini-progress{height:5px;background:var(--border,#dde3e4);border-radius:9px;margin:22px 0 12px;overflow:hidden}.qa-mini-progress i{display:block;height:100%;background:#14b8a6}
+.qa-status{display:inline-flex;padding:5px 10px;border-radius:9px;font-size:11px;font-weight:700;background:var(--border,#eaeef0)}
+.qa-status.is-pass{color:#047857;background:#d1fae5}.qa-status.is-fail{color:#be123c;background:#ffe4e6}.qa-status.is-blocked{color:#92400e;background:#fef3c7}
+.qa-filters{display:flex;gap:6px;overflow-x:auto;width:100%;padding:5px;border:1px solid var(--border,#dde3e4);border-radius:14px}
+.qa-filters button{border:0;background:transparent;color:inherit;padding:12px 16px;border-radius:10px;white-space:nowrap;cursor:pointer;font:inherit}
+.qa-filters button[aria-pressed=true]{background:#0d9488;color:#fff}
+.qa-check details{border-block:1px solid var(--border,#dde3e4);padding:12px 0;font-size:13px;line-height:1.7}.qa-check summary{cursor:pointer}
+.qa-actual,.qa-note{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}.qa-actual{font-size:13px}
+.qa-evidence{display:flex;gap:12px;overflow-x:auto;padding:16px 0}.qa-evidence button{border:1px solid var(--border,#dde3e4);border-radius:12px;background:transparent;color:inherit;padding:6px;cursor:zoom-in;width:112px;flex-shrink:0}
+.qa-evidence img{width:98px;height:140px;object-fit:contain;border-radius:8px}.qa-evidence span{display:block;font-size:10px;margin-top:6px;overflow-wrap:anywhere}
+.qa-dialog,.qa-lightbox{border:1px solid var(--border,#dde3e4);border-radius:24px;background:var(--surface,#fff);color:var(--text,#0f1a1c);padding:24px;width:min(640px,calc(100% - 24px));max-height:90dvh;overflow:auto}
+.qa-dialog::backdrop,.qa-lightbox::backdrop{background:rgba(3,7,18,.65)}
+.qa-dialog form{display:flex;flex-direction:column;gap:16px}.qa-dialog header,.qa-dialog footer{display:flex;justify-content:space-between;gap:12px;align-items:center}.qa-dialog h2{font-size:19px;margin:0}
+.qa-dialog label{display:flex;flex-direction:column;gap:8px;font-size:12px;min-width:0}.qa-dialog input,.qa-dialog select,.qa-dialog textarea{width:100%;min-width:0;box-sizing:border-box;font:inherit;color:inherit;background:var(--bg,#f5f7f7);border:1px solid var(--border,#dde3e4);border-radius:12px;padding:12px}
+.qa-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.qa-error{color:#f43f5e}.qa-lightbox img{display:block;max-width:100%;max-height:75dvh;margin:12px auto}
+[data-theme=dark] .qa-workspace,[data-theme=dark] .qa-dialog,[data-theme=dark] .qa-lightbox{--qa-card:#111827;--qa-ink:#f9fafb;--surface:#111827;--text:#f9fafb;--border:#374151;--muted:#9ca3af;--bg:#1f2937}
+@media(max-width:900px){.qa-run-grid,.qa-checks{grid-template-columns:1fr}.qa-hero{align-items:flex-start;flex-direction:column}.qa-metrics{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.qa-form-grid{grid-template-columns:1fr}.qa-metrics{grid-template-columns:repeat(2,1fr)}.qa-hero{padding:20px}.qa-hero h2{font-size:22px}}

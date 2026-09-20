@@ -803,6 +803,7 @@
       { group: 'Operations', tab: 'sms', label: 'SMS' },
       { group: 'Operations', tab: 'pharmacy', label: 'ფარმაცია' },
       { group: 'Production', tab: 'quality', label: 'ხარისხი' },
+      { group: 'Production', tab: 'testing', label: 'ტესტირება' },
       { group: 'Production', tab: 'audit', label: 'აუდიტი' },
       { group: 'Production', tab: 'settings', label: 'რეჟიმი' },
       { group: 'Help', tab: 'overview', label: 'როგორ მუშაობს Admin', helpKey: 'global.howAdminWorks' },

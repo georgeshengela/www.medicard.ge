@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, ScrollView, Text, View } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -233,7 +234,7 @@ export default function CyclePregnancyTimelineScreen() {
                       borderRadius: 14,
                       borderWidth: 1,
                       borderColor: active ? c.rose : c.border,
-                      backgroundColor: active ? c.roseSoft : c.card,
+                      backgroundColor: active ? c.accentSoft : c.card,
                       paddingHorizontal: 12,
                       paddingVertical: 8,
                       maxWidth: '100%',
@@ -273,7 +274,7 @@ export default function CyclePregnancyTimelineScreen() {
                             borderRadius: 99,
                             backgroundColor: c.rose,
                             borderWidth: 3,
-                            borderColor: c.roseSoft,
+                            borderColor: c.accentSoft,
                           }}
                         />
                         <View style={{ width: 2, flex: 1, backgroundColor: c.border, marginTop: 4 }} />

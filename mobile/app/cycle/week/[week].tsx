@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -12,7 +13,7 @@ import { api, ApiError } from '@/lib/api';
 import { loadCycleView } from '@/lib/cycleOffline';
 import { supportsCycleCapability } from '@/lib/cycleModes';
 import { pregnancyFactText } from '@/lib/pregnancyWeekCopy.js';
-import { pregnancySizeAsset } from '@/lib/pregnancySizeAssets';
+import { pregnancyDevelopmentAsset } from '@/lib/pregnancyDevelopmentAssets';
 import {
   PREGNANCY_WEEK_CATALOG_MAX,
   PREGNANCY_WEEK_CATALOG_MIN,
@@ -32,11 +33,11 @@ function clampWeek(value: unknown) {
 
 function preloadNeighbors(week: number) {
   const keys = [week - 1, week, week + 1]
-    .map((item) => weekDevelopmentForCompletedWeek(item)?.illustrationKey)
-    .filter(Boolean);
+    .map((item) => pregnancyDevelopmentAsset(item)?.source)
+    .filter((source): source is number => typeof source === 'number');
   const unique = [...new Set(keys)];
   if (!unique.length) return;
-  Asset.loadAsync(unique.map((key) => pregnancySizeAsset(key))).catch(() => undefined);
+  Asset.loadAsync(unique).catch(() => undefined);
 }
 
 export default function CyclePregnancyWeekScreen() {

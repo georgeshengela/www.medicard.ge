@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import {
   CycleExposureComparisonDetail,

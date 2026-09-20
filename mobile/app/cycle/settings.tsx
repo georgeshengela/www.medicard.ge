@@ -1,5 +1,6 @@
+import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, Share, Switch, Text, View } from 'react-native';
+import { Alert, Platform, ScrollView, Share, Switch, Text, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -454,15 +455,15 @@ export default function CycleSettings() {
   return (
     <CycleAtmosphere>
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View entering={FadeInUp.duration(400)} style={{ marginBottom: 20 }}>
+        <Animated.View entering={FadeInUp.duration(400)} style={{ marginBottom: 16 }}>
           <View
             style={{
               borderRadius: 16,
-              padding: 18,
+              padding: 16,
               borderWidth: 1,
               borderColor: c.border,
               backgroundColor: c.card,
@@ -481,7 +482,7 @@ export default function CycleSettings() {
             <Text
               style={{
                 color: c.ink,
-                fontSize: 20,
+                fontSize: 18,
                 fontFamily: 'NotoSansGeorgian_700Bold',
                 marginTop: 6,
                 letterSpacing: -0.3,
@@ -496,7 +497,7 @@ export default function CycleSettings() {
         </Animated.View>
 
         <CycleSection title={ka.cycle.settingsMode} subtitle={ka.cycle.settingsModeHint} delay={40}>
-          <View style={{ gap: 10 }}>
+          <View style={{ gap: 8 }}>
             {MODES.map((m, i) => {
               const on = mode === m.id;
               const Icon = m.icon;
@@ -510,44 +511,45 @@ export default function CycleSettings() {
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      backgroundColor: on ? c.cta : c.card,
+                      backgroundColor: on ? c.accentSoft : c.card,
                       borderRadius: 16,
-                      padding: 16,
+                      padding: 12,
                       minHeight: 44,
-                      borderWidth: on ? 2 : 1,
-                      borderColor: on ? c.ink : c.border,
+                      borderWidth: 1,
+                      borderColor: on ? c.brand : c.border,
                     }}
                   >
                     <View
                       style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 14,
-                        backgroundColor: on ? 'rgba(255,255,255,0.2)' : c.cardSoft,
+                        width: 32,
+                        height: 36,
+                        borderRadius: 12,
+                        backgroundColor: on ? c.card : c.cardSoft,
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <Icon size={20} color={on ? '#fff' : c.brand} strokeWidth={2.1} />
+                      <Icon size={18} color={c.brand} strokeWidth={1.8} />
                     </View>
-                    <View style={{ marginLeft: 12, flex: 1 }}>
+                    <View style={{ marginLeft: 10, flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Text
                           style={{
-                            color: on ? '#fff' : c.ink,
-                            fontFamily: 'NotoSansGeorgian_700Bold',
-                            fontSize: 15,
+                            color: c.ink,
+                            fontFamily: 'NotoSansGeorgian_600SemiBold',
+                            fontSize: 14,
                             flex: 1,
                           }}
                         >
                           {m.label}
                         </Text>
-                        {on ? <Check size={16} color="#fff" strokeWidth={3} /> : null}
+                        {on ? <Check size={14} color={c.brand} strokeWidth={2.5} /> : null}
                       </View>
                       <Text
                         style={{
-                          color: on ? 'rgba(255,255,255,0.8)' : c.muted,
-                          fontSize: 12,
+                          color: c.muted,
+                          fontSize: 11,
+                          lineHeight: 16,
                           marginTop: 2,
                         }}
                       >
@@ -617,6 +619,7 @@ export default function CycleSettings() {
                   <Pressable
                     key={item.id}
                     onPress={() => toggleCondition(item.id)}
+                    accessibilityState={{ selected: on }}
                     style={{
                       paddingHorizontal: 14,
                       paddingVertical: 10,
@@ -627,7 +630,7 @@ export default function CycleSettings() {
                       borderColor: on ? c.cta : c.border,
                     }}
                   >
-                    <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 13 }}>
+                    <Text style={{ color: on ? c.onPrimary : c.ink, fontWeight: '700', fontSize: 13 }}>
                       {item.label}
                     </Text>
                   </Pressable>
@@ -728,6 +731,7 @@ export default function CycleSettings() {
                   <Pressable
                     key={id}
                     onPress={() => setContraceptionMethod(id)}
+                    accessibilityState={{ selected: on }}
                     style={{
                       paddingHorizontal: 12,
                       paddingVertical: 10,
@@ -737,7 +741,7 @@ export default function CycleSettings() {
                       borderColor: on ? c.cta : c.border,
                     }}
                   >
-                    <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 12 }}>
+                    <Text style={{ color: on ? c.onPrimary : c.ink, fontWeight: '700', fontSize: 12 }}>
                       {ka.cycle.contraceptionMethod[id]}
                     </Text>
                   </Pressable>
@@ -902,6 +906,7 @@ export default function CycleSettings() {
                       <Pressable
                         key={style}
                         onPress={() => updateReminders({ maskStyle: style })}
+                        accessibilityState={{ selected: on }}
                         style={{
                           paddingHorizontal: 14,
                           paddingVertical: 10,
@@ -911,7 +916,7 @@ export default function CycleSettings() {
                           borderColor: on ? c.cta : c.border,
                         }}
                       >
-                        <Text style={{ color: on ? '#fff' : c.ink, fontWeight: '700', fontSize: 13 }}>
+                        <Text style={{ color: on ? c.onPrimary : c.ink, fontWeight: '700', fontSize: 13 }}>
                           {maskStyleLabel(style)}
                         </Text>
                       </Pressable>
@@ -1048,7 +1053,7 @@ export default function CycleSettings() {
               onPress={exportCalendar}
               accessibilityRole="button"
               accessibilityLabel={ka.cycle.calendarExport}
-              className="active:opacity-90"
+              
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -1065,7 +1070,7 @@ export default function CycleSettings() {
               onPress={() => void exportJson()}
               accessibilityRole="button"
               accessibilityLabel={ka.cycle.exportJson}
-              className="active:opacity-90"
+              
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -1085,7 +1090,7 @@ export default function CycleSettings() {
               onPress={wipeCycleData}
               accessibilityRole="button"
               accessibilityLabel={ka.cycle.deleteCycleTitle}
-              className="active:opacity-90"
+              
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -1235,6 +1240,8 @@ function Stepper({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Pressable
           onPress={() => onChange(Math.max(min, value - 1))}
+          accessibilityLabel={`${label} — შემცირება`}
+          disabled={value <= min}
           style={{
             width: 44,
             height: 44,
@@ -1259,6 +1266,8 @@ function Stepper({
         </Text>
         <Pressable
           onPress={() => onChange(Math.min(max, value + 1))}
+          accessibilityLabel={`${label} — გაზრდა`}
+          disabled={value >= max}
           style={{
             width: 44,
             height: 44,
@@ -1314,9 +1323,10 @@ function RowSwitch({
       </View>
       <Switch
         value={value}
+        accessibilityLabel={label}
         onValueChange={onChange}
-        trackColor={{ true: c.cta, false: c.creamDeep }}
-        thumbColor="#fff"
+        trackColor={{ true: c.cta, false: c.controlBorder }}
+        thumbColor={c.onPrimary}
       />
     </View>
   );
