@@ -15,6 +15,8 @@ export type MedReminderSlot = {
   minute: number;
   /** Expo weekday when this is a weekly slot. */
   weekday?: number;
+  /** A finite course uses a one-off local date, never an endless repeating trigger. */
+  date?: Date;
 };
 
 /** One daily slot, or one weekly slot per selected Monday-index day. */
@@ -22,9 +24,34 @@ export function planMedicationReminderSlots(
   medicationId: string,
   time: string,
   daysOfWeek?: number[],
+  course?: { startDate?: string; endDate?: string },
+  now = new Date(),
 ): MedReminderSlot[] {
   const [hour, minute] = time.split(':').map(Number);
-  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return [];
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return [];
+  if (course?.startDate || course?.endDate) {
+    const civilDate = (value: string) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+      const [y, m, d] = value.split('-').map(Number), date = new Date(y, m - 1, d, 12);
+      return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d ? date : null;
+    };
+    const start = course.startDate ? civilDate(course.startDate) : new Date(now);
+    const end = course.endDate ? civilDate(course.endDate) : null;
+    if (!start || (course.endDate && !end)) return [];
+    start.setHours(0, 0, 0, 0); end?.setHours(23, 59, 59, 999);
+    const cursor = new Date(now); cursor.setHours(0, 0, 0, 0);
+    if (start > cursor) cursor.setTime(start.getTime());
+    const slots: MedReminderSlot[] = [];
+    // Upcoming dates are replenished when the app loads medications. Never schedule past course end.
+    for (let day = 0; day < 60 && (!end || cursor <= end); day++, cursor.setDate(cursor.getDate() + 1)) {
+      const date = new Date(cursor); date.setHours(hour, minute, 0, 0);
+      const mondayIndex = (date.getDay() + 6) % 7;
+      if (date <= now || (!isEveryWeekday(daysOfWeek) && !daysOfWeek?.includes(mondayIndex))) continue;
+      const key = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+      slots.push({ identifier: medicationId + ':' + time + ':' + key, hour, minute, date });
+    }
+    return slots;
+  }
 
   if (isEveryWeekday(daysOfWeek)) {
     return [{ identifier: `${medicationId}:${time}`, hour, minute }];
@@ -142,4 +169,9 @@ export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' |
   if (id.startsWith('qa:')) return 'qa';
   if (id.startsWith('pets:')) return 'pets';
   return 'other';
+}
+
+/** Course limits apply to the dose list as well as notification scheduling. */
+export function medicationCourseIncludesDate(config: { startDate?: string; endDate?: string }, date: string): boolean {
+  return (!config.startDate || date >= config.startDate) && (!config.endDate || date <= config.endDate);
 }

@@ -25,7 +25,10 @@ export function operationBody(plan) {
   if (plan.tool === 'metric_record') return { daily: [{ date: a.date, ...a.values }] };
   if (plan.tool === 'dose_record') return { events: [{ ...a, source: 'app', occurredAt: new Date().toISOString() }] };
   if (plan.tool === 'medication_stop' || plan.tool === 'visit_cancel') return { active: false };
-  if (plan.tool === 'medication_add') return { ...a, frequency: a.frequency.join(',') };
+  if (plan.tool === 'medication_add') {
+    const { startDate, endDate, courseDays, ...med } = a;
+    return { ...med, frequency: a.frequency.join(','), ...((startDate || endDate) ? { config: { frequencyKind: 'daily', ...(startDate ? { startDate } : {}), ...(endDate ? { endDate } : {}) } } : {}) };
+  }
   if (plan.tool === 'medication_update') return { ...a.values, ...(a.values.frequency ? { frequency: a.values.frequency.join(',') } : {}) };
   if (plan.tool === 'visit_add') return { ...a, reminderConfig: { enabled: false, offsetsMinutes: [], repeatCount: 1 } };
   if (a.values) return a.values;
@@ -33,6 +36,9 @@ export function operationBody(plan) {
   return petId ? { ...body, clientRequestId: `medi:${plan.id}` } : body;
 }
 export function nativeAction(plan) {
+  if (plan.tool === 'record_open') return { route: `/record/${plan.args.recordId}` };
+  if (plan.tool === 'medication_open') return { route: `/medications/${plan.args.medicationId}` };
+  if (plan.tool === 'visit_open') return { route: `/visits/editor?id=${plan.args.visitId}` };
   if (plan.tool === 'open') return { route: ASSISTANT_DESTINATIONS[plan.args.destination] };
   if (plan.tool === 'consult') return { route: `/chat/${plan.args.mode === 'CONSILIUM' ? 'consilium' : 'doctor'}`, message: plan.args.message, mode: plan.args.mode };
   if (plan.tool === 'pet_consult') return { route: `/pets/${plan.args.petId}/chat`, message: plan.args.message, petId: plan.args.petId };
@@ -41,6 +47,13 @@ export function nativeAction(plan) {
 }
 export async function assertAssistantActionContext(userId, plan, db = prisma) {
   const a = plan.args;
+  // Check ownership before preview AND execution; a signed ID is not an authorization grant.
+  const reference = plan.tool === 'record_open' ? ['medicalRecord', a.recordId]
+    : plan.tool.startsWith('medication_') && a.id ? ['medicationSchedule', a.id]
+    : a.medicationId ? ['medicationSchedule', a.medicationId]
+    : plan.tool.startsWith('visit_') && a.id ? ['doctorVisit', a.id]
+    : a.visitId ? ['doctorVisit', a.visitId] : null;
+  if (reference && !await db[reference[0]].findFirst({ where: { id: reference[1], userId }, select: { id: true } })) throw assistantError('ჩანაწერი ვერ მოიძებნა.', 404);
   if (a.petId && !await db.pet.findFirst({ where: { id: a.petId, userId, archivedAt: null }, select: { id: true } })) throw assistantError('ცხოველი ვერ მოიძებნა.', 404);
   if (['cycle_record', 'period_record', 'pregnancy_record', 'cycle_settings'].includes(plan.tool)) {
     const p = await db.cycleProfile.findUnique({ where: { userId } });
@@ -81,6 +94,11 @@ export async function executeAssistantPlan(plan, options, db = prisma, dispatch 
   const { userId } = options;
   await assertAssistantActionContext(userId, plan, db);
   const native = nativeAction(plan);
+  // Deep links must not bypass the cycle entry screen's local unlock gate.
+  if (native?.route.startsWith('/cycle/')) {
+    const cycle = await db.cycleProfile.findUnique({ where: { userId }, select: { privacyEnabled: true } });
+    if (cycle?.privacyEnabled) native.route = '/cycle';
+  }
   if (native) return { status: 'navigate', native, operationId: plan.id };
   const hash = createHash('sha256').update(JSON.stringify({ tool: plan.tool, args: plan.args })).digest('hex');
   let inserted;

@@ -99,3 +99,9 @@ test('stream deltas only expose visible content, never hidden reasoning', () => 
 test('hasOpenRouter is a boolean and does not imply EvidenceMD', () => {
   assert.equal(typeof hasOpenRouter(), 'boolean');
 });
+
+test('assistant may request low effort without changing clinical defaults', () => {
+  const model='google/gemini-3.8-flash';
+  assert.deepEqual(buildOpenRouterChatPayload({model,messages:[],reasoningEffort:'low'}).reasoning,{effort:'low',exclude:true});
+  assert.deepEqual(buildOpenRouterChatPayload({model,messages:[]}).reasoning,{effort:'medium',exclude:true});
+});

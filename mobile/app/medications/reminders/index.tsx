@@ -1,3 +1,4 @@
+import { medicationCourseIncludesDate } from '@/lib/notificationPlan';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -85,27 +86,19 @@ export default function MedicationRemindersScreen() {
           const med = medications.find((item) => item.id === dose.medicationId);
           if (!med?.active) return false;
           const cfg = parseMedicationConfig(med.config);
+          if (!medicationCourseIncludesDate(cfg, selectedYmd)) return false;
           if (!cfg.daysOfWeek?.length) return true;
           return cfg.daysOfWeek.includes(selectedDow);
         })
         .sort((a, b) => a.time.localeCompare(b.time)),
-    [medications, schedule, selectedDow],
+    [medications, schedule, selectedDow, selectedYmd],
   );
 
-  const daysWithDoses = useMemo(() => {
-    const set = new Set<number>();
-    for (const dose of schedule) {
-      const med = medications.find((item) => item.id === dose.medicationId);
-      if (!med?.active) continue;
-      const cfg = parseMedicationConfig(med.config);
-      if (!cfg.daysOfWeek?.length) {
-        for (let i = 0; i < 7; i += 1) set.add(i);
-        break;
-      }
-      for (const d of cfg.daysOfWeek) set.add(d);
-    }
-    return set;
-  }, [medications, schedule]);
+  const daysWithDoses = useMemo(() => new Set(stripDays.filter(day => medications.some(med => {
+    if (!med.active || !schedule.some(dose => dose.medicationId === med.id)) return false;
+    const config = parseMedicationConfig(med.config);
+    return medicationCourseIncludesDate(config, ymd(day)) && (!config.daysOfWeek?.length || config.daysOfWeek.includes(weekdayIndex(day)));
+  })).map(day => ymd(day))), [medications, schedule, stripDays]);
 
   const markDose = async (medicationId: string, time: string, status: 'taken' | 'skipped', newTime?: string) => {
     const entry = {
@@ -144,7 +137,7 @@ export default function MedicationRemindersScreen() {
         >
           {stripDays.map((day) => {
             const active = sameDay(day, selectedDate);
-            const hasDose = daysWithDoses.has(weekdayIndex(day));
+            const hasDose = daysWithDoses.has(ymd(day));
             return (
               <Pressable
                 key={ymd(day)}

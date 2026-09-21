@@ -26,7 +26,7 @@ test('every native destination resolves to an existing app screen', () => {
   const root = new URL('../../../mobile/app', import.meta.url);
   const screens = fs.readdirSync(root, { recursive: true }).filter(f => f.endsWith('.tsx') && !f.endsWith('_layout.tsx'))
     .map(f => '/' + f.split(path.sep).join('/').replace(/\.tsx$/, '').replace(/\/index$/, '').replace(/\([^/]+\)\//g, ''));
-  for (const [name, route] of Object.entries(ASSISTANT_DESTINATIONS)) assert.ok(screens.includes(route.replace(/\([^/]+\)\//g, '')), `${name}: ${route}`);
+  for (const [name, route] of Object.entries(ASSISTANT_DESTINATIONS)) assert.ok(screens.includes(route.replace(/\([^/]+\)\//g, '')) || (['/chat/doctor', '/chat/consilium'].includes(route) && screens.includes('/chat/[mode]')), `${name}: ${route}`);
 });
 test('invalid dates, doses and missing goal values require clarification', () => {
   assert.throws(() => validateAssistantAction({ ...action, args: { date: '2026-02-30', amountMl: 250 } }, 'human'));

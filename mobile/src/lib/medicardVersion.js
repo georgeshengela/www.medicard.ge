@@ -1,9 +1,9 @@
-/** Public Medicard version: Instagram-style `G.0.0.B.R` (currently 1.0.0.11.1). */
+/** Public Medicard version: Instagram-style `G.0.0.B.R` (currently 1.0.0.11.5). */
 
 const FIVE = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
 const THREE = /^(\d+)\.(\d+)\.(\d+)$/;
 
-const DEFAULT_FIVE = '1.0.0.11.1';
+const DEFAULT_FIVE = '1.0.0.11.5';
 
 /**
  * @param {unknown} raw

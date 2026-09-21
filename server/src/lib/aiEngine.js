@@ -82,8 +82,10 @@ export function buildOpenRouterChatPayload({
   maxTokens = 2400,
   stream = false,
   responseFormat,
+  reasoningEffort,
 }) {
   const reasoning = openRouterReasoningFor(model);
+  if (reasoning && ['minimal', 'low', 'medium', 'high'].includes(reasoningEffort)) reasoning.effort = reasoningEffort;
   return {
     model,
     messages,
@@ -131,7 +133,7 @@ export function publicAiEngineCatalog() {
   ];
 }
 
-function extractChatContent(completion) {
+export function extractChatContent(completion) {
   const msg = completion?.choices?.[0]?.message;
   if (!msg) return '';
   const raw = msg.content;
@@ -142,7 +144,7 @@ function extractChatContent(completion) {
       .join('')
       .trim();
   }
-  return String(msg.reasoning || '').trim();
+  return ''; // Hidden reasoning is never visible output or an action envelope.
 }
 
 export function extractStreamDelta(chunk) {
@@ -161,7 +163,7 @@ export function extractStreamDelta(chunk) {
 function finishAnswer(answer, { skipDisclaimer, onDelta }) {
   const trimmed = String(answer ?? '').trim();
   if (!trimmed) {
-    throw new AiEngineError('AI-მა ცარიელი პასუხი დააბრუნა.');
+    throw Object.assign(new AiEngineError('AI-მა ცარიელი პასუხი დააბრუნა.'), { code: 'AI_EMPTY_RESPONSE' });
   }
   const content = skipDisclaimer ? trimmed : ensureDisclaimer(trimmed);
   if (onDelta && content.length > trimmed.length) {
@@ -216,6 +218,7 @@ export async function askOpenRouterPrepared({
   onDelta,
   signal,
   responseFormat,
+  reasoningEffort,
 }) {
   if (typeof globalThis.__medicardAskOpenRouterPrepared === 'function') {
     return globalThis.__medicardAskOpenRouterPrepared({
@@ -227,6 +230,7 @@ export async function askOpenRouterPrepared({
       onDelta,
       signal,
       responseFormat,
+      reasoningEffort,
     });
   }
   if (!openrouter) {
@@ -242,6 +246,7 @@ export async function askOpenRouterPrepared({
       maxTokens,
       stream,
       responseFormat,
+      reasoningEffort,
     });
     let completion;
     try {
@@ -302,6 +307,7 @@ export async function askOpenRouterChat({
   onDelta,
   signal,
   responseFormat,
+  reasoningEffort,
 }) {
   return askOpenRouterPrepared({
     model,
@@ -312,6 +318,7 @@ export async function askOpenRouterChat({
     onDelta,
     signal,
     responseFormat,
+  reasoningEffort,
   });
 }
 
@@ -330,6 +337,7 @@ export async function askAi({
   onDelta,
   signal,
   responseFormat,
+  reasoningEffort,
 }) {
   const engine = resolveAiEngine(user);
   const opts = { mode, messages, context, trustedContext, temperature, maxTokens, skipDisclaimer, onDelta, signal, responseFormat };

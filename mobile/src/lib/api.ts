@@ -1907,7 +1907,7 @@ type RequestOptions = {
 
 /** Assistant calls keep the original account's token across consent and network awaits. */
 export async function assistantRequest<T>(path: 'catalog' | 'state' | 'plan' | 'prepare' | 'execute' | 'transcribe' | 'speak', owner: string,
-  body?: unknown, scope: 'human' | 'pet' = 'human'): Promise<T> {
+  body?: unknown, scope: 'human' | 'pet' | 'auto' = 'human'): Promise<T> {
   const { localAccountId } = await import('@/lib/localAccount');
   if (owner !== localAccountId()) throw new ApiError('ანგარიში შეიცვალა.', 401);
   const token = await getToken();

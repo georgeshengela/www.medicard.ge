@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { ASSISTANT_DESTINATIONS, assistantDestinationAllowed, assistantFeatures, assistantToolGroup } from './assistantKnowledge.js';
+export { ASSISTANT_DESTINATIONS } from './assistantKnowledge.js';
+import { medicationCourseEnd } from './assistantFlow.js';
 import { ALLERGY_CATEGORIES, ALLERGY_STATUSES, CONDITION_BASES, CONDITION_STATUSES } from './petsHealth.js';
 import { CARE_KINDS, CARE_ROUTES, CARE_SOURCES, RECURRENCE_BASES, RECURRENCE_KINDS, TIME_MODES } from './petsSchedule.js';
 import { CYCLE_AI_SYMPTOM_ALLOWLIST, CYCLE_AI_MOOD_ALLOWLIST } from './cycleAiContext.js';
@@ -28,22 +31,15 @@ const profile = {
   sleepHours: z.number().min(3).max(14).optional(), dietType: z.enum(['OMNIVORE', 'VEGETARIAN', 'VEGAN', 'KETO', 'OTHER']).optional(),
   smokingStatus: z.enum(['NEVER', 'FORMER', 'CURRENT']).optional(), alcoholUse: z.enum(['NEVER', 'OCCASIONAL', 'REGULAR']).optional(),
 };
-export const ASSISTANT_DESTINATIONS = Object.freeze({
-  home: '/(tabs)/home', profile: '/(tabs)/profile', health_profile: '/(tabs)/profile',
-  hydration: '/health-metrics/hydration', weight: '/health-metrics/weight', weight_goal: '/health-metrics/weight/goal/target',
-  steps: '/health-metrics/steps', steps_goal: '/health-metrics/steps/goal/set', metrics: '/health-metrics',
-  medications: '/medications', visits: '/visits', cycle: '/cycle', cycle_log: '/cycle/log', cycle_settings: '/cycle/settings',
-  pregnancy: '/cycle/pregnancy', pregnancy_care: '/cycle/pregnancy/care-plan', cycle_summary: '/cycle/summary',
-  pets: '/pets', pet_add: '/pets/new', quest: '/medi-quest', run: '/run',
-  lab: '/module/lab', imaging: '/module/imaging', skin: '/module/skin', skincare: '/module/skincare',
-  symptoms: '/symptoms', pharmacy: '/pharmacy', records: '/(tabs)/records', settings: '/(tabs)/profile',
-});
 const catalog = {};
 function add(name, label, domain, schema, endpoint, description = '', method = 'POST') {
   catalog[name] = { name, label, domain, schema, endpoint, description, method };
 }
 add('open', 'ფუნქციის გახსნა', 'navigation', fields({ destination: z.enum(Object.keys(ASSISTANT_DESTINATIONS)) }), null,
   'Open existing native workflows: camera/file analysis, GPS run, Quest, settings, cycle modes, reports. Never fabricate camera/GPS/HealthKit data or rewards.');
+add('record_open', 'შენახული შედეგის გახსნა', 'human', fields({ recordId: id }), null, 'Open an existing owned medical record. Resolve ID from context; do not invent it.');
+add('medication_open', 'წამლის დეტალების გახსნა', 'human', fields({ medicationId: id }), null, 'Open an existing medication for dose details, rescheduling a dose and intake actions.');
+add('visit_open', 'ვიზიტის დეტალების გახსნა', 'human', fields({ visitId: id }), null, 'Open an existing visit editor, including reminders.');
 add('consult', 'კონსულტაციის დაწყება', 'human', fields({ mode: z.enum(['DOCTOR', 'CONSILIUM']), message: text(4000) }), null,
   'Start the existing clinical consultation with the user’s exact complaint. For medical advice use this, do not diagnose in planner.');
 add('pet_consult', 'Medi Vet-თან საუბარი', 'pet', fields({ ...petId, message: text(4000) }), null);
@@ -61,7 +57,7 @@ add('steps_goal', 'ნაბიჯების მიზანი', 'human', fie
 add('profile_update', 'ჯანმრთელობის პროფილის განახლება', 'human', patch(profile), '/api/health-profile',
   'Array fields replace the existing array: preserve other entries when adding. Never write inferred diagnoses or prescribed medication.', 'PUT');
 const med = { medName: text(120), dosage: text(80), frequency: z.array(time).min(1).max(8), notes: text(300).optional() };
-add('medication_add', 'მედიკამენტის შეხსენება', 'human', fields(med), '/api/medications', 'Exact user-supplied drug, dose and times required. No prescribing.');
+add('medication_add', 'მედიკამენტის შეხსენება', 'human', fields({ ...med, startDate: dateKey.optional(), endDate: dateKey.optional(), courseDays: z.number().int().min(1).max(365).optional() }), '/api/medications', 'Record the exact user-provided medicine, dose, DAILY intake times and optional treatment course. No prescribing. Convert an explicitly stated two weeks to courseDays:14. A stated duration requires startDate: ask when to start unless stated. endDate is inclusive. Do not invent a course or time. Non-daily/as-needed schedules must open the native medication workflow instead.');
 add('medication_update', 'მედიკამენტის განახლება', 'human', fields({ id, values: patch(Object.fromEntries(Object.entries(med).map(([k, v]) => [k, v.optional()]))) }), a => `/api/medications/${a.id}`, '', 'PATCH');
 add('medication_stop', 'შეხსენების შეჩერება', 'human', fields({ id }), a => `/api/medications/${a.id}`, 'Stops app reminders, not advice to stop taking medication.', 'PATCH');
 add('dose_record', 'მედიკამენტის მიღების აღრიცხვა', 'human', fields({ medicationId: id, date: dateKey, time, status: z.enum(['taken', 'skipped']) }), '/api/push/dose-events');
@@ -81,7 +77,7 @@ add('pregnancy_record', 'ორსულობის ჩანაწერი', 
   weightKg: z.number().min(30).max(200).optional(), kickCount: z.number().int().min(0).max(500).optional(),
   symptoms: list.optional(), notes: text(500).optional(),
 }) }), a => `/api/cycle/pregnancy/${a.date}`, 'kickCount is the daily total. Do not infer pregnancy; require existing pregnancy mode.', 'PUT');
-add('pet_add', 'ცხოველის დამატება', 'pet', fields(petIdentity), '/api/pets', 'Ask name/species/breed/sex/age. UNKNOWN is allowed only if user says unknown or chooses to skip. Ask whether to continue speaking or complete manually.');
+add('pet_add', 'ცხოველის დამატება', 'pet', fields(petIdentity), '/api/pets', 'Ask name/species/breed/sex/age. UNKNOWN is allowed only if user says unknown or chooses to skip. Collect missing required details together; the UI already supports speech and manual completion.');
 add('pet_update', 'ცხოველის პროფილის განახლება', 'pet', fields({ ...petId, values: patch(Object.fromEntries(Object.entries(petIdentity).map(([k, v]) => [k, v.optional()]))) }), a => `/api/pets/${a.petId}`, '', 'PATCH');
 add('pet_weight', 'ცხოველის წონის ჩაწერა', 'pet', fields({ ...petId, recordedOn: dateKey, inputValue: z.number().positive().max(5000), inputUnit: z.enum(['kg', 'g', 'lb']), note: text(280).optional() }), a => `/api/pets/${a.petId}/weight`);
 add('pet_allergy', 'ცხოველის ალერგიის ჩაწერა', 'pet', fields({ ...petId, name: text(80), category: z.enum(ALLERGY_CATEGORIES), reportedStatus: z.enum(ALLERGY_STATUSES), reaction: text(200).optional(), notedOn: dateKey.optional(), notes: text(500).optional() }), a => `/api/pets/${a.petId}/allergies`);
@@ -95,7 +91,7 @@ add('pet_care_plan', 'ცხოველის მოვლის გეგმ�
 add('pet_care_record', 'ცხოველის მოვლის აღრიცხვა', 'pet', fields({ ...petId, kind: z.enum(CARE_KINDS), title: text(100), productId: id.optional(),
   dose: text(80).optional(), doseUnit: text(40).optional(), route: z.enum(CARE_ROUTES).optional(), administeredOn: dateKey, administeredTime: time.optional(), notes: text(500).optional(),
 }), a => `/api/pets/${a.petId}/events`);
-add('pet_open', 'ცხოველის გვერდის გახსნა', 'pet', fields({ ...petId, destination: z.enum(['profile', 'edit', 'weight', 'allergies', 'conditions', 'care', 'care/plan', 'care/record', 'care/products']) }), null);
+add('pet_open', 'ცხოველის გვერდის გახსნა', 'pet', fields({ ...petId, destination: z.enum(['profile', 'edit', 'weight', 'allergies', 'conditions', 'care', 'care/plan', 'care/record', 'care/products', 'care/history']) }), null);
 add('cycle_settings', 'ციკლის რეჟიმის განახლება', 'human', patch({
   mode: z.enum(['TRACK_PERIOD', 'TRY_TO_CONCEIVE', 'PREGNANCY', 'PERIMENOPAUSE', 'POSTPARTUM']).optional(),
   avgCycleLength: z.number().int().min(21).max(45).optional(), avgPeriodLength: z.number().int().min(2).max(10).optional(),
@@ -105,15 +101,29 @@ add('cycle_settings', 'ციკლის რეჟიმის განახ�
 }), '/api/cycle/profile', 'Mode changes require explicit user request and dates; never infer pregnancy from symptoms. Show confirmation fields and dates.', 'PUT');
 export const ASSISTANT_CATALOG = Object.freeze(catalog);
 export function publicAssistantCatalog(scope) {
-  return Object.values(catalog).filter(t => t.domain === scope || t.domain === 'navigation').map(({ name, label, description, schema }) => ({
-    name, label, description, parameters: z.toJSONSchema(schema, { unrepresentable: 'any' }),
+  return Object.values(catalog).filter(t => scope === 'auto' || t.domain === scope || t.domain === 'navigation').map(({ name, label, description, schema, domain }) => ({
+    domain,
+    name, label, description, group: assistantToolGroup(name), kind: name === 'open' || name === 'consult' || name.endsWith('_open') || name === 'pet_consult' ? 'handoff' : 'write',
+    parameters: name === 'open' ? { ...z.toJSONSchema(schema, { unrepresentable: 'any' }), properties: { destination: { type: 'string', enum: assistantFeatures(scope).map(f => f.id) } } } : z.toJSONSchema(schema, { unrepresentable: 'any' }),
   }));
 }
 export function validateAssistantAction(action, scope) {
   const outer = fields({ tool: text(60), args: z.record(z.string(), z.unknown()) }).parse(action);
   const tool = catalog[outer.tool];
-  if (!tool || (tool.domain !== scope && tool.domain !== 'navigation')) throw new Error('მოქმედება ამ საუბარში მიუწვდომელია.');
-  return { tool: outer.tool, args: tool.schema.parse(outer.args) };
+  if (!tool || (tool.domain !== scope && tool.domain !== 'navigation')) throw Object.assign(new Error('მოქმედება ამ საუბარში მიუწვდომელია.'), { status: 400 });
+  const args = tool.schema.parse(outer.args);
+  if (outer.tool === 'open' && !assistantDestinationAllowed(args.destination, scope)) throw Object.assign(new Error('ამ რეჟიმში გვერდი მიუწვდომელია.'), { status: 400 });
+  if (outer.tool === 'medication_add') {
+    if ((args.courseDays || args.endDate) && !args.startDate) throw new z.ZodError([{ code: 'custom', path: ['startDate'], message: 'აირჩიე კურსის დაწყების დღე' }]);
+    if (args.endDate && args.endDate < args.startDate) throw new z.ZodError([{ code: 'custom', path: ['endDate'], message: 'დასრულება დაწყებაზე ადრე ვერ იქნება' }]);
+    if (args.courseDays) {
+      const endDate = medicationCourseEnd(args.startDate, args.courseDays);
+      if (args.endDate && args.endDate !== endDate) throw new z.ZodError([{ code: 'custom', path: ['endDate'], message: 'კურსის ხანგრძლივობა და დასრულების დღე ერთმანეთს არ ემთხვევა' }]);
+      args.endDate = endDate;
+    }
+    args.frequency = [...new Set(args.frequency)].sort();
+  }
+  return { tool: outer.tool, args };
 }
 export function assistantEndpoint(action) {
   const tool = catalog[action.tool];

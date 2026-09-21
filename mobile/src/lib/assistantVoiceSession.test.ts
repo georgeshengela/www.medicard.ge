@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createVoiceCapture } from './assistantVoiceSession.ts';
-import { assistantDialogIntent, spokenAssistantReview } from './assistantDialog.ts';
+import { assistantDialogIntent, spokenAssistantReview, assistantFieldError } from './assistantDialog.ts';
 
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
 function fixture(overrides: Record<string, unknown> = {}) {
@@ -76,4 +76,10 @@ test('spoken review includes exact validated values, and never truncates a dose'
   assert.match(spokenAssistantReview('კონსილიუმი', [], true), /გავხსნა/);
   const long = spokenAssistantReview('შენიშვნა', [{ label: 'დეტალები', value: 'x'.repeat(1800) }], false);
   assert.match(long, /ეკრანზეა/); assert.ok(!long.includes('xxx'));
+});
+
+test('validation explains the next step in Georgian, without raw schema errors',()=>{
+  const text=assistantFieldError('dosage','Invalid input: expected string, received undefined','შენი დოზა');
+  assert.ok(text.includes('დანიშნული დოზა'));assert.ok(!text.includes('Invalid'));
+  assert.equal(assistantFieldError('startDate','აირჩიე დაწყების დღე','დაწყება'),'დაწყება: აირჩიე დაწყების დღე');
 });

@@ -1,3 +1,4 @@
+import { medicationCourseIncludesDate } from '@/lib/notificationPlan';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -76,12 +77,13 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
           const med = medications.find((m) => m.id === d.medicationId);
           if (!med?.active) return false;
           const cfg = parseMedicationConfig(med.config);
+          if (!medicationCourseIncludesDate(cfg, today)) return false;
           if (!cfg.daysOfWeek?.length) return true;
           const dow = (new Date().getDay() + 6) % 7;
           return cfg.daysOfWeek.includes(dow);
         })
         .sort((a, b) => a.time.localeCompare(b.time)),
-    [schedule, medications],
+    [schedule, medications, today],
   );
 
   const takenToday = todayDoses.filter((d) => findDoseLog(doseLogs, d.medicationId, today, d.time)?.status === 'taken').length;

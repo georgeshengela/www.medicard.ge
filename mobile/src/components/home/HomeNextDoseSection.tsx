@@ -1,3 +1,4 @@
+import { medicationCourseIncludesDate } from '@/lib/notificationPlan';
 import React, { useEffect, useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -119,6 +120,7 @@ export function HomeNextDoseSection({ refreshing }: Props) {
         const med = medications.find((item) => item.id === dose.medicationId);
         if (!med?.active) return false;
         const cfg = parseMedicationConfig(med.config);
+          if (!medicationCourseIncludesDate(cfg, today)) return false;
         if (!cfg.daysOfWeek?.length) return true;
         const dow = (new Date().getDay() + 6) % 7;
         return cfg.daysOfWeek.includes(dow);

@@ -8,17 +8,19 @@ const pick = (row, keys) => row ? Object.fromEntries(keys.filter(k => row[k] !==
 const trim = (value, max = 1800) => typeof value === 'string' ? value.slice(0, max) : value;
 
 /** Every query is owner-scoped. Unknown/private fields are excluded, not merely hidden in the prompt. */
-export async function loadAssistantContext(user, domains, scope, db = prisma) {
+export async function loadAssistantContext(user, domains, scope, db = prisma, petId = null) {
   const userId = user.id;
   const requested = new Set(domains);
   const context = { scope, limits: 'Relevant recent records only. Absence is unknown, not a negative finding.' };
   if (scope === 'pet') {
     // Return before any human health query; even a malicious domains array cannot change this.
-    const pets = await db.pet.findMany({ where: { userId, archivedAt: null }, take: 20, orderBy: { createdAt: 'desc' } });
+    const pets = await db.pet.findMany({ where: { userId, archivedAt: null, ...(petId ? { id: petId } : {}) }, take: 20, orderBy: { createdAt: 'desc' } });
     context.pets = await Promise.all(pets.map(async pet => ({
       ...pick(pet, ['id', 'name', 'speciesId', 'breedId', 'customBreed', 'sex', 'neutered', 'ageKind', 'birthDate', 'approxAgeYears', 'approxAgeMonths']),
       weight: (await db.petWeightLog.findMany({ where: { userId, petId: pet.id }, take: 3, orderBy: { recordedOn: 'desc' } })).map(r => pick(r, ['id', 'recordedOn', 'weightKg'])),
       allergies: (await db.petAllergy.findMany({ where: { userId, petId: pet.id }, take: 20 })).map(r => pick(r, ['id', 'name', 'category', 'reaction', 'reportedStatus'])),
+      carePlans: (await db.petCareSchedule.findMany({ where: { userId, petId: pet.id }, take: 12, orderBy: { updatedAt: 'desc' } })).map(r => pick(r, ['id', 'title', 'status', 'nextDueOn', 'nextDueTime', 'dose', 'doseUnit', 'recurrenceKind', 'courseEndsOn'])),
+      products: (await db.petProduct.findMany({ where: { userId, petId: pet.id, archivedAt: null }, take: 12, orderBy: { updatedAt: 'desc' } })).map(r => pick(r, ['id', 'name', 'kind', 'formulation', 'expiresOn'])),
       conditions: (await db.petCondition.findMany({ where: { userId, petId: pet.id }, take: 20 })).map(r => pick(r, ['id', 'name', 'status', 'reportedBasis'])),
     })));
     context.speciesCatalog = publicPetsCatalog();
@@ -30,12 +32,14 @@ export async function loadAssistantContext(user, domains, scope, db = prisma) {
       ...pick(p, ['heightCm', 'weightKg', 'bloodType', 'chronicConditions', 'allergies', 'medications', 'familyHistory', 'healthGoals', 'activityLevel', 'sleepHours', 'dietType', 'smokingStatus', 'alcoholUse']) };
     const state = p?.extraAnswers?.appState || {};
     if (requested.has('goals')) context.goals = pick(state, ['weightGoal', 'stepsGoal']);
-    if (requested.has('activity')) context.activity = { runs: (state.runHistory || []).slice(-10).map(r => pick(r, ['id', 'startedAt', 'distanceKm', 'durationSec', 'steps'])) };
+    if (requested.has('activity')) {
+      context.activity = { source: 'MEDIRUN saved sessions; at most 10 recent sessions; no GPS coordinates', sessions: (await db.medipulsiSession.findMany({ where: { userId }, take: 10, orderBy: { startedAt: 'desc' } })).map(r => pick(r, ['id', 'phase', 'startedAt', 'endedAt', 'meters', 'seconds', 'steps', 'newMeters', 'excluded'])) };
+    }
   }
   if (requested.has('metrics')) context.metrics = (await db.healthMetricDaily.findMany({ where: { userId }, take: 14, orderBy: { date: 'desc' } }))
     .map(r => pick(r, ['date', 'weightKg', 'hydrationMl', 'steps', 'sleepHours', 'nutritionKcal', 'heartRate', 'bloodPressureSystolic', 'bloodPressureDiastolic']));
   if (requested.has('medications')) context.medications = (await db.medicationSchedule.findMany({ where: { userId }, take: 40, orderBy: { createdAt: 'desc' } }))
-    .map(r => pick(r, ['id', 'medName', 'dosage', 'frequency', 'active']));
+    .map(r => ({ ...pick(r, ['id', 'medName', 'dosage', 'frequency', 'active']), course: pick(r.config, ['startDate', 'endDate', 'frequencyKind', 'weekdays', 'everyNDays']) }));
   if (requested.has('visits')) context.visits = (await db.doctorVisit.findMany({ where: { userId }, take: 30, orderBy: { visitDate: 'desc' } }))
     .map(r => pick(r, ['id', 'doctorType', 'doctorFirstName', 'doctorLastName', 'visitDate', 'visitTime', 'address', 'active']));
   if (requested.has('cycle')) {

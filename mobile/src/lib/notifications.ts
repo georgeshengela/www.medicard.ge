@@ -7,6 +7,7 @@ import { isRunningInExpoGo } from 'expo';
 import { AppState, Platform } from 'react-native';
 import { ApiError, api } from './api';
 import type { Medication, ScheduledDose } from './api';
+import { localAccountId } from './localAccount';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { loadEngagePrefs } from '@/lib/mediEngagePrefs';
 import {
@@ -452,19 +453,26 @@ export async function cancelNotificationsByPrefix(prefix: string): Promise<void>
 export async function syncMedicationReminders(
   schedule: ScheduledDose[],
   medications: Medication[] = [],
+  expectedOwner = localAccountId(),
 ): Promise<number> {
   const granted = await getNotificationPermissionGranted();
-  if (!granted) return 0;
+  if (!granted || !expectedOwner || localAccountId() !== expectedOwner) return 0;
 
   await cancelNotificationsByPrefix(NOTIF_PREFIX.med);
+  if (localAccountId() !== expectedOwner) return 0;
 
   const byId = new Map(medications.map((med) => [med.id, med]));
   let scheduled = 0;
-
-  for (const dose of schedule) {
+  const otherCount = (await Notifications.getAllScheduledNotificationsAsync()).length;
+  const budget = Math.max(0, Math.min(48, 60 - otherCount));
+  const queue = schedule.flatMap(dose => {
     const med = byId.get(dose.medicationId);
-    const days = parseMedicationConfig(med?.config).daysOfWeek;
-    const slots = planMedicationReminderSlots(dose.medicationId, dose.time, days);
+    if (med && !med.active) return [];
+    const config = parseMedicationConfig(med?.config);
+    return planMedicationReminderSlots(dose.medicationId, dose.time, config.daysOfWeek, config).map(slot => ({ dose, slot }));
+  }).sort((a, b) => (a.slot.date?.getTime() || 0) - (b.slot.date?.getTime() || 0)).slice(0, budget);
+  for (const { dose, slot } of queue) {
+    if (localAccountId() !== expectedOwner) break;
     const copy = applyPushCopy('medication', {
       name: dose.medName,
       dosage: [dose.dosage, dose.notes].map((part) => String(part ?? '').trim()).filter(Boolean).join(' · '),
@@ -472,7 +480,6 @@ export async function syncMedicationReminders(
     const title = copy.title;
     const body = copy.body;
 
-    for (const slot of slots) {
       await Notifications.scheduleNotificationAsync({
         identifier: `${NOTIF_PREFIX.med}${slot.identifier}`,
         content: {
@@ -489,7 +496,9 @@ export async function syncMedicationReminders(
           },
         },
         trigger:
-          slot.weekday == null
+          slot.date
+            ? { type: Notifications.SchedulableTriggerInputTypes.DATE, date: slot.date, ...(Platform.OS === 'android' ? { channelId: MED_CHANNEL_ID } : {}) }
+            : slot.weekday == null
             ? {
                 type: Notifications.SchedulableTriggerInputTypes.DAILY,
                 hour: slot.hour,
@@ -505,7 +514,6 @@ export async function syncMedicationReminders(
               },
       });
       scheduled += 1;
-    }
   }
 
   return scheduled;

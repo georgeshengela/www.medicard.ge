@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  medicationCourseIncludesDate,
   expoWeekdayFromMonday,
   isEveryWeekday,
   planMedicationReminderSlots,
@@ -65,4 +66,31 @@ describe('notificationPlan', () => {
     assert.equal(prefixForNotificationId('qa:medication:1'), 'qa');
     assert.equal(prefixForNotificationId('pets:user:pet:sched:r1|2026-09-20|date|0:due'), 'pets');
   });
+});
+
+describe('finite medication courses', () => {
+  it('schedules exactly 14 local days, without a repeating trigger', () => {
+    const slots = planMedicationReminderSlots('course', '09:00', undefined, { startDate:'2026-09-21', endDate:'2026-10-04' },new Date(2026,8,20,12));
+    assert.equal(slots.length,14); assert.ok(slots.every(s=>s.date && !s.weekday));
+    assert.equal(slots.at(-1)?.date?.getDate(),4);
+  });
+  it('never schedules elapsed or expired doses, and honors selected weekdays', () => {
+    assert.equal(planMedicationReminderSlots('course','09:00',undefined,{startDate:'2026-09-01',endDate:'2026-09-20'},new Date(2026,8,21,12)).length,0);
+    const slots=planMedicationReminderSlots('course','09:00',[0],{startDate:'2026-09-21',endDate:'2026-10-04'},new Date(2026,8,21,12));
+    assert.equal(slots.length,1); assert.equal(slots[0].date?.getDate(),28);
+  });
+  it('rejects invalid dates/times and preserves local hour across daylight saving', () => {
+    assert.equal(planMedicationReminderSlots('c','29:70').length,0);
+    assert.equal(planMedicationReminderSlots('c','09:00',undefined,{endDate:'2026-02-30'}).length,0);
+    const slots=planMedicationReminderSlots('c','09:00',undefined,{startDate:'2026-10-24',endDate:'2026-10-27'},new Date(2026,9,23,12));
+    assert.equal(slots.length,4); assert.ok(slots.every(s=>s.date?.getHours()===9));
+  });
+});
+
+it('home and calendar only show doses inside the inclusive course',()=>{
+  const course={startDate:'2026-09-21',endDate:'2026-10-04'};
+  assert.equal(medicationCourseIncludesDate(course,'2026-09-20'),false);
+  assert.equal(medicationCourseIncludesDate(course,'2026-09-21'),true);
+  assert.equal(medicationCourseIncludesDate(course,'2026-10-04'),true);
+  assert.equal(medicationCourseIncludesDate(course,'2026-10-05'),false);
 });
