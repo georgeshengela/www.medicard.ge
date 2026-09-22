@@ -36,6 +36,14 @@ test('permission failure cleans up, then another press can record', async () => 
   await f.capture.start(); assert.ok(f.events.includes('error:denied')); assert.ok(f.events.includes('discard'));
   await f.capture.start(); assert.equal(f.capture.phase, 'recording'); await f.capture.cancel();
 });
+test('declining AI sharing is a notice and never starts or uploads a recording', async () => {
+  const f = fixture({ prepare: async () => { throw Object.assign(new Error('Declined'), { code: 'AI_CONSENT_DECLINED' }); } });
+  await f.capture.start(); await f.capture.release();
+  assert.equal(f.capture.phase, 'idle');
+  assert.ok(!f.events.includes('record')); assert.ok(!f.events.includes('transcribe'));
+  assert.ok(!f.events.some(e => e.startsWith('error:') || e.startsWith('haptic:')));
+  assert.ok(f.events.some(e => e.startsWith('notice:')));
+});
 test('cancellation during transcription drops the late result', async () => {
   const p = deferred<string>(), f = fixture({ transcribe: () => p.promise });
   await f.capture.start(); f.advance(1800); const done = f.capture.release();

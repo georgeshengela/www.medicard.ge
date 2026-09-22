@@ -28,6 +28,8 @@ server/generated/
 !/qa/.gitkeep
 /docs/*
 !/docs/.gitkeep
+!/docs/APP-REVIEW-2026-09-22.md
+!/docs/APP-REVIEW-REPLY-2026-09-22.md
 
 # Generated verification artefacts
 mobile/screenshots/

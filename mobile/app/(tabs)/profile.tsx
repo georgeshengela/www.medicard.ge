@@ -22,7 +22,6 @@ import { ThemeSelect } from '@/components/ui/ThemeSelect';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeLandingSelect } from '@/components/home/HomeLandingSelect';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
-import { PlanDetailCard } from '@/components/PlanUsageCard';
 import { ProfileStreakCard } from '@/components/check-in/ProfilePointsCard';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
@@ -48,7 +47,6 @@ import {
   setPushOptedIn,
 } from '@/lib/notifications';
 import { getCyclePromptSeen } from '@/lib/homeScreenPrefs';
-import { usePlanUsage } from '@/lib/planUsage';
 import { useThemeColors } from '@/theme/colors';
 import { livingPlaceLine } from '@/lib/userLocation';
 import { useAuth } from '@/store/AuthContext';
@@ -73,7 +71,7 @@ export default function Profile() {
   const colors = useThemeColors();
   const tabInset = useTabBarInset();
   const router = useRouter();
-  const plan = usePlanUsage();
+
 
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
@@ -245,24 +243,6 @@ export default function Profile() {
               </Text>
             ) : null}
             <View className="mt-2 flex-row flex-wrap items-center" style={{ gap: 8 }}>
-              <View
-                style={{
-                  borderRadius: 999,
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  backgroundColor: plan.code === 'ULTIMATE' ? colors.successBg : `${colors.primary200}18`,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: 'NotoSansGeorgian_700Bold',
-                    fontSize: 11,
-                    color: plan.code === 'ULTIMATE' ? colors.success : colors.primary100,
-                  }}
-                >
-                  {plan.meta.title}
-                </Text>
-              </View>
               {user?.createdAt ? (
                 <Text className="text-xs text-text-300">
                   {ka.profile.memberSince} {formatDate(user.createdAt)}
@@ -381,12 +361,7 @@ export default function Profile() {
         </View>
       </View>
 
-      <View className="mt-5">
-        <HomeSectionTitle title="შენი წვდომა" />
-        <PlanDetailCard />
-      </View>
-
-      <View className="mt-5">
+<View className="mt-5">
         <HomeSectionTitle title={ka.profile.settings} />
         <Card padded={false}>
           <ProfileMenuRow icon={ShieldCheck} label="AI მონაცემების გაზიარება" onPress={() => {

@@ -24,9 +24,31 @@ test('missing city is prompted again despite historical prompted flag; defer is 
 });
 test('all medical upload and stream routes require consent; feedback/read routes do not',()=>{
   const {isAiSharingRequest}=loader({react:{},'@/lib/localAccount':{}})('src/lib/aiSharingConsent.ts');
-  for(const path of ['/api/ai/query','/api/ai/symptom-check','/api/ai/extract-lab','/api/health-profile/onboarding-analysis','/api/cycle/insights','/api/pets/petA/chat/query'])assert.equal(isAiSharingRequest(path,'POST'),true,path);
+  for(const path of ['/api/ai/query','/api/ai/symptom-check','/api/ai/extract-lab','/api/ai/analyze-image','/api/ai/consilium','/api/health-profile/onboarding-analysis','/api/cycle/insights','/api/pets/petA/chat/query','/api/assistant/plan','/api/assistant/transcribe','/api/assistant/speak'])assert.equal(isAiSharingRequest(path,'POST'),true,path);
   for(const path of ['/api/ai/feedback','/api/ai/feedback?x=1','/api/pets'])assert.equal(isAiSharingRequest(path,'POST'),false,path);
   assert.equal(isAiSharingRequest('/api/ai/query','GET'),false);
+});
+test('closing consent cancels every waiting request without recording acceptance', async()=>{
+  const mod=loader({react:{useSyncExternalStore:(_,get)=>get()},'@/lib/localAccount':{localAccountId:()=> 'A'}})('src/lib/aiSharingConsent.ts');
+  let writes=0;const status={version:'review-disclosure',accepted:false};
+  const first=mod.requestAiSharingPrompt('A',status,async()=>{writes++;return {...status,accepted:true};});
+  const second=mod.requestAiSharingPrompt('A',status,async()=>assert.fail('duplicate write'));
+  mod.cancelAiSharingPrompt();
+  assert.equal(await first,false);assert.equal(await second,false);assert.equal(writes,0);
+});
+test('changed disclosure is shown again after conflict; old acceptance is never reused',async()=>{
+  const mod=loader({react:{useSyncExternalStore:(_,get)=>get()},'@/lib/localAccount':{localAccountId:()=> 'A'}})('src/lib/aiSharingConsent.ts');
+  const versions=[];const updated={version:'new',accepted:false};
+  const promise=mod.requestAiSharingPrompt('A',{version:'old',accepted:false},async(_,version)=>{versions.push(version);if(version==='old')throw Object.assign(Error('Changed'),{consentStatus:updated});return {...updated,accepted:true};});
+  await mod.decideAiSharing(true);assert.equal(mod.useAiSharingPrompt().status.version,'new');assert.equal(mod.useAiSharingPrompt().busy,false);
+  await mod.decideAiSharing(true);assert.equal(await promise,true);assert.equal(versions.join(','),'old,new');
+});
+test('revocation saves a revoke decision, and paid configuration cannot create account tiers',async()=>{
+  const mod=loader({react:{useSyncExternalStore:(_,get)=>get()},'@/lib/localAccount':{localAccountId:()=> 'A'}})('src/lib/aiSharingConsent.ts');
+  let decision;const promise=mod.requestAiSharingPrompt('A',{version:'v1',accepted:true},async d=>{decision=d;return {version:'v1',accepted:false};},true);
+  await mod.decideAiSharing(false);assert.equal(await promise,false);assert.equal(decision,'revoked');
+  const access=loader()('src/lib/consumerAccess.js');
+  for(const config of [{mode:'paid',storeBillingReady:true,reviewApproved:true},{},null])assert.equal(access.isFreeConsumerRelease(config),true);
 });
 test('consent deduplicates requests, remains undecided until save, and fails closed on account change',async()=>{
   let owner='A',saveCount=0;

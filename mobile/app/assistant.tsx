@@ -158,7 +158,16 @@ function AssistantSession({ owner }: { owner: string }) {
       void speech.say(result.review ? reviewSpeech(result.review) : result.reply);
       setText(''); setReview(result.review); setDraft(result.draft); setFocusFields(result.guidance?.fields); setManual(false); setSuggestions(result.suggestions || []);
       if (fromVoice) setVoiceMode(true);
-    } catch (e) { if (valid(n)) { retryPlan.current = { value, fromVoice, petId }; setDraft(currentDraft); if (!fromVoice) setText(value); setError(errorText(e, 'კავშირი შეფერხდა.')); assistantHaptic('error'); } }
+    } catch (e) { if (valid(n)) {
+      setDraft(currentDraft); if (!fromVoice) setText(value);
+      if (e instanceof ApiError && e.code === 'AI_CONSENT_DECLINED') {
+        // Declining sharing is a valid choice, not a network failure or a retryable send.
+        const reply = 'მოთხოვნა AI-ს არ გაეგზავნა. შეგიძლია აპის სხვა ფუნქციებით გააგრძელო. არჩევანს პროფილში, „AI მონაცემების გაზიარებაში“ შეცვლი.';
+        setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]);
+      } else {
+        retryPlan.current = { value, fromVoice, petId }; setError(errorText(e, 'კავშირი შეფერხდა.')); assistantHaptic('error');
+      }
+    } }
     finally { working.current = false; if (alive.current) setBusy(null); }
   }
   async function openFeature(feature: AssistantFeature) {

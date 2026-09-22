@@ -315,7 +315,7 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
   if (serveLanding) console.log(`  landing          →  ${PUBLIC_DIST}`);
   else console.warn('  landing          →  MISSING (server/public/index.html not found)');
   console.log(`  environment      →  ${env.NODE_ENV}`);
-  console.log(`  free monthly limit →  ${env.FREE_MONTHLY_AI_LIMIT} AI queries (FREE package)`);
+  console.log('  consumer access   →  free, no paid tiers or commercial quotas');
   if (!hasVisionProvider) {
     console.warn('  ⚠️  no OPENROUTER_API_KEY — image modules fall back to local OCR\n');
   } else {

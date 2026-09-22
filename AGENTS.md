@@ -1,5 +1,9 @@
 # Medicard.GE agent notes
 
+## App Review correction (2026-09-22)
+
+MEDICARD is entirely free for consumer accounts. No commercial user types, paid unlocks, upgrade CTAs or quotas may be enabled by environment/config flags. This supersedes older purchase-toggle guidance below. Keep historical billing rows only for data integrity and older API compatibility; preserve admin authorization roles. AI disclosure is a real native Modal with bounded scroll content and pinned choices. Named recipients/data categories and voluntary consent must be shown before any AI transmission, including voice transcription and speech output. Decline/close/revoke must block transmission without presenting the choice as a network error. The current consent version is derived from the full disclosure manifest; never pre-accept for real users. See docs/APP-REVIEW-2026-09-22.md for release evidence and remaining publication steps.
+
 ## MEDI QUEST unified hub (2026-09-19)
 
 Owner explicitly replaced the Profile robot and separate Companion pages with one native `/medi-quest` hub (missions/progress/rewards). Profile uses `QuestProfileCard`; Companion routes are compatibility redirects. Keep the geometric progress seal, existing ownership/equipment and journey math (completed daily=1/weekly=3), separate from claimed XP/coins. Do not restore the robot entry or old separate home based on older notes. Quest/Companion cache reads and late responses must stay scoped to the captured account. Global bottom navigation stays hidden on Quest routes. Native version1.0.0.9.6 / iOS1.9.6; no DB schema change.

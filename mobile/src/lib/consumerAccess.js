@@ -1,9 +1,8 @@
 import policy from '../config/consumerRelease.json' with { type: 'json' };
 
-// Unknown/missing configuration fails open for free access and closed for purchases.
-// A future paid release needs real billing, testing and its own App Review.
+// Historical billing configuration cannot change access in this product.
 export function isFreeConsumerRelease(config = policy) {
-  return config?.mode !== 'paid' || config?.storeBillingReady !== true || config?.reviewApproved !== true;
+  return true; // MEDICARD has no consumer tiers or paid unlocks.
 }
 export const FREE_CONSUMER_RELEASE = isFreeConsumerRelease();
 export function freeConsumerPackage() {

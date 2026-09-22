@@ -24,6 +24,11 @@ export function createVoiceCapture(d: CaptureDependencies) {
   const change = (value: VoicePhase) => { phase = value; d.onPhase(value); };
   const clearTimer = () => { if (timer) clearTimeout(timer); timer = null; };
   const current = (id: number) => epoch === id && d.active();
+  const reportError = (error: unknown, fallback: string) => {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'AI_CONSENT_DECLINED') {
+      d.onNotice('AI-სთან გაზიარება გამორთულია. არჩევანის შეცვლა პროფილის პარამეტრებიდან შეგიძლია.');
+    } else d.onError(error instanceof Error ? error.message : fallback);
+  };
   async function finish(submit: boolean) {
     if (phase !== 'recording') return;
     held = false; clearTimer();
@@ -41,7 +46,7 @@ export function createVoiceCapture(d: CaptureDependencies) {
         }
       }
     } catch (error) {
-      if (submit && current(id)) d.onError(error instanceof Error ? error.message : 'ხმა ვერ დამუშავდა.');
+      if (submit && current(id)) reportError(error, 'ხმა ვერ დამუშავდა.');
     } finally {
       await d.discard(uri).catch(() => undefined);
       change('idle');
@@ -65,7 +70,7 @@ export function createVoiceCapture(d: CaptureDependencies) {
         timer = setTimeout(() => { void finish(true); }, d.maxMs ?? 60000);
       } catch (error) {
         await d.discard(await d.stop().catch(() => null)).catch(() => undefined);
-        if (current(id)) d.onError(error instanceof Error ? error.message : 'მიკროფონი ვერ ჩაირთო.');
+        if (current(id)) reportError(error, 'მიკროფონი ვერ ჩაირთო.');
       } finally {
         if (getPhase() === 'preparing') change('idle');
       }
