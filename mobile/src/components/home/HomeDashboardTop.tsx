@@ -16,7 +16,6 @@ type Props = {
   scoreLabel: string;
   statusLabel?: string;
   waterLiters?: number | null;
-  onPackagePress?: () => void;
   onAvatarPress?: () => void;
   onScorePress?: () => void;
   onStreakPress?: () => void;
@@ -38,7 +37,6 @@ export function HomeDashboardTop(props: Props) {
         gender={props.gender}
         avatarId={props.avatarId}
         streak={props.streak}
-        onPackagePress={props.onPackagePress}
         onAvatarPress={props.onAvatarPress}
         onStreakPress={props.onStreakPress}
       />

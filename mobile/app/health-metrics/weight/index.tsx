@@ -123,8 +123,7 @@ export default function WeightHubScreen() {
   useFocusEffect(
     useCallback(() => {
       void hydrate();
-      void refresh();
-    }, [hydrate, refresh]),
+    }, [hydrate]),
   );
 
   const when = useMemo(() => {
@@ -304,10 +303,6 @@ export default function WeightHubScreen() {
         visible={quota != null}
         resetsInMs={quota}
         onClose={() => setQuota(undefined)}
-        onUpgrade={() => {
-          setQuota(undefined);
-          router.push('/package');
-        }}
       />
     </View>
   );

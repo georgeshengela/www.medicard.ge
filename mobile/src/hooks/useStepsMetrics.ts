@@ -11,30 +11,25 @@ export function useStepsMetrics(initialPeriod: StepChartPeriod = '1d') {
   const [loading, setLoading] = useState(true);
   const periodRef = useRef(period);
   periodRef.current = period;
+  const bundleRef = useRef(bundle);
+  bundleRef.current = bundle;
   const pullGenRef = useRef(0);
 
   const refresh = useCallback(async (nextPeriod?: StepChartPeriod, opts?: { force?: boolean }) => {
     const gen = ++pullGenRef.current;
     const p = nextPeriod ?? periodRef.current;
-    setLoading(true);
+    if (!bundleRef.current) setLoading(true);
     try {
       const data = await fetchStepsMetrics(p, opts);
       if (gen !== pullGenRef.current) return;
       setBundle(data);
       if (nextPeriod) setPeriod(nextPeriod);
     } catch (err) {
-      if (isHealthPullCancelled(err)) {
-        if (gen === pullGenRef.current) setBundle(null);
-        return;
-      }
+      if (isHealthPullCancelled(err)) return;
     } finally {
       if (gen === pullGenRef.current) setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   useFocusEffect(
     useCallback(() => {

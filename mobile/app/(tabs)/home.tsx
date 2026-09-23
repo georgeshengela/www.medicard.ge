@@ -132,7 +132,6 @@ export default function Home() {
             statusLabel={analysis?.bodyComposition?.physiqueLabelKa ?? ka.home.healthyStatus}
             waterLiters={todayMl > 0 ? todayMl / 1000 : null}
             onAvatarPress={() => router.push('/(tabs)/profile' as never)}
-            onPackagePress={() => router.push('/package' as never)}
             onStreakPress={() => router.push('/profile/streak' as never)}
             onScorePress={() => {
               if (analysis) router.push('/(auth)/profile-setup/results?preview=1' as never);

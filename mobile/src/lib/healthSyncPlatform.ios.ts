@@ -309,12 +309,6 @@ function startOfLocalDay(d: Date): Date {
   return x;
 }
 
-function endOfLocalDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
-
 function noonLocal(dayStart: Date): Date {
   const x = new Date(dayStart);
   x.setHours(12, 0, 0, 0);
@@ -329,22 +323,6 @@ function extractStepCount(stat: {
   if (raw == null || !Number.isFinite(raw)) return null;
   const rounded = Math.round(raw);
   return rounded > 0 ? rounded : null;
-}
-
-async function queryDayStepTotal(
-  HealthKit: Awaited<ReturnType<typeof loadHealthKit>>,
-  dayStart: Date,
-  dayEnd: Date,
-): Promise<number | null> {
-  const stat = await HealthKit.queryStatisticsForQuantity(
-    'HKQuantityTypeIdentifierStepCount',
-    ['cumulativeSum'],
-    {
-      unit: 'count',
-      filter: { date: { startDate: dayStart, endDate: dayEnd } },
-    },
-  );
-  return extractStepCount(stat);
 }
 
 function aggregateRawSamplesByDay(
@@ -376,47 +354,52 @@ export async function fetchStepsNative(since: Date): Promise<StepSample[]> {
     const todayStart = startOfLocalDay(now);
     const samples: StepSample[] = [];
 
-    let cursor = new Date(from);
-    while (cursor.getTime() <= todayStart.getTime()) {
-      const dayStart = startOfLocalDay(cursor);
-      const isToday = dayStart.getTime() === todayStart.getTime();
-      const dayEnd = isToday ? now : endOfLocalDay(dayStart);
-
-      const total = await queryDayStepTotal(HealthKit, dayStart, dayEnd);
-      if (total != null) {
+    try {
+      const daily = await HealthKit.queryStatisticsCollectionForQuantity(
+        'HKQuantityTypeIdentifierStepCount',
+        ['cumulativeSum'],
+        from,
+        { day: 1 },
+        {
+          unit: 'count',
+          filter: { date: { startDate: from, endDate: now } },
+        },
+      );
+      for (const stat of daily) {
+        const count = extractStepCount(stat);
+        if (count == null) continue;
+        const dayStart = startOfLocalDay(stat.startDate ?? from);
         samples.push({
           at: noonLocal(dayStart).toISOString(),
-          count: total,
+          count,
           daily: true,
         });
       }
+    } catch {
+      // Collection can fail on older HealthKit — fall back to raw samples below.
+    }
 
-      if (isToday) {
-        try {
-          const hourly = await HealthKit.queryStatisticsCollectionForQuantity(
-            'HKQuantityTypeIdentifierStepCount',
-            ['cumulativeSum'],
-            todayStart,
-            { hour: 1 },
-            {
-              unit: 'count',
-              filter: { date: { startDate: todayStart, endDate: now } },
-            },
-          );
-          for (const stat of hourly) {
-            const count = extractStepCount(stat);
-            if (count == null) continue;
-            samples.push({
-              at: (stat.endDate ?? stat.startDate ?? todayStart).toISOString(),
-              count,
-            });
-          }
-        } catch {
-          // Hourly chart is optional — daily total is already stored.
-        }
+    try {
+      const hourly = await HealthKit.queryStatisticsCollectionForQuantity(
+        'HKQuantityTypeIdentifierStepCount',
+        ['cumulativeSum'],
+        todayStart,
+        { hour: 1 },
+        {
+          unit: 'count',
+          filter: { date: { startDate: todayStart, endDate: now } },
+        },
+      );
+      for (const stat of hourly) {
+        const count = extractStepCount(stat);
+        if (count == null) continue;
+        samples.push({
+          at: (stat.endDate ?? stat.startDate ?? todayStart).toISOString(),
+          count,
+        });
       }
-
-      cursor.setDate(cursor.getDate() + 1);
+    } catch {
+      // Hourly chart is optional — daily totals are enough to show the page.
     }
 
     if (samples.length) return samples;

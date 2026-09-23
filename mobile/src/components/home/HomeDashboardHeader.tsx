@@ -1,6 +1,5 @@
 import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
-import { HomePackageQuotaBadge } from '@/components/home/HomePackageQuotaBadge';
 import { HomeStreakChip } from '@/components/home/HomeStreakChip';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
@@ -14,7 +13,6 @@ type Props = {
   gender?: Gender | null;
   avatarId?: string | null;
   streak?: number;
-  onPackagePress?: () => void;
   onAvatarPress?: () => void;
   onStreakPress?: () => void;
 };
@@ -25,7 +23,6 @@ export function HomeDashboardHeader({
   gender,
   avatarId,
   streak = 0,
-  onPackagePress,
   onAvatarPress,
   onStreakPress,
 }: Props) {
@@ -64,9 +61,6 @@ export function HomeDashboardHeader({
             {ka.home.helloName(displayName)}
           </Text>
         </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <HomePackageQuotaBadge onPress={onPackagePress} />
 
           <Pressable accessibilityRole="button" onPress={onAvatarPress}>
             <View style={{ width: 40, height: 40 }}>
@@ -111,7 +105,6 @@ export function HomeDashboardHeader({
               />
             </View>
           </Pressable>
-        </View>
       </View>
     </View>
   );

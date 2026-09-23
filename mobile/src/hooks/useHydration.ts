@@ -37,13 +37,16 @@ export function useHydration() {
     const [nextLogs, localGoal, stored, remoteGoal] = await Promise.all([
       loadHydrationLogs(),
       loadHydrationGoalMl(),
-      pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate(), { force: true }).catch(() => null),
+      pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate()).catch(() => null),
       api.healthMetrics.hydrationGoalGet().catch(() => null),
     ]);
-    const nextServer: Record<string, number> = {};
-    for (const row of stored?.daily || []) {
-      if (row.hydrationMl == null) continue;
-      nextServer[row.date] = Math.max(0, Math.round(Number(row.hydrationMl) || 0));
+    if (stored) {
+      const nextServer: Record<string, number> = {};
+      for (const row of stored.daily) {
+        if (row.hydrationMl == null) continue;
+        nextServer[row.date] = Math.max(0, Math.round(Number(row.hydrationMl) || 0));
+      }
+      setServerByDate(nextServer);
     }
     let nextGoal = localGoal;
     if (remoteGoal?.goalMl != null && Number(remoteGoal.goalMl) >= 500) {
@@ -51,7 +54,6 @@ export function useHydration() {
       if (nextGoal !== localGoal) await saveHydrationGoalMl(nextGoal);
     }
     setLogs(nextLogs);
-    setServerByDate(nextServer);
     setGoalMl(nextGoal);
     setLoading(false);
   }, [user?.id]);

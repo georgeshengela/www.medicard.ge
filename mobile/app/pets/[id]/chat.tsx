@@ -129,13 +129,6 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
     return () => { cancelled = true; alive.current = false; abortRef.current?.abort(); };
   }, [petId, current, reload]);
 
-  const remainingLabel = useMemo(() => {
-    if (plan.unlimited) return ka.usage.unlimitedBanner;
-    if (plan.exhausted) return ka.usage.exhaustedTitle;
-    if (plan.remaining != null) return ka.chat.chatsRemaining(plan.remaining);
-    return undefined;
-  }, [plan]);
-
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
   }, []);
@@ -282,9 +275,6 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
               </Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Medi Vet — როგორ მუშაობს" onPress={() => setDisclosure(true)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Info size={21} color={colors.primary100} /></Pressable>
-            {remainingLabel ? (
-              <Text style={{ fontSize: 12, color: FIGMA_CHAT.textSecondary }}>{remainingLabel}</Text>
-            ) : null}
           </View>
         }
         footer={
@@ -379,10 +369,6 @@ function PetVetChat({ petId, owner }: { petId: string; owner: string }) {
         visible={quotaBlock !== undefined}
         resetsInMs={quotaBlock}
         onClose={() => setQuotaBlock(undefined)}
-        onUpgrade={() => {
-          setQuotaBlock(undefined);
-          router.push('/package');
-        }}
       />
 
       <PetSheet visible={disclosure} title={ka.pets.vetDisclosureTitle} onClose={() => { setDisclosure(false); if (!disclosureSeen) router.back(); }}>

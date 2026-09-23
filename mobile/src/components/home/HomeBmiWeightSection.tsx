@@ -28,19 +28,18 @@ type Props = {
 export function HomeBmiWeightSection({ profile }: Props) {
   const tokens = useFigmaHealthMetrics();
   const router = useRouter();
-  const { bundle, loading, refresh } = useHealthMetrics(profile);
+  const { bundle, loading } = useHealthMetrics(profile);
   const [goalProgress, setGoalProgress] = useState<WeightGoalProgress | null>(null);
   const [logs, setLogs] = useState<WeightLog[]>([]);
   const [goal, setGoal] = useState<WeightGoal | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      void refresh();
       void Promise.all([loadWeightGoal(), loadWeightLogs()]).then(([nextGoal, nextLogs]) => {
         setGoal(nextGoal);
         setLogs(nextLogs);
       });
-    }, [refresh]),
+    }, []),
   );
 
   const weight = bundle?.metrics.find((metric) => metric.key === 'weight');

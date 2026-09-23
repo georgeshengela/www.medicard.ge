@@ -501,10 +501,6 @@ export function CycleInsightsPanel({
         visible={quotaBlock !== undefined}
         resetsInMs={quotaBlock}
         onClose={() => setQuotaBlock(undefined)}
-        onUpgrade={() => {
-          setQuotaBlock(undefined);
-          router.push('/package');
-        }}
       />
     </>
   );

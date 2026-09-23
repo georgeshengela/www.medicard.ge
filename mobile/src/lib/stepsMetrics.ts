@@ -42,17 +42,28 @@ export async function fetchStepsMetrics(period: StepChartPeriod = '1d', opts?: {
   const since = sinceDateForPeriod(period);
   const sinceTs = since.getTime();
 
-  let nativeSamples: StepSample[] = [];
+  const storedPromise = pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate(), opts);
+  const nativePromise = nativeRuntime
+    ? (async () => {
+        const fetchSince = new Date(Math.min(since.getTime(), Date.now() - 6 * 86_400_000));
+        fetchSince.setHours(0, 0, 0, 0);
+        return fetchStepsSamples(fetchSince);
+      })()
+    : Promise.resolve([] as StepSample[]);
+
+  const stored = await storedPromise;
+  const nativeSamples = nativeRuntime
+    ? await Promise.race([
+        nativePromise,
+        new Promise<StepSample[]>((resolve) => setTimeout(() => resolve([]), 2000)),
+      ])
+    : [];
   if (nativeRuntime) {
-    // Always pull at least 7 days for history; period controls chart grouping only.
-    const fetchSince = new Date(Math.min(since.getTime(), Date.now() - 6 * 86_400_000));
-    fetchSince.setHours(0, 0, 0, 0);
-    nativeSamples = await fetchStepsSamples(fetchSince);
-    await syncNativeHealthToServer({}, nativeSamples);
+    void nativePromise.then((samples) => {
+      if (samples.length) void syncNativeHealthToServer({}, samples);
+    });
   }
   const deviceConnected = nativeRuntime && ((await isHealthSyncEnabled()) || nativeSamples.length > 0);
-
-  const stored = await pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate(), opts);
   const storedSamples = storedStepLogsToSamples(stored.stepLogs).filter(
     (s) => new Date(s.at).getTime() >= sinceTs,
   );

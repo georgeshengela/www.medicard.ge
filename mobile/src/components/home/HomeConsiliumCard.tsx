@@ -1,12 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { HomeConsiliumArt } from '@/components/home/HomeConsiliumArt';
-import { QuotaSheet } from '@/components/QuotaSheet';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { HOME_SPACE as S } from '@/constants/homeSpacing';
 import { ka } from '@/i18n/ka';
-import { usePlanUsage } from '@/lib/planUsage';
 
 type Props = {
   onPress: () => void;
@@ -15,24 +12,13 @@ type Props = {
 /** Figma 11416:93609 — consilium promo card. Title lives in the card, like Explore Doctors. */
 export function HomeConsiliumCard({ onPress }: Props) {
   const FIGMA = useFigmaChat();
-  const router = useRouter();
-  const plan = usePlanUsage();
-  const [quotaOpen, setQuotaOpen] = useState(false);
-
-  const handlePress = () => {
-    if (plan.exhausted) {
-      setQuotaOpen(true);
-      return;
-    }
-    onPress();
-  };
 
   return (
     <View style={{ marginTop: S.sectionTop }}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={ka.modules.consilium.title}
-        onPress={handlePress}
+        onPress={onPress}
         className="active:opacity-88"
       >
         <View
@@ -82,15 +68,6 @@ export function HomeConsiliumCard({ onPress }: Props) {
           <HomeConsiliumArt />
         </View>
       </Pressable>
-      <QuotaSheet
-        visible={quotaOpen}
-        resetsInMs={plan.usage?.resetsInMs}
-        onClose={() => setQuotaOpen(false)}
-        onUpgrade={() => {
-          setQuotaOpen(false);
-          router.push('/package');
-        }}
-      />
     </View>
   );
 }

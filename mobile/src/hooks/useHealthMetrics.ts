@@ -16,29 +16,24 @@ export function useHealthMetrics(profile: HealthProfile | null | undefined) {
   const [loading, setLoading] = useState(true);
   const profileRef = useRef(profile);
   profileRef.current = profile;
+  const bundleRef = useRef(bundle);
+  bundleRef.current = bundle;
   const pullGenRef = useRef(0);
   const key = profileKey(profile);
 
   const refresh = useCallback(async (opts?: { force?: boolean }) => {
     const gen = ++pullGenRef.current;
-    setLoading(true);
+    if (!bundleRef.current) setLoading(true);
     try {
       const data = await fetchHealthMetrics(profileRef.current, opts);
       if (gen !== pullGenRef.current) return;
       setBundle(data);
     } catch (err) {
-      if (isHealthPullCancelled(err)) {
-        if (gen === pullGenRef.current) setBundle(null);
-        return;
-      }
+      if (isHealthPullCancelled(err)) return;
     } finally {
       if (gen === pullGenRef.current) setLoading(false);
     }
   }, [key]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   useFocusEffect(
     useCallback(() => {

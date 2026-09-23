@@ -38,7 +38,7 @@ export function QuotaSheet({
   visible: boolean;
   resetsInMs?: number;
   onClose: () => void;
-  onUpgrade: () => void;
+  onUpgrade?: () => void;
 }) {
   const dark = useIsDark();
   const FIGMA = useFigmaHomeDashboard();
@@ -136,7 +136,7 @@ export function QuotaSheet({
             </View>
 
             <View style={{ gap: 10 }}>
-              {!FREE_CONSUMER_RELEASE ? <Pressable
+              {onUpgrade && !FREE_CONSUMER_RELEASE ? <Pressable
                 accessibilityRole="button"
                 onPress={onUpgrade}
                 style={{

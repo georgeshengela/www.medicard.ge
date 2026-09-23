@@ -32,7 +32,7 @@ import { useAnalysisTask } from '@/lib/useAnalysisTask';
 import { useThemeColors } from '@/theme/colors';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { ka } from '@/i18n/ka';
-import { ApiError, api, type MedicalRecord } from '@/lib/api';
+import { ApiError, api, ensureAiSharingConsentForRequest, type MedicalRecord } from '@/lib/api';
 import { getAnalysisChatProfile, type AnalysisChatKind } from '@/lib/chatUiConfig';
 import { IMAGE_PICKER_OPTIONS, prepareLabImage, toUploadableImage } from '@/lib/imageUpload';
 import { formatLabDateKa, mergeLabExtracts, parseLabExtract, stripLabJson } from '@/lib/labExtract';
@@ -116,13 +116,6 @@ function AnalysisModuleContent({
   const [savedMeta, setSavedMeta] = useState<{ date: string; count: number } | null>(null);
   const [showAnotherShot, setShowAnotherShot] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-
-  const remainingLabel = useMemo(() => {
-    if (plan.unlimited) return ka.usage.unlimitedBanner;
-    if (plan.exhausted) return ka.usage.exhaustedTitle;
-    if (plan.remaining != null) return ka.chat.chatsRemaining(plan.remaining);
-    return undefined;
-  }, [plan]);
 
   const pick = useCallback(async (source: 'camera' | 'gallery' | 'pdf') => {
     if (busy || explaining || savingDate || (isLab && files.length >= MAX_LAB_FILES)) return;
@@ -404,9 +397,8 @@ function AnalysisModuleContent({
           title={profile.title}
           subtitle={profile.subtitle}
           icon={icon}
-          remainingLabel={remainingLabel}
           onBack={() => router.back()}
-          onSettings={() => router.push('/package' as never)}
+          onSettings={() => { void ensureAiSharingConsentForRequest('', 'GET', undefined, true).catch(() => undefined); }}
         />
       }
       footer={
@@ -711,10 +703,6 @@ function AnalysisModuleContent({
         visible={quotaBlock !== undefined}
         resetsInMs={quotaBlock}
         onClose={() => setQuotaBlock(undefined)}
-        onUpgrade={() => {
-          setQuotaBlock(undefined);
-          router.push('/package');
-        }}
       />
     </ChatScreenShell>
   );

@@ -1,5 +1,5 @@
 {
-  "revision": "2026-09-22.1",
+  "revision": "2026-09-23.1",
   "title": "გავუზიაროთ მონაცემები AI სერვისებს?",
   "purpose": "Medi-ს პასუხებისა და შენ მიერ მოთხოვნილი მოქმედებებისთვის ქვემოთ ჩამოთვლილი მონაცემები გარე AI სერვისებს გადაეცემა — გამოყენებული ფუნქციის მიხედვით.",
   "categories": [
@@ -50,5 +50,61 @@
   },
   "privacyUrl": "https://medicard.ge/privacy.html",
   "retention": "MEDICARD-ში ინახება შენი ჩანაწერები და AI პასუხები. ჩაწერილი ხმა მუდმივ საცავში არ ინახება; პასუხის აუდიო დაკვრის შემდეგ იშლება. მონაცემები შეიძლება სხვა ქვეყანაში დამუშავდეს. OpenRouter-ს ვიყენებთ მხოლოდ ჩამოთვლილი ჰოსტებით, მონაცემთა შეგროვების აკრძალვითა და ZDR ფილტრით. ეს არ ეხება პირდაპირ Azure Speech-სა და EvidenceMD-ს; მათი პირობები იხილე ბმულებზე.",
-  "choice": "არჩევანი ნებაყოფლობითია. უარის ან ფანჯრის დახურვისას მოთხოვნა AI-ს არ გაეგზავნება; დანარჩენი ფუნქციები ხელმისაწვდომია. თანხმობის გაუქმება: პროფილი → AI მონაცემების გაზიარება. ახალი მიმღები ან არსებითი ცვლილება ხელახალ თანხმობას მოითხოვს."
+  "choice": "არჩევანი ნებაყოფლობითია. უარის ან ფანჯრის დახურვისას მოთხოვნა AI-ს არ გაეგზავნება; დანარჩენი ფუნქციები ხელმისაწვდომია. თანხმობის გაუქმება: პროფილი → AI მონაცემების გაზიარება. ახალი მიმღები ან არსებითი ცვლილება ხელახალ თანხმობას მოითხოვს.",
+  "en": {
+    "title": "Share your data with AI services?",
+    "purpose": "To answer Medi requests and the actions you ask for, MEDICARD sends the data below to named third-party AI services, depending on the feature you use. Nothing is sent until you choose Allow.",
+    "categories": [
+      "Your message, described symptoms, and relevant conversation history.",
+      "Age, sex, and health information needed for that feature: conditions, allergies, medications, family history, goals, visits, and metrics.",
+      "Photos you choose for analysis and text extracted from documents. Cover names and ID numbers you do not want sent.",
+      "When relevant: cycle records you have permitted. Locked cycle data and intimate fields are not included in general context. Adding your health profile to symptom check is a separate choice.",
+      "In Medi Vet and the pet assistant: the pet profile and care information, without the human health profile.",
+      "Voice assistant: recorded audio is sent through OpenRouter to Google Cloud Vertex AI for transcription. If spoken replies are on, the reply text is sent to Microsoft Azure Speech to generate speech."
+    ],
+    "recipients": [
+      {
+        "name": "OpenRouter, Inc.",
+        "role": "Routes messages, analysis data, and recorded audio to the AI hosts listed below.",
+        "url": "https://openrouter.ai/privacy"
+      },
+      {
+        "name": "Google — Google Cloud Vertex AI",
+        "role": "Gemini replies, photo and text processing, and speech-to-text for recorded audio.",
+        "url": "https://cloud.google.com/terms/cloud-privacy-notice"
+      },
+      {
+        "name": "Novita AI",
+        "role": "Processes replies when the Ling model is selected.",
+        "url": "https://novita.ai/legal/privacy-policy"
+      },
+      {
+        "name": "Microsoft — Azure",
+        "role": "Supporting AI requests. Azure Speech turns reply text into spoken Georgian when voice replies are enabled.",
+        "url": "https://privacy.microsoft.com/privacystatement"
+      },
+      {
+        "name": "EvidenceMD Inc.",
+        "role": "Selected clinical AI, or an alternative reply if another model fails. Not used in Medi Vet.",
+        "url": "https://evidencemd.ai/privacy-policy"
+      }
+    ],
+    "retention": "MEDICARD stores your records and AI replies. Recorded audio is not kept in permanent storage; spoken-reply audio is deleted after playback. Data may be processed in another country. OpenRouter is used only with the listed hosts, data-collection denied, and a ZDR filter. That filter does not apply to direct Azure Speech or EvidenceMD; see their policies.",
+    "choice": "This choice is voluntary. If you decline or close this window, the pending request is not sent to AI. Other app features remain available. Withdraw later: Profile → AI data sharing. A new recipient or material change requires a new decision.",
+    "headings": {
+      "recipients": "Who receives the data",
+      "sent": "What is sent",
+      "processors": "Who processes it"
+    },
+    "intro": "Without your permission we do not send data to third-party AI.",
+    "introAccepted": "Sharing is allowed. You can change this at any time.",
+    "agree": "I agree to share with AI",
+    "decline": "Continue without AI",
+    "keep": "Keep sharing allowed",
+    "revoke": "Withdraw consent",
+    "policy": "MEDICARD privacy policy",
+    "policyHide": "Hide privacy policy",
+    "closeAllow": "Close without changing your choice",
+    "closeDeny": "Close without sharing"
+  }
 }

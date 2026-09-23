@@ -6,13 +6,11 @@ import { SymptomNavHeader } from '@/components/symptoms/SymptomNavHeader';
 import { useFigmaSymptoms } from '@/constants/figmaSymptomsLayout';
 import { ka } from '@/i18n/ka';
 import { updateSymptomChecker, useSymptomChecker } from '@/lib/symptomCheckerStore';
-import { FREE_CONSUMER_RELEASE } from '@/lib/consumerAccess';
 
 export default function SymptomAnalyzingErrorScreen() {
   const T = useFigmaSymptoms();
   const router = useRouter();
   const { lastError } = useSymptomChecker();
-  const isQuota = !FREE_CONSUMER_RELEASE && (lastError?.includes('ლიმიტი') ?? false);
 
   return (
     <View style={{ flex: 1, backgroundColor: T.white }}>
@@ -28,17 +26,13 @@ export default function SymptomAnalyzingErrorScreen() {
         ) : null}
       </View>
       <SymptomFooter>
-        {isQuota ? (
-          <SymptomCta label={ka.usage.upsellCta} onPress={() => router.push('/package' as never)} />
-        ) : (
-          <SymptomCta
-            label={ka.symptoms.retry}
-            onPress={() => {
-              updateSymptomChecker({ lastError: null });
-              router.replace('/symptoms/analyzing' as never);
-            }}
-          />
-        )}
+        <SymptomCta
+          label={ka.symptoms.retry}
+          onPress={() => {
+            updateSymptomChecker({ lastError: null });
+            router.replace('/symptoms/analyzing' as never);
+          }}
+        />
         <Pressable
           onPress={() => router.push('/chat/doctor' as never)}
           style={{ alignItems: 'center', marginTop: 12 }}

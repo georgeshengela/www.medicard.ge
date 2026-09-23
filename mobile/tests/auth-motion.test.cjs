@@ -1,13 +1,22 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const load=require('./helpers/loadTs.cjs')();
-const {withAuthConnectionRetry}=load('src/lib/authConnection.ts');
+const {withAuthConnectionRetry,isTransientConnectionError}=load('src/lib/authConnection.ts');
 const {stackMotion}=load('src/theme/stackMotion.ts');
 const immediate=async()=>{};
 
+test('android socket reset is a transient connection error',()=>{
+ assert.equal(isTransientConnectionError(new Error('java.net.SocketException: Connection reset')),true);
+ assert.equal(isTransientConnectionError(Object.assign(new Error('Request aborted'),{name:'AbortError'})),false);
+});
 test('one dropped native connection recovers with exactly one replay',async()=>{
  let count=0;
  const value=await withAuthConnectionRetry(async()=>{if(++count===1)throw new TypeError('Network request failed');return 'signed-in';},new AbortController().signal,immediate);
  assert.equal(value,'signed-in');assert.equal(count,2);
+});
+test('android connection reset recovers with exactly one replay',async()=>{
+ let count=0;
+ const value=await withAuthConnectionRetry(async()=>{if(++count===1)throw new Error('java.net.SocketException: Connection reset');return 'ok';},new AbortController().signal,immediate);
+ assert.equal(value,'ok');assert.equal(count,2);
 });
 test('repeated failure stops after two attempts',async()=>{
  let count=0;

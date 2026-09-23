@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -16,7 +16,7 @@ import { SkincareResultCard } from '@/components/skincare/SkincareResultCard';
 import { KEYBOARD_DONE_ACCESSORY_ID, KeyboardDoneAccessory } from '@/components/ui/KeyboardDoneAccessory';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
-import { ApiError, api } from '@/lib/api';
+import { ApiError, api, ensureAiSharingConsentForRequest } from '@/lib/api';
 import { SKINCARE_PRODUCTS_LIMIT, requireAnalysisText, IncompleteAnalysisError } from '@/lib/analysisFlow';
 import { localAccountId } from '@/lib/localAccount';
 import { useAnalysisTask } from '@/lib/useAnalysisTask';
@@ -53,13 +53,6 @@ function SkincareModuleContent() {
   const [lastRoutine, setLastRoutine] = useState<SavedSkincareRoutine | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
-
-  const remainingLabel = useMemo(() => {
-    if (plan.unlimited) return ka.usage.unlimitedBanner;
-    if (plan.exhausted) return ka.usage.exhaustedTitle;
-    if (plan.remaining != null) return ka.chat.chatsRemaining(plan.remaining);
-    return undefined;
-  }, [plan]);
 
   useFocusEffect(
     useCallback(() => {
@@ -180,9 +173,8 @@ function SkincareModuleContent() {
           title={ka.modules.skincare.title}
           subtitle={ka.modules.skincare.subtitle}
           icon={Sparkles}
-          remainingLabel={remainingLabel}
           onBack={() => router.back()}
-          onSettings={() => router.push('/package' as never)}
+          onSettings={() => { void ensureAiSharingConsentForRequest('', 'GET', undefined, true).catch(() => undefined); }}
         />
       }
     >
@@ -447,10 +439,6 @@ function SkincareModuleContent() {
         visible={quotaBlock !== undefined}
         resetsInMs={quotaBlock}
         onClose={() => setQuotaBlock(undefined)}
-        onUpgrade={() => {
-          setQuotaBlock(undefined);
-          router.push('/package');
-        }}
       />
     </ChatScreenShell>
   );

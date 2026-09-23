@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -43,10 +43,29 @@ describe('release crash regressions', () => {
     assert.doesNotMatch(text, /Linking\.openURL\(token\.href/);
   });
 
-  it('package screen does not present a purchase CTA unless the server enables it', () => {
+  it('package screen is a compatibility redirect with no purchase CTA', () => {
     const text = src('app/package/index.tsx');
-    assert.match(text, /purchasesEnabled/);
-    assert.match(text, /ka\.usage\.purchasesUnavailable/);
+    assert.match(text, /Redirect href="\/profile"/);
+    assert.doesNotMatch(text, /purchasesEnabled/);
+    assert.doesNotMatch(text, /upgradeCta/);
+  });
+
+  it('consumer screens do not open a package purchase route', () => {
+    const roots = [join(mobileRoot, 'app'), join(mobileRoot, 'src')];
+    const files = [];
+    function visit(dir) {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const file = join(dir, entry.name);
+        if (entry.isDirectory()) visit(file);
+        else if (/\.(tsx|ts|js)$/.test(entry.name)) files.push(file);
+      }
+    }
+    roots.forEach(visit);
+    for (const file of files) {
+      if (file.endsWith(`${sep}package${sep}index.tsx`)) continue;
+      const text = readFileSync(file, 'utf8');
+      assert.doesNotMatch(text, /push\(['"`]\/package/, file);
+    }
   });
 
   it('iOS prefs use UserDefaults and never AsyncStorage file writes', () => {
@@ -142,5 +161,29 @@ describe('release crash regressions', () => {
     assert.match(layout, /bootGuard/);
     assert.match(entry, /bootGuard/);
     assert.match(pkg, /"main": "index.js"/);
+  });
+
+  it('health screens keep last data when a pull is cancelled', () => {
+    const steps = src('src/hooks/useStepsMetrics.ts');
+    const metrics = src('src/hooks/useHealthMetrics.ts');
+    const hydration = src('src/hooks/useHydration.ts');
+    assert.match(steps, /if \(isHealthPullCancelled\(err\)\) return;/);
+    assert.match(metrics, /if \(isHealthPullCancelled\(err\)\) return;/);
+    assert.doesNotMatch(steps, /setBundle\(null\)/);
+    assert.doesNotMatch(metrics, /setBundle\(null\)/);
+    assert.doesNotMatch(steps, /useEffect\(\(\) => \{\s*void refresh\(\);/);
+    assert.doesNotMatch(metrics, /useEffect\(\(\) => \{\s*void refresh\(\);/);
+    assert.doesNotMatch(hydration, /force: true/);
+  });
+
+  it('server health rows are fetched without waiting for native HealthKit', () => {
+    const steps = src('src/lib/stepsMetrics.ts');
+    const metrics = src('src/lib/healthMetrics.ts');
+    const stepsFn = steps.slice(steps.indexOf('export async function fetchStepsMetrics'), steps.indexOf('export async function fetchStepsTotalBetween'));
+    const metricsFn = metrics.slice(metrics.indexOf('export async function fetchHealthMetrics'), metrics.indexOf('export { getHealthPlatform'));
+    assert.match(stepsFn, /const storedPromise = pullStoredHealth/);
+    assert.match(metricsFn, /const storedPromise = pullStoredHealth/);
+    assert.match(stepsFn, /void syncNativeHealthToServer/);
+    assert.doesNotMatch(stepsFn, /await syncNativeHealthToServer/);
   });
 });

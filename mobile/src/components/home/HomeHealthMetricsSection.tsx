@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Link2 } from 'lucide-react-native';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { ChartCardSkeleton } from '@/components/ui/Skeleton';
@@ -53,12 +53,6 @@ export function HomeHealthMetricsSection({ profile: _profile }: Props) {
   const platform = getHealthPlatform();
   const platformLabel =
     platform === 'apple' ? ka.cycle.healthApple : platform === 'google' ? ka.cycle.healthGoogle : '';
-
-  useFocusEffect(
-    useCallback(() => {
-      void refresh();
-    }, [refresh]),
-  );
 
   const connect = useCallback(() => {
     void (async () => {

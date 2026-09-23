@@ -1,10 +1,10 @@
 # App Review corrections — September 22, 2026
 
-Prepared for the rejection of iOS 1.10.9 (16), submission 65e4ff40-56ce-4be3-8a76-b6ad689968d7. Corrected source version: 1.0.0.11.6; iOS marketing version: 1.11.6. This document does not certify App Store approval or a completed signed build.
+Prepared for the rejection of iOS 1.10.9 (17), submission 65e4ff40-56ce-4be3-8a76-b6ad689968d7. Corrected source version: 1.0.0.11.9; iOS marketing version: 1.11.9. This document does not certify App Store approval or a completed signed build.
 
 ## Privacy and AI sharing
 
-- Replaced the absolute-positioned consent overlay with a native `Modal` using the app's over-full-screen presentation. It has a bounded scrolling body, a maximum 560-point card width, safe-area spacing, and fixed accept/decline controls. The disclosure is readable on smaller phones and iPad-sized layouts.
+- Replaced the absolute-positioned consent overlay with a native `Modal` using the app's over-full-screen presentation. It has a bounded scrolling body, a maximum 720-point card width, safe-area spacing, and fixed accept/decline controls. English review locales see English recipient/data copy; Georgian locales keep Georgian. The disclosure is readable on smaller phones and iPad-sized layouts.
 - Named recipients appear first: OpenRouter, Google Cloud Vertex AI, Novita AI, Microsoft Azure (including Azure Speech), and EvidenceMD. The disclosure specifies messages/history, relevant health context, selected images/document text, permitted cycle information, pet information and voice data, depending on the chosen feature.
 - Recording audio goes through OpenRouter to Google Vertex AI for transcription. Enabled spoken replies send response text to Azure Speech. The general privacy-policy acceptance does not authorize AI processing.
 - Consent is voluntary. A declined or closed prompt stops the pending request; non-AI features remain available. The user can revoke consent under **პროფილი → AI მონაცემების გაზიარება**. A changed disclosure requires a fresh decision. The server independently checks consent before provider transport.

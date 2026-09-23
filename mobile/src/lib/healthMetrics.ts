@@ -59,24 +59,31 @@ export async function fetchHealthMetrics(
 
   const nativeRuntime = isHealthPlatformSupported() && !isExpoGo();
   const deviceConnected = nativeRuntime && (await isHealthSyncEnabled());
+  const storedPromise = pullStoredHealth(undefined, undefined, opts);
+  const nativePromise = nativeRuntime
+    ? (async () => {
+        const impl = await metricsNativeImpl();
+        const [metrics, steps] = await Promise.all([
+          impl?.fetchHealthMetricsNative ? impl.fetchHealthMetricsNative() : Promise.resolve({} as Partial<Record<HealthMetricKey, HealthMetricPoint[]>>),
+          impl?.fetchStepsNative ? impl.fetchStepsNative(new Date(`${daysAgo(90)}T00:00:00`)) : Promise.resolve([] as StepSample[]),
+        ]);
+        void syncNativeHealthToServer(metrics, steps);
+        return { metrics, steps };
+      })()
+    : Promise.resolve({ metrics: {} as Partial<Record<HealthMetricKey, HealthMetricPoint[]>>, steps: [] as StepSample[] });
 
-  let nativeRaw: Partial<Record<HealthMetricKey, HealthMetricPoint[]>> = {};
-  let stepSamples: StepSample[] = [];
+  const stored = await storedPromise;
+  const native = nativeRuntime
+    ? await Promise.race([
+        nativePromise,
+        new Promise<{ metrics: Partial<Record<HealthMetricKey, HealthMetricPoint[]>>; steps: StepSample[] }>((resolve) =>
+          setTimeout(() => resolve({ metrics: {}, steps: [] }), 2000),
+        ),
+      ])
+    : { metrics: {}, steps: [] };
 
-  if (nativeRuntime) {
-    const impl = await metricsNativeImpl();
-    if (impl?.fetchHealthMetricsNative) {
-      nativeRaw = await impl.fetchHealthMetricsNative();
-    }
-    if (impl?.fetchStepsNative) {
-      stepSamples = await impl.fetchStepsNative(new Date(`${daysAgo(90)}T00:00:00`));
-    }
-    void syncNativeHealthToServer(nativeRaw, stepSamples);
-  }
-
-
-
-  const stored = await pullStoredHealth(undefined, undefined, opts);
+  const nativeRaw = native.metrics;
+  const stepSamples = native.steps;
 
   const mergedRaw = mergeMetricPoints(nativeRaw, storedDailyToRaw(stored.daily));
 

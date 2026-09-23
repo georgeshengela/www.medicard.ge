@@ -139,6 +139,10 @@ describe('device access bootstrap', () => {
     const fn = text.slice(text.indexOf('export async function fetchStepsNative'), text.length);
     assert.doesNotMatch(fn, /requestAuthorization/);
     assert.doesNotMatch(fn, /ensureHealthReadAccess/);
+    assert.match(fn, /queryStatisticsCollectionForQuantity/);
+    assert.match(fn, /\{ day: 1 \}/);
+    assert.doesNotMatch(fn, /while \(cursor/);
+    assert.doesNotMatch(fn, /queryDayStepTotal/);
   });
 
   it('steps fetch is not gated on the wiped health-sync pref', () => {

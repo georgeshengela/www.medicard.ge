@@ -1,9 +1,13 @@
 # MEDICARD — კონფიდენციალურობის პოლიტიკა
 
-**ბოლო განახლება:** 22 სექტემბერი, 2026
+**ბოლო განახლება:** 23 სექტემბერი, 2026
 **ძალაში შესვლის თარიღი:** 20 სექტემბერი, 2026
 
 ეს პოლიტიკა განმარტავს, როგორ მუშავდება MEDICARD-ში ანგარიშის, ჯანმრთელობისა და აქტივობის ინფორმაცია. მონაცემების მოცულობა დამოკიდებულია შენს მიერ გამოყენებულ ფუნქციებსა და გაცემულ ნებართვებზე. პოლიტიკის წაკითხვა AI-სთან გაზიარებაზე თანხმობას არ ნიშნავს — ამისთვის აპი ცალკე არჩევანს გთავაზობს.
+
+## English summary (App Review)
+
+MEDICARD is a free consumer health app. There are no paid digital subscriptions, unlocks or in-app purchases for app features. Before any personal data is sent to a third-party AI service, the app shows a separate in-app permission that names what may be sent and who receives it: OpenRouter, Inc.; Google Cloud Vertex AI; Novita AI; Microsoft Azure, including Azure Speech; and EvidenceMD Inc. The user must choose to allow sharing or continue without AI. Closing or declining blocks the pending transmission. Registration or accepting this policy does not authorize AI sharing. Details below are the full Georgian policy.
 
 # 1. ოპერატორი და კონტაქტი
 

@@ -8,10 +8,14 @@ export type LegalSection = {
 /** Medicard.GE — კონფიდენციალურობის პოლიტიკა. Synced from scripts/privacy-source.md */
 export const PRIVACY_POLICY_KA: { title: string; effectiveDate: string; intro: string; highlight: string; sections: LegalSection[] } = {
   "title": "კონფიდენციალურობის პოლიტიკა",
-  "effectiveDate": "22 სექტემბერი, 2026",
+  "effectiveDate": "23 სექტემბერი, 2026",
   "intro": "ეს პოლიტიკა განმარტავს, როგორ მუშავდება MEDICARD-ში ანგარიშის, ჯანმრთელობისა და აქტივობის ინფორმაცია. მონაცემების მოცულობა დამოკიდებულია შენს მიერ გამოყენებულ ფუნქციებსა და გაცემულ ნებართვებზე. პოლიტიკის წაკითხვა AI-სთან გაზიარებაზე თანხმობას არ ნიშნავს — ამისთვის აპი ცალკე არჩევანს გთავაზობს.",
   "highlight": "MEDICARD არ ყიდის თქვენს ჯანმრთელობის მონაცემებს. სრული პოლიტიკა: medicard.ge/privacy.",
   "sections": [
+    {
+      "title": "English summary (App Review)",
+      "intro": "MEDICARD is a free consumer health app. There are no paid digital subscriptions, unlocks or in-app purchases for app features. Before any personal data is sent to a third-party AI service, the app shows a separate in-app permission that names what may be sent and who receives it: OpenRouter, Inc.; Google Cloud Vertex AI; Novita AI; Microsoft Azure, including Azure Speech; and EvidenceMD Inc. The user must choose to allow sharing or continue without AI. Closing or declining blocks the pending transmission. Registration or accepting this policy does not authorize AI sharing. Details below are the full Georgian policy."
+    },
     {
       "title": "1. ოპერატორი და კონტაქტი",
       "intro": "MEDICARD-ს მართავს გიორგი შენგელია (George Shengelia), ფიზიკური პირი, რომელიც პასუხისმგებელია ამ პოლიტიკაში აღწერილ პერსონალური მონაცემების დამუშავებაზე. „MEDICARD“ პროდუქტის სახელია და კომპანიად რეგისტრაციას არ აღნიშნავს.",

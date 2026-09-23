@@ -189,10 +189,6 @@ export default function LabDateScreen() {
         visible={quotaBlock !== undefined}
         resetsInMs={quotaBlock}
         onClose={() => setQuotaBlock(undefined)}
-        onUpgrade={() => {
-          setQuotaBlock(undefined);
-          router.push('/package');
-        }}
       />
     </View>
   );

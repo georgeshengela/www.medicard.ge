@@ -1972,7 +1972,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       const text = await response.text();
       return parseJsonBody<T>(response.status, text, response.headers.get('Retry-After'));
     };
-    return await (options.retryAuthConnection
+    const replayOnce = options.retryAuthConnection || method === 'GET' || method === 'HEAD';
+    return await (replayOnce
       ? withAuthConnectionRetry(perform, controller.signal)
       : perform());
   } catch (error) {

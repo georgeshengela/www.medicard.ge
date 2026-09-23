@@ -216,10 +216,6 @@ export function LabAlignCard({
         visible={quota != null}
         resetsInMs={quota}
         onClose={() => setQuota(undefined)}
-        onUpgrade={() => {
-          setQuota(undefined);
-          router.push('/package');
-        }}
       />
     </>
   );

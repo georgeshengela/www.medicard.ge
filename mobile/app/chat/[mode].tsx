@@ -12,14 +12,13 @@ import { Markdown } from '@/components/ui/Markdown';
 import { QuotaSheet } from '@/components/QuotaSheet';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
-import { ApiError, api, type ChatMessage } from '@/lib/api';
+import { ApiError, api, ensureAiSharingConsentForRequest, type ChatMessage } from '@/lib/api';
 import { streamAiQuery } from '@/lib/aiQueryStream';
 import { getConversationalChatProfile } from '@/lib/chatUiConfig';
 import { CHAT_MESSAGE_LIMIT, requireAnalysisText, IncompleteAnalysisError } from '@/lib/analysisFlow';
 import { useAnalysisTask } from '@/lib/useAnalysisTask';
 import { localAccountId } from '@/lib/localAccount';
 import { useThemeColors } from '@/theme/colors';
-import { usePlanUsage } from '@/lib/planUsage';
 import { useAuth } from '@/store/AuthContext';
 import { consumeAssistantLaunch } from '@/lib/assistant';
 
@@ -47,7 +46,6 @@ function ChatScreenContent() {
   const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'error'>(params.sessionId ? 'loading' : 'ready');
   const [historyAttempt, setHistoryAttempt] = useState(0);
   useEffect(() => { alive.current = true; return () => { alive.current = false; abort.current?.abort(); }; }, []);
-  const plan = usePlanUsage();
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -71,13 +69,6 @@ function ChatScreenContent() {
       .map((part) => part[0])
       .join('')
       .toUpperCase() ?? 'M';
-
-  const remainingLabel = useMemo(() => {
-    if (plan.unlimited) return ka.usage.unlimitedBanner;
-    if (plan.exhausted) return ka.usage.exhaustedTitle;
-    if (plan.remaining != null) return ka.chat.chatsRemaining(plan.remaining);
-    return undefined;
-  }, [plan]);
 
   useEffect(() => {
     if (!params.sessionId) return;
@@ -215,9 +206,8 @@ function ChatScreenContent() {
           <ChatTopNav
             title={profile.title}
             icon={profile.icon}
-            remainingLabel={remainingLabel}
             onBack={() => router.back()}
-            onSettings={() => router.push('/package' as never)}
+            onSettings={() => { void ensureAiSharingConsentForRequest('', 'GET', undefined, true).catch(() => undefined); }}
           />
         }
         footer={<ChatInputBar value={draft} onChangeText={setDraft} onSend={() => send(draft)} sending={sending} disabled={historyState !== 'ready'} />}
@@ -306,10 +296,6 @@ function ChatScreenContent() {
         visible={quotaBlock !== undefined}
         resetsInMs={quotaBlock}
         onClose={() => setQuotaBlock(undefined)}
-        onUpgrade={() => {
-          setQuotaBlock(undefined);
-          router.push('/package');
-        }}
       />
     </>
   );

@@ -25,7 +25,7 @@ export function ChatTopNav({ title, subtitle, icon: Icon, remainingLabel, modelB
         <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 21, color: C.textPrimary }} numberOfLines={2}>{title}</Text>
         {subtitle || remainingLabel || modelBadge ? <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11, lineHeight: 16, color: C.textSecondary }} numberOfLines={1}>{subtitle || remainingLabel || modelBadge}</Text> : null}
       </View>
-      {onSettings ? <Pressable accessibilityRole="button" accessibilityLabel="გამოყენების ინფორმაცია" onPress={onSettings}
+      {onSettings ? <Pressable accessibilityRole="button" accessibilityLabel="AI data sharing" onPress={onSettings}
         style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.cardBg }}>
         <SlidersHorizontal size={19} color={C.textSecondary} />
       </Pressable> : null}
