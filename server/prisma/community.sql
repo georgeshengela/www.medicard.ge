@@ -64,3 +64,13 @@ CREATE INDEX IF NOT EXISTS "CommunityBlock_target" ON "CommunityBlock"("blockedI
 
 ALTER TABLE "CommunityPost" ADD COLUMN IF NOT EXISTS revision INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "CommunityComment" ADD COLUMN IF NOT EXISTS revision INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE "CommunityComment" ADD COLUMN IF NOT EXISTS "parentId" TEXT REFERENCES "CommunityComment"("id") ON DELETE SET NULL;
+ALTER TABLE "CommunityReaction" ADD COLUMN IF NOT EXISTS emoji TEXT CHECK(emoji IN ('like','love','care','haha','wow','sad','angry','dislike'));
+ALTER TABLE "CommunityNotification" ADD COLUMN IF NOT EXISTS "eventType" TEXT;
+CREATE INDEX IF NOT EXISTS "CommunityComment_parent" ON "CommunityComment"("parentId");
+CREATE TABLE IF NOT EXISTS "CommunityCommentLike" (
+ "commentId" TEXT NOT NULL REFERENCES "CommunityComment"("id") ON DELETE CASCADE,
+ "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+ PRIMARY KEY("commentId","userId")
+);

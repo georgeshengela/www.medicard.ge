@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.11.10",
+    "version": "1.0.0.11.11",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -14,12 +14,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
-      "version": "1.11.10",
+      "version": "1.11.11",
       "buildNumber": "83",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD AI",
         "NSCameraUsageDescription": "კამერა საჭიროა ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის, ასევე MEDI RUN-ში ვირტუალური საჩუქრის აღმოსაჩენად.",
-        "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა სამედიცინო დოკუმენტების, ანალიზებისა და ცხოველის ფოტოების ასატვირთად.",
+        "NSPhotoLibraryUsageDescription": "გალერეაზე წვდომა საჭიროა შენ მიერ არჩეული სამედიცინო დოკუმენტების, ცხოველის ფოტოების და ქალების სივრცის პოსტების ფოტოების ასატვირთად.",
         "NSMicrophoneUsageDescription": "მიკროფონი გამოიყენება შენი სურვილით ხმოვანი ასისტენტისთვის და ხმის ანალიზისთვის.",
         "NSFaceIDUsageDescription": "MEDICARD AI-ს Face ID სჭირდება ანგარიშისა და ციკლის მონაცემების დასაცავად.",
         "NSLocationWhenInUseUsageDescription": "MEDICARD AI-ს ადგილმდებარეობა სჭირდება ქალაქის/ამინდისთვის და MEDIRUN-ში გავლილი გზისა და ახლომახლო საჩუქრების აღმოსაჩენად. ფონური წვდომა არ გამოიყენება.",
@@ -171,7 +171,7 @@
     ],
     "extra": {
       "router": {},
-      "medicardInternalVersion": "1.0.0.11.10",
+      "medicardInternalVersion": "1.0.0.11.11",
       "apiUrl": "https://medicard.ge",
       "privacyPolicyUrl": "https://medicard.ge/privacy",
       "termsOfServiceUrl": "https://medicard.ge/terms",

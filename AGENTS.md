@@ -109,3 +109,7 @@ The owner removed the district walking competition completely. Do not recreate i
 ## Unified Medi conversation (2026-09-21, app 1.0.0.11.4)
 
 Owner explicitly removed human/pet tabs from the global action assistant. Do not restore them. `/assistant` sends `scope:auto`; server resolves owned pet names (including Georgian suffixes) or asks for identity clarification. This UX does NOT merge human/pet storage or authorization. Dedicated Medi Vet clinical chat remains separate. Voice questions stay on the conversation canvas; manual forms and capability discovery are opt-in. Keep signed reviews and idempotent execution, never fabricate external clinic bookings or medication doses. See docs/MEDI-ASSISTANT.md latest entry.
+
+## Keyboard comfort (owner requirement, 2026-09-24)
+
+Every form must keep the focused input and primary action above the keyboard, with compact spacing and smooth opening/closing. Follow the existing sign-in pattern: a bounded scrolling form and a pinned, animated footer, with safe-area padding only when the keyboard is closed. Never combine two keyboard-inset mechanisms. Check small screens, iOS and Android, focus changes, dismissal and submission; browser-only checks are not proof of native keyboard behavior. This is a completion requirement for new and edited forms, including community nickname onboarding.

@@ -18,7 +18,7 @@ export async function dispatchCommunityPush({db=prisma,send=sendExpoPush}={}){
     const tokens=allowed?await db.pushToken.findMany({where:{userId:row.userId,active:true},select:{token:true}}):[];
     let state='SKIPPED';
     if(tokens.length){
-     const result=await send(tokens.map(t=>t.token),{title:'MEDICARD • ქალების სივრცე',body:notificationText[row.kind],data:{route:`/community?post=${row.postId}`,notificationId:row.id}}, {fetchImpl:(url,options)=>fetch(url,{...options,signal:AbortSignal.timeout(15000)})});
+     const result=await send(tokens.map(t=>t.token),{title:'MEDICARD • ქალების სივრცე',body:notificationText[row.eventType||row.kind],data:{route:`/community?post=${row.postId}`,notificationId:row.id}}, {fetchImpl:(url,options)=>fetch(url,{...options,signal:AbortSignal.timeout(15000)})});
      if(!result.sent)throw new Error('Push provider did not accept delivery');state='SENT';
     }
     await db.$executeRaw`UPDATE "CommunityNotification" SET "pushState"=${state} WHERE id=${row.id}`;

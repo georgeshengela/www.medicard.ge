@@ -1158,6 +1158,9 @@ function connectAdminRealtime() {
     }
     if (Number.isFinite(next)) lastLiveNewUsers = next;
   });
+  adminSocket.on('community:changed', () => {
+    if (location.hash.includes('/community') && !document.querySelector('dialog[open]')) window.renderCommunity?.();
+  });
   adminSocket.on('brain:sync', () => {
     if (state.tab !== 'push' || pushStudioTab !== 'brain') return;
     if (document.hidden || adminIsTyping()) return;

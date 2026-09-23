@@ -1,3 +1,4 @@
+import { attachCommunityRealtime } from './communityRealtime.js';
 import { Server } from 'socket.io';
 import { prisma } from './prisma.js';
 import { tbilisiYmd } from './checkIn.js';
@@ -24,6 +25,8 @@ export function attachAdminRealtime(httpServer) {
     cors: { origin: true, credentials: true },
     transports: ['websocket', 'polling'],
   });
+
+  attachCommunityRealtime(io);
 
   io.use(async (socket, next) => {
     try {

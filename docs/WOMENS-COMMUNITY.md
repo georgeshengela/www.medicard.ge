@@ -6,7 +6,7 @@ Native route: `/community`. Entry: female account → Profile → ქალე�
 
 - Server rechecks an authenticated ACTIVE account with `gender=FEMALE`. This is self-declared profile eligibility, not verification of someone's gender.
 - Community membership requires a separate public nickname and explicit acceptance of versioned rules. Existing medical/cycle records are never imported into posts or sent to AI for moderation.
-- Posting and commenting default to anonymous. Responses are allowlisted: no account ID, email, real name, medical data or original image bytes. Named posts show only the chosen community nickname.
+- Posting and commenting default to the community nickname, with explicit anonymous selection. Responses are allowlisted: no account ID, email, real name, medical data or original image bytes. Named posts show only the chosen community nickname.
 - The backend retains authorship for ownership, blocking and moderation. Do not promise anonymity from the operator. Moderation screens also mask anonymous names. Support contact: support@medicard.ge.
 - Replies by the author of an anonymous post are forced anonymous by the server. Other participants choose their own anonymity independently.
 - Photos are authenticated, not public URLs. Server decodes and re-encodes a bounded image, strips EXIF/GPS, limits decoded pixels and dimensions, and stores a JPEG. Images appear in device memory; no public upload bucket is introduced. Users can still reveal themselves in text/photos or take screenshots; onboarding explains this.
@@ -14,7 +14,7 @@ Native route: `/community`. Entry: female account → Profile → ქალე�
 
 ## Publishing and moderation
 
-All posts/comments are PENDING until a human moderator approves them. This is the initial objectionable-content filter; there is no external AI transmission. Authors see their own pending/hidden items. Other members see only published content from active, unbanned members.
+New posts/comments publish immediately. Named posting is the default; anonymous posting is an explicit choice. Reports, blocks, moderator removal and account suspension remain available; there is no external AI transmission. Editing hidden content does not republish it. Authors see their own pending/hidden items. Other members see only published content from active, unbanned members.
 
 Reporting, blocking, own-content deletion, approval, hiding, suspension and restoration are implemented. Content deletion cascades to dependent reactions, images, reports and notifications. Account deletion cascades through User foreign keys. Audit records contain action, internal target ID and reason; moderators should not put personal/health information in reasons.
 
@@ -38,3 +38,13 @@ Unit: `node --test src/lib/community.test.js src/lib/communityPush.test.js` in s
 The local development workspace contains isolated HTTP and browser QA evidence. Test credentials and authentication tokens must never be committed. Remote push banners and iOS keyboard behavior require physical-device verification; Expo Web is not proof of either.
 
 Reference: https://developer.apple.com/app-store/review/guidelines/#user-generated-content
+
+## Discussions and realtime (2026-09-24)
+
+Posts/comments publish immediately. Replies link to a parent comment from the same accessible post; deleting a parent keeps the reply but removes its link. Comment likes and eight mutually exclusive post reactions are idempotent. The existing legacy numeric reaction API remains compatible.
+
+Authenticated Socket.IO namespace `/community` sends empty invalidations after committed writes; HTTP reloads re-check membership, mutual blocks and publication status. Tokens expire, suspended members are disconnected, and events contain no content or identifiers. Reconnect, app foreground and 30-second reconciliation recover missed events. Immediate fan-out is per server instance; horizontal scaling requires a shared Socket.IO adapter. The 30-second fallback is not a substitute for that adapter at scale. Admins receive an invalidation in their existing privileged room.
+
+Bundled reaction artwork: Google Noto Emoji animations, CC BY 4.0, attribution in `mobile/assets/community/reactions/ATTRIBUTION.md`. Static PNG fallbacks respect reduced motion; animations play once in the picker.
+
+Regression checks: `node --test server/src/lib/community.test.js server/src/lib/communityPush.test.js`, `node mobile/src/lib/communityThreads.test.ts`, and `npm run typecheck`. The integration runner `server/scripts/verify-community.cjs` requires `COMMUNITY_QA_SESSION_FILE` pointing to isolated test tokens and intentionally connects only to localhost:4360. It must never be pointed at real user accounts.

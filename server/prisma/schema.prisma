@@ -8,6 +8,7 @@ generator client {
 }
 
 model User {
+  communityCommentLikes CommunityCommentLike[]
   communityMember CommunityMember?
   communityPosts CommunityPost[]
   communityComments CommunityComment[]
@@ -2080,6 +2081,11 @@ model CommunityPost {
   @@index([status, createdAt(sort: Desc), id], map: "CommunityPost_feed")
 }
 model CommunityComment {
+  parentId String?
+  parent CommunityComment? @relation("CommunityReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies CommunityComment[] @relation("CommunityReplies")
+  likes CommunityCommentLike[]
+  @@index([parentId], map: "CommunityComment_parent")
   revision Int @default(0)
   notifications CommunityNotification[]
   id String @id
@@ -2097,6 +2103,7 @@ model CommunityComment {
   @@index([postId, createdAt], map: "CommunityComment_post")
 }
 model CommunityReaction {
+  emoji String?
   postId String
   post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId String
@@ -2128,6 +2135,7 @@ model CommunityReport {
   // Partial uniqueness and exactly-one-target constraints are defined in community.sql.
 }
 model CommunityNotification {
+  eventType String?
   commentId String?
   comment CommunityComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   id String @id
@@ -2155,4 +2163,12 @@ model CommunityAudit {
   targetId String
   reason String
   createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model CommunityCommentLike {
+  commentId String
+  comment CommunityComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([commentId, userId])
 }
