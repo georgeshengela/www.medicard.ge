@@ -53,9 +53,7 @@ export default function SignIn() {
       await signIn(emailValue, passwordValue);
       // AuthGate owns the destination (onboarding, saved Home, or a pending share).
     } catch (error) {
-      const message = authErrorMessage(error);
-      const shown = message.includes('არასწორი') ? ka.auth.loginError : message;
-      setErrors({ form: shown });
+      setErrors({ form: authErrorMessage(error) });
     } finally {
       submittingRef.current = false;
       setBusy(false);

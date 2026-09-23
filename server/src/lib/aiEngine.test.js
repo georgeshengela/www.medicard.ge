@@ -5,6 +5,7 @@ import {
   OPENROUTER_MODELS,
   buildOpenRouterChatPayload,
   extractStreamDelta,
+  extractChatReasoning,
   normalizeAiEngine,
   openRouterFallbackModels,
   openRouterReasoningFor,
@@ -104,4 +105,17 @@ test('assistant may request low effort without changing clinical defaults', () =
   const model='google/gemini-3.8-flash';
   assert.deepEqual(buildOpenRouterChatPayload({model,messages:[],reasoningEffort:'low'}).reasoning,{effort:'low',exclude:true});
   assert.deepEqual(buildOpenRouterChatPayload({model,messages:[]}).reasoning,{effort:'medium',exclude:true});
+});
+
+test('transcription may keep Gemini 3 reasoning so a parked transcript is recoverable', () => {
+  const model = OPENROUTER_MODELS.gemini_flash;
+  assert.deepEqual(
+    buildOpenRouterChatPayload({ model, messages: [], reasoningEffort: 'minimal', reasoningExclude: false }).reasoning,
+    { effort: 'minimal', exclude: false },
+  );
+  assert.equal(
+    extractChatReasoning({ choices: [{ message: { content: null, reasoning: '{"text":"დავლიე 250 მლ"}' } }] }),
+    '{"text":"დავლიე 250 მლ"}',
+  );
+  assert.equal(extractChatReasoning({ choices: [{ message: { content: 'ხილული' } }] }), '');
 });

@@ -83,9 +83,12 @@ export function buildOpenRouterChatPayload({
   stream = false,
   responseFormat,
   reasoningEffort,
+  reasoningExclude,
 }) {
   const reasoning = openRouterReasoningFor(model);
-  if (reasoning && ['minimal', 'low', 'medium', 'high'].includes(reasoningEffort)) reasoning.effort = reasoningEffort;
+  const next = reasoning ? { ...reasoning } : undefined;
+  if (next && ['minimal', 'low', 'medium', 'high'].includes(reasoningEffort)) next.effort = reasoningEffort;
+  if (next && reasoningExclude === false) next.exclude = false;
   return {
     model,
     messages,
@@ -93,7 +96,7 @@ export function buildOpenRouterChatPayload({
     max_tokens: maxTokens,
     stream,
     ...(responseFormat ? { response_format: responseFormat } : {}),
-    ...(reasoning ? { reasoning } : {}),
+    ...(next ? { reasoning: next } : {}),
   };
 }
 
@@ -133,10 +136,7 @@ export function publicAiEngineCatalog() {
   ];
 }
 
-export function extractChatContent(completion) {
-  const msg = completion?.choices?.[0]?.message;
-  if (!msg) return '';
-  const raw = msg.content;
+function joinTextParts(raw) {
   if (typeof raw === 'string') return raw.trim();
   if (Array.isArray(raw)) {
     return raw
@@ -144,7 +144,19 @@ export function extractChatContent(completion) {
       .join('')
       .trim();
   }
-  return ''; // Hidden reasoning is never visible output or an action envelope.
+  return '';
+}
+
+export function extractChatContent(completion) {
+  const msg = completion?.choices?.[0]?.message;
+  if (!msg) return '';
+  return joinTextParts(msg.content); // Hidden reasoning is never visible output or an action envelope.
+}
+
+export function extractChatReasoning(completion) {
+  const msg = completion?.choices?.[0]?.message;
+  if (!msg) return '';
+  return joinTextParts(msg.reasoning ?? msg.reasoning_content);
 }
 
 export function extractStreamDelta(chunk) {
@@ -219,6 +231,7 @@ export async function askOpenRouterPrepared({
   signal,
   responseFormat,
   reasoningEffort,
+  reasoningExclude,
 }) {
   if (typeof globalThis.__medicardAskOpenRouterPrepared === 'function') {
     return globalThis.__medicardAskOpenRouterPrepared({
@@ -231,6 +244,7 @@ export async function askOpenRouterPrepared({
       signal,
       responseFormat,
       reasoningEffort,
+      reasoningExclude,
     });
   }
   if (!openrouter) {
@@ -247,6 +261,7 @@ export async function askOpenRouterPrepared({
       stream,
       responseFormat,
       reasoningEffort,
+      reasoningExclude,
     });
     let completion;
     try {
@@ -261,8 +276,13 @@ export async function askOpenRouterPrepared({
 
     if (!stream) {
       const answer = extractChatContent(completion);
+      const reasoning = extractChatReasoning(completion);
+      if (!answer && !reasoning) {
+        throw Object.assign(new AiEngineError('AI-მა ცარიელი პასუხი დააბრუნა.'), { code: 'AI_EMPTY_RESPONSE' });
+      }
       return {
-        content: finishAnswer(answer, { skipDisclaimer, onDelta }),
+        content: answer ? finishAnswer(answer, { skipDisclaimer, onDelta }) : '',
+        reasoning,
         model: completion.model ?? model,
         usage: completion.usage ?? null,
         engine: 'openrouter',
