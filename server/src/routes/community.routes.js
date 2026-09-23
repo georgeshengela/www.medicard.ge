@@ -102,10 +102,10 @@ r.put('/posts/:id/reaction',write,wrap(async(req,res)=>{
 r.get('/posts/:id/comments',wrap(async(req,res)=>{
  const postId=id.parse(req.params.id);await visiblePost(postId,req.user.id);
  const before=parseCursor(req.query.before),limit=z.coerce.number().int().min(1).max(100).default(30).parse(req.query.limit);
- const rows=await prisma.$queryRaw(Prisma.sql`SELECT c.id,c.revision,c.body,c.anonymous,c."authorId",c.status,c."createdAt",c."parentId",m.alias,
+ const rows=await prisma.$queryRaw(Prisma.sql`SELECT c.id,c."postId",c.revision,c.body,c.anonymous,c."authorId",c.status,c."createdAt",c."parentId",m.alias,
  (SELECT count(*)::int FROM "CommunityCommentLike" l WHERE l."commentId"=c.id) AS likes,
  EXISTS(SELECT 1 FROM "CommunityCommentLike" l WHERE l."commentId"=c.id AND l."userId"=${req.user.id}) AS liked,
- (SELECT CASE WHEN pc.anonymous THEN 'ანონიმური წევრი' ELSE pm.alias END FROM "CommunityComment" pc JOIN "CommunityMember" pm ON pm."userId"=pc."authorId" JOIN "User" pu ON pu.id=pc."authorId" WHERE pc.id=c."parentId" AND pc.status='PUBLISHED' AND NOT pm.banned AND pu.status='ACTIVE' AND pu.gender='FEMALE' AND ${blocked(req.user.id,Prisma.sql`pc."authorId"`)}) AS "replyTo"
+ (SELECT jsonb_build_object('anonymous',pc.anonymous,'authorId',pc."authorId",'alias',pm.alias) FROM "CommunityComment" pc JOIN "CommunityMember" pm ON pm."userId"=pc."authorId" JOIN "User" pu ON pu.id=pc."authorId" WHERE pc.id=c."parentId" AND pc.status='PUBLISHED' AND NOT pm.banned AND pu.status='ACTIVE' AND pu.gender='FEMALE' AND ${blocked(req.user.id,Prisma.sql`pc."authorId"`)}) AS "replyIdentity"
  FROM "CommunityComment" c JOIN "CommunityMember" m ON m."userId"=c."authorId" JOIN "User" u ON u.id=c."authorId"
  WHERE c."postId"=${postId} AND (c.status='PUBLISHED' OR c."authorId"=${req.user.id}) AND NOT m.banned AND u.status='ACTIVE' AND u.gender='FEMALE' AND ${blocked(req.user.id,Prisma.sql`c."authorId"`)} ${before?Prisma.sql`AND (c."createdAt",c.id)<(${before.date},${before.id})`:Prisma.empty} ORDER BY c."createdAt" DESC,c.id DESC LIMIT ${limit+1}`);
  res.json({comments:rows.slice(0,limit).map(c=>publicContent(c,req.user.id)),next:rows.length>limit?cursor(rows[limit-1]):null});

@@ -19,11 +19,11 @@ const reactions = [
   { key: 'dislike', label: 'არ ვეთანხმები', image: require('../../../assets/community/reactions/dislike.png'), motion: require('../../../assets/community/reactions/dislike.json') },
 ];
 
-function ReactionArtwork({ item, animated = false }: { item: typeof reactions[number]; animated?: boolean }) {
+function ReactionArtwork({ item, animated = false, compact = false }: { item: typeof reactions[number]; animated?: boolean; compact?: boolean }) {
   const reduce = usePrefersReducedMotion();
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const size = animated ? 46 : 23;
+  const size = animated ? 46 : compact ? 17 : 20;
   return animated && !reduce && !failed
     ? <View style={{ width: size, height: size }}>{!loaded && <Image source={item.image} style={{ width: size, height: size, position: 'absolute' }} />}<LottieView onAnimationLoaded={() => setLoaded(true)} source={item.motion} autoPlay loop={false} onAnimationFailure={() => setFailed(true)} resizeMode="contain" style={{ width: size, height: size }} webStyle={{ width: size, height: size }} /></View>
     : <Image source={item.image} accessibilityIgnoresInvertColors style={{ width: size, height: size }} />;
@@ -44,16 +44,16 @@ export function CommunityReactions({ counts, selected, comments, disabled, onRea
   const common = reactions.filter(r => counts[r.key] > 0).sort((a, b) => counts[b.key] - counts[a.key]).slice(0, 3);
   const label = { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, color: c.text200 };
   const show = () => { setOpen(true); void Haptics.selectionAsync().catch(() => {}); };
-  return <View style={{ gap: 10 }}>
-    {(total > 0 || comments > 0) && <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>{common.map(r => <ReactionArtwork key={r.key} item={r} />)}{total > 0 && <Text style={{ ...label, marginLeft: 4 }}>{total}</Text>}</View>
-      <Pressable accessibilityRole="button" accessibilityLabel={`კომენტარები: ${comments}`} onPress={onComment} style={{ minHeight: 32, justifyContent: 'center' }}><Text style={label}>{comments} კომენტარი</Text></Pressable>
+  return <View>
+    {(total > 0 || comments > 0) && <View style={{ minHeight: 26, paddingBottom: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+      <View accessible accessibilityLabel={`${total} რეაქცია`} style={{ flexDirection: 'row', alignItems: 'center' }}>{common.map((r,index) => <View key={r.key} style={{ marginLeft: index ? -4 : 0, borderRadius: 12, borderWidth: 2, borderColor: c.bg100, backgroundColor: c.bg100, zIndex: 3-index }}><ReactionArtwork item={r} compact /></View>)}{total > 0 && <Text style={{ ...label, fontFamily: 'NotoSansGeorgian_400Regular', marginLeft: 5 }}>{total}</Text>}</View>
+      {comments > 0 && <Pressable accessibilityRole="button" accessibilityLabel={`კომენტარები: ${comments}`} onPress={onComment} style={{minHeight:26,justifyContent:'center'}}><Text style={{ ...label, fontFamily: 'NotoSansGeorgian_400Regular' }}>{comments} კომენტარი</Text></Pressable>}
     </View>}
-    <View style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: c.bg300, paddingTop: 4 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel={active ? `შენი რეაქცია: ${active.label}. რეაქციის შეცვლა` : 'რეაქციის არჩევა'} disabled={disabled} onPress={show} onLongPress={show} style={{ flex: 1, minHeight: 46, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
-        {active ? <ReactionArtwork item={active} /> : <Heart size={21} color={c.text200} />}<Text style={{ ...label, color: active ? c.primary100 : c.text200 }}>{active?.label || 'რეაქცია'}</Text>
+    <View style={{ flexDirection: 'row', borderTopWidth: total > 0 || comments > 0 ? 0.5 : 0, borderColor: c.bg300 }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={active ? `შენი რეაქცია: ${active.label}. რეაქციის შეცვლა` : 'რეაქციის არჩევა'} accessibilityState={{selected:!!active,disabled}} disabled={disabled} onPress={show} onLongPress={show} style={{ flex: 1, minHeight: 44, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', opacity:disabled?0.5:1 }}>
+        {active ? <ReactionArtwork item={active} /> : <Heart size={18} strokeWidth={1.6} color={c.text200} />}<Text style={{ ...label, color: active ? c.primary100 : c.text200 }}>{active?.label || 'რეაქცია'}</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="კომენტარის დაწერა" onPress={onComment} style={{ flex: 1, minHeight: 46, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }}><MessageCircle size={21} color={c.text200} /><Text style={label}>კომენტარი</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={`კომენტარის დაწერა${comments ? ', '+comments+' კომენტარი' : ''}`} onPress={onComment} style={{ flex: 1, minHeight: 44, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }}><MessageCircle size={18} strokeWidth={1.6} color={c.text200} /><Text style={label}>კომენტარი</Text></Pressable>
     </View>
     <Modal visible={open} {...APP_MODAL_PROPS} onRequestClose={() => setOpen(false)}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>

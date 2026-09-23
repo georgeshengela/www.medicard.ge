@@ -110,6 +110,10 @@ The owner removed the district walking competition completely. Do not recreate i
 
 Owner explicitly removed human/pet tabs from the global action assistant. Do not restore them. `/assistant` sends `scope:auto`; server resolves owned pet names (including Georgian suffixes) or asks for identity clarification. This UX does NOT merge human/pet storage or authorization. Dedicated Medi Vet clinical chat remains separate. Voice questions stay on the conversation canvas; manual forms and capability discovery are opt-in. Keep signed reviews and idempotent execution, never fabricate external clinic bookings or medication doses. See docs/MEDI-ASSISTANT.md latest entry.
 
+## Main database only (owner requirement, 2026-09-24)
+
+Always use the main MEDICARD database and https://medicard.ge API for the owner's app, Expo previews, and testing. Never switch to another database or an isolated QA backend unless the owner explicitly changes this rule. The app is prelaunch and the owner tests using existing main-database accounts. Do not copy or reset their data. Keep test writes narrowly scoped and avoid destructive changes.
+
 ## Keyboard comfort (owner requirement, 2026-09-24)
 
 Every form must keep the focused input and primary action above the keyboard, with compact spacing and smooth opening/closing. Follow the existing sign-in pattern: a bounded scrolling form and a pinned, animated footer, with safe-area padding only when the keyboard is closed. Never combine two keyboard-inset mechanisms. Check small screens, iOS and Android, focus changes, dismissal and submission; browser-only checks are not proof of native keyboard behavior. This is a completion requirement for new and edited forms, including community nickname onboarding.

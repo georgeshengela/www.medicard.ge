@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import sharp from 'sharp';
+import { createHmac } from 'node:crypto';
+// Scoped to one discussion: a public label cannot link someone's other posts.
+export function anonymousName(postId, authorId) {
+ const secret=process.env.COMMUNITY_ALIAS_SECRET||process.env.JWT_SECRET;
+ if(!secret||!postId||!authorId)throw new Error('Anonymous identity context is missing');
+ const code=createHmac('sha256',secret).update(JSON.stringify(['community-alias-v1',postId,authorId])).digest('hex').slice(0,12).toUpperCase();
+ return 'მეგობარი · '+code;
+}
 export const COMMUNITY_RULES_VERSION = '2026-09-23';
 export const topics = ['everyday','cycle','pregnancy','wellbeing'];
 export const id = z.string().uuid();
@@ -10,10 +18,10 @@ export function eligible(user) { return user?.gender === 'FEMALE' && user?.statu
 // Explicit allowlist: never spread database rows into member-facing responses.
 export function publicContent(row, viewer) {
  return { id:row.id, revision:Number(row.revision||0), body:row.body, topic:row.topic, anonymous:row.anonymous,
-  author:row.anonymous ? 'ანონიმური წევრი' : row.alias,
+  author:row.anonymous ? anonymousName(row.postId||row.id,row.authorId) : row.alias,
   mine:row.authorId===viewer, status:row.status, createdAt:row.createdAt,
   hasImage:!!row.hasImage, likes:Number(row.likes||0), dislikes:Number(row.dislikes||0),
-  comments:Number(row.comments||0), reaction:Number(row.reaction||0), reactions:row.reactions||{}, myReaction:row.myReaction||null, parentId:row.parentId||null, replyTo:row.replyTo||null, liked:!!row.liked };
+  comments:Number(row.comments||0), reaction:Number(row.reaction||0), reactions:row.reactions||{}, myReaction:row.myReaction||null, parentId:row.parentId||null, replyTo:row.replyIdentity ? (row.replyIdentity.anonymous ? anonymousName(row.postId,row.replyIdentity.authorId) : row.replyIdentity.alias) : row.replyTo||null, liked:!!row.liked };
 }
 export async function cleanImage(encoded) {
  if(!encoded)return null;
