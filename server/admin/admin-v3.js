@@ -792,6 +792,7 @@
       { group: 'People', tab: 'users', label: 'მომხმარებლები' },
       { group: 'Engagement', tab: 'push', label: 'Push · Brain', hash: '#/push?tab=brain' },
       { group: 'Engagement', tab: 'push', label: 'Push · გაგზავნა', hash: '#/push?tab=compose' },
+      { group: 'Engagement', tab: 'community', label: 'ქალების სივრცე' },
       { group: 'Engagement', tab: 'medipulsi', label: 'MEDIPULSI' },
       { group: 'Health & Medi', tab: 'health', label: 'ჯანმრთელობა' },
       { group: 'Health & Medi', tab: 'ai', label: 'Medi' },

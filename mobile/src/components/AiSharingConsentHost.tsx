@@ -43,13 +43,13 @@ export function AiSharingConsentHost() {
       <ScrollView style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 14 }}>
         <View style={{ gap: 6 }}>
           <Text style={[body, { fontFamily: 'NotoSansGeorgian_700Bold', color: colors.text100 }]}>{copy.headings.recipients}</Text>
-          <Text style={body}>{copy.recipients.map(provider => provider.name).join(' · ')}</Text>
+          <Text style={body}>{copy.recipients.map((provider: { name: string }) => provider.name).join(' · ')}</Text>
         </View>
         <Text style={body}>{copy.purpose}</Text>
         <Text style={[body, { fontFamily: 'NotoSansGeorgian_700Bold', color: colors.text100 }]}>{copy.headings.sent}</Text>
-        {copy.categories.map(text => <Text key={text} style={body}>• {text}</Text>)}
+        {copy.categories.map((text: string) => <Text key={text} style={body}>• {text}</Text>)}
         <Text style={[body, { fontFamily: 'NotoSansGeorgian_700Bold', color: colors.text100 }]}>{copy.headings.processors}</Text>
-        {copy.recipients.map(provider => <View key={provider.name} style={{ gap: 3 }}>
+        {copy.recipients.map((provider: { name: string; role: string; url: string }) => <View key={provider.name} style={{ gap: 3 }}>
           <Pressable accessibilityRole="link" accessibilityLabel={`${provider.name} privacy policy`} onPress={() => { void Linking.openURL(provider.url).catch(() => undefined); }} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={[body, { flex: 1, fontFamily: 'NotoSansGeorgian_600SemiBold', color: colors.primary100 }]}>{provider.name}</Text><ExternalLink size={16} color={colors.primary100} />
           </Pressable><Text style={body}>{provider.role}</Text>

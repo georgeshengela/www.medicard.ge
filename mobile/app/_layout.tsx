@@ -336,6 +336,7 @@ function AppShell() {
               <Stack.Screen name="cycle" options={{ headerShown: false }} />
               <Stack.Screen name="share" options={{ headerShown: false }} />
               <Stack.Screen name="visits" options={{ headerShown: false }} />
+              <Stack.Screen name="community" options={{ headerShown: false }} />
               <Stack.Screen name="pets" options={{ headerShown: false }} />
               <Stack.Screen name="medipulsi" options={{ headerShown: false }} />
               <Stack.Screen name="medications" options={{ headerShown: false }} />
@@ -347,9 +348,9 @@ function AppShell() {
             </Stack>
           </View>
           <AppChromeOverlay interactive={chromeInteractive}>
-            {user && !['run', 'medi-quest', 'medi-companion', 'pets', 'assistant'].includes(segments[0]) ? <FloatingTabBar visible={showTabBar} /> : null}
+            {user && !['run', 'medi-quest', 'medi-companion', 'pets', 'assistant', 'community'].includes(segments[0]) ? <FloatingTabBar visible={showTabBar} /> : null}
             {user ? <ActiveRunBadge /> : null}
-            {user ? <AssistantEntry tabBar={showTabBar} /> : null}
+            {user && segments[0] !== 'community' ? <AssistantEntry tabBar={showTabBar} /> : null}
           </AppChromeOverlay>
           <DailyCheckInHost />
           <QuotaReadyHost />

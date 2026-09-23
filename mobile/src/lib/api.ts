@@ -1896,7 +1896,7 @@ export type CycleBundle = {
 };
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'HEAD' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
   formData?: FormData;
   token?: string | null;
@@ -2084,6 +2084,15 @@ function safeParse(text: string): Record<string, unknown> {
 }
 
 type AuthResponse = { token: string; user: User; usage: Usage };
+
+export async function communityRequest<T = any>(path: string, method: 'GET'|'POST'|'PUT'|'PATCH'|'DELETE' = 'GET', body?: unknown): Promise<T> {
+  const { localAccountId } = await import('@/lib/localAccount');
+  const owner = localAccountId(), token = await getToken();
+  if (!owner || !token || owner !== localAccountId()) throw new ApiError('შედი ანგარიშში.', 401);
+  const result = await request<T>('/api/community' + path, { method, body, token, timeoutMs: 30000 });
+  if (owner !== localAccountId()) throw new ApiError('ანგარიში შეიცვალა.', 401);
+  return result;
+}
 
 export const api = {
   health: () => request<{ status: string }>('/health', { token: null, timeoutMs: 12_000 }),

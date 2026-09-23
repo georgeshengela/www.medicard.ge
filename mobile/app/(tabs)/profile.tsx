@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Image, Linking, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
   BellRing,
@@ -267,6 +267,7 @@ export default function Profile() {
         <HomeMediQuestSection edgeInset={0} />
       </View>
 
+      {user?.gender === 'FEMALE' && <Pressable accessibilityRole="button" onPress={() => router.push('/community' as never)} style={{ marginTop: 20, padding: 20, borderRadius: 24, backgroundColor: colors.accent100, gap: 8 }}><Text style={{ color: colors.primary100, fontSize: 19, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>ქალების სივრცე</Text><Text style={{ color: colors.text200, fontSize: 13, lineHeight: 21 }}>შენი ამბავი, შენი არჩევანი — გაუზიარე გამოცდილება სახელით ან ანონიმურად.</Text><Text style={{ color: colors.primary100, fontSize: 13 }}>შემოუერთდი საუბარს →</Text></Pressable>}
       <ProfilePetsSection />
 
       <View className="mt-5">

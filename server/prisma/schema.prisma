@@ -8,6 +8,15 @@ generator client {
 }
 
 model User {
+  communityMember CommunityMember?
+  communityPosts CommunityPost[]
+  communityComments CommunityComment[]
+  communityReactions CommunityReaction[]
+  communityBlocks CommunityBlock[] @relation("CommunityBlockOwner")
+  communityBlockedBy CommunityBlock[] @relation("CommunityBlockTarget")
+  communityReports CommunityReport[]
+  communityNotifications CommunityNotification[] @relation("CommunityRecipient")
+  communityActions CommunityNotification[] @relation("CommunityActor")
   aiConsent UserAiConsent?
   aiConsentEvents AiConsentEvent[]
   medipulsiPlayer       MedipulsiPlayer?
@@ -2037,4 +2046,113 @@ model QaEvidence {
   createdBy String
   createdAt DateTime @default(now())
   @@index([checkId, createdAt])
+}
+
+
+/// Community rows never inherit the medical profile. Use community.sql for additive installation.
+model CommunityMember {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alias String
+  rulesVersion String @default("2026-09-23")
+  banned Boolean @default(false)
+  pushEnabled Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+model CommunityPost {
+  revision Int @default(0)
+  id String @id
+  authorId String
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body String
+  topic String
+  anonymous Boolean @default(true)
+  status String @default("PENDING")
+  image Bytes?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @db.Timestamptz(3)
+  requestId String
+  comments CommunityComment[]
+  reactions CommunityReaction[]
+  reports CommunityReport[]
+  notifications CommunityNotification[]
+  @@unique([authorId, requestId])
+  @@index([status, createdAt(sort: Desc), id], map: "CommunityPost_feed")
+}
+model CommunityComment {
+  revision Int @default(0)
+  notifications CommunityNotification[]
+  id String @id
+  postId String
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId String
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body String
+  anonymous Boolean @default(true)
+  status String @default("PENDING")
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  requestId String
+  reports CommunityReport[]
+  @@unique([authorId, requestId])
+  @@index([postId, createdAt], map: "CommunityComment_post")
+}
+model CommunityReaction {
+  postId String
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  value Int @db.SmallInt
+  @@id([postId, userId])
+}
+model CommunityBlock {
+  userId String
+  user User @relation("CommunityBlockOwner", fields: [userId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked User @relation("CommunityBlockTarget", fields: [blockedId], references: [id], onDelete: Cascade)
+  id String @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@id([userId, blockedId])
+  @@index([blockedId], map: "CommunityBlock_target")
+}
+model CommunityReport {
+  id String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId String?
+  post CommunityPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment CommunityComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reason String
+  resolved Boolean @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  // Partial uniqueness and exactly-one-target constraints are defined in community.sql.
+}
+model CommunityNotification {
+  commentId String?
+  comment CommunityComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  id String @id
+  userId String
+  user User @relation("CommunityRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actorId String?
+  actor User? @relation("CommunityActor", fields: [actorId], references: [id], onDelete: Cascade)
+  postId String
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  kind String
+  eventKey String @unique
+  readAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  pushState String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([userId, createdAt(sort: Desc)], map: "CommunityNotification_inbox")
+  @@index([pushState, nextAttemptAt], map: "CommunityNotification_outbox")
+  @@index([commentId], map: "CommunityNotification_comment")
+}
+model CommunityAudit {
+  id String @id
+  adminId String
+  action String
+  targetId String
+  reason String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
