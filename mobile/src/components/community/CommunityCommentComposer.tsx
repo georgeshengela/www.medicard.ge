@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
-import {ActivityIndicator,Pressable,ScrollView,Text,TextInput,View} from 'react-native';
+import {ActivityIndicator,Image,Pressable,ScrollView,Text,TextInput,View} from 'react-native';
+import {AVATAR_SOURCES,isAvatarId} from '@/constants/avatarAssets';
 import {AtSign,Send} from 'lucide-react-native';
 import {communityRequest} from '@/lib/api';
 import {CommunityMention,MentionCandidate,editMentionRanges,mentionQuery} from '@/lib/communityMentions';
@@ -28,7 +29,7 @@ export function CommunityCommentComposer({postId,value,onChangeText,onSend,busy,
  return <View style={{gap:6}}>
   {query&&<View style={{borderWidth:1,borderColor:c.bg300,borderRadius:14,overflow:'hidden'}}>
    <Text style={{padding:10,fontSize:11,color:c.text200,fontFamily:'NotoSansGeorgian_500Medium'}}>მონიშნე საუბრის მონაწილე</Text>
-   {loading?<ActivityIndicator style={{padding:12}} color={c.primary100}/>:error?<Text style={{padding:12,color:c.text200}}>სია ვერ ჩაიტვირთა. აკრიფე სახელი ხელახლა.</Text>:candidates.length===0?<Text style={{padding:12,color:c.text200}}>მონაწილე ვერ მოიძებნა</Text>:<ScrollView keyboardShouldPersistTaps="always" style={{maxHeight:144}}>{candidates.map(item=><Pressable key={item.kind+item.targetId} accessibilityRole="button" accessibilityLabel={'მონიშნე '+item.label} disabled={mentions.length>=10} onPress={()=>choose(item)} style={{minHeight:48,paddingHorizontal:12,paddingVertical:7,flexDirection:'row',alignItems:'center',gap:10}}>{item.anonymous?<AnonymousAvatar size={28}/>:<AtSign size={22} color={c.primary100}/>}<Text style={{flex:1,fontSize:13,color:c.text100,fontFamily:'NotoSansGeorgian_500Medium'}}>{item.label}</Text></Pressable>)}</ScrollView>}
+   {loading?<ActivityIndicator style={{padding:12}} color={c.primary100}/>:error?<Text style={{padding:12,color:c.text200}}>სია ვერ ჩაიტვირთა. აკრიფე სახელი ხელახლა.</Text>:candidates.length===0?<Text style={{padding:12,color:c.text200}}>მონაწილე ვერ მოიძებნა</Text>:<ScrollView keyboardShouldPersistTaps="always" style={{maxHeight:144}}>{candidates.map(item=><Pressable key={item.kind+item.targetId} accessibilityRole="button" accessibilityLabel={'მონიშნე '+item.label} disabled={mentions.length>=10} onPress={()=>choose(item)} style={{minHeight:48,paddingHorizontal:12,paddingVertical:7,flexDirection:'row',alignItems:'center',gap:10}}>{item.anonymous?<AnonymousAvatar size={28}/>:isAvatarId(item.avatarId)?<Image source={AVATAR_SOURCES[item.avatarId]} style={{width:28,height:28,borderRadius:14}}/>:<AtSign size={22} color={c.primary100}/>}<Text style={{flex:1,fontSize:13,color:c.text100,fontFamily:'NotoSansGeorgian_500Medium'}}>{item.label}</Text></Pressable>)}</ScrollView>}
    {mentions.length>=10&&<Text style={{padding:10,color:c.text200}}>ერთ კომენტარში მაქსიმუმ 10 მონიშვნა</Text>}
   </View>}
   <View style={{flexDirection:'row',alignItems:'flex-end',gap:8}}>

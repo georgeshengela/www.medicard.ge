@@ -1,5 +1,5 @@
 export type CommunityMention={targetId:string;kind:'post'|'comment';label:string;start:number;end:number};
-export type MentionCandidate=Pick<CommunityMention,'targetId'|'kind'|'label'>&{anonymous:boolean};
+export type MentionCandidate=Pick<CommunityMention,'targetId'|'kind'|'label'>&{anonymous:boolean;avatarId?:string|null};
 export function editMentionRanges(before:string,after:string,mentions:CommunityMention[]){
  let start=0;while(start<before.length&&start<after.length&&before[start]===after[start])start++;
  let oldEnd=before.length,newEnd=after.length;

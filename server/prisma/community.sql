@@ -82,3 +82,10 @@ CREATE TABLE IF NOT EXISTS "CommunityAlias" (
  UNIQUE("postId",label)
 );
 ALTER TABLE "CommunityComment" ADD COLUMN IF NOT EXISTS mentions JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE "CommunityMember" ADD COLUMN IF NOT EXISTS "defaultIdentity" TEXT NOT NULL DEFAULT 'nickname' CHECK("defaultIdentity" IN ('original','nickname','anonymous'));
+ALTER TABLE "CommunityPost" ADD COLUMN IF NOT EXISTS "identityMode" TEXT CHECK("identityMode" IN ('original','nickname','anonymous'));
+ALTER TABLE "CommunityPost" ADD COLUMN IF NOT EXISTS "publicName" TEXT;
+ALTER TABLE "CommunityPost" ADD COLUMN IF NOT EXISTS "publicAvatarId" TEXT;
+ALTER TABLE "CommunityComment" ADD COLUMN IF NOT EXISTS "identityMode" TEXT CHECK("identityMode" IN ('original','nickname','anonymous'));
+ALTER TABLE "CommunityComment" ADD COLUMN IF NOT EXISTS "publicName" TEXT;
+ALTER TABLE "CommunityComment" ADD COLUMN IF NOT EXISTS "publicAvatarId" TEXT;

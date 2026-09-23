@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
-import { anonymousName, assignAnonymousNames, validMentionRanges, eligible, publicContent, cleanImage, postInput, commentInput, notificationText } from './community.js';
+import { resolveIdentity, anonymousName, assignAnonymousNames, validMentionRanges, eligible, publicContent, cleanImage, postInput, commentInput, notificationText } from './community.js';
 process.env.COMMUNITY_ALIAS_SECRET='unit-test-only-community-alias-key';
 test('community access is explicit female + active, never missing/other/blocked',()=>{
  for(const gender of [null,'MALE','OTHER','female'])assert.equal(eligible({gender,status:'ACTIVE'}),false);
@@ -48,6 +48,28 @@ test('mention ranges reject forged labels, overlap and out-of-bounds spans',()=>
 });
 test('named posts expose only community alias, not account identity',()=>{
  const dto=publicContent({authorId:'owner',alias:'ნინო',anonymous:false},'owner');assert.equal(dto.author,'ნინო');assert.equal(dto.mine,true);assert.equal('authorId' in dto,false);
+});
+test('three identity modes respect explicit choice, defaults, legacy clients and forced anonymity',()=>{
+ for(const mode of ['original','nickname','anonymous']){
+  assert.equal(resolveIdentity({}, {defaultIdentity:mode}),mode);
+  assert.equal(resolveIdentity({identityMode:mode}, {defaultIdentity:'nickname'}),mode);
+  assert.equal(resolveIdentity({identityMode:mode}, {defaultIdentity:mode},true),'anonymous');
+ }
+ assert.equal(resolveIdentity({anonymous:false},{defaultIdentity:'original'}),'nickname');
+ assert.equal(resolveIdentity({anonymous:true,identityMode:'original'},{}),'anonymous');
+});
+test('original profile snapshots show only name/avatar; nickname and anonymous never disclose avatar',()=>{
+ const row={id:'post',authorId:'private-id',alias:'nickname',identityMode:'original',publicName:'Original Name',publicAvatarId:'avatar-4',phone:'private-phone',email:'secret',healthProfile:{private:true},anonymous:false};
+ const original=publicContent(row,'other');
+ assert.equal(original.author,'Original Name');assert.equal(original.avatarId,'avatar-4');
+ assert.equal(original.identityMode,'original');
+ for(const field of ['phone','email','healthProfile','authorId','publicName','publicAvatarId'])assert.equal(field in original,false);
+ const hidden=publicContent({...row,anonymous:true},'other');
+ assert.equal(hidden.avatarId,null);assert.equal(hidden.identityMode,'anonymous');assert.equal(JSON.stringify(hidden).includes('Original Name'),false);
+ const nickname=publicContent({...row,identityMode:'nickname',publicName:'nickname'},'other');
+ assert.equal(nickname.avatarId,null);assert.equal(nickname.author,'nickname');
+ assert.equal(publicContent({...row,publicAvatarId:'https://private/image'},'other').avatarId,null);
+ assert.equal(postInput.safeParse({body:'test',topic:'everyday',identityMode:'original',publicName:'Impersonation',requestId:'12345678-1234-4234-8234-123456789abc'}).success,false);
 });
 test('input rejects hidden identity fields, blank content, invalid topics and oversized bodies',()=>{
  const input={body:'გამარჯობა',topic:'everyday',anonymous:true,requestId:'12345678-1234-4234-8234-123456789abc'};

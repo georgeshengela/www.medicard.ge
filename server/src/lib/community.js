@@ -32,19 +32,25 @@ export async function assignAnonymousNames(rows,db){
 export const COMMUNITY_RULES_VERSION = '2026-09-23';
 export const topics = ['everyday','cycle','pregnancy','wellbeing'];
 export const id = z.string().uuid();
-export const postInput = z.object({ body:z.string().trim().min(1).max(3000), topic:z.enum(topics), anonymous:z.boolean(), requestId:id, image:z.string().max(1500000).nullable().optional() }).strict();
+export const identityModeInput=z.enum(['original','nickname','anonymous']);
+export const postInput = z.object({ body:z.string().trim().min(1).max(3000), topic:z.enum(topics), anonymous:z.boolean().optional(), identityMode:identityModeInput.optional(), requestId:id, image:z.string().max(1500000).nullable().optional() }).strict();
 export const mentionInput=z.object({targetId:id,kind:z.enum(['post','comment']),label:z.string().min(1).max(100),start:z.number().int().min(0),end:z.number().int().min(1)}).strict();
-export const commentInput = z.object({ body:z.string().min(1).max(1500).refine(v=>!!v.trim()), anonymous:z.boolean(), requestId:id, parentId:id.nullable().optional(),mentions:z.array(mentionInput).max(10).default([]) }).strict();
+export const commentInput = z.object({ body:z.string().min(1).max(1500).refine(v=>!!v.trim()), anonymous:z.boolean().optional(), identityMode:identityModeInput.optional(), requestId:id, parentId:id.nullable().optional(),mentions:z.array(mentionInput).max(10).default([]) }).strict();
 export function validMentionRanges(body,mentions){let end=0;for(const m of [...mentions].sort((a,b)=>a.start-b.start)){if(m.start<end||m.end>body.length||body.slice(m.start,m.end)!=='@'+m.label)return false;end=m.end;}return true;}
 export function fail(status,message) { throw Object.assign(new Error(message),{status}); }
 export function eligible(user) { return user?.gender === 'FEMALE' && user?.status === 'ACTIVE'; }
+export function publicAuthor(row){return row.anonymous?row.anonymousAlias||anonymousName(row.postId||row.id,row.authorId):row.publicName||row.alias;}
+export function resolveIdentity(input,member,forceAnonymous=false){
+ if(forceAnonymous||input.anonymous===true)return 'anonymous';
+ return input.identityMode||(input.anonymous===false?'nickname':member.defaultIdentity||'nickname');
+}
 // Explicit allowlist: never spread database rows into member-facing responses.
 export function publicContent(row, viewer) {
  return { id:row.id, revision:Number(row.revision||0), body:row.body, topic:row.topic, anonymous:row.anonymous,
-  author:row.anonymous ? row.anonymousAlias||anonymousName(row.postId||row.id,row.authorId) : row.alias,
+  author:publicAuthor(row), identityMode:row.anonymous?'anonymous':row.identityMode||'nickname', avatarId:!row.anonymous&&row.identityMode==='original'&&/^avatar-(?:[1-9]|1[0-2])$/.test(row.publicAvatarId||'')?row.publicAvatarId:null,
   mine:row.authorId===viewer, status:row.status, createdAt:row.createdAt,
   hasImage:!!row.hasImage, likes:Number(row.likes||0), dislikes:Number(row.dislikes||0),
-  comments:Number(row.comments||0), reaction:Number(row.reaction||0), reactions:row.reactions||{}, myReaction:row.myReaction||null, parentId:row.parentId||null, replyTo:row.replyIdentity ? (row.replyIdentity.anonymous ? row.replyIdentity.anonymousAlias||anonymousName(row.postId,row.replyIdentity.authorId) : row.replyIdentity.alias) : row.replyTo||null, liked:!!row.liked,
+  comments:Number(row.comments||0), reaction:Number(row.reaction||0), reactions:row.reactions||{}, myReaction:row.myReaction||null, parentId:row.parentId||null, replyTo:row.replyIdentity ? (row.replyIdentity.anonymous ? row.replyIdentity.anonymousAlias||anonymousName(row.postId,row.replyIdentity.authorId) : row.replyIdentity.publicName||row.replyIdentity.alias) : row.replyTo||null, liked:!!row.liked,
   mentions:(row.mentions||[]).map(m=>({label:m.label,start:m.start,end:m.end,targetId:m.targetId,kind:m.kind})) };
 }
 export async function cleanImage(encoded) {

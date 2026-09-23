@@ -2053,6 +2053,7 @@ model QaEvidence {
 
 /// Community rows never inherit the medical profile. Use community.sql for additive installation.
 model CommunityMember {
+  defaultIdentity String @default("nickname")
   userId String @id
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   alias String
@@ -2062,6 +2063,9 @@ model CommunityMember {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
 model CommunityPost {
+  identityMode String?
+  publicName String?
+  publicAvatarId String?
   anonymousAliases CommunityAlias[]
   revision Int @default(0)
   id String @id
@@ -2083,6 +2087,9 @@ model CommunityPost {
   @@index([status, createdAt(sort: Desc), id], map: "CommunityPost_feed")
 }
 model CommunityComment {
+  identityMode String?
+  publicName String?
+  publicAvatarId String?
   mentions Json @default("[]")
   parentId String?
   parent CommunityComment? @relation("CommunityReplies", fields: [parentId], references: [id], onDelete: SetNull)
