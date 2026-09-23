@@ -16,11 +16,14 @@ import { useCommunityRealtime } from '@/lib/useCommunityRealtime';
 import { useKeyboardMetrics } from '@/lib/useKeyboardHeight';
 import { CommunityIdentityChoice } from '@/components/community/CommunityIdentityChoice';
 import { CommunityJoinForm } from '@/components/community/CommunityJoinForm';
+import { CommunityCommentComposer } from '@/components/community/CommunityCommentComposer';
+import { CommunityCommentText } from '@/components/community/CommunityCommentText';
+import type { CommunityMention } from '@/lib/communityMentions';
 import { CommunityNotice } from '@/components/community/CommunityNotice';
 import { AnonymousAvatar } from '@/components/community/AnonymousAvatar';
 import { requestNotificationPermission, registerPushTokenWithServer } from '@/lib/notifications';
 
-type Content={id:string;revision:number;body:string;author:string;anonymous:boolean;mine:boolean;status:string;createdAt:string;topic?:string;hasImage:boolean;likes:number;dislikes:number;comments:number;reaction:number;reactions:Record<string,number>;myReaction:string|null;parentId:string|null;replyTo:string|null;liked:boolean};
+type Content={mentions?:CommunityMention[];id:string;revision:number;body:string;author:string;anonymous:boolean;mine:boolean;status:string;createdAt:string;topic?:string;hasImage:boolean;likes:number;dislikes:number;comments:number;reaction:number;reactions:Record<string,number>;myReaction:string|null;parentId:string|null;replyTo:string|null;liked:boolean};
 type Notice={id:string;postId:string;kind:string;readAt:string|null;createdAt:string};
 const topics=[['all','ყველა'],['everyday','ყოველდღიურობა'],['cycle','ციკლი'],['pregnancy','ორსულობა'],['wellbeing','თავის მოვლა']];
 const topicIcons:Record<string,typeof Heart>={all:MessagesSquare,everyday:Feather,cycle:Orbit,pregnancy:Baby,wellbeing:Leaf};
@@ -134,7 +137,7 @@ function Space({eligible}:{eligible:boolean}){
      <View style={{flexDirection:'row',gap:10,alignItems:'flex-start'}}>{avatar(item.anonymous,item.author)}<View style={{flex:1,gap:5}}>
       <View style={{paddingVertical:2,gap:6}}>
        <View style={{flexDirection:'row',alignItems:'center'}}><View style={{flex:1}}>{text(item.author,13)}</View><Pressable accessibilityRole="button" accessibilityLabel="კომენტარის მართვა" onPress={()=>menu(item,'comments')} style={{padding:6}}><MoreHorizontal color={c.text200} size={19}/></Pressable></View>
-       {text(item.body,14)}
+       <CommunityCommentText body={item.body} mentions={item.mentions} onMention={m=>{const target=comments.find(c=>c.id===m.targetId);showDialog(m.label,'მონაწილე ამ დისკუსიაში',target?[{text:'უპასუხე',onPress:()=>{setReply(target);commentInput.current?.focus();}},{text:'დახურვა'}]:[{text:'დახურვა'}]);}}/>
        {item.status!=='PUBLISHED'&&text('არ არის გამოქვეყნებული',11,c.text200)}
       </View>
       <View style={{flexDirection:'row',alignItems:'center',gap:14}}>{text(dateLabel(item.createdAt),10,c.text200)}
@@ -149,7 +152,7 @@ function Space({eligible}:{eligible:boolean}){
    {selected.status==='PUBLISHED'&&<View style={{paddingHorizontal:16,paddingTop:10,paddingBottom:keyboardHeight>24?12:Math.max(safe.bottom,12),borderTopWidth:1,borderColor:c.bg300,backgroundColor:c.surface,gap:8}}>
     {reply&&<View style={{flexDirection:'row',alignItems:'center',gap:10,padding:9,borderRadius:12,backgroundColor:c.bg200}}><View style={{flex:1}}>{text('პასუხობ: '+reply.author,11,c.primary100)}<Text numberOfLines={1} style={{fontFamily:'NotoSansGeorgian_400Regular',fontSize:11,color:c.text200}}>{reply.body}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="პასუხის გაუქმება" onPress={()=>setReply(null)} style={{padding:8}}><X size={18} color={c.text200}/></Pressable></View>}
     <Pressable accessibilityRole="button" accessibilityLabel="კომენტარის ვინაობის არჩევა" onPress={()=>{if(selected.mine&&selected.anonymous)return;Keyboard.dismiss();showDialog('როგორ გამოჩნდები?','აირჩიე კომენტარის გამოქვეყნების რეჟიმი',[{text:member.alias+' · მეტსახელით',onPress:()=>setAnonymous(false)},{text:'ანონიმურად',onPress:()=>setAnonymous(true)},{text:'გაუქმება'}]);}} style={{flexDirection:'row',alignItems:'center',gap:6,minHeight:32}}>{anonymous?<LockKeyhole size={13} color={c.primary100}/>:<Users size={13} color={c.primary100}/>}{text(anonymous?'კომენტარი ანონიმურად':member.alias+' · მეტსახელით',11,c.primary100)}</Pressable>
-    <View style={{flexDirection:'row',alignItems:'flex-end',gap:10}}><TextInput ref={commentInput} accessibilityLabel="კომენტარი" placeholder={reply?'დაწერე პასუხი…':'შემოუერთდი საუბარს…'} placeholderTextColor={c.text200} value={body} onChangeText={setBody} multiline maxLength={1500} style={[inputStyle,{flex:1,minHeight:48,maxHeight:120,paddingVertical:12}]}/><Pressable accessibilityRole="button" accessibilityLabel={reply?'პასუხის გაგზავნა':'კომენტარის გაგზავნა'} disabled={busy||!body.trim()} onPress={()=>void run(async()=>{await call(`/posts/${selected.id}/comments`,'POST',{body,anonymous,parentId:reply?.id||null,requestId:draftId.current});await openPost(selected.id);})} style={{width:48,height:48,borderRadius:16,backgroundColor:'#0F766E',alignItems:'center',justifyContent:'center',opacity:busy||!body.trim()?0.4:1}}>{busy?<ActivityIndicator color="white"/>:<Send size={20} color="white"/>}</Pressable></View>
+    <CommunityCommentComposer key={selected.id} postId={selected.id} value={body} onChangeText={setBody} inputRef={commentInput} replying={!!reply} busy={busy} onSend={mentions=>void run(async()=>{await call(`/posts/${selected.id}/comments`,'POST',{body,anonymous,mentions,parentId:reply?.id||null,requestId:draftId.current});await openPost(selected.id);})}/>
    </View>}
   </View>:
   page==='inbox'?<FlatList data={notifications} keyExtractor={n=>n.id} contentContainerStyle={{paddingBottom:safe.bottom+20}} ListHeaderComponent={<View style={{paddingHorizontal:18,paddingVertical:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>{text('შენი აქტივობა',13)}{text(notifications.filter(n=>!n.readAt).length+' წაუკითხავი',11,c.primary100)}</View>} ItemSeparatorComponent={()=> <View style={{height:0.5,backgroundColor:c.bg300,marginLeft:74}}/>} ListEmptyComponent={<View style={{padding:36,gap:12,alignItems:'center'}}><View style={{width:64,height:64,borderRadius:32,backgroundColor:c.accent100,alignItems:'center',justifyContent:'center'}}><Bell color={c.primary100} size={28} strokeWidth={1.5}/></View>{text('შენი საუბრები აქ გაგრძელდება',17)}{text('რეაქციები, კომენტარები და პასუხები — ერთ სივრცეში.',13,c.text200)}</View>} renderItem={({item})=><CommunityNotice item={item} disabled={busy} onPress={()=>void run(async()=>{await call(`/notifications/${item.id}/read`,'PUT');await inbox();await openPost(item.postId);})}/>}/>:

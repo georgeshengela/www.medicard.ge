@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
-import { anonymousName, eligible, publicContent, cleanImage, postInput, commentInput, notificationText } from './community.js';
+import { anonymousName, assignAnonymousNames, validMentionRanges, eligible, publicContent, cleanImage, postInput, commentInput, notificationText } from './community.js';
 process.env.COMMUNITY_ALIAS_SECRET='unit-test-only-community-alias-key';
 test('community access is explicit female + active, never missing/other/blocked',()=>{
  for(const gender of [null,'MALE','OTHER','female'])assert.equal(eligible({gender,status:'ACTIVE'}),false);
@@ -11,7 +11,7 @@ test('community access is explicit female + active, never missing/other/blocked'
 test('anonymous serialization cannot leak identities, aliases, email, original photos or health data',()=>{
  const dto=publicContent({id:'p',authorId:'secret-id',alias:'Secret Name',anonymous:true,email:'private@example.test',image:Buffer.from('secret'),healthProfile:{secret:true}},'viewer');
  const serialized=JSON.stringify(dto);for(const secret of ['secret-id','Secret Name','private@example','healthProfile','image'])assert.equal(serialized.includes(secret),false);
- assert.match(dto.author,/^მეგობარი · [A-F0-9]{12}$/);assert.equal(dto.mine,false);
+ assert.match(dto.author,/^[ა-ჰ]+ [ა-ჰ]+$/);assert.equal(dto.mine,false);
 });
 test('anonymous names remain stable within a thread, differ across people and threads, and match reply labels',()=>{
  const post=publicContent({id:'post-one',authorId:'author-a',anonymous:true},'viewer');
@@ -24,7 +24,27 @@ test('anonymous names remain stable within a thread, differ across people and th
  assert.equal(JSON.stringify(reply).includes('author-a'),false);
  assert.equal(JSON.stringify(reply).includes('Private alias'),false);
  assert.equal('replyIdentity' in reply,false);
- assert.equal(new Set(Array.from({length:10000},(_,i)=>anonymousName('thread','person-'+i))).size,10000);
+});
+test('name collisions allocate another memorable name and stored names survive later reads',async()=>{
+ const rows=new Map(),taken=new Set([anonymousName('post','one')]);
+ const db={$queryRaw:async(strings,...values)=>{
+  if(strings.join('').includes('SELECT')){const key=values[0]+':'+values[1];return rows.has(key)?[{label:rows.get(key)}]:[];}
+  const [post,author,label]=values,key=post+':'+author;
+  if(taken.has(label)||rows.has(key))return [];
+  rows.set(key,label);taken.add(label);return [{label}];
+ }};
+ const [first]=await assignAnonymousNames([{id:'post',authorId:'one',anonymous:true}],db);
+ assert.notEqual(first.anonymousAlias,anonymousName('post','one'));
+ assert.match(first.anonymousAlias,/^[ა-ჰ]+ [ა-ჰ]+$/);
+ const [again]=await assignAnonymousNames([{id:'reply',postId:'post',authorId:'one',anonymous:true}],db);
+ assert.equal(first.anonymousAlias,again.anonymousAlias);
+});
+test('mention ranges reject forged labels, overlap and out-of-bounds spans',()=>{
+ const body='გამარჯობა @ნაზი ნიავი!',start=body.indexOf('@'),mention={label:'ნაზი ნიავი',start,end:body.length-1};
+ assert.equal(validMentionRanges(body,[mention]),true);
+ assert.equal(validMentionRanges(body,[{...mention,label:'სხვა'}]),false);
+ assert.equal(validMentionRanges(body,[mention,mention]),false);
+ assert.equal(validMentionRanges(body,[{...mention,end:9999}]),false);
 });
 test('named posts expose only community alias, not account identity',()=>{
  const dto=publicContent({authorId:'owner',alias:'ნინო',anonymous:false},'owner');assert.equal(dto.author,'ნინო');assert.equal(dto.mine,true);assert.equal('authorId' in dto,false);

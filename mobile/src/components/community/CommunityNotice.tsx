@@ -4,6 +4,7 @@ import { Check, ChevronRight, Heart, MessageCircle, Reply, ThumbsDown } from 'lu
 import { useThemeColors } from '@/theme/colors';
 
 const kinds = {
+  mention: { icon: Reply, title: 'კომენტარში მოგნიშნეს', detail: 'ნახე, რომელ საუბარში გელოდებიან' },
   like: { icon: Heart, title: 'შენს პოსტს გამოეხმაურნენ', detail: 'ახალი რეაქცია შენს საუბარში' },
   dislike: { icon: ThumbsDown, title: 'შენს პოსტზე განსხვავებული აზრია', detail: 'ნახე გამოხმაურება' },
   comment: { icon: MessageCircle, title: 'შენს პოსტზე ახალი კომენტარია', detail: 'შემოუერთდი საუბარს' },

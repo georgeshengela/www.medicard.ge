@@ -9,6 +9,7 @@ generator client {
 
 model User {
   communityCommentLikes CommunityCommentLike[]
+  communityAliases CommunityAlias[]
   communityMember CommunityMember?
   communityPosts CommunityPost[]
   communityComments CommunityComment[]
@@ -2061,6 +2062,7 @@ model CommunityMember {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
 model CommunityPost {
+  anonymousAliases CommunityAlias[]
   revision Int @default(0)
   id String @id
   authorId String
@@ -2081,6 +2083,7 @@ model CommunityPost {
   @@index([status, createdAt(sort: Desc), id], map: "CommunityPost_feed")
 }
 model CommunityComment {
+  mentions Json @default("[]")
   parentId String?
   parent CommunityComment? @relation("CommunityReplies", fields: [parentId], references: [id], onDelete: SetNull)
   replies CommunityComment[] @relation("CommunityReplies")
@@ -2171,4 +2174,13 @@ model CommunityCommentLike {
   userId String
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@id([commentId, userId])
+}
+model CommunityAlias {
+  postId String
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId String
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  label String
+  @@id([postId, authorId])
+  @@unique([postId, label])
 }

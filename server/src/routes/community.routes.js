@@ -9,7 +9,7 @@ import { requireAdmin } from '../middleware/adminAuth.js';
 import { requireAdminCapability } from '../lib/adminCapabilities.js';
 import { asyncHandler as wrap } from '../middleware/error.js';
 import { communityChanged } from '../lib/communityRealtime.js';
-import { COMMUNITY_RULES_VERSION, id, postInput, commentInput, eligible, publicContent, cleanImage, fail } from '../lib/community.js';
+import { COMMUNITY_RULES_VERSION, id, postInput, commentInput, eligible, publicContent, assignAnonymousNames, validMentionRanges, cleanImage, fail } from '../lib/community.js';
 export const communityRouter=Router(), adminCommunityRouter=Router();
 const r=communityRouter, a=adminCommunityRouter;
 // Broadcast only an empty invalidation after a successful committed mutation.
@@ -63,7 +63,7 @@ r.get('/posts',wrap(async(req,res)=>{
  ${mine?Prisma.sql`AND p."authorId"=${req.user.id}`:Prisma.empty}
  ${before?Prisma.sql`AND (p."createdAt",p.id) < (${before.date},${before.id})`:Prisma.empty}
  ORDER BY p."createdAt" DESC,p.id DESC LIMIT ${limit+1}`);
- res.json({posts:rows.slice(0,limit).map(p=>publicContent(p,req.user.id)),next:rows.length>limit?cursor(rows[limit-1]):null});
+ await assignAnonymousNames(rows.slice(0,limit),prisma); res.json({posts:rows.slice(0,limit).map(p=>publicContent(p,req.user.id)),next:rows.length>limit?cursor(rows[limit-1]):null});
 }));
 r.post('/posts',write,wrap(async(req,res)=>{
  const input=postInput.parse(req.body), image=await cleanImage(input.image), postId=randomUUID();
@@ -77,7 +77,7 @@ r.get('/posts/:id',wrap(async(req,res)=>{
  (SELECT count(*)::int FROM "CommunityReaction" WHERE "postId"=${p.id} AND value=-1) dislikes,
  (SELECT value FROM "CommunityReaction" WHERE "postId"=${p.id} AND "userId"=${req.user.id}) reaction,
  (SELECT count(*)::int FROM "CommunityComment" c JOIN "CommunityMember" m ON m."userId"=c."authorId" WHERE c."postId"=${p.id} AND c.status='PUBLISHED' AND NOT m.banned AND ${blocked(req.user.id,Prisma.sql`c."authorId"`)}) comments, ${reactionStats(p.id,req.user.id)}`);
- res.json(publicContent({...p,...counts,hasImage:!!p.image},req.user.id));
+ await assignAnonymousNames([p],prisma); res.json(publicContent({...p,...counts,hasImage:!!p.image},req.user.id));
 }));
 r.get('/posts/:id/image',wrap(async(req,res)=>{const p=await visiblePost(id.parse(req.params.id),req.user.id);if(!p.image)fail(404,'ფოტო ვერ მოიძებნა.');res.type('image/jpeg').send(Buffer.from(p.image));}));
 r.get('/posts/:id/photo',wrap(async(req,res)=>{const p=await visiblePost(id.parse(req.params.id),req.user.id);if(!p.image)fail(404,'ფოტო ვერ მოიძებნა.');res.json({uri:'data:image/jpeg;base64,'+Buffer.from(p.image).toString('base64')});}));
@@ -102,13 +102,22 @@ r.put('/posts/:id/reaction',write,wrap(async(req,res)=>{
 r.get('/posts/:id/comments',wrap(async(req,res)=>{
  const postId=id.parse(req.params.id);await visiblePost(postId,req.user.id);
  const before=parseCursor(req.query.before),limit=z.coerce.number().int().min(1).max(100).default(30).parse(req.query.limit);
- const rows=await prisma.$queryRaw(Prisma.sql`SELECT c.id,c."postId",c.revision,c.body,c.anonymous,c."authorId",c.status,c."createdAt",c."parentId",m.alias,
+ const rows=await prisma.$queryRaw(Prisma.sql`SELECT c.id,c."postId",c.mentions,c.revision,c.body,c.anonymous,c."authorId",c.status,c."createdAt",c."parentId",m.alias,
  (SELECT count(*)::int FROM "CommunityCommentLike" l WHERE l."commentId"=c.id) AS likes,
  EXISTS(SELECT 1 FROM "CommunityCommentLike" l WHERE l."commentId"=c.id AND l."userId"=${req.user.id}) AS liked,
  (SELECT jsonb_build_object('anonymous',pc.anonymous,'authorId',pc."authorId",'alias',pm.alias) FROM "CommunityComment" pc JOIN "CommunityMember" pm ON pm."userId"=pc."authorId" JOIN "User" pu ON pu.id=pc."authorId" WHERE pc.id=c."parentId" AND pc.status='PUBLISHED' AND NOT pm.banned AND pu.status='ACTIVE' AND pu.gender='FEMALE' AND ${blocked(req.user.id,Prisma.sql`pc."authorId"`)}) AS "replyIdentity"
  FROM "CommunityComment" c JOIN "CommunityMember" m ON m."userId"=c."authorId" JOIN "User" u ON u.id=c."authorId"
  WHERE c."postId"=${postId} AND (c.status='PUBLISHED' OR c."authorId"=${req.user.id}) AND NOT m.banned AND u.status='ACTIVE' AND u.gender='FEMALE' AND ${blocked(req.user.id,Prisma.sql`c."authorId"`)} ${before?Prisma.sql`AND (c."createdAt",c.id)<(${before.date},${before.id})`:Prisma.empty} ORDER BY c."createdAt" DESC,c.id DESC LIMIT ${limit+1}`);
- res.json({comments:rows.slice(0,limit).map(c=>publicContent(c,req.user.id)),next:rows.length>limit?cursor(rows[limit-1]):null});
+ await assignAnonymousNames(rows.slice(0,limit),prisma); res.json({comments:rows.slice(0,limit).map(c=>publicContent(c,req.user.id)),next:rows.length>limit?cursor(rows[limit-1]):null});
+}));
+r.get('/posts/:id/participants',wrap(async(req,res)=>{
+ const postId=id.parse(req.params.id),p=await visiblePost(postId,req.user.id);
+ const query=z.string().max(80).default('').parse(req.query.q).toLocaleLowerCase();
+ const rows=await prisma.$queryRaw(Prisma.sql`SELECT DISTINCT ON(c."authorId",c.anonymous) c.id,c."postId",c."authorId",c.anonymous,m.alias FROM "CommunityComment" c JOIN "CommunityMember" m ON m."userId"=c."authorId" JOIN "User" u ON u.id=c."authorId" WHERE c."postId"=${postId} AND c.status='PUBLISHED' AND NOT m.banned AND u.status='ACTIVE' AND u.gender='FEMALE' AND ${blocked(req.user.id,Prisma.sql`c."authorId"`)} ORDER BY c."authorId",c.anonymous,c."createdAt",c.id`);
+ const candidates=[{...p,kind:'post'},...rows.map(row=>({...row,kind:'comment'}))];
+ await assignAnonymousNames(candidates,prisma);
+ const seen=new Set();
+ res.json(candidates.filter(row=>{const key=row.authorId+':'+row.anonymous;if(seen.has(key))return false;seen.add(key);return true;}).map(row=>({targetId:row.id,kind:row.kind,label:publicContent(row,req.user.id).author,anonymous:row.anonymous})).filter(row=>row.label.toLocaleLowerCase().includes(query)).slice(0,20));
 }));
 r.post('/posts/:id/comments',write,wrap(async(req,res)=>{
  const postId=id.parse(req.params.id),input=commentInput.parse(req.body);
@@ -116,17 +125,31 @@ r.post('/posts/:id/comments',write,wrap(async(req,res)=>{
   const p=await visiblePost(postId,req.user.id,db,true);if(p.status!=='PUBLISHED')fail(409,'პოსტი არ არის გამოქვეყნებული.');
   // Replies by an anonymous post's author must not accidentally identify her.
   const anonymous=input.anonymous || (p.authorId===req.user.id && p.anonymous);
+  if(!validMentionRanges(input.body,input.mentions))fail(400,'მონიშვნა შეიცვალა. აირჩიე მონაწილე თავიდან.');
+  const recipients=new Set();
+  for(const mention of input.mentions){
+   let target;
+   if(mention.kind==='post'&&mention.targetId===postId)target=p;
+   else if(mention.kind==='comment'){
+    [target]=await db.$queryRaw(Prisma.sql`SELECT c.*,m.alias FROM "CommunityComment" c JOIN "CommunityMember" m ON m."userId"=c."authorId" JOIN "User" u ON u.id=c."authorId" WHERE c.id=${mention.targetId} AND c."postId"=${postId} AND c.status='PUBLISHED' AND NOT m.banned AND u.status='ACTIVE' AND u.gender='FEMALE' AND ${blocked(req.user.id,Prisma.sql`c."authorId"`)} FOR UPDATE OF c`);
+   }
+   if(!target)fail(400,'მონიშნული მონაწილე აღარ არის ხელმისაწვდომი.');
+   await assignAnonymousNames([target],db);
+   if(publicContent(target,req.user.id).author!==mention.label)fail(409,'მონაწილის სახელი შეიცვალა. მონიშნე თავიდან.');
+   recipients.add(target.authorId);
+  }
   let parent=null;
   if(input.parentId){
    [parent]=await db.$queryRaw(Prisma.sql`SELECT c.* FROM "CommunityComment" c JOIN "CommunityMember" m ON m."userId"=c."authorId" JOIN "User" u ON u.id=c."authorId" WHERE c.id=${input.parentId} AND c."postId"=${postId} AND c.status='PUBLISHED' AND NOT m.banned AND u.status='ACTIVE' AND u.gender='FEMALE' AND ${blocked(req.user.id,Prisma.sql`c."authorId"`)} FOR UPDATE OF c`);
    if(!parent)fail(404,'კომენტარი აღარ არის ხელმისაწვდომი.');
   }
-  const rows=await db.$queryRaw`INSERT INTO "CommunityComment" (id,"postId","authorId",body,anonymous,"requestId",status,"parentId") VALUES (${randomUUID()},${postId},${req.user.id},${input.body},${anonymous},${input.requestId},'PUBLISHED',${input.parentId||null}) ON CONFLICT ("authorId","requestId") DO UPDATE SET "requestId"=EXCLUDED."requestId" RETURNING id,status,"postId","parentId"`;
+  const rows=await db.$queryRaw`INSERT INTO "CommunityComment" (id,"postId","authorId",body,anonymous,"requestId",status,"parentId",mentions) VALUES (${randomUUID()},${postId},${req.user.id},${input.body},${anonymous},${input.requestId},'PUBLISHED',${input.parentId||null},${JSON.stringify(input.mentions)}::jsonb) ON CONFLICT ("authorId","requestId") DO UPDATE SET "requestId"=EXCLUDED."requestId" RETURNING id,status,"postId","parentId",body,mentions`;
   const row=rows[0];
-  if(row.postId!==postId||row.parentId!==(input.parentId||null))fail(409,'განაახლე კომენტარი და სცადე თავიდან.');
+  if(row.postId!==postId||row.parentId!==(input.parentId||null)||row.body!==input.body||JSON.stringify([...row.mentions].map(m=>[m.targetId,m.kind,m.label,m.start,m.end]))!==JSON.stringify(input.mentions.map(m=>[m.targetId,m.kind,m.label,m.start,m.end])))fail(409,'განაახლე კომენტარი და სცადე თავიდან.');
   if(row.status==='PUBLISHED'){
-   await notify(db,p.authorId,req.user.id,postId,'comment',`${row.id}:comment`,row.id);
-   if(parent&&parent.authorId!==p.authorId)await notify(db,parent.authorId,req.user.id,postId,'comment',`${row.id}:reply`,row.id,'reply');
+   for(const recipient of recipients)await notify(db,recipient,req.user.id,postId,'comment',`${row.id}:mention:${recipient}`,row.id,'mention');
+   if(!recipients.has(p.authorId))await notify(db,p.authorId,req.user.id,postId,'comment',`${row.id}:comment`,row.id);
+   if(parent&&parent.authorId!==p.authorId&&!recipients.has(parent.authorId))await notify(db,parent.authorId,req.user.id,postId,'comment',`${row.id}:reply`,row.id,'reply');
   }
   return row;
  });

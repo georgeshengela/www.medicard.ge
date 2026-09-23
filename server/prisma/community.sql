@@ -74,3 +74,11 @@ CREATE TABLE IF NOT EXISTS "CommunityCommentLike" (
  "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
  PRIMARY KEY("commentId","userId")
 );
+CREATE TABLE IF NOT EXISTS "CommunityAlias" (
+ "postId" TEXT NOT NULL REFERENCES "CommunityPost"("id") ON DELETE CASCADE,
+ "authorId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+ label TEXT NOT NULL,
+ PRIMARY KEY("postId","authorId"),
+ UNIQUE("postId",label)
+);
+ALTER TABLE "CommunityComment" ADD COLUMN IF NOT EXISTS mentions JSONB NOT NULL DEFAULT '[]'::jsonb;
