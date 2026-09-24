@@ -1,0 +1,20 @@
+BEGIN;
+CREATE TABLE IF NOT EXISTS "NutritionMeal" (
+ "id" TEXT PRIMARY KEY, "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+ "date" TEXT NOT NULL, "type" TEXT NOT NULL, "items" JSONB NOT NULL,
+ "note" TEXT NOT NULL DEFAULT '', "source" TEXT NOT NULL DEFAULT 'manual',
+ "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "NutritionMeal_userId_date_idx" ON "NutritionMeal"("userId","date");
+CREATE TABLE IF NOT EXISTS "NutritionSettings" (
+ "id" TEXT PRIMARY KEY DEFAULT 'main', "photoEnabled" BOOLEAN NOT NULL DEFAULT TRUE,
+ "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO "NutritionSettings" ("id") VALUES ('main') ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS "NutritionScanMetric" (
+ "id" TEXT PRIMARY KEY, "success" BOOLEAN NOT NULL, "durationMs" INTEGER NOT NULL,
+ "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "NutritionScanMetric_createdAt_idx" ON "NutritionScanMetric"("createdAt");
+COMMIT;

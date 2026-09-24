@@ -8,6 +8,7 @@ generator client {
 }
 
 model User {
+  nutritionMeals NutritionMeal[]
   communityCommentLikes CommunityCommentLike[]
   communityAliases CommunityAlias[]
   communityMember CommunityMember?
@@ -2190,4 +2191,30 @@ model CommunityAlias {
   label String
   @@id([postId, authorId])
   @@unique([postId, label])
+}
+
+model NutritionMeal {
+ id String @id
+ userId String
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ date String
+ type String
+ items Json
+ note String @default("")
+ source String @default("manual")
+ createdAt DateTime @default(now())
+ updatedAt DateTime @default(now())
+ @@index([userId,date])
+}
+model NutritionSettings {
+ id String @id @default("main")
+ photoEnabled Boolean @default(true)
+ updatedAt DateTime @default(now())
+}
+model NutritionScanMetric {
+ id String @id
+ success Boolean
+ durationMs Int
+ createdAt DateTime @default(now())
+ @@index([createdAt])
 }

@@ -15,6 +15,7 @@ export const REWARDS_CAPABILITIES = Object.freeze([
 ]);
 
 export const MEDIPULSI_CAPABILITIES = Object.freeze(['MEDIPULSI_VIEW','MEDIPULSI_MANAGE','MEDIPULSI_REVIEW']);
+export const NUTRITION_CAPABILITIES = Object.freeze(['NUTRITION_VIEW', 'NUTRITION_MANAGE']);
 export const QA_CAPABILITIES = Object.freeze(['QA_VIEW', 'QA_MANAGE']);
 export const COMMUNITY_CAPABILITIES = Object.freeze(['COMMUNITY_VIEW', 'COMMUNITY_MANAGE']);
 

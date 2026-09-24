@@ -1,5 +1,5 @@
 {
-  "revision": "2026-09-23.1",
+  "revision": "2026-09-24.nutrition",
   "title": "გავუზიაროთ მონაცემები AI სერვისებს?",
   "purpose": "Medi-ს პასუხებისა და შენ მიერ მოთხოვნილი მოქმედებებისთვის ქვემოთ ჩამოთვლილი მონაცემები გარე AI სერვისებს გადაეცემა — გამოყენებული ფუნქციის მიხედვით.",
   "categories": [
@@ -8,7 +8,8 @@
     "ანალიზისთვის არჩეული ფოტოები და დოკუმენტებიდან ამოღებული ტექსტი. ატვირთვამდე დაფარე არასაჭირო სახელი და პირადი ნომერი.",
     "შესაბამის მოთხოვნაში — ნებადართული ციკლის ჩანაწერები. დაცული ციკლი და ინტიმური ველები ზოგად კონტექსტში არ შედის. სიმპტომების შემოწმებაში პროფილის დამატება ცალკე არჩევანია.",
     "Medi Vet-სა და ცხოველის ასისტენტში — ცხოველის პროფილი და მოვლის ინფორმაცია; ადამიანის ჯანმრთელობის პროფილის გარეშე.",
-    "ხმოვანი ასისტენტი: ჩაწერილი ხმა — OpenRouter-ის გავლით Google Vertex AI-ს ტექსტად გარდასაქმნელად; ხმოვანი პასუხის ჩართვისას პასუხის ტექსტი — Microsoft Azure Speech-ს გასახმოვანებლად."
+    "ხმოვანი ასისტენტი: ჩაწერილი ხმა — OpenRouter-ის გავლით Google Vertex AI-ს ტექსტად გარდასაქმნელად; ხმოვანი პასუხის ჩართვისას პასუხის ტექსტი — Microsoft Azure Speech-ს გასახმოვანებლად.",
+    "კვების ფოტოს შეფასება: მხოლოდ არჩეული საკვების ფოტო და შენ მიერ დამატებული პორციის აღწერა — OpenRouter-ის გავლით Google Vertex AI-ს. ჯანმრთელობის პროფილი არ იგზავნება; ფოტო მუდმივად არ ინახება."
   ],
   "recipients": [
     {
@@ -60,7 +61,8 @@
       "Photos you choose for analysis and text extracted from documents. Cover names and ID numbers you do not want sent.",
       "When relevant: cycle records you have permitted. Locked cycle data and intimate fields are not included in general context. Adding your health profile to symptom check is a separate choice.",
       "In Medi Vet and the pet assistant: the pet profile and care information, without the human health profile.",
-      "Voice assistant: recorded audio is sent through OpenRouter to Google Cloud Vertex AI for transcription. If spoken replies are on, the reply text is sent to Microsoft Azure Speech to generate speech."
+      "Voice assistant: recorded audio is sent through OpenRouter to Google Cloud Vertex AI for transcription. If spoken replies are on, the reply text is sent to Microsoft Azure Speech to generate speech.",
+      "Food estimates: only the selected food photo and your portion description go through OpenRouter to Google Vertex AI. No health profile is sent; the photo is not stored permanently."
     ],
     "recipients": [
       {
