@@ -193,10 +193,19 @@ r.get(
     res.json({
       recipes: rows
         .filter((row) => row.data.type === type && recipeAllowed(row, p.config))
-        .map((row) => ({
-          id: row.id,
-          ...portionRecipe(row, state.targets.calories * fractions[type]),
-        })),
+        .flatMap((row) => {
+          try {
+            return [
+              {
+                id: row.id,
+                ...portionRecipe(row, state.targets.calories * fractions[type]),
+              },
+            ];
+          } catch (error) {
+            if (error.status === 400) return [];
+            throw error;
+          }
+        }),
     });
   }),
 );

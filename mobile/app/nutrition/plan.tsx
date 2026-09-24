@@ -20,6 +20,7 @@ import { localDay, shiftDay, mealLabels, foodTotals } from "@/lib/nutrition";
 import {
   nutritionProgramApi,
   allergenLabels,
+  nutritionDateLabel,
   type NutritionWeek,
   type PlannedMeal,
   type Recipe,
@@ -128,7 +129,7 @@ function Plan() {
       subtitle="7 დღე · მოქნილი კერძები · შენი არჩევანი"
       onBack={shopping ? () => setShopping(false) : undefined}
     >
-      {(error || dashboardError) && (
+      {!!(error || dashboardError) && (
         <NError
           message={error || dashboardError}
           retry={() => {
@@ -137,7 +138,7 @@ function Plan() {
           }}
         />
       )}
-      {notice && (
+      {!!notice && (
         <NText accessibilityLiveRegion="polite" style={{ color: c.primary100 }}>
           {notice}
         </NText>
@@ -194,6 +195,7 @@ function Plan() {
           )}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel="წინა კვირა"
               disabled={busy || from <= shiftDay(localDay(), -83)}
               onPress={() => changeWeek(-7)}
@@ -205,6 +207,7 @@ function Plan() {
               {from} — {shiftDay(from, 6)}
             </NText>
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel="შემდეგი კვირა"
               disabled={busy || from >= shiftDay(localDay(), 21)}
               onPress={() => changeWeek(7)}
@@ -243,9 +246,7 @@ function Plan() {
                 }}
               >
                 <NText style={{ fontSize: 11, color: c.text200 }}>
-                  {new Date(v + "T12:00:00").toLocaleDateString("ka-GE", {
-                    weekday: "short",
-                  })}
+                  {nutritionDateLabel(v, true)}
                 </NText>
                 <NText
                   style={{
@@ -280,6 +281,7 @@ function Plan() {
                 </NText>
                 <Pressable
                   onPress={() => setShopping(true)}
+                  accessibilityRole="button"
                   accessibilityLabel="საყიდლების სია"
                   style={{ padding: 10 }}
                 >
@@ -296,7 +298,9 @@ function Plan() {
                   target={d?.targets || null}
                 />
                 <NText style={{ fontSize: 11, color: c.text200 }}>
-                  გეგმაში არსებული საკვები მიღებულად არ ითვლება.
+                  გეგმაში არსებული საკვები მიღებულად არ ითვლება. კერძების
+                  მაკროები შეიძლება სამიზნისგან განსხვავდებოდეს — შეცვლისას
+                  ჯამიც განახლდება.
                 </NText>
               </NCard>
               {meals.map((m) => {
@@ -520,7 +524,7 @@ function Plan() {
               disabled={busy || loading}
               label={
                 busy
-                  ? "რაციონის შედგენა…"
+                  ? "მუშავდება…"
                   : week?.meals.length
                     ? "კვირის განახლება · მიღებული კვება დარჩება"
                     : "7 დღის რაციონის შექმნა"

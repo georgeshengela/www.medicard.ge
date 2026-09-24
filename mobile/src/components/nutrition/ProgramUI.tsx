@@ -8,21 +8,17 @@ import {
   ScrollView,
   Text,
   View,
-  StyleSheet,
   type TextProps,
   type ViewProps,
 } from "react-native";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, ArrowUpRight } from "lucide-react-native";
-import Svg, { Circle, Line, Polyline } from "react-native-svg";
 import { useThemeColors } from "@/theme/colors";
 import { useAuth } from "@/store/AuthContext";
 import {
   nutritionProgramApi,
   type NutritionDashboard,
-  type NutritionTargets,
-  type NutritionTotals,
 } from "@/lib/nutritionProgram";
 export function NText({ style, ...props }: TextProps) {
   const c = useThemeColors();
@@ -134,7 +130,7 @@ export function NLink({
         <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>
           {title}
         </NText>
-        {subtitle && (
+        {!!subtitle && (
           <NText style={{ fontSize: 12, color: c.text200, lineHeight: 19 }}>
             {subtitle}
           </NText>
@@ -211,7 +207,7 @@ export function NScreen({
           >
             {title}
           </NText>
-          {subtitle && !keyboard && (
+          {!!subtitle && !keyboard && (
             <NText style={{ fontSize: 12, color: c.text200, lineHeight: 18 }}>
               {subtitle}
             </NText>
@@ -265,6 +261,9 @@ export function useNutritionDashboard() {
   const [data, setData] = useState<NutritionDashboard | null>(null),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true);
+  useEffect(() => {
+    setData(null);
+  }, [user?.id]);
   const seq = useRef(0),
     alive = useRef(true);
   useEffect(() => {
@@ -282,7 +281,10 @@ export function useNutritionDashboard() {
       const d = await nutritionProgramApi.dashboard();
       if (alive.current && n === seq.current) setData(d);
     } catch (e) {
-      if (alive.current && n === seq.current) setError((e as Error).message);
+      if (alive.current && n === seq.current) {
+        setData(null);
+        setError((e as Error).message);
+      }
     } finally {
       if (alive.current && n === seq.current) setLoading(false);
     }
@@ -324,150 +326,9 @@ export function NLoading() {
     />
   );
 }
-export function MacroRails({
-  actual,
-  target,
-}: {
-  actual: NutritionTotals;
-  target: NutritionTargets | null;
-}) {
-  const c = useThemeColors();
-  return (
-    <View style={{ flexDirection: "row", gap: 14 }}>
-      {(["protein", "carbs", "fat"] as const).map((key, i) => (
-        <View key={key} style={{ flex: 1, gap: 7 }}>
-          <NText style={{ fontSize: 12, color: c.text200 }}>
-            {["ცილა", "ნახშირწყალი", "ცხიმი"][i]}
-          </NText>
-          <View
-            style={{
-              height: 4,
-              backgroundColor: c.bg200,
-              borderRadius: 2,
-              overflow: "hidden",
-            }}
-          >
-            <View
-              style={{
-                width: `${target ? Math.min(100, (actual[key] / target[key]) * 100) : 0}%`,
-                height: 4,
-                backgroundColor: [c.primary100, "#8B7AB8", "#AD7953"][i],
-              }}
-            />
-          </View>
-          <NText style={{ fontSize: 13 }}>
-            {Math.round(actual[key])}
-            {target ? ` / ${target[key]}` : ""} გ
-          </NText>
-        </View>
-      ))}
-    </View>
-  );
-}
-export function EnergyRing({
-  value,
-  target,
-}: {
-  value: number;
-  target: number | null;
-}) {
-  const c = useThemeColors(),
-    ratio = target ? Math.min(1, value / target) : 0,
-    circ = 2 * Math.PI * 65;
-  return (
-    <View
-      style={{
-        width: 160,
-        height: 160,
-        alignSelf: "center",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Svg width={160} height={160} style={StyleSheet.absoluteFill}>
-        <Circle
-          cx={80}
-          cy={80}
-          r={65}
-          stroke={c.bg200}
-          strokeWidth={8}
-          fill="none"
-        />
-        <Circle
-          cx={80}
-          cy={80}
-          r={65}
-          stroke={c.primary100}
-          strokeWidth={8}
-          fill="none"
-          strokeDasharray={`${circ * ratio} ${circ}`}
-          strokeLinecap="round"
-          rotation={-90}
-          origin="80,80"
-        />
-      </Svg>
-      <NText
-        style={{
-          fontSize: 31,
-          lineHeight: 40,
-          fontFamily: "NotoSansGeorgian_700Bold",
-        }}
-      >
-        {Math.round(value)}
-      </NText>
-      <NText style={{ fontSize: 11, color: c.text200 }}>
-        {target ? `${target} კკალ-დან` : "კკალ · აღრიცხული"}
-      </NText>
-    </View>
-  );
-}
-export function WeightChart({
-  points,
-}: {
-  points: { weightKg: number; date: string }[];
-}) {
-  const c = useThemeColors();
-  if (points.length < 2)
-    return (
-      <NText style={{ color: c.text200 }}>
-        ტენდენციისთვის მინიმუმ ორი გაზომვაა საჭირო.
-      </NText>
-    );
-  const min = Math.min(...points.map((p) => p.weightKg)) - 1,
-    max = Math.max(...points.map((p) => p.weightKg)) + 1;
-  const first = Date.parse(points[0].date),
-    last = Date.parse(points.at(-1)!.date);
-  const coords = points.map((p) => ({
-    x: 12 + ((Date.parse(p.date) - first) / Math.max(1, last - first)) * 276,
-    y: 116 - ((p.weightKg - min) / (max - min)) * 100,
-  }));
-  return (
-    <View
-      accessible
-      accessibilityLabel={points
-        .map((p) => `${p.date}: ${p.weightKg} კგ`)
-        .join(", ")}
-    >
-      <Svg height={135} width="100%" viewBox="0 0 300 135">
-        <Line x1={10} y1={118} x2={290} y2={118} stroke={c.bg300} />
-        <Polyline
-          points={coords.map((p) => `${p.x},${p.y}`).join(" ")}
-          stroke={c.primary100}
-          strokeWidth={2.5}
-          fill="none"
-        />
-        {coords.map((p, i) => (
-          <Circle key={i} cx={p.x} cy={p.y} r={3} fill={c.primary100} />
-        ))}
-      </Svg>
-      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-        <NText style={{ fontSize: 11, color: c.text200 }}>
-          {points[0].date} · {points[0].weightKg} კგ
-        </NText>
-        <NText style={{ fontSize: 11, color: c.text200 }}>
-          {points.at(-1)!.date} · {points.at(-1)!.weightKg} კგ
-        </NText>
-      </View>
-    </View>
-  );
-}
+export {
+  EnergyRing,
+  MacroRails,
+  WeightChart,
+  IntakeWeekChart,
+} from "./NutritionCharts";

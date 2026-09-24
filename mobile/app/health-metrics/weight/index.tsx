@@ -28,7 +28,6 @@ import { usePlanUsage } from '@/lib/planUsage';
 import {
   averageKg,
   buildWeightProgress,
-  estimatedKcalFromPace,
   loadCachedWeightAdvice,
   loadWeightGoal,
   loadWeightLogs,
@@ -44,6 +43,8 @@ import {
 } from '@/lib/weightGoal';
 import { goToGoalProgress, startWeightGoalWizard } from '@/lib/weightNav';
 import { useAuth } from '@/store/AuthContext';
+import { useNutritionDashboard } from '@/components/nutrition/ProgramUI';
+import { nutritionDateLabel } from '@/lib/nutritionProgram';
 import type { CachedWeightAdvice } from '@/lib/weightGoal';
 import type { WeightGoal, WeightLog } from '@/types/weightGoal';
 
@@ -53,6 +54,7 @@ export default function WeightHubScreen() {
   const insets = useSafeAreaInsets();
   const { healthProfile, setHealthProfile, applyUsage } = useAuth();
   const plan = usePlanUsage();
+  const { data: nutrition, load: refreshNutrition } = useNutritionDashboard();
   const { bundle, refresh } = useHealthMetrics(healthProfile);
   const [logs, setLogs] = useState<WeightLog[]>([]);
   const [goal, setGoal] = useState<WeightGoal | null>(null);
@@ -130,8 +132,8 @@ export default function WeightHubScreen() {
     if (!latest) return { date: '—', time: '—' };
     const d = new Date(latest.at);
     return {
-      date: d.toLocaleDateString('ka-GE', { weekday: 'long', month: 'short', day: 'numeric' }),
-      time: d.toLocaleTimeString('ka-GE', { hour: 'numeric', minute: '2-digit' }),
+      date: nutritionDateLabel(latest.date),
+      time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
     };
   }, [latest]);
 
@@ -229,14 +231,16 @@ export default function WeightHubScreen() {
               T={T}
             />
             <StatRow icon={<BarChart3 size={24} color={T.brand} strokeWidth={2} />} title={ka.weight.average} value={avg != null ? String(avg) : '—'} label={ka.weight.kg} T={T} />
-            <StatRow
-              icon={<Flame size={24} color={T.brand} strokeWidth={2} />}
-              title={ka.weight.calorie}
-              value={goal ? String(estimatedKcalFromPace(goal.paceKgPerWeek)) : '—'}
-              label={ka.weight.kcal}
-              T={T}
-              last
-            />
+            <Pressable accessibilityRole="button" accessibilityLabel="კვების გეგმის ნახვა" onPress={() => router.push('/nutrition')}>
+              <StatRow
+                icon={<Flame size={24} color={T.brand} strokeWidth={2} />}
+                title="დღის კვების სამიზნე"
+                value={nutrition?.targets ? String(nutrition.targets.calories) : '—'}
+                label={nutrition?.targets ? 'კკალ · კვების გეგმა' : nutrition?.needsReview ? 'გეგმა გადაამოწმე' : 'გეგმის ნახვა'}
+                T={T}
+                last
+              />
+            </Pressable>
           </View>
         </Section>
 
@@ -296,6 +300,7 @@ export default function WeightHubScreen() {
             }
             await hydrate();
             await refresh();
+            void refreshNutrition();
           })();
         }}
       />

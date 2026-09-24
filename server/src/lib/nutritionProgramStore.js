@@ -97,7 +97,19 @@ export async function nutritionFacts(
     heightCm: profile?.heightCm || null,
     current,
     weightGoal: state.weightGoal || null,
-    weightHistory: measured.slice().reverse(),
+    // The shared weight log may be newer than the daily-health sync. Keep the
+    // chart consistent with current weight and prefer daily measurements on ties.
+    weightHistory: [
+      ...new Map([
+        ...logs
+          .slice()
+          .reverse()
+          .map((v) => [v.date, { date: v.date, weightKg: v.kg }]),
+        ...measured.map((v) => [v.date, v]),
+      ]).values(),
+    ]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-28),
     activity:
       {
         SEDENTARY: "sedentary",
@@ -308,10 +320,18 @@ export async function generateNutritionWeek(
         from,
         variant,
       );
-      for (const meal of week) {
-        const { date, type, recipeId, ...data } = meal;
-        await tx.$executeRaw`INSERT INTO "NutritionPlannedMeal" (id,"userId",date,type,"recipeId","programRevision",data) VALUES (${randomUUID()},${user.id},${date},${type},${recipeId},${program.revision},${JSON.stringify(data)}::jsonb) ON CONFLICT ("userId",date,type) DO UPDATE SET "recipeId"=EXCLUDED."recipeId","programRevision"=EXCLUDED."programRevision",data=EXCLUDED.data,"updatedAt"=NOW() WHERE NOT EXISTS (SELECT 1 FROM "NutritionMeal" m WHERE m.id="NutritionPlannedMeal".id AND m."userId"=${user.id})`;
-      }
+      const rows = week.map(({ date, type, recipeId, ...data }) => ({
+        id: randomUUID(),
+        date,
+        type,
+        recipeId,
+        data,
+      }));
+      await tx.$executeRaw`INSERT INTO "NutritionPlannedMeal" (id,"userId",date,type,"recipeId","programRevision",data)
+        SELECT entry.id,${user.id},entry.date,entry.type,entry."recipeId",${program.revision},entry.data
+        FROM jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) AS entry(id text,date text,type text,"recipeId" text,data jsonb)
+        ON CONFLICT ("userId",date,type) DO UPDATE SET "recipeId"=EXCLUDED."recipeId","programRevision"=EXCLUDED."programRevision",data=EXCLUDED.data,"updatedAt"=NOW()
+        WHERE NOT EXISTS (SELECT 1 FROM "NutritionMeal" m WHERE m.id="NutritionPlannedMeal".id AND m."userId"=${user.id})`;
       return getNutritionWeek(user.id, from, tx);
     },
     { timeout: 20000 },

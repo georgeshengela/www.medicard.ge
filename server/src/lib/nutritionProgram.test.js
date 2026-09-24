@@ -223,3 +223,44 @@ test("Medi goal is a reviewed native handoff, weight delta is not a target", () 
     ["pets"],
   );
 });
+
+test("menu selection approximates macro targets without rewriting food nutrients", () => {
+  const target = { calories: 1920, protein: 96, carbs: 240, fat: 64 };
+  const week = buildWeek(
+    nutritionFixture,
+    target,
+    defaultNutritionRecipes,
+    day,
+  );
+  const first = totals(
+    week.filter((m) => m.date === day).flatMap((m) => m.items),
+  );
+  for (const key of ["protein", "carbs", "fat"])
+    assert.ok(Math.abs(first[key] - target[key]) / target[key] < 0.15, key);
+  assert.ok(new Set(week.map((m) => m.recipeId)).size > 4);
+  const invalidPortion = {
+    id: "tiny-dinner",
+    data: {
+      ...defaultNutritionRecipes[0].data,
+      type: "dinner",
+      items: [
+        {
+          name: "too small",
+          grams: 1,
+          calories: 1,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        },
+      ],
+    },
+  };
+  const valid = buildWeek(
+    nutritionFixture,
+    target,
+    [invalidPortion, ...defaultNutritionRecipes],
+    day,
+  );
+  assert.equal(valid.length, 28);
+  assert.ok(!valid.some((m) => m.recipeId === "tiny-dinner"));
+});

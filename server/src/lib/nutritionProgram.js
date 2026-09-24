@@ -210,25 +210,92 @@ export function buildWeek(config, target, recipes, from, variant = 0) {
     );
   const selected = recipes.filter((r) => recipeAllowed(r, config));
   const fractions = { breakfast: 0.25, lunch: 0.35, dinner: 0.3, snack: 0.1 };
-  const result = [];
-  for (let n = 0; n < 7; n++)
-    for (const [type, fraction] of Object.entries(fractions)) {
-      const choices = selected.filter((r) => (r.data || r).type === type);
-      if (!choices.length)
-        throw Object.assign(
-          new Error(
-            "ამ შეზღუდვებით ყველა კვებისთვის საკმარისი კერძი ჯერ არ გვაქვს. შეცვალე მხოლოდ რეალური არჩევანი ან შეავსე რაციონი ხელით.",
-          ),
-          { status: 422 },
-        );
-      const recipe = choices[(n + variant) % choices.length];
-      result.push({
-        date: shiftCivil(from, n),
-        type,
-        recipeId: recipe.id,
-        ...portionRecipe(recipe, target.calories * fraction),
+  const guide = {
+    protein: target.protein || (target.calories * 0.2) / 4,
+    carbs: target.carbs || (target.calories * 0.5) / 4,
+    fat: target.fat || (target.calories * 0.3) / 9,
+  };
+  const slots = Object.entries(fractions).map(([type, fraction]) => {
+    const choices = selected
+      .filter((r) => (r.data || r).type === type)
+      .flatMap((recipe) => {
+        try {
+          return [
+            {
+              type,
+              recipeId: recipe.id,
+              ...portionRecipe(recipe, target.calories * fraction),
+            },
+          ];
+        } catch (error) {
+          if (error.status === 400) return [];
+          throw error;
+        }
       });
+    if (!choices.length)
+      throw Object.assign(
+        new Error(
+          "ამ შეზღუდვებით ყველა კვებისთვის საკმარისი კერძი ჯერ არ გვაქვს. შეცვალე მხოლოდ რეალური არჩევანი ან შეავსე რაციონი ხელით.",
+        ),
+        { status: 422 },
+      );
+    return { fraction, choices };
+  });
+  // Bounded search balances actual recipe macros and repetition; nutrient amounts
+  // remain reference-derived, never rewritten to make a target appear achieved.
+  const uses = new Map(),
+    result = [];
+  for (let day = 0; day < 7; day++) {
+    let beam = [
+        {
+          meals: [],
+          sums: { protein: 0, carbs: 0, fat: 0 },
+          penalty: 0,
+          score: 0,
+        },
+      ],
+      share = 0;
+    for (const slot of slots) {
+      share += slot.fraction;
+      const expanded = [];
+      const offset = (variant + day) % slot.choices.length;
+      const choices = Array.from(
+        { length: Math.min(64, slot.choices.length) },
+        (_, i) => slot.choices[(i + offset) % slot.choices.length],
+      );
+      for (const state of beam)
+        for (const choice of choices) {
+          const sums = Object.fromEntries(
+            Object.keys(guide).map((k) => [
+              k,
+              state.sums[k] + choice.totals[k],
+            ]),
+          );
+          const penalty =
+            state.penalty + (uses.get(choice.recipeId) || 0) * 0.006;
+          const score =
+            Object.keys(guide).reduce(
+              (sum, k) => sum + ((sums[k] - guide[k] * share) / guide[k]) ** 2,
+              0,
+            ) + penalty;
+          expanded.push({
+            meals: [...state.meals, choice],
+            sums,
+            penalty,
+            score,
+          });
+        }
+      beam = expanded.sort((a, b) => a.score - b.score).slice(0, 64);
     }
+    const best = beam[0];
+    // Rotate between similarly balanced menus when the user asks for a new week.
+    const close = beam.filter((v) => v.score <= best.score + 0.006);
+    const chosen = close[(variant + day) % close.length];
+    for (const meal of chosen.meals) {
+      uses.set(meal.recipeId, (uses.get(meal.recipeId) || 0) + 1);
+      result.push({ date: shiftCivil(from, day), ...meal });
+    }
+  }
   return result;
 }
 

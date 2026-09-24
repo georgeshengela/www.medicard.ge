@@ -172,6 +172,34 @@ try {
       );
       check(revised.goal.startKg === 90);
       check((await nutritionDashboard(a, day, proxy)).facts.current.kg === 89);
+      const updatedProfile = await tx.healthProfile.findUnique({
+        where: { userId: a.id },
+      });
+      const extra = updatedProfile.extraAnswers;
+      await tx.healthProfile.update({
+        where: { userId: a.id },
+        data: {
+          extraAnswers: {
+            ...extra,
+            appState: {
+              ...extra.appState,
+              weightLogs: [
+                {
+                  id: "qa-newer-weight",
+                  kg: 88.8,
+                  date: "2026-09-25",
+                  at: "2026-09-25T08:00:00Z",
+                },
+                ...extra.appState.weightLogs,
+              ],
+            },
+          },
+        },
+      });
+      const nextDashboard = await nutritionDashboard(a, "2026-09-25", proxy);
+      check(nextDashboard.facts.current.kg === 88.8);
+      check(nextDashboard.facts.weightHistory.at(-1).weightKg === 88.8);
+      check(nextDashboard.facts.weightHistory.at(-1).date === "2026-09-25");
       throw rollback;
     },
     { timeout: 60000 },

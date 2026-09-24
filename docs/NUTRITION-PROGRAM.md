@@ -19,7 +19,7 @@ Evidence: [Mifflin–St Jeor original paper](https://pubmed.ncbi.nlm.nih.gov/230
 
 Product choices, **not individual clinical prescriptions**: 19–78 eligibility, 1.2/1.375/1.55/1.725 activity factors, gentle/steady loss adjustments of −250/−400 kcal, gain +200 kcal, 1500–3500 automatic-target range, BMI review boundaries, initial macro split 20% protein / 50% carbohydrate / 30% fat. Outside the range, refer rather than clamp a deficit into a surplus. No automated prescription in pregnancy/breastfeeding, eating-disorder history, relevant conditions or medical diets. An unrecognized profile allergy or free-text food exclusion is not silently assumed safe. Labels explicitly say estimates, not a clinician or dietitian replacement.
 
-Meal allocation: breakfast 25%, lunch 35%, dinner 30%, snack 10% of energy. Recipe macros are actual reference-derived sums, separately displayed; they are not forced to match the macro guide. No micronutrient-completeness claim. Shopping quantities remain in named edible/prepared states; do not misrepresent cooked grams as raw purchase amounts. Allergens cannot guarantee absence of cross-contamination: check packaging.
+Meal allocation: breakfast 25%, lunch 35%, dinner 30%, snack 10% of energy. A bounded candidate search chooses menus close to the macro guide while discouraging repeated dishes. It skips impractical portion sizes; recipe nutrient values are never fabricated to meet targets. Regeneration uses one batched insert, with already consumed meals protected. Recipe macros are actual reference-derived sums, separately displayed; they are not forced to match the macro guide. No micronutrient-completeness claim. Shopping quantities remain in named edible/prepared states; do not misrepresent cooked grams as raw purchase amounts. Allergens cannot guarantee absence of cross-contamination: check packaging.
 
 ## Medi and privacy
 
@@ -29,10 +29,14 @@ AI disclosure revision `2026-09-24.nutrition-program` adds the specific nutritio
 
 ## Verification
 
-- Mobile TypeScript check.
-- Unit/HTTP suites for nutrition, assistant, shared app state and AI consent.
-- `node scripts/test-nutrition-program-db.mjs`: main-database transaction with synthetic accounts, all rolled back; persistence, shared goal, intake vs plan, cross-account denial, future-meal rejection, retry safety, portion edits, regeneration and goal-review preservation.
-- UI and deployment evidence will be appended after verification.
+- Mobile TypeScript check passed (including final charts and weight-screen integration).
+- 51 unit/HTTP checks passed across nutrition, assistant, shared app state and AI consent (including menu balance and unsafe-portion exclusion).
+- `node scripts/test-nutrition-program-db.mjs`: 20 checks in a main-database transaction with synthetic accounts, all rolled back; persistence, shared goal, intake vs plan, cross-account denial, future-meal rejection, retry safety, portion edits, regeneration and goal-review preservation.
+- Browser UI verified against the main https://medicard.ge API: four-step setup, required-answer validation, known-profile safety block, successful 86 → 76 kg synthetic goal with 1920 kcal guide, seven-day generation, recipe substitution, consumption → diary → energy balance, shopping list, and the matching target on the existing weight screen. The separate account nutrition.qa.20260924@medicard.test is explicitly marked synthetic and retained for review; it contains no real patient information and was not granted AI consent.
+- Main database: additive migration and 15 reference-derived recipes installed. The hosted admin asset and live nutrition endpoints were verified after the feature push. Local admin catalog/editor and aggregate usage rendered with the main DB.
+- New custom energy dial, three macro indicators, selectable seven-day intake bars and weight area chart checked at mobile widths (390 and 430 px), in light and navy dark themes. Empty days remain unknown, zero-target rings do not invent percentages. Reduced Motion disables the entrance animation. Fixed stray JSX text nodes and web SVG warnings.
+- Shared weight history merges daily health measurements with newer canonical weight logs, and the old weight page now displays the real nutrition target rather than a disconnected pace-derived calorie hint. Failed refreshes do not leave an old nutrition target visible.
+- Voice recognition and live AI interpretation were not re-tested with personal data; the goal handoff, context scoping, strict action validation and consent gates are covered by automated tests.
 - Native iPhone keyboard, camera and haptics need device verification; web screenshots and Expo compilation do not prove hardware behavior.
 
-Apply additive schema and missing catalog entries with `node server/scripts/install-nutrition.mjs` from server working directory. Release command already runs this installer. Never use schema reset or switch databases.
+Apply additive schema and missing catalog entries with `node scripts/install-nutrition.mjs` from server working directory. Release command already runs this installer. Never use schema reset or switch databases.

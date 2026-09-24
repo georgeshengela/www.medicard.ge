@@ -174,7 +174,14 @@
                 .map(
                   (k) =>
                     '<td><input aria-label="' +
-                    k +
+                    {
+                      name: "ინგრედიენტი",
+                      grams: "გრამი",
+                      calories: "კკალ",
+                      protein: "ცილა",
+                      carbs: "ნახშირწყალი",
+                      fat: "ცხიმი",
+                    }[k] +
                     " " +
                     (i + 1) +
                     '" class="input" style="min-width:' +

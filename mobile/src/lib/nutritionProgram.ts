@@ -99,6 +99,27 @@ export type NutritionPreview = {
   targets: NutritionTargets | null;
   explanation: string;
 };
+// Explicit Georgian labels also work on runtimes without ka-GE Intl data.
+export function nutritionDateLabel(date: string, weekday = false) {
+  const d = new Date(date + "T12:00:00");
+  if (weekday)
+    return ["კვი", "ორშ", "სამ", "ოთხ", "ხუთ", "პარ", "შაბ"][d.getDay()];
+  const months = [
+    "იანვარი",
+    "თებერვალი",
+    "მარტი",
+    "აპრილი",
+    "მაისი",
+    "ივნისი",
+    "ივლისი",
+    "აგვისტო",
+    "სექტემბერი",
+    "ოქტომბერი",
+    "ნოემბერი",
+    "დეკემბერი",
+  ];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+}
 export const allergenLabels: Record<string, string> = {
   milk: "რძე",
   eggs: "კვერცხი",

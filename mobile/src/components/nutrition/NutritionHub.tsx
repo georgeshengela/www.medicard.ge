@@ -12,6 +12,7 @@ import {
   Leaf,
 } from "lucide-react-native";
 import { useAuth } from "@/store/AuthContext";
+import { nutritionDateLabel } from "@/lib/nutritionProgram";
 import { useThemeColors } from "@/theme/colors";
 import {
   NScreen,
@@ -48,11 +49,7 @@ function Hub() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Leaf color={c.primary100} size={17} />
             <NText style={{ color: c.text200, fontSize: 12 }}>
-              დღეს ·{" "}
-              {new Date(d.date + "T12:00:00").toLocaleDateString("ka-GE", {
-                day: "numeric",
-                month: "long",
-              })}
+              დღეს · {nutritionDateLabel(d.date)}
             </NText>
           </View>
           <NCard>

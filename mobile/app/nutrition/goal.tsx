@@ -293,9 +293,7 @@ function Goal({ owner }: { owner: string }) {
       }
     >
       {loading && !d && <NLoading />}
-      {loadError && (
-        <NError message={loadError} retry={() => void load()} />
-      )}{" "}
+      {!!loadError && <NError message={loadError} retry={() => void load()} />}
       {!!error && <NError message={error} />}
       {d && !paused && (
         <View key={step} style={{ gap: 18 }}>

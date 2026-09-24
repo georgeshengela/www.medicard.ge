@@ -11,6 +11,7 @@ import {
   NError,
   NLoading,
   WeightChart,
+  IntakeWeekChart,
   useNutritionDashboard,
 } from "@/components/nutrition/ProgramUI";
 export default function NutritionProgress() {
@@ -22,18 +23,12 @@ function Progress() {
     r = useRouter(),
     { data: d, error, loading, load } = useNutritionDashboard();
   const recorded = d?.days.filter((v) => v.recorded) || [];
-  const max = Math.max(
-    1,
-    ...(d?.days.map((v) =>
-      Math.max(v.totals.calories, v.target?.calories || 0),
-    ) || []),
-  );
   return (
     <NScreen
       title="შენი პროგრესი"
       subtitle="პატარა ნაბიჯები, თვალსაჩინო ცვლილება"
     >
-      {error && <NError message={error} retry={() => void load()} />}{" "}
+      {!!error && <NError message={error} retry={() => void load()} />}
       {loading && !d && <NLoading />}
       {d && (
         <>
@@ -56,58 +51,11 @@ function Progress() {
                 : "—"}{" "}
               კკალ საშუალოდ
             </NText>
-            <View style={{ flexDirection: "row", gap: 9, paddingTop: 16 }}>
-              {d.days.map((v) => (
-                <View
-                  key={v.date}
-                  accessible
-                  accessibilityLabel={`${v.date}: ${v.recorded ? v.totals.calories + " აღრიცხული კკალ" : "ჩანაწერი არ არის"}${v.target ? ", სამიზნე " + v.target.calories : ""}`}
-                  style={{ flex: 1, alignItems: "center", gap: 7 }}
-                >
-                  <View
-                    style={{
-                      height: 148,
-                      width: "100%",
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    {v.target && (
-                      <View
-                        style={{
-                          position: "absolute",
-                          bottom: (v.target.calories / max) * 140,
-                          height: 2,
-                          width: "100%",
-                          backgroundColor: c.text200,
-                        }}
-                      />
-                    )}
-                    <View
-                      style={{
-                        height: v.recorded
-                          ? Math.max(4, (v.totals.calories / max) * 140)
-                          : 3,
-                        backgroundColor: v.recorded ? c.primary100 : c.bg300,
-                        borderRadius: 5,
-                        width: "65%",
-                        alignSelf: "center",
-                      }}
-                    />
-                  </View>
-                  <NText
-                    style={{ fontSize: 10, lineHeight: 15, color: c.text200 }}
-                  >
-                    {v.date.slice(8)}
-                  </NText>
-                  <NText style={{ fontSize: 9, lineHeight: 13 }}>
-                    {v.recorded ? v.totals.calories : "—"}
-                  </NText>
-                </View>
-              ))}
-            </View>
+            <IntakeWeekChart days={d.days} />
             <NText style={{ fontSize: 11, color: c.text200 }}>
-              ხაზი — იმ დღის სამიზნე · ტირე — ჩანაწერი არ არის. საშუალო მხოლოდ
-              აღრიცხულ დღეებს ითვლის; არასრული დღიური სრულ მიღებას არ ასახავს.
+              შეეხე დღეს დეტალებისთვის. ტირე ნიშნავს, რომ ჩანაწერი არ არის.
+              საშუალო მხოლოდ აღრიცხულ დღეებს ითვლის; არასრული დღიური სრულ
+              მიღებას არ ასახავს.
             </NText>
           </NCard>
           <NCard>
