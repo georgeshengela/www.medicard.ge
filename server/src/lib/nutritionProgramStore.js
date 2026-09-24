@@ -10,6 +10,10 @@ import {
   recipeAllowed,
 } from "./nutritionProgram.js";
 import { totals } from "./nutrition.js";
+import {
+  profileNutritionAllergies,
+  nutritionMealPlanning,
+} from "./nutritionAllergies.js";
 
 export const nutritionError = (message, status = 400) =>
   Object.assign(new Error(message), { status });
@@ -32,33 +36,7 @@ export async function nutritionFacts(
     }),
   ]);
   const state = profile?.extraAnswers?.appState || {};
-  const allergyMap = {
-    milk: /milk|dairy|რძ|ლაქტოზ/i,
-    eggs: /egg|კვერცხ/i,
-    fish: /fish|თევზ/i,
-    shellfish: /shellfish|crustacean|shrimp|კიბო|კრევეტ/i,
-    nuts: /nuts|walnut|თხილ|ნიგო/i,
-    peanuts: /peanut|მიწის თხილ/i,
-    soy: /soy|სოია/i,
-    gluten: /gluten|wheat|გლუტენ|ხორბალ/i,
-    sesame: /sesame|სეზამ/i,
-  };
-  const allergies = Array.isArray(profile?.allergies)
-    ? profile.allergies.filter((v) => typeof v === "string" && v.trim())
-    : [];
-  const requiredAllergens = [
-    ...new Set(
-      allergies.flatMap((label) =>
-        Object.entries(allergyMap)
-          .filter(([, pattern]) => pattern.test(label))
-          .map(([key]) => key),
-      ),
-    ),
-  ];
-  const unknownAllergies = allergies.some(
-    (label) =>
-      !Object.values(allergyMap).some((pattern) => pattern.test(label)),
-  );
+  const allergyFacts = profileNutritionAllergies(profile?.allergies);
   const logs = Array.isArray(state.weightLogs)
     ? state.weightLogs
         .filter(
@@ -83,8 +61,7 @@ export async function nutritionFacts(
           ? { kg: profile.weightKg, date: null, source: "profile" }
           : null;
   return {
-    requiredAllergens,
-    unknownAllergies,
+    ...allergyFacts,
     birthDate: user.birthDate
       ? new Date(user.birthDate).toISOString().slice(0, 10)
       : null,
@@ -166,6 +143,7 @@ export function programState(program, facts, today) {
     );
   return {
     program,
+    mealPlanning: nutritionMealPlanning(program.config, facts),
     needsReview: reasons.length > 0,
     reasons,
     targets: program.active && !reasons.length ? program.targets : null,
@@ -192,7 +170,11 @@ export async function nutritionDashboard(user, day, db = prisma) {
     remaining: state.targets ? state.targets.calories - today.calories : null,
     days: summarizeNutritionDays(meals, from, 7, history),
     mealCount: meals.filter((m) => m.date === day).length,
-    planned: planned.filter((p) => p.programRevision === program?.revision),
+    planned: planned.filter(
+      (p) =>
+        p.programRevision === program?.revision &&
+        (state.mealPlanning?.eligible !== false || p.eaten),
+    ),
     intakeSource: "nutrition_meals_only",
   };
 }
@@ -311,6 +293,7 @@ export async function generateNutritionWeek(
       );
       if (!state.targets || program.revision !== expectedRevision)
         throw nutritionError("ჯერ მოქმედი კვების გეგმა გადაამოწმე.", 409);
+      requireNutritionMealPlanning(state);
       const recipes =
         await tx.$queryRaw`SELECT * FROM "NutritionRecipe" WHERE active=TRUE ORDER BY id`;
       const week = buildWeek(
@@ -368,6 +351,7 @@ export async function swapPlannedMeal(user, id, recipeId, today, db = prisma) {
       );
     if (!state.targets || meal.programRevision !== program.revision)
       throw nutritionError("ჯერ მოქმედი გეგმა გადაამოწმე.", 409);
+    requireNutritionMealPlanning(state);
     const [recipe] =
       await tx.$queryRaw`SELECT * FROM "NutritionRecipe" WHERE id=${recipeId}`;
     if (
@@ -382,4 +366,9 @@ export async function swapPlannedMeal(user, id, recipeId, today, db = prisma) {
     await tx.$executeRaw`UPDATE "NutritionPlannedMeal" SET "recipeId"=${recipeId},data=${JSON.stringify(data)}::jsonb,"updatedAt"=NOW() WHERE id=${id} AND "userId"=${user.id}`;
     return { ok: true };
   });
+}
+
+export function requireNutritionMealPlanning(state) {
+  if (state.mealPlanning && !state.mealPlanning.eligible)
+    throw nutritionError(state.mealPlanning.reasons.join(" "), 422);
 }

@@ -41,6 +41,7 @@ export async function loadAssistantContext(user, domains, scope, db = prisma, pe
     const d = await nutritionDashboard(user,today,db);
     context.nutrition = { date:today, targets:d.targets, today:d.today, mealCount:d.mealCount, remaining:d.remaining,
       needsReview:d.needsReview, active:!!d.program?.active, days:d.days,
+      mealPlanningAvailable:d.mealPlanning?.eligible !== false,
       goal:d.facts.weightGoal,currentWeight:d.facts.current,
       diet:d.program?.config?.diet,allergens:d.program?.config?.allergens,
       professionalReviewNeeded:d.facts.professionalReviewNeeded,

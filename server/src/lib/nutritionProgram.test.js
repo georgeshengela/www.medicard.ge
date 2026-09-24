@@ -13,6 +13,10 @@ import { totals } from "./nutrition.js";
 import { programState, publicNutritionFacts } from "./nutritionProgramStore.js";
 import { nativeAction } from "./assistantExecution.js";
 import { assistantContextSelection } from "./assistantFlow.js";
+import {
+  profileNutritionAllergies,
+  nutritionMealPlanning,
+} from "./nutritionAllergies.js";
 export const nutritionFixture = {
   mode: "lose",
   weightKg: 90,
@@ -32,6 +36,97 @@ export const nutritionFixture = {
   },
 };
 const day = "2026-09-24";
+test("environmental allergy needs clarification only for recipes, not an energy target", () => {
+  const facts = profileNutritionAllergies(["სეზონური მტვერი · დემო"]);
+  const pending = assessNutritionProgram(nutritionFixture, facts, day);
+  assert.equal(pending.eligible, true);
+  assert.equal(pending.mealPlanning.eligible, false);
+  assert.match(pending.mealPlanning.reasons[0], /სეზონური მტვერი/);
+  const config = {
+    ...nutritionFixture,
+    allergyClarifications: [
+      { label: "სეზონური მტვერი · დემო", kind: "non_food", allergens: [] },
+    ],
+  };
+  assert.equal(
+    assessNutritionProgram(config, facts, day).mealPlanning.eligible,
+    true,
+  );
+  assert.equal(
+    nutritionMealPlanning(config, profileNutritionAllergies(["სხვა ალერგია"]))
+      .eligible,
+    false,
+  );
+  assert.equal(
+    nutritionMealPlanning(nutritionFixture, { unknownAllergies: true })
+      .eligible,
+    false,
+  );
+  assert.equal(
+    assessNutritionProgram(
+      config,
+      { ...facts, sensitiveRestriction: true },
+      day,
+    ).eligible,
+    false,
+  );
+});
+test("known food allergies cannot be deselected; unknown food must be mapped explicitly", () => {
+  const facts = profileNutritionAllergies([
+    "milk",
+    "ნიახური",
+    "მდოგვი",
+    "სულფიტები",
+    "ლუპინი",
+    "მოლუსკები",
+  ]);
+  assert.equal(facts.unknownAllergies, false);
+  assert.equal(facts.requiredAllergens.length, 6);
+  const review = assessNutritionProgram(nutritionFixture, facts, day);
+  assert.ok(review.input.allergens.includes("milk"));
+  assert.equal(review.mealPlanning.eligible, true);
+  assert.equal(nutritionMealPlanning(nutritionFixture, facts).eligible, false);
+  assert.deepEqual(profileNutritionAllergies(["peanuts"]).requiredAllergens, [
+    "peanuts",
+  ]);
+  assert.equal(
+    profileNutritionAllergies(["milk, strawberry"]).unknownAllergies,
+    true,
+  );
+  const unknown = profileNutritionAllergies(["unknown trigger"]);
+  const answer = {
+    label: "unknown trigger",
+    kind: "food",
+    allergens: ["eggs"],
+  };
+  const resolved = assessNutritionProgram(
+    { ...nutritionFixture, allergyClarifications: [answer] },
+    unknown,
+    day,
+  );
+  assert.equal(resolved.mealPlanning.eligible, true);
+  assert.ok(resolved.input.allergens.includes("eggs"));
+  for (const a of [
+    { ...answer, kind: "unsure" },
+    { ...answer, allergens: [] },
+  ])
+    assert.equal(
+      assessNutritionProgram(
+        { ...nutritionFixture, allergyClarifications: [a] },
+        unknown,
+        day,
+      ).mealPlanning.eligible,
+      false,
+    );
+  assert.equal(
+    assessNutritionProgram(
+      { ...nutritionFixture, avoidFoods: "strawberry" },
+      {},
+      day,
+    ).mealPlanning.eligible,
+    false,
+  );
+});
 test("formula and macros derive from confirmed measurements; maintain and gain are explicit", () => {
   const r = assessNutritionProgram(nutritionFixture, {}, day);
   assert.equal(r.eligible, true);

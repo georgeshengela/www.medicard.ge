@@ -42,6 +42,9 @@ import {
   mealLabels,
   shiftDay,
   scaleFood,
+  mealEditSnapshot,
+  foodEditSnapshot,
+  foodFields,
   type FoodItem,
   type Meal,
 } from "@/lib/nutrition";
@@ -89,6 +92,12 @@ function NutritionScreen() {
   const [scanning, setScanning] = useState(false);
   const [uncertainty, setUncertainty] = useState<"low" | "medium" | "high" | null>(null);
   const scroll = useRef<ScrollView>(null);
+  const mealBaseline = useRef("");
+  const itemBaseline = useRef("");
+  const openMeal = (meal: Meal) => {
+    mealBaseline.current = mealEditSnapshot(meal);
+    setDraft(meal);
+  };
   useEffect(() => {
     const show = Keyboard.addListener("keyboardDidShow", () =>
       setKeyboardOpen(true),
@@ -152,7 +161,7 @@ function NutritionScreen() {
     }
   };
   const newMeal = () => {
-    setDraft({
+    openMeal({
       id: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
         const n = Math.floor(Math.random() * 16);
         return (c === "x" ? n : (n & 3) | 8).toString(16);
@@ -172,7 +181,15 @@ function NutritionScreen() {
     setEditing(null);
   };
   const close = () => {
-    if (busy) return;
+    if (lock.current) return;
+    Keyboard.dismiss();
+    if (editing !== null) {
+      const leaveItem = () => { setEditing(null); setError(""); };
+      if (foodEditSnapshot(fields) !== itemBaseline.current) {
+        setConfirmation({ title: "შესწორების გაუქმება?", message: "საკვების შეუნახავი ცვლილებები დაიკარგება.", action: leaveItem });
+      } else leaveItem();
+      return;
+    }
     const leave = () => {
       setDraft(null);
       setPhoto(null);
@@ -180,12 +197,12 @@ function NutritionScreen() {
       setError("");
     };
     if (draft) {
-      Keyboard.dismiss();
-      setConfirmation({
+      if (mealEditSnapshot(draft) !== mealBaseline.current || photo) setConfirmation({
         title: "გამოსვლა?",
         message: "შეუნახავი ცვლილებები დაიკარგება.",
         action: leave,
       });
+      else leave();
     } else if (router.canGoBack()) router.back();
     else router.replace("/(tabs)/home");
   };
@@ -200,7 +217,7 @@ function NutritionScreen() {
         return false;
       });
       return () => back.remove();
-    }, [busy, draft]),
+    }, [busy, draft, editing, fields, photo]),
   );
   const pick = (camera: boolean) =>
     run(async () => {
@@ -258,20 +275,9 @@ function NutritionScreen() {
   const editItem = (index: number) => {
     const i = draft?.items[index];
     setEditing(index);
-    setFields(
-      i
-        ? (Object.fromEntries(
-            Object.entries(i).map(([k, v]) => [k, String(v)]),
-          ) as typeof fields)
-        : {
-            name: "",
-            grams: "100",
-            calories: "",
-            protein: "",
-            carbs: "",
-            fat: "",
-          },
-    );
+    const nextFields = foodFields(i);
+    itemBaseline.current = foodEditSnapshot(nextFields);
+    setFields(nextFields);
     setError("");
     scroll.current?.scrollTo({y:0, animated:false});
   };
@@ -541,7 +547,7 @@ function NutritionScreen() {
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => {
-                    setDraft(meal);
+                    openMeal(meal);
                     setEditing(null);
                     setExplanation("");
                     setPhoto(null);
@@ -704,10 +710,7 @@ function NutritionScreen() {
                 />
               </View>
             ))}
-            {button("გაუქმება", () => {
-              setEditing(null);
-              setError("");
-            })}
+            {button("გაუქმება", close)}
           </View>
         )}
         <Text style={[txt, { fontSize: 12, color: c.text200, lineHeight: 19 }]}>

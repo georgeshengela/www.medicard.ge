@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { civilDate, foodItem, totals } from "./nutrition.js";
+import { nutritionMealPlanning } from "./nutritionAllergies.js";
 
 export const NUTRITION_METHOD_VERSION = "2026-09-24.1";
 export const ALLERGENS = [
@@ -31,6 +32,18 @@ export const programInput = z
     diet: z.enum(["balanced", "vegetarian", "vegan"]),
     allergens: z.array(z.enum(ALLERGENS)).max(14),
     avoidFoods: z.string().trim().max(300),
+    allergyClarifications: z
+      .array(
+        z
+          .object({
+            label: z.string().trim().min(1).max(500),
+            kind: z.enum(["non_food", "food", "unsure"]),
+            allergens: z.array(z.enum(ALLERGENS)).max(14),
+          })
+          .strict(),
+      )
+      .max(100)
+      .default([]),
     screening: z
       .object({
         pregnancyOrBreastfeeding: z.boolean(),
@@ -75,19 +88,26 @@ export function ageOn(birth, day) {
 /** Conservative product eligibility, not a diagnosis or a clinical prescription. */
 export function assessNutritionProgram(raw, facts = {}, day) {
   const input = programInput.parse(raw);
+  // Profile food restrictions cannot be removed by a client. A clarification is
+  // only valid for the exact current profile label; changed labels need review.
+  input.allergens = [
+    ...new Set([
+      ...input.allergens,
+      ...(facts.requiredAllergens || []),
+      ...input.allergyClarifications
+        .filter(
+          (a) =>
+            a.kind === "food" &&
+            (facts.unclassifiedAllergies || []).includes(a.label),
+        )
+        .flatMap((a) => a.allergens),
+    ]),
+  ];
   const age = ageOn(input.birthDate, day);
   const profileAge = facts.birthDate ? ageOn(facts.birthDate, day) : age;
   const bmi = input.weightKg / (input.heightCm / 100) ** 2;
   const targetBmi = input.targetKg / (input.heightCm / 100) ** 2;
   const reasons = [];
-  if (facts.unknownAllergies)
-    reasons.push(
-      "პროფილში ალერგიაა, რომლის კვებით შესაბამისობას ავტომატურად ვერ ვადასტურებთ. გეგმა სპეციალისტთან გადაამოწმე.",
-    );
-  if ((facts.requiredAllergens || []).some((a) => !input.allergens.includes(a)))
-    reasons.push(
-      "პროფილში მითითებული საკვები ალერგენებიც უნდა გამორიცხო კვების არჩევანში.",
-    );
   if (
     age == null ||
     profileAge == null ||
@@ -147,6 +167,7 @@ export function assessNutritionProgram(raw, facts = {}, day) {
   return {
     eligible: reasons.length === 0,
     reasons,
+    mealPlanning: nutritionMealPlanning(input, facts),
     methodVersion: NUTRITION_METHOD_VERSION,
     targets: reasons.length
       ? null

@@ -119,7 +119,8 @@ function Plan() {
       Object.keys(mealLabels).indexOf(a.type) -
       Object.keys(mealLabels).indexOf(b.type),
   );
-  const current = !!d?.targets && !!d.program?.active;
+  const current =
+    !!d?.targets && !!d.program?.active && d.mealPlanning?.eligible !== false;
   const mealValid = (m: PlannedMeal) =>
     current && m.programRevision === d?.program?.revision;
   const icons = { breakfast: Sunrise, lunch: Sun, dinner: Moon, snack: Apple };
@@ -181,16 +182,27 @@ function Plan() {
           {!current && d && (
             <NCard>
               <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>
-                ჯერ დღის მიზანი შეარჩიე
+                {d.targets
+                  ? "რაციონისთვის კვების არჩევანი დააზუსტე"
+                  : "ჯერ დღის მიზანი შეარჩიე"}
               </NText>
               <NText style={{ color: c.text200 }}>
-                {d.reasons[0] ||
+                {d.mealPlanning?.reasons.join(" ") ||
+                  d.reasons[0] ||
                   "რაციონი შენს საჭიროებას, არჩევანსა და ალერგენებს მოერგება."}
               </NText>
               <NButton
-                label="გეგმის შერჩევა"
+                label={
+                  d.targets ? "კვების არჩევანის დაზუსტება" : "გეგმის შერჩევა"
+                }
                 onPress={() => router.push("/nutrition/goal")}
               />
+              {d.targets && (
+                <NText style={{ fontSize: 12, color: c.text200 }}>
+                  დღის სამიზნე შენახულია. კვების დღიურში ჩაწერა შეგიძლია
+                  გააგრძელო.
+                </NText>
+              )}
             </NCard>
           )}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>

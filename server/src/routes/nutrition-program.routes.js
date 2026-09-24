@@ -27,6 +27,7 @@ import {
   eatPlannedMeal,
   swapPlannedMeal,
   nutritionError,
+  requireNutritionMealPlanning,
 } from "../lib/nutritionProgramStore.js";
 
 // Mounted only after the parent's authentication and no-cache middleware.
@@ -187,6 +188,7 @@ r.get(
     );
     if (!state.targets)
       throw nutritionError("ჯერ მოქმედი კვების გეგმა შეარჩიე.", 409);
+    requireNutritionMealPlanning(state);
     const rows =
       await prisma.$queryRaw`SELECT * FROM "NutritionRecipe" WHERE active=TRUE ORDER BY id`;
     const fractions = { breakfast: 0.25, lunch: 0.35, dinner: 0.3, snack: 0.1 };

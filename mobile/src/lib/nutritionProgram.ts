@@ -24,11 +24,22 @@ export type ProgramConfig = {
   diet: "balanced" | "vegetarian" | "vegan";
   allergens: string[];
   avoidFoods: string;
+  allergyClarifications?: AllergyClarification[];
   screening: {
     pregnancyOrBreastfeeding: boolean;
     eatingDisorder: boolean;
     medicalDiet: boolean;
   };
+};
+export type AllergyClarification = {
+  label: string;
+  kind: "non_food" | "food" | "unsure";
+  allergens: string[];
+};
+export type MealPlanningAvailability = {
+  eligible: boolean;
+  reasons: string[];
+  unresolvedAllergies: string[];
 };
 export type NutritionProgram = {
   revision: string;
@@ -66,6 +77,7 @@ export type NutritionDashboard = {
   program: NutritionProgram | null;
   targets: NutritionTargets | null;
   needsReview: boolean;
+  mealPlanning?: MealPlanningAvailability;
   reasons: string[];
   date: string;
   today: NutritionTotals;
@@ -76,6 +88,7 @@ export type NutritionDashboard = {
   facts: {
     requiredAllergens: string[];
     unknownAllergies: boolean;
+    unclassifiedAllergies?: string[];
     birthDate: string | null;
     sex: "female" | "male" | null;
     heightCm: number | null;
@@ -98,6 +111,7 @@ export type NutritionPreview = {
   reasons: string[];
   targets: NutritionTargets | null;
   explanation: string;
+  mealPlanning?: MealPlanningAvailability;
 };
 // Explicit Georgian labels also work on runtimes without ka-GE Intl data.
 export function nutritionDateLabel(date: string, weekday = false) {

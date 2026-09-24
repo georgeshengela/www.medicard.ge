@@ -53,3 +53,49 @@ export function scaleFood(item: FoodItem, grams: number): FoodItem {
     fat: Math.round(item.fat * ratio * 10) / 10,
   };
 }
+
+/** Compare persisted values, not API metadata or object identity. */
+export function mealEditSnapshot(meal: Meal): string {
+  return JSON.stringify({
+    date: meal.date,
+    type: meal.type,
+    source: meal.source,
+    note: (meal.note || "").trim(),
+    items: meal.items.map(({ name, grams, calories, protein, carbs, fat }) => ({
+      name: name.trim(),
+      grams,
+      calories,
+      protein,
+      carbs,
+      fat,
+    })),
+  });
+}
+export type FoodFields = Record<keyof FoodItem, string>;
+export function foodFields(item?: FoodItem): FoodFields {
+  return item
+    ? {
+        name: item.name,
+        grams: String(item.grams),
+        calories: String(item.calories),
+        protein: String(item.protein),
+        carbs: String(item.carbs),
+        fat: String(item.fat),
+      }
+    : { name: "", grams: "100", calories: "", protein: "", carbs: "", fat: "" };
+}
+export function foodEditSnapshot(fields: FoodFields): string {
+  return JSON.stringify(
+    Object.entries(fields)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => {
+        const text = value.trim();
+        const number = Number(text.replace(",", "."));
+        // Empty or incomplete input is not equivalent to a recorded zero.
+        return [
+          key,
+          key !== "name" && text && Number.isFinite(number) ? number : text,
+        ];
+      }),
+  );
+}

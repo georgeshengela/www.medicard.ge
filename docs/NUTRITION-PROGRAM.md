@@ -40,3 +40,14 @@ AI disclosure revision `2026-09-24.nutrition-program` adds the specific nutritio
 - Native iPhone keyboard, camera and haptics need device verification; web screenshots and Expo compilation do not prove hardware behavior.
 
 Apply additive schema and missing catalog entries with `node scripts/install-nutrition.mjs` from server working directory. Release command already runs this installer. Never use schema reset or switch databases.
+
+
+## 2026-09-24 follow-up — app 1.0.0.11.23
+
+- Diary exit compares persisted meal values with the opening snapshot. Opening, cancelling an untouched item, or reverting edits no longer prompts. Actual item edits, meal edits, selected photos and unsaved estimates retain confirmation. Numeric field formatting is normalized; blank input is not zero. Item Back returns to the meal before leaving the diary.
+- The previous blanket `unknownAllergies` condition incorrectly prevented calorie targets for environmental/medicine profile entries. Energy-target suitability and recipe-filter suitability are now separate.
+- Unclassified profile labels are displayed verbatim to their owner with explicit non-food / food / unsure choices. Food answers map to supported allergens; unknown or unsupported restrictions keep recipes unavailable while allowing an otherwise eligible daily energy guide and manual diary. No label is automatically declared non-food.
+- Clarifications persist in the existing program JSON and are matched to exact current profile labels. Known food allergies are enforced server-side even if a client omits them. Changed profile allergies recheck generation, swaps and recipe listing; outdated uneaten suggestions are omitted from the hub/Medi context. Underlying profile entries are never rewritten.
+- Added all 14 supported allergen mappings; peanuts are distinguished from tree nuts. Mixed free text is still clarified when part of it is unrecognised.
+- Source rationale: [NHS allergies](https://www.nhs.uk/conditions/allergies/) distinguishes food, medicines, dust and pollen triggers; [NHS food allergy](https://www.nhs.uk/conditions/food-allergy/) describes pollen-food reactions. Therefore non-food classification requires the user's explicit answer rather than a pollen/dust whitelist. This workflow is a product design decision, not an allergy diagnosis.
+- Validation: 55 unit/HTTP checks, TypeScript check, and 29 main-database checks in an entirely rolled-back synthetic transaction. Browser diary checks cover untouched close, actual edit warning, reverted edit close, and numerically equivalent item fields. Native keyboard/hardware validation remains a separate device check.

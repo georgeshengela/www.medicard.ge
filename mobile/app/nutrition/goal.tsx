@@ -10,7 +10,9 @@ import {
   allergenLabels,
   type ProgramConfig,
   type NutritionPreview,
+  type AllergyClarification,
 } from "@/lib/nutritionProgram";
+import { AllergyReview } from "@/components/nutrition/AllergyReview";
 import { consumeAssistantPayload } from "@/lib/assistant";
 import {
   NScreen,
@@ -54,6 +56,9 @@ function Goal({ owner }: { owner: string }) {
     eatingDisorder: null,
     medicalDiet: null,
   });
+  const [allergyClarifications, setAllergyClarifications] = useState<
+    AllergyClarification[]
+  >([]);
   const init = useRef(false),
     alive = useRef(true),
     lock = useRef(false),
@@ -72,6 +77,11 @@ function Goal({ owner }: { owner: string }) {
     const p = d.program?.config,
       f = d.facts;
     const weight = f.current?.kg || p?.weightKg;
+    setAllergyClarifications(
+      (p?.allergyClarifications || []).filter((a) =>
+        (f.unclassifiedAllergies || []).includes(a.label),
+      ),
+    );
     const wanted =
       launch.current?.targetKg ??
       (launch.current?.loseKg != null && weight
@@ -132,7 +142,16 @@ function Goal({ owner }: { owner: string }) {
     activity: form.activity as ProgramConfig["activity"],
     pace: form.pace as ProgramConfig["pace"],
     diet: form.diet as ProgramConfig["diet"],
-    allergens: form.allergens,
+    allergens: [
+      ...new Set([
+        ...form.allergens,
+        ...(d?.facts.requiredAllergens || []),
+        ...allergyClarifications
+          .filter((a) => a.kind === "food")
+          .flatMap((a) => a.allergens),
+      ]),
+    ],
+    allergyClarifications,
     avoidFoods: form.avoidFoods,
     screening: screening as ProgramConfig["screening"],
   });
@@ -398,6 +417,16 @@ function Goal({ owner }: { owner: string }) {
                 ["vegan", "ვეგანური"],
               ])}
               <NText>გამოსარიცხი ალერგენები</NText>
+              {!!d.facts.requiredAllergens.length && (
+                <NText style={{ fontSize: 12, color: c.text200 }}>
+                  პროფილიდან დამატებულია:{" "}
+                  {d.facts.requiredAllergens
+                    .map((a) => allergenLabels[a] || a)
+                    .join(", ")}
+                  . მათ ავტომატურად გამოვრიცხავთ. თუ პროფილის ჩანაწერი
+                  არასწორია, ის პროფილში შეასწორე.
+                </NText>
+              )}
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {Object.entries(allergenLabels).map(([key, label]) => (
                   <Pressable
@@ -405,7 +434,9 @@ function Goal({ owner }: { owner: string }) {
                     accessibilityRole="checkbox"
                     accessibilityState={{
                       checked: form.allergens.includes(key),
+                      disabled: d.facts.requiredAllergens.includes(key),
                     }}
+                    disabled={d.facts.requiredAllergens.includes(key)}
                     onPress={() =>
                       patch(
                         "allergens",
@@ -435,6 +466,11 @@ function Goal({ owner }: { owner: string }) {
                   </Pressable>
                 ))}
               </View>
+              <AllergyReview
+                labels={d.facts.unclassifiedAllergies || []}
+                value={allergyClarifications}
+                onChange={setAllergyClarifications}
+              />
               {field("სხვა საკვები შეზღუდვა · სურვილისამებრ", "avoidFoods")}
               <NText style={{ fontSize: 12, color: c.text200 }}>
                 სხვა შეზღუდვის მითითებისას ავტომატურ რაციონს არ შევადგენთ,
@@ -525,6 +561,35 @@ function Goal({ owner }: { owner: string }) {
                     </NText>
                   </NCard>
                   <NText>{preview.explanation}</NText>
+                  {preview.mealPlanning && !preview.mealPlanning.eligible && (
+                    <NCard>
+                      <NText
+                        style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}
+                      >
+                        დღის სამიზნე მზადაა · რაციონს დაზუსტება სჭირდება
+                      </NText>
+                      {preview.mealPlanning.reasons.map((reason) => (
+                        <NText
+                          key={reason}
+                          style={{ fontSize: 13, color: c.text200 }}
+                        >
+                          {reason}
+                        </NText>
+                      ))}
+                      <NText style={{ fontSize: 12 }}>
+                        შეგიძლია მიზანი შეინახო და კვება დღიურში აღრიცხო.
+                        კერძების ავტომატურ შერჩევას დაზუსტების შემდეგ ჩავრთავთ.
+                      </NText>
+                      <NButton
+                        secondary
+                        label="კვების არჩევანის დაზუსტება"
+                        onPress={() => {
+                          setStep(1);
+                          setPreview(null);
+                        }}
+                      />
+                    </NCard>
+                  )}
                   <NText style={{ fontSize: 12, color: c.text200 }}>
                     შენახვა განაახლებს აპში შენს საერთო წონის მიზანს. რაციონს
                     შემდეგ ეტაპზე შეადგენ.

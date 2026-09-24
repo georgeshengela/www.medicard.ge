@@ -200,6 +200,90 @@ try {
       check(nextDashboard.facts.current.kg === 88.8);
       check(nextDashboard.facts.weightHistory.at(-1).weightKg === 88.8);
       check(nextDashboard.facts.weightHistory.at(-1).date === "2026-09-25");
+      // Allergies may change after a plan was saved. Enforce current profile
+      // restrictions at every recipe mutation while keeping the energy guide.
+      await tx.healthProfile.update({
+        where: { userId: a.id },
+        data: { allergies: ["სეზონური მტვერი · QA"] },
+      });
+      const unresolved = await nutritionDashboard(a, day, proxy);
+      check(!!unresolved.targets && unresolved.mealPlanning.eligible === false);
+      await assert.rejects(
+        () =>
+          generateNutritionWeek(
+            a,
+            day,
+            day,
+            0,
+            revised.program.revision,
+            proxy,
+          ),
+        (e) => e.status === 422,
+      );
+      checked++;
+      // Save the guide with unresolved allergies: this is allowed, recipes aren't.
+      const awaiting = await saveNutritionProgram(
+        a,
+        { ...input, weightKg: 89 },
+        day,
+        revised.program.revision,
+        proxy,
+      );
+      check(!!awaiting.program.targets);
+      const clarified = await saveNutritionProgram(
+        a,
+        {
+          ...input,
+          weightKg: 89,
+          allergyClarifications: [
+            { label: "სეზონური მტვერი · QA", kind: "non_food", allergens: [] },
+          ],
+        },
+        day,
+        awaiting.program.revision,
+        proxy,
+      );
+      check((await nutritionDashboard(a, day, proxy)).mealPlanning.eligible);
+      const safeWeek = await generateNutritionWeek(
+        a,
+        day,
+        day,
+        0,
+        clarified.program.revision,
+        proxy,
+      );
+      check(safeWeek.meals.length === 28);
+      await tx.healthProfile.update({
+        where: { userId: a.id },
+        data: { allergies: ["milk"] },
+      });
+      check(
+        (await nutritionDashboard(a, day, proxy)).mealPlanning.eligible ===
+          false,
+      );
+      const stale = safeWeek.meals.find((m) => !m.eaten);
+      await assert.rejects(
+        () => swapPlannedMeal(a, stale.id, stale.recipeId, day, proxy),
+        (e) => e.status === 422,
+      );
+      checked++;
+      const refreshed = await saveNutritionProgram(
+        a,
+        { ...input, weightKg: 89 },
+        day,
+        clarified.program.revision,
+        proxy,
+      );
+      check(refreshed.program.config.allergens.includes("milk"));
+      const filtered = await generateNutritionWeek(
+        a,
+        day,
+        day,
+        0,
+        refreshed.program.revision,
+        proxy,
+      );
+      check(filtered.meals.every((m) => !m.data.allergens.includes("milk")));
       throw rollback;
     },
     { timeout: 60000 },
