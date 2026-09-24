@@ -45,3 +45,7 @@ Before release, test varied real food photos (especially Georgian mixed dishes) 
 - [Cal AI](https://www.calai.app/): photo → estimate → diary inspiration, without copying branding or claiming its advertised accuracy.
 - [NIDDK — Food portions](https://www.niddk.nih.gov/health-information/weight-management/just-enough-food-portions): distinction between portion and serving; label-based checking.
 - [Review of AI-based image dietary assessment](https://pmc.ncbi.nlm.nih.gov/articles/PMC10836267/): food/portion estimation requires validation against reference data. Manual correction and explicitly estimated results are deliberate product choices.
+
+## Scan reliability correction — 2026-09-24
+
+Reproduced a 503 on the main API with a generated, non-personal banana illustration. The same direct provider request succeeded locally. A real multipart HTTP regression exposed lost AsyncLocalStorage account context after Multer callbacks; the SDK wrapped the consent failure as a connection error. The estimate call now re-enters the authenticated account context and preserves nested consent-revocation errors. The transport still rechecks current consent immediately before sending. The regression fails before the fix and passes after, including revocation between upload and transmission. No consent bypass or provider-routing change.

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import jwt from "jsonwebtoken";
+import sharp from "sharp";
 import {
   nutritionRouter,
   adminNutritionRouter,
@@ -35,24 +36,29 @@ test("HTTP authentication, consent, validation and upload gates (no outbound AI 
     403,
   );
   const originalFind = prisma.user.findUnique,
-    originalRaw = prisma.$queryRaw;
+    originalRaw = prisma.$queryRaw, originalExecute = prisma.$executeRaw, originalFetch = globalThis.fetch;
   prisma.user.findUnique = async () => ({ id: "synthetic", status: "ACTIVE" });
   t.after(() => {
     prisma.user.findUnique = originalFind;
     prisma.$queryRaw = originalRaw;
+    prisma.$executeRaw = originalExecute;
+    globalThis.fetch = originalFetch;
   });
   let accepted = false,
-    queried = 0;
+    queried = 0, consentReads = 0, revokeAfterPreflight = false;
   prisma.$queryRaw = async (strings) => {
     queried++;
     const sql = strings.join("");
-    if (sql.includes("UserAiConsent"))
+    if (sql.includes("UserAiConsent")) {
+      consentReads++;
+      if (revokeAfterPreflight && consentReads > 1) accepted = false;
       return [
         {
           version: AI_CONSENT_VERSION,
           decision: accepted ? "accepted" : "declined",
         },
       ];
+    }
     if (sql.includes("NutritionSettings")) return [{ photoEnabled: true }];
     assert.fail("Unexpected database query");
   };
@@ -99,4 +105,30 @@ test("HTTP authentication, consent, validation and upload gates (no outbound AI 
       .status,
     400,
   );
+  // Real SDK + consented fetch AFTER multipart parsing; external transport stubbed.
+  let providerCalls = 0;
+  prisma.$executeRaw = async () => 1;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).startsWith('https://openrouter.ai/')) {
+      providerCalls++;
+      return new Response(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({foodDetected:true,items:[{name:'ბანანი',grams:120,calories:107,protein:1.3,carbs:27,fat:0.4}],uncertainty:'medium',explanation:'სატესტო შეფასება'})}}]}),{headers:{'Content-Type':'application/json'}});
+    }
+    return originalFetch(url, init);
+  };
+  const photo = await sharp({create:{width:16,height:16,channels:3,background:'#fff'}}).jpeg().toBuffer();
+  const validBody = new FormData();
+  validBody.append('photo',new Blob([photo],{type:'image/jpeg'}),'synthetic.jpg');
+  const validResponse = await call('/nutrition/estimate',{method:'POST',headers,body:validBody});
+  assert.equal(validResponse.status,200,await validResponse.clone().text());
+  assert.equal(providerCalls,1,'Current consent must reach provider through multipart upload');
+
+  consentReads = 0;
+  revokeAfterPreflight = true;
+  const revokedBody = new FormData();
+  revokedBody.append('photo',new Blob([photo],{type:'image/jpeg'}),'synthetic.jpg');
+  const revoked = await call('/nutrition/estimate',{method:'POST',headers,body:revokedBody});
+  assert.equal(revoked.status,403);
+  assert.equal((await revoked.json()).code,'AI_CONSENT_REQUIRED');
+  assert.equal(providerCalls,1,'Revoked consent must stop the second transmission');
+
 });

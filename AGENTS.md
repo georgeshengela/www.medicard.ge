@@ -117,3 +117,7 @@ Always use the main MEDICARD database and https://medicard.ge API for the owner'
 ## Keyboard comfort (owner requirement, 2026-09-24)
 
 Every form must keep the focused input and primary action above the keyboard, with compact spacing and smooth opening/closing. Follow the existing sign-in pattern: a bounded scrolling form and a pinned, animated footer, with safe-area padding only when the keyboard is closed. Never combine two keyboard-inset mechanisms. Check small screens, iOS and Android, focus changes, dismissal and submission; browser-only checks are not proof of native keyboard behavior. This is a completion requirement for new and edited forms, including community nickname onboarding.
+
+## Publish completed changes (owner requirement, 2026-09-24)
+
+After completing and verifying requested app/backend changes, commit and push the relevant finished changes to the existing Git remote so the owner can test. Check deployment when backend behavior changes. Preserve unrelated in-progress edits and never commit secrets. Report the deployed/verified state accurately.

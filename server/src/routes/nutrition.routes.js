@@ -10,7 +10,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { requireAdmin } from "../middleware/adminAuth.js";
 import { requireAdminCapability } from "../lib/adminCapabilities.js";
 import { asyncHandler as wrap } from "../middleware/error.js";
-import { requireAiConsent } from "../lib/aiConsent.js";
+import { requireAiConsent, withAiAccount } from "../lib/aiConsent.js";
 import { openRouterClient } from "../lib/aiEngine.js";
 import { writeAdminAudit } from "../lib/adminAudit.js";
 import {
@@ -119,7 +119,9 @@ r.post(
     const started = Date.now();
     let success = false;
     try {
-      const response = await openRouterClient.chat.completions.create(
+      // Multipart callbacks can leave the authentication AsyncLocalStorage scope.
+      // Rebind the already-authenticated account; the transport still rechecks consent.
+      const response = await withAiAccount(req.user.id, () => openRouterClient.chat.completions.create(
         {
           model: "google/gemini-3.8-flash",
           temperature: 0.1,
@@ -145,15 +147,24 @@ r.post(
           ],
         },
         { timeout: 45000, maxRetries: 0 },
-      );
+      ));
       const estimate = parseEstimate(
         response.choices?.[0]?.message?.content || "",
       );
       success = true;
       res.json({ ...estimate, totals: totals(estimate.items) });
     } catch (error) {
-      if (error.code === "AI_CONSENT_REQUIRED" || error.status === 502)
-        throw error;
+      // The SDK wraps fetch errors. Keep a revoked consent distinct from downtime.
+      let cause = error;
+      for (let depth = 0; cause && depth < 5; depth++, cause = cause.cause) {
+        if (cause.code === "AI_CONSENT_REQUIRED") throw cause;
+      }
+      console.warn("[nutrition] estimate failed", {
+        kind: error.status === 502 ? "invalid_output" : "provider_unavailable",
+        status: Number.isInteger(error.status) ? error.status : null,
+        durationMs: Date.now() - started,
+      });
+      if (error.status === 502) throw error;
       fail(503, "შეფასება ვერ დასრულდა. სცადე ხელახლა ან შეავსე ხელით.");
     } finally {
       bytes = null;
