@@ -36,6 +36,7 @@ export function operationBody(plan) {
   return petId ? { ...body, clientRequestId: `medi:${plan.id}` } : body;
 }
 export function nativeAction(plan) {
+  if (plan.tool === 'nutrition_goal' || plan.tool === 'weight_goal') return { route:'/nutrition/goal', nutritionGoal:{...(plan.args.targetKg != null ? {targetKg:plan.args.targetKg}:{}),...(plan.args.loseKg != null ? {loseKg:plan.args.loseKg}:{})} };
   if (plan.tool === 'record_open') return { route: `/record/${plan.args.recordId}` };
   if (plan.tool === 'medication_open') return { route: `/medications/${plan.args.medicationId}` };
   if (plan.tool === 'visit_open') return { route: `/visits/editor?id=${plan.args.visitId}` };
@@ -47,6 +48,8 @@ export function nativeAction(plan) {
 }
 export async function assertAssistantActionContext(userId, plan, db = prisma) {
   const a = plan.args;
+  if (plan.tool === 'nutrition_goal' && a.targetKg != null && a.loseKg != null) throw assistantError('აირჩიე სასურველი წონა ან დასაკლები კილოგრამები.');
+  if (plan.tool === 'nutrition_eat' && !(await db.$queryRaw`SELECT id FROM "NutritionPlannedMeal" WHERE id=${a.plannedMealId} AND "userId"=${userId}`).length) throw assistantError('კვება ვერ მოიძებნა.',404);
   // Check ownership before preview AND execution; a signed ID is not an authorization grant.
   const reference = plan.tool === 'record_open' ? ['medicalRecord', a.recordId]
     : plan.tool.startsWith('medication_') && a.id ? ['medicationSchedule', a.id]

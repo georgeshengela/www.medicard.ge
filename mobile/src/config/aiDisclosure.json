@@ -1,5 +1,5 @@
 {
-  "revision": "2026-09-24.nutrition",
+  "revision": "2026-09-24.nutrition-program",
   "title": "გავუზიაროთ მონაცემები AI სერვისებს?",
   "purpose": "Medi-ს პასუხებისა და შენ მიერ მოთხოვნილი მოქმედებებისთვის ქვემოთ ჩამოთვლილი მონაცემები გარე AI სერვისებს გადაეცემა — გამოყენებული ფუნქციის მიხედვით.",
   "categories": [
@@ -9,7 +9,8 @@
     "შესაბამის მოთხოვნაში — ნებადართული ციკლის ჩანაწერები. დაცული ციკლი და ინტიმური ველები ზოგად კონტექსტში არ შედის. სიმპტომების შემოწმებაში პროფილის დამატება ცალკე არჩევანია.",
     "Medi Vet-სა და ცხოველის ასისტენტში — ცხოველის პროფილი და მოვლის ინფორმაცია; ადამიანის ჯანმრთელობის პროფილის გარეშე.",
     "ხმოვანი ასისტენტი: ჩაწერილი ხმა — OpenRouter-ის გავლით Google Vertex AI-ს ტექსტად გარდასაქმნელად; ხმოვანი პასუხის ჩართვისას პასუხის ტექსტი — Microsoft Azure Speech-ს გასახმოვანებლად.",
-    "კვების ფოტოს შეფასება: მხოლოდ არჩეული საკვების ფოტო და შენ მიერ დამატებული პორციის აღწერა — OpenRouter-ის გავლით Google Vertex AI-ს. ჯანმრთელობის პროფილი არ იგზავნება; ფოტო მუდმივად არ ინახება."
+    "კვების ფოტოს შეფასება: მხოლოდ არჩეული საკვების ფოტო და შენ მიერ დამატებული პორციის აღწერა — OpenRouter-ის გავლით Google Vertex AI-ს. ჯანმრთელობის პროფილი არ იგზავნება; ფოტო მუდმივად არ ინახება.",
+    "Medi-სთან კვების შესახებ საუბრისას — შენახული კვების ჯამები და ბოლო 7 დღის პროგრესი, დღის სამიზნეები, წონის მიზანი, რაციონი და კვების არჩევანი. დაცული ციკლის დეტალები არ იგზავნება."
   ],
   "recipients": [
     {
@@ -62,7 +63,8 @@
       "When relevant: cycle records you have permitted. Locked cycle data and intimate fields are not included in general context. Adding your health profile to symptom check is a separate choice.",
       "In Medi Vet and the pet assistant: the pet profile and care information, without the human health profile.",
       "Voice assistant: recorded audio is sent through OpenRouter to Google Cloud Vertex AI for transcription. If spoken replies are on, the reply text is sent to Microsoft Azure Speech to generate speech.",
-      "Food estimates: only the selected food photo and your portion description go through OpenRouter to Google Vertex AI. No health profile is sent; the photo is not stored permanently."
+      "Food estimates: only the selected food photo and your portion description go through OpenRouter to Google Vertex AI. No health profile is sent; the photo is not stored permanently.",
+      "When discussing nutrition with Medi: saved meal totals and the last 7 days of progress, daily targets, weight goal, planned meals and dietary preferences. Protected cycle details are not sent."
     ],
     "recipients": [
       {

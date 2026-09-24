@@ -9,7 +9,7 @@ export type AssistantChoices = Record<string, { value: string; label: string }[]
 export type AssistantFeature = { id: string; label: string; group: string; description: string };
 export type AssistantGroup = { id: string; label: string; icon: string };
 export type AssistantTool = { group?: string; kind?: 'write' | 'handoff'; name: string; label: string; description: string; parameters: AssistantSchema };
-export type AssistantNative = { route: string; message?: string; mode?: string; petId?: string };
+export type AssistantNative = { route: string; message?: string; mode?: string; petId?: string; nutritionGoal?: {targetKg?:number;loseKg?:number} };
 type Launch = AssistantNative & { owner: string; operationId: string; expires: number };
 let launch: Launch | null = null;
 const consumed = new Set<string>();
@@ -19,17 +19,20 @@ export function stageAssistantLaunch(owner: string, operationId: string, native:
   launch = { ...native, owner, operationId, expires: Date.now() + 60000 };
   return true;
 }
-export function consumeAssistantLaunch(owner: string, route: string): string | null {
+export function consumeAssistantPayload(owner: string, route: string): AssistantNative | null {
   const current = launch;
   if (!current || current.owner !== owner || localAccountId() !== owner || current.route !== route || current.expires < Date.now()) return null;
   launch = null;
   if (consumed.has(current.operationId)) return null;
   consumed.add(current.operationId);
   if (consumed.size > 100) consumed.delete(consumed.values().next().value!);
-  return current.message || null;
+  return current;
+}
+export function consumeAssistantLaunch(owner:string,route:string):string|null {
+  return consumeAssistantPayload(owner,route)?.message || null;
 }
 export const assistantFieldLabels: Record<string, string> = {
-  date: 'თარიღი', amountMl: 'წყალი · მლ', goalMl: 'დღიური მიზანი · მლ', targetKg: 'სასურველი წონა · კგ', startKg: 'მიმდინარე წონა · კგ',
+  loseKg: 'დასაკლები წონა · კგ', plannedMealId: 'რაციონის კვება', date: 'თარიღი', amountMl: 'წყალი · მლ', goalMl: 'დღიური მიზანი · მლ', targetKg: 'სასურველი წონა · კგ', startKg: 'მიმდინარე წონა · კგ',
   deadlineYmd: 'მიზნის ვადა', targetSteps: 'ნაბიჯების მიზანი', weightKg: 'წონა · კგ', heartRate: 'პულსი · წუთში',
   bloodPressureSystolic: 'ზედა წნევა', bloodPressureDiastolic: 'ქვედა წნევა', sleepHours: 'ძილი · საათი', nutritionKcal: 'დამატებული კალორიები · კკალ',
   startDate: 'დაწყების დღე', endDate: 'დასრულების დღე', courseDays: 'კურსი · დღე', medName: 'მედიკამენტი', dosage: 'შენი დოზა', frequency: 'მიღების დროები', notes: 'შენიშვნა', note: 'შენიშვნა', name: 'სახელი',

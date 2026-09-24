@@ -20,6 +20,7 @@ export type WeightGoal = {
   reminderHour: number;
   reminderMinute: number;
   completedSeen?: boolean;
+  updatedAt?: string;
 };
 
 export type WeightGoalDraft = Partial<WeightGoal> & {

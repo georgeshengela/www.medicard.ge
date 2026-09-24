@@ -13,6 +13,7 @@ export function literalAssistantAction({ scope, text, draft }) {
 }
 
 const TOOL_DOMAINS = {
+  nutrition_goal: ['nutrition'], nutrition_eat: ['nutrition'],
   hydration_add: ['metrics'], hydration_goal: ['metrics'], metric_record: ['metrics'],
   weight_goal: ['profile', 'metrics', 'goals'], steps_goal: ['goals', 'metrics'], profile_update: ['profile'],
   medication_add: ['medications'], medication_update: ['medications'], medication_stop: ['medications'], dose_record: ['medications'],
@@ -29,6 +30,7 @@ export function assistantContextSelection({ scope, text, draft }) {
   const domains = new Set(TOOL_DOMAINS[draft?.tool] || []);
   const rules = [
     [/წამალ|მედიკამენტ|დოზა|იბუპროფენ/u, ['medications']],
+    [/კვებ|კალორი|რაციო|დიეტ|ცილა|სადილ|საუზმ|ვახშ|დავიკლ|დაკლებ|დაკლო|წახემს/u, ['nutrition']],
     [/წყალ|ჰიდრატაცი/u, ['metrics']], [/წონა|კილო|კგ/u, ['profile', 'metrics', 'goals']],
     [/ნაბიჯ|სირბილ|გასეირნ/u, ['metrics', 'goals', 'activity']],
     [/ვიზიტ|ჩაწერილი ექიმ/u, ['visits']], [/ციკლ|მენსტრუ|ორსულ|პერიოდ/u, ['cycle']],

@@ -27,7 +27,7 @@ export const mealInput = z
     type: z.enum(["breakfast", "lunch", "dinner", "snack"]),
     items: z.array(foodItem).min(1).max(25),
     note: z.string().trim().max(500).default(""),
-    source: z.enum(["manual", "photo"]).default("manual"),
+    source: z.enum(["manual", "photo", "plan"]).default("manual"),
   })
   .strict();
 export const estimateInput = z

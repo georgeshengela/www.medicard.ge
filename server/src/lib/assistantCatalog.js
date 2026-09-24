@@ -51,6 +51,10 @@ add('metric_record', 'მაჩვენებლის ჩაწერა', 'hu
   bloodPressureSystolic: z.number().int().min(70).max(250).optional(), bloodPressureDiastolic: z.number().int().min(40).max(150).optional(),
   sleepHours: z.number().min(0).max(24).optional(), nutritionKcal: z.number().int().min(0).max(20000).optional(),
 }) }), '/api/health-metrics/sync', 'User-reported readings only. nutritionKcal is an ADDITION; sleepHours is the daily total.');
+add('nutrition_goal', 'კვების მიზნის შერჩევა', 'human', fields({ targetKg:z.number().min(30).max(300).optional(), loseKg:z.number().positive().max(150).optional() }), null,
+  'Open the native nutrition goal wizard with the stated desired weight OR amount to lose. Do not invent calorie targets or a deadline. Current weight, safety and preferences are confirmed there.');
+add('nutrition_eat', 'რაციონის კვების აღრიცხვა', 'human', fields({plannedMealId:id}), a => `/api/nutrition/plan/${a.plannedMealId}/eat`,
+  'Mark an owned planned meal actually eaten only when user explicitly says they ate it. Resolve plannedMealId from nutrition context. Does not record a vague meal or photo.');
 add('weight_goal', 'წონის მიზნის დამატება', 'human', fields({ targetKg: z.number().min(20).max(300), startKg: z.number().min(20).max(300), deadlineYmd: dateKey }), null,
   'Ask for missing current weight/deadline. Use stored recent weight when available. User goal is not a medical recommendation; never invent a target, deadline or safe rate.');
 add('steps_goal', 'ნაბიჯების მიზანი', 'human', fields({ targetSteps: z.number().int().min(500).max(100000), deadlineYmd: dateKey }), null);
@@ -103,7 +107,7 @@ export const ASSISTANT_CATALOG = Object.freeze(catalog);
 export function publicAssistantCatalog(scope) {
   return Object.values(catalog).filter(t => scope === 'auto' || t.domain === scope || t.domain === 'navigation').map(({ name, label, description, schema, domain }) => ({
     domain,
-    name, label, description, group: assistantToolGroup(name), kind: name === 'open' || name === 'consult' || name.endsWith('_open') || name === 'pet_consult' ? 'handoff' : 'write',
+    name, label, description, group: assistantToolGroup(name), kind: name === 'nutrition_goal' || name === 'weight_goal' || name === 'open' || name === 'consult' || name.endsWith('_open') || name === 'pet_consult' ? 'handoff' : 'write',
     parameters: name === 'open' ? { ...z.toJSONSchema(schema, { unrepresentable: 'any' }), properties: { destination: { type: 'string', enum: assistantFeatures(scope).map(f => f.id) } } } : z.toJSONSchema(schema, { unrepresentable: 'any' }),
   }));
 }

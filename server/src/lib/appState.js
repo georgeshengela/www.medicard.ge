@@ -171,10 +171,10 @@ function pickNewer(a, b) {
   return at(a) >= at(b) ? a : b;
 }
 
-export async function loadAppState(userId) {
+export async function loadAppState(userId, db = prisma) {
   const [profile, records] = await Promise.all([
-    prisma.healthProfile.findUnique({ where: { userId } }),
-    prisma.medicalRecord.findMany({
+    db.healthProfile.findUnique({ where: { userId } }),
+    db.medicalRecord.findMany({
       where: { userId, type: 'LAB' },
       orderBy: { createdAt: 'asc' },
       take: MAX_PANELS,
@@ -197,26 +197,17 @@ function persistablePanels(panels) {
 }
 
 export async function saveAppState(userId, patch) {
-  const current = await loadAppState(userId);
-  const next = mergeAppState(current, patch);
-  next.updatedAt = new Date().toISOString();
-  next.labPanels = persistablePanels(next.labPanels);
-
-  const existing = await prisma.healthProfile.findUnique({ where: { userId } });
-  const extra = extraOf(existing);
-  const mergedExtra = {
-    ...extra,
-    labPanels: next.labPanels,
-    appState: next,
-  };
-
-  await prisma.healthProfile.upsert({
-    where: { userId },
-    create: { userId, extraAnswers: mergedExtra },
-    update: { extraAnswers: mergedExtra },
-  });
-
-  return next;
+  return prisma.$transaction(async tx => {
+    await tx.healthProfile.upsert({where:{userId},create:{userId},update:{}});
+    await tx.$queryRaw`SELECT "userId" FROM "HealthProfile" WHERE "userId"=${userId} FOR UPDATE`;
+    const current = await loadAppState(userId, tx);
+    const next = mergeAppState(current, patch);
+    next.updatedAt = new Date().toISOString();
+    next.labPanels = persistablePanels(next.labPanels);
+    const existing = await tx.healthProfile.findUnique({where:{userId}});
+    await tx.healthProfile.update({where:{userId},data:{extraAnswers:{...extraOf(existing),labPanels:next.labPanels,appState:next}}});
+    return next;
+  }, {timeout:15000});
 }
 
 export async function persistLabExtract(userId, extract, record) {

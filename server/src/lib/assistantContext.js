@@ -1,14 +1,15 @@
+import { nutritionDashboard } from './nutritionProgramStore.js';
 import { prisma } from './prisma.js';
 import { serializeCycleLogForAi } from './cycleAiContext.js';
 import { OBSERVATION_REGISTRY } from './cycleObservationRegistry.js';
 import { publicPetsCatalog } from './petsCatalog.js';
 
-export const ASSISTANT_CONTEXT_DOMAINS = ['profile', 'metrics', 'goals', 'medications', 'visits', 'cycle', 'records', 'consultations', 'activity', 'pets'];
+export const ASSISTANT_CONTEXT_DOMAINS = ['profile', 'metrics', 'goals', 'medications', 'visits', 'cycle', 'records', 'consultations', 'activity', 'pets', 'nutrition'];
 const pick = (row, keys) => row ? Object.fromEntries(keys.filter(k => row[k] !== undefined).map(k => [k, row[k]])) : null;
 const trim = (value, max = 1800) => typeof value === 'string' ? value.slice(0, max) : value;
 
 /** Every query is owner-scoped. Unknown/private fields are excluded, not merely hidden in the prompt. */
-export async function loadAssistantContext(user, domains, scope, db = prisma, petId = null) {
+export async function loadAssistantContext(user, domains, scope, db = prisma, petId = null, today = new Date().toISOString().slice(0,10)) {
   const userId = user.id;
   const requested = new Set(domains);
   const context = { scope, limits: 'Relevant recent records only. Absence is unknown, not a negative finding.' };
@@ -35,6 +36,16 @@ export async function loadAssistantContext(user, domains, scope, db = prisma, pe
     if (requested.has('activity')) {
       context.activity = { source: 'MEDIRUN saved sessions; at most 10 recent sessions; no GPS coordinates', sessions: (await db.medipulsiSession.findMany({ where: { userId }, take: 10, orderBy: { startedAt: 'desc' } })).map(r => pick(r, ['id', 'phase', 'startedAt', 'endedAt', 'meters', 'seconds', 'steps', 'newMeters', 'excluded'])) };
     }
+  }
+  if (requested.has('nutrition')) {
+    const d = await nutritionDashboard(user,today,db);
+    context.nutrition = { date:today, targets:d.targets, today:d.today, mealCount:d.mealCount, remaining:d.remaining,
+      needsReview:d.needsReview, active:!!d.program?.active, days:d.days,
+      goal:d.facts.weightGoal,currentWeight:d.facts.current,
+      diet:d.program?.config?.diet,allergens:d.program?.config?.allergens,
+      professionalReviewNeeded:d.facts.professionalReviewNeeded,
+      planned:d.planned.map(p=>({id:p.id,type:p.type,title:p.data.title,eaten:p.eaten,totals:p.data.totals})),
+      instruction:'Only saved diary meals count as intake. Unlogged food is unknown. Planned meals are not consumed. Do not infer protected health details from a review flag.' };
   }
   if (requested.has('metrics')) context.metrics = (await db.healthMetricDaily.findMany({ where: { userId }, take: 14, orderBy: { date: 'desc' } }))
     .map(r => pick(r, ['date', 'weightKg', 'hydrationMl', 'steps', 'sleepHours', 'nutritionKcal', 'heartRate', 'bloodPressureSystolic', 'bloodPressureDiastolic']));

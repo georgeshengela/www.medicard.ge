@@ -9,6 +9,9 @@ generator client {
 
 model User {
   nutritionMeals NutritionMeal[]
+  nutritionProgram NutritionProgram?
+  nutritionTargets NutritionTargetHistory[]
+  nutritionPlannedMeals NutritionPlannedMeal[]
   communityCommentLikes CommunityCommentLike[]
   communityAliases CommunityAlias[]
   communityMember CommunityMember?
@@ -2207,6 +2210,7 @@ model NutritionMeal {
  @@index([userId,date])
 }
 model NutritionSettings {
+ programEnabled Boolean @default(true)
  id String @id @default("main")
  photoEnabled Boolean @default(true)
  updatedAt DateTime @default(now())
@@ -2217,4 +2221,44 @@ model NutritionScanMetric {
  durationMs Int
  createdAt DateTime @default(now())
  @@index([createdAt])
+}
+
+model NutritionProgram {
+ userId String @id
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ revision String
+ active Boolean @default(true)
+ config Json
+ targets Json
+ goalLink Json?
+ startedOn String
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+}
+model NutritionTargetHistory {
+ userId String
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ date String
+ targets Json?
+ @@id([userId,date])
+}
+model NutritionRecipe {
+ id String @id
+ data Json
+ active Boolean @default(true)
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+ plannedMeals NutritionPlannedMeal[]
+}
+model NutritionPlannedMeal {
+ id String @id
+ userId String
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ date String
+ type String
+ recipeId String
+ recipe NutritionRecipe @relation(fields:[recipeId],references:[id])
+ programRevision String
+ data Json
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+ @@unique([userId,date,type])
+ @@index([userId,date])
 }

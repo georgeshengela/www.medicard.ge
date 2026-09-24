@@ -12,7 +12,7 @@ export type Meal = {
   type: "breakfast" | "lunch" | "dinner" | "snack";
   items: FoodItem[];
   note: string;
-  source: "manual" | "photo";
+  source: "manual" | "photo" | "plan";
 };
 export type FoodEstimate = {
   foodDetected: boolean;

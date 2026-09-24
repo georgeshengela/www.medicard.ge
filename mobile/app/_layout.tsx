@@ -332,6 +332,11 @@ function AppShell() {
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="chat" options={{ headerShown: false }} />
               <Stack.Screen name="nutrition" options={{ headerShown: false }} />
+          <Stack.Screen name="nutrition/diary" options={{ headerShown: false }} />
+          <Stack.Screen name="nutrition/goal" options={{ headerShown: false }} />
+          <Stack.Screen name="nutrition/plan" options={{ headerShown: false }} />
+          <Stack.Screen name="nutrition/progress" options={{ headerShown: false }} />
+          <Stack.Screen name="nutrition/method" options={{ headerShown: false }} />
               <Stack.Screen name="assistant" options={{ headerShown: false }} />
               <Stack.Screen name="module" options={{ headerShown: false }} />
               <Stack.Screen name="cycle" options={{ headerShown: false }} />

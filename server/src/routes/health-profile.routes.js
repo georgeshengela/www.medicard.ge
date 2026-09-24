@@ -79,18 +79,16 @@ healthProfileRouter.put(
       });
     }
 
-    if (profileFields.extraAnswers && typeof profileFields.extraAnswers === 'object') {
-      const existing = await loadProfile(req.user.id);
-      profileFields.extraAnswers = {
-        ...(existing?.extraAnswers ?? {}),
-        ...profileFields.extraAnswers,
-      };
-    }
-
-    const profile = await prisma.healthProfile.upsert({
-      where: { userId: req.user.id },
-      create: { userId: req.user.id, ...profileFields },
-      update: profileFields,
+    const profile = await prisma.$transaction(async tx => {
+      await tx.healthProfile.upsert({where:{userId:req.user.id},create:{userId:req.user.id},update:{}});
+      await tx.$queryRaw`SELECT "userId" FROM "HealthProfile" WHERE "userId"=${req.user.id} FOR UPDATE`;
+      if (profileFields.extraAnswers) {
+        const existing=await tx.healthProfile.findUnique({where:{userId:req.user.id}});
+        // Canonical app state is written through its dedicated merge endpoint.
+        const {appState:_ignored,...extra}=profileFields.extraAnswers;
+        profileFields.extraAnswers={...(existing?.extraAnswers || {}),...extra};
+      }
+      return tx.healthProfile.update({where:{userId:req.user.id},data:profileFields});
     });
 
     const user = await prisma.user.findUnique({
@@ -158,12 +156,8 @@ healthProfileRouter.post(
       previousScore: force ? previousScore : null,
       model: resolveOpenRouterModel(req.user),
     });
-    const mergedExtra = { ...extra, onboardingAnalysis: analysis };
-
-    const updated = await prisma.healthProfile.update({
-      where: { userId: req.user.id },
-      data: { extraAnswers: mergedExtra },
-    });
+    await prisma.$executeRaw`UPDATE "HealthProfile" SET "extraAnswers"=jsonb_set(COALESCE("extraAnswers",'{}'::jsonb),'{onboardingAnalysis}',${JSON.stringify(analysis)}::jsonb,true) WHERE "userId"=${req.user.id}`;
+    const updated = await loadProfile(req.user.id);
 
     return res.json({
       analysis,

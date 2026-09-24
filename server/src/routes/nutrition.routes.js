@@ -1,3 +1,4 @@
+import { nutritionProgramRouter, adminNutritionProgramRouter } from './nutrition-program.routes.js';
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import multer from "multer";
@@ -38,10 +39,11 @@ const upload = multer({
 });
 const settings = async () =>
   (
-    await prisma.$queryRaw`SELECT "photoEnabled" FROM "NutritionSettings" WHERE id='main'`
+    await prisma.$queryRaw`SELECT "photoEnabled", "programEnabled" FROM "NutritionSettings" WHERE id='main'`
   )[0] || { photoEnabled: false };
 const publicMeal = (row) => ({ ...row, totals: totals(row.items) });
 r.use(requireAuth, noCache);
+r.use(nutritionProgramRouter);
 r.get(
   "/settings",
   wrap(async (_req, res) => res.json(await settings())),
@@ -176,6 +178,7 @@ r.post(
   }),
 );
 a.use(requireAdmin, noCache, requireAdminCapability("NUTRITION_VIEW"));
+a.use(adminNutritionProgramRouter);
 a.get(
   "/overview",
   wrap(async (_req, res) => {
@@ -191,18 +194,18 @@ a.patch(
   requireAdminCapability("NUTRITION_MANAGE"),
   wrap(async (req, res) => {
     const previousValue = await settings();
-    const { photoEnabled } = z
-      .object({ photoEnabled: z.boolean() })
+    const { photoEnabled, programEnabled } = z
+      .object({ photoEnabled: z.boolean(), programEnabled: z.boolean().optional() })
       .strict()
       .parse(req.body);
-    await prisma.$executeRaw`UPDATE "NutritionSettings" SET "photoEnabled"=${photoEnabled},"updatedAt"=NOW() WHERE id='main'`;
+    await prisma.$executeRaw`UPDATE "NutritionSettings" SET "photoEnabled"=${photoEnabled},"programEnabled"=${programEnabled ?? previousValue.programEnabled},"updatedAt"=NOW() WHERE id='main'`;
     await writeAdminAudit({
       admin: req.admin,
       action: "NUTRITION_SETTINGS",
       targetType: "NutritionSettings",
       targetId: "main",
       previousValue,
-      newValue: { photoEnabled },
+      newValue: { photoEnabled, programEnabled: programEnabled ?? previousValue.programEnabled },
     });
     res.json(await settings());
   }),

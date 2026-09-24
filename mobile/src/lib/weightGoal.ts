@@ -90,6 +90,7 @@ export async function loadWeightGoal(): Promise<WeightGoal | null> {
 }
 
 export async function saveWeightGoal(goal: WeightGoal): Promise<void> {
+  goal = { ...goal, updatedAt: new Date().toISOString() };
   await setScopedPreference(GOAL_KEY, JSON.stringify(goal));
   await syncWeightGoalReminders(goal);
   void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
