@@ -1,6 +1,6 @@
 # კვების დღიური — 2026-09-24
 
-Native route: `/nutrition`; admin: `#/nutrition`. App revision: `1.0.0.11.19` / iOS `1.11.19`.
+Native route: `/nutrition`; admin: `#/nutrition`. App revision: `1.0.0.11.20` / iOS `1.11.20`.
 
 ## User flow
 
@@ -49,3 +49,15 @@ Before release, test varied real food photos (especially Georgian mixed dishes) 
 ## Scan reliability correction — 2026-09-24
 
 Reproduced a 503 on the main API with a generated, non-personal banana illustration. The same direct provider request succeeded locally. A real multipart HTTP regression exposed lost AsyncLocalStorage account context after Multer callbacks; the SDK wrapped the consent failure as a connection error. The estimate call now re-enters the authenticated account context and preserves nested consent-revocation errors. The transport still rechecks current consent immediately before sending. The regression fails before the fix and passes after, including revocation between upload and transmission. No consent bypass or provider-routing change.
+
+## Camera experience — app 1.0.0.11.20
+
+- Focused three-step photo / review / save flow. No empty zero-calorie summary before scanning; compact meal selection below the camera view.
+- Teal viewfinder, restrained animated scan beam during the actual pending request, photo retained on error, distinct review state with photo thumbnail and uncertainty explanation. No fabricated percentage or ingredient-recognition milestones.
+- Native-driver scan animation stops when backgrounded, honors Reduce Motion and cleans up on unmount. Optional haptics on photo selection, scan start, success and failure; unsupported haptics cannot fail the flow.
+- Camera originals are resized locally to at most 1600 px on the long edge and converted to JPEG before upload. Existing per-account AI consent and server validation stay in place.
+- Pinned action changes from manual entry to scan/retry to diary save. Manual editing keeps the existing single KeyboardAvoidingView and scrollable fields; switching to editing scrolls to the form top.
+
+Verification: TypeScript passed. All 16 targeted tests passed, including a real multipart request through the SDK/consent transport and a revocation just before transmission. After deploying bef1aa7, the identical generated banana fixture that returned 503 now completed against https://medicard.ge through the signed-in Expo web app, returning a valid editable portion (107 kcal / 120 g). Half-portion recalculation updated energy and every macro. Browser UI inspected at 393×852 in light and dark themes; scan animation and result/retry layout checked. This is a transport/UI check, not a clinical validation of nutritional accuracy. No test meal was saved to the demo account.
+
+Native limitation: Maestro was attempted on emulator-5554 but stalled with a Windows file-lock error in its SessionStore heartbeat. Only this attempt's confirmed Java/ADB child processes were stopped. Native camera, physical-device haptics and keyboard behavior still need a device check; they are not claimed verified.

@@ -25,14 +25,17 @@ import {
   Camera,
   ChevronLeft,
   ChevronRight,
-  ImagePlus,
+  CircleCheck,
+  Info,
   Leaf,
   Trash2,
   Utensils,
   X,
 } from "lucide-react-native";
 import { api } from "@/lib/api";
-import { IMAGE_PICKER_OPTIONS, toUploadableImage } from "@/lib/imageUpload";
+import { IMAGE_PICKER_OPTIONS } from "@/lib/imageUpload";
+import { prepareNutritionImage } from "@/lib/nutritionImage";
+import { NutritionScanner, NutritionScanSteps } from "@/components/nutrition/NutritionScanner";
 import {
   foodTotals,
   localDay,
@@ -83,6 +86,9 @@ function NutritionScreen() {
     action: () => void;
   } | null>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [uncertainty, setUncertainty] = useState<"low" | "medium" | "high" | null>(null);
+  const scroll = useRef<ScrollView>(null);
   useEffect(() => {
     const show = Keyboard.addListener("keyboardDidShow", () =>
       setKeyboardOpen(true),
@@ -159,6 +165,8 @@ function NutritionScreen() {
     });
     setPhoto(null);
     setExplanation("");
+    setUncertainty(null);
+    scroll.current?.scrollTo({y:0, animated:false});
     setMessage("");
     setError("");
     setEditing(null);
@@ -214,24 +222,38 @@ function NutritionScreen() {
         ? ImagePicker.launchCameraAsync(IMAGE_PICKER_OPTIONS)
         : ImagePicker.launchImageLibraryAsync(IMAGE_PICKER_OPTIONS));
       if (result.canceled || !alive.current) return;
-      const file = await toUploadableImage(result.assets[0]);
+      const file = await prepareNutritionImage(result.assets[0]);
       if (file.size && file.size > 12 * 1024 * 1024)
         throw new Error("ფოტო 12 MB-ზე ნაკლები უნდა იყოს.");
-      if (alive.current) setPhoto(file);
+      if (alive.current) {
+        setPhoto(file);
+        scroll.current?.scrollTo({y:0, animated:true});
+        void Haptics.selectionAsync().catch(() => {});
+      }
     });
   const analyze = () =>
     run(async () => {
       if (!photo || !draft) return;
       if (!alive.current) return;
-      const result = await api.nutrition.estimate(photo, draft.note);
-      if (!alive.current) return;
-      if (!result.foodDetected)
-        throw new Error(
-          "საკვები მკაფიოდ ვერ ამოვიცანი. გადაიღე სხვა ფოტო ან დაამატე ხელით.",
-        );
-      setDraft({ ...draft, source: "photo", items: result.items });
-      setExplanation(result.explanation);
-      setPhoto(null);
+      Keyboard.dismiss();
+      scroll.current?.scrollTo({y:0, animated:true});
+      setScanning(true);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      try {
+        const result = await api.nutrition.estimate(photo, draft.note);
+        if (!alive.current) return;
+        if (!result.foodDetected) throw new Error("საკვები მკაფიოდ ვერ ამოვიცანი. გადაიღე სხვა ფოტო ან დაამატე ხელით.");
+        setDraft({ ...draft, source: "photo", items: result.items });
+        setExplanation(result.explanation);
+        setUncertainty(result.uncertainty);
+        scroll.current?.scrollTo({y:0, animated:true});
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      } catch (e) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+        throw e;
+      } finally {
+        if (alive.current) setScanning(false);
+      }
     });
   const editItem = (index: number) => {
     const i = draft?.items[index];
@@ -251,6 +273,7 @@ function NutritionScreen() {
           },
     );
     setError("");
+    scroll.current?.scrollTo({y:0, animated:false});
   };
   const applyItem = () => {
     if (!draft || editing === null) return;
@@ -285,8 +308,10 @@ function NutritionScreen() {
     const items = [...draft.items];
     items[editing] = item;
     setDraft({ ...draft, items });
+    Keyboard.dismiss();
     setEditing(null);
     setError("");
+    scroll.current?.scrollTo({y:0, animated:false});
   };
   const save = () =>
     run(async () => {
@@ -296,7 +321,7 @@ function NutritionScreen() {
       setDraft(null);
       setPhoto(null);
       setMessage("კვება შენახულია");
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       await load();
     });
   const remove = (meal: Meal) =>
@@ -324,7 +349,7 @@ function NutritionScreen() {
       style={[
         s.button,
         {
-          backgroundColor: primary ? "#0D9488" : c.bg200,
+          backgroundColor: primary ? "#0F766E" : c.bg200,
           opacity: busy || disabled ? 0.5 : 1,
         },
       ]}
@@ -360,16 +385,17 @@ function NutritionScreen() {
         <View style={{ flex: 1 }}>
           <Text style={[txt, s.title]}>კვების დღიური</Text>
           <Text style={[txt, { fontSize: 12, color: c.text200 }]}>
-            {draft ? "გადაამოწმე და შეინახე" : "შენი კვება, უკეთ გასაგებად"}
+            {draft ? draft.items.length ? "გადაამოწმე და შეინახე" : "გადაიღე, გადაამოწმე, შეინახე" : "შენი კვება, უკეთ გასაგებად"}
           </Text>
         </View>
         <Leaf size={25} color={c.primary100} />
       </View>
       <ScrollView
+        ref={scroll}
         pointerEvents={busy ? "none" : "auto"}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ padding: 18, gap: 18, paddingBottom: 24 }}
+        contentContainerStyle={{ padding: 18, gap: 18, paddingBottom: 24, width:"100%", maxWidth:640, alignSelf:"center" }}
       >
         {!!error && (
           <View
@@ -417,7 +443,17 @@ function NutritionScreen() {
             </Pressable>
           </View>
         )}
-        {editing === null && (
+        {draft && editing === null && <NutritionScanSteps stage={draft.items.length ? 1 : 0} />}
+        {draft && draft.items.length > 0 && editing === null && !!explanation && (
+          <View style={[s.row, {alignItems:"flex-start"}]}>
+            {photo && <Image source={{uri:photo.uri}} style={{width:56,height:56,borderRadius:14,backgroundColor:c.bg200}} />}
+            <View style={{flex:1,gap:4}}>
+              <View style={s.row}><CircleCheck size={17} color={c.primary100} /><Text style={[txt,{fontFamily:"NotoSansGeorgian_600SemiBold",fontSize:16}]}>შეფასება მზადაა</Text></View>
+              <Text style={[txt,{fontSize:12,lineHeight:20,color:c.text200}]}>გადაამოწმე საკვები და პორცია, შემდეგ შეინახე.</Text>
+            </View>
+          </View>
+        )}
+        {editing === null && (!draft || draft.items.length > 0) && (
           <View
             style={[
               s.card,
@@ -528,12 +564,16 @@ function NutritionScreen() {
         )}
         {draft && editing === null && (
           <>
-            <View style={[s.row, { flexWrap: "wrap" }]}>
+            {draft.items.length === 0 && (
+              <NutritionScanner photoUri={photo?.uri} scanning={scanning} disabled={busy} enabled={enabled} onCamera={() => void pick(true)} onGallery={() => void pick(false)} />
+            )}
+            <View style={s.row}>
               {Object.entries(mealLabels).map(([key, label]) => (
                 <Pressable
                   key={key}
                   accessibilityRole="button"
                   accessibilityState={{ selected: draft.type === key }}
+                  accessibilityLabel={label}
                   onPress={() =>
                     setDraft({ ...draft, type: key as Meal["type"] })
                   }
@@ -546,75 +586,18 @@ function NutritionScreen() {
                     },
                   ]}
                 >
-                  <Text style={[txt, { fontSize: 13 }]}>{label}</Text>
+                  <Text numberOfLines={1} style={[txt, { fontSize: 12 }]}>{key === "snack" ? "ხემსი" : label}</Text>
                 </Pressable>
               ))}
             </View>
-            {draft.items.length === 0 && (
-              <View style={[s.card, { backgroundColor: c.surface, gap: 12 }]}>
-                <Text style={[txt, { fontWeight: "600", fontSize: 18 }]}>
-                  ერთი ფოტო — საწყისი შეფასება
-                </Text>
-                <Text style={[txt, { color: c.text200, lineHeight: 21 }]}>
-                  თეფში მთლიანად მოაქციე კადრში. სოუსი, ზეთი და პორციის ზომა
-                  შედეგზე მოქმედებს.
-                </Text>
-                <View style={s.row}>
-                  <Pressable
-                    disabled={busy || !enabled}
-                    onPress={() => void pick(true)}
-                    style={[
-                      s.button,
-                      {
-                        flex: 1,
-                        backgroundColor: c.accent100,
-                        opacity: enabled ? 1 : 0.5,
-                      },
-                    ]}
-                  >
-                    <Camera color={c.primary100} />
-                    <Text style={txt}>კამერა</Text>
-                  </Pressable>
-                  <Pressable
-                    disabled={busy || !enabled}
-                    onPress={() => void pick(false)}
-                    style={[
-                      s.button,
-                      {
-                        flex: 1,
-                        backgroundColor: c.bg200,
-                        opacity: enabled ? 1 : 0.5,
-                      },
-                    ]}
-                  >
-                    <ImagePlus color={c.text100} />
-                    <Text style={txt}>გალერეა</Text>
-                  </Pressable>
-                </View>
-                {!enabled && (
-                  <Text style={[txt, { color: c.text200 }]}>
-                    ფოტოს შეფასება დროებით მიუწვდომელია. შეგიძლია ხელით დაამატო.
-                  </Text>
-                )}
-                {photo && (
-                  <>
-                    <Image
-                      source={{ uri: photo.uri }}
-                      style={{ height: 190, width: "100%", borderRadius: 16 }}
-                    />
-                    <Text style={[txt, { color: c.text200, fontSize: 12 }]}>
-                      გაიგზავნება მხოლოდ ეს ფოტო და შენი აღწერა: OpenRouter →
-                      Google Vertex AI. ფოტო მუდმივად არ ინახება.
-                    </Text>
-                    {button("ფოტოს შეფასება", () => void analyze(), true)}
-                  </>
-                )}
-              </View>
-            )}
             {!!explanation && (
-              <Text style={[txt, { color: c.text200, lineHeight: 22 }]}>
-                {explanation}
-              </Text>
+              <View style={[s.row,{alignItems:"flex-start",padding:14,borderRadius:16,backgroundColor:c.bg200}]}>
+                <Info size={18} color={c.primary100} />
+                <View style={{flex:1,gap:5}}>
+                  <Text style={[txt,{fontSize:12,fontFamily:"NotoSansGeorgian_600SemiBold"}]}>{uncertainty === "high" ? "პორცია განსაკუთრებით ყურადღებით გადაამოწმე" : "ფოტოს შეფასება მიახლოებითია"}</Text>
+                  <Text style={[txt,{color:c.text200,lineHeight:20,fontSize:12}]}>{explanation}</Text>
+                </View>
+              </View>
             )}
             {draft.items.map((item, index) => (
               <View
@@ -670,12 +653,12 @@ function NutritionScreen() {
                 </View>
               </View>
             ))}
-            {draft.items.length < 25 &&
+            {draft.items.length > 0 && draft.items.length < 25 &&
               button("+ საკვების ხელით დამატება", () =>
                 editItem(draft.items.length),
               )}
-            <Text style={[txt, { fontWeight: "600" }]}>
-              შენიშვნა / პორციის აღწერა
+            <Text style={[txt, { fontWeight: "600", fontSize:13 }]}>
+              {draft.items.length ? "შენიშვნა" : "რა დაგვეხმარება შეფასებაში? (არასავალდებულო)"}
             </Text>
             <TextInput
               accessibilityLabel="პორციის აღწერა"
@@ -685,7 +668,7 @@ function NutritionScreen() {
               onChangeText={(note) => setDraft({ ...draft, note })}
               maxLength={500}
               multiline
-              style={[inputStyle, { minHeight: 75 }]}
+              style={[inputStyle, { minHeight: 62, fontSize:14 }]}
             />
           </>
         )}
@@ -707,7 +690,7 @@ function NutritionScreen() {
               fat: "ცხიმი · გ",
             }).map(([key, label]) => (
               <View key={key} style={{ gap: 6 }}>
-                <Text style={[txt, { fontSize: 13 }]}>{label}</Text>
+                <Text numberOfLines={1} style={[txt, { fontSize: 12 }]}>{key === "snack" ? "ხემსი" : label}</Text>
                 <TextInput
                   accessibilityLabel={label}
                   testID={`nutrition-field-${key}`}
@@ -744,10 +727,15 @@ function NutritionScreen() {
         {busy ? (
           <View style={s.row}>
             <ActivityIndicator color={c.primary200} />
-            <Text style={txt}>მიმდინარეობს…</Text>
+            <Text style={[txt,{fontSize:13}]}>{scanning ? "მიმდინარეობს ფოტოს შეფასება…" : "მიმდინარეობს…"}</Text>
           </View>
         ) : editing !== null ? (
           button("საკვების დადასტურება", applyItem, true)
+        ) : draft && !draft.items.length ? (
+          <View style={{gap:8}}>
+            {photo && enabled && button(error ? "შეფასების ხელახლა ცდა" : "შეფასების დაწყება", () => void analyze(), true)}
+            {button("საკვების ხელით დამატება", () => editItem(0))}
+          </View>
         ) : draft ? (
           button(
             "დღიურში შენახვა",
@@ -830,9 +818,13 @@ const s = StyleSheet.create({
     gap: 6,
   },
   chip: {
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    borderRadius: 22,
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+    paddingVertical: 10,
+    minHeight:44,
+    borderRadius: 14,
     borderWidth: 1,
   },
   input: {
