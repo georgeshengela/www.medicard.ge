@@ -2095,6 +2095,21 @@ export async function communityRequest<T = any>(path: string, method: 'GET'|'POS
 }
 
 export const api = {
+  nutrition: {
+    settings: () => request<{photoEnabled:boolean}>('/api/nutrition/settings'),
+    list: (date:string) => request<{meals:import('./nutrition').Meal[];truncated:boolean}>('/api/nutrition/meals?from='+encodeURIComponent(date)),
+    save: (meal:import('./nutrition').Meal) => request('/api/nutrition/meals/'+meal.id,{method:'PUT',body:{id:meal.id,date:meal.date,type:meal.type,items:meal.items,note:meal.note,source:meal.source}}),
+    remove: (id:string) => request('/api/nutrition/meals/'+id,{method:'DELETE'}),
+    estimate: async (file:UploadFile, description:string) => {
+      const { localAccountId }=await import('@/lib/localAccount');
+      const owner=localAccountId();
+      let result:import('./nutrition').FoodEstimate;
+      if(Platform.OS!=='web') result=await uploadNativeMultipart<import('./nutrition').FoodEstimate>('/api/nutrition/estimate',file,'photo',{description});
+      else { const formData=new FormData(); await appendUploadFile(formData,'photo',file);formData.append('description',description);result=await request<import('./nutrition').FoodEstimate>('/api/nutrition/estimate',{method:'POST',formData,timeoutMs:60000}); }
+      if(owner!==localAccountId())throw new ApiError('ანგარიში შეიცვალა.',401);
+      return result;
+    },
+  },
   health: () => request<{ status: string }>('/health', { token: null, timeoutMs: 12_000 }),
 
   app: {

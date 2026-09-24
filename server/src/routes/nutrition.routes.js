@@ -88,6 +88,12 @@ r.post(
     keyGenerator: (req) => req.user.id,
     standardHeaders: true,
     legacyHeaders: false,
+    handler: (_req, res) =>
+      res
+        .status(429)
+        .json({
+          error: "ძალიან ბევრი შეფასებაა მოთხოვნილი. ცოტა ხანში სცადე ხელახლა.",
+        }),
   }),
   upload.single("photo"),
   wrap(async (req, res) => {
@@ -146,11 +152,7 @@ r.post(
       success = true;
       res.json({ ...estimate, totals: totals(estimate.items) });
     } catch (error) {
-      if (
-        error.code === "AI_CONSENT_REQUIRED" ||
-        error.status === 403 ||
-        error.status === 502
-      )
+      if (error.code === "AI_CONSENT_REQUIRED" || error.status === 502)
         throw error;
       fail(503, "შეფასება ვერ დასრულდა. სცადე ხელახლა ან შეავსე ხელით.");
     } finally {

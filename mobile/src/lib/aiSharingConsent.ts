@@ -42,7 +42,7 @@ export function useAiSharingPrompt() {
   return useSyncExternalStore(fn => { listeners.add(fn); return () => { listeners.delete(fn); }; }, () => pending, () => null);
 }
 export function isAiSharingRequest(path: string, method = 'POST') {
-  return method === 'POST' && (/^\/api\/ai\/(?!feedback(?:\?|$))/.test(path)
+  return method === 'POST' && (path.split('?')[0] === '/api/nutrition/estimate' || /^\/api\/ai\/(?!feedback(?:\?|$))/.test(path)
     || /^\/api\/assistant\/(plan|transcribe|speak)(?:\?|$)/.test(path)
     || path.split('?')[0] === '/api/health-profile/onboarding-analysis'
     || path.split('?')[0] === '/api/cycle/insights'

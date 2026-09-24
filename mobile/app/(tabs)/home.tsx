@@ -1,3 +1,4 @@
+import { HomeNutritionCard } from '@/components/home/HomeNutritionCard';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -143,7 +144,7 @@ export default function Home() {
       case 'steps':
         return <HomeHealthMetricsSection key={id} profile={healthProfile} />;
       case 'hydration':
-        return <HomeHydrationSection key={id} />;
+        return <View key={id}><HomeHydrationSection /><View style={{paddingHorizontal:16}}><HomeNutritionCard /></View></View>;
       case 'weight':
         return <HomeBmiWeightSection key={id} profile={healthProfile} />;
       case 'cycle':
