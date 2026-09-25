@@ -1,13 +1,13 @@
 # MEDICARD — კონფიდენციალურობის პოლიტიკა
 
-**ბოლო განახლება:** 24 სექტემბერი, 2026
+**ბოლო განახლება:** 25 სექტემბერი, 2026
 **ძალაში შესვლის თარიღი:** 20 სექტემბერი, 2026
 
 ეს პოლიტიკა განმარტავს, როგორ მუშავდება MEDICARD-ში ანგარიშის, ჯანმრთელობისა და აქტივობის ინფორმაცია. მონაცემების მოცულობა დამოკიდებულია შენს მიერ გამოყენებულ ფუნქციებსა და გაცემულ ნებართვებზე. პოლიტიკის წაკითხვა AI-სთან გაზიარებაზე თანხმობას არ ნიშნავს — ამისთვის აპი ცალკე არჩევანს გთავაზობს.
 
 ## English summary (App Review)
 
-MEDICARD is a free consumer health app. There are no paid digital subscriptions, unlocks or in-app purchases for app features. Before any personal data is sent to a third-party AI service, the app shows a separate in-app permission that names what may be sent and who receives it: OpenRouter, Inc.; Google Cloud Vertex AI; Novita AI; Microsoft Azure, including Azure Speech; and EvidenceMD Inc. The user must choose to allow sharing or continue without AI. Closing or declining blocks the pending transmission. Registration or accepting this policy does not authorize AI sharing. Details below are the full Georgian policy.
+MEDICARD is a free consumer health app. There are no paid digital subscriptions, unlocks or in-app purchases for app features. Before any personal data is sent to a third-party AI service, the app asks on a dedicated AI & Privacy screen. That screen names what may be sent and who receives it: OpenRouter, Inc.; Google Cloud Vertex AI; Novita AI; Microsoft Azure, including Azure Speech; and EvidenceMD Inc. The user must tap Allow AI Processing. Not Now, closing, registration, or accepting this policy does not authorize AI sharing. The choice is stored on the account. It is not asked again on later AI requests unless the user withdraws it in Profile → Privacy & Data, or the consent version changes. Details below are the full Georgian policy.
 
 # 1. ოპერატორი და კონტაქტი
 
@@ -70,11 +70,11 @@ OpenRouter-ის მოთხოვნებში განსაზღვრ�
 
 # 7. თანხმობა, უარი და გაუქმება
 
-რეგისტრაციისა და კონფიდენციალურობის პოლიტიკის გაცნობა AI-სთან გაზიარების თანხმობას არ ნიშნავს. AI-ს გამოყენებისას ცალკე ფანჯარაში ჩანს გასაგზავნი მონაცემები, მიმღები კომპანიები და მათი პოლიტიკების ბმულები. თანხმობა წინასწარ მონიშნული არ არის. შენ შეგიძლია დაეთანხმო, უარი თქვა ან დახურო შეთავაზება. თანხმობამდე ან უარის შემდეგ შესაბამისი მოთხოვნა გარე AI-ს არ ეგზავნება.
+რეგისტრაციისა და კონფიდენციალურობის პოლიტიკის გაცნობა AI-სთან გაზიარების თანხმობას არ ნიშნავს. ახალ ანგარიშზე ეს არჩევანი ცალკე ეკრანზეა — „AI და კონფიდენციალურობა“ — შეტყობინებების ნებართვის შემდეგ და ნებისმიერ AI მოთხოვნამდე. ეკრანზე ჩანს მონაცემების კატეგორიები, მიმღები კომპანიები და მათი პოლიტიკების ბმულები. თანხმობა წინასწარ მონიშნული არ არის. „AI დამუშავების ნებართვა“ ნიშნავს თანხმობას. „ახლა არა“ ან დახურვა მოთხოვნას არ აგზავნის. თანხმობის შემდეგ იგივე ეკრანი ყოველ შეტყობინებაზე აღარ ჩნდება.
 
-არჩევანი სერვერზე შენს ანგარიშსა და განმარტების ვერსიასთან ერთად ინახება. მიმღებების, კატეგორიების ან მიზნების არსებითი ცვლილებისას ახალი თანხმობაა საჭირო. ეს ეხება უკვე რეგისტრირებულ მომხმარებლებსაც.
+არჩევანი სერვერზე შენს ანგარიშსა და თანხმობის ვერსიასთან ერთად ინახება. მიმღებების, კატეგორიების ან მიზნების არსებითი ცვლილებისას ახალი თანხმობაა საჭირო. ეს ეხება უკვე რეგისტრირებულ მომხმარებლებსაც: ძველი არჩევანი ახალ ვერსიაზე ავტომატურად არ გადადის.
 
-მართვა: პროფილი → AI მონაცემების გაზიარება. გაუქმება აჩერებს შემდგომ გაგზავნებს, მათ შორის შემდგომ ავტომატურ განმეორებით მოთხოვნებს. უკვე გაგზავნილი მოთხოვნის დაბრუნებას ან გარე მიმღებისგან მონაცემების ავტომატურ წაშლას არ ნიშნავს. ასეთი მოთხოვნისთვის დაგვიკავშირდი.
+მართვა: პროფილი → კონფიდენციალობა და მონაცემები. გაუქმება აჩერებს შემდგომ გაგზავნებს, მათ შორის შემდგომ ავტომატურ განმეორებით მოთხოვნებს. ანგარიში და AI-ის გარეშე ფუნქციები რჩება. უკვე გაგზავნილი მოთხოვნის დაბრუნებას ან გარე მიმღებისგან მონაცემების ავტომატურ წაშლას არ ნიშნავს. ასეთი მოთხოვნისთვის დაგვიკავშირდი.
 
 # 8. ინფრასტრუქტურა და სხვა მომსახურებები
 

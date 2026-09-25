@@ -126,7 +126,7 @@ const body = `export type LegalSection = {
 export const PRIVACY_POLICY_KA: { title: string; effectiveDate: string; intro: string; highlight: string; sections: LegalSection[] } = ${JSON.stringify(
   {
     title: "კონფიდენციალურობის პოლიტიკა",
-    effectiveDate: "23 სექტემბერი, 2026",
+    effectiveDate: "25 სექტემბერი, 2026",
     intro,
     highlight: "MEDICARD არ ყიდის თქვენს ჯანმრთელობის მონაცემებს. სრული პოლიტიკა: medicard.ge/privacy.",
     sections,

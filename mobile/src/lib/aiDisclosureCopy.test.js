@@ -13,12 +13,15 @@ describe('AI disclosure copy for App Review', () => {
     assert.equal(isGeorgianLocale('en-US'), false);
     const en = disclosureCopy(manifest, 'en-US');
     assert.match(en.title, /Share your data with AI/);
-    assert.match(en.agree, /I agree to share with AI/);
+    assert.match(en.agree, /Allow AI Processing/);
+    assert.equal(en.decline, 'Not Now');
+    assert.equal(en.screenTitle, 'AI & Privacy');
     assert.equal(en.recipients[0].name, 'OpenRouter, Inc.');
     assert.ok(en.categories.some((row) => /Vertex AI/i.test(row)));
     const ka = disclosureCopy(manifest, 'ka-GE');
     assert.equal(ka.title, manifest.title);
-    assert.match(ka.agree, /ვეთანხმები/);
+    assert.match(ka.agree, /AI დამუშავების ნებართვა/);
+    assert.equal(ka.decline, 'ახლა არა');
   });
 
   it('names every recipient and data category in both languages', () => {

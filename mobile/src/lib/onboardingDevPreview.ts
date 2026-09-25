@@ -57,6 +57,7 @@ const SETUP_QA_STEPS: OnboardingQaStep[] = [
   { key: 'face-id', label: 'Face ID', href: '/(auth)/profile-setup/face-id', group: 'setup' },
   { key: 'privacy', label: 'Privacy', href: '/(auth)/profile-setup/privacy', group: 'setup' },
   { key: 'notifications', label: 'Notifications', href: '/(auth)/profile-setup/notifications', group: 'setup' },
+  { key: 'ai-privacy', label: 'AI & Privacy', href: '/(auth)/profile-setup/ai-privacy', group: 'setup' },
   { key: 'location', label: 'Location', href: '/(auth)/profile-setup/location', group: 'setup' },
   { key: 'analyzing', label: 'Analyzing', href: '/(auth)/profile-setup/analyzing', group: 'setup' },
   { key: 'results', label: 'Results', href: '/(auth)/profile-setup/results', group: 'setup' },

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
 import { ka } from '@/i18n/ka';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { BMI_ZONE_COLORS, bmiCategory, bmiFromWeight } from '@/lib/bmi';
 import { logManualHealthMetric } from '@/lib/logManualHealthMetric';
 import { addWeightLog } from '@/lib/weightGoal';
@@ -188,6 +189,9 @@ export function HomeWeightLogSheet({ visible, profile, initialKg, onClose, onSav
                     {ka.home.bmi.categories[category]}
                   </Text>
                 </View>
+              ) : null}
+              {liveBmi != null && category ? (
+                <MedicalSourcesLink sourceIds={['bmi']} align="center" />
               ) : (
                 <Text
                   style={{

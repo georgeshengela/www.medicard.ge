@@ -442,6 +442,9 @@ export default function ProfileSetupResultsScreen() {
                   </View>
                 ))}
               </View>
+              <Text style={{ paddingHorizontal: 16, paddingBottom: 14, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: FIGMA_ASSESSMENT_RESULT.labelColor }}>
+                ცხიმისა და კუნთის პროცენტი აპის შინაგანი შეფასებაა, არა გაზომილი სხეულის შემადგენლობა.
+              </Text>
             </View>
           </View>
         </View>

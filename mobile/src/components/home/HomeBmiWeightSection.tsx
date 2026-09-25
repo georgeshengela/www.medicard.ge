@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ChevronRight, Scale } from 'lucide-react-native';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { HomeBmiZoneBar } from '@/components/home/HomeBmiGauge';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { HomeWeightGoalStrip } from '@/components/home/HomeWeightGoalStrip';
@@ -206,6 +207,7 @@ export function HomeBmiWeightSection({ profile }: Props) {
           {goalProgress ? <HomeWeightGoalStrip progress={goalProgress} /> : null}
         </Pressable>
       )}
+      {bmi != null ? <MedicalSourcesLink sourceIds={['bmi']} /> : null}
 
     </View>
   );

@@ -2,6 +2,7 @@ import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
 import { Modal, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
@@ -86,6 +87,7 @@ export function CycleGaugeExplainSheet({ visible, explain, onClose }: Props) {
           <Text style={{ color: c.muted, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 21 }}>
             {explain.body}
           </Text>
+          <MedicalSourcesLink sourceIds={['menstrualCycle']} />
           <Text
             style={{
               color: c.mutedSoft,

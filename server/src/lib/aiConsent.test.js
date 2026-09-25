@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { AI_CONSENT_VERSION, readAiConsent, recordAiConsent, withAiAccount, currentAiAccount } from './aiConsent.js';
 import { consentedAiFetch } from './consentedAiFetch.js';
 
+test('consent version is an explicit epoch, not a hash of UI copy', () => {
+  assert.match(AI_CONSENT_VERSION, /^\d{4}-\d{2}-\d{2}\.\d+$/);
+});
 test('missing, declined, revoked and outdated decisions never authorize AI', async () => {
   for (const row of [null, {version: AI_CONSENT_VERSION, decision:'declined'}, {version:AI_CONSENT_VERSION, decision:'revoked'}, {version:'old',decision:'accepted'}]) {
     const status = await readAiConsent('A', { $queryRaw: async () => row ? [row] : [] });

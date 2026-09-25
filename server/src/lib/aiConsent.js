@@ -1,10 +1,17 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { prisma } from './prisma.js';
 import manifest from '../../../mobile/src/config/aiDisclosure.json' with { type: 'json' };
 
 export const AI_DISCLOSURE = Object.freeze(manifest);
-export const AI_CONSENT_VERSION = createHash('sha256').update(JSON.stringify(manifest)).digest('hex');
+/**
+ * Bump only when the AI providers, the categories of personal data shared,
+ * or the processing purpose materially change. UI copy alone must not bump this.
+ * 2026-09-25.1 replaces the repeated in-flow modal with one explicit permission.
+ * Older hashed decisions are not this version and must be asked again once.
+ */
+export const CURRENT_AI_CONSENT_VERSION = '2026-09-25.1';
+export const AI_CONSENT_VERSION = CURRENT_AI_CONSENT_VERSION;
 const context = new AsyncLocalStorage();
 export const withAiAccount = (userId, work) => context.run({ userId }, work);
 export const currentAiAccount = () => context.getStore()?.userId || null;

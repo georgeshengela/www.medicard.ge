@@ -36,7 +36,7 @@ export default function ProfileSetupNotificationsScreen() {
   if (blocked === 'assessment') return <Redirect href="/(auth)/assessment" />;
   if (blocked === 'home') return <Redirect href="/(tabs)/home" />;
 
-  const goLocation = () => router.replace(onboardingStepHref('/(auth)/profile-setup/location', preview) as never);
+  const goLocation = () => router.replace(onboardingStepHref('/(auth)/profile-setup/ai-privacy', preview) as never);
 
   const continueFlow = (granted: boolean) => {
     void (async () => {

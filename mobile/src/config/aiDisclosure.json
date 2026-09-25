@@ -52,7 +52,16 @@
   },
   "privacyUrl": "https://medicard.ge/privacy.html",
   "retention": "MEDICARD-ში ინახება შენი ჩანაწერები და AI პასუხები. ჩაწერილი ხმა მუდმივ საცავში არ ინახება; პასუხის აუდიო დაკვრის შემდეგ იშლება. მონაცემები შეიძლება სხვა ქვეყანაში დამუშავდეს. OpenRouter-ს ვიყენებთ მხოლოდ ჩამოთვლილი ჰოსტებით, მონაცემთა შეგროვების აკრძალვითა და ZDR ფილტრით. ეს არ ეხება პირდაპირ Azure Speech-სა და EvidenceMD-ს; მათი პირობები იხილე ბმულებზე.",
-  "choice": "არჩევანი ნებაყოფლობითია. უარის ან ფანჯრის დახურვისას მოთხოვნა AI-ს არ გაეგზავნება; დანარჩენი ფუნქციები ხელმისაწვდომია. თანხმობის გაუქმება: პროფილი → AI მონაცემების გაზიარება. ახალი მიმღები ან არსებითი ცვლილება ხელახალ თანხმობას მოითხოვს.",
+  "summaryCategories": [
+    "შეტყობინებები, სიმპტომები და საუბრის შესაბამისი ისტორია",
+    "ფუნქციისთვის საჭირო ჯანმრთელობის ინფორმაცია: ასაკი, სქესი, დაავადებები, ალერგიები, მედიკამენტები და მაჩვენებლები",
+    "ანალიზისთვის არჩეული ფოტოები და დოკუმენტებიდან ამოღებული ტექსტი",
+    "ციკლის ან ორსულობის ინფორმაცია, როცა ამ ფუნქციას იყენებ",
+    "ცხოველის პროფილი და მოვლა Medi Vet-ში — ადამიანის ჯანმრთელობის პროფილის გარეშე",
+    "ხმოვანი ჩანაწერი ტექსტად გარდასაქმნელად და, თუ ჩართულია, პასუხის ტექსტი გასახმოვანებლად",
+    "კვების ფოტო, პორციის აღწერა და კვების ჯამები, როცა ამ ფუნქციას იყენებ"
+  ],
+  "choice": "არჩევანი ნებაყოფლობითია. „ახლა არა“ ან დახურვა მოთხოვნას AI-ს არ აგზავნის; დანარჩენი ფუნქციები რჩება. გაუქმება: პროფილი → კონფიდენციალობა და მონაცემები. ახალი მიმღები ან არსებითი ცვლილება ხელახალ თანხმობას მოითხოვს.",
   "en": {
     "title": "Share your data with AI services?",
     "purpose": "To answer Medi requests and the actions you ask for, MEDICARD sends the data below to named third-party AI services, depending on the feature you use. Nothing is sent until you choose Allow.",
@@ -94,7 +103,16 @@
       }
     ],
     "retention": "MEDICARD stores your records and AI replies. Recorded audio is not kept in permanent storage; spoken-reply audio is deleted after playback. Data may be processed in another country. OpenRouter is used only with the listed hosts, data-collection denied, and a ZDR filter. That filter does not apply to direct Azure Speech or EvidenceMD; see their policies.",
-    "choice": "This choice is voluntary. If you decline or close this window, the pending request is not sent to AI. Other app features remain available. Withdraw later: Profile → AI data sharing. A new recipient or material change requires a new decision.",
+    "summaryCategories": [
+      "Messages, symptoms, and the relevant conversation",
+      "Health details needed for the feature you use, such as age, sex, conditions, allergies, medications, and metrics",
+      "Photos you choose for analysis and text extracted from documents",
+      "Cycle or pregnancy information when you use those features",
+      "Pet profile and care details in Medi Vet, without the human health profile",
+      "Recorded audio for transcription, and reply text for spoken answers when that is on",
+      "A food photo, portion note, and nutrition totals when you use those features"
+    ],
+    "choice": "This choice is voluntary. Not Now or closing does not send the request to AI. Other features keep working. Withdraw later in Profile → Privacy & Data. A new recipient or material change requires a new decision.",
     "headings": {
       "recipients": "Who receives the data",
       "sent": "What is sent",
@@ -102,8 +120,8 @@
     },
     "intro": "Without your permission we do not send data to third-party AI.",
     "introAccepted": "Sharing is allowed. You can change this at any time.",
-    "agree": "I agree to share with AI",
-    "decline": "Continue without AI",
+    "agree": "Allow AI Processing",
+    "decline": "Not Now",
     "keep": "Keep sharing allowed",
     "revoke": "Withdraw consent",
     "policy": "MEDICARD privacy policy",

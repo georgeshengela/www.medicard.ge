@@ -7,6 +7,7 @@ import { pregnancyEmptyCopyAllowed, pregnancyQueryPending } from '@/lib/cyclePre
 import { pregnancyObservationLines } from '@/lib/pregnancyObservationPresent';
 import { CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { CalendarDays, Check, Heart, Plus } from 'lucide-react-native';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { PregnancyWeekMetrics, PregnancyWeekOpenCta } from '@/components/cycle/CyclePregnancyWeekVisual';
 import { useCycleColors } from '@/theme/cycle';
 
@@ -167,6 +168,9 @@ export function CyclePregnancyCard({
       <Text style={{ color: c.mutedSoft, fontSize: 11, lineHeight: 18, marginTop: 8 }}>
         {ka.cycle.pregnancyNotDiagnosis}
       </Text>
+      {!pregnancy?.reviewRequired ? (
+        <MedicalSourcesLink sourceIds={['pregnancyDueDate', 'fetalGrowth', 'fetalLength', 'fetalDevelopment', 'pregnancyWeeks']} />
+      ) : null}
       <View style={{ marginTop: 16,paddingTop:16,borderTopWidth:1,borderColor:c.border }}>
         <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13 }}>
           {ka.cycle.pregnancyTodayTitle}

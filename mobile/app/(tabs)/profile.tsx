@@ -33,10 +33,11 @@ import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constant
 import { SUPPORT_MAILTO } from '@/constants/legal';
 import { resolveConditionLabel } from '@/constants/conditionCatalog';
 import { ka } from '@/i18n/ka';
-import { ApiError, ensureAiSharingConsentForRequest, type Gender } from '@/lib/api';
+import { ApiError, type Gender } from '@/lib/api';
 import { isoToDisplay, parseBirthDate } from '@/lib/birthdate';
 import { displayWeightForUnit } from '@/lib/assessmentForm';
 import { cmToInches, formatHeightInches } from '@/components/assessment/HeightWheelPicker';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { bmiCategory, bmiFromWeight } from '@/lib/bmi';
 import { formatDate } from '@/lib/format';
 import { openAppSystemSettings } from '@/lib/appPermissions';
@@ -321,6 +322,7 @@ export default function Profile() {
                 value={`${bmi.toFixed(1)} · ${ka.home.bmi.categories[bmiCategory(bmi)]}`}
               />
             ) : null}
+            {bmi != null ? <MedicalSourcesLink sourceIds={['bmi']} /> : null}
             {healthProfile?.bloodType ? (
               <FactRow label={ka.profile.bloodType} value={healthProfile.bloodType} last={!smoking && !allergyLabels.length && !conditionLabels.length} />
             ) : null}
@@ -365,9 +367,7 @@ export default function Profile() {
 <View className="mt-5">
         <HomeSectionTitle title={ka.profile.settings} />
         <Card padded={false}>
-          <ProfileMenuRow icon={ShieldCheck} label="AI მონაცემების გაზიარება" onPress={() => {
-            void ensureAiSharingConsentForRequest('', 'GET', undefined, true).catch(error => Alert.alert('მონაცემების გაზიარება', error.message));
-          }} />
+          <ProfileMenuRow icon={ShieldCheck} label="კონფიდენციალობა და მონაცემები" onPress={() => router.push('/profile/ai-data')} />
           <ProfileMenuRow
             icon={ShieldCheck}
             label={ka.profile.permissions}

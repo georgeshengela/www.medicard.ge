@@ -24,9 +24,11 @@ export function disclosureCopy(manifest, locale = deviceLanguageTag()) {
   const english = manifest?.en || bundled.en;
   if (english && !isGeorgianLocale(locale)) {
     return {
+      screenTitle: 'AI & Privacy',
       title: english.title,
       purpose: english.purpose,
       categories: english.categories,
+      summaryCategories: english.summaryCategories || manifest.summaryCategories,
       recipients: english.recipients || manifest.recipients,
       retention: english.retention,
       choice: english.choice,
@@ -48,17 +50,19 @@ export function disclosureCopy(manifest, locale = deviceLanguageTag()) {
     };
   }
   return {
+    screenTitle: 'AI და კონფიდენციალურობა',
     title: manifest.title,
     purpose: manifest.purpose,
     categories: manifest.categories,
+    summaryCategories: manifest.summaryCategories,
     recipients: manifest.recipients,
     retention: manifest.retention,
     choice: manifest.choice,
     headings: KA_HEADINGS,
     intro: 'შენი ნებართვის გარეშე გარე AI-ს მონაცემებს არ ვუგზავნით.',
     introAccepted: 'გაზიარება ნებადართულია. არჩევანის შეცვლა ნებისმიერ დროს შეგიძლია.',
-    agree: 'ვეთანხმები AI-სთან გაზიარებას',
-    decline: 'გაგრძელება AI-ის გარეშე',
+    agree: 'AI დამუშავების ნებართვა',
+    decline: 'ახლა არა',
     keep: 'თანხმობის შენარჩუნება',
     revoke: 'თანხმობის გაუქმება',
     policy: 'MEDICARD-ის კონფიდენციალურობის პოლიტიკა',

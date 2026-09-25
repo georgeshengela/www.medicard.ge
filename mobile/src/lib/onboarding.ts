@@ -50,6 +50,7 @@ export function nextProfileSetupHref(
   if (!faceIdDone) return '/(auth)/profile-setup/face-id';
   if (extra.privacyAccepted !== true) return '/(auth)/profile-setup/privacy';
   if (extra.notificationsEnabled === undefined) return '/(auth)/profile-setup/notifications';
+  if (extra.aiPrivacyPrompted !== true) return '/(auth)/profile-setup/ai-privacy';
   const locationDone = extra.locationPrompted === true
     || (extra.location != null && typeof extra.location === 'object' && (extra.location as { prompted?: unknown }).prompted === true);
   if (!locationDone) return '/(auth)/profile-setup/location';

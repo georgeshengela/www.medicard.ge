@@ -15,6 +15,7 @@ import {
   Target,
   User,
 } from 'lucide-react-native';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { HomeWeightLogSheet } from '@/components/home/HomeWeightLogSheet';
 import { QuotaSheet } from '@/components/QuotaSheet';
 import { WeightAppBar, WeightPrimaryButton } from '@/components/weight/WeightChrome';
@@ -186,6 +187,7 @@ export default function WeightHubScreen() {
           <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: T.textSecondary }}>
             {category ? ka.home.bmi.categories[category] : ka.weight.withinBmi}
           </Text>
+          {bmi != null ? <MedicalSourcesLink sourceIds={category ? ['bmi', 'weightPace'] : ['weightPace']} align="center" /> : null}
           <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Calendar size={16} color={T.textTertiary} strokeWidth={2} />

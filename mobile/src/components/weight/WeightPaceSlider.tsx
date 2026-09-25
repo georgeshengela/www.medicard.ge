@@ -3,6 +3,7 @@ import { LayoutChangeEvent, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
 import { useFigmaWeight } from '@/constants/figmaWeightLayout';
 import { ka } from '@/i18n/ka';
@@ -245,6 +246,7 @@ export function WeightPaceSlider({ pace, currentKg, recommended, onChange }: Pro
       <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 22, color: T.textPrimary, textAlign: 'center' }}>
         {HINTS[pace]}
       </Text>
+      <MedicalSourcesLink sourceIds={['weightPace']} align="center" />
       <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 20, color: T.textSecondary, textAlign: 'center' }}>
         {ka.weightGoal.paceApprox(String(kg), bw)}
       </Text>

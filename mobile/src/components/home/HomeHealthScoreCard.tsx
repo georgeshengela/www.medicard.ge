@@ -122,6 +122,11 @@ export function HomeHealthScoreCard({
 
           <ChevronRight size={24} color={FIGMA_HOME_DASHBOARD.chevron} strokeWidth={2} />
         </View>
+        {score != null ? (
+          <Text style={{ marginTop: 10, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11, lineHeight: 16, color: FIGMA_HOME_DASHBOARD.textSecondary }}>
+            ინფორმაციული მაჩვენებელია. დიაგნოზს ან გადაუდებელ დახმარებას არ ცვლის.
+          </Text>
+        ) : null}
       </Pressable>
     </View>
   );

@@ -12,7 +12,7 @@ import { Markdown } from '@/components/ui/Markdown';
 import { QuotaSheet } from '@/components/QuotaSheet';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
-import { ApiError, api, ensureAiSharingConsentForRequest, type ChatMessage } from '@/lib/api';
+import { ApiError, api, type ChatMessage } from '@/lib/api';
 import { streamAiQuery } from '@/lib/aiQueryStream';
 import { getConversationalChatProfile } from '@/lib/chatUiConfig';
 import { CHAT_MESSAGE_LIMIT, requireAnalysisText, IncompleteAnalysisError } from '@/lib/analysisFlow';
@@ -207,7 +207,7 @@ function ChatScreenContent() {
             title={profile.title}
             icon={profile.icon}
             onBack={() => router.back()}
-            onSettings={() => { void ensureAiSharingConsentForRequest('', 'GET', undefined, true).catch(() => undefined); }}
+            onSettings={() => router.push('/profile/ai-data' as never)}
           />
         }
         footer={<ChatInputBar value={draft} onChangeText={setDraft} onSend={() => send(draft)} sending={sending} disabled={historyState !== 'ready'} />}

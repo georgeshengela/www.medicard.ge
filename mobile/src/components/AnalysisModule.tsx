@@ -32,7 +32,7 @@ import { useAnalysisTask } from '@/lib/useAnalysisTask';
 import { useThemeColors } from '@/theme/colors';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { ka } from '@/i18n/ka';
-import { ApiError, api, ensureAiSharingConsentForRequest, type MedicalRecord } from '@/lib/api';
+import { ApiError, api, type MedicalRecord } from '@/lib/api';
 import { getAnalysisChatProfile, type AnalysisChatKind } from '@/lib/chatUiConfig';
 import { IMAGE_PICKER_OPTIONS, prepareLabImage, toUploadableImage } from '@/lib/imageUpload';
 import { formatLabDateKa, mergeLabExtracts, parseLabExtract, stripLabJson } from '@/lib/labExtract';
@@ -398,7 +398,7 @@ function AnalysisModuleContent({
           subtitle={profile.subtitle}
           icon={icon}
           onBack={() => router.back()}
-          onSettings={() => { void ensureAiSharingConsentForRequest('', 'GET', undefined, true).catch(() => undefined); }}
+          onSettings={() => router.push('/profile/ai-data' as never)}
         />
       }
       footer={

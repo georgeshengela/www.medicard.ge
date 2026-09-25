@@ -1,3 +1,4 @@
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useState } from 'react';
 import { Image, Text, useWindowDimensions, View } from 'react-native';
@@ -179,6 +180,7 @@ export function PregnancyWeekMetrics({
           ) : null}
         </View>
       ) : null}
+      <MedicalSourcesLink sourceIds={['fetalGrowth', 'fetalLength', 'fetalDevelopment']} align="center" />
     </View>
   );
 }

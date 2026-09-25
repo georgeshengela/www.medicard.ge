@@ -63,12 +63,15 @@ export default function ProfileSetupAnalyzingScreen() {
 
     void (async () => {
       let profile = healthProfile;
-      try {
-        const res = await api.healthProfile.onboardingAnalysis({ force });
-        profile = res.profile;
-        setHealthProfile(profile);
-      } catch {
-        // score page is skipped — still mark onboarding done
+      const extraAnswers = (healthProfile.extraAnswers ?? {}) as Record<string, unknown>;
+      if (extraAnswers.aiPrivacyDecision === 'accepted') {
+        try {
+          const res = await api.healthProfile.onboardingAnalysis({ force });
+          profile = res.profile;
+          setHealthProfile(profile);
+        } catch {
+          // score page is skipped — still mark onboarding done
+        }
       }
 
       if (!preview) {

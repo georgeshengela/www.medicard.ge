@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { CycleOvulationSparkle } from '@/components/cycle/CycleOvulationSparkle';
 import { ka } from '@/i18n/ka';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
@@ -101,13 +102,13 @@ export function CycleCalendarLegend({
   });
 
   return (
+    <View style={{ gap: 4, paddingHorizontal: 4 }}>
     <View
       style={{
         flexDirection: 'row',
         flexWrap: 'wrap',
         rowGap: 8,
         columnGap: 14,
-        paddingHorizontal: 4,
       }}
     >
       {items.map((item) => (
@@ -128,6 +129,8 @@ export function CycleCalendarLegend({
           </Text>
         </View>
       ))}
+    </View>
+      {showPredicted || showFertility ? <MedicalSourcesLink sourceIds={['menstrualCycle']} /> : null}
     </View>
   );
 }

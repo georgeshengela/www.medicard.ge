@@ -1,6 +1,7 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
 import { Text, View } from 'react-native';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { ka } from '@/i18n/ka';
 import {
   timelineCopy,
@@ -120,6 +121,7 @@ export function CyclePregnancyTimelinePeek({
           {copy.next}: {nextTitle}
         </Text>
       ) : null}
+      <MedicalSourcesLink sourceIds={['pregnancyWeeks', 'fetalDevelopment', 'pregnancyDueDate']} />
       <Pressable
         onPress={onOpen}
         accessibilityRole="button"

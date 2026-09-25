@@ -26,7 +26,7 @@ export function createVoiceCapture(d: CaptureDependencies) {
   const current = (id: number) => epoch === id && d.active();
   const reportError = (error: unknown, fallback: string) => {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'AI_CONSENT_DECLINED') {
-      d.onNotice('AI-სთან გაზიარება გამორთულია. არჩევანის შეცვლა პროფილის პარამეტრებიდან შეგიძლია.');
+      d.onNotice('AI დამუშავება გამორთულია. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.');
     } else d.onError(error instanceof Error ? error.message : fallback);
   };
   async function finish(submit: boolean) {

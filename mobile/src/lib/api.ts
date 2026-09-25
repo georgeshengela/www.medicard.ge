@@ -1920,14 +1920,14 @@ export async function assistantRequest<T>(path: 'catalog' | 'state' | 'plan' | '
 }
 
 export async function ensureAiSharingConsentForRequest(path: string, method = 'POST', suppliedToken?: string | null, settings = false) {
-  const { isAiSharingRequest, requestAiSharingPrompt } = await import('@/lib/aiSharingConsent');
+  const { isAiSharingRequest, needsAiConsentPrompt, requestAiSharingPrompt } = await import('@/lib/aiSharingConsent');
   if (!settings && !isAiSharingRequest(path, method)) return;
   const { localAccountId } = await import('@/lib/localAccount');
   const owner = localAccountId(), token = suppliedToken !== undefined ? suppliedToken : await getToken();
   if (!owner || !token) throw new ApiError('გთხოვ, შეხვიდე ანგარიშში.', 401);
   const status = await request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', { token, timeoutMs: 15_000 });
   if (owner !== localAccountId()) throw new ApiError('ანგარიში შეიცვალა.', 401);
-  if (!status.accepted || settings) {
+  if (needsAiConsentPrompt(status, settings)) {
     const accepted = await requestAiSharingPrompt(owner, status, async (decision, version) => {
       try { return await request('/api/ai-consent', { method: 'PUT', body: { decision, version }, token, timeoutMs: 15_000 }); }
       catch (error) {
@@ -1938,7 +1938,7 @@ export async function ensureAiSharingConsentForRequest(path: string, method = 'P
         throw error;
       }
     }, settings);
-    if (!accepted && !settings) throw new ApiError('AI-სთან მონაცემების გაზიარება არ არის ნებადართული. არჩევანის შეცვლა პროფილის პარამეტრებიდან შეგიძლია.', 403, { code: 'AI_CONSENT_DECLINED' });
+    if (!accepted && !settings) throw new ApiError('AI დამუშავების ნებართვა საჭიროა. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.', 403, { code: 'AI_CONSENT_DECLINED' });
   }
   if (owner !== localAccountId() || token !== await getToken()) throw new ApiError('ანგარიში შეიცვალა.', 401);
 }
@@ -2253,6 +2253,16 @@ export const api = {
       }>('/api/check-in/steps-goal', { method: 'POST', body: { goalId } }),
   },
 
+  aiConsent: {
+    read: () => request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', { timeoutMs: 15_000 }),
+    save: (decision: 'accepted' | 'declined' | 'revoked', version: string) =>
+      request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', {
+        method: 'PUT',
+        body: { decision, version },
+        timeoutMs: 15_000,
+      }),
+  },
+
   healthProfile: {
     get: () => request<{ profile: HealthProfile | null }>('/api/health-profile', { timeoutMs: 15_000 }),
     update: (body: Record<string, unknown>) =>
@@ -2263,8 +2273,8 @@ export const api = {
     complete: (body: {
       gender: Gender;
       birthDate: string;
-      heightCm: number;
-      weightKg: number;
+      heightCm?: number;
+      weightKg?: number;
     }) =>
       request<{ profile: HealthProfile; user: User }>('/api/health-profile/complete', {
         method: 'POST',

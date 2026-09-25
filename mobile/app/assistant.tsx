@@ -162,7 +162,7 @@ function AssistantSession({ owner }: { owner: string }) {
       setDraft(currentDraft); if (!fromVoice) setText(value);
       if (e instanceof ApiError && e.code === 'AI_CONSENT_DECLINED') {
         // Declining sharing is a valid choice, not a network failure or a retryable send.
-        const reply = 'მოთხოვნა AI-ს არ გაეგზავნა. შეგიძლია აპის სხვა ფუნქციებით გააგრძელო. არჩევანს პროფილში, „AI მონაცემების გაზიარებაში“ შეცვლი.';
+        const reply = 'მოთხოვნა AI-ს არ გაეგზავნა. შეგიძლია აპის სხვა ფუნქციებით გააგრძელო. არჩევანს პროფილში, „კონფიდენციალობა და მონაცემებში“ შეცვლი.';
         setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]);
       } else {
         retryPlan.current = { value, fromVoice, petId }; setError(errorText(e, 'კავშირი შეფერხდა.')); assistantHaptic('error');
