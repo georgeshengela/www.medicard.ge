@@ -2,9 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AI_CONSENT_VERSION, readAiConsent, recordAiConsent, withAiAccount, currentAiAccount } from './aiConsent.js';
 import { consentedAiFetch } from './consentedAiFetch.js';
+import { aiConsentBodySchema } from '../routes/ai-consent.routes.js';
 
 test('consent version is an explicit epoch, not a hash of UI copy', () => {
   assert.match(AI_CONSENT_VERSION, /^\d{4}-\d{2}-\d{2}\.\d+$/);
+});
+test('the PUT body accepts the current epoch version and rejects foreign fields', () => {
+  for (const decision of ['accepted', 'declined', 'revoked']) {
+    assert.deepEqual(aiConsentBodySchema.parse({ version: AI_CONSENT_VERSION, decision }), { version: AI_CONSENT_VERSION, decision });
+  }
+  assert.equal(aiConsentBodySchema.safeParse({ version: AI_CONSENT_VERSION, decision: 'accepted', userId: 'B' }).success, false);
+  assert.equal(aiConsentBodySchema.safeParse({ version: '', decision: 'accepted' }).success, false);
+  assert.equal(aiConsentBodySchema.safeParse({ version: AI_CONSENT_VERSION, decision: 'maybe' }).success, false);
 });
 test('missing, declined, revoked and outdated decisions never authorize AI', async () => {
   for (const row of [null, {version: AI_CONSENT_VERSION, decision:'declined'}, {version:AI_CONSENT_VERSION, decision:'revoked'}, {version:'old',decision:'accepted'}]) {
