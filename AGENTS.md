@@ -105,6 +105,15 @@ See `MEMORY.md` for details. Cycle phase numbers stay in contracts / QA only.
 
 Home is the reference look; every other mobile page is to be migrated to it gradually. Tokens and type live in `mobile/src/theme/hub.ts` (`HUB`, `hubInk`, `hubTint`, `hubText`); building blocks are `HomeSectionHeading` (title outside the card, optional right link) and `HubFeatureCard` (icon tile / title / body / CTA row, `surface` or one `spotlight` per page). Cards are flat `surface`, radius 22, no border, no shadow; icons sit in a 42px tile tinted with the ink at 8% light / 15% dark; section gap 28, gutter 20. Do not add per-section colour schemes, decorative arcs, or a second dark card on a page. Copy addresses the person as შენ.
 
+## Product freeze (2026-09-26)
+
+Owner decision after the 2026-09-26 strategic audit: fewer features, one clear promise. These freezes override older notes that invite expansion.
+
+- **Pets / Medi Vet:** no new features. Bug fixes only. Isolation rules above still apply.
+- **MEDIRUN:** no new zones or prizes; at most one event per month. The user-visible name is **MEDIRUN** everywhere — never RUN, MEDI RUN, Medi Run, MEDIPULSI or „სირბილი" as the product name (the verb/activity „სირბილი" in a sentence is fine). Internal identifiers (`medipulsi*` routes, tables, capabilities) stay as they are.
+- **Cycle:** no new phases until iOS QA is complete.
+- **Women's space (community):** no open launch until there are 300+ active women and named human moderators assigned to the queue. Access must sit behind an admin-controlled launch flag; do not remove or bypass it. As of 2026-09-26 no such flag exists yet — today any ACTIVE `FEMALE` account is eligible (`server/src/lib/community.js` `eligible`).
+
 ## Retired district competition (2026-09-19)
 
 The owner removed the district walking competition completely. Do not recreate its screens, sync, admin module, or database tables. MEDIRUN / MEDIPULSI remains the worldwide exploration game, accessible from Home; its duplicate Profile block is removed. Shared health totals and Pets remain independent.
