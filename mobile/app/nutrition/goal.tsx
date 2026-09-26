@@ -1,6 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, Pressable, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { loadWeightGoal } from "@/lib/weightGoal";
+import { openWeightGoalWizard } from "@/lib/weightNav";
 import { Check, ShieldCheck, Target, Utensils } from "lucide-react-native";
 import { useAuth } from "@/store/AuthContext";
 import { useThemeColors } from "@/theme/colors";
@@ -71,6 +73,24 @@ function Goal({ owner }: { owner: string }) {
       alive.current = false;
     };
   }, [owner]);
+  // Coming back from the weight goal wizard: the canonical goal is the target.
+  useFocusEffect(
+    useCallback(() => {
+      if (!init.current) return;
+      let active = true;
+      void loadWeightGoal().then((goal) => {
+        if (!active || !alive.current || !goal) return;
+        setForm((current) => {
+          const weight = Number(current.weight);
+          const mode = weight ? (goal.targetKg < weight ? "lose" : goal.targetKg > weight ? "gain" : "maintain") : current.mode;
+          return { ...current, target: String(goal.targetKg), mode };
+        });
+      });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
   useEffect(() => {
     if (!d || init.current) return;
     init.current = true;
@@ -353,8 +373,21 @@ function Goal({ owner }: { owner: string }) {
                   ? `ბოლო გაზომვა: ${d.facts.current.date}.`
                   : "პროფილიდან შევსებული მონაცემი გადაამოწმე."}
               </NText>
-              {form.mode !== "maintain" &&
-                field("სასურველი წონა · კგ", "target", true)}
+              {form.mode !== "maintain" && (
+                // One weight goal: the target is edited only in the weight wizard.
+                <View style={{ gap: 8, padding: 14, borderRadius: 16, backgroundColor: c.bg200 }}>
+                  <NText style={{ fontSize: 12, color: c.text200 }}>სასურველი წონა</NText>
+                  <NText style={{ fontSize: 20, fontFamily: "NotoSansGeorgian_600SemiBold" }}>
+                    {form.target ? `${form.target} კგ` : "მიზანი ჯერ არ გაქვს"}
+                  </NText>
+                  <NButton
+                    secondary
+                    disabled={busy}
+                    label={form.target ? "მიზნის შეცვლა" : "მიზნის დასახვა"}
+                    onPress={() => openWeightGoalWizard(router, "/nutrition/goal")}
+                  />
+                </View>
+              )}
               {field("სიმაღლე · სმ", "height", true)}
               {field("დაბადების თარიღი · წელი-თვე-დღე", "birth")}
               <NText>ფორმულის სქესობრივი კოეფიციენტი</NText>
