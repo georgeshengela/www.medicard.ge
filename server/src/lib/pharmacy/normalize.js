@@ -152,7 +152,10 @@ function canonicalBrand(raw, geoLatinMap = geoLatinCache) {
 
 function extractModifiers(raw) {
   const lower = normalizeDrugName(raw);
-  return MODIFIERS.filter((m) => lower.includes(m)).sort();
+  // Word-boundary match, not a plain substring check: short modifiers like "es"
+  // or "max" otherwise match inside an unrelated brand word (e.g. "algestin"
+  // contains "es"), silently changing the signature and breaking the match.
+  return MODIFIERS.filter((m) => new RegExp(`\\b${m}\\b`).test(lower)).sort();
 }
 
 /** Cross-pharmacy identity key (brand + strength + pack). Form wording differs by source. */
