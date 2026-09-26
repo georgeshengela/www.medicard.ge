@@ -22,7 +22,7 @@
     "merge:pharmacy-duplicates": "node server/scripts/merge-pharmacy-duplicates.js",
     "test:ai": "node --experimental-default-type=module server/scripts/check-evidencemd.js",
     "typecheck": "npm --prefix mobile run typecheck",
-    "build": "npm --prefix server ci --include=dev && npm --prefix server run prisma:generate && node -e \"const fs=require('fs'); for (const p of ['server/admin/index.html','server/public/index.html']) { if(!fs.existsSync(p)) { console.error('Missing '+p); process.exit(1)} } console.log('admin + landing ok')\" && npm run build:medipulsi",
+    "build": "npm --prefix server ci --include=dev && npm --prefix server run prisma:generate && npx --prefix server playwright install chromium && node -e \"const fs=require('fs'); for (const p of ['server/admin/index.html','server/public/index.html']) { if(!fs.existsSync(p)) { console.error('Missing '+p); process.exit(1)} } console.log('admin + landing ok')\" && npm run build:medipulsi",
     "release": "npm --prefix server run prisma:generate && node server/scripts/install-medipulsi.mjs && node server/scripts/install-ai-consent.mjs && node server/scripts/install-assistant.mjs && node server/scripts/install-community.mjs && node server/scripts/install-nutrition.mjs && npm --prefix server run seed",
     "start": "npm --prefix server start",
     "clean": "node scripts/clean.mjs",

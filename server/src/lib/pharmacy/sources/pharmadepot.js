@@ -12,10 +12,16 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function fetchHtml(url) {
-  const res = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow' });
-  if (!res.ok) throw new Error(`Pharmadepot HTTP ${res.status} for ${url}`);
-  return res.text();
+async function fetchHtml(url, attempt = 1) {
+  try {
+    const res = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow' });
+    if (!res.ok) throw new Error(`Pharmadepot HTTP ${res.status} for ${url}`);
+    return res.text();
+  } catch (err) {
+    if (attempt >= 3) throw err;
+    await sleep(500 * attempt);
+    return fetchHtml(url, attempt + 1);
+  }
 }
 
 /** Parse product cards from a Pharmadepot category/listing page. */

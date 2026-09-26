@@ -1,3 +1,4 @@
+import dns from 'node:dns';
 import { prisma } from '../prisma.js';
 import { ensureDrugCategories, ensurePharmacySources } from './categories.js';
 import { upsertOfferFromListing, recomputeAllPricing, recomputeProductPricing, invalidateMatchGeoCache } from './match.js';
@@ -5,6 +6,11 @@ import { invalidateCrossSourceIndex } from './crossMatch.js';
 import { fetchPharmadepotProducts } from './sources/pharmadepot.js';
 import { fetchAversiProducts, closeAversiBrowser } from './sources/aversi.js';
 import { fetchPspProducts, closePspBrowser } from './sources/psp.js';
+
+// Render's outbound network occasionally fails to route IPv6 (AAAA) addresses,
+// which Node/undici surfaces only as a generic "fetch failed" with no further
+// detail. Preferring IPv4 avoids that class of failure for the pharmacy sources.
+dns.setDefaultResultOrder('ipv4first');
 
 const FETCHERS = {
   PHARMADEPOT: fetchPharmadepotProducts,

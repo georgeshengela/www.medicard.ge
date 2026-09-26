@@ -7,9 +7,25 @@ function unescapeEmbeddedJson(text) {
   return text.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function fetchWithRetry(url, attempt = 1) {
+  try {
+    const res = await fetch(url, { headers: FETCH_HEADERS });
+    if (!res.ok) throw new Error(`Pharmadepot HTTP ${res.status} for ${url}`);
+    return res.text();
+  } catch (err) {
+    if (attempt >= 3) throw err;
+    await sleep(500 * attempt);
+    return fetchWithRetry(url, attempt + 1);
+  }
+}
+
 export async function fetchPharmadepotSubcategoryList() {
   const url = `${BASE}/ka/category/medication?category=${PHARMADEPOT_MEDICATION_CATEGORY}`;
-  const html = await (await fetch(url, { headers: FETCH_HEADERS })).text();
+  const html = await fetchWithRetry(url);
 
   const anchor = html.indexOf('subCategoriesData');
   if (anchor < 0) throw new Error('subCategoriesData not found on Pharmadepot page');
