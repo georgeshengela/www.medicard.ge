@@ -8,6 +8,8 @@ import { shouldCompleteLocation } from '@/lib/locationCompletion';
 import { localAccountId } from '@/lib/localAccount';
 import { useAuth } from '@/store/AuthContext';
 
+const LOCATION_SCREENS = new Set(['weather', 'pharmacy']);
+
 export function LocationAskHost() {
   const { user } = useAuth();
   return user ? <LocationAskForAccount key={user.id} owner={user.id} /> : null;
@@ -25,7 +27,9 @@ function LocationAskForAccount({ owner }: { owner: string }) {
     return () => { alive.current = false; };
   }, [owner]);
   useEffect(() => { const unsubscribe = subscribeDeviceAccessGate(() => setGateReady(isDeviceAccessGateFinished() && !isDeviceAccessGateBlocking())); return () => { unsubscribe(); }; }, []);
-  const visible = prefReady && gateReady && segments[0] === '(tabs)' && !!healthProfile?.completedAt && !dismissed
+  // Ask only where location is actually used (7-step onboarding no longer asks up front).
+  // MEDIRUN asks from its own start button.
+  const visible = prefReady && gateReady && LOCATION_SCREENS.has(String(segments[0])) && !!healthProfile?.completedAt && !dismissed
     && shouldCompleteLocation(locationFromProfile(healthProfile), postponed);
   const current = () => alive.current && owner === localAccountId();
   const enable = async () => {

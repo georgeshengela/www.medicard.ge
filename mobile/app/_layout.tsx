@@ -31,6 +31,7 @@ import { WifiOff } from 'lucide-react-native';
 import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { QuotaReadyHost } from '@/components/QuotaReadyHost';
 import { LocationAskHost } from '@/components/location/LocationAskHost';
+import { BiometricOfferHost } from '@/components/permissions/BiometricOfferHost';
 import { AiSharingConsentHost } from '@/components/AiSharingConsentHost';
 import { setLocationProfileListener, hydrateLocationFromProfile } from '@/lib/userLocation';
 import { localAccountId } from '@/lib/localAccount';
@@ -366,6 +367,7 @@ function AppShell() {
           <DailyCheckInHost />
           <QuotaReadyHost />
           <LocationAskHost />
+          <BiometricOfferHost />
           <QuestHost />
           <OfflineBanner />
           <PermissionGateHost />
