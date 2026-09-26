@@ -1,6 +1,5 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -13,12 +12,8 @@ import * as Haptics from 'expo-haptics';
 import {
   Activity,
   CalendarCheck,
-  ChevronRight,
-  ClipboardList,
-  FileHeart,
   FlaskConical,
   HeartHandshake,
-  MessageCircle,
   PawPrint,
   Scale,
   ScanFace,
@@ -27,7 +22,6 @@ import {
   Stethoscope,
   Trophy,
   Users,
-  type LucideIcon,
 } from 'lucide-react-native';
 import { Disclaimer } from '@/components/Disclaimer';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
@@ -45,19 +39,17 @@ import { normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { useHydration } from '@/hooks/useHydration';
 import { useMedications } from '@/hooks/useMedications';
 import { useStepsMetrics } from '@/hooks/useStepsMetrics';
-import { api, type ChatSummary } from '@/lib/api';
-import { formatDayMonthYearKa, formatRelative } from '@/lib/format';
+import { formatDayMonthYearKa } from '@/lib/format';
 import { requestHealthRefresh } from '@/lib/healthDataSync';
 import { buildHomeSectionOrder } from '@/lib/home/homeSectionOrder';
 import { computeTodayDoses } from '@/lib/home/todayDoses';
 import { getCyclePromptSeen, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { todayYmd } from '@/lib/medications.shared';
 import { useAuth } from '@/store/AuthContext';
-import { useIsDark, useThemeColors } from '@/theme/colors';
-import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
+import { useThemeColors } from '@/theme/colors';
+import { HUB, hubText } from '@/theme/hub';
 import { ka } from '@/i18n/ka';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
-import { analysisFromProfile } from '@/types/onboardingAnalysis';
 
 /** Four AI check-ups, one per question a person actually has. */
 const CHECKUP_TILES: HubTile[] = [
@@ -85,30 +77,19 @@ export default function Home() {
   const { user, healthProfile, refresh } = useAuth();
   const router = useRouter();
   const c = useThemeColors();
-  const dark = useIsDark();
   const insets = useSafeAreaInsets();
   const tabInset = useTabBarInset(20);
   const hydration = useHydration();
   const steps = useStepsMetrics('1d');
   const meds = useMedications();
-  const [chats, setChats] = useState<ChatSummary[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
   const [showCyclePrompt, setShowCyclePrompt] = useState(false);
   const female = user?.gender === 'FEMALE';
-  const accountRef = useRef(user?.id);
-  accountRef.current = user?.id;
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      setChats([]);
-      void api.chats
-        .list()
-        .then(({ sessions }) => {
-          if (active) setChats(sessions.slice(0, 2));
-        })
-        .catch(() => {});
       void refresh().catch(() => {});
       if (female)
         void getCyclePromptSeen()
@@ -124,7 +105,6 @@ export default function Home() {
   );
 
   const onRefresh = async () => {
-    const accountId = user?.id;
     setRefreshing(true);
     setRefreshError(false);
     try {
@@ -133,9 +113,6 @@ export default function Home() {
         steps.refresh(),
         hydration.refresh(),
         meds.load(),
-        api.chats.list().then(({ sessions }) => {
-          if (accountRef.current === accountId) setChats(sessions.slice(0, 2));
-        }),
       ]);
       setRefreshError(results.some((result) => result.status === 'rejected'));
       requestHealthRefresh();
@@ -280,49 +257,6 @@ export default function Home() {
         <HubTileGrid tiles={SERVICE_TILES} />
       </View>
     ),
-    recentActivity: (
-      <View style={s.section}>
-        {heading('შენი ისტორია', '/(tabs)/records')}
-        <View style={[s.list, { backgroundColor: c.surface }]}>
-          <HistoryRow
-            icon={FileHeart}
-            ink={hubInk('teal', dark)}
-            tint={hubTint(hubInk('teal', dark), dark)}
-            title="შენახული დოკუმენტები"
-            detail="ანალიზები, სურათები და წინა ჩანაწერები"
-            onPress={() => open('/(tabs)/records')}
-          />
-          {chats.map((chat) => (
-            <HistoryRow
-              key={chat.id}
-              icon={MessageCircle}
-              ink={c.text200}
-              tint={c.bg200}
-              title={chat.title}
-              detail={`${chat.mode === 'CONSILIUM' ? 'AI კონსილიუმი' : 'საუბარი მედისთან'} · ${formatRelative(chat.updatedAt)}`}
-              accessibilityLabel={`საუბრის გაგრძელება: ${chat.title}`}
-              rule
-              onPress={() =>
-                open(
-                  `/chat/${chat.mode === 'CONSILIUM' ? 'consilium' : 'doctor'}?sessionId=${encodeURIComponent(chat.id)}`,
-                )
-              }
-            />
-          ))}
-          {analysisFromProfile(extra ?? {}) ? (
-            <HistoryRow
-              icon={ClipboardList}
-              ink={c.text200}
-              tint={c.bg200}
-              title="ჯანმრთელობის კითხვარის შედეგები"
-              detail="შენი პასუხების მიხედვით შედგენილი შეჯამება"
-              rule
-              onPress={() => open('/(auth)/profile-setup/results?preview=1')}
-            />
-          ) : null}
-        </View>
-      </View>
-    ),
     disclaimer: (
       <View style={s.section}>
         <Disclaimer />
@@ -368,64 +302,7 @@ export default function Home() {
   );
 }
 
-function HistoryRow({
-  icon: Icon,
-  ink,
-  tint,
-  title,
-  detail,
-  onPress,
-  accessibilityLabel,
-  rule = false,
-}: {
-  icon: LucideIcon;
-  ink: string;
-  tint: string;
-  title: string;
-  detail: string;
-  onPress: () => void;
-  accessibilityLabel?: string;
-  rule?: boolean;
-}) {
-  const c = useThemeColors();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? `${title}. ${detail}`}
-      onPress={onPress}
-      style={[s.inlineRow, rule ? { borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.bg300 } : null]}
-    >
-      <View style={[s.rowTile, { backgroundColor: tint }]}>
-        <Icon size={19} color={ink} strokeWidth={1.9} />
-      </View>
-      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <Text numberOfLines={2} style={[hubText.cardTitle, { color: c.text100, fontSize: 14, lineHeight: 20 }]}>
-          {title}
-        </Text>
-        <Text numberOfLines={2} style={[hubText.caption, { color: c.text200 }]}>
-          {detail}
-        </Text>
-      </View>
-      <ChevronRight size={17} color={c.text300} />
-    </Pressable>
-  );
-}
-
 const s = StyleSheet.create({
   section: { paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap },
-  list: { borderRadius: HUB.cardRadius, paddingHorizontal: 16, paddingVertical: 2 },
-  inlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-  },
-  rowTile: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   caption: hubText.caption,
 });

@@ -4,7 +4,7 @@
  * Reading order follows what a person can act on right now, then what they
  * come to MEDICARD for, grouped so each block has one job:
  *   greet → today's rings → ask Medi → doses due → women's health (opt-in) →
- *   nutrition → AI check-ups → movement → services → history → legal
+ *   nutrition → AI check-ups → movement → services → legal
  *
  * Stable and deterministic: no health scoring, promotional ranking, or device upsells.
  */
@@ -18,7 +18,6 @@ export type HomeSectionId =
   | 'checkup'
   | 'movement'
   | 'services'
-  | 'recentActivity'
   | 'disclaimer';
 
 const ORDER: readonly HomeSectionId[] = [
@@ -31,7 +30,6 @@ const ORDER: readonly HomeSectionId[] = [
   'checkup',
   'movement',
   'services',
-  'recentActivity',
   'disclaimer',
 ];
 

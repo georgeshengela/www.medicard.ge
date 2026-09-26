@@ -558,7 +558,7 @@ export const ka = {
 
   tabs: {
     home: 'მთავარი',
-    records: 'ჩანაწერები',
+    records: 'ისტორია',
     medications: 'მედიკამენტები',
     profile: 'პროფილი',
   },

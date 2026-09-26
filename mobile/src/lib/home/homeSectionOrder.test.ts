@@ -18,7 +18,7 @@ test('today first, then daily habits, then discovery; every section is unique', 
   assert.ok(order.indexOf('cycle') < order.indexOf('nutrition'));
   assert.ok(order.indexOf('nutrition') < order.indexOf('checkup'));
   assert.ok(order.indexOf('checkup') < order.indexOf('movement'));
-  assert.ok(order.indexOf('services') < order.indexOf('recentActivity'));
+  assert.ok(order.indexOf('movement') < order.indexOf('services'));
   assert.equal(order.at(-1), 'disclaimer');
   assert.equal(new Set(order).size, order.length);
 });
