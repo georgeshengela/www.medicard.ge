@@ -30,7 +30,6 @@ import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TAB_BAR_HEIGHT } from '@/components/navigation/FloatingTabBar';
 import {
   DAY_LETTERS,
   addYearsToIso,
@@ -68,7 +67,7 @@ export function MedicationSetupForm({
   const c = useThemeColors();
   const dark = useIsDark();
   const insets = useSafeAreaInsets();
-  const tabClearance = TAB_BAR_HEIGHT + Math.max(insets.bottom, 8);
+  const bottomClearance = Math.max(insets.bottom, 16);
   const ctaHeight = 80;
   const [medName] = useState(initialName);
   const [form, setForm] = useState<MedicationForm>('pills');
@@ -179,7 +178,7 @@ export function MedicationSetupForm({
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: tabClearance + ctaHeight + 24 }}
+        contentContainerStyle={{ paddingBottom: bottomClearance + ctaHeight + 24 }}
       >
         <View style={{ alignItems: 'center', paddingHorizontal: HUB.gutter, paddingTop: 24, paddingBottom: 8, gap: 20 }}>
           <View
@@ -320,7 +319,7 @@ export function MedicationSetupForm({
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { bottom: tabClearance, backgroundColor: c.bg100, borderColor: c.bg300 }]}>
+      <View style={[styles.footer, { bottom: 0, paddingBottom: bottomClearance, backgroundColor: c.bg100, borderColor: c.bg300 }]}>
         <Pressable
           disabled={busy}
           onPress={save}

@@ -6,7 +6,7 @@ import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon'
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary, type DrugCategoryInfo } from '@/lib/api';
-import { catalogProductMeta, catalogProductSetupParams } from '@/lib/medicationCatalogNav';
+import { catalogProductMeta } from '@/lib/medicationCatalogNav';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubInk, hubText } from '@/theme/hub';
 
@@ -58,8 +58,8 @@ export default function MedicationSearchScreen() {
 
   const chips = useMemo(() => [{ slug: null as string | null, nameKa: 'ყველა' }, ...categories], [categories]);
 
-  const openSetup = (product: CatalogProductSummary) => {
-    router.push({ pathname: '/medications/add/setup', params: catalogProductSetupParams(product) });
+  const openProduct = (product: CatalogProductSummary) => {
+    router.push(`/pharmacy/product/${product.id}` as never);
   };
 
   const primaryInk = hubInk('teal', dark);
@@ -105,7 +105,7 @@ export default function MedicationSearchScreen() {
                       { backgroundColor: active ? `${primaryInk}${dark ? '26' : '14'}` : c.surface },
                     ]}
                   >
-                    <Text style={[hubText.caption, { color: active ? primaryInk : c.text100, fontWeight: active ? '700' : '500' }]}>
+                    <Text style={active ? [hubText.link, { color: primaryInk }] : [hubText.caption, { color: c.text100 }]}>
                       {item.nameKa}
                     </Text>
                   </Pressable>
@@ -144,7 +144,7 @@ export default function MedicationSearchScreen() {
                 renderItem={({ item, index }) => {
                   const meta = catalogProductMeta(item);
                   return (
-                    <Pressable onPress={() => openSetup(item)}>
+                    <Pressable onPress={() => openProduct(item)}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: HUB.cardPad, paddingVertical: 12 }}>
                         <MedicationPillIcon size={46} imageUrl={item.imageUrl} border />
                         <View style={{ flex: 1, gap: 3, minWidth: 0 }}>

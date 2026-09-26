@@ -29,7 +29,7 @@ import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary, type Medication } from '@/lib/api';
-import { catalogProductMeta, catalogProductSetupParams } from '@/lib/medicationCatalogNav';
+import { catalogProductMeta } from '@/lib/medicationCatalogNav';
 import {
   adherenceStats,
   findDoseLog,
@@ -235,7 +235,7 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
                   title={product.name}
                   subtitle={catalogProductMeta(product)}
                   bestPriceGel={product.bestPriceGel}
-                  onPress={() => router.push({ pathname: '/medications/add/setup', params: catalogProductSetupParams(product) })}
+                  onPress={() => router.push(`/pharmacy/product/${product.id}` as never)}
                   showDivider={index < Math.min(catalogProducts.length, 4) - 1}
                 />
               ))}
@@ -321,7 +321,7 @@ function PopularChip({ label, onPress }: { label: string; onPress: () => void })
   const c = useThemeColors();
   return (
     <Pressable onPress={onPress} style={[s.chip, { backgroundColor: c.bg100 }]}>
-      <Text style={[hubText.caption, { color: c.text100, fontWeight: '600' }]}>{label}</Text>
+      <Text style={[hubText.link, { color: c.text100 }]}>{label}</Text>
     </Pressable>
   );
 }

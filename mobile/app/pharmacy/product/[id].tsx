@@ -1,12 +1,13 @@
 import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Tag } from 'lucide-react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Plus, Tag } from 'lucide-react-native';
 import { PharmacyComparePanel } from '@/components/pharmacy/PharmacyComparePanel';
 import { PharmacyProductImage } from '@/components/pharmacy/PharmacyProductImage';
 import { ProductHeroSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductDetail } from '@/lib/api';
+import { catalogProductSetupParams } from '@/lib/medicationCatalogNav';
 import { useThemeColors } from '@/theme/colors';
 import { pharmPx } from '@/constants/pharmacyVisuals';
 
@@ -21,6 +22,7 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 
 export default function PharmacyProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const colors = useThemeColors();
   const [product, setProduct] = useState<CatalogProductDetail | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,6 +100,28 @@ export default function PharmacyProductScreen() {
           </View>
         ) : null}
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={() =>
+          router.push({ pathname: '/medications/add/setup', params: catalogProductSetupParams(product) })
+        }
+        style={{
+          marginTop: pharmPx(12),
+          minHeight: pharmPx(50),
+          borderRadius: pharmPx(14),
+          backgroundColor: colors.primary200,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: pharmPx(8),
+        }}
+      >
+        <Text style={{ color: colors.onPrimary, fontWeight: '800', fontSize: pharmPx(16) }}>
+          {ka.meds.addMedicationCta}
+        </Text>
+        <Plus size={pharmPx(19)} color={colors.onPrimary} strokeWidth={2.5} />
+      </Pressable>
 
       {product.bestPriceGel != null ? (
         <View
