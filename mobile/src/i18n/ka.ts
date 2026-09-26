@@ -651,7 +651,6 @@ export const ka = {
     activityTitle: 'აქტიურობა',
     hydrationTitle: 'ჰიდრატაცია',
     weatherTitle: 'ამინდი',
-    runTitle: 'სირბილი',
     labTitle: 'ლაბორატორია',
     labClear: 'ყველა ნორმაშია',
     labAdd: 'ატვირთეთ ანალიზი',

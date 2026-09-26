@@ -6,7 +6,7 @@ MEDICARD is entirely free for consumer accounts. No commercial user types, paid 
 
 ## MEDI QUEST unified hub (2026-09-19)
 
-Owner explicitly replaced the Profile robot and separate Companion pages with one native `/medi-quest` hub (missions/progress/rewards). Profile uses `QuestProfileCard`; Companion routes are compatibility redirects. Keep the geometric progress seal, existing ownership/equipment and journey math (completed daily=1/weekly=3), separate from claimed XP/coins. Do not restore the robot entry or old separate home based on older notes. Quest/Companion cache reads and late responses must stay scoped to the captured account. Global bottom navigation stays hidden on Quest routes. Native version1.0.0.9.6 / iOS1.9.6; no DB schema change.
+Owner explicitly replaced the Profile robot and separate Companion pages with one native `/medi-quest` hub (missions/progress/rewards). Profile uses `QuestProfileCard`; Companion routes (`/medi-companion`, `/journey`, `/collection`) are 5-line compatibility redirects kept for old push `route`s; the Companion UI components were deleted 2026-09-27. `/api/medi-companion` and its tables stay: `useQuestJourney` reads journey/overview and writes equipment through it (see docs/DB-DROP-CANDIDATES.md). Keep the geometric progress seal, existing ownership/equipment and journey math (completed daily=1/weekly=3), separate from claimed XP/coins. Do not restore the robot entry or old separate home based on older notes. Quest/Companion cache reads and late responses must stay scoped to the captured account. Global bottom navigation stays hidden on Quest routes. Native version1.0.0.9.6 / iOS1.9.6; no DB schema change.
 
 ## Release readiness (2026-09-15)
 
