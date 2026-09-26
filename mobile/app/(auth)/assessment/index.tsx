@@ -40,7 +40,7 @@ import {
   type AssessmentFormState,
 } from '@/lib/assessmentForm';
 import { lastPeriodValid } from '@/components/assessment/AssessmentStepContent';
-import { suggestTargetWeight } from '@/lib/profileCompletion';
+import { profileCompletion, suggestTargetWeight } from '@/lib/profileCompletion';
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import {
   findAssessmentQaStepIndex,
@@ -162,9 +162,9 @@ export default function AssessmentScreen() {
     const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
     let resume = 0;
     if (profileMode) {
-      // Start at the first question this person has not answered yet.
-      const done = new Set(restored.confirmedSteps ?? []);
-      resume = visible.find((i) => STEPS[i].type !== 'intro' && !done.has(STEPS[i].type)) ?? 0;
+      // Start at the first question the completion card counts as missing.
+      const missing = new Set(profileCompletion(healthProfile, user).missing);
+      resume = visible.find((i) => missing.has(STEPS[i].type)) ?? 0;
     } else if (extra.onboardingVersion === 2 && typeof extra.onboardingStepKey === 'string') {
       resume = Math.max(0, STEPS.findIndex((st) => st.key === extra.onboardingStepKey));
     }
