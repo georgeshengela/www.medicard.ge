@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { programGoalChanged } from "./weightGoalUnify.js";
 import { prisma } from "./prisma.js";
 import {
   assessNutritionProgram,
@@ -137,11 +138,7 @@ export function programState(program, facts, today) {
     return { program: null, needsReview: false, reasons: [], targets: null };
   const review = assessNutritionProgram(program.config, facts, today);
   const reasons = [...review.reasons];
-  if (
-    program.goalLink &&
-    (program.goalLink.id !== facts.weightGoal?.id ||
-      program.goalLink.targetKg !== facts.weightGoal?.targetKg)
-  )
+  if (programGoalChanged(program, facts.weightGoal))
     reasons.push("წონის მიზანი შეიცვალა. კვების გეგმა ხელახლა გადაამოწმე.");
   if (
     facts.current &&

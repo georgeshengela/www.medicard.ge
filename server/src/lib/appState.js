@@ -1,5 +1,6 @@
 import { prisma } from './prisma.js';
 import { extractLabFromText } from './labExtract.js';
+import { unifiedWeightGoal } from './weightGoalUnify.js';
 
 const MAX_PANELS = 200;
 const MAX_PARAMS = 200;
@@ -171,6 +172,16 @@ function pickNewer(a, b) {
   return at(a) >= at(b) ? a : b;
 }
 
+/** Legacy goal source: a nutrition plan saved before `appState.weightGoal` was written. */
+async function readProgramGoalSource(userId, db) {
+  if (typeof db.$queryRaw !== 'function') return null;
+  // Probe first: a failing statement would abort saveAppState's surrounding transaction.
+  const [probe] = await db.$queryRaw`SELECT to_regclass('"NutritionProgram"') IS NOT NULL AS ok`;
+  if (!probe?.ok) return null;
+  const [row] = await db.$queryRaw`SELECT config,"startedOn","updatedAt","createdAt",active FROM "NutritionProgram" WHERE "userId"=${userId}`;
+  return row ?? null;
+}
+
 export async function loadAppState(userId, db = prisma) {
   const [profile, records] = await Promise.all([
     db.healthProfile.findUnique({ where: { userId } }),
@@ -184,6 +195,7 @@ export async function loadAppState(userId, db = prisma) {
   const reconstructed = reconstructLabPanels(records);
   return {
     ...stored,
+    weightGoal: stored.weightGoal ? stored.weightGoal : unifiedWeightGoal(null, await readProgramGoalSource(userId, db)),
     labPanels: mergeLabPanelLists(stored.labPanels, reconstructed),
   };
 }
