@@ -11,17 +11,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import {
   Activity,
+  Brain,
   CalendarCheck,
   FlaskConical,
   HeartHandshake,
+  MessagesSquare,
   PawPrint,
   Scale,
   ScanFace,
   ScanLine,
+  ScanSearch,
   ShoppingBag,
   Stethoscope,
   Trophy,
-  Users,
 } from 'lucide-react-native';
 import { Disclaimer } from '@/components/Disclaimer';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
@@ -29,6 +31,7 @@ import { HomeAskMedi } from '@/components/home/HomeAskMedi';
 import { HomeCyclePreviewCard } from '@/components/home/HomeCyclePreviewCard';
 import { HomeDayRings, type DayRing } from '@/components/home/HomeDayRings';
 import { HomeNutritionCard } from '@/components/home/HomeNutritionCard';
+import { HubFeatureCard } from '@/components/home/HubFeatureCard';
 import { HubLinkRow, HubTileGrid, type HubTile } from '@/components/home/HubTiles';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HomeNextDoseSection } from '@/components/home/HomeNextDoseSection';
@@ -226,14 +229,27 @@ export default function Home() {
       <View style={s.section}>
         {heading('შემოწმება AI-სთან')}
         <HubTileGrid tiles={CHECKUP_TILES} />
-        <HubLinkRow
-          icon={Users}
-          ink="violet"
-          title="AI კონსილიუმი"
-          detail="რამდენიმე AI პერსპექტივა ერთად"
-          href="/chat/consilium"
-          style={{ marginTop: 12 }}
-        />
+        <View style={{ marginTop: 12 }}>
+          <HubFeatureCard
+            tone="spotlight"
+            stackLead
+            accessibilityLabel="AI კონსილიუმი — განხილვის დაწყება"
+            lead={
+              <View accessible={false} importantForAccessibility="no-hide-descendants" style={s.consiliumLead}>
+                {[Brain, ScanSearch, MessagesSquare].map((Icon, index) => (
+                  <View key={index} style={s.consiliumTile}>
+                    <Icon size={19} color="#99F6E4" strokeWidth={1.7} />
+                  </View>
+                ))}
+              </View>
+            }
+            title="AI კონსილიუმი"
+            body="ერთი კითხვა — რამდენიმე სამედიცინო მიმართულების AI პასუხი და საერთო შეჯამება."
+            cta="დაიწყე განხილვა"
+            note="AI განხილვაა, არა ექიმების კონსულტაცია."
+            onPress={() => open('/chat/consilium')}
+          />
+        </View>
       </View>
     ),
     services: (
@@ -290,4 +306,13 @@ export default function Home() {
 const s = StyleSheet.create({
   section: { paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap },
   caption: hubText.caption,
+  consiliumLead: { flexDirection: 'row', gap: 6 },
+  consiliumTile: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
 });

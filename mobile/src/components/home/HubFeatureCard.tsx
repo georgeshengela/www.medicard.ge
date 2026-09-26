@@ -18,6 +18,10 @@ type Props = {
   tone?: 'surface' | 'spotlight';
   /** Decorative art rendered below the CTA, bleeding to the card edges. */
   art?: React.ReactNode;
+  /** One quiet line under the CTA, e.g. an honesty note about what the feature is not. */
+  note?: string;
+  /** Put the lead above the text instead of beside it (for wide leads such as an icon strip). */
+  stackLead?: boolean;
 };
 
 /**
@@ -36,6 +40,8 @@ export function HubFeatureCard({
   lead,
   tone = 'surface',
   art,
+  note,
+  stackLead = false,
 }: Props) {
   const c = useThemeColors();
   const dark = useIsDark();
@@ -53,7 +59,7 @@ export function HubFeatureCard({
       onPress={onPress}
       style={[s.card, { backgroundColor: spotlight ? HUB.spotlightBg : c.surface }]}
     >
-      <View style={s.head}>
+      <View style={stackLead ? s.headStacked : s.head}>
         {lead ??
           (Icon ? (
             <View style={[s.tile, { backgroundColor: spotlight ? 'rgba(255,255,255,0.12)' : hubTint(inkHex, dark) }]}>
@@ -69,6 +75,7 @@ export function HubFeatureCard({
         <Text style={[hubText.link, { color: ctaColor, flex: 1 }]}>{cta}</Text>
         <ArrowUpRight size={18} color={ctaColor} />
       </View>
+      {note ? <Text style={[hubText.small, { color: textSecondary, marginTop: -6 }]}>{note}</Text> : null}
       {art ? (
         <View accessible={false} importantForAccessibility="no-hide-descendants" pointerEvents="none" style={s.art}>
           {art}
@@ -88,6 +95,9 @@ const s = StyleSheet.create({
   head: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    gap: 14,
+  },
+  headStacked: {
     gap: 14,
   },
   tile: {
