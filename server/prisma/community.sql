@@ -89,3 +89,11 @@ ALTER TABLE "CommunityPost" ADD COLUMN IF NOT EXISTS "publicAvatarId" TEXT;
 ALTER TABLE "CommunityComment" ADD COLUMN IF NOT EXISTS "identityMode" TEXT CHECK("identityMode" IN ('original','nickname','anonymous'));
 ALTER TABLE "CommunityComment" ADD COLUMN IF NOT EXISTS "publicName" TEXT;
 ALTER TABLE "CommunityComment" ADD COLUMN IF NOT EXISTS "publicAvatarId" TEXT;
+
+-- Product freeze 2026-09-26: admin-controlled launch flag. No row = closed; existing members keep access.
+CREATE TABLE IF NOT EXISTS "CommunityConfig" (
+ id TEXT PRIMARY KEY CHECK(id='main'),
+ "open" BOOLEAN NOT NULL DEFAULT false,
+ "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ "updatedBy" TEXT
+);

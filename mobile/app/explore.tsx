@@ -9,12 +9,14 @@ import {
 } from '@/components/home/HomeFeatureDirectory';
 import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
+import { useCommunityEntry } from '@/lib/communityAccess';
 
 export default function Explore() {
   const c = useThemeColors(),
     insets = useSafeAreaInsets(),
     router = useRouter();
   const { user } = useAuth();
+  const communityEntry = useCommunityEntry(user?.id, user?.gender === 'FEMALE');
   const [category, setCategory] = useState<string | undefined>();
   const categories = HOME_FEATURE_GROUPS.filter((group) =>
     group.items.some((item) => !item.female || user?.gender === 'FEMALE'),
@@ -121,6 +123,7 @@ export default function Explore() {
         </ScrollView>
         <HomeFeatureDirectory
           female={user?.gender === 'FEMALE'}
+          community={communityEntry}
           category={selected}
         />
       </ScrollView>

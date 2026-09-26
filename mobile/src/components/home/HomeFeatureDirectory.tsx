@@ -206,9 +206,12 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
 
 export function HomeFeatureDirectory({
   female,
+  community = female,
   category,
 }: {
   female: boolean;
+  /** Women's space entry; hidden while the launch gate is closed for non-members. */
+  community?: boolean;
   category?: string;
 }) {
   const c = useThemeColors();
@@ -217,7 +220,7 @@ export function HomeFeatureDirectory({
     <View style={{ gap: 28 }}>
       {HOME_FEATURE_GROUPS.map((group) => {
         if (category && group.title !== category) return null;
-        const items = group.items.filter((item) => !item.female || female);
+        const items = group.items.filter((item) => (!item.female || female) && (item.href !== '/community' || community));
         if (!items.length) return null;
         return (
           <View key={group.title}>

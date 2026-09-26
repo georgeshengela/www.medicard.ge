@@ -48,6 +48,7 @@ import { computeTodayDoses } from '@/lib/home/todayDoses';
 import { getCyclePromptSeen, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { todayYmd } from '@/lib/medications.shared';
 import { useAuth } from '@/store/AuthContext';
+import { useCommunityEntry } from '@/lib/communityAccess';
 import { useThemeColors } from '@/theme/colors';
 import { HUB, hubText } from '@/theme/hub';
 import { ka } from '@/i18n/ka';
@@ -88,6 +89,7 @@ export default function Home() {
   const [refreshError, setRefreshError] = useState(false);
   const [showCyclePrompt, setShowCyclePrompt] = useState(false);
   const female = user?.gender === 'FEMALE';
+  const communityEntry = useCommunityEntry(user?.id, female);
 
   useFocusEffect(
     useCallback(() => {
@@ -209,14 +211,14 @@ export default function Home() {
       <View style={s.section}>
         {heading('ქალის ჯანმრთელობა', '/cycle', 'ციკლის ნახვა')}
         <HomeCyclePreviewCard onPress={() => open('/cycle')} />
-        <HubLinkRow
+        {communityEntry ? <HubLinkRow
           icon={HeartHandshake}
           ink="rose"
           title="ქალების სივრცე"
           detail="ჰკითხე, გაუზიარე და იპოვე მხარდაჭერა"
           href="/community"
           style={{ marginTop: 10 }}
-        />
+        /> : null}
       </View>
     ),
     nutrition: (

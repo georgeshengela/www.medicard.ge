@@ -42,7 +42,7 @@ function CommunityPhoto({id}:{id:string}){
 }
 function Space({eligible}:{eligible:boolean}){
  const c=useThemeColors(),safe=useSafeAreaInsets(),router=useRouter(),params=useLocalSearchParams<{post?:string}>();
- const [member,setMember]=useState<{alias:string;pushEnabled:boolean;defaultIdentity:CommunityIdentityMode;profile:{name:string;avatarId:string|null}}|null>(null),[ready,setReady]=useState(false),[page,setPage]=useState('feed');
+ const [member,setMember]=useState<{alias:string;pushEnabled:boolean;defaultIdentity:CommunityIdentityMode;profile:{name:string;avatarId:string|null}}|null>(null),[ready,setReady]=useState(false),[canJoin,setCanJoin]=useState(true),[page,setPage]=useState('feed');
  const [reply,setReply]=useState<Content|null>(null);
  const commentInput=useRef<TextInput>(null),detailScroll=useRef<ScrollView>(null),selectedId=useRef<string|null>(null);
  const {height:keyboardHeight}=useKeyboardMetrics();
@@ -69,7 +69,7 @@ function Space({eligible}:{eligible:boolean}){
  },[topic,mine,next]);
  const inbox=async()=>{const data=await call<Notice[]>('/notifications');if(live.current)setNotifications(data);};
  const openPost=async(postId:string)=>{const [p,list]=await Promise.all([call<Content>('/posts/'+postId),call<{comments:Content[];next:string|null}>('/posts/'+postId+'/comments?limit='+Math.min(100,Math.max(30,comments.length)))]);if(!live.current)return;setReply(null);setEditing(null);setSelected(p);setPosts(rows=>rows.map(row=>row.id===p.id?p:row));setComments(list.comments);setCommentNext(list.next);setPage('detail');setBody('');setIdentityMode(p.mine&&p.anonymous?'anonymous':member?.defaultIdentity||'nickname');draftId.current=uuid();};
- useEffect(()=>{if(!eligible){setReady(true);return;}void run(async()=>{const data=await call<{member:typeof member}>('/membership');if(!live.current)return;setMember(data.member);setReady(true);});},[]);
+ useEffect(()=>{if(!eligible){setReady(true);return;}void run(async()=>{const data=await call<{member:typeof member;canJoin?:boolean}>('/membership');if(!live.current)return;setMember(data.member);setCanJoin(data.canJoin??true);setReady(true);});},[]);
  useEffect(()=>{if(!member)return;void loadFeed();void inbox().catch(()=>{});},[member,topic,mine]);
  useEffect(()=>{if(member&&params.post)void run(()=>openPost(params.post!));},[!!member,params.post]);
  selectedId.current=selected?.id||null;
@@ -113,7 +113,7 @@ function Space({eligible}:{eligible:boolean}){
   <View style={{paddingHorizontal:16,paddingVertical:12,flexDirection:'row',alignItems:'center',gap:10}}><Pressable accessibilityRole="button" accessibilityLabel="უკან" onPress={back} style={{padding:10}}><ArrowLeft color={c.text100} size={23}/></Pressable><View style={{flex:1}}>{text(page==='compose'?(editing?'პოსტის რედაქტირება':'ახალი პოსტი'):page==='inbox'?'შეტყობინებები':page==='settings'?'შენი სივრცე':'ქალების სივრცე',19)}{text(member?(connected?'● განახლდება ავტომატურად':'კავშირი აღდგება ავტომატურად'):'ერთად, ერთმანეთისთვის',11,c.text200)}</View>{member&&page!=='compose'&&!(page==='detail'&&body.trim())&&<><Pressable accessibilityRole="button" accessibilityLabel="შეტყობინებები" onPress={()=>void run(async()=>{await inbox();setPage('inbox');})} style={{padding:10}}><Bell size={22} color={c.primary100}/>{notifications.some(n=>!n.readAt)&&<View style={{position:'absolute',right:8,top:6,width:7,height:7,borderRadius:4,backgroundColor:c.danger}}/>}</Pressable><Pressable accessibilityRole="button" accessibilityLabel="სივრცის პარამეტრები" onPress={()=>void run(async()=>{setBlocks(await call('/blocks'));setAlias(member.alias);setDefaultMode(member.defaultIdentity||'nickname');setPage('settings');})} style={{padding:10}}><Settings2 size={22} color={c.text200}/></Pressable></>}</View>
   {!!error&&<View accessibilityRole="alert" style={{padding:14,backgroundColor:c.dangerBg}}>{text(error,13,c.danger)}{button('ხელახლა ცდა',()=>{setError('');if(member)void loadFeed();else void run(async()=>{const d=await call('/membership');setMember(d.member);setReady(true);});})}</View>}
   {!!message&&<Pressable accessibilityRole="button" onPress={()=>setMessage('')} style={{padding:12,backgroundColor:c.accent100}}>{text(message,12,c.primary100)}</Pressable>}
-  {!eligible?<View style={{padding:24}}>{text('ეს სივრცე ხელმისაწვდომია ქალის პროფილის მქონე ანგარიშებისთვის.')}</View>:!ready?(error?null:<ActivityIndicator style={{marginTop:40}} color={c.primary100}/>):!member?<CommunityJoinForm
+  {!eligible?<View style={{padding:24}}>{text('ეს სივრცე ხელმისაწვდომია ქალის პროფილის მქონე ანგარიშებისთვის.')}</View>:!ready?(error?null:<ActivityIndicator style={{marginTop:40}} color={c.primary100}/>):!member&&!canJoin?<View style={{padding:24,gap:10}}>{text('ქალების სივრცე მალე გაიხსნება',17,c.text100)}{text('ახლა სივრცეს ვამზადებთ და მოდერატორებს ვრთავთ. გახსნის შემდეგ აქედანვე შეძლებ შემოსვლას.',14,c.text200)}</View>:!member?<CommunityJoinForm
     alias={alias} onAliasChange={setAlias} accepted={accepted} onAcceptedChange={setAccepted}
     rules={rules} busy={busy}
     onJoin={()=>void run(async()=>{await call('/membership','POST',{alias:alias.trim(),rulesVersion:'2026-09-23'});const result=await call('/membership');setMember(result.member);})}

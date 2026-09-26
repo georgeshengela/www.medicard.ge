@@ -112,7 +112,7 @@ Owner decision after the 2026-09-26 strategic audit: fewer features, one clear p
 - **Pets / Medi Vet:** no new features. Bug fixes only. Isolation rules above still apply.
 - **MEDIRUN:** no new zones or prizes; at most one event per month. The user-visible name is **MEDIRUN** everywhere — never RUN, MEDI RUN, Medi Run, MEDIPULSI or „სირბილი" as the product name (the verb/activity „სირბილი" in a sentence is fine). Internal identifiers (`medipulsi*` routes, tables, capabilities) stay as they are.
 - **Cycle:** no new phases until iOS QA is complete.
-- **Women's space (community):** no open launch until there are 300+ active women and named human moderators assigned to the queue. Access must sit behind an admin-controlled launch flag; do not remove or bypass it. As of 2026-09-26 no such flag exists yet — today any ACTIVE `FEMALE` account is eligible (`server/src/lib/community.js` `eligible`).
+- **Women's space (community):** no open launch until there are 300+ active women and named human moderators assigned to the queue. Access sits behind the admin launch flag (`CommunityConfig.open`, admin ქალების სივრცე → launch card, audited, `COMMUNITY_MANAGE`). Missing row/table = closed. While closed, existing `CommunityMember`s keep full access, new members cannot join (`POST /api/community/membership` 403), and Home/Explore hide the entry for non-members (`useCommunityEntry`). Do not remove or bypass it.
 
 ## Retired district competition (2026-09-19)
 

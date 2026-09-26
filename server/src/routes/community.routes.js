@@ -9,6 +9,7 @@ import { requireAdmin } from '../middleware/adminAuth.js';
 import { requireAdminCapability } from '../lib/adminCapabilities.js';
 import { asyncHandler as wrap } from '../middleware/error.js';
 import { communityChanged } from '../lib/communityRealtime.js';
+import { readCommunityLaunch, writeCommunityLaunch, canJoinCommunity, communityLaunchStats, launchReadiness } from '../lib/communityLaunch.js';
 import { COMMUNITY_RULES_VERSION, id, postInput, commentInput, eligible, resolveIdentity, identityModeInput, publicContent, assignAnonymousNames, validMentionRanges, cleanImage, fail } from '../lib/community.js';
 export const communityRouter=Router(), adminCommunityRouter=Router();
 const r=communityRouter, a=adminCommunityRouter;
@@ -53,10 +54,11 @@ r.use(requireAuth,privateCache,wrap(async(req,_res,next)=>{
  if(req.community?.banned)fail(403,'სივრცეზე წვდომა შეჩერებულია. მოგვწერე support@medicard.ge.');next();
 }));
 r.get('/membership',wrap(async(req,res)=>{
- const profile=await originalProfile(req.user,prisma);
- res.json({member:req.community?{alias:req.community.alias,pushEnabled:req.community.pushEnabled,defaultIdentity:req.community.defaultIdentity||'nickname',profile}:null,rulesVersion:COMMUNITY_RULES_VERSION});
+ const [profile,launch]=await Promise.all([originalProfile(req.user,prisma),readCommunityLaunch()]);
+ res.json({open:launch.open,canJoin:canJoinCommunity({open:launch.open,member:req.community}),member:req.community?{alias:req.community.alias,pushEnabled:req.community.pushEnabled,defaultIdentity:req.community.defaultIdentity||'nickname',profile}:null,rulesVersion:COMMUNITY_RULES_VERSION});
 }));
 r.post('/membership',write,wrap(async(req,res)=>{
+ if(!canJoinCommunity({open:(await readCommunityLaunch()).open,member:req.community}))fail(403,'ქალების სივრცე ჯერ არ გახსნილა. გახსნის შემდეგ აქედანვე შეძლებ შემოსვლას.');
  const input=z.object({alias:z.string().trim().min(2).max(40),defaultIdentity:identityModeInput.optional(),rulesVersion:z.literal(COMMUNITY_RULES_VERSION)}).strict().parse(req.body);
  await prisma.$executeRaw`INSERT INTO "CommunityMember" ("userId",alias,"rulesVersion","defaultIdentity") VALUES (${req.user.id},${input.alias},${input.rulesVersion},${input.defaultIdentity||'nickname'}) ON CONFLICT ("userId") DO UPDATE SET alias=EXCLUDED.alias,"rulesVersion"=EXCLUDED."rulesVersion","defaultIdentity"=COALESCE(${input.defaultIdentity??null},"CommunityMember"."defaultIdentity")`;
  res.json({ok:true});
@@ -207,6 +209,12 @@ r.put('/notifications/:id/read',wrap(async(req,res)=>{await prisma.$executeRaw`U
 // Moderation does not expose anonymous identities by default. Every mutation is audited transactionally.
 a.use(requireAdmin,privateCache,requireAdminCapability('COMMUNITY_VIEW'));
 const manage=requireAdminCapability('COMMUNITY_MANAGE');
+a.get('/launch',wrap(async(_req,res)=>{const [launch,stats]=await Promise.all([readCommunityLaunch(),communityLaunchStats()]);res.json({...launch,...stats,readiness:launchReadiness(stats)});}));
+a.post('/launch',manage,wrap(async(req,res)=>{
+ const {open,reason}=z.object({open:z.boolean(),reason:z.string().trim().min(3).max(500)}).strict().parse(req.body);
+ await prisma.$transaction(async db=>{await writeCommunityLaunch(db,{open,adminId:req.admin.id});await audit(db,req,open?'launch_open':'launch_close','community',reason);});
+ res.json({ok:true,open});
+}));
 a.get('/overview',wrap(async(_req,res)=>{
  const counts=await prisma.$queryRaw`SELECT (SELECT count(*)::int FROM "CommunityMember") members,(SELECT count(*)::int FROM "CommunityPost" WHERE status='PENDING') pending,(SELECT count(*)::int FROM "CommunityReport" WHERE NOT resolved) reports,(SELECT count(*)::int FROM "CommunityNotification" WHERE "pushState"='FAILED') "failedPushes"`;
  res.json(counts[0]);
