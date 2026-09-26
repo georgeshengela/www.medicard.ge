@@ -9,7 +9,7 @@ import {fail} from './schema.js';
 
 export const DEFAULTS={enabled:true,giftsEnabled:true,leaderboardEnabled:true,message:''};
 export async function config(db=prisma){const row=await db.medipulsiConfig.findUnique({where:{id:'main'}});return {...DEFAULTS,...row?.data};}
-async function enabled(db){if(!(await config(db)).enabled)fail(503,'MEDIPULSI დროებით შეჩერებულია.','GAME_PAUSED');}
+async function enabled(db){if(!(await config(db)).enabled)fail(503,'MEDIRUN დროებით შეჩერებულია.','GAME_PAUSED');}
 function initial(){return {journey:createJourney('gps'),book:emptyBook(),lastSampleTime:null};}
 export async function playerLock(tx,userId){
  await tx.medipulsiPlayer.upsert({where:{userId},create:{userId,state:initial(),handle:'მკვლევარი '+randomBytes(3).toString('hex')},update:{}});
