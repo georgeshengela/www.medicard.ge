@@ -31,7 +31,7 @@
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/firago/FiraGO-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="/home.css?v=2" />
+  <link rel="stylesheet" href="/home.css?v=3" />
   <noscript><style>.rv{opacity:1;transform:none}</style></noscript>
 </head>
 <body>
@@ -325,37 +325,51 @@
       </div>
     </section>
 
-    <!-- ============ ONE DAY (scrollytelling) ============ -->
+    <!-- ============ ONE DAY ============ -->
     <section class="section day" id="day">
       <div class="wrap">
         <div class="sec-head rv">
           <p class="kicker">ერთი დღე მედიქარდთან</p>
-          <h2>დილიდან ღამემდე — ერთ ეკრანზე.</h2>
+          <h2>დილიდან ღამემდე.</h2>
         </div>
-        <div class="day-grid">
-          <div class="day-sticky">
-            <figure class="iphone iphone-sm" id="day-phone">
-              <img class="iphone-chrome" src="/iphone-15-pro-max.svg" alt="" width="434" height="884" />
-              <div class="iphone-bezel"><div class="phone-screen">
-                <img data-key="home" src="/screens/home.png" alt="" class="is-on" loading="lazy" />
-                <img data-key="meds" src="/screens/meds.png" alt="" loading="lazy" />
-                <img data-key="metrics" src="/screens/metrics.png" alt="" loading="lazy" />
-                <img data-key="hydration" src="/screens/hydration.png" alt="" loading="lazy" />
-                <img data-key="cycle" src="/screens/cycle.png" alt="" loading="lazy" />
-                <img data-key="medi" src="/screens/medi.png" alt="" loading="lazy" />
-                <img data-key="streak" src="/screens/streak.png" alt="" loading="lazy" />
-              </div></div>
-            </figure>
+        <div class="day-panel rv d1" id="day-panel">
+          <figure class="iphone iphone-sm" id="day-phone">
+            <img class="iphone-chrome" src="/iphone-15-pro-max.svg" alt="" width="434" height="884" />
+            <div class="iphone-bezel"><div class="phone-screen">
+              <img data-key="home" src="/screens/home.png" alt="" class="is-on" loading="lazy" />
+              <img data-key="meds" src="/screens/meds.png" alt="" loading="lazy" />
+              <img data-key="metrics" src="/screens/metrics.png" alt="" loading="lazy" />
+              <img data-key="hydration" src="/screens/hydration.png" alt="" loading="lazy" />
+              <img data-key="cycle" src="/screens/cycle.png" alt="" loading="lazy" />
+              <img data-key="medi" src="/screens/medi.png" alt="" loading="lazy" />
+              <img data-key="streak" src="/screens/streak.png" alt="" loading="lazy" />
+            </div></div>
+          </figure>
+          <div class="day-side">
+            <div class="stops" role="tablist" aria-label="დღის მომენტები">
+              <button type="button" role="tab" class="stop is-on" data-key="home" aria-selected="true"><i></i><time>06:40</time><span>დილა</span></button>
+              <button type="button" role="tab" class="stop" data-key="meds" aria-selected="false" tabindex="-1"><i></i><time>09:00</time><span>წამალი</span></button>
+              <button type="button" role="tab" class="stop" data-key="metrics" aria-selected="false" tabindex="-1"><i></i><time>13:20</time><span>სადილი</span></button>
+              <button type="button" role="tab" class="stop" data-key="hydration" aria-selected="false" tabindex="-1"><i></i><time>15:00</time><span>წყალი</span></button>
+              <button type="button" role="tab" class="stop" data-key="cycle" aria-selected="false" tabindex="-1"><i></i><time>18:10</time><span>ციკლი</span></button>
+              <button type="button" role="tab" class="stop" data-key="medi" aria-selected="false" tabindex="-1"><i></i><time>21:00</time><span>Medi</span></button>
+              <button type="button" role="tab" class="stop" data-key="streak" aria-selected="false" tabindex="-1"><i></i><time>22:30</time><span>სერია</span></button>
+            </div>
+            <div class="day-view" aria-live="polite">
+              <div class="dv is-on" data-key="home"><h3>დილა იწყება ერთი შეხედვით</h3><p>დღევანდელი ციკლის დღე, ამინდი, პირველი მიღება და გუშინდელი ნაბიჯები — ყველაფერი მთავარ ეკრანზე, სანამ ყავას დალევ.</p></div>
+              <div class="dv" data-key="meds"><h3>წამლის დრო</h3><p>შეხსენება მოდის, ერთი შეხებით ინიშნება. გამოტოვება ჩანს გრაფიკზე — და Medi-ც ხედავს.</p></div>
+              <div class="dv" data-key="metrics"><h3>სადილი და მოძრაობა</h3><p>ერთი ფოტო კვების დღიურში, ნაბიჯები ტელეფონიდან ავტომატურად, წონა კვირის გრაფიკზე.</p></div>
+              <div class="dv" data-key="hydration"><h3>წყლის მიზანი</h3><p>ჭიქების რიცხვი და დღიური მიზანი. MEDI QUEST-ის მისია იმავე წამს იხურება.</p></div>
+              <div class="dv" data-key="cycle"><h3>ციკლი ორ შეხებაში</h3><p>სიმპტომი, განწყობა, OPK — ჩაწერე და პროგნოზი განახლდება. პარტნიორი ხედავს მხოლოდ იმას, რასაც დაუშვებ.</p></div>
+              <div class="dv" data-key="medi"><h3>კითხვა Medi-სთვის</h3><p>„დღეს თავი მტკიოდა, რა შეიძლება იყოს?" — Medi პასუხობს შენი დღის კონტექსტით: წყალი, ძილი, ციკლი, წამლები.</p></div>
+              <div class="dv" data-key="streak"><h3>დღე დახურულია</h3><p>XP, სერია და ხვალინდელი მისიები. ღამე მშვიდობისა.</p></div>
+            </div>
+            <div class="day-nav">
+              <button type="button" class="icon-btn" id="day-prev" aria-label="წინა მომენტი"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <button type="button" class="icon-btn" id="day-next" aria-label="შემდეგი მომენტი"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="m6 3 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <span class="day-hint">ავტომატურად იცვლება · შეაჩერე მაუსით</span>
+            </div>
           </div>
-          <ol class="moments">
-            <li class="moment is-on" data-key="home"><time>06:40</time><h3>დილა</h3><p>ერთი შეხედვით: დღევანდელი ციკლის დღე, ამინდი, პირველი მიღება და გუშინდელი ნაბიჯები.</p></li>
-            <li class="moment" data-key="meds"><time>09:00</time><h3>წამლის დრო</h3><p>შეხსენება მოდის, ერთი შეხებით ინიშნება. გამოტოვება ჩანს — და Medi-ც ხედავს.</p></li>
-            <li class="moment" data-key="metrics"><time>13:20</time><h3>სადილი და მოძრაობა</h3><p>ფოტო კვების დღიურში, ნაბიჯები ტელეფონიდან ავტომატურად. წონა კვირის გრაფიკზე.</p></li>
-            <li class="moment" data-key="hydration"><time>15:00</time><h3>წყალი</h3><p>დღიური მიზანი და ჭიქების რიცხვი. MEDI QUEST-ის მისია იმავე წამს იხურება.</p></li>
-            <li class="moment" data-key="cycle"><time>18:10</time><h3>ციკლი</h3><p>სიმპტომი, განწყობა, OPK — ჩაწერე ორ შეხებაში. პროგნოზი განახლდება.</p></li>
-            <li class="moment" data-key="medi"><time>21:00</time><h3>კითხვა Medi-სთვის</h3><p>„დღეს თავი მტკიოდა, რა შეიძლება იყოს?" — Medi პასუხობს შენი დღის კონტექსტით.</p></li>
-            <li class="moment" data-key="streak"><time>22:30</time><h3>სერია და ჯილდო</h3><p>დღე დახურულია: XP, სერია და ხვალინდელი მისიები. ღამე მშვიდობისა.</p></li>
-          </ol>
         </div>
       </div>
     </section>
@@ -468,6 +482,6 @@
       </div>
     </div>
   </footer>
-  <script src="/home.js?v=2" defer></script>
+  <script src="/home.js?v=3" defer></script>
 </body>
 </html>

@@ -132,51 +132,54 @@
     }
   }
 
-  // Day: the moment nearest the middle of the viewport drives the sticky phone.
+  // Day: a 7-stop timeline. The active stop's progress bar drives auto-advance
+  // (animationend), so hovering/focusing the panel pauses it without timers.
+  const dayPanel = document.getElementById("day-panel");
   const dayPhone = document.getElementById("day-phone");
-  const moments = [...document.querySelectorAll(".moment")];
-  if (dayPhone && moments.length) {
-    let active = moments[0];
-    const pick = () => {
-      const mid = window.innerHeight * 0.45;
-      let best = moments[0];
-      let bestDist = Infinity;
-      for (const m of moments) {
-        const r = m.getBoundingClientRect();
-        const c = r.top + r.height / 2;
-        const d = Math.abs(c - mid);
-        if (d < bestDist) {
-          bestDist = d;
-          best = m;
+  const stops = [...document.querySelectorAll(".stop")];
+  const views = [...document.querySelectorAll(".dv")];
+  if (dayPanel && dayPhone && stops.length) {
+    let idx = 0;
+    const show = (i, restart) => {
+      idx = (i + stops.length) % stops.length;
+      const key = stops[idx].dataset.key;
+      stops.forEach((s, n) => {
+        const on = n === idx;
+        if (on && restart) {
+          s.classList.remove("is-on");
+          void s.offsetWidth;
         }
-      }
-      if (best !== active) {
-        active = best;
-        moments.forEach((m) => m.classList.toggle("is-on", m === best));
-        setScreen(dayPhone, best.dataset.key);
-      }
+        s.classList.toggle("is-on", on);
+        s.classList.toggle("is-done", n < idx);
+        s.setAttribute("aria-selected", on ? "true" : "false");
+        s.tabIndex = on ? 0 : -1;
+      });
+      views.forEach((v) => v.classList.toggle("is-on", v.dataset.key === key));
+      setScreen(dayPhone, key);
     };
-    let ticking = false;
-    window.addEventListener(
-      "scroll",
-      () => {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(() => {
-          pick();
-          ticking = false;
-        });
-      },
-      { passive: true },
-    );
-    pick();
-    moments.forEach((m) => {
-      m.addEventListener("click", () => {
-        moments.forEach((x) => x.classList.toggle("is-on", x === m));
-        active = m;
-        setScreen(dayPhone, m.dataset.key);
+    stops.forEach((s, n) => {
+      s.addEventListener("click", () => show(n, true));
+      s.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") { e.preventDefault(); show(idx + 1, true); stops[idx].focus(); }
+        if (e.key === "ArrowLeft") { e.preventDefault(); show(idx - 1, true); stops[idx].focus(); }
+      });
+      s.querySelector("i")?.addEventListener("animationend", () => {
+        if (s.classList.contains("is-on")) show(idx + 1, true);
       });
     });
+    document.getElementById("day-prev")?.addEventListener("click", () => show(idx - 1, true));
+    document.getElementById("day-next")?.addEventListener("click", () => show(idx + 1, true));
+    const pause = (on) => dayPanel.classList.toggle("is-paused", on);
+    dayPanel.addEventListener("pointerenter", () => pause(true));
+    dayPanel.addEventListener("pointerleave", () => pause(false));
+    dayPanel.addEventListener("focusin", () => pause(true));
+    dayPanel.addEventListener("focusout", () => pause(false));
+    // Only run the progress while the panel is on screen.
+    new IntersectionObserver(
+      (entries) => dayPanel.classList.toggle("is-offscreen", !entries[0]?.isIntersecting),
+      { threshold: 0.3 },
+    ).observe(dayPanel);
+    show(0, true);
   }
 
   /* ---------- FAQ: one open at a time ---------- */
