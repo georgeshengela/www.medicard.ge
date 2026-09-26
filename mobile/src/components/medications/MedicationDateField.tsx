@@ -10,6 +10,8 @@ import { ka } from '@/i18n/ka';
 import { digitsToYmd, isoToDigits, toDigits, ymdToDigits } from '@/lib/birthdate';
 import { formatDateDisplay } from '@/lib/medications.shared';
 import { isoFromDigits } from '@/components/cycle/CycleDateField';
+import { useIsDark, useThemeColors } from '@/theme/colors';
+import { hubInk, hubText, hubTint } from '@/theme/hub';
 
 type CalendarCell = {
   year: number;
@@ -27,6 +29,9 @@ type Props = {
   onChange: (iso: string) => void;
   minIso?: string;
   maxIso?: string;
+  /** Render as a hub-style row (icon tile, label, value) inside a surrounding card instead of its own labeled input shell. */
+  embedded?: boolean;
+  isLast?: boolean;
 };
 
 function startOfDayMs(d: Date) {
@@ -83,11 +88,27 @@ function monthGrid(year: number, month: number, now: Date, minIso?: string, maxI
   return cells;
 }
 
-export function MedicationDateField({ label, value, onChange, minIso, maxIso }: Props) {
+export function MedicationDateField({ label, value, onChange, minIso, maxIso, embedded, isLast }: Props) {
   const FIGMA_MEDS = useFigmaMeds();
+  const c = useThemeColors();
+  const dark = useIsDark();
   const [open, setOpen] = useState(false);
 
-  return (
+  const field = embedded ? (
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        style={{ flexDirection: 'row', alignItems: 'center', minHeight: 58, paddingHorizontal: 16, paddingVertical: 10, gap: 12 }}
+      >
+        <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: hubTint(hubInk('blue', dark), dark), alignItems: 'center', justifyContent: 'center' }}>
+          <Calendar size={19} color={hubInk('blue', dark)} strokeWidth={1.9} />
+        </View>
+        <Text style={[hubText.cardTitle, { flex: 1, color: c.text100 }]}>{label}</Text>
+        <Text style={[hubText.caption, { color: c.text300 }]}>{formatDateDisplay(value)}</Text>
+      </Pressable>
+      {isLast ? null : <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.bg300, marginLeft: 16 }} />}
+    </>
+  ) : (
     <View>
       <MedFieldLabel>{label}</MedFieldLabel>
       <MedInputShell onPress={() => setOpen(true)}>
@@ -96,6 +117,12 @@ export function MedicationDateField({ label, value, onChange, minIso, maxIso }: 
         </Text>
         <Calendar size={18} color={FIGMA_MEDS.textMuted} strokeWidth={2} />
       </MedInputShell>
+    </View>
+  );
+
+  return (
+    <>
+      {field}
 
       <MedicationCalendarModal
         visible={open}
@@ -110,7 +137,7 @@ export function MedicationDateField({ label, value, onChange, minIso, maxIso }: 
           setOpen(false);
         }}
       />
-    </View>
+    </>
   );
 }
 

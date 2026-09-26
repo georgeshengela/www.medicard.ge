@@ -3,6 +3,7 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  StyleSheet,
   Switch,
   Text,
   TextInput,
@@ -11,12 +12,11 @@ import {
 import {
   Bell,
   Calendar,
-  ChevronDown,
-  ChevronUp,
   Clock,
   Pencil,
   Pill,
   Plus,
+  RefreshCw,
 } from 'lucide-react-native';
 import { MedicationDateField } from '@/components/medications/MedicationDateField';
 import { MedicationDosageSheet } from '@/components/medications/MedicationDosageSheet';
@@ -24,13 +24,9 @@ import { MedicationFrequencySheet } from '@/components/medications/MedicationFre
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedicationShapePickerSheet } from '@/components/medications/MedicationShapePickerSheet';
 import { MedicationTimePickerSheet } from '@/components/medications/MedicationTimePickerSheet';
-import {
-  MedDivider,
-  MedFieldLabel,
-  MedFormSectionHeader,
-  MedInputShell,
-} from '@/components/medications/MedicationUI';
-import { FIGMA_MEDS, useFigmaMeds } from '@/constants/figmaMedicationsLayout';
+import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
+import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
+import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -45,8 +41,8 @@ import {
   todayYmd,
 } from '@/lib/medications.shared';
 import type { MedicationForm, PillShape } from '@/types/medications';
-
-const fieldShellStyle = { height: FIGMA_MEDS.inputHeight, paddingVertical: 0 } as const;
+import { useIsDark, useThemeColors } from '@/theme/colors';
+import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
 
 type Props = {
   initialName?: string;
@@ -69,10 +65,11 @@ export function MedicationSetupForm({
   formLabel,
   onSaved,
 }: Props) {
-  const FIGMA_MEDS = useFigmaMeds();
+  const c = useThemeColors();
+  const dark = useIsDark();
   const insets = useSafeAreaInsets();
   const tabClearance = TAB_BAR_HEIGHT + Math.max(insets.bottom, 8);
-  const ctaHeight = FIGMA_MEDS.inputHeight + 32;
+  const ctaHeight = 80;
   const [medName] = useState(initialName);
   const [form, setForm] = useState<MedicationForm>('pills');
   const [amount, setAmount] = useState(1);
@@ -112,6 +109,7 @@ export function MedicationSetupForm({
 
   const minEndDate = startDate;
   const maxStartDate = endDate;
+  const teal = hubInk('teal', dark);
 
   const toggleDay = (d: number) => {
     setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()));
@@ -178,122 +176,74 @@ export function MedicationSetupForm({
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: c.bg100 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: tabClearance + ctaHeight + 24 }}
       >
-        <View style={{ alignItems: 'center', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8, gap: 24 }}>
+        <View style={{ alignItems: 'center', paddingHorizontal: HUB.gutter, paddingTop: 24, paddingBottom: 8, gap: 20 }}>
           <View
             style={{
-              width: 72,
-              height: 72,
-              borderRadius: 20,
-              backgroundColor: FIGMA_MEDS.cardBgTertiary,
-              borderWidth: 1,
-              borderColor: FIGMA_MEDS.border,
+              width: 76,
+              height: 76,
+              borderRadius: 22,
+              backgroundColor: hubTint(teal, dark),
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
             {initialImageUrl ? (
-              <MedicationPillIcon shape={pillShape} size={64} imageUrl={initialImageUrl} />
+              <MedicationPillIcon shape={pillShape} size={68} imageUrl={initialImageUrl} />
             ) : (
               <Pressable onPress={() => setShapeSheet(true)}>
-                <MedicationPillIcon shape={pillShape} size={64} />
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: -6,
-                    right: -2,
-                    backgroundColor: FIGMA_MEDS.textPrimary,
-                    borderRadius: 999,
-                    padding: 4,
-                  }}
-                >
-                  <Pencil size={12} color="#fff" strokeWidth={2.2} />
+                <MedicationPillIcon shape={pillShape} size={68} />
+                <View style={[styles.editBadge, { backgroundColor: c.text100 }]}>
+                  <Pencil size={12} color={c.bg100} strokeWidth={2.2} />
                 </View>
               </Pressable>
             )}
           </View>
-          <View style={{ alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: FIGMA_MEDS.textPrimary }}>
+          <View style={{ alignItems: 'center', gap: 6 }}>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 26, color: c.text100 }}>
               {medName || ka.meds.namePlaceholder}
             </Text>
-            <Text style={{ fontSize: 16, lineHeight: 22, color: FIGMA_MEDS.textSecondary, textAlign: 'center' }}>
+            <Text style={[hubText.body, { fontSize: 15, lineHeight: 21, color: c.text200, textAlign: 'center' }]}>
               {genericLine}
             </Text>
           </View>
         </View>
 
-        <MedFormSectionHeader title={ka.meds.sectionGeneral} icon={<Pill size={22} color={FIGMA_MEDS.brand} strokeWidth={2} />} />
-
-        <View style={{ paddingHorizontal: 16, paddingVertical: 4, gap: 12 }}>
-          <View>
-            <MedFieldLabel>{ka.meds.doseAmountLabel}</MedFieldLabel>
-            <MedInputShell onPress={() => setDosageSheet(true)} style={fieldShellStyle}>
-              <Pill size={18} color={FIGMA_MEDS.textMuted} strokeWidth={2} />
-              <Text style={{ flex: 1, fontSize: 16, color: FIGMA_MEDS.textSecondary }}>{dosageLabel}</Text>
-              <ChevronDown size={18} color={FIGMA_MEDS.textMuted} />
-            </MedInputShell>
-            <Text style={{ fontSize: 12, color: FIGMA_MEDS.textMuted, marginTop: 6, lineHeight: 16 }}>
-              {ka.meds.doseAmountHint}
-            </Text>
-          </View>
-
-          <View>
-            <MedFieldLabel>{ka.meds.frequencyLabel}</MedFieldLabel>
-            <MedInputShell onPress={() => setFreqSheet(true)} style={fieldShellStyle}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: FIGMA_MEDS.textMuted }}>Rx</Text>
-              <Text style={{ flex: 1, fontSize: 16, color: FIGMA_MEDS.textSecondary }}>
-                {ka.meds.timesPerDayLabel(timesPerDay)}
-              </Text>
-              <ChevronDown size={18} color={FIGMA_MEDS.textMuted} />
-            </MedInputShell>
-          </View>
-
-          {times.slice(0, timesPerDay).map((time, index) => (
-            <View key={`time-${index}`}>
-              <MedFieldLabel>{timesPerDay > 1 ? `${ka.meds.timesLabel} ${index + 1}` : ka.meds.timesLabel}</MedFieldLabel>
-              <MedInputShell onPress={() => openTimePicker(index)} style={fieldShellStyle}>
-                <Clock size={18} color={FIGMA_MEDS.textMuted} strokeWidth={2} />
-                <Text style={{ flex: 1, fontSize: 16, color: FIGMA_MEDS.textSecondary }}>{formatTime24h(time)}</Text>
-                <ChevronDown size={18} color={FIGMA_MEDS.textMuted} />
-              </MedInputShell>
-            </View>
-          ))}
-
-          <MedicationDateField
-            label={ka.meds.startDateLabel}
-            value={startDate}
-            onChange={(iso) => {
+        <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap - 12 }}>
+          <HomeSectionHeading title={ka.meds.sectionGeneral} />
+          <View style={[styles.card, { backgroundColor: c.surface }]}>
+            <ProfileMenuRow icon={Pill} label={ka.meds.doseAmountLabel} value={dosageLabel} onPress={() => setDosageSheet(true)} ink="teal" />
+            <Divider color={c.bg300} />
+            <ProfileMenuRow icon={RefreshCw} label={ka.meds.frequencyLabel} value={ka.meds.timesPerDayLabel(timesPerDay)} onPress={() => setFreqSheet(true)} ink="sky" />
+            {times.slice(0, timesPerDay).map((time, index) => (
+              <React.Fragment key={`time-${index}`}>
+                <Divider color={c.bg300} />
+                <ProfileMenuRow
+                  icon={Clock}
+                  label={timesPerDay > 1 ? `${ka.meds.timesLabel} ${index + 1}` : ka.meds.timesLabel}
+                  value={formatTime24h(time)}
+                  onPress={() => openTimePicker(index)}
+                  ink="amber"
+                />
+              </React.Fragment>
+            ))}
+            <Divider color={c.bg300} />
+            <MedicationDateField label={ka.meds.startDateLabel} value={startDate} onChange={(iso) => {
               setStartDate(iso);
               if (endDate < iso) setEndDate(addYearsToIso(iso, 1));
-            }}
-            maxIso={maxStartDate}
-          />
-          <MedicationDateField
-            label={ka.meds.endDateLabel}
-            value={endDate}
-            onChange={setEndDate}
-            minIso={minEndDate}
-          />
+            }} maxIso={maxStartDate} embedded />
+            <Divider color={c.bg300} />
+            <MedicationDateField label={ka.meds.endDateLabel} value={endDate} onChange={setEndDate} minIso={minEndDate} embedded isLast />
+          </View>
         </View>
 
-        <MedFormSectionHeader title={ka.meds.sectionTakeEvery} icon={<Calendar size={22} color={FIGMA_MEDS.brand} strokeWidth={2} />} />
-
-        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-          <View
-            style={{
-              backgroundColor: FIGMA_MEDS.cardBg,
-              borderRadius: FIGMA_MEDS.cardRadiusSm,
-              borderWidth: 1,
-              borderColor: FIGMA_MEDS.border,
-              padding: 16,
-              gap: 12,
-              ...FIGMA_MEDS.shadowInput,
-            }}
-          >
+        <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap }}>
+          <HomeSectionHeading title={ka.meds.sectionTakeEvery} />
+          <View style={[styles.card, { backgroundColor: c.surface, gap: 14 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               {DAY_LETTERS.map((letter, idx) => {
                 const active = days.includes(idx);
@@ -307,70 +257,46 @@ export function MedicationSetupForm({
                       borderRadius: 999,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      backgroundColor: active ? FIGMA_MEDS.brandQuaternary : FIGMA_MEDS.cardBg,
-                      borderWidth: 1,
-                      borderColor: active ? FIGMA_MEDS.brand : FIGMA_MEDS.borderTertiary,
-                      ...FIGMA_MEDS.shadowInput,
+                      backgroundColor: active ? hubTint(teal, dark) : c.bg100,
                     }}
                   >
-                    <Text style={{ fontWeight: '700', color: active ? FIGMA_MEDS.brand : FIGMA_MEDS.textPrimary }}>{letter}</Text>
+                    <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: active ? teal : c.text100 }}>{letter}</Text>
                   </Pressable>
                 );
               })}
             </View>
-            <MedDivider />
-            <Text style={{ fontSize: 14, color: FIGMA_MEDS.textSecondary }}>{daysSummaryKa(days) || ka.meds.noDaysSelected}</Text>
+            <Divider color={c.bg300} />
+            <Text style={[hubText.body, { color: c.text200 }]}>{daysSummaryKa(days) || ka.meds.noDaysSelected}</Text>
           </View>
         </View>
 
-        <MedFormSectionHeader title={ka.meds.sectionReminder} icon={<Bell size={22} color={FIGMA_MEDS.brand} strokeWidth={2} />} />
-
-        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-          <View
-            style={{
-              backgroundColor: FIGMA_MEDS.cardBg,
-              borderRadius: FIGMA_MEDS.cardRadius,
-              borderWidth: 1,
-              borderColor: FIGMA_MEDS.border,
-              padding: 16,
-              gap: 16,
-              ...FIGMA_MEDS.shadowInput,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ flex: 1, fontSize: 14, fontWeight: '700', color: FIGMA_MEDS.textPrimary }}>{ka.meds.refillLabel}</Text>
-              <Switch
-                value={refillReminder}
-                onValueChange={setRefillReminder}
-                trackColor={{ true: FIGMA_MEDS.brand, false: FIGMA_MEDS.border }}
-                thumbColor="#fff"
-              />
-            </View>
+        <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap }}>
+          <HomeSectionHeading title={ka.meds.sectionReminder} />
+          <View style={[styles.card, { backgroundColor: c.surface, padding: 0 }]}>
+            <ProfileMenuRowSwitch icon={Bell} label={ka.meds.refillLabel} value={refillReminder} onChange={setRefillReminder} ink="rose" isLast={!refillReminder} />
             {refillReminder ? (
               <>
-                <MedDivider />
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Divider color={c.bg300} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: FIGMA_MEDS.textPrimary }}>{ka.meds.refillThresholdLabel}</Text>
-                    <Text style={{ fontSize: 14, color: FIGMA_MEDS.textSecondary, marginTop: 4 }}>{ka.meds.refillThresholdHint}</Text>
+                    <Text style={[hubText.cardTitle, { color: c.text100 }]}>{ka.meds.refillThresholdLabel}</Text>
+                    <Text style={[hubText.caption, { color: c.text200, marginTop: 4 }]}>{ka.meds.refillThresholdHint}</Text>
                   </View>
-                  <View style={{ width: 72 }}>
-                    <MedInputShell style={{ height: 40, paddingVertical: 0 }}>
-                      <TextInput
-                        value={refillThreshold}
-                        onChangeText={setRefillThreshold}
-                        keyboardType="numeric"
-                        style={{ flex: 1, fontSize: 14, color: FIGMA_MEDS.textSecondary, padding: 0, textAlign: 'center' }}
-                      />
-                      <View style={{ width: 18, alignItems: 'center' }}>
-                        <Pressable onPress={() => stepThreshold(1)}>
-                          <ChevronUp size={14} color={FIGMA_MEDS.textMuted} />
-                        </Pressable>
-                        <Pressable onPress={() => stepThreshold(-1)}>
-                          <ChevronDown size={14} color={FIGMA_MEDS.textMuted} />
-                        </Pressable>
-                      </View>
-                    </MedInputShell>
+                  <View style={[styles.stepper, { backgroundColor: c.bg100 }]}>
+                    <TextInput
+                      value={refillThreshold}
+                      onChangeText={setRefillThreshold}
+                      keyboardType="numeric"
+                      style={[hubText.value, { flex: 1, fontSize: 15, color: c.text100, padding: 0, textAlign: 'center' }]}
+                    />
+                    <View style={{ gap: 2 }}>
+                      <Pressable onPress={() => stepThreshold(1)} hitSlop={6}>
+                        <Text style={[hubText.caption, { color: c.text300 }]}>+</Text>
+                      </Pressable>
+                      <Pressable onPress={() => stepThreshold(-1)} hitSlop={6}>
+                        <Text style={[hubText.caption, { color: c.text300 }]}>−</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
               </>
@@ -378,67 +304,41 @@ export function MedicationSetupForm({
           </View>
         </View>
 
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 }}>
-          <MedFieldLabel>{ka.meds.pillColorLabel}</MedFieldLabel>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-            {FIGMA_MEDS.pillColors.map((c) => (
+        <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap, paddingBottom: 4 }}>
+          <HomeSectionHeading title={ka.meds.pillColorLabel} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 4 }}>
+            {FIGMA_MEDS.pillColors.map((color) => (
               <Pressable
-                key={c}
-                onPress={() => setPillColor(c)}
-                style={{
-                  padding: 2,
-                  borderRadius: 999,
-                  borderWidth: pillColor === c ? 2 : 0,
-                  borderColor: FIGMA_MEDS.brand,
-                }}
+                key={color}
+                onPress={() => setPillColor(color)}
+                style={{ padding: 2, borderRadius: 999, borderWidth: pillColor === color ? 2 : 0, borderColor: c.primary200 }}
               >
-                <View
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: c,
-                    borderWidth: c === '#E5E7EB' ? 1 : 0,
-                    borderColor: FIGMA_MEDS.borderTertiary,
-                  }}
-                />
+                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: color, borderWidth: color === '#E5E7EB' ? 1 : 0, borderColor: c.bg300 }} />
               </Pressable>
             ))}
           </ScrollView>
         </View>
       </ScrollView>
 
-      <View
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: tabClearance,
-          padding: 16,
-          backgroundColor: FIGMA_MEDS.white,
-          borderTopWidth: 1,
-          borderColor: FIGMA_MEDS.border,
-        }}
-      >
+      <View style={[styles.footer, { bottom: tabClearance, backgroundColor: c.bg100, borderColor: c.bg300 }]}>
         <Pressable
           disabled={busy}
           onPress={save}
           style={{
-            backgroundColor: FIGMA_MEDS.ctaBg,
-            borderRadius: 16,
-            minHeight: FIGMA_MEDS.inputHeight,
+            backgroundColor: c.primary200,
+            borderRadius: HUB.tileRadius,
+            minHeight: 52,
             alignItems: 'center',
             justifyContent: 'center',
             flexDirection: 'row',
             gap: 8,
             opacity: busy ? 0.65 : 1,
-            ...FIGMA_MEDS.shadowInput,
           }}
         >
-          <Text style={{ color: FIGMA_MEDS.textOnBrand, fontWeight: '700', fontSize: 16 }}>
+          <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16 }}>
             {busy ? ka.common.loading : ka.meds.addMedicationCta}
           </Text>
-          <Plus size={20} color="#fff" strokeWidth={2.5} />
+          <Plus size={20} color={c.onPrimary} strokeWidth={2.5} />
         </Pressable>
       </View>
 
@@ -478,3 +378,63 @@ export function MedicationSetupForm({
     </View>
   );
 }
+
+function Divider({ color }: { color: string }) {
+  return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: color, marginLeft: 16 }} />;
+}
+
+function ProfileMenuRowSwitch({
+  icon: Icon,
+  label,
+  value,
+  onChange,
+  ink,
+  isLast,
+}: {
+  icon: typeof Bell;
+  label: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+  ink: 'teal' | 'rose' | 'amber' | 'sky';
+  isLast?: boolean;
+}) {
+  const c = useThemeColors();
+  const dark = useIsDark();
+  const tint = hubInk(ink, dark);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', minHeight: 58, paddingHorizontal: 16, paddingVertical: 10, gap: 12 }}>
+      <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: hubTint(tint, dark), alignItems: 'center', justifyContent: 'center' }}>
+        <Icon size={19} color={tint} strokeWidth={1.9} />
+      </View>
+      <Text style={[hubText.cardTitle, { flex: 1, color: c.text100 }]}>{label}</Text>
+      <Switch value={value} onValueChange={onChange} trackColor={{ true: c.primary200, false: c.bg300 }} thumbColor="#fff" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: { borderRadius: HUB.cardRadius, overflow: 'hidden' },
+  editBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -2,
+    borderRadius: 999,
+    padding: 4,
+  },
+  stepper: {
+    width: 76,
+    height: 40,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    gap: 6,
+  },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    padding: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+});

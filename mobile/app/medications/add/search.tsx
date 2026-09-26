@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronRight, Search, X } from 'lucide-react-native';
+import { ChevronRight, Crown, Search, X } from 'lucide-react-native';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
-import { MedChip, MedDivider, MedInsetCard, MedPrimaryButton } from '@/components/medications/MedicationUI';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
-import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary, type DrugCategoryInfo } from '@/lib/api';
 import { catalogProductMeta, catalogProductSetupParams } from '@/lib/medicationCatalogNav';
+import { useIsDark, useThemeColors } from '@/theme/colors';
+import { HUB, hubInk, hubText } from '@/theme/hub';
 
 function paramStr(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? '';
@@ -16,7 +16,8 @@ function paramStr(value: string | string[] | undefined) {
 }
 
 export default function MedicationSearchScreen() {
-  const FIGMA_MEDS = useFigmaMeds();
+  const c = useThemeColors();
+  const dark = useIsDark();
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string }>();
   const [query, setQuery] = useState(paramStr(params.q));
@@ -61,40 +62,28 @@ export default function MedicationSearchScreen() {
     router.push({ pathname: '/medications/add/setup', params: catalogProductSetupParams(product) });
   };
 
+  const primaryInk = hubInk('teal', dark);
+  const priceInk = hubInk('green', dark);
+
   return (
     <>
       <Stack.Screen options={{ title: ka.meds.addTitle }} />
-      <View style={{ flex: 1, backgroundColor: FIGMA_MEDS.white }}>
-        <View style={{ paddingHorizontal: 16 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: FIGMA_MEDS.white,
-              borderRadius: FIGMA_MEDS.inputRadius,
-              borderWidth: 1,
-              borderColor: FIGMA_MEDS.borderTertiary,
-              paddingHorizontal: 12,
-              marginTop: 8,
-              marginBottom: 16,
-              minHeight: FIGMA_MEDS.inputHeight,
-              gap: 12,
-              ...FIGMA_MEDS.shadowInput,
-            }}
-          >
-            <Search size={18} color={FIGMA_MEDS.textMuted} strokeWidth={2.2} />
+      <View style={{ flex: 1, backgroundColor: c.bg100 }}>
+        <View style={{ paddingHorizontal: HUB.gutter }}>
+          <View style={[s.searchShell, { backgroundColor: c.surface, marginTop: 10, marginBottom: 14 }]}>
+            <Search size={18} color={c.text300} strokeWidth={2.2} />
             <TextInput
               value={query}
               onChangeText={setQuery}
               placeholder={ka.meds.searchPlaceholder}
-              placeholderTextColor={FIGMA_MEDS.textMuted}
-              style={{ flex: 1, paddingVertical: 10, fontSize: 16, lineHeight: 22, color: FIGMA_MEDS.textPrimary }}
+              placeholderTextColor={c.text300}
+              style={[hubText.body, { flex: 1, paddingVertical: 12, fontSize: 16, color: c.text100 }]}
               autoFocus={!params.q}
               returnKeyType="search"
             />
             {query ? (
               <Pressable onPress={() => setQuery('')} hitSlop={12}>
-                <X size={18} color={FIGMA_MEDS.textMuted} />
+                <X size={18} color={c.text300} />
               </Pressable>
             ) : null}
           </View>
@@ -106,37 +95,46 @@ export default function MedicationSearchScreen() {
               keyExtractor={(item) => item.slug ?? 'all'}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ gap: 8, marginBottom: 16 }}
-              renderItem={({ item }) => (
-                <MedChip
-                  label={item.nameKa}
-                  active={categorySlug === item.slug}
-                  onPress={() => setCategorySlug(item.slug)}
-                />
-              )}
+              renderItem={({ item }) => {
+                const active = categorySlug === item.slug;
+                return (
+                  <Pressable
+                    onPress={() => setCategorySlug(item.slug)}
+                    style={[
+                      s.chip,
+                      { backgroundColor: active ? `${primaryInk}${dark ? '26' : '14'}` : c.surface },
+                    ]}
+                  >
+                    <Text style={[hubText.caption, { color: active ? primaryInk : c.text100, fontWeight: active ? '700' : '500' }]}>
+                      {item.nameKa}
+                    </Text>
+                  </Pressable>
+                );
+              }}
             />
           ) : null}
         </View>
 
         {loading && products.length === 0 ? (
-          <View style={{ paddingTop: 16 }}>
+          <View style={{ paddingTop: 4 }}>
             <ListRowsSkeleton rows={6} />
           </View>
         ) : products.length === 0 ? (
-          <View style={{ alignItems: 'center', paddingTop: 48, paddingHorizontal: 16 }}>
-            <Text style={{ fontWeight: '700', fontSize: 18, color: FIGMA_MEDS.textPrimary }}>{ka.meds.searchNotFound}</Text>
-            <Text style={{ color: FIGMA_MEDS.textSecondary, marginTop: 8, textAlign: 'center', lineHeight: 22 }}>
+          <View style={{ alignItems: 'center', paddingTop: 56, paddingHorizontal: HUB.gutter }}>
+            <Text style={[hubText.cardTitle, { fontSize: 18, color: c.text100 }]}>{ka.meds.searchNotFound}</Text>
+            <Text style={[hubText.body, { color: c.text200, marginTop: 8, textAlign: 'center' }]}>
               {ka.meds.searchNotFoundHint}
             </Text>
-            <View style={{ marginTop: 24, width: '100%' }}>
-              <MedPrimaryButton
-                label={ka.meds.addCustom}
-                onPress={() => router.push({ pathname: '/medications/add/setup', params: { name: query.trim() } })}
-              />
-            </View>
+            <Pressable
+              onPress={() => router.push({ pathname: '/medications/add/setup', params: { name: query.trim() } })}
+              style={{ marginTop: 24, width: '100%', minHeight: 50, borderRadius: HUB.tileRadius, backgroundColor: c.primary200, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16 }}>{ka.meds.addCustom}</Text>
+            </Pressable>
           </View>
         ) : (
-          <View style={{ paddingHorizontal: 16, flex: 1 }}>
-            <MedInsetCard style={{ padding: 0, overflow: 'hidden', flex: 1 }}>
+          <View style={{ paddingHorizontal: HUB.gutter, flex: 1 }}>
+            <View style={{ backgroundColor: c.surface, borderRadius: HUB.cardRadius, overflow: 'hidden', flex: 1 }}>
               <FlatList
                 data={products}
                 keyExtractor={(item) => item.id}
@@ -147,34 +145,59 @@ export default function MedicationSearchScreen() {
                   const meta = catalogProductMeta(item);
                   return (
                     <Pressable onPress={() => openSetup(item)}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 }}>
-                        <MedicationPillIcon size={48} imageUrl={item.imageUrl} border />
-                        <View style={{ flex: 1, gap: 4 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: HUB.cardPad, paddingVertical: 12 }}>
+                        <MedicationPillIcon size={46} imageUrl={item.imageUrl} border />
+                        <View style={{ flex: 1, gap: 3, minWidth: 0 }}>
                           {item.category?.nameKa ? (
-                            <Text style={{ fontSize: 12, fontWeight: '500', color: FIGMA_MEDS.textSecondary }} numberOfLines={1}>
+                            <Text numberOfLines={1} style={[hubText.small, { color: c.text300 }]}>
                               {item.category.nameKa}
                             </Text>
                           ) : null}
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: FIGMA_MEDS.textPrimary }} numberOfLines={2}>
+                          <Text numberOfLines={2} style={[hubText.cardTitle, { color: c.text100 }]}>
                             {item.name}
                           </Text>
                           {meta ? (
-                            <Text style={{ fontSize: 14, color: FIGMA_MEDS.textSecondary }} numberOfLines={1}>
+                            <Text numberOfLines={1} style={[hubText.caption, { color: c.text200 }]}>
                               {meta}
                             </Text>
                           ) : null}
                         </View>
-                        <ChevronRight size={24} color={FIGMA_MEDS.textMuted} strokeWidth={2} />
+                        {item.bestPriceGel != null ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                            <Crown size={11} color={priceInk} strokeWidth={2.4} />
+                            <Text style={[hubText.value, { fontSize: 14, color: priceInk }]}>{item.bestPriceGel.toFixed(2)} ₾</Text>
+                          </View>
+                        ) : (
+                          <ChevronRight size={20} color={c.text300} strokeWidth={2} />
+                        )}
                       </View>
-                      {index < products.length - 1 ? <MedDivider /> : null}
+                      {index < products.length - 1 ? (
+                        <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.bg300, marginLeft: HUB.cardPad }} />
+                      ) : null}
                     </Pressable>
                   );
                 }}
               />
-            </MedInsetCard>
+            </View>
           </View>
         )}
       </View>
     </>
   );
 }
+
+const s = StyleSheet.create({
+  searchShell: {
+    minHeight: 48,
+    borderRadius: HUB.tileRadius,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+});
