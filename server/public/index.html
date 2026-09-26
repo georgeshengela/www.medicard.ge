@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="ka" data-theme="light">
+<html lang="ka" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>მედიქარდი — თქვენი ჯიბის სამედიცინო ასისტენტი</title>
-  <meta name="description" content="Medicard.GE — ქართულენოვანი მობილური აპი. Medi, ანალიზები, მედიკამენტები, ციკლი, ჰიდრატაცია, ნაბიჯები, ამინდი და აფთიაქების ფასები. მხოლოდ iOS და Android." />
+  <meta name="description" content="Medicard.GE — ქართულენოვანი მობილური აპი. Medi, კვების დღიური, ანალიზები, მედიკამენტები, ციკლი, MEDIRUN, MEDI QUEST და ცხოველების მოვლა. მხოლოდ iOS და Android." />
   <link rel="canonical" href="https://medicard.ge/" />
-  <meta name="theme-color" content="#f3f5f6" />
+  <meta name="theme-color" content="#030712" />
   <script>
     (function () {
       try {
         var t = localStorage.getItem("medicard.landing.theme");
         if (t !== "light" && t !== "dark") {
-          t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
         }
         document.documentElement.dataset.theme = t;
         document.documentElement.style.colorScheme = t;
@@ -23,278 +23,376 @@
   <meta property="og:locale" content="ka_GE" />
   <meta property="og:url" content="https://medicard.ge/" />
   <meta property="og:title" content="მედიქარდი — თქვენი ჯიბის სამედიცინო ასისტენტი" />
-  <meta property="og:description" content="ჯანმრთელობის აპი ქართულად. Medi გესაუბრებათ, ხსნის ანალიზებს და გახსენებთ მედიკამენტებს." />
+  <meta property="og:description" content="ჯანმრთელობის აპი ქართულად. Medi, კვება, ანალიზები, ციკლი, MEDIRUN, MEDI QUEST და ცხოველების მოვლა." />
   <meta property="og:image" content="https://medicard.ge/screens/home.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="/favicon.png" />
   <link rel="apple-touch-icon" href="/icon.png" />
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/firago/FiraGO-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="/landing.css?v=39" />
-  <noscript><style>.reveal{opacity:1;transform:none}</style></noscript>
+  <link rel="stylesheet" href="/home.css?v=1" />
+  <noscript><style>.rv{opacity:1;transform:none}</style></noscript>
 </head>
 <body>
-  <header class="nav">
+  <a class="skip" href="#features">ფუნქციებზე გადასვლა</a>
+
+  <header class="nav" id="top">
     <div class="wrap nav-inner">
       <a class="brand" href="/">
-        <img src="/icon.png" width="36" height="36" alt="" />
-        მედიქარდი
+        <img src="/icon.png" width="34" height="34" alt="" />
+        <span>მედიქარდი</span>
       </a>
-      <nav class="nav-links" aria-label="მენიუ">
+      <nav class="nav-links" id="nav-links" aria-label="მენიუ">
+        <a href="#medi">Medi</a>
+        <a href="#features">ფუნქციები</a>
+        <a href="#day">ერთი დღე</a>
+        <a href="/calculators">კალკულატორები</a>
         <a href="/medipulsi/">MEDIPULSI</a>
-        <a href="/"><span class="ic ic-house" aria-hidden="true"></span>მთავარი გვერდი</a>
-        <a href="#how"><span class="ic ic-chat" aria-hidden="true"></span>Medi</a>
-        <a href="#features"><span class="ic ic-health" aria-hidden="true"></span>ფუნქციები</a>
-        <a href="/calculators"><span class="ic ic-calc" aria-hidden="true"></span>კალკულატორები</a>
-        <a href="#plans"><span class="ic ic-wallet" aria-hidden="true"></span>უფასო აპი</a>
-        <a class="nav-download" href="#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
+        <a href="#faq">კითხვები</a>
+        <a class="nav-mobile-cta" href="#download">ჩამოტვირთვა</a>
       </nav>
       <div class="nav-actions">
-        <button class="theme-btn" id="theme-toggle" type="button" aria-pressed="false" aria-label="გადართე მუქ თემაზე">
+        <button class="icon-btn theme-btn" id="theme-toggle" type="button" aria-pressed="false" aria-label="გადართე ღია თემაზე">
           <span class="ic ic-moon icon-moon" aria-hidden="true"></span>
           <span class="ic ic-sun icon-sun" aria-hidden="true"></span>
         </button>
-        <button class="menu-btn" id="menu-toggle" type="button" aria-label="მენიუ" aria-expanded="false">
+        <a class="btn btn-primary nav-cta" href="#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
+        <button class="icon-btn menu-btn" id="menu-toggle" type="button" aria-label="მენიუ" aria-expanded="false" aria-controls="nav-links">
           <span class="ic ic-menu" aria-hidden="true"></span>
         </button>
-        <a class="btn btn-cta" href="#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
       </div>
     </div>
   </header>
 
   <main>
-    <section class="hero band-dark" id="product">
-      <div class="wrap">
-        <div class="hero-grid">
-          <div class="hero-copy">
-            <p class="kicker">მხოლოდ iOS და Android</p>
-            <h1 class="title">ყველაფერი შენი<br />ჯანმრთელობისთვის.</h1>
-            <p class="lead">MEDICARD არის ქართულენოვანი მობილური ჯანმრთელობის ჰაბი, რომელიც შენს ჯანმრთელობაზე ზრუნვისთვის საჭირო ყველაფერს ერთ სივრცეში აერთიანებს — Medi, პირადი AI ასისტენტი, სამედიცინო ანალიზები, მედიკამენტები, ციკლის მონიტორინგი, ნაბიჯები, ჰიდრატაცია, წონა, ამინდი და აფთიაქებში მედიკამენტების ფასების შედარება.</p>
-            <p class="lead lead-more">ყველაფერი შექმნილია მობილურისთვის — მარტივად, სწრაფად და ყოველთვის შენთან.</p>
-            <div class="hero-actions">
-              <a class="btn btn-cta" href="#download"><span class="ic ic-download" aria-hidden="true"></span>აპის ჩამოტვირთვა</a>
-              <a class="btn btn-ghost" href="#features"><span class="ic ic-health" aria-hidden="true"></span>ყველა ფუნქცია</a>
-            </div>
+    <!-- ============ HERO ============ -->
+    <section class="hero" id="product">
+      <div class="hero-bg" aria-hidden="true">
+        <span class="glow glow-a"></span>
+        <span class="glow glow-b"></span>
+        <span class="grid-lines"></span>
+      </div>
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="hero-tag"><span class="dot"></span>ქართული ჯანმრთელობის აპი · iOS და Android</p>
+          <h1 class="hero-title">
+            <span class="w">ყველაფერი</span>
+            <span class="w">შენი</span>
+            <span class="w">ჯანმრთელობისთვის.</span>
+          </h1>
+          <p class="hero-lead">Medi გესაუბრება შენი ჩანაწერებით. აქვეა კვების დღიური, ანალიზები, მედიკამენტები, ციკლი, აქტივობა, MEDIRUN, MEDI QUEST და შენი ცხოველების მოვლა — ერთ აპში, ქართულად, უფასოდ.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary btn-lg" href="#download"><span class="ic ic-download" aria-hidden="true"></span>აპის ჩამოტვირთვა</a>
+            <a class="btn btn-ghost btn-lg" href="#day">ნახე ერთი დღე აპში</a>
           </div>
-          <div class="hero-stage">
-            <div class="hero-orbit" aria-hidden="true"><i></i><i></i></div>
-            <figure class="iphone" id="hero-phone">
-              <img class="iphone-chrome" src="/iphone-15-pro-max.svg" alt="" width="434" height="884" />
-              <div class="iphone-bezel"><div class="phone-screen"><img data-key="home" src="/screens/home.png" alt="" class="is-on" /><img data-key="medi" src="/screens/medi.png" alt="" /><img data-key="cycle" src="/screens/cycle.png" alt="" /><img data-key="symptoms" src="/screens/symptoms.png" alt="" /><img data-key="metrics" src="/screens/metrics.png" alt="" /><img data-key="meds" src="/screens/meds.png" alt="" /><img data-key="streak" src="/screens/streak.png" alt="" /><img data-key="profile" src="/screens/profile.png" alt="" /><img data-key="hydration" src="/screens/hydration.png" alt="" /><img data-key="signin" src="/screens/signin.png" alt="" /></div></div>
-            </figure>
-            <p class="hero-aside">შენი სურათი.<br />შენი კონტროლი</p>
+          <ul class="hero-facts" aria-label="მოკლედ">
+            <li><b>0 ₾</b><span>ყველა ფუნქცია უფასოა</span></li>
+            <li><b>20+</b><span>მოდული ერთ აპში</span></li>
+            <li><b>14 დღე</b><span>Medi ხედავს შენს მეტრიკებს</span></li>
+          </ul>
+        </div>
+
+        <div class="hero-stage" id="hero-stage">
+          <div class="halo" aria-hidden="true"></div>
+          <figure class="iphone" id="hero-phone">
+            <img class="iphone-chrome" src="/iphone-15-pro-max.svg" alt="" width="434" height="884" />
+            <div class="iphone-bezel"><div class="phone-screen">
+              <img data-key="home" src="/screens/home.png" alt="მედიქარდის მთავარი ეკრანი" class="is-on" />
+              <img data-key="medi" src="/screens/medi.png" alt="" loading="lazy" />
+              <img data-key="meds" src="/screens/meds.png" alt="" loading="lazy" />
+              <img data-key="metrics" src="/screens/metrics.png" alt="" loading="lazy" />
+              <img data-key="hydration" src="/screens/hydration.png" alt="" loading="lazy" />
+              <img data-key="cycle" src="/screens/cycle.png" alt="" loading="lazy" />
+              <img data-key="streak" src="/screens/streak.png" alt="" loading="lazy" />
+            </div></div>
+          </figure>
+
+          <div class="float fl-medi" data-depth="1.4" aria-hidden="true">
+            <span class="fl-avatar"><span class="ic ic-chat"></span></span>
+            <span class="fl-body"><b>Medi</b><span>ანალიზი წავიკითხე. ჰემოგლობინი ნორმის ფარგლებშია — ავხსნა რას ნიშნავს?</span></span>
+          </div>
+          <div class="float fl-med" data-depth="0.9" aria-hidden="true">
+            <span class="fl-icon teal"><span class="ic ic-pill"></span></span>
+            <span class="fl-body"><small>09:00</small><b>მაგნიუმი · 1 ტაბ</b></span>
+            <span class="fl-check"><span class="ic ic-check"></span></span>
+          </div>
+          <div class="float fl-steps" data-depth="1.1" aria-hidden="true">
+            <svg class="ring" viewBox="0 0 44 44"><circle class="ring-bg" cx="22" cy="22" r="18"/><circle class="ring-fg" cx="22" cy="22" r="18"/></svg>
+            <span class="fl-body"><b>6 420</b><small>ნაბიჯი · 64%</small></span>
+          </div>
+          <div class="float fl-cycle" data-depth="0.7" aria-hidden="true">
+            <span class="fl-icon rose"><span class="ic ic-cycle"></span></span>
+            <span class="fl-body"><small>ციკლი</small><b>მე-12 დღე · ოვულაცია 2 დღეში</b></span>
+          </div>
+          <div class="float fl-water" data-depth="1.2" aria-hidden="true">
+            <span class="fl-icon sky"><span class="ic ic-water"></span></span>
+            <span class="fl-body"><b>1.2 ლ</b><small>2 ლ-დან</small></span>
+          </div>
+          <div class="float fl-streak" data-depth="0.8" aria-hidden="true">
+            <span class="fl-icon amber"><span class="ic ic-medal"></span></span>
+            <span class="fl-body"><b>7 დღე</b><small>სერია</small></span>
           </div>
         </div>
-        <div class="hero-dock">
-        <div class="chips">
-          <span class="chip">მხოლოდ iOS და Android</span>
-          <span class="chip">ქართული ინტერფეისი</span>
-          <span class="chip">მუქი და ღია რეჟიმი</span>
-          <span class="chip">ყველა ფუნქცია უფასოდ</span>
-          <span class="chip">არ ცვლის ექიმს</span>
-        </div>
-        <div class="day" role="tablist" aria-label="Day">
-          <button type="button" data-day="home" class="is-on"><span class="ic ic-house" aria-hidden="true"></span><small>06:40</small><b>მთავარი</b></button>
-          <button type="button" data-day="meds"><span class="ic ic-pill" aria-hidden="true"></span><small>09:00</small><b>მედები</b></button>
-          <button type="button" data-day="metrics"><span class="ic ic-steps" aria-hidden="true"></span><small>13:20</small><b>ნაბიჯები</b></button>
-          <button type="button" data-day="cycle"><span class="ic ic-cycle" aria-hidden="true"></span><small>18:10</small><b>ციკლი</b></button>
-          <button type="button" data-day="medi"><span class="ic ic-chat" aria-hidden="true"></span><small>21:00</small><b>Medi</b></button>
-          <button type="button" data-day="streak"><span class="ic ic-medal" aria-hidden="true"></span><small>22:30</small><b>სტრიკი</b></button>
-        </div>
-        </div>
-        </div>
+      </div>
     </section>
 
+    <!-- ============ TICKER ============ -->
     <div class="ticker" aria-hidden="true">
-      <div class="ticker-inner">
-        <div class="ticker-track">
-          <span class="tick"><span class="ic ic-chat" aria-hidden="true"></span>Medi</span><span class="tick"><span class="ic ic-flask" aria-hidden="true"></span>ანალიზები</span><span class="tick"><span class="ic ic-xray" aria-hidden="true"></span>რენტგენი</span><span class="tick"><span class="ic ic-skin" aria-hidden="true"></span>კანი</span><span class="tick"><span class="ic ic-body" aria-hidden="true"></span>სიმპტომები</span><span class="tick"><span class="ic ic-stethoscope" aria-hidden="true"></span>კონსილიუმი</span><span class="tick"><span class="ic ic-pill" aria-hidden="true"></span>მედიკამენტები</span><span class="tick"><span class="ic ic-pharmacy" aria-hidden="true"></span>აფთიაქი</span><span class="tick"><span class="ic ic-cycle" aria-hidden="true"></span>ციკლი</span><span class="tick"><span class="ic ic-calc" aria-hidden="true"></span>კალკულატორები</span><span class="tick"><span class="ic ic-steps" aria-hidden="true"></span>ნაბიჯები</span><span class="tick"><span class="ic ic-water" aria-hidden="true"></span>ჰიდრატაცია</span><span class="tick"><span class="ic ic-weight" aria-hidden="true"></span>წონა</span><span class="tick"><span class="ic ic-sun" aria-hidden="true"></span>ამინდი</span><span class="tick"><span class="ic ic-hospital" aria-hidden="true"></span>ვიზიტები</span><span class="tick"><span class="ic ic-medal" aria-hidden="true"></span>სტრიკი</span><span class="tick"><span class="ic ic-chat" aria-hidden="true"></span>Medi</span><span class="tick"><span class="ic ic-flask" aria-hidden="true"></span>ანალიზები</span><span class="tick"><span class="ic ic-xray" aria-hidden="true"></span>რენტგენი</span><span class="tick"><span class="ic ic-skin" aria-hidden="true"></span>კანი</span><span class="tick"><span class="ic ic-body" aria-hidden="true"></span>სიმპტომები</span><span class="tick"><span class="ic ic-stethoscope" aria-hidden="true"></span>კონსილიუმი</span><span class="tick"><span class="ic ic-pill" aria-hidden="true"></span>მედიკამენტები</span><span class="tick"><span class="ic ic-pharmacy" aria-hidden="true"></span>აფთიაქი</span><span class="tick"><span class="ic ic-cycle" aria-hidden="true"></span>ციკლი</span><span class="tick"><span class="ic ic-calc" aria-hidden="true"></span>კალკულატორები</span><span class="tick"><span class="ic ic-steps" aria-hidden="true"></span>ნაბიჯები</span><span class="tick"><span class="ic ic-water" aria-hidden="true"></span>ჰიდრატაცია</span><span class="tick"><span class="ic ic-weight" aria-hidden="true"></span>წონა</span><span class="tick"><span class="ic ic-sun" aria-hidden="true"></span>ამინდი</span><span class="tick"><span class="ic ic-hospital" aria-hidden="true"></span>ვიზიტები</span><span class="tick"><span class="ic ic-medal" aria-hidden="true"></span>სტრიკი</span>
-        </div>
+      <div class="ticker-track">
+        <span class="tick"><span class="ic ic-chat"></span>Medi</span><span class="tick"><span class="ic ic-apple"></span>კვების დღიური</span><span class="tick"><span class="ic ic-flask"></span>ანალიზები</span><span class="tick"><span class="ic ic-cycle"></span>ციკლი</span><span class="tick"><span class="ic ic-pill"></span>მედიკამენტები</span><span class="tick"><span class="ic ic-steps"></span>MEDIRUN</span><span class="tick"><span class="ic ic-medal"></span>MEDI QUEST</span><span class="tick"><span class="ic ic-paw"></span>ჩემი ცხოველები</span><span class="tick"><span class="ic ic-user"></span>საზოგადოება</span><span class="tick"><span class="ic ic-body"></span>სიმპტომები</span><span class="tick"><span class="ic ic-xray"></span>რენტგენი</span><span class="tick"><span class="ic ic-skin"></span>კანი</span><span class="tick"><span class="ic ic-stethoscope"></span>კონსილიუმი</span><span class="tick"><span class="ic ic-pharmacy"></span>აფთიაქი</span><span class="tick"><span class="ic ic-water"></span>წყალი</span><span class="tick"><span class="ic ic-weight"></span>წონა</span><span class="tick"><span class="ic ic-calc"></span>კალკულატორები</span>
+        <span class="tick"><span class="ic ic-chat"></span>Medi</span><span class="tick"><span class="ic ic-apple"></span>კვების დღიური</span><span class="tick"><span class="ic ic-flask"></span>ანალიზები</span><span class="tick"><span class="ic ic-cycle"></span>ციკლი</span><span class="tick"><span class="ic ic-pill"></span>მედიკამენტები</span><span class="tick"><span class="ic ic-steps"></span>MEDIRUN</span><span class="tick"><span class="ic ic-medal"></span>MEDI QUEST</span><span class="tick"><span class="ic ic-paw"></span>ჩემი ცხოველები</span><span class="tick"><span class="ic ic-user"></span>საზოგადოება</span><span class="tick"><span class="ic ic-body"></span>სიმპტომები</span><span class="tick"><span class="ic ic-xray"></span>რენტგენი</span><span class="tick"><span class="ic ic-skin"></span>კანი</span><span class="tick"><span class="ic ic-stethoscope"></span>კონსილიუმი</span><span class="tick"><span class="ic ic-pharmacy"></span>აფთიაქი</span><span class="tick"><span class="ic ic-water"></span>წყალი</span><span class="tick"><span class="ic ic-weight"></span>წონა</span><span class="tick"><span class="ic ic-calc"></span>კალკულატორები</span>
       </div>
     </div>
 
-    <section class="section band-paper" id="proof">
-      <div class="wrap">
-        <div class="stat-board">
-          <div class="stat reveal"><span class="ic ic-lg ic-chat" aria-hidden="true"></span><b>Medi</b><span>AI ასისტენტი ქართულად. ხედავს პროფილს, ბოლო 14 დღის მეტრიკებს, მედიკამენტებს და ციკლის რეჟიმს.</span></div>
-          <div class="stat reveal delay-1"><span class="ic ic-lg ic-health" aria-hidden="true"></span><b>12+ მოდული</b><span>ანალიზი, სიმპტომები, ციკლი, მედები, აფთიაქი, ვიზიტები, ნაბიჯები, წყალი, წონა, ამინდი.</span></div>
-          <div class="stat reveal delay-2"><span class="ic ic-lg ic-wallet" aria-hidden="true"></span><b>უფასო გამოყენება</b><span>რეგისტრაცია და ყველა ფუნქცია უფასოა. გამოწერა და ფასიანი კატეგორიები არ გვაქვს.</span></div>
-          <div class="stat reveal delay-3"><span class="ic ic-lg ic-lock" aria-hidden="true"></span><b>პირადი</b><span>ციკლი და ჩანაწერები შენს ანგარიშზე. გაზიარება მხოლოდ შენი ნებართვით. ანგარიშის წაშლა აპიდან.</span></div>
+    <!-- ============ MEDI ============ -->
+    <section class="section medi" id="medi">
+      <div class="wrap medi-grid">
+        <div class="medi-copy rv">
+          <p class="kicker">Medi — შენი პირადი AI</p>
+          <h2>ის, ვინც შენს ჩანაწერებს ხედავს და ქართულად პასუხობს.</h2>
+          <p>Medi იცნობს შენს პროფილს, ბოლო 14 დღის მეტრიკებს, მედიკამენტებს და ციკლის რეჟიმს. ატვირთე ანალიზი, რენტგენი ან კანის ფოტო — გასაგებად აგიხსნის, რა ჩანს და როდის ღირს ექიმთან წასვლა.</p>
+          <ul class="medi-list">
+            <li><span class="ic ic-flask" aria-hidden="true"></span><span><b>ანალიზები</b> — სისხლი, ბიოქიმია, ჰორმონები ნორმის საზღვრებით.</span></li>
+            <li><span class="ic ic-xray" aria-hidden="true"></span><span><b>რენტგენი, CT, MRI</b> — სურათის წინასწარი აღწერა.</span></li>
+            <li><span class="ic ic-skin" aria-hidden="true"></span><span><b>კანი და ხალები</b> — ABCDE შეფასება და მოვლის რუტინა.</span></li>
+            <li><span class="ic ic-body" aria-hidden="true"></span><span><b>სიმპტომების რუკა</b> — მონიშნე სხეულის არე, აღწერე, მიიღე მიმართულება.</span></li>
+            <li><span class="ic ic-stethoscope" aria-hidden="true"></span><span><b>კონსილიუმი</b> — რთული შემთხვევა რამდენიმე სპეციალობის ხედვით.</span></li>
+          </ul>
+          <p class="medi-note"><span class="ic ic-emergency" aria-hidden="true"></span>Medi ინფორმაციას გაძლევს — არა დიაგნოზს და არა რეცეპტს. სასწრაფო შემთხვევაში 112.</p>
         </div>
-        <div class="proof-grid">
-        <article class="proof-card proof-stores reveal delay-1">
-          <p>მხოლოდ iOS და Android. მხოლოდ მობილური. App Store და Google Play. საიტიდან შესვლა არ არის.</p>
-          <div class="store-badges">
-              <span class="store-badge">
-                <img src="/icons/app-store.svg" alt="" width="28" height="28" />
-                <span><small>მალე</small><b>App Store</b></span>
-              </span>
-              <span class="store-badge">
-                <img src="/icons/google-play.svg" alt="" width="28" height="28" />
-                <span><small>მალე</small><b>Google Play</b></span>
-              </span>
+        <div class="chat rv d1" aria-label="Medi-ს საუბრის ნიმუში">
+          <div class="chat-head">
+            <span class="chat-avatar"><span class="ic ic-chat" aria-hidden="true"></span></span>
+            <span><b>Medi</b><small>ხედავს პროფილს · ბოლო 14 დღე</small></span>
+            <span class="chat-live">ონლაინ</span>
+          </div>
+          <div class="chat-body">
+            <div class="msg me">ეს ჩემი დღევანდელი სისხლის ანალიზია. რამე საყურადღებო ხომ არ არის?<span class="msg-file"><span class="ic ic-file" aria-hidden="true"></span>ანალიზი_26.09.pdf</span></div>
+            <div class="msg ai">
+              <p>წავიკითხე. 14 მაჩვენებლიდან 13 ნორმის ფარგლებშია.</p>
+              <div class="marker"><span>ფერიტინი</span><i><b style="--p:18%"></b></i><em>12 ნგ/მლ · დაბალი</em></div>
+              <div class="marker"><span>ჰემოგლობინი</span><i><b style="--p:62%"></b></i><em>13.4 გ/დლ · ნორმა</em></div>
+              <p>ფერიტინი ნორმაზე დაბალია. შენს კვების დღიურში ბოლო კვირას რკინით მდიდარი საკვები ცოტა იყო. ეს დიაგნოზი არ არის — ღირს ექიმთან ვიზიტი. გავწერო კითხვები, რაც ექიმს უნდა ჰკითხო?</p>
             </div>
-        </article>
-        <article class="proof-card proof-join reveal delay-2">
-          <div>
-            <h3>ჩამოტვირთვა</h3>
-            <p>ჩამოტვირთე ტელეფონზე. საიტზე ანგარიში არ იხსნება.</p>
+            <div class="msg me">კი, და ვიზიტიც დამიგეგმე.</div>
+            <div class="msg ai typing"><span></span><span></span><span></span></div>
           </div>
-          <div class="cta-qr">
-            <div class="qr-box"><img src="/qr.svg" alt="medicard.ge" width="76" height="76" /></div>
-            <span>medicard.ge</span>
-          </div>
-        </article>
+          <div class="chat-input"><span>დაწერე ან თქვი ხმით…</span><span class="chat-send"><span class="ic ic-play" aria-hidden="true"></span></span></div>
         </div>
       </div>
     </section>
 
-    
-
-    <section class="section band-paper" id="features">
+    <!-- ============ FEATURES (bento) ============ -->
+    <section class="section features" id="features">
       <div class="wrap">
-        <div class="section-head section-head-row reveal">
-          <div>
-          <p class="kicker">ყველა ფუნქცია</p>
-          <h2>სრული ჰაბი — არა ერთი მოდული</h2>
-          </div>
-          <p class="head-mark">12+ მოდული</p>
+        <div class="sec-head rv">
+          <p class="kicker">ფუნქციები</p>
+          <h2>ერთი აპი მთელი დღისთვის.</h2>
+          <p>ყოველდღიური ჩვევებიდან ქალის ჯანმრთელობამდე და ცხოველების მოვლამდე — ყველაფერი ერთ ადგილას, ერთმანეთთან დაკავშირებული.</p>
         </div>
-        <div class="grid">
-          <article class="card card-ai reveal" tabindex="0" data-screen="medi">
-            <div class="icon"><span class="ic ic-lg ic-chat" aria-hidden="true"></span></div>
-            <h3>Medi — AI ასისტენტი</h3>
-            <p>ქართული საუბარი შენი ისტორიით. ხედავს პროფილს და ბოლო 14 დღეს. ინფორმაციაა, არა დანიშნულება.</p>
+
+        <div class="bento">
+          <!-- Nutrition -->
+          <article class="tile t-food rv" data-screen="metrics">
+            <div class="tile-ui food-ui" aria-hidden="true">
+              <div class="food-photo"><span class="food-scan"></span><span class="food-tag">ხაჭაპური · 1 ნაჭერი</span></div>
+              <div class="food-macros">
+                <div><small>კკალ</small><b>420</b></div>
+                <div><small>ცილა</small><b>14გ</b><i style="--p:45%"></i></div>
+                <div><small>ნახშ.</small><b>48გ</b><i style="--p:70%"></i></div>
+                <div><small>ცხიმი</small><b>18გ</b><i style="--p:55%"></i></div>
+              </div>
+            </div>
+            <h3>კვების დღიური</h3>
+            <p>გადაუღე ფოტო — Medi შეაფასებს კალორიებს და მაკროებს. შენ ასწორებ, ინახავ. მიზნები, კვების გეგმა და ბალანსის დიაგრამები ერთადაა.</p>
           </article>
-          <article class="card reveal delay-1" tabindex="0">
-            <div class="icon"><span class="ic ic-lg ic-flask" aria-hidden="true"></span></div>
-            <h3>გაშიფრე ანალიზები</h3>
-            <p>სისხლი, ბიოქიმია, სხვა კვლევის ფოტო — გასაგები ახსნა ქართულად, ნორმის საზღვრებით.</p>
-          </article>
-          <article class="card reveal delay-2" tabindex="0">
-            <div class="icon"><span class="ic ic-lg ic-xray" aria-hidden="true"></span></div>
-            <h3>რენტგენი / CT / MRI</h3>
-            <p>სნიმოკის წინასწარი აღწერა: რა ჩანს და როდის მიმართო ექიმს. ხელმისაწვდომია ყველა მომხმარებლისთვის.</p>
-          </article>
-          <article class="card reveal" tabindex="0">
-            <div class="icon"><span class="ic ic-lg ic-skin" aria-hidden="true"></span></div>
-            <h3>კანი და ხალები</h3>
-            <p>ABCDE ხალზე ან გამონაყარზე. კანის მოვლის რუტინა ტიპის მიხედვით. ყველა მომხმარებლისთვის.</p>
-          </article>
-          <article class="card reveal delay-1" tabindex="0" data-screen="symptoms">
-            <div class="icon"><span class="ic ic-lg ic-body" aria-hidden="true"></span></div>
-            <h3>სიმპტომების რუკა</h3>
-            <p>მონიშნე სხეულის არე, აღწერე ტკივილი — შესაძლო მიმართულებები და შემდეგი ნაბიჯი.</p>
-          </article>
-          <article class="card reveal delay-2" tabindex="0">
-            <div class="icon"><span class="ic ic-lg ic-stethoscope" aria-hidden="true"></span></div>
-            <h3>კონსილიუმი</h3>
-            <p>რთული შემთხვევა — რამდენიმე სპეციალისტის ხედვა ერთ დასკვნაში. ყველა მომხმარებლისთვის.</p>
-          </article>
-          <article class="card reveal" tabindex="0" data-screen="meds">
-            <div class="icon"><span class="ic ic-lg ic-pill" aria-hidden="true"></span></div>
+
+          <!-- Meds -->
+          <article class="tile t-meds rv d1" data-screen="meds">
+            <div class="tile-ui meds-ui" aria-hidden="true">
+              <div class="med-row done"><span class="ic ic-check"></span><span><b>ომეგა-3</b><small>08:00 · მიღებულია</small></span></div>
+              <div class="med-row now"><span class="ic ic-pill"></span><span><b>მაგნიუმი</b><small>09:00 · ახლა</small></span><em>მივიღე</em></div>
+              <div class="med-row"><span class="ic ic-pill"></span><span><b>D ვიტამინი</b><small>21:00</small></span></div>
+            </div>
             <h3>მედიკამენტები</h3>
-            <p>გრაფიკი, მიღება, გამოტოვება, შეხსენება. ქართული კატალოგიდან დამატება. ჩანს მთავარ ჰაბზე.</p>
+            <p>გრაფიკი, შეხსენება, გამოტოვება. დამატება ქართული კატალოგიდან.</p>
           </article>
-          <article class="card reveal delay-1" tabindex="0">
-            <div class="icon"><span class="ic ic-lg ic-pharmacy" aria-hidden="true"></span></div>
-            <h3>აფთიაქების ფასები</h3>
-            <p>ფარმადეპო, ავერსი, PSP — სად უფრო იაფია იგივე პრეპარატი. ერთი ძიება, სამი წყარო.</p>
+
+          <!-- Cycle -->
+          <article class="tile t-cycle rv d2" data-screen="cycle">
+            <div class="tile-ui cycle-ui" aria-hidden="true">
+              <svg viewBox="0 0 120 120" class="cycle-ring">
+                <circle cx="60" cy="60" r="50" class="c-track"/>
+                <circle cx="60" cy="60" r="50" class="c-period"/>
+                <circle cx="60" cy="60" r="50" class="c-fertile"/>
+                <circle cx="60" cy="60" r="50" class="c-today"/>
+              </svg>
+              <div class="cycle-center"><b>12</b><small>დღე</small></div>
+              <div class="cycle-legend"><span><i class="lp"></i>მენსტრუაცია</span><span><i class="lf"></i>ფერტილური</span></div>
+            </div>
+            <h3>ციკლი და ორსულობა</h3>
+            <p>პროგნოზი, სიმპტომები, OPK და BBT. პარტნიორი ხედავს მხოლოდ იმას, რასაც შენ დაუშვებ.</p>
           </article>
-          <article class="card rose reveal delay-2" tabindex="0" data-screen="cycle">
-            <div class="icon"><span class="ic ic-lg ic-cycle" aria-hidden="true"></span></div>
-            <h3>ციკლი</h3>
-            <p>მენსტრუაცია, ნაყოფიერი ფანჯარა, ორსულობა, პარტნიორის გაზიარება. პროგნოზი მხოლოდ სერვერიდან.</p>
+
+          <!-- Activity -->
+          <article class="tile t-move rv" data-screen="metrics">
+            <div class="tile-ui move-ui" aria-hidden="true">
+              <svg viewBox="0 0 200 70" preserveAspectRatio="none" class="spark">
+                <defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#14b8a6" stop-opacity=".45"/><stop offset="1" stop-color="#14b8a6" stop-opacity="0"/></linearGradient></defs>
+                <path class="spark-fill" d="M0,55 C20,50 30,20 50,25 S80,60 100,40 S130,10 150,22 S180,50 200,30 V70 H0 Z" fill="url(#sg)"/>
+                <path class="spark-line" d="M0,55 C20,50 30,20 50,25 S80,60 100,40 S130,10 150,22 S180,50 200,30"/>
+              </svg>
+              <div class="move-stats"><div><b>6 420</b><small>ნაბიჯი</small></div><div><b>76.3</b><small>კგ</small></div><div><b>1.2</b><small>ლ წყალი</small></div></div>
+            </div>
+            <h3>ნაბიჯები, წონა, წყალი</h3>
+            <p>ყოველდღიური მეტრიკები, რომლებსაც Medi-ც ხედავს.</p>
           </article>
-          <article class="card reveal" tabindex="0" data-screen="metrics">
-            <div class="icon"><span class="ic ic-lg ic-steps" aria-hidden="true"></span></div>
-            <h3>ნაბიჯები და ჰიდრატაცია</h3>
-            <p>დღიური ნაბიჯები, მიზნის კამპანია ვადით, წყლის ჭიქა, კალენდარი და კვირის ტრენდი.</p>
+
+          <!-- MEDIRUN -->
+          <article class="tile t-run rv d1" data-screen="streak">
+            <div class="tile-ui run-ui" aria-hidden="true">
+              <svg viewBox="0 0 220 110" class="run-map">
+                <path class="run-road" d="M10,90 C40,80 40,30 80,35 S120,90 150,70 S190,20 212,28"/>
+                <path class="run-done" d="M10,90 C40,80 40,30 80,35 S120,90 150,70"/>
+                <circle cx="10" cy="90" r="4" class="run-pt"/><circle cx="80" cy="35" r="4" class="run-pt"/><circle cx="150" cy="70" r="6" class="run-me"/><circle cx="212" cy="28" r="4" class="run-pt goal"/>
+              </svg>
+              <div class="run-badge"><span class="ic ic-steps"></span>3.4 კმ · აღმოჩენილი უბანი</div>
+            </div>
+            <h3>MEDIRUN</h3>
+            <p>სეირნობა როგორც თამაში: აღმოაჩინე რუკა ნაბიჯებით, მთელ მსოფლიოში.</p>
           </article>
-          <article class="card reveal delay-1" tabindex="0" data-screen="metrics">
-            <div class="icon"><span class="ic ic-lg ic-weight" aria-hidden="true"></span></div>
-            <h3>წონა და BMI</h3>
-            <p>დღიური წონა, ჯანსაღი დიაპაზონი, კვირის ხაზი. ერთი შეხებით ჩაწერა მთავარიდან.</p>
+
+          <!-- MEDI QUEST -->
+          <article class="tile t-quest rv d2" data-screen="streak">
+            <div class="tile-ui quest-ui" aria-hidden="true">
+              <div class="seal"><svg viewBox="0 0 80 80"><polygon points="40,4 71,22 71,58 40,76 9,58 9,22" class="seal-hex"/><polygon points="40,14 62,27 62,53 40,66 18,53 18,27" class="seal-in"/></svg><b>12</b></div>
+              <div class="quest-list">
+                <div class="q done"><i></i>2 ლ წყალი</div>
+                <div class="q done"><i></i>წამლის მიღება</div>
+                <div class="q"><i></i>5 000 ნაბიჯი <small>3/5</small></div>
+              </div>
+            </div>
+            <h3>MEDI QUEST</h3>
+            <p>ყოველდღიური და ყოველკვირეული მისიები, XP, ჯილდოები და სერია.</p>
           </article>
-          <article class="card reveal delay-2" tabindex="0">
-            <div class="icon"><span class="ic ic-lg ic-sun" aria-hidden="true"></span></div>
-            <h3>ამინდი და Medi</h3>
-            <p>შენი ადგილის ამინდი, საუკეთესო დრო გარეთ და მოკლე რჩევა Medi-სგან. არა ამინდის აპი და არა დიაგნოზი.</p>
+
+          <!-- Pets -->
+          <article class="tile t-pets rv">
+            <div class="tile-ui pets-ui" aria-hidden="true">
+              <div class="pet-card"><span class="pet-avatar"><span class="ic ic-paw"></span></span><span><b>ბუბა</b><small>ლაბრადორი · 4 წ · 28.4 კგ</small></span><em>ვაქცინა 3 დღეში</em></div>
+              <div class="pet-chat"><span class="ic ic-chat"></span><span><b>Medi Vet</b> ბუბას წონა ჯიშისთვის ნორმალურია. აცრის შეხსენება ჩავრთე.</span></div>
+            </div>
+            <h3>ჩემი ცხოველები</h3>
+            <p>მოვლის შეხსენებები, წონა, ალერგიები და Medi Vet — ცალკე ასისტენტი შენი ცხოველისთვის.</p>
           </article>
-          <article class="card reveal" tabindex="0">
-            <div class="icon"><span class="ic ic-lg ic-hospital" aria-hidden="true"></span></div>
-            <h3>ექიმთან ვიზიტი</h3>
-            <p>თარიღი, მისამართი, შეხსენება. რუკის გადახედვა აპში. ჩანაწერებში რჩება ისტორია.</p>
+
+          <!-- Community -->
+          <article class="tile t-community rv d1">
+            <div class="tile-ui comm-ui" aria-hidden="true">
+              <div class="cm"><span class="cm-av a"></span><span><b>ანონიმური</b>ვინმეს აქვს გამოცდილება ფოლიუმის მჟავასთან?</span></div>
+              <div class="cm"><span class="cm-av b"></span><span><b>ნინო</b>კი, მე ექიმმა 400 მკგ დამინიშნა — ჰკითხე შენსას.</span></div>
+            </div>
+            <h3>საზოგადოება</h3>
+            <p>ქალების სივრცე საუბრისთვის — სახელით ან ანონიმურად.</p>
           </article>
-          <article class="card reveal" tabindex="0" data-screen="profile">
-            <div class="icon"><span class="ic ic-lg ic-health" aria-hidden="true"></span></div>
-            <h3>შეფასება და პროფილი</h3>
-            <p>ასაკი, სხეული, ალერგია, მიზნები. ქულა იცვლება შენს მონაცემებთან ერთად. ხელახალი ანალიზი ადგილზე.</p>
+
+          <!-- Pharmacy -->
+          <article class="tile t-pharmacy rv d2">
+            <div class="tile-ui pharm-ui" aria-hidden="true">
+              <div class="ph-row"><span>აფთიაქი A</span><i style="--p:100%"></i><b>18.90 ₾</b></div>
+              <div class="ph-row best"><span>აფთიაქი B</span><i style="--p:72%"></i><b>13.60 ₾</b></div>
+              <div class="ph-row"><span>აფთიაქი C</span><i style="--p:85%"></i><b>16.10 ₾</b></div>
+            </div>
+            <h3>აფთიაქის ფასები</h3>
+            <p>შეადარე მედიკამენტის ფასი აფთიაქებში, სანამ გახვალ.</p>
           </article>
-          <article class="card reveal delay-1" tabindex="0" data-screen="streak">
-            <div class="icon"><span class="ic ic-lg ic-medal" aria-hidden="true"></span></div>
-            <h3>სტრიკი და ქულები</h3>
-            <p>ყოველდღე +5 ქულა თბილისის დღეზე. სერია და ყველაზე გრძელი სტრიკი პროფილში.</p>
-          </article>
-          <article class="card reveal delay-2" tabindex="0">
-            <div class="icon"><span class="ic ic-lg ic-lock" aria-hidden="true"></span></div>
-            <h3>კონფიდენციალურობა</h3>
-            <p>Face ID, ციკლის საკეტი, ჩანაწერების ექსპორტი და ანგარიშის წაშლა აპიდან. პოლიტიკა medicard.ge/privacy.</p>
+
+          <!-- Records -->
+          <article class="tile t-records rv" data-screen="home">
+            <div class="tile-ui rec-ui" aria-hidden="true">
+              <span class="doc"><span class="ic ic-file"></span>სისხლის ანალიზი</span>
+              <span class="doc"><span class="ic ic-xray"></span>MRI · მუხლი</span>
+              <span class="doc"><span class="ic ic-hospital"></span>ვიზიტი · კარდიოლოგი</span>
+              <span class="doc"><span class="ic ic-shield"></span>ალერგია · პენიცილინი</span>
+              <span class="doc"><span class="ic ic-calendar"></span>ვაქცინა · გრიპი, ოქტ.</span>
+              <span class="doc"><span class="ic ic-flask"></span>ჰორმონები · TSH</span>
+            </div>
+            <h3>ჩანაწერები და ვიზიტები</h3>
+            <p>დოკუმენტები, დასკვნები, ალერგიები და ვიზიტების კალენდარი ერთ პროფილში.</p>
           </article>
         </div>
       </div>
     </section>
 
-    
-
-    
-
-    <section class="section band-paper" id="how">
+    <!-- ============ ONE DAY (scrollytelling) ============ -->
+    <section class="section day" id="day">
       <div class="wrap">
-        <div class="section-head reveal">
-          <p class="kicker">დაწყება</p>
-          <h2>სამი ნაბიჯი</h2>
+        <div class="sec-head rv">
+          <p class="kicker">ერთი დღე მედიქარდთან</p>
+          <h2>დილიდან ღამემდე — ერთ ეკრანზე.</h2>
         </div>
-        <div class="steps">
-          <article class="insight reveal">
-            <div class="step-top"><span class="ic ic-download" aria-hidden="true"></span><div class="num">01</div></div>
-            <h3>ჩამოტვირთე</h3>
-            <p>მხოლოდ მობილური. App Store და Google Play. საიტიდან შესვლა არ არის.</p>
-            </article>
-          <article class="insight reveal delay-1">
-            <div class="step-top"><span class="ic ic-user" aria-hidden="true"></span><div class="num">02</div></div>
-            <h3>შეავსე პროფილი</h3>
-            <p>შეფასება, სიმაღლე, წონა, ალერგია. Medi ამ სურათით მუშაობს.</p>
-            </article>
-          <article class="insight reveal delay-2">
-            <div class="step-top"><span class="ic ic-house" aria-hidden="true"></span><div class="num">03</div></div>
-            <h3>იყენებ ყოველდღე</h3>
-            <p>მიღება, წყალი, ამინდი, ციკლი, კითხვა Medi-სთვის — ერთ აპში.</p>
-            </article>
+        <div class="day-grid">
+          <div class="day-sticky">
+            <figure class="iphone iphone-sm" id="day-phone">
+              <img class="iphone-chrome" src="/iphone-15-pro-max.svg" alt="" width="434" height="884" />
+              <div class="iphone-bezel"><div class="phone-screen">
+                <img data-key="home" src="/screens/home.png" alt="" class="is-on" loading="lazy" />
+                <img data-key="meds" src="/screens/meds.png" alt="" loading="lazy" />
+                <img data-key="metrics" src="/screens/metrics.png" alt="" loading="lazy" />
+                <img data-key="hydration" src="/screens/hydration.png" alt="" loading="lazy" />
+                <img data-key="cycle" src="/screens/cycle.png" alt="" loading="lazy" />
+                <img data-key="medi" src="/screens/medi.png" alt="" loading="lazy" />
+                <img data-key="streak" src="/screens/streak.png" alt="" loading="lazy" />
+              </div></div>
+            </figure>
+          </div>
+          <ol class="moments">
+            <li class="moment is-on" data-key="home"><time>06:40</time><h3>დილა</h3><p>ერთი შეხედვით: დღევანდელი ციკლის დღე, ამინდი, პირველი მიღება და გუშინდელი ნაბიჯები.</p></li>
+            <li class="moment" data-key="meds"><time>09:00</time><h3>წამლის დრო</h3><p>შეხსენება მოდის, ერთი შეხებით ინიშნება. გამოტოვება ჩანს — და Medi-ც ხედავს.</p></li>
+            <li class="moment" data-key="metrics"><time>13:20</time><h3>სადილი და მოძრაობა</h3><p>ფოტო კვების დღიურში, ნაბიჯები ტელეფონიდან ავტომატურად. წონა კვირის გრაფიკზე.</p></li>
+            <li class="moment" data-key="hydration"><time>15:00</time><h3>წყალი</h3><p>დღიური მიზანი და ჭიქების რიცხვი. MEDI QUEST-ის მისია იმავე წამს იხურება.</p></li>
+            <li class="moment" data-key="cycle"><time>18:10</time><h3>ციკლი</h3><p>სიმპტომი, განწყობა, OPK — ჩაწერე ორ შეხებაში. პროგნოზი განახლდება.</p></li>
+            <li class="moment" data-key="medi"><time>21:00</time><h3>კითხვა Medi-სთვის</h3><p>„დღეს თავი მტკიოდა, რა შეიძლება იყოს?" — Medi პასუხობს შენი დღის კონტექსტით.</p></li>
+            <li class="moment" data-key="streak"><time>22:30</time><h3>სერია და ჯილდო</h3><p>დღე დახურულია: XP, სერია და ხვალინდელი მისიები. ღამე მშვიდობისა.</p></li>
+          </ol>
         </div>
       </div>
     </section>
 
-    <section class="section band-soft" id="plans">
-      <div class="wrap">
-        <div class="section-head reveal"><p class="kicker">შენი წვდომა</p><h2>ყველა ფუნქცია უფასოდ</h2></div>
-        <article class="plan featured reveal"><h3>ერთი MEDICARD ყველასთვის</h3>
-          <p>რეგისტრაცია და ყველა სამომხმარებლო ფუნქციის გამოყენება უფასოა. ამ ვერსიაში არ არის გამოწერა, საცდელი პერიოდი ან ფასიანი გეგმა.</p>
-          <ul><li>Medi, სიმპტომების შემოწმება და კონსილიუმი</li><li>ანალიზები, სურათები და კანის მოვლა</li><li>მედიკამენტები, ვიზიტები და ციკლი</li><li>აქტივობა, MEDIRUN, MEDI QUEST და ცხოველის მოვლა</li></ul>
-          <p>AI-ს კომერციული დღიური და თვიური კვოტა არ აქვს. ერთდროული მოთხოვნების, ფაილის ზომისა და ბოროტად გამოყენებისგან დაცვის ტექნიკური შეზღუდვები მოქმედებს.</p>
+    <!-- ============ TRUST ============ -->
+    <section class="section trust" id="trust">
+      <div class="wrap trust-grid">
+        <article class="trust-card rv">
+          <span class="ic ic-lg ic-wallet" aria-hidden="true"></span>
+          <h3>ყველა ფუნქცია უფასოა</h3>
+          <p>რეგისტრაცია, Medi, კვება, ციკლი, MEDIRUN, ცხოველები — გამოწერის, საცდელი პერიოდისა და ფასიანი გეგმის გარეშე. AI-ს კომერციული კვოტა არ აქვს.</p>
+        </article>
+        <article class="trust-card rv d1">
+          <span class="ic ic-lg ic-lock" aria-hidden="true"></span>
+          <h3>შენი მონაცემები — შენი გადაწყვეტილება</h3>
+          <p>AI-სთვის გაგზავნამდე ხედავ ვის და რას უზიარებ და თანხმობას შენ იძლევი. ციკლი და ჩანაწერები შენს ანგარიშზეა. ანგარიშის წაშლა — აპიდან, ორი შეხებით.</p>
+        </article>
+        <article class="trust-card rv d2">
+          <span class="ic ic-lg ic-emergency" aria-hidden="true"></span>
+          <h3>არ ცვლის ექიმს</h3>
+          <p>Medi ეხმარება გაგებაში და ექიმთან საუბრისთვის მომზადებაში. დიაგნოზი, რეცეპტი და სასწრაფო — ექიმი ან 112.</p>
         </article>
       </div>
     </section>
 
-    <section class="section band-paper" id="faq">
-      <div class="wrap">
-        <div class="section-head reveal">
+    <!-- ============ FAQ ============ -->
+    <section class="section faq-sec" id="faq">
+      <div class="wrap faq-grid">
+        <div class="sec-head rv">
           <p class="kicker">კითხვები</p>
-          <h2>რაც ხშირად გეკითხებიან</h2>
+          <h2>რასაც ხშირად გვეკითხებიან.</h2>
+          <p>ვერ იპოვე პასუხი? მოგვწერე: <a href="mailto:support@medicard.ge">support@medicard.ge</a></p>
         </div>
-        <div class="faq reveal"><details open>
+        <div class="faq rv d1">
+          <details open>
             <summary>შეიძლება საიტიდან შესვლა?</summary>
-            <p>არა. მედიქარდი არის მობილური აპი. ეს საიტი მხოლოდ პროდუქტს აცნობს. ანგარიში, ჩატი და ციკლი მხოლოდ ტელეფონზეა.</p>
+            <p>არა. მედიქარდი მობილური აპია. ეს საიტი მხოლოდ პროდუქტს აცნობს. ანგარიში, ჩატი და ციკლი მხოლოდ ტელეფონზეა.</p>
           </details>
           <details>
             <summary>რა არის Medi?</summary>
@@ -305,84 +403,71 @@
             <p>არა. Medi ეხმარება გაგებაში. დიაგნოზი, რეცეპტი და სასწრაფო — ექიმი ან 112.</p>
           </details>
           <details>
+            <summary>აპის გამოყენება ფასიანია?</summary>
+            <p>ყველა ფუნქცია უფასოა. კომერციული დღიური ან თვიური კვოტა არ მოქმედებს. უსაფრთხოებისთვის შესაძლებელია მოთხოვნების სიხშირის დროებითი შეზღუდვა.</p>
+          </details>
+          <details>
             <summary>ციკლი ვისთვის არის?</summary>
             <p>ქალის ანგარიშზე. პროგნოზი სერვერიდან მოდის. პარტნიორი ხედავს მხოლოდ იმას, რასაც შენ დაუშვებ. OPK, BBT და ტესტები პარტნიორთან არ იგზავნება.</p>
+          </details>
+          <details>
+            <summary>კვების დღიური დიეტას ნიშნავს?</summary>
+            <p>არა. ფოტო იძლევა შეფასებას, რომელსაც შენ ასწორებ და მერე ინახავ. კალორია და მაკროები პორციაზეა. აპი დიეტას არ გინიშნავს.</p>
+          </details>
+          <details>
+            <summary>ცხოველის ასისტენტი იგივე Medi არის?</summary>
+            <p>არა. Medi Vet ცალკე საუბარია შენი ცხოველის ჩანაწერებით. ადამიანის ჯანმრთელობის ჩატს არ ერევა.</p>
           </details>
           <details>
             <summary>რა ენაზეა აპი?</summary>
             <p>ინტერფეისი, Medi და დასკვნები ქართულადაა. საქართველოსთვისაა შექმნილი.</p>
           </details>
           <details>
-            <summary>აპის გამოყენება ფასიანია?</summary>
-            <p>ყველა ფუნქცია უფასოა. კომერციული დღიური ან თვიური კვოტა არ მოქმედებს. უსაფრთხოებისთვის შესაძლებელია მოთხოვნების სიხშირის დროებითი შეზღუდვა.</p>
-          </details>
-          <details>
             <summary>როგორ ვშლი ანგარიშს?</summary>
-            <p>აპში: პროფილი → ანგარიშის წაშლა. ან support@medicard.ge. პოლიტიკა: medicard.ge/privacy</p>
-          </details></div>
-      </div>
-    </section>
-
-    <section class="cta-full band-cta" id="download">
-      <div class="wrap cta-grid">
-        <div class="cta-copy">
-          <p class="kicker">ჩამოტვირთვა</p>
-          <h2>ჩამოტვირთე ტელეფონზე.</h2>
-          <p>საიტზე ანგარიში არ იხსნება.</p>
-          <a class="btn btn-inverse" href="mailto:support@medicard.ge"><span class="ic ic-chat" aria-hidden="true"></span>დაგვიკავშირდით</a>
+            <p>აპში: პროფილი → ანგარიშის წაშლა. ან support@medicard.ge. პოლიტიკა: <a href="/privacy">medicard.ge/privacy</a></p>
+          </details>
         </div>
-        <aside class="cta-panel">
-          <div class="cta-qr">
-            <div class="qr-box"><img src="/qr.svg" alt="medicard.ge" width="76" height="76" /></div>
-            <span>medicard.ge</span>
-          </div>
-          <div class="cta-stores">
-            <p>მხოლოდ iOS და Android. მხოლოდ მობილური. App Store და Google Play. საიტიდან შესვლა არ არის.</p>
-            <div class="store-badges">
-              <span class="store-badge">
-                <img src="/icons/app-store.svg" alt="" width="28" height="28" />
-                <span><small>მალე</small><b>App Store</b></span>
-              </span>
-              <span class="store-badge">
-                <img src="/icons/google-play.svg" alt="" width="28" height="28" />
-                <span><small>მალე</small><b>Google Play</b></span>
-              </span>
-            </div>
-          </div>
-        </aside>
       </div>
     </section>
 
-    
+    <!-- ============ DOWNLOAD ============ -->
+    <section class="download" id="download">
+      <div class="wrap dl-card rv">
+        <div class="dl-bg" aria-hidden="true"></div>
+        <div class="dl-copy">
+          <p class="kicker light">ჩამოტვირთვა</p>
+          <h2>ჩამოტვირთე ტელეფონზე.</h2>
+          <p>მხოლოდ iOS და Android. საიტზე ანგარიში არ იხსნება — დაასკანერე კოდი ან იპოვე მაღაზიაში.</p>
+          <div class="store-badges">
+            <span class="store-badge"><img src="/icons/app-store.svg" alt="" width="26" height="26" /><span><small>მალე</small><b>App Store</b></span></span>
+            <span class="store-badge"><img src="/icons/google-play.svg" alt="" width="26" height="26" /><span><small>მალე</small><b>Google Play</b></span></span>
+          </div>
+          <a class="dl-mail" href="mailto:support@medicard.ge"><span class="ic ic-chat" aria-hidden="true"></span>support@medicard.ge</a>
+        </div>
+        <div class="dl-qr">
+          <div class="qr-box"><img src="/qr.svg" alt="QR კოდი: medicard.ge" width="132" height="132" /></div>
+          <span>medicard.ge</span>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <footer class="band-paper">
+  <footer class="foot">
     <div class="wrap">
-    <div class="disclaimer" id="disclaimer"><strong>ეს არ არის საბოლოო დიაგნოზი.</strong>
-          Medi და აპის ანალიზები ეხმარება გაგებაში, მაგრამ არ ცვლის ექიმის კონსულტაციას,
-          დანიშნულებას ან სასწრაფო დახმარებას. თუ მდგომარეობა მძიმეა — მიმართე სპეციალისტს ან 112-ს.</div>
-      <div class="foot-top">
-        <div>
-          <a class="brand" href="/">
-            <img src="/icon.png" width="36" height="36" alt="" />
-            მედიქარდი
-          </a>
-          <p class="foot-note">Medicard.GE · მხოლოდ iOS და Android</p>
-        </div>
-        <a class="foot-mail" href="mailto:support@medicard.ge">support@medicard.ge</a>
-        <p class="foot-note">ანგარიში, ჩატი და ციკლი მხოლოდ ტელეფონზეა.</p>
-      </div>
-      <div class="foot-legal">
-        <p>© <span id="y"></span> Medicard.GE</p>
-        <p>
+      <p class="disclaimer" id="disclaimer"><strong>ეს არ არის საბოლოო დიაგნოზი.</strong> Medi და აპის ანალიზები ეხმარება გაგებაში, მაგრამ არ ცვლის ექიმის კონსულტაციას, დანიშნულებას ან სასწრაფო დახმარებას. თუ მდგომარეობა მძიმეა — მიმართე სპეციალისტს ან 112-ს.</p>
+      <div class="foot-row">
+        <a class="brand" href="/"><img src="/icon.png" width="34" height="34" alt="" /><span>მედიქარდი</span></a>
+        <nav class="foot-links" aria-label="ბმულები">
           <a href="/privacy">კონფიდენციალურობა</a>
-          · <a href="/terms">წესები</a>
-          · <a href="/calculators">კალკულატორები</a>
-          · <a href="#disclaimer">პასუხისმგებლობა</a>
-        </p>
+          <a href="/terms">წესები</a>
+          <a href="/calculators">კალკულატორები</a>
+          <a href="/medipulsi/">MEDIPULSI</a>
+          <a href="#disclaimer">პასუხისმგებლობა</a>
+        </nav>
+        <p class="foot-copy">© <span id="y"></span> Medicard.GE · მხოლოდ iOS და Android</p>
       </div>
     </div>
   </footer>
-  <script src="/landing.js?v=16"></script>
+  <script src="/home.js?v=1" defer></script>
 </body>
 </html>
