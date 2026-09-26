@@ -129,8 +129,13 @@ function canonicalBrand(raw, geoLatinMap = geoLatinCache) {
   if (STATIC_GEO_TO_LATIN[geo]) return STATIC_GEO_TO_LATIN[geo];
   if (geoLatinMap?.has(geo)) return geoLatinMap.get(geo);
   if (geoLatinMap) {
+    // A short shared prefix is often just a common pharmacological word root
+    // (e.g. "ლეტროზოლ-ფარმოზი" vs "ლეტრომარა" both start with "ლეტრო…") rather
+    // than the same brand — that would wrongly merge two different drugs under
+    // one price comparison. Require the shorter side to be fully covered by an
+    // 8-char-or-more shared prefix before trusting the match.
     for (const [g, l] of geoLatinMap) {
-      if (geo.startsWith(g.slice(0, Math.min(5, g.length))) || g.startsWith(geo.slice(0, Math.min(5, geo.length)))) {
+      if (geo.startsWith(g.slice(0, Math.min(8, g.length))) || g.startsWith(geo.slice(0, Math.min(8, geo.length)))) {
         return l;
       }
     }

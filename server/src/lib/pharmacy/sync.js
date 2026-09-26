@@ -116,7 +116,12 @@ export async function syncPharmacySource(source, opts = {}) {
 export async function syncAllPharmacySources(opts = {}) {
   await cleanupStaleRuns();
   const run = await startSyncRun('ALL');
-  const sources = opts.sources || ['PHARMADEPOT', 'AVERSI', 'PSP'];
+  // PSP is the only source whose names carry an explicit "Georgian - Latin" pair
+  // (e.g. "კლოტრიმაზოლი - Clotrimazole"), which is what seeds the geo→latin brand
+  // map used to cross-match the same drug across sources. Running it first means
+  // Pharmadepot's and Aversi's Georgian-only names can resolve to that same brand
+  // instead of falling back to the raw (case-inflected) Georgian word as their key.
+  const sources = opts.sources || ['PSP', 'PHARMADEPOT', 'AVERSI'];
   let total = 0;
   const errors = [];
 

@@ -23,7 +23,7 @@ async function getGeoLatinMap() {
 
   const rows = await prisma.catalogProduct.findMany({
     select: { name: true, offers: { select: { rawName: true }, take: 3 } },
-    take: 8000,
+    take: 30_000,
   });
 
   const corpus = [];
