@@ -7,7 +7,12 @@
  *   nutrition → AI check-ups → services → legal
  *
  * Stable and deterministic: no health scoring, promotional ranking, or device upsells.
+ * The one personal input is the onboarding goal ("რისთვის გჭირდება MEDICARD?"): its
+ * section moves up to sit right after "ask Medi". Nothing is hidden because of it.
  */
+export type HomePrimaryGoal = 'medications' | 'nutrition' | 'cycle' | 'general' | null | undefined;
+
+const GOAL_SECTION: Record<string, HomeSectionId> = { medications: 'nextDose', nutrition: 'nutrition', cycle: 'cycle' };
 export type HomeSectionId =
   | 'dashboard'
   | 'hero'
@@ -16,6 +21,7 @@ export type HomeSectionId =
   | 'cycle'
   | 'nutrition'
   | 'checkup'
+  | 'profileNudge'
   | 'services'
   | 'disclaimer';
 
@@ -27,6 +33,7 @@ const ORDER: readonly HomeSectionId[] = [
   'cycle',
   'nutrition',
   'checkup',
+  'profileNudge',
   'services',
   'disclaimer',
 ];
@@ -35,7 +42,13 @@ const FEMALE_ONLY: ReadonlySet<HomeSectionId> = new Set(['cycle']);
 
 export function buildHomeSectionOrder({
   includeCycle = false,
-}: { includeCycle?: boolean } = {}): HomeSectionId[] {
+  primaryGoal,
+}: { includeCycle?: boolean; primaryGoal?: HomePrimaryGoal } = {}): HomeSectionId[] {
   // NextDose owns schedule loading and hides itself when there are no pending doses.
-  return ORDER.filter((id) => includeCycle || !FEMALE_ONLY.has(id));
+  const order = ORDER.filter((id) => includeCycle || !FEMALE_ONLY.has(id));
+  const lead = primaryGoal ? GOAL_SECTION[primaryGoal] : undefined;
+  if (!lead || !order.includes(lead)) return order;
+  const rest = order.filter((id) => id !== lead);
+  const at = rest.indexOf('ask') + 1;
+  return [...rest.slice(0, at), lead, ...rest.slice(at)];
 }

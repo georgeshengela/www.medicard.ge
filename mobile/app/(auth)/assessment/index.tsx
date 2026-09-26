@@ -12,7 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import { AssessmentCompleteContent } from '@/components/assessment/AssessmentCompleteContent';
 import { AssessmentShell } from '@/components/assessment/AssessmentShell';
 import {
@@ -21,9 +21,13 @@ import {
 } from '@/components/assessment/AssessmentStepContent';
 import {
   ACTIVE_ASSESSMENT_STEPS,
+  ONBOARDING_STEPS,
+  ONBOARDING_TAIL_STEPS,
+  onboardingVisibleIndices,
   visibleAssessmentIndices,
   type AssessmentStep,
 } from '@/constants/assessmentSteps';
+import { createWeightDraft, deadlineFromPace, draftToGoal, saveWeightGoal } from '@/lib/weightGoal';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
@@ -31,9 +35,12 @@ import {
   extraAnswersPayload,
   formFromProfile,
   fullProfilePayload,
+  lastPeriodYmd,
   patchPayloadForStep,
   type AssessmentFormState,
 } from '@/lib/assessmentForm';
+import { lastPeriodValid } from '@/components/assessment/AssessmentStepContent';
+import { suggestTargetWeight } from '@/lib/profileCompletion';
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import {
   findAssessmentQaStepIndex,
@@ -42,47 +49,17 @@ import {
 } from '@/lib/onboardingDevPreview';
 import { needsProfileSetup, useAuth } from '@/store/AuthContext';
 
-function resolveNextIndex(from: number, form: AssessmentFormState): number {
-  let next = Math.min(from + 1, ACTIVE_ASSESSMENT_STEPS.length - 1);
-  while (next < ACTIVE_ASSESSMENT_STEPS.length) {
-    const type = ACTIVE_ASSESSMENT_STEPS[next]?.type;
-    if (
-      type === 'body-type' ||
-      (type === 'medications-list' && form.takesMedications !== true)
-    ) {
-      next += 1;
-      continue;
-    }
-    if (type === 'conditions-list' && form.hasConditions !== true) {
-      next += 1;
-      continue;
-    }
-    break;
-  }
-  return Math.min(next, ACTIVE_ASSESSMENT_STEPS.length - 1);
+/** Next/previous visible step in whichever list the flow runs (onboarding or full profile). */
+function resolveNextIndex(from: number, visible: number[]): number {
+  return visible.find((i) => i > from) ?? visible[visible.length - 1] ?? from;
 }
 
-function resolvePrevIndex(from: number, form: AssessmentFormState): number {
-  let prev = Math.max(from - 1, 0);
-  while (prev > 0) {
-    const type = ACTIVE_ASSESSMENT_STEPS[prev]?.type;
-    if (
-      type === 'body-type' ||
-      (type === 'medications-list' && form.takesMedications !== true)
-    ) {
-      prev -= 1;
-      continue;
-    }
-    if (type === 'conditions-list' && form.hasConditions !== true) {
-      prev -= 1;
-      continue;
-    }
-    break;
-  }
-  return Math.max(prev, 0);
+function resolvePrevIndex(from: number, visible: number[]): number {
+  const earlier = visible.filter((i) => i < from);
+  return earlier.length ? earlier[earlier.length - 1] : from;
 }
 
-const PICKER_STEPS = new Set(['birthdate', 'weight', 'height']);
+const PICKER_STEPS = new Set(['birthdate', 'weight', 'height', 'goal-weight', 'goal-cycle']);
 const CENTER_STEPS = new Set([
   ...PICKER_STEPS,
   'checkup-frequency',
@@ -117,6 +94,13 @@ function hidePrimaryCta(step: AssessmentStep): boolean {
 export default function AssessmentScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ preview?: string; step?: string }>();
+  // /profile/complete reuses this screen for "დაასრულე პროფილი" (the full question list).
+  const profileMode = (usePathname() ?? '').startsWith('/profile');
+  const STEPS = profileMode ? ACTIVE_ASSESSMENT_STEPS : ONBOARDING_STEPS;
+  const visibleFor = useCallback(
+    (f: Partial<AssessmentFormState>) => (profileMode ? visibleAssessmentIndices(f) : onboardingVisibleIndices(f)),
+    [profileMode],
+  );
   const preview = useOnboardingDevPreview();
   const {
     user,
@@ -173,35 +157,38 @@ export default function AssessmentScreen() {
 
   useEffect(() => {
     if (!user || loading || initialized.current || sessionDead.current) return;
-    let resume = healthProfile?.currentStepIndex ?? 0;
-    if (preview) {
-      const qa = findAssessmentQaStepIndex(params.step);
-      resume = qa >= 0 ? qa : 0;
-    }
-    const clamped = Math.min(
-      Math.max(0, resume),
-      ACTIVE_ASSESSMENT_STEPS.length - 1,
-    );
     const restored = formFromProfile(healthProfile, user);
-    const visible = visibleAssessmentIndices(restored);
-    setStepIndex(
-      visible.find((index) => index >= clamped) ?? visible[visible.length - 1],
-    );
+    const visible = visibleFor(restored);
+    const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
+    let resume = 0;
+    if (profileMode) {
+      // Start at the first question this person has not answered yet.
+      const done = new Set(restored.confirmedSteps ?? []);
+      resume = visible.find((i) => STEPS[i].type !== 'intro' && !done.has(STEPS[i].type)) ?? 0;
+    } else if (extra.onboardingVersion === 2 && typeof extra.onboardingStepKey === 'string') {
+      resume = Math.max(0, STEPS.findIndex((st) => st.key === extra.onboardingStepKey));
+    }
+    if (preview && profileMode) {
+      const qa = findAssessmentQaStepIndex(params.step);
+      if (qa >= 0) resume = qa;
+    }
+    setStepIndex(visible.find((index) => index >= resume) ?? visible[visible.length - 1]);
     setForm(restored);
     initialized.current = true;
-  }, [user, healthProfile, loading, preview, params.step]);
+  }, [user, healthProfile, loading, preview, params.step, profileMode, visibleFor, STEPS]);
 
   useEffect(() => {
     if (!preview || !initialized.current) return;
     const qa = findAssessmentQaStepIndex(params.step);
-    if (qa >= 0) setStepIndex(qa);
-  }, [preview, params.step]);
+    if (qa >= 0 && profileMode) setStepIndex(qa);
+  }, [preview, params.step, profileMode]);
 
-  const step = ACTIVE_ASSESSMENT_STEPS[stepIndex];
+  const step = STEPS[stepIndex];
   const visibleIndices = useMemo(
-    () => visibleAssessmentIndices(form ?? {}),
-    [form?.takesMedications, form?.hasConditions],
+    () => visibleFor(form ?? {}),
+    [visibleFor, form?.takesMedications, form?.hasConditions, form?.primaryGoal, form?.gender],
   );
+  const isLastVisible = visibleIndices[visibleIndices.length - 1] === stepIndex;
   const visiblePosition = Math.max(0, visibleIndices.indexOf(stepIndex));
   const progress = {
     visible: true,
@@ -233,33 +220,63 @@ export default function AssessmentScreen() {
     async (nextIndex: number, currentForm: AssessmentFormState) => {
       if (preview) return;
       const payload = patchPayloadForStep(currentForm, nextIndex);
+      if (!profileMode) {
+        payload.extraAnswers = {
+          ...(payload.extraAnswers as Record<string, unknown>),
+          onboardingVersion: 2,
+          onboardingStepKey: STEPS[nextIndex]?.key,
+        };
+      }
       const result = await api.healthProfile.update(payload);
       setHealthProfile(result.profile);
       if (result.user) setUser(result.user);
     },
-    [preview, setHealthProfile, setUser],
+    [preview, setHealthProfile, setUser, profileMode, STEPS],
   );
 
   const finishAssessmentPhase = useCallback(
     async (currentForm: AssessmentFormState) => {
       if (preview) {
         router.replace(
-          onboardingDevHref('/(auth)/profile-setup/avatar') as never,
+          onboardingDevHref('/(auth)/profile-setup/privacy') as never,
         );
         return;
+      }
+      if (profileMode) {
+        const result = await api.healthProfile.update(fullProfilePayload(currentForm, stepIndex));
+        setHealthProfile(result.profile);
+        if (result.user) setUser(result.user);
+        router.replace('/(tabs)/profile' as never);
+        return;
+      }
+      const confirmed = new Set(currentForm.confirmedSteps ?? []);
+      // Goal-specific first step: saved where the feature already reads it (one source of truth).
+      if (currentForm.primaryGoal === 'nutrition' && confirmed.has('goal-weight')) {
+        const draft = createWeightDraft(currentForm.weightKg);
+        draft.targetKg = currentForm.targetWeightKg;
+        draft.deadlineYmd = deadlineFromPace(currentForm.weightKg, currentForm.targetWeightKg, 'moderate');
+        // Reminders stay off until the person grants notifications in step 7.
+        draft.reminderEnabled = false;
+        const goal = draftToGoal(draft);
+        if (goal) await saveWeightGoal({ ...goal, updatedAt: new Date().toISOString() });
+      }
+      if (currentForm.primaryGoal === 'cycle' && confirmed.has('goal-cycle') && lastPeriodValid(currentForm)) {
+        await api.cycle.setLastPeriod(lastPeriodYmd(currentForm)).catch(() => undefined);
       }
       const result = await api.healthProfile.update({
         ...fullProfilePayload(currentForm, stepIndex),
         extraAnswers: {
           ...extraAnswersPayload(currentForm),
           assessmentPhaseComplete: true,
+          onboardingVersion: 2,
+          onboardingStepKey: null,
         },
       });
       setHealthProfile(result.profile);
       if (result.user) setUser(result.user);
-      router.replace('/(auth)/profile-setup/avatar');
+      router.replace(nextProfileSetupHref(result.profile, result.user ?? user) as never);
     },
-    [preview, router, setHealthProfile, setUser, stepIndex],
+    [preview, router, setHealthProfile, setUser, stepIndex, profileMode, user],
   );
 
   const advanceWithPatch = async (patch: Partial<AssessmentFormState>) => {
@@ -269,14 +286,14 @@ export default function AssessmentScreen() {
       ...form,
       ...patch,
       confirmedSteps: Array.from(
-        new Set([...(form.confirmedSteps ?? []), step.type]),
+        new Set([...(form.confirmedSteps ?? []), step.type, ...(step.type === 'body' ? ['height', 'weight'] : [])]),
       ),
     };
     setForm(nextForm);
     setError(null);
 
     const prevIndex = stepIndex;
-    const nextIndex = resolveNextIndex(stepIndex, nextForm);
+    const nextIndex = resolveNextIndex(stepIndex, visibleFor(nextForm));
     setStepIndex(nextIndex);
 
     setBusy(true);
@@ -296,10 +313,14 @@ export default function AssessmentScreen() {
     if (!form || !step || busy) return;
     setError(null);
 
-    if (step.type === 'complete') {
+    if (step.type === 'complete' || (!profileMode && isLastVisible)) {
+      const finalForm = step.type === 'complete' ? form : {
+        ...form,
+        confirmedSteps: Array.from(new Set([...(form.confirmedSteps ?? []), step.type, ...(step.type === 'body' ? ['height', 'weight'] : [])])),
+      };
       setBusy(true);
       try {
-        await finishAssessmentPhase(form);
+        await finishAssessmentPhase(finalForm);
       } catch (e) {
         markSessionDead(e);
         setError(authErrorMessage(e));
@@ -312,13 +333,17 @@ export default function AssessmentScreen() {
     Keyboard.dismiss();
     const confirmedForm = {
       ...form,
+      // Leaving the body step: seed the weight goal from the real weight unless already chosen.
+      ...(step.type === 'body' && !form.confirmedSteps?.includes('goal-weight')
+        ? { targetWeightKg: suggestTargetWeight(form.heightCm, form.weightKg) }
+        : {}),
       confirmedSteps: Array.from(
-        new Set([...(form.confirmedSteps ?? []), step.type]),
+        new Set([...(form.confirmedSteps ?? []), step.type, ...(step.type === 'body' ? ['height', 'weight'] : [])]),
       ),
     };
     setForm(confirmedForm);
     const prevIndex = stepIndex;
-    const nextIndex = resolveNextIndex(stepIndex, confirmedForm);
+    const nextIndex = resolveNextIndex(stepIndex, visibleFor(confirmedForm));
     setStepIndex(nextIndex);
 
     setBusy(true);
@@ -336,17 +361,30 @@ export default function AssessmentScreen() {
   const goBack = () => {
     if (!form || stepIndex <= 0 || busy) return;
     setError(null);
-    setStepIndex(resolvePrevIndex(stepIndex, form));
+    setStepIndex(resolvePrevIndex(stepIndex, visibleFor(form)));
   };
 
   const goSkip = async (remaining = false) => {
     if (!form || !step || busy) return;
     Keyboard.dismiss();
     setError(null);
+    if (!profileMode && isLastVisible) {
+      // Skipping the optional goal step still finishes onboarding (nothing extra is saved).
+      setBusy(true);
+      try {
+        await finishAssessmentPhase(form);
+      } catch (e) {
+        markSessionDead(e);
+        setError(authErrorMessage(e));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     const prevIndex = stepIndex;
     const nextIndex = remaining
-      ? ACTIVE_ASSESSMENT_STEPS.length - 1
-      : resolveNextIndex(stepIndex, form);
+      ? STEPS.length - 1
+      : resolveNextIndex(stepIndex, visibleFor(form));
     setStepIndex(nextIndex);
     setBusy(true);
     try {
@@ -400,7 +438,7 @@ export default function AssessmentScreen() {
     return <Redirect href="/(auth)/sign-in" />;
   }
 
-  if (!preview && needsProfileSetup(healthProfile)) {
+  if (!preview && !profileMode && needsProfileSetup(healthProfile)) {
     return (
       <Redirect href={nextProfileSetupHref(healthProfile, user) as never} />
     );
@@ -420,7 +458,9 @@ export default function AssessmentScreen() {
     ? ka.assessment.ready
     : isComplete
       ? ka.assessment.goToPersonalInfo
-      : ka.assessment.continue;
+      : !profileMode && isLastVisible
+        ? ka.assessment.finishLabel
+        : ka.assessment.continue;
   const canContinue = stepCanContinue(step, form);
 
   return (
@@ -432,7 +472,9 @@ export default function AssessmentScreen() {
       primaryLabel={primaryLabel}
       stepLabel={
         !isIntro && !isComplete
-          ? `კითხვა ${visiblePosition} / ${visibleIndices.length - 2}${step.skippable ? ' · არჩევითი' : ' · აუცილებელი'}`
+          ? profileMode
+            ? `კითხვა ${visiblePosition} / ${visibleIndices.length - 2}${step.skippable ? ' · არჩევითი' : ' · აუცილებელი'}`
+            : `${ka.assessment.onboardingStep(visiblePosition + 1, visibleIndices.length + (form.primaryGoal ? 0 : 1) + ONBOARDING_TAIL_STEPS)}${step.skippable ? ' · ' + ka.assessment.optional : ''}`
           : undefined
       }
       onPrimary={goNext}
@@ -460,10 +502,13 @@ export default function AssessmentScreen() {
         step.type === 'diet-habits' ||
         step.type === 'medications-list' ||
         step.type === 'allergies' ||
-        step.type === 'checkup-frequency'
+        step.type === 'checkup-frequency' ||
+        step.type === 'primary-goal' ||
+        step.type === 'body' ||
+        step.type.startsWith('goal-')
       }
       footerBelow={
-        step.type === 'weight' ? (
+        step.type === 'weight' && profileMode ? (
           <Pressable
             accessibilityRole="button"
             disabled={busy}

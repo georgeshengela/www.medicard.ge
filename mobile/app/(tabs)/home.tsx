@@ -13,6 +13,7 @@ import {
   Activity,
   Brain,
   CalendarCheck,
+  ClipboardCheck,
   FlaskConical,
   HeartHandshake,
   MessagesSquare,
@@ -44,6 +45,8 @@ import { useStepsMetrics } from '@/hooks/useStepsMetrics';
 import { formatDayMonthYearKa } from '@/lib/format';
 import { requestHealthRefresh } from '@/lib/healthDataSync';
 import { buildHomeSectionOrder } from '@/lib/home/homeSectionOrder';
+import { primaryGoalFromProfile } from '@/lib/assessmentForm';
+import { profileCompletion } from '@/lib/profileCompletion';
 import { computeTodayDoses } from '@/lib/home/todayDoses';
 import { getCyclePromptSeen, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { todayYmd } from '@/lib/medications.shared';
@@ -89,6 +92,7 @@ export default function Home() {
   const [refreshError, setRefreshError] = useState(false);
   const [showCyclePrompt, setShowCyclePrompt] = useState(false);
   const female = user?.gender === 'FEMALE';
+  const completion = profileCompletion(healthProfile, user);
   const communityEntry = useCommunityEntry(user?.id, female);
 
   useFocusEffect(
@@ -254,6 +258,18 @@ export default function Home() {
         </View>
       </View>
     ),
+    profileNudge: completion.percent < 100 ? (
+      <View style={s.section}>
+        <HubFeatureCard
+          icon={ClipboardCheck}
+          ink="teal"
+          title={ka.home.completeProfileTitle(completion.percent)}
+          body={ka.home.completeProfileBody}
+          cta={ka.home.completeProfileCta}
+          onPress={() => open('/profile/complete')}
+        />
+      </View>
+    ) : null,
     services: (
       <View style={s.section}>
         {heading('სერვისები', '/explore', 'ყველა ფუნქცია')}
@@ -290,7 +306,7 @@ export default function Home() {
             განახლება ვერ დასრულდა. ხელახლა ჩამოწიე გვერდი.
           </Text>
         ) : null}
-        {buildHomeSectionOrder({ includeCycle: female }).map((id) => (
+        {buildHomeSectionOrder({ includeCycle: female, primaryGoal: primaryGoalFromProfile(healthProfile) }).map((id) => (
           <React.Fragment key={id}>{sections[id]}</React.Fragment>
         ))}
       </ScrollView>

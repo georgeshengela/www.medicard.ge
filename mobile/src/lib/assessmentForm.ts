@@ -1,4 +1,5 @@
 import type { Gender, HealthProfile } from '@/lib/api';
+import type { PrimaryGoal } from '@/constants/assessmentSteps';
 import {
   ageFromBirthDate,
   birthDateIso,
@@ -33,6 +34,12 @@ export type AssessmentFormState = {
   healthNote: string;
   healthGoals: string[];
   voiceRecorded: boolean;
+  /** 7-step onboarding: what the person came for; drives Home order. */
+  primaryGoal: PrimaryGoal | null;
+  targetWeightKg: number;
+  lastPeriodMonth: number;
+  lastPeriodDay: number;
+  lastPeriodYear: number;
 };
 
 export function defaultAssessmentForm(): AssessmentFormState {
@@ -64,7 +71,26 @@ export function defaultAssessmentForm(): AssessmentFormState {
     healthNote: '',
     healthGoals: [],
     voiceRecorded: false,
+    primaryGoal: null,
+    targetWeightKg: 67,
+    ...lastPeriodDefault(),
   };
+}
+
+function lastPeriodDefault() {
+  const d = new Date(Date.now() - 14 * 86400000);
+  return { lastPeriodMonth: d.getMonth() + 1, lastPeriodDay: d.getDate(), lastPeriodYear: d.getFullYear() };
+}
+
+export function lastPeriodYmd(form: AssessmentFormState): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${form.lastPeriodYear}-${p(form.lastPeriodMonth)}-${p(form.lastPeriodDay)}`;
+}
+
+const PRIMARY_GOALS: PrimaryGoal[] = ['medications', 'nutrition', 'cycle', 'general'];
+export function primaryGoalFromProfile(profile: HealthProfile | null | undefined): PrimaryGoal | null {
+  const raw = (profile?.extraAnswers as Record<string, unknown> | undefined)?.primaryGoal;
+  return PRIMARY_GOALS.includes(raw as PrimaryGoal) ? (raw as PrimaryGoal) : null;
 }
 
 export function ageFromForm(form: AssessmentFormState): number {
@@ -122,6 +148,7 @@ function extraFromProfile(
     weightUnit: extra.weightUnit === 'lbs' ? 'lbs' : 'kg',
     heightUnit: extra.heightUnit === 'ft' ? 'ft' : 'cm',
     voiceRecorded: extra.voiceRecorded === true,
+    primaryGoal: primaryGoalFromProfile(profile),
   };
 }
 
@@ -198,6 +225,7 @@ export function extraAnswersPayload(
     weightUnit: form.weightUnit,
     heightUnit: form.heightUnit,
     voiceRecorded: form.voiceRecorded,
+    primaryGoal: form.primaryGoal ?? undefined,
   };
 }
 
@@ -226,10 +254,10 @@ export function fullProfilePayload(
     birthDate: form.confirmedSteps?.includes('birthdate')
       ? birthDateFromForm(form)
       : undefined,
-    heightCm: form.confirmedSteps?.includes('height')
+    heightCm: form.confirmedSteps?.includes('height') || form.confirmedSteps?.includes('body')
       ? form.heightCm
       : undefined,
-    weightKg: form.confirmedSteps?.includes('weight')
+    weightKg: form.confirmedSteps?.includes('weight') || form.confirmedSteps?.includes('body')
       ? form.weightKg
       : undefined,
     smokingStatus: form.smokingStatus ?? undefined,

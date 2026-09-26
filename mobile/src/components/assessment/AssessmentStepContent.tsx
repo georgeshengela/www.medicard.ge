@@ -3,8 +3,11 @@ import { Dimensions, Image, ImageSourcePropType, Pressable, Text, TextInput, Vie
 import {
   Activity,
   Bot,
+  CalendarHeart,
   HeartPulse,
+  Pill,
   Plus,
+  Salad,
   Smartphone,
   Stethoscope,
 } from 'lucide-react-native';
@@ -34,7 +37,7 @@ import { AllergyPicker } from '@/components/assessment/AllergyPicker';
 import { ConditionPicker } from '@/components/assessment/ConditionPicker';
 import { MedicationPicker } from '@/components/assessment/MedicationPicker';
 import { useAssessment } from '@/constants/assessmentLayout';
-import type { AssessmentStep } from '@/constants/assessmentSteps';
+import { primaryGoalOptions, type AssessmentStep, type PrimaryGoal } from '@/constants/assessmentSteps';
 import {
   ILLUSTRATION_SOURCES,
   MOOD_KEYS,
@@ -51,6 +54,38 @@ type Props = {
 };
 
 const WEIGHT_KG = Array.from({ length: 166 }, (_, i) => 35 + i);
+const HEIGHT_RULER_CM = Array.from({ length: 101 }, (_, i) => 120 + i);
+
+const PRIMARY_GOAL_ICONS: Record<PrimaryGoal, typeof Pill> = {
+  medications: Pill,
+  nutrition: Salad,
+  cycle: CalendarHeart,
+  general: HeartPulse,
+};
+
+/** A period start has to be a real day in the last ~100 days (cycle API rejects future dates). */
+export function lastPeriodValid(form: Pick<AssessmentFormState, 'lastPeriodYear' | 'lastPeriodMonth' | 'lastPeriodDay'>, now = Date.now()): boolean {
+  const d = new Date(form.lastPeriodYear, form.lastPeriodMonth - 1, form.lastPeriodDay, 12);
+  if (d.getMonth() !== form.lastPeriodMonth - 1) return false;
+  const days = (now - d.getTime()) / 86400000;
+  return days >= -0.5 && days <= 100;
+}
+
+/** Compact horizontal ruler with its value on top — two fit on one onboarding screen. */
+function MetricRuler({ label, value, unit, values, labelOrigin, onSelect }: { label: string; value: number; unit: string; values: number[]; labelOrigin: number; onSelect: (n: number) => void }) {
+  const ASSESSMENT = useAssessment();
+  return (
+    <View style={{ width: '100%' }}>
+      <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: ASSESSMENT.textSecondary, textAlign: 'center' }}>{label}</Text>
+      <Text accessibilityLabel={label + ': ' + value + ' ' + unit} style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 40, lineHeight: 52, color: ASSESSMENT.textPrimary, textAlign: 'center' }}>
+        {value} <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 20, color: ASSESSMENT.textSecondary }}>{unit}</Text>
+      </Text>
+      <View style={{ width: SCREEN_W, marginHorizontal: -24, alignSelf: 'center' }}>
+        <WeightRulerPicker values={values} selected={value} labelEvery={10} labelOrigin={labelOrigin} onSelect={onSelect} />
+      </View>
+    </View>
+  );
+}
 const WEIGHT_LBS = Array.from({ length: 321 }, (_, i) => 80 + i); // 80–400 lbs (Figma ruler)
 const LBS_PER_KG = 2.2046226218;
 const SCREEN_W = Dimensions.get('window').width;
@@ -396,6 +431,88 @@ export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: P
       );
     }
 
+    case 'primary-goal':
+      return (
+        <View style={{ gap: 8 }}>
+          {primaryGoalOptions(form.gender).map((key) => (
+            <HealthGoalOption
+              key={key}
+              title={ka.assessment.primaryGoals[key]}
+              selected={form.primaryGoal === key}
+              icon={PRIMARY_GOAL_ICONS[key]}
+              onPress={() => onChange({ primaryGoal: key })}
+            />
+          ))}
+        </View>
+      );
+
+    case 'body':
+      return (
+        <View style={{ width: '100%', gap: 20 }}>
+          <MetricRuler
+            label={ka.assessment.bodyHeight}
+            value={Math.round(form.heightCm)}
+            unit={ka.assessment.cm}
+            values={HEIGHT_RULER_CM}
+            labelOrigin={120}
+            onSelect={(heightCm) => onChange({ heightCm })}
+          />
+          <MetricRuler
+            label={ka.assessment.bodyWeight}
+            value={Math.round(form.weightKg)}
+            unit={ka.assessment.kg}
+            values={WEIGHT_KG}
+            labelOrigin={35}
+            onSelect={(weightKg) => onChange({ weightKg })}
+          />
+        </View>
+      );
+
+    case 'goal-medication':
+      return (
+        <MedicationPicker
+          value={form.medications}
+          onChange={(medications) => onChange({ medications, takesMedications: medications.length > 0 ? true : form.takesMedications })}
+        />
+      );
+
+    case 'goal-weight': {
+      const diff = Math.round(form.targetWeightKg - form.weightKg);
+      return (
+        <View style={{ width: '100%', gap: 12 }}>
+          <MetricRuler
+            label={ka.assessment.goalWeightLabel}
+            value={Math.round(form.targetWeightKg)}
+            unit={ka.assessment.kg}
+            values={WEIGHT_KG}
+            labelOrigin={35}
+            onSelect={(targetWeightKg) => onChange({ targetWeightKg })}
+          />
+          <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 15, lineHeight: 22, color: ASSESSMENT.textSecondary, textAlign: 'center' }}>
+            {ka.assessment.goalWeightDelta(Math.round(form.weightKg), diff)}
+          </Text>
+        </View>
+      );
+    }
+
+    case 'goal-cycle':
+      return (
+        <View style={{ width: '100%', alignItems: 'center' }}>
+          <DateWheelPicker
+            month={form.lastPeriodMonth}
+            day={form.lastPeriodDay}
+            year={form.lastPeriodYear}
+            onChange={(patch) =>
+              onChange({
+                ...(patch.month !== undefined ? { lastPeriodMonth: patch.month } : {}),
+                ...(patch.day !== undefined ? { lastPeriodDay: patch.day } : {}),
+                ...(patch.year !== undefined ? { lastPeriodYear: patch.year } : {}),
+              })
+            }
+          />
+        </View>
+      );
+
     case 'blood-type':
       return (
         <BloodTypeSelector
@@ -566,6 +683,16 @@ export function stepCanContinue(step: AssessmentStep, form: AssessmentFormState)
       return form.checkupFrequency !== null;
     case 'complete':
       return true;
+    case 'primary-goal':
+      return form.primaryGoal !== null;
+    case 'body':
+      return form.heightCm >= 100 && form.weightKg >= 30;
+    case 'goal-medication':
+      return form.medications.length > 0;
+    case 'goal-weight':
+      return Math.abs(form.targetWeightKg - form.weightKg) >= 1;
+    case 'goal-cycle':
+      return lastPeriodValid(form);
     default:
       return true;
   }

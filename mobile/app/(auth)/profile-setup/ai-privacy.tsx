@@ -37,7 +37,7 @@ export default function ProfileSetupAiPrivacyScreen() {
   if (blocked === 'assessment') return <Redirect href="/(auth)/assessment" />;
   if (blocked === 'home') return <Redirect href="/(tabs)/home" />;
 
-  const goNext = () => router.replace(onboardingStepHref('/(auth)/profile-setup/location', preview) as never);
+  const goNext = () => router.replace(onboardingStepHref('/(auth)/profile-setup/notifications', preview) as never);
 
   const choose = (allow: boolean) => {
     if (busy) return;

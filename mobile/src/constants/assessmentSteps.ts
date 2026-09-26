@@ -23,7 +23,13 @@ export type AssessmentStepType =
   | 'conditions-gate'
   | 'conditions-list'
   | 'checkup-frequency'
-  | 'complete';
+  | 'complete'
+  // 7-step onboarding (2026-09-27)
+  | 'primary-goal'
+  | 'body'
+  | 'goal-medication'
+  | 'goal-weight'
+  | 'goal-cycle';
 
 export type AssessmentStep = {
   key: string;
@@ -231,4 +237,48 @@ export function visibleAssessmentIndices(form: {
       return [];
     return [index];
   });
+}
+
+export type PrimaryGoal = 'medications' | 'nutrition' | 'cycle' | 'general';
+
+/**
+ * 7-step onboarding (owner decision 2026-09-27). Steps 1–5 live here; step 6 is the
+ * privacy acceptance + AI consent screens and step 7 is the notification permission,
+ * both in profile-setup. Everything else moved to "დაასრულე პროფილი" (ASSESSMENT_STEPS).
+ * Sex comes first so the cycle goal is only offered to women.
+ */
+export const ONBOARDING_STEPS: AssessmentStep[] = [
+  { key: 'o1-gender', figmaId: '9217:164488', type: 'gender', titleKey: 'genderTitle', bodyKey: 'genderBody' },
+  { key: 'o2-goal', figmaId: '9217:164456', type: 'primary-goal', titleKey: 'primaryGoalTitle', bodyKey: 'primaryGoalBody' },
+  { key: 'o3-birthdate', figmaId: '9217:164472', type: 'birthdate', titleKey: 'birthdateTitle', bodyKey: 'birthdateBody' },
+  { key: 'o4-body', figmaId: '9217:164526', type: 'body', titleKey: 'bodyTitle', bodyKey: 'bodyBody' },
+  { key: 'o5-medication', figmaId: '9217:164803', type: 'goal-medication', titleKey: 'goalMedicationTitle', bodyKey: 'goalMedicationBody', skippable: true },
+  { key: 'o5-weight', figmaId: '9217:164526', type: 'goal-weight', titleKey: 'goalWeightTitle', bodyKey: 'goalWeightBody', skippable: true },
+  { key: 'o5-cycle', figmaId: '9217:164472', type: 'goal-cycle', titleKey: 'goalCycleTitle', bodyKey: 'goalCycleBody', skippable: true },
+];
+
+/** Steps 6 (privacy + AI consent) and 7 (notifications) run after the assessment screen. */
+export const ONBOARDING_TAIL_STEPS = 2;
+
+const GOAL_STEP: Record<PrimaryGoal, AssessmentStepType | null> = {
+  medications: 'goal-medication',
+  nutrition: 'goal-weight',
+  cycle: 'goal-cycle',
+  general: null,
+};
+
+/** Only the goal-specific step that matches the chosen goal is shown. */
+export function onboardingVisibleIndices(form: { primaryGoal?: PrimaryGoal | null; gender?: string | null }) {
+  const goalStep = form.primaryGoal ? GOAL_STEP[form.primaryGoal] : null;
+  return ONBOARDING_STEPS.flatMap((step, index) => {
+    if (step.type.startsWith('goal-')) {
+      if (step.type !== goalStep) return [];
+      if (step.type === 'goal-cycle' && form.gender !== 'FEMALE') return [];
+    }
+    return [index];
+  });
+}
+
+export function primaryGoalOptions(gender: string | null | undefined): PrimaryGoal[] {
+  return gender === 'FEMALE' ? ['medications', 'nutrition', 'cycle', 'general'] : ['medications', 'nutrition', 'general'];
 }

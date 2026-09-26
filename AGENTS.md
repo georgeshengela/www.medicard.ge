@@ -114,6 +114,10 @@ Owner decision after the 2026-09-26 strategic audit: fewer features, one clear p
 - **Cycle:** no new phases until iOS QA is complete.
 - **Women's space (community):** no open launch until there are 300+ active women and named human moderators assigned to the queue. Access sits behind the admin launch flag (`CommunityConfig.open`, admin ქალების სივრცე → launch card, audited, `COMMUNITY_MANAGE`). Missing row/table = closed. While closed, existing `CommunityMember`s keep full access, new members cannot join (`POST /api/community/membership` 403), and Home/Explore hide the entry for non-members (`useCommunityEntry`). Do not remove or bypass it.
 
+## 7-step onboarding (2026-09-27, app 1.0.0.13.6)
+
+New accounts answer 5 questions in `/(auth)/assessment` (`ONBOARDING_STEPS`): sex → primary goal (medications / nutrition-weight / cycle for women / general) → birth date → height+weight on one screen → one goal step (first medication / target weight / last period start). Then step 6 = the required privacy acceptance (legal record, text unchanged) followed by the voluntary AI consent, and step 7 = notifications (requested only from its button). `extraAnswers.primaryGoal` moves that Home section right after "ask Medi"; `onboardingVersion: 2` + `onboardingStepKey` drive resume. The goal step saves where the feature already reads it: `saveWeightGoal` (reminders off until notifications are granted) and `api.cycle.setLastPeriod`. Avatar, phone verification, Face ID and location are no longer onboarding steps; their screens stay routable for features that need them. The full question list lives at `/profile/complete` ("დაასრულე პროფილი", Home card from `profileCompletion`). Existing users (`completedAt` set) never see the new flow. Test: `npm --prefix mobile run test:onboarding`.
+
 ## Retired district competition (2026-09-19)
 
 The owner removed the district walking competition completely. Do not recreate its screens, sync, admin module, or database tables. MEDIRUN / MEDIPULSI remains the worldwide exploration game, accessible from Home; its duplicate Profile block is removed. Shared health totals and Pets remain independent.

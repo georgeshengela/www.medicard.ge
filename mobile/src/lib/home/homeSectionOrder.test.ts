@@ -28,3 +28,16 @@ test('caller mutation cannot alter subsequent home composition', () => {
   order.reverse();
   assert.deepEqual(buildHomeSectionOrder(), baseline);
 });
+
+test('the onboarding goal moves its section right after ask Medi, nothing disappears', () => {
+  const base = buildHomeSectionOrder({ includeCycle: true });
+  const nutrition = buildHomeSectionOrder({ includeCycle: true, primaryGoal: 'nutrition' });
+  assert.equal(nutrition[nutrition.indexOf('ask') + 1], 'nutrition');
+  assert.deepEqual([...nutrition].sort(), [...base].sort());
+  const cycle = buildHomeSectionOrder({ includeCycle: true, primaryGoal: 'cycle' });
+  assert.equal(cycle[cycle.indexOf('ask') + 1], 'cycle');
+  assert.deepEqual(buildHomeSectionOrder({ includeCycle: true, primaryGoal: 'general' }), base);
+  assert.deepEqual(buildHomeSectionOrder({ includeCycle: true, primaryGoal: 'medications' }), base); // already right after ask
+  // A man who somehow has the cycle goal does not get a cycle section.
+  assert.ok(!buildHomeSectionOrder({ includeCycle: false, primaryGoal: 'cycle' }).includes('cycle'));
+});

@@ -27,32 +27,29 @@ function phoneDigits(user: User | null | undefined): string {
   return typeof user?.phone === 'string' ? user.phone.replace(/\D/g, '') : '';
 }
 
-/** Next unfinished profile-setup screen — never rewind to avatar if it is already saved. */
+/**
+ * Next unfinished setup screen after the 5 assessment steps (7-step onboarding, 2026-09-27):
+ * step 6 = privacy acceptance (required, legal record) then the voluntary AI consent,
+ * step 7 = notification permission (requested only from its button). Avatar, phone
+ * verification, Face ID and location are no longer onboarding steps: they are asked when a
+ * feature actually needs them. Their screens stay routable for that.
+ */
 export function nextProfileSetupHref(
   profile: HealthProfile | null | undefined,
-  user?: User | null,
+  _user?: User | null,
 ): string {
   const extra = extraOf(profile);
-  if (!hasAvatar(extra)) return '/(auth)/profile-setup/avatar';
-
-  const digits = phoneDigits(user);
-  const phoneLinked = digits.length >= 9;
-  const phoneVerified = extra.phoneVerified === true;
-  if (!phoneLinked) return '/(auth)/profile-setup/phone';
-  if (!phoneVerified) {
-    const raw = typeof user?.phone === 'string' ? user.phone : '';
-    return raw
-      ? `/(auth)/profile-setup/verify?phone=${encodeURIComponent(raw)}`
-      : '/(auth)/profile-setup/phone';
-  }
-
-  const faceIdDone = extra.faceIdPrompted === true || typeof extra.biometricEnabled === 'boolean';
-  if (!faceIdDone) return '/(auth)/profile-setup/face-id';
   if (extra.privacyAccepted !== true) return '/(auth)/profile-setup/privacy';
-  if (extra.notificationsEnabled === undefined) return '/(auth)/profile-setup/notifications';
   if (extra.aiPrivacyPrompted !== true) return '/(auth)/profile-setup/ai-privacy';
-  const locationDone = extra.locationPrompted === true
-    || (extra.location != null && typeof extra.location === 'object' && (extra.location as { prompted?: unknown }).prompted === true);
-  if (!locationDone) return '/(auth)/profile-setup/location';
+  if (extra.notificationsEnabled === undefined) return '/(auth)/profile-setup/notifications';
   return '/(auth)/profile-setup/analyzing';
+}
+
+/** Kept for features that later ask for them (e.g. phone verification before a gated space). */
+export function hasProfileAvatar(profile: HealthProfile | null | undefined): boolean {
+  return hasAvatar(extraOf(profile));
+}
+
+export function phoneVerified(profile: HealthProfile | null | undefined, user?: User | null): boolean {
+  return phoneDigits(user).length >= 9 && extraOf(profile).phoneVerified === true;
 }

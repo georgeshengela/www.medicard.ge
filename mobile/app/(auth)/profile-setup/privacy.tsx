@@ -55,7 +55,7 @@ export default function ProfileSetupPrivacyScreen() {
         privacyAcceptedAt: new Date().toISOString(),
       });
       setHealthProfile(updated);
-      router.replace(onboardingStepHref('/(auth)/profile-setup/notifications', preview) as never);
+      router.replace(onboardingStepHref('/(auth)/profile-setup/ai-privacy', preview) as never);
     } finally {
       setBusy(false);
     }

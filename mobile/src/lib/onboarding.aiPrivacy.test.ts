@@ -2,33 +2,37 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { nextProfileSetupHref } from './onboarding.ts';
 
-const user = { phone: '+995555000000' };
+const user = { phone: null };
 
 function profile(extra: Record<string, unknown>) {
   return { completedAt: null, extraAnswers: extra };
 }
 
-const ready = {
-  avatarId: 'avatar-1',
-  phoneVerified: true,
-  faceIdPrompted: true,
-  privacyAccepted: true,
-  notificationsEnabled: true,
-};
+describe('7-step onboarding tail (privacy → AI → notifications)', () => {
+  it('asks for the required privacy acceptance first', () => {
+    assert.equal(nextProfileSetupHref(profile({}) as never, user as never), '/(auth)/profile-setup/privacy');
+  });
 
-describe('AI privacy onboarding step', () => {
-  it('asks for AI permission after notifications and before analysis', () => {
-    assert.equal(nextProfileSetupHref(profile(ready) as never, user as never), '/(auth)/profile-setup/ai-privacy');
+  it('asks for AI consent right after privacy, and a decline still moves on', () => {
+    assert.equal(nextProfileSetupHref(profile({ privacyAccepted: true }) as never, user as never), '/(auth)/profile-setup/ai-privacy');
     assert.equal(
-      nextProfileSetupHref(profile({ ...ready, aiPrivacyPrompted: true, aiPrivacyDecision: 'declined' }) as never, user as never),
-      '/(auth)/profile-setup/location',
+      nextProfileSetupHref(profile({ privacyAccepted: true, aiPrivacyPrompted: true, aiPrivacyDecision: 'declined' }) as never, user as never),
+      '/(auth)/profile-setup/notifications',
     );
+  });
+
+  it('finishes after the notification step whatever the answer', () => {
+    for (const notificationsEnabled of [true, false]) {
+      assert.equal(
+        nextProfileSetupHref(profile({ privacyAccepted: true, aiPrivacyPrompted: true, notificationsEnabled }) as never, user as never),
+        '/(auth)/profile-setup/analyzing',
+      );
+    }
+  });
+
+  it('no longer blocks on avatar, phone verification, Face ID or location', () => {
     assert.equal(
-      nextProfileSetupHref(profile({
-        ...ready,
-        aiPrivacyPrompted: true,
-        locationPrompted: true,
-      }) as never, user as never),
+      nextProfileSetupHref(profile({ privacyAccepted: true, aiPrivacyPrompted: true, notificationsEnabled: true }) as never, { phone: '' } as never),
       '/(auth)/profile-setup/analyzing',
     );
   });
