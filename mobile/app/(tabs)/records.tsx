@@ -1,25 +1,56 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { mediModeForSession, mediRoute } from '@/lib/mediModes';
-import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import { ChevronRight, FileText, FolderHeart, MessageSquareText, Plus, Trash2 } from 'lucide-react-native';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { EmptyState } from '@/components/EmptyState';
+import {
+  ChevronRight,
+  FileText,
+  FlaskConical,
+  MessageSquareText,
+  Plus,
+  ScanFace,
+  ScanLine,
+  Sparkles,
+  Stethoscope,
+  Trash2,
+  type LucideIcon,
+} from 'lucide-react-native';
 import { HomeLabSection } from '@/components/home/HomeLabSection';
+import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
+import { HubFeatureCard } from '@/components/home/HubFeatureCard';
+import { HubTileGrid, type HubTile } from '@/components/home/HubTiles';
 import { RecordsPageSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { api, type ChatSummary, type MedicalRecord } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
+import { mediModeForSession, mediRoute } from '@/lib/mediModes';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
-import { useThemeColors } from '@/theme/colors';
+import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
+import { useIsDark, useThemeColors } from '@/theme/colors';
 
 const FILTERS = ['ALL', 'LAB', 'CT_MRI', 'SKIN', 'SKINCARE', 'SYMPTOM'] as const;
 
+const TYPE_LOOK: Record<string, { icon: LucideIcon; ink: HubInk }> = {
+  LAB: { icon: FlaskConical, ink: 'blue' },
+  CT_MRI: { icon: ScanLine, ink: 'sky' },
+  XRAY: { icon: ScanLine, ink: 'sky' },
+  IMAGING: { icon: ScanLine, ink: 'sky' },
+  SKIN: { icon: ScanFace, ink: 'rose' },
+  SKINCARE: { icon: Sparkles, ink: 'violet' },
+  SYMPTOM: { icon: Stethoscope, ink: 'teal' },
+};
+
+const ADD_TILES: HubTile[] = [
+  { key: 'lab', title: ka.records.addLab, detail: 'ფოტო ან PDF — ნორმებით', href: '/lab/analyze', icon: FlaskConical, ink: 'blue' },
+  { key: 'imaging', title: ka.records.addImaging, detail: 'რენტგენი, ექო, MRI', href: '/module/imaging', icon: ScanLine, ink: 'sky' },
+  { key: 'skin', title: 'კანი', detail: 'ფოტოს შეფასება', href: '/module/skin', icon: ScanFace, ink: 'rose' },
+  { key: 'symptoms', title: 'სიმპტომები', detail: 'აღწერე, რა გაწუხებს', href: '/symptoms', icon: Stethoscope, ink: 'teal' },
+];
+
+/** "ჩემი ბარათი" — lab results, saved analyses and every conversation with Medi, in the Home hub language. */
 export default function Records() {
   const router = useRouter();
-  const colors = useThemeColors();
+  const c = useThemeColors();
+  const dark = useIsDark();
   const tabInset = useTabBarInset();
 
   const [records, setRecords] = useState<MedicalRecord[]>([]);
@@ -37,7 +68,7 @@ export default function Records() {
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      void load();
     }, [load]),
   );
 
@@ -52,15 +83,24 @@ export default function Records() {
     [records, filter],
   );
 
-  const removeRecord = async (id: string) => {
-    setRecords((prev) => prev.filter((record) => record.id !== id));
-    await api.records.remove(id).catch(() => load());
-  };
+  // Deleting a medical record or conversation is permanent, so it always asks first.
+  const confirmDelete = (message: string, onConfirm: () => void) =>
+    Alert.alert(message, undefined, [
+      { text: ka.common.cancel, style: 'cancel' },
+      { text: ka.common.delete, style: 'destructive', onPress: onConfirm },
+    ]);
 
-  const removeChat = async (id: string) => {
-    setChats((prev) => prev.filter((chat) => chat.id !== id));
-    await api.chats.remove(id).catch(() => load());
-  };
+  const removeRecord = (id: string) =>
+    confirmDelete(ka.records.deleteConfirm, () => {
+      setRecords((prev) => prev.filter((record) => record.id !== id));
+      void api.records.remove(id).catch(() => load());
+    });
+
+  const removeChat = (id: string) =>
+    confirmDelete(ka.chats.deleteConfirm, () => {
+      setChats((prev) => prev.filter((chat) => chat.id !== id));
+      void api.chats.remove(id).catch(() => load());
+    });
 
   const isEmpty = records.length === 0 && chats.length === 0;
 
@@ -74,172 +114,163 @@ export default function Records() {
 
   return (
     <>
-    <Stack.Screen
-      options={{
-        headerRight: () => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={ka.records.addCta}
-            hitSlop={10}
-            onPress={startUpload}
-            style={{ paddingHorizontal: 4, paddingVertical: 4 }}
-          >
-            <Plus size={22} color={colors.primary200} strokeWidth={2.3} />
-          </Pressable>
-        ),
-      }}
-    />
-    <ScrollView
-      className="flex-1 bg-bg-100"
-      contentContainerStyle={{ paddingBottom: tabInset + 24 }}
-      contentContainerClassName="px-4 pt-3"
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
-      showsVerticalScrollIndicator={false}
-    >
-      <HomeLabSection edgeInset={0} />
-      <View style={{ marginTop: 12 }}>
-      {!ready ? (
-        <RecordsPageSkeleton />
-      ) : isEmpty ? (
-        <EmptyState icon={FolderHeart} title={ka.records.empty} body={ka.records.emptyHint}>
-          <Button label={ka.records.addCta} icon={Plus} size="lg" onPress={startUpload} />
-        </EmptyState>
-      ) : (
-        <>
-          {records.length > 0 ? (
-            <>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 -mx-4 px-4">
-                {FILTERS.map((option) => {
-                  const selected = filter === option;
-                  const label = option === 'ALL' ? ka.records.filterAll : ka.records.types[option];
-                  return (
-                    <Pressable
-                      key={option}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      onPress={() => setFilter(option)}
-                      className={`mr-2 rounded-full border px-3.5 py-2 active:opacity-70 ${
-                        selected ? 'border-primary-200 bg-primary-200' : 'border-bg-300 bg-surface'
-                      }`}
-                    >
-                      <Text className={`text-sm font-semibold ${selected ? 'text-white' : 'text-text-200'}`}>
-                        {label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-
-              {visible.map((record) => (
-                <Card key={record.id} className="mb-2.5" onPress={() => router.push(`/record/${record.id}`)}>
-                  <View className="flex-row items-center">
-                    <View className="h-10 w-10 items-center justify-center rounded-xl bg-accent-100/50">
-                      <FileText size={17} color={colors.primary200} strokeWidth={2.1} />
-                    </View>
-
-                    <View className="ml-3 flex-1">
-                      <View className="flex-row items-center">
-                        <Badge label={ka.records.types[record.type] ?? record.type} tone="brand" />
-                        <Text className="ml-2 text-xs text-text-300">{formatRelative(record.createdAt)}</Text>
-                      </View>
-                      <Text numberOfLines={2} className="mt-1.5 text-sm leading-5 text-text-200">
-                        {plainSummary(record.aiAnalysis)}
-                      </Text>
-                    </View>
-
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={ka.common.delete}
-                      hitSlop={10}
-                      className="ml-2 p-1"
-                      onPress={(e) => {
-                        e.stopPropagation?.();
-                        removeRecord(record.id);
-                      }}
-                    >
-                      <Trash2 size={16} color={colors.text300} strokeWidth={2} />
-                    </Pressable>
-                  </View>
-                </Card>
-              ))}
-            </>
-          ) : null}
-
-          {chats.length > 0 ? (
-            <>
-              <Text className="mb-3 mt-4 text-lg font-bold text-text-100">{ka.chats.title}</Text>
-              {chats.map((chat) => (
-                <Card
-                  key={chat.id}
-                  className="mb-2.5"
-                  onPress={() =>
-                    router.push(mediRoute({ mode: mediModeForSession(chat.mode), sessionId: chat.id }) as never)
-                  }
-                >
-                  <View className="flex-row items-center">
-                    <View className="h-10 w-10 items-center justify-center rounded-xl bg-bg-200">
-                      <MessageSquareText size={17} color={colors.primary200} strokeWidth={2.1} />
-                    </View>
-
-                    <View className="ml-3 flex-1">
-                      <Text numberOfLines={1} className="text-base font-semibold text-text-100">
-                        {chat.title}
-                      </Text>
-                      <Text numberOfLines={1} className="mt-0.5 text-sm text-text-300">
-                        {chat.preview || formatRelative(chat.updatedAt)}
-                      </Text>
-                    </View>
-
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={ka.common.delete}
-                      hitSlop={10}
-                      className="ml-2 mr-1 p-1"
-                      onPress={(e) => {
-                        e.stopPropagation?.();
-                        removeChat(chat.id);
-                      }}
-                    >
-                      <Trash2 size={16} color={colors.text300} strokeWidth={2} />
-                    </Pressable>
-                    <ChevronRight size={18} color={colors.text300} strokeWidth={2.2} />
-                  </View>
-                </Card>
-              ))}
-            </>
-          ) : null}
-        </>
-      )}
-      </View>
-    </ScrollView>
-    {!isEmpty ? (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={ka.records.addCta}
-        onPress={startUpload}
-        style={{
-          position: 'absolute',
-          right: 16,
-          bottom: tabInset - 40,
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          backgroundColor: colors.primary200,
-          alignItems: 'center',
-          justifyContent: 'center',
-          elevation: 3,
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={ka.records.addCta}
+              hitSlop={10}
+              onPress={startUpload}
+              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Plus size={22} color={c.primary200} strokeWidth={2.3} />
+            </Pressable>
+          ),
         }}
+      />
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.bg100 }}
+        contentContainerStyle={{ paddingBottom: tabInset + 24 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary200} />}
+        showsVerticalScrollIndicator={false}
       >
-        <Plus size={24} color="#FFFFFF" strokeWidth={2.4} />
-      </Pressable>
-    ) : null}
+        <View style={[s.section, { marginTop: 12 }]}>
+          <HomeLabSection edgeInset={0} />
+        </View>
+
+        {!ready ? (
+          <View style={s.section}>
+            <RecordsPageSkeleton />
+          </View>
+        ) : isEmpty ? (
+          <View style={s.section}>
+            <HubFeatureCard
+              tone="spotlight"
+              icon={FileText}
+              title={ka.records.empty}
+              body={ka.records.emptyHint}
+              cta={ka.records.addCta}
+              onPress={startUpload}
+            />
+          </View>
+        ) : (
+          <>
+            {records.length > 0 ? (
+              <View style={s.section}>
+                <HomeSectionHeading title="ანალიზები და დასკვნები" />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -HUB.gutter, marginBottom: 12 }} contentContainerStyle={{ paddingHorizontal: HUB.gutter, gap: 8 }}>
+                  {FILTERS.map((option) => {
+                    const selected = filter === option;
+                    const label = option === 'ALL' ? ka.records.filterAll : ka.records.types[option];
+                    return (
+                      <Pressable
+                        key={option}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        onPress={() => setFilter(option)}
+                        style={{ minHeight: 36, paddingHorizontal: 14, borderRadius: 18, justifyContent: 'center', backgroundColor: selected ? c.primary200 : c.surface }}
+                      >
+                        <Text style={[hubText.link, { color: selected ? '#FFFFFF' : c.text200 }]}>{label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+                <View style={[s.card, { backgroundColor: c.surface }]}>
+                  {visible.length === 0 ? (
+                    <Text style={[hubText.body, { color: c.text200, paddingVertical: 16 }]}>ამ ტიპის ჩანაწერი ჯერ არ გაქვს.</Text>
+                  ) : (
+                    visible.map((record, index) => {
+                      const look = TYPE_LOOK[record.type] ?? { icon: FileText, ink: 'neutral' as HubInk };
+                      return (
+                        <HubRow
+                          key={record.id}
+                          first={index === 0}
+                          icon={look.icon}
+                          ink={look.ink}
+                          title={ka.records.types[record.type as keyof typeof ka.records.types] ?? record.type}
+                          meta={formatRelative(record.createdAt)}
+                          body={plainSummary(record.aiAnalysis)}
+                          onOpen={() => router.push(`/record/${record.id}` as never)}
+                          onDelete={() => removeRecord(record.id)}
+                          dark={dark}
+                        />
+                      );
+                    })
+                  )}
+                </View>
+              </View>
+            ) : null}
+
+            {chats.length > 0 ? (
+              <View style={s.section}>
+                <HomeSectionHeading title={ka.chats.title} linkLabel="Medi" onLink={() => router.push(mediRoute() as never)} />
+                <View style={[s.card, { backgroundColor: c.surface }]}>
+                  {chats.map((chat, index) => {
+                    const mode = mediModeForSession(chat.mode);
+                    return (
+                      <HubRow
+                        key={chat.id}
+                        first={index === 0}
+                        icon={MessageSquareText}
+                        ink={mode === 'deep' ? 'violet' : mode === 'doctor' ? 'teal' : 'sky'}
+                        title={chat.title}
+                        meta={`${ka.chat.mediModes[mode]} · ${formatRelative(chat.updatedAt)}`}
+                        body={chat.preview}
+                        onOpen={() => router.push(mediRoute({ mode, sessionId: chat.id }) as never)}
+                        onDelete={() => removeChat(chat.id)}
+                        dark={dark}
+                        chevron
+                      />
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+          </>
+        )}
+
+        <View style={s.section}>
+          <HomeSectionHeading title="დამატება" />
+          <HubTileGrid tiles={ADD_TILES} />
+        </View>
+      </ScrollView>
     </>
+  );
+}
+
+/** One list row: the open area and the delete button are siblings, never a button inside a button. */
+function HubRow({
+  first, icon: Icon, ink, title, meta, body, onOpen, onDelete, dark, chevron,
+}: {
+  first: boolean; icon: LucideIcon; ink: HubInk; title: string; meta: string; body?: string;
+  onOpen: () => void; onDelete: () => void; dark: boolean; chevron?: boolean;
+}) {
+  const c = useThemeColors();
+  const color = hubInk(ink, dark);
+  return (
+    <View style={[s.row, !first && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.bg300 }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${meta}`} onPress={onOpen} style={s.rowMain}>
+        <View style={[s.tile, { backgroundColor: hubTint(color, dark) }]}>
+          <Icon size={19} color={color} strokeWidth={1.9} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>{title}</Text>
+          <Text numberOfLines={1} style={[hubText.caption, { color: c.text300 }]}>{meta}</Text>
+          {body ? <Text numberOfLines={2} style={[hubText.body, { color: c.text200 }]}>{body}</Text> : null}
+        </View>
+        {chevron ? <ChevronRight size={18} color={c.text300} strokeWidth={2.2} /> : null}
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={ka.common.delete} onPress={onDelete} style={s.delete}>
+        <Trash2 size={16} color={c.text300} strokeWidth={2} />
+      </Pressable>
+    </View>
   );
 }
 
 /** First readable sentence of the Markdown analysis, for the list preview. */
 function plainSummary(markdown: string): string {
-  const line = markdown
+  const line = (markdown || '')
     .split('\n')
     .map((l) => l.trim())
     .find((l) => l.length > 0 && !l.startsWith('#') && !l.startsWith('-') && !l.startsWith('|'));
@@ -248,3 +279,12 @@ function plainSummary(markdown: string): string {
   const clean = line.replace(/\[([^\]]*)\]\([^)]+\)/g, '$1').replace(/[*`>]/g, '');
   return clean.length <= 130 ? clean : `${clean.slice(0, 127)}…`;
 }
+
+const s = StyleSheet.create({
+  section: { paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap },
+  card: { borderRadius: HUB.cardRadius, paddingHorizontal: 14 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, minHeight: 64 },
+  tile: { width: HUB.tile, height: HUB.tile, borderRadius: HUB.tileRadius, alignItems: 'center', justifyContent: 'center' },
+  delete: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -8 },
+});
