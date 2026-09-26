@@ -30,15 +30,17 @@ export function goToWeightHub(router: WeightRouter) {
  * to change the target instead of keeping their own target field. They register where to
  * come back to; saving the goal then returns there instead of the weight hub.
  */
-let returnAfterGoal: string | null = null;
-export function openWeightGoalWizard(router: WeightRouter, returnTo: string) {
-  returnAfterGoal = returnTo;
+// Abandoned wizards must not hijack a later save: the return point expires and the hub clears it.
+const RETURN_TTL_MS = 30 * 60 * 1000;
+let returnAfterGoal: { href: string; at: number } | null = null;
+export function openWeightGoalWizard(router: WeightRouter, returnTo: string, now = Date.now()) {
+  returnAfterGoal = { href: returnTo, at: now };
   router.push(WIZARD_TARGET as never);
 }
-export function takeWeightGoalReturn(): string | null {
-  const href = returnAfterGoal;
+export function takeWeightGoalReturn(now = Date.now()): string | null {
+  const pending = returnAfterGoal;
   returnAfterGoal = null;
-  return href;
+  return pending && now - pending.at < RETURN_TTL_MS ? pending.href : null;
 }
 
 /** After saving a goal: started page, with no wizard screens underneath. */
@@ -69,5 +71,6 @@ export function goToGoalProgress(router: WeightRouter) {
 
 /** Only when there is no active goal, or they explicitly start a new one. */
 export function startWeightGoalWizard(router: WeightRouter) {
+  returnAfterGoal = null;
   router.push(WIZARD_TARGET as never);
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { goToGoalStarted, openWeightGoalWizard } from './weightNav.ts';
+import { goToGoalStarted, openWeightGoalWizard, startWeightGoalWizard } from './weightNav.ts';
 
 function fakeRouter() {
   const calls: string[] = [];
@@ -25,6 +25,21 @@ describe('one weight goal wizard', () => {
     const r = fakeRouter();
     goToGoalStarted(r as never);
     assert.ok(r.calls.includes('push /health-metrics/weight/goal'));
+    assert.ok(!r.calls.some((c) => c.includes('/nutrition/goal')));
+  });
+
+  it('an abandoned wizard does not hijack a later save from the weight hub', () => {
+    const r = fakeRouter();
+    openWeightGoalWizard(r as never, '/nutrition/goal');
+    startWeightGoalWizard(r as never); // person backed out, later started from the hub
+    goToGoalStarted(r as never);
+    assert.ok(!r.calls.some((c) => c.includes('/nutrition/goal')));
+  });
+
+  it('the return point expires', () => {
+    openWeightGoalWizard(fakeRouter() as never, '/nutrition/goal', Date.now() - 31 * 60 * 1000);
+    const r = fakeRouter();
+    goToGoalStarted(r as never);
     assert.ok(!r.calls.some((c) => c.includes('/nutrition/goal')));
   });
 });
