@@ -32,7 +32,6 @@ import { DailyCheckInHost } from '@/components/check-in/DailyCheckInHost';
 import { QuotaReadyHost } from '@/components/QuotaReadyHost';
 import { LocationAskHost } from '@/components/location/LocationAskHost';
 import { AiSharingConsentHost } from '@/components/AiSharingConsentHost';
-import { AssistantEntry } from '@/components/assistant/AssistantEntry';
 import { setLocationProfileListener, hydrateLocationFromProfile } from '@/lib/userLocation';
 import { localAccountId } from '@/lib/localAccount';
 import { PermissionGateHost } from '@/components/permissions/PermissionGateHost';
@@ -357,7 +356,6 @@ function AppShell() {
           <AppChromeOverlay interactive={chromeInteractive}>
             {user && !['run', 'medi-quest', 'medi-companion', 'pets', 'assistant', 'community', 'nutrition'].includes(segments[0]) ? <FloatingTabBar visible={showTabBar} /> : null}
             {user ? <ActiveRunBadge /> : null}
-            {user && !['community', 'nutrition'].includes(segments[0]) ? <AssistantEntry tabBar={showTabBar} /> : null}
           </AppChromeOverlay>
           <DailyCheckInHost />
           <QuotaReadyHost />
