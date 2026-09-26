@@ -558,7 +558,7 @@ export const ka = {
 
   tabs: {
     home: 'მთავარი',
-    records: 'ისტორია',
+    records: 'ჩემი ბარათი',
     medications: 'მედიკამენტები',
     profile: 'პროფილი',
   },
@@ -1349,7 +1349,7 @@ export const ka = {
       build: 'რუტინის შედგენა',
       building: 'Medi ადგენს რუტინას…',
       resultTitle: 'თქვენი რუტინა',
-      savedBadge: 'შენახულია ჩანაწერებში',
+      savedBadge: 'შენახულია ჩემს ბარათში',
       viewRecord: 'ჩანაწერის ნახვა',
       newRoutine: 'ახალი რუტინა',
       lastRoutine: 'ბოლო რუტინა',
@@ -2485,8 +2485,8 @@ export const ka = {
   },
 
   records: {
-    title: 'სამედიცინო ჩანაწერები',
-    subtitle: 'ყველა ანალიზი და დასკვნა ერთ ადგილას',
+    title: 'ჩემი ბარათი',
+    subtitle: 'ანალიზები, დასკვნები და საუბრები Medi-სთან ერთ ადგილას',
     empty: 'ჩანაწერები ჯერ არ გაქვთ',
     emptyHint: 'ატვირთეთ ანალიზი ან სნიმარი და დასკვნა აქ შეინახება',
     addCta: 'ატვირთვა',

@@ -140,11 +140,11 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
     ],
   },
   {
-    title: 'ისტორია და სერვისები',
+    title: 'ჩემი ბარათი და სერვისები',
     items: [
       {
-        title: 'ჩემი ჩანაწერები',
-        detail: 'დოკუმენტები და საუბრის ისტორია',
+        title: 'ჩემი ბარათი',
+        detail: 'ანალიზები, დოკუმენტები და საუბრები',
         href: '/(tabs)/records',
         icon: FileHeart,
       },
