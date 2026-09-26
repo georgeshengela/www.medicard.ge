@@ -28,7 +28,6 @@ import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeAskMedi } from '@/components/home/HomeAskMedi';
 import { HomeCyclePreviewCard } from '@/components/home/HomeCyclePreviewCard';
 import { HomeDayRings, type DayRing } from '@/components/home/HomeDayRings';
-import { HomeRunDiscovery } from '@/components/home/HomeDiscoveryCards';
 import { HomeNutritionCard } from '@/components/home/HomeNutritionCard';
 import { HubLinkRow, HubTileGrid, type HubTile } from '@/components/home/HubTiles';
 import { HomeHeader } from '@/components/home/HomeHeader';
@@ -66,7 +65,7 @@ const SERVICE_TILES: HubTile[] = [
   { key: 'pets', title: 'ჩემი ცხოველები', detail: 'მოვლა და Medi Vet', href: '/pets', icon: PawPrint, ink: 'green' },
   { key: 'pharmacy', title: 'აფთიაქი', detail: 'პროდუქტების მოძებნა', href: '/pharmacy', icon: ShoppingBag, ink: 'sky' },
   { key: 'metrics', title: 'მაჩვენებლები', detail: 'ყველა გაზომვა ერთად', href: '/health-metrics', icon: Activity, ink: 'blue' },
-  { key: 'lab-history', title: 'ლაბ. ისტორია', detail: 'შედეგები დროთა განმავლობაში', href: '/lab', icon: FlaskConical, ink: 'neutral' },
+  { key: 'quest', title: 'MEDI QUEST', detail: 'მისიები, პროგრესი და ჯილდოები', href: '/medi-quest', icon: Trophy, ink: 'amber' },
 ];
 
 /** "4 200" — Hermes has no ka-GE grouping, so group by hand. */
@@ -233,20 +232,6 @@ export default function Home() {
           title="AI კონსილიუმი"
           detail="რამდენიმე AI პერსპექტივა ერთად"
           href="/chat/consilium"
-          style={{ marginTop: 12 }}
-        />
-      </View>
-    ),
-    movement: (
-      <View style={s.section}>
-        {heading('მოძრაობა')}
-        <HomeRunDiscovery />
-        <HubLinkRow
-          icon={Trophy}
-          ink="amber"
-          title="MEDI QUEST"
-          detail="მისიები, პროგრესი და ჯილდოები"
-          href="/medi-quest"
           style={{ marginTop: 12 }}
         />
       </View>
