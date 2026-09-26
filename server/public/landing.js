@@ -100,7 +100,7 @@
       img.classList.toggle("is-on", img.dataset.key === key);
     });
     if (!scope || scope.id === "hero-phone") current = key;
-    document.querySelectorAll(".fcard[data-screen], .card[data-screen]").forEach((card) => {
+    document.querySelectorAll(".fcard[data-screen], .card[data-screen], .hub[data-screen]").forEach((card) => {
       card.classList.toggle("is-on", card.dataset.screen === key);
     });
     document.querySelectorAll("[data-day]").forEach((btn) => {
@@ -145,7 +145,7 @@
       el.addEventListener("click", show);
     });
   }
-  bindScreen(".card[data-screen]", "hero-phone");
+  bindScreen(".card[data-screen], .hub[data-screen]", "hero-phone");
   bindScreen("[data-day]", "hero-phone");
 
   window.addEventListener("keydown", (e) => {
