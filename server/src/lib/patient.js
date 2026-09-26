@@ -3,7 +3,7 @@ import { prisma } from './prisma.js';
 import { publicExtraAnswers } from './appState.js';
 import { resolvePackageAiLimit } from './packages.js';
 import { FREE_CONSUMER_RELEASE, freeConsumerPackage } from './consumerAccess.js';
-import { normalizeAiEngine } from './aiEngine.js';
+import { serverAiEngine } from './aiEngine.js';
 import { cycleModeForPatientAiContext } from './cycleModes.js';
 import { wrapUntrustedAiBlock } from './clinicalMessages.js';
 
@@ -130,7 +130,7 @@ export function publicUser(user) {
     currentStreak: user.currentStreak ?? 0,
     longestStreak: user.longestStreak ?? 0,
     lastCheckInDate: toDateOnly(user.lastCheckInDate),
-    aiEngine: normalizeAiEngine(user.aiEngine),
+    aiEngine: serverAiEngine(),
   };
 }
 

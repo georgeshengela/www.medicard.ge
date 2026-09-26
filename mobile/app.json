@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.12.4",
+    "version": "1.0.0.13.0",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -15,7 +15,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
       "version": "1.11.30",
-      "buildNumber": "84",
+      "buildNumber": "85",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD AI",
         "NSCameraUsageDescription": "კამერა საჭიროა კერძის, საკვების ეტიკეტისა და შტრიხკოდის სკანირებისთვის კვების დღიურში, ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის, ასევე MEDI RUN-ში ვირტუალური საჩუქრის აღმოსაჩენად.",
@@ -33,7 +33,7 @@
     },
     "android": {
       "package": "ge.medicard.app",
-      "versionCode": 84,
+      "versionCode": 85,
       "adaptiveIcon": {
         "backgroundColor": "#14B8A6",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -59,6 +59,7 @@
         "android.permission.health.READ_RESTING_HEART_RATE",
         "android.permission.health.READ_SLEEP",
         "android.permission.health.READ_NUTRITION",
+        "android.permission.health.WRITE_NUTRITION",
         "android.permission.health.READ_HYDRATION",
         "android.permission.health.READ_MENSTRUATION",
         "android.permission.health.WRITE_MENSTRUATION",
@@ -123,8 +124,8 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Medicard-ს Apple Health-ის წაკითხვა სჭირდება ნაბიჯების, წონის, წნევის, პულსის, ძილის, ჰიდრატაციისა და ციკლის ჩანაწერების სინქრონიზაციისთვის.",
-          "NSHealthUpdateUsageDescription": "Medicard-ს Apple Health-ში ციკლის ჩანაწერების (მენსტრუაცია, ლაქები, BBT, ლორწო) შენახვა სჭირდება, თუ ამ სინქრონიზაციას ჩართავ.",
+          "NSHealthShareUsageDescription": "Medicard-ს Apple Health-ის წაკითხვა სჭირდება ნაბიჯების, წონის, წნევის, პულსის, ძილის, კვების, ჰიდრატაციისა და ციკლის ჩანაწერების სინქრონიზაციისთვის.",
+          "NSHealthUpdateUsageDescription": "Medicard-ს Apple Health-ში შენახვა სჭირდება შენ მიერ ჩართული სინქრონიზაციისთვის: ციკლის ჩანაწერები (მენსტრუაცია, ლაქები, BBT, ლორწო) და კვების დღიურის კალორია, ცილა, ნახშირწყლები და ცხიმი.",
           "background": false
         }
       ],

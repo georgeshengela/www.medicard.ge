@@ -12,7 +12,6 @@ import {
   Pill,
   Save,
   ShieldCheck,
-  Sparkles,
   Trash2,
   type LucideIcon,
 } from 'lucide-react-native';
@@ -324,19 +323,6 @@ export default function Profile() {
               onPress={() => void openNotificationSettings()}
             />
             <ProfileMenuRow icon={Link2} ink="sky" label={ka.profile.permissions} onPress={() => router.push('/profile/permissions')} />
-            <ProfileMenuRow
-              icon={Sparkles}
-              ink="violet"
-              label={ka.profile.aiEngine}
-              value={
-                user?.aiEngine === 'ling_free'
-                  ? ka.profile.aiEngineLing
-                  : user?.aiEngine === 'evidencemd'
-                    ? ka.profile.aiEngineEvidence
-                    : ka.profile.aiEngineGemini
-              }
-              onPress={() => router.push('/profile/ai')}
-            />
             <ProfileMenuRow icon={ShieldCheck} ink="teal" label="AI და კონფიდენციალურობა" onPress={() => router.push('/profile/ai-data')} isLast />
           </View>
         </View>

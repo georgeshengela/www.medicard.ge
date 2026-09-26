@@ -5,7 +5,7 @@ import multer from 'multer';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { AiEngineError } from '../lib/evidencemd.js';
-import { askAi, normalizeAiEngine, publicAiEngineCatalog, resolveOpenRouterModel } from '../lib/aiEngine.js';
+import { askAi, serverAiEngine, publicAiEngineCatalog, resolveOpenRouterModel } from '../lib/aiEngine.js';
 import { runTrackedAi } from '../lib/aiTelemetry.js';
 import { describeImage, structureLabText, SUPPORTED_IMAGE_TYPES } from '../lib/vision.js';
 import { extractPdfText, ocrImage, SUPPORTED_DOCUMENT_TYPES } from '../lib/ocr.js';
@@ -32,7 +32,7 @@ aiRouter.get(
   '/engines',
   asyncHandler(async (req, res) => {
     return res.json({
-      selected: normalizeAiEngine(req.user.aiEngine),
+      selected: serverAiEngine(),
       engines: publicAiEngineCatalog(),
     });
   }),

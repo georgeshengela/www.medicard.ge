@@ -7,7 +7,7 @@ import { buildClinicalMessages } from './clinicalMessages.js';
 
 export { buildClinicalMessages } from './clinicalMessages.js';
 
-/** User-selectable engines. Unknown / empty → Gemini Flash. */
+/** Known engines. Unknown / empty → Gemini Flash. */
 export const DEFAULT_AI_ENGINE = 'gemini_flash';
 export const AI_ENGINE_IDS = Object.freeze(['gemini_flash', 'ling_free', 'evidencemd']);
 
@@ -36,8 +36,17 @@ export function normalizeAiEngine(raw) {
   return DEFAULT_AI_ENGINE;
 }
 
-export function resolveAiEngine(user) {
-  const id = normalizeAiEngine(user?.aiEngine);
+/**
+ * The server chooses the engine (2026-09-27): there is no user-facing model picker any more.
+ * A stored `User.aiEngine` from older clients is ignored. Ops can override with AI_DEFAULT_ENGINE.
+ * Every engine here is already a named recipient in the AI disclosure manifest.
+ */
+export function serverAiEngine() {
+  return normalizeAiEngine(process.env.AI_DEFAULT_ENGINE);
+}
+
+export function resolveAiEngine(_user) {
+  const id = serverAiEngine();
   if (id === 'evidencemd') {
     return {
       id,

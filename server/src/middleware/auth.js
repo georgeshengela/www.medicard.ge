@@ -5,7 +5,7 @@ import { publicConsumerPackage } from '../lib/packages.js';
 import { FREE_CONSUMER_RELEASE } from '../lib/consumerAccess.js';
 import { getAppSettings } from '../lib/settings.js';
 import { toDateOnly, calculateAge } from '../lib/patient.js';
-import { normalizeAiEngine } from '../lib/aiEngine.js';
+import { serverAiEngine } from '../lib/aiEngine.js';
 import { withAiAccount } from '../lib/aiConsent.js';
 
 export function signToken(user) {
@@ -35,7 +35,7 @@ export function enrichPublicUser(user) {
     currentStreak: user.currentStreak ?? 0,
     longestStreak: user.longestStreak ?? 0,
     lastCheckInDate: toDateOnly(user.lastCheckInDate),
-    aiEngine: normalizeAiEngine(user.aiEngine),
+    aiEngine: serverAiEngine(),
   };
 }
 

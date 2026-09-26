@@ -11,6 +11,7 @@ import {
   openRouterReasoningFor,
   publicAiEngineCatalog,
   resolveAiEngine,
+  serverAiEngine,
   resolveOpenRouterModel,
   hasOpenRouter,
   withOpenRouterModelFallback,
@@ -33,10 +34,24 @@ test('default user gets OpenRouter Gemini, not EvidenceMD', () => {
   assert.equal(resolved.openRouterModel, 'google/gemini-3.8-flash');
 });
 
-test('EvidenceMD remains the clinical high-risk path', () => {
-  const resolved = resolveAiEngine({ aiEngine: 'evidencemd' });
-  assert.equal(resolved.provider, 'evidencemd');
-  assert.equal(resolveOpenRouterModel({ aiEngine: 'evidencemd' }), OPENROUTER_MODELS.gemini_flash);
+test('server chooses the engine; a stored per-user choice is ignored', () => {
+  const saved = process.env.AI_DEFAULT_ENGINE;
+  try {
+    delete process.env.AI_DEFAULT_ENGINE;
+    for (const aiEngine of ['evidencemd', 'ling_free', 'gemini_flash', undefined]) {
+      assert.equal(resolveAiEngine({ aiEngine }).id, 'gemini_flash');
+    }
+    assert.equal(serverAiEngine(), 'gemini_flash');
+    process.env.AI_DEFAULT_ENGINE = 'evidencemd';
+    const resolved = resolveAiEngine({ aiEngine: 'ling_free' });
+    assert.equal(resolved.provider, 'evidencemd');
+    assert.equal(resolveOpenRouterModel({}), OPENROUTER_MODELS.gemini_flash);
+    process.env.AI_DEFAULT_ENGINE = 'gpt-4o';
+    assert.equal(serverAiEngine(), 'gemini_flash');
+  } finally {
+    if (saved === undefined) delete process.env.AI_DEFAULT_ENGINE;
+    else process.env.AI_DEFAULT_ENGINE = saved;
+  }
 });
 
 test('Gemini failures do not fall back to Ling', () => {
