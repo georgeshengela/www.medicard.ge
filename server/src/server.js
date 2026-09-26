@@ -56,6 +56,7 @@ import { filesRouter } from './routes/files.routes.js';
 import { PRIVACY_HTML, TERMS_HTML } from './lib/legalPages.js';
 import { attachAdminRealtime } from './lib/adminRealtime.js';
 import { startQuotaResetSweeper, stopQuotaResetSweeper } from './lib/usageNotify.js';
+import { startPharmacySyncScheduler, stopPharmacySyncScheduler } from './lib/pharmacy/scheduler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -332,11 +333,13 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
 });
 attachAdminRealtime(server);
 startQuotaResetSweeper();
+if (env.NODE_ENV === 'production') startPharmacySyncScheduler();
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, async () => {
     console.log(`\n[medicard] ${signal} received, shutting down…`);
     stopQuotaResetSweeper();
+    stopPharmacySyncScheduler();
     server.close();
     await Promise.allSettled([prisma.$disconnect(), shutdownOcr()]);
     process.exit(0);

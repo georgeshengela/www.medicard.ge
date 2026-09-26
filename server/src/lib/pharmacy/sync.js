@@ -52,7 +52,7 @@ async function ingestListings(listings) {
   return { count: listings.length - skipped, products: touched.size, skipped, skipSamples };
 }
 
-async function cleanupStaleRuns() {
+export async function cleanupStaleRuns() {
   const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
   await prisma.syncRun.updateMany({
     where: { status: 'RUNNING', startedAt: { lt: cutoff } },
