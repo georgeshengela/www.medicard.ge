@@ -78,10 +78,23 @@ const GENERIC_FORM_WORDS = new Set([
  */
 const MANUFACTURER_SUFFIX_WORDS = new Set(['დენკი', 'დენკ']);
 
+/**
+ * The Georgian modifier spellings (MODIFIER_ALIASES_GEO's values) are exactly
+ * as unsafe as a dosage-form word here: "კალციუმი+D3 ფორტე - Calcium+D3
+ * Forte 60 ცალი საღეჭი ტაბლეტი" has a Latin "D3" sitting between the real
+ * name and "ფორტე", so the Georgian-only capture reaches back only to
+ * "ფორტე" itself — registering "Forte" as the brand for "Calcium+D3 Forte",
+ * which then matched 28 unrelated "...Forte"-named products (No-Shpa Forte,
+ * Noliprel Bi-Forte, Slezol Forte, Gengigel Forte, ...) under one signature.
+ */
+const MODIFIER_WORD_SET = new Set(Object.values(MODIFIER_ALIASES_GEO).flat());
+
 function stripGenericFormWords(words) {
   return words.filter((w) => {
     const lower = w.toLowerCase();
-    return !GENERIC_FORM_WORDS.has(lower) && !MANUFACTURER_SUFFIX_WORDS.has(lower);
+    return (
+      !GENERIC_FORM_WORDS.has(lower) && !MANUFACTURER_SUFFIX_WORDS.has(lower) && !MODIFIER_WORD_SET.has(lower)
+    );
   });
 }
 
