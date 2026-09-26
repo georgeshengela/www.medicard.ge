@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'packages', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -1042,7 +1042,6 @@ async function switchTab(tab, opts = {}) {
     'medipulsi': ['Engagement', 'MEDIPULSI', 'გასეირნება, მისიები, აღმოჩენები და ჯილდოების მართვა.', ''],
     orders: ['Operations', 'შეკვეთები', 'რა საჭიროებს ოპერაციულ დამუშავებას?', 'orders.page'],
     users: ['People', 'მომხმარებლები', 'ვინ არის ბაზაში, რა ანგარიშის მდგომარეობა აქვს და ვისი გამოძიება გჭირდება.', 'users.registry'],
-    packages: ['Commerce', 'პაკეტები', 'ტარიფები, ლიმიტები და უფლებები.', 'packages.page'],
     push: ['Engagement', 'Push & Brain', 'შეტყობინებები ფასდება, იგეგმება და მიეწოდება?', 'push.page'],
     sms: ['Operations', 'SMS', 'გაგზავნა, ბალანსი და ჟურნალი.', 'sms.page'],
     pharmacy: ['Operations', 'ფარმაცია', 'სინქი, მდგომარეობა და შეცდომები.', 'pharmacy.page'],
@@ -1061,7 +1060,6 @@ async function switchTab(tab, opts = {}) {
   } else if (!painted) {
     if (tab === 'orders') await renderOrders();
     if (tab === 'users') await renderUsers();
-    if (tab === 'packages') await renderPackages();
     if (tab === 'push') await renderPush();
     if (tab === 'sms') await renderSms();
     if (tab === 'pharmacy') await renderPharmacy();
@@ -1659,7 +1657,6 @@ async function renderOverview(freshBalances = false) {
               <h3>პაკეტების განაწილება</h3>
               <p class="muted" style="margin:2px 0 0;font-size:12px">${assigned} აქტიური მომხმარებელი ტარიფის მიხედვით</p>
             </div>
-            <button class="btn tiny ghost grow" data-go="packages">${icon('arrow')} ყველა</button>
           </div>
           ${dashPkgBars(stats.packages, maxPkg, assigned)}
         </div>
@@ -2886,93 +2883,6 @@ async function renderUserPage(id, opts = {}) {
 
 window.editUser = editUser;
 
-const FEATURE_LABELS = {
-  doctorChat: 'Medi-სთან საუბარი',
-  consilium: 'კონსილიუმი',
-  labAnalysis: 'ლაბორატორია',
-  imaging: 'რენტგენი / CT',
-  skin: 'კანი',
-  skincare: 'სკინქეარი',
-  medicationReview: 'მედიკამენტები',
-  prioritySupport: 'პრიორიტეტული მხარდაჭერა',
-};
-
-async function renderPackages() {
-  const { packages } = await api('/packages');
-  const totalUsers = packages.reduce((sum, p) => sum + (p.userCount || 0), 0);
-  $('tab-packages').innerHTML = '<div class="v25-pkg dash-enter">'
-    + '<div class="v25-strip" style="grid-template-columns:repeat(' + Math.max(1, packages.length) + ',minmax(0,1fr))">'
-    + packages.map((p) => v25StripCell(
-      pkgClass(p.code) === 'ultimate' ? 'zap' : pkgClass(p.code) === 'standard' ? 'layers' : 'users',
-      p.code,
-      p.userCount ?? 0,
-      (p.priceGel != null ? p.priceGel.toFixed(2) + ' GEL' : '') + (p.unlimited ? ' · \u221e AI' : (p.monthlyAiLimit != null ? ' · AI ' + p.monthlyAiLimit : '')),
-    )).join('')
-    + '</div>'
-    + '<section class="v25-panel">'
-    + '<div class="card-head">' + iconTile('layers') + '<div><h3>' + "პაკეტები" + '</h3><p class="muted">' + "ყველა გადახდილი პაკეტი — 30-დღიანი პერიოდი · AI ლიმიტი იხარჯება ამ პერიოდის განმავლობაში · უფასო — კალენდარული თვე" + '</p></div></div>'
-    + '<div class="pkg-grid">'
-    + packages.map((p) => '<article class="pkg">'
-      + iconTile(pkgClass(p.code) === 'ultimate' ? 'zap' : pkgClass(p.code) === 'standard' ? 'layers' : 'users', pkgClass(p.code) === 'standard' ? 'std' : pkgClass(p.code) === 'ultimate' ? 'ult' : '')
-      + '<div class="pkg-copy"><span class="badge ' + pkgClass(p.code) + '">' + escapeHtml(p.code) + '</span><h3>' + escapeHtml(p.nameKa) + '</h3></div>'
-      + '<strong class="price">' + p.priceGel.toFixed(2) + ' <span>GEL</span></strong>'
-      + '<span class="mono">' + (p.userCount ?? 0) + (totalUsers ? ' / ' + totalUsers : '') + '</span>'
-      + '<span class="mono">' + (p.unlimited ? '\u221e' : p.monthlyAiLimit) + ' AI</span>'
-      + '<div class="actions"><button class="btn tiny ghost" data-pkg="' + p.code + '">' + icon('settings') + ' ' + "რედაქტირება" + '</button></div>'
-      + '</article>').join('')
-    + '</div></section>'
-    + '<section class="v25-panel">'
-    + '<div class="card-head">' + iconTile('layers') + '<div><h3>' + "შედარება" + '</h3></div></div>'
-    + '<div class="table-wrap"><table class="admin-table v25-pkg-table">'
-    + '<thead><tr><th>' + "ფუნქცია" + '</th>' + packages.map((p) => '<th>' + escapeHtml(p.code) + '</th>').join('') + '</tr></thead><tbody>'
-    + '<tr><td>' + "ფასი" + '</td>' + packages.map((p) => '<td class="mono">' + p.priceGel.toFixed(2) + ' ' + "₾" + '</td>').join('') + '</tr>'
-    + '<tr><td>' + "თვიური AI" + '</td>' + packages.map((p) => '<td class="mono">' + (p.unlimited ? '\u221e' : p.monthlyAiLimit) + '</td>').join('') + '</tr>'
-    + '<tr><td>' + "გამოწერა" + '</td>' + packages.map(() => '<td class="mono">' + "30 დღე" + '</td>').join('') + '</tr>'
-    + Object.entries(FEATURE_LABELS).map(([key, label]) => '<tr><td>' + label + '</td>' + packages.map((p) => '<td>' + (p.features?.[key] ? '\u2713' : '\u2014') + '</td>').join('') + '</tr>').join('')
-    + '</tbody></table></div></section></div>';
-  document.querySelectorAll('[data-pkg]').forEach((btn) => {
-    btn.addEventListener('click', () => editPackage(packages.find((p) => p.code === btn.dataset.pkg)));
-  });
-}
-
-function editPackage(pkg) {
-  openDrawer(`
-    <p class="kicker">${pkg.code}</p>
-    <h3>${escapeHtml(pkg.nameKa)}</h3>
-    <div class="field"><span>სახელი (KA)</span><input id="pkg-name-ka" value="${escapeAttr(pkg.nameKa)}" /></div>
-    <div class="field"><span>სახელი (EN)</span><input id="pkg-name-en" value="${escapeAttr(pkg.nameEn)}" /></div>
-    <div class="field"><span>აღწერა</span><textarea id="pkg-desc" rows="3">${escapeHtml(pkg.descriptionKa)}</textarea></div>
-    <div class="field"><span>თვიური AI ლიმიტი (-1 = შეუზღუდავი)</span><input id="pkg-limit" type="number" value="${pkg.monthlyAiLimit}" /></div>
-    <div class="field"><span>ფასი (₾)</span><input id="pkg-price" type="number" step="0.01" value="${pkg.priceGel}" /></div>
-    <label class="toggle" style="border:0;padding:8px 0">
-      <div><strong>აქტიური პაკეტი</strong><p>გამორთვისას ახალ მომხმარებელს აღარ მიენიჭება</p></div>
-      <span class="switch"><input id="pkg-active" type="checkbox" ${pkg.active ? 'checked' : ''}/><i></i></span>
-    </label>
-    <div class="row">
-      <button class="btn ghost" id="drawer-cancel">დახურვა</button>
-      <button class="btn primary" id="drawer-save">შენახვა</button>
-    </div>
-  `);
-  $('drawer-cancel').onclick = closeDrawer;
-  $('drawer-save').onclick = async () => {
-    await api(`/packages/${pkg.code}`, {
-      method: 'PATCH',
-      body: {
-        nameKa: $('pkg-name-ka').value.trim(),
-        nameEn: $('pkg-name-en').value.trim(),
-        descriptionKa: $('pkg-desc').value.trim(),
-        monthlyAiLimit: Number($('pkg-limit').value),
-        priceGel: Number($('pkg-price').value),
-        active: $('pkg-active').checked,
-      },
-    });
-    toast('პაკეტი განახლდა');
-    closeDrawer();
-    await renderPackages();
-  };
-}
-
-window.editPackage = editPackage;
 
 let pushShowKeys = false;
 let pushStudioTab = 'brain';

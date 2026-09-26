@@ -1550,7 +1550,6 @@ function renderCommandPalette() {
     { tab: 'audit', label: 'აუდიტი' },
     { tab: 'orders', label: 'შეკვეთები' },
     { tab: 'rewards', label: 'ჯილდოები' },
-    { tab: 'packages', label: 'პაკეტები' },
     { tab: 'sms', label: 'SMS' },
     { tab: 'pharmacy', label: 'ფარმაცია' },
     { tab: 'settings', label: 'აპის რეჟიმი' },

@@ -799,7 +799,6 @@
       { group: 'Commerce', tab: 'rewards', label: 'ჯილდოები' },
       { group: 'Commerce', tab: 'rewards', label: 'კამპანიები', hash: '#/rewards?tab=campaigns' },
       { group: 'Commerce', tab: 'rewards', label: 'პარტნიორები', hash: '#/rewards?tab=partners' },
-      { group: 'Commerce', tab: 'packages', label: 'პაკეტები' },
       { group: 'Operations', tab: 'orders', label: 'შეკვეთები' },
       { group: 'Operations', tab: 'sms', label: 'SMS' },
       { group: 'Operations', tab: 'pharmacy', label: 'ფარმაცია' },
