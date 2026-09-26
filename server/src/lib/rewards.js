@@ -18,6 +18,7 @@ import {
   REWARD_STATUSES,
   REWARD_TYPES,
   rewardCatalogSeedRows,
+  RETIRED_REWARD_KEYS,
 } from './rewardDefs.js';
 import { getRewardBalance } from './quest.js';
 import { findLiveCampaignForReward, explainMissingLiveCampaign } from './rewardCampaignRuntime.js';
@@ -104,6 +105,12 @@ export async function ensureRewardDefinitions(db = prisma) {
   if (typeof db.rewardDefinition?.upsert !== 'function') return [];
   const rows = rewardCatalogSeedRows();
   const out = [];
+  if (typeof db.rewardDefinition.updateMany === 'function') {
+    await db.rewardDefinition.updateMany({
+      where: { key: { in: [...RETIRED_REWARD_KEYS] }, status: { not: REWARD_STATUSES.ARCHIVED } },
+      data: { status: REWARD_STATUSES.ARCHIVED },
+    });
+  }
   for (const row of rows) {
     validateRewardCoinCost(row.coinCost);
     let status = row.status;

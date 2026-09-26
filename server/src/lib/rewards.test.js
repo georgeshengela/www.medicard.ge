@@ -10,6 +10,7 @@ import {
   LEDGER_SOURCE_REWARD_REDEMPTION,
   QUEST_PREMIUM_ENTITLEMENT_EXISTS,
   REWARD_CATALOG,
+  RETIRED_REWARD_KEYS,
   REWARD_STATUSES,
   REWARD_TYPES,
 } from './rewardDefs.js';
@@ -84,16 +85,29 @@ describe('phase 7 economy guards', () => {
     assert.equal(validateRewardCoinCost(300), 300);
   });
 
-  it('seeds ACTIVE cosmetics and DRAFT premium/partner when Premium entitlement missing', async () => {
+  it('seeds ACTIVE cosmetics, DRAFT partner test, and no premium-access rewards (free app)', async () => {
     assert.equal(QUEST_PREMIUM_ENTITLEMENT_EXISTS, false);
     const { db } = await setup();
     const byKey = Object.fromEntries([...db._state.rewardDefinition.values()].map((r) => [r.key, r]));
     assert.equal(byKey.MEDI_THEME_7D.status, REWARD_STATUSES.ACTIVE);
     assert.equal(byKey.MEDI_PROFILE_STYLE_30D.status, REWARD_STATUSES.ACTIVE);
-    assert.equal(byKey.MEDI_PREMIUM_DAY.status, REWARD_STATUSES.DRAFT);
-    assert.equal(byKey.MEDI_PREMIUM_3D.status, REWARD_STATUSES.DRAFT);
+    assert.equal(byKey.MEDI_PREMIUM_DAY, undefined);
+    assert.equal(byKey.MEDI_PREMIUM_3D, undefined);
     assert.equal(byKey.PARTNER_TEST_10.status, REWARD_STATUSES.DRAFT);
-    assert.equal(REWARD_CATALOG.length, 5);
+    assert.equal(REWARD_CATALOG.length, 3);
+    assert.ok(REWARD_CATALOG.every((r) => !RETIRED_REWARD_KEYS.includes(r.key)));
+  });
+
+  it('archives previously seeded premium rewards and keeps their ledger history', async () => {
+    const legacy = (key) => ({ id: randomUUID(), key, type: 'PREMIUM_ACCESS', status: REWARD_STATUSES.ACTIVE, titleKey: key, descriptionKey: key, coinCost: 900, inventoryMode: 'UNLIMITED', sortOrder: 30 });
+    const day = legacy('MEDI_PREMIUM_DAY'), threeDay = legacy('MEDI_PREMIUM_3D');
+    const ledger = { id: randomUUID(), userId: USER, currency: 'COIN', amount: -900, transactionType: 'REDEEM', sourceType: 'REWARD_REDEMPTION', sourceId: 'old' };
+    const { db } = await setup({ rewardDefinition: [day, threeDay], rewardLedger: [ledger] });
+    assert.equal(db._state.rewardDefinition.get(day.id).status, REWARD_STATUSES.ARCHIVED);
+    assert.equal(db._state.rewardDefinition.get(threeDay.id).status, REWARD_STATUSES.ARCHIVED);
+    assert.equal(db._state.rewardLedger.get(ledger.id).amount, -900);
+    await ensureRewardDefinitions(db);
+    assert.equal(db._state.rewardDefinition.get(day.id).status, REWARD_STATUSES.ARCHIVED);
   });
 });
 
@@ -120,7 +134,7 @@ describe('phase 7 redemption', () => {
   it('rejects draft / paused / insufficient / exact-balance edge cases', async () => {
     const { db, options } = await setup();
     await creditCoins(db, USER, 300);
-    const premium = [...db._state.rewardDefinition.values()].find((r) => r.key === 'MEDI_PREMIUM_DAY');
+    const premium = [...db._state.rewardDefinition.values()].find((r) => r.key === 'PARTNER_TEST_10');
     await assert.rejects(
       () => redeemReward(USER, premium.id, { ...options, idempotencyKey: 'idem-draft' }),
       (err) => err.code === 'REWARD_NOT_ACTIVE',

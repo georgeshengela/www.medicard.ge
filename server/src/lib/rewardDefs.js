@@ -67,6 +67,13 @@ export const ENTITLEMENT_KEYS = Object.freeze({
  */
 export const QUEST_PREMIUM_ENTITLEMENT_EXISTS = false;
 
+/**
+ * MEDICARD is entirely free (App Review 2026-09-22): premium-access rewards are retired from
+ * the active catalog. Existing rows are archived by `ensureRewardDefinitions`; ledger,
+ * redemptions and entitlements already issued stay untouched for data integrity.
+ */
+export const RETIRED_REWARD_KEYS = Object.freeze(['MEDI_PREMIUM_DAY', 'MEDI_PREMIUM_3D']);
+
 export const REWARD_CATALOG = Object.freeze([
   {
     key: 'MEDI_THEME_7D',
@@ -109,40 +116,6 @@ export const REWARD_CATALOG = Object.freeze([
     maxActiveEntitlement: 1,
     sortOrder: 20,
     featured: true,
-  },
-  {
-    key: 'MEDI_PREMIUM_DAY',
-    type: REWARD_TYPES.PREMIUM_ACCESS,
-    status: QUEST_PREMIUM_ENTITLEMENT_EXISTS ? REWARD_STATUSES.ACTIVE : REWARD_STATUSES.DRAFT,
-    titleKey: 'reward.mediPremiumDay.title',
-    descriptionKey: 'reward.mediPremiumDay.description',
-    termsKey: 'reward.mediPremiumDay.terms',
-    imageKey: 'premium',
-    coinCost: 900,
-    inventoryMode: INVENTORY_MODES.UNLIMITED,
-    perUserLimit: null,
-    periodLimitType: PERIOD_LIMIT_TYPES.NONE,
-    entitlementKey: 'quest.premium.access',
-    entitlementDurationDays: 1,
-    sortOrder: 30,
-    featured: false,
-  },
-  {
-    key: 'MEDI_PREMIUM_3D',
-    type: REWARD_TYPES.PREMIUM_ACCESS,
-    status: QUEST_PREMIUM_ENTITLEMENT_EXISTS ? REWARD_STATUSES.ACTIVE : REWARD_STATUSES.DRAFT,
-    titleKey: 'reward.mediPremium3d.title',
-    descriptionKey: 'reward.mediPremium3d.description',
-    termsKey: 'reward.mediPremium3d.terms',
-    imageKey: 'premium',
-    coinCost: 2200,
-    inventoryMode: INVENTORY_MODES.UNLIMITED,
-    perUserLimit: null,
-    periodLimitType: PERIOD_LIMIT_TYPES.NONE,
-    entitlementKey: 'quest.premium.access',
-    entitlementDurationDays: 3,
-    sortOrder: 40,
-    featured: false,
   },
   {
     key: 'PARTNER_TEST_10',
