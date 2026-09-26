@@ -24,6 +24,8 @@ export type RunSummary = {
   /** Down-sampled trail for the summary map. */
   path: LatLng[];
   segments?: LatLng[][];
+  /** Cumulative moving ms at each kilometre (-1 = unknown). */
+  splits?: number[];
 };
 
 function parse(raw: string | null): RunSummary[] {

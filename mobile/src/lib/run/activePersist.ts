@@ -10,6 +10,7 @@ export type PersistedActiveRun = {
   v: 1;
   mode?: 'run' | 'explore';
   segments?: LatLng[][];
+  splits?: number[];
   phase: 'running' | 'paused';
   target: RunTarget;
   targetMeters: number;

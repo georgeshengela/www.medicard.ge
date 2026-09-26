@@ -19,6 +19,7 @@ import {
 } from '@/lib/run/activePersist';
 import { downsamplePath, saveRunSummary, type RunSummary } from '@/lib/run/history';
 import { generateTargetPin, type RunRoute } from '@/lib/run/mapbox';
+import { advanceSplits } from '@/lib/run/insights';
 import { requestLocationPermission } from '@/lib/userLocation';
 
 export type RunPhase = 'idle' | 'preparing' | 'ready' | 'running' | 'paused' | 'finished';
@@ -30,6 +31,8 @@ export type RunState = {
   mode: 'run' | 'explore';
   syncError: string | null;
   segments: LatLng[][];
+  /** Cumulative moving ms at each whole kilometre; -1 = carried over from an earlier session. */
+  splits: number[];
   error: RunError;
   target: RunTarget | null;
   targetMeters: number;
@@ -77,7 +80,7 @@ const TRANSPORT_CANCEL_MS = 32_000;
 
 const initial: RunState = {
   phase: 'idle',
-  mode:'run', syncError:null, segments:[],
+  mode:'run', syncError:null, segments:[], splits:[],
   error: null,
   target: null,
   targetMeters: 0,
@@ -129,7 +132,7 @@ export function isActiveRunPhase(phase: RunPhase): phase is 'running' | 'paused'
 }
 
 /** One-shot event hooks for haptics / banners in the UI layer. */
-type RunEvent = 'pin_reached' | 'target_completed' | 'transport_warning' | 'transport_cancelled';
+type RunEvent = 'pin_reached' | 'target_completed' | 'transport_warning' | 'transport_cancelled' | 'km_split';
 const eventListeners = new Set<(e: RunEvent) => void>();
 export function onRunEvent(fn: (e: RunEvent) => void): () => void {
   eventListeners.add(fn);
@@ -141,8 +144,17 @@ function emit(e: RunEvent) {
 
 function set(patch: Partial<RunState>) {
   state = { ...state, ...patch };
+  let split = false;
+  if (state.phase === 'running' && patch.distanceM !== undefined) {
+    const splits = advanceSplits(state.splits, state.distanceM, currentMovingAccum());
+    if (splits !== state.splits) {
+      state = { ...state, splits };
+      split = true;
+    }
+  }
   listeners.forEach((fn) => fn());
   if (isActiveRunPhase(state.phase)) schedulePersist();
+  if (split) emit('km_split');
 }
 
 function currentMovingAccum(): number {
@@ -156,7 +168,7 @@ function buildPersistSnapshot(): PersistedActiveRun | null {
   if (!isActiveRunPhase(state.phase) || !state.target || !state.origin || !state.startedAt) return null;
   return {
     v: 1,
-    mode:state.mode, segments:state.segments,
+    mode:state.mode, segments:state.segments, splits:state.splits,
     phase: state.phase,
     target: state.target,
     targetMeters: state.targetMeters,
@@ -359,7 +371,7 @@ export async function startRun(): Promise<void> {
     const now=Date.now();
     if(state.phase==='ready'){
       movingAccumMs=verified.seconds*1000;
-      set({phase:'running',startedAt:now,path:state.current?[state.current]:[],segments:[],distanceM:verified.meters,movingMs:movingAccumMs,elapsedMs:0,error:null,syncError:null});
+      set({phase:'running',startedAt:now,path:state.current?[state.current]:[],segments:[],splits:Array.from({length:Math.floor(verified.meters/1000)},()=>-1),distanceM:verified.meters,movingMs:movingAccumMs,elapsedMs:0,error:null,syncError:null});
     } else set({phase:'running',distanceM:verified.meters,error:null,syncError:null});
     segmentStartedAt=now;lastFixAt=0;
     startTimer();ensureAppStatePersist();await startWatch();void flushPersist();
@@ -408,6 +420,7 @@ export async function finishRun(): Promise<RunSummary | null> {
     origin: state.origin,
     path: downsamplePath(state.path),
     segments: state.segments.map(segment=>downsamplePath(segment)),
+    splits: state.splits,
   };
   if(!state.simulating)getPulseClient().stop(true);
   const wasSimulation=state.simulating;
@@ -478,6 +491,7 @@ export function hydrateActiveRun(): Promise<boolean> {
       phase: 'paused',
       mode: snap.mode || 'run',
       segments: snap.segments || (snap.path.length ? [snap.path] : []),
+      splits: Array.isArray(snap.splits) ? snap.splits.filter((n) => typeof n === 'number') : [],
       target: snap.target,
       targetMeters: snap.targetMeters,
       origin: snap.origin,
