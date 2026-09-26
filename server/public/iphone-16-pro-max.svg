@@ -22,7 +22,4 @@
   <rect x="10" y="10" width="450" height="936" rx="68" fill="none" stroke="url(#ti)" stroke-width="4"/>
   <rect x="8.5" y="8.5" width="453" height="939" rx="69.5" fill="none" stroke="url(#hl)"/>
   <path fill="#0a0a0b" fill-rule="evenodd" d="M78 12H392A66 66 0 0 1 458 78V878A66 66 0 0 1 392 944H78A66 66 0 0 1 12 878V78A66 66 0 0 1 78 12ZM80 24H390A54 54 0 0 1 444 78V878A54 54 0 0 1 390 932H80A54 54 0 0 1 26 878V78A54 54 0 0 1 80 24Z"/>
-  <rect x="172" y="40" width="126" height="36" rx="18" fill="#0a0a0b"/>
-  <circle cx="281" cy="58" r="5.5" fill="#15161a"/>
-  <circle cx="281" cy="58" r="2.5" fill="#25283a"/>
 </svg>
