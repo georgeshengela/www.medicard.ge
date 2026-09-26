@@ -66,7 +66,7 @@ export default function Records() {
   const startUpload = useCallback(() => {
     Alert.alert(ka.records.addCta, ka.records.emptyHint, [
       { text: ka.common.cancel, style: 'cancel' },
-      { text: ka.records.addLab, onPress: () => router.push('/module/lab' as never) },
+      { text: ka.records.addLab, onPress: () => router.push('/lab/analyze' as never) },
       { text: ka.records.addImaging, onPress: () => router.push('/module/imaging' as never) },
     ]);
   }, [router]);
