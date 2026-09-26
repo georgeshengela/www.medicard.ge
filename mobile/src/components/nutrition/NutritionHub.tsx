@@ -1,316 +1,240 @@
 import React from "react";
-import { View, Pressable, Text } from "react-native";
+import { View, Pressable, Text, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import {
   ArrowUpRight,
-  Camera,
   CalendarDays,
   ChartNoAxesCombined,
   Droplet,
   Flame,
   Footprints,
-  Leaf,
   Mic,
   Ruler,
   Scale,
   Settings2,
+  Sparkles,
   Target,
   Trophy,
+  type LucideIcon,
 } from "lucide-react-native";
 import { useAuth } from "@/store/AuthContext";
 import { nutritionDateLabel } from "@/lib/nutritionProgram";
 import { mealLabels } from "@/lib/nutrition";
-import { useThemeColors } from "@/theme/colors";
-import { hubText } from "@/theme/hub";
-import {
-  NScreen,
-  NText,
-  NCard,
-  NButton,
-  NLink,
-  NLoading,
-  NError,
-  EnergyRing,
-  MacroRails,
-  useNutritionDashboard,
-} from "./ProgramUI";
+import { useIsDark, useThemeColors } from "@/theme/colors";
+import { HUB, hubInk, hubText, hubTint, type HubInk } from "@/theme/hub";
+import { HubFeatureCard } from "@/components/home/HubFeatureCard";
+import { NScreen, NText, NLoading, NError, EnergyRing, MacroRails, useNutritionDashboard } from "./ProgramUI";
+import { HubCard, HubSection, MacroLine, PRIMARY_LOG_TILES, QuickLogTiles, SECONDARY_LOG_TILES } from "./NutritionUi";
+
 export default function Nutrition() {
   const { user } = useAuth();
   return <Hub key={user?.id || "guest"} />;
 }
 function Hub() {
   const c = useThemeColors(),
+    dark = useIsDark(),
     router = useRouter(),
     { data: d, error, loading, load } = useNutritionDashboard();
-  const stat = (icon: React.ReactNode, value: string, label: string, onPress?: () => void) => (
-    <Pressable
-      accessibilityRole={onPress ? "button" : undefined}
-      accessibilityLabel={`${label}: ${value}`}
-      disabled={!onPress}
-      onPress={onPress}
-      style={{ flex: 1, minWidth: 0, backgroundColor: c.bg100, borderRadius: 16, padding: 12, gap: 4 }}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        {icon}
-        <NText numberOfLines={1} style={{ fontSize: 11, lineHeight: 16, color: c.text200, flex: 1 }}>{label}</NText>
-      </View>
-      <NText numberOfLines={1} style={{ fontFamily: "NotoSansGeorgian_700Bold", fontSize: 15, lineHeight: 21 }}>{value}</NText>
-    </Pressable>
-  );
+  const dayTile = (icon: LucideIcon, ink: HubInk, value: string, label: string, href: string) => {
+    const Icon = icon, hex = hubInk(ink, dark);
+    return (
+      <Pressable key={label} accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} onPress={() => router.push(href as never)} style={[s.dayTile, { backgroundColor: c.bg100 }]}>
+        <View style={[s.dayIcon, { backgroundColor: hubTint(hex, dark) }]}>
+          <Icon size={16} color={hex} strokeWidth={2.2} />
+        </View>
+        <Text numberOfLines={1} style={[hubText.value, { color: c.text100, fontSize: 14, lineHeight: 20 }]}>{value}</Text>
+        <Text numberOfLines={1} style={[hubText.small, { color: c.text300 }]}>{label}</Text>
+      </Pressable>
+    );
+  };
+  const link = (icon: LucideIcon, ink: HubInk, title: string, subtitle: string, href: string, last = false) => {
+    const Icon = icon, hex = hubInk(ink, dark);
+    return (
+      <Pressable key={title} accessibilityRole="button" accessibilityLabel={`${title}. ${subtitle}`} onPress={() => router.push(href as never)} style={[s.link, !last && { borderBottomWidth: 1, borderBottomColor: c.bg300 }]}>
+        <View style={[s.linkIcon, { backgroundColor: hubTint(hex, dark) }]}>
+          <Icon size={20} color={hex} strokeWidth={1.9} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>{title}</Text>
+          <Text numberOfLines={2} style={[hubText.caption, { color: c.text200 }]}>{subtitle}</Text>
+        </View>
+        <ArrowUpRight size={18} color={c.text300} />
+      </Pressable>
+    );
+  };
   return (
-    <NScreen
-      title="კვება შენს რიტმში"
-      subtitle="მიზანი · რაციონი · ყოველდღიური პროგრესი"
-    >
-      {error ? (
-        <NError message={error} retry={() => void load()} />
-      ) : loading && !d ? (
-        <NLoading />
-      ) : null}
+    <NScreen title="კვება" subtitle="ჩაწერე, გადაამოწმე, გაიგე">
+      {error ? <NError message={error} retry={() => void load()} /> : loading && !d ? <NLoading /> : null}
       {d && (
         <>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Leaf color={c.primary100} size={17} />
-            <NText style={{ color: c.text200, fontSize: 12, flex: 1 }}>
-              დღეს · {nutritionDateLabel(d.date)}
-            </NText>
-            {d.streak.current > 0 && (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: c.accent100, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
-                <Flame size={14} color={c.primary100} />
-                <NText style={{ fontSize: 12, color: c.primary100, fontFamily: "NotoSansGeorgian_600SemiBold" }}>{d.streak.current} დღე</NText>
-              </View>
-            )}
-          </View>
-          <NCard>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>
-                დღის ბალანსი
-              </NText>
-              <View style={{ flexDirection: "row" }}>
-                <Pressable
-                  onPress={() => router.push("/nutrition/settings")}
-                  accessibilityRole="button"
-                  accessibilityLabel="კვების პარამეტრები"
-                  style={{ padding: 10 }}
-                >
-                  <Settings2 size={20} color={c.text200} />
-                </Pressable>
-                <Pressable
-                  onPress={() => router.push("/nutrition/goal")}
-                  accessibilityRole="button"
-                  accessibilityLabel="კვების მიზნის მართვა"
-                  style={{ padding: 10 }}
-                >
-                  <Target size={20} color={c.primary100} />
+          <HubSection first title={`დღეს · ${nutritionDateLabel(d.date)}`}>
+            <HubCard>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={[hubText.cardTitle, { color: c.text100, flex: 1 }]}>დღის ბალანსი</Text>
+                {d.streak.current > 0 && (
+                  <View style={[s.pill, { backgroundColor: hubTint(hubInk("teal", dark), dark) }]}>
+                    <Flame size={13} color={hubInk("teal", dark)} />
+                    <Text style={[hubText.small, { color: hubInk("teal", dark), fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{d.streak.current} დღე</Text>
+                  </View>
+                )}
+                <Pressable onPress={() => router.push("/nutrition/settings")} accessibilityRole="button" accessibilityLabel="კვების პარამეტრები" style={s.iconButton}>
+                  <Settings2 size={19} color={c.text200} />
                 </Pressable>
               </View>
-            </View>
-            <EnergyRing
-              value={d.today.calories}
-              target={d.budget ?? d.targets?.calories ?? null}
-            />
-            <NText
-              style={{ textAlign: "center", color: c.text200, fontSize: 13 }}
-            >
-              {d.targets
-                ? d.remaining! >= 0
-                  ? `დღის ბიუჯეტამდე ${Math.round(d.remaining!)} კკალ`
-                  : `ბიუჯეტზე ${Math.abs(Math.round(d.remaining!))} კკალ-ით მეტი`
-                : d.program?.active
-                  ? "გეგმა გადასამოწმებელია"
-                  : "აღრიცხე კვება და შეარჩიე შენი მიზანი"}
-            </NText>
-            {d.targets && (d.burned.counted > 0 || d.rollover > 0) && (
-              <NText style={{ textAlign: "center", color: c.text300, fontSize: 11 }}>
-                სამიზნე {d.targets.calories}
-                {d.burned.counted > 0 ? ` + დამწვარი ${d.burned.counted}` : ""}
-                {d.rollover > 0 ? ` + გუშინდელი ${d.rollover}` : ""} = {d.budget} კკალ
-              </NText>
-            )}
-            <MacroRails actual={d.today} target={d.targets} />
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {stat(<Droplet size={14} color={c.primary100} />, d.water.goalMl ? `${(d.water.ml / 1000).toFixed(1)} / ${(d.water.goalMl / 1000).toFixed(1)} ლ` : `${(d.water.ml / 1000).toFixed(1)} ლ`, "წყალი", () => router.push("/health-metrics/hydration"))}
-              {stat(<Footprints size={14} color={c.primary100} />, d.steps.toLocaleString("en-US").replace(/,/g, " "), "ნაბიჯი", () => router.push("/health-metrics/steps"))}
-              {stat(<Flame size={14} color={c.primary100} />, `${d.burned.total} კკალ`, "დამწვარი", () => router.push("/nutrition/activity"))}
-            </View>
-            <NButton
-              label="კვების დამატება"
-              onPress={() => router.push("/nutrition/diary")}
-            />
-            <NText
-              style={{ fontSize: 11, color: c.text200, textAlign: "center" }}
-            >
-              ითვლება მხოლოდ შენახული კვება · შეფასებები მიახლოებითია
-            </NText>
-          </NCard>
+              <EnergyRing value={d.today.calories} target={d.budget ?? d.targets?.calories ?? null} />
+              <Text style={[hubText.body, { color: c.text200, textAlign: "center" }]}>
+                {d.targets
+                  ? d.remaining! >= 0
+                    ? `კიდევ ${Math.round(d.remaining!)} კკალ შეგიძლია დღეს`
+                    : `დღის ბიუჯეტზე ${Math.abs(Math.round(d.remaining!))} კკალ-ით მეტი — ხვალ ახალი დღეა`
+                  : d.program?.active
+                    ? "გეგმა გადასამოწმებელია"
+                    : "ჩაწერე კვება — მიზანს ქვემოთ აირჩევ"}
+              </Text>
+              {d.targets && (d.burned.counted > 0 || d.rollover > 0) && (
+                <Text style={[hubText.small, { color: c.text300, textAlign: "center" }]}>
+                  სამიზნე {d.targets.calories}{d.burned.counted > 0 ? ` + დამწვარი ${d.burned.counted}` : ""}{d.rollover > 0 ? ` + გუშინდელი ${d.rollover}` : ""} = {d.budget} კკალ
+                </Text>
+              )}
+              <MacroRails actual={d.today} target={d.targets} />
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {dayTile(Droplet, "sky", d.water.goalMl ? `${(d.water.ml / 1000).toFixed(1)} / ${(d.water.goalMl / 1000).toFixed(1)} ლ` : `${(d.water.ml / 1000).toFixed(1)} ლ`, "წყალი", "/health-metrics/hydration")}
+                {dayTile(Footprints, "green", d.steps.toLocaleString("en-US").replace(/,/g, " "), "ნაბიჯი", "/health-metrics/steps")}
+                {dayTile(Flame, "amber", `${d.burned.total} კკალ`, "დამწვარი", "/nutrition/activity")}
+              </View>
+            </HubCard>
+          </HubSection>
+
+          <HubSection title="ჩაწერე კვება" linkLabel="დღიური" onLink={() => router.push("/nutrition/diary")}>
+            <HubCard style={{ gap: 10 }}>
+              <QuickLogTiles tiles={PRIMARY_LOG_TILES} columns={2} />
+              <QuickLogTiles tiles={SECONDARY_LOG_TILES} columns={2} />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Sparkles size={14} color={c.primary100} />
+                <Text style={[hubText.small, { color: c.text200, flex: 1 }]}>AI შეფასებას შენახვამდე ყოველთვის გადაამოწმებ — არაფერი ინახება შენ გარეშე.</Text>
+              </View>
+            </HubCard>
+          </HubSection>
+
           {d.todayMeals.length > 0 && (
-            <NCard style={{ gap: 8 }}>
-              <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>დღეს ჩაწერილი</NText>
-              {d.todayMeals.map((meal) => (
-                <Pressable key={meal.id} accessibilityRole="button" onPress={() => router.push("/nutrition/diary")} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 }}>
-                  <View style={{ flex: 1 }}>
-                    <NText numberOfLines={1} style={{ fontSize: 14 }}>{meal.title || meal.names.join(" · ")}</NText>
-                    <NText style={{ fontSize: 11, color: c.text200 }}>{mealLabels[meal.type]} · ც {Math.round(meal.totals.protein)} · ნ {Math.round(meal.totals.carbs)} · ცხ {Math.round(meal.totals.fat)} გ</NText>
-                  </View>
-                  <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>{Math.round(meal.totals.calories)}</NText>
-                </Pressable>
-              ))}
-            </NCard>
+            <HubSection title="დღეს ჩაწერილი" linkLabel="ყველა" onLink={() => router.push("/nutrition/diary")}>
+              <HubCard style={{ gap: 0 }}>
+                {d.todayMeals.map((meal, index) => (
+                  <Pressable key={meal.id} accessibilityRole="button" onPress={() => router.push("/nutrition/diary")} style={[s.mealRow, index > 0 && { borderTopWidth: 1, borderTopColor: c.bg300 }]}>
+                    <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                      <Text numberOfLines={1} style={[hubText.body, { color: c.text100, fontSize: 14 }]}>
+                        <Text style={{ color: c.text300 }}>{mealLabels[meal.type]} · </Text>
+                        {meal.title || meal.names.join(" · ")}
+                      </Text>
+                      <MacroLine protein={meal.totals.protein} carbs={meal.totals.carbs} fat={meal.totals.fat} />
+                    </View>
+                    <Text style={[hubText.value, { color: c.text100 }]}>{Math.round(meal.totals.calories)} <Text style={[hubText.small, { color: c.text300 }]}>კკალ</Text></Text>
+                  </Pressable>
+                ))}
+              </HubCard>
+            </HubSection>
           )}
-          {(!d.program?.active || d.needsReview) && (
-            <NCard style={{ backgroundColor: c.accent100 }}>
-              <NText
-                style={{
-                  fontSize: 19,
-                  lineHeight: 28,
-                  fontFamily: "NotoSansGeorgian_600SemiBold",
-                }}
-              >
-                {d.needsReview
-                  ? "გეგმა შენთან ერთად იცვლება"
-                  : "შენი მიზანი, შენი ტემპით"}
-              </NText>
-              <NText style={{ color: c.text200 }}>
-                {d.needsReview
-                  ? d.reasons.join(" ")
-                  : "დაკლება, შენარჩუნება თუ მომატება — დღის სამიზნე და რაციონი ერთ გეგმაში."}
-              </NText>
-              <NButton
-                label={d.program ? "გეგმის გადამოწმება" : "ჩემი გეგმის შექმნა"}
+
+          <HubSection title="შენი მიზანი">
+            {!d.program?.active || d.needsReview ? (
+              <HubFeatureCard
+                tone="spotlight"
+                icon={Target}
+                title={d.needsReview ? "გეგმა შენთან ერთად იცვლება" : "შენი მიზანი, შენი ტემპით"}
+                body={d.needsReview ? d.reasons.join(" ") : "დაკლება, შენარჩუნება თუ მომატება — დღის ბიუჯეტი, მაკროები და 7 დღის რაციონი ერთ გეგმაში."}
+                cta={d.program ? "გეგმის გადამოწმება" : "ჩემი გეგმის შექმნა"}
                 onPress={() => router.push("/nutrition/goal")}
+                note="ეს ორიენტირია, არა ექიმის დანიშნულება."
               />
-            </NCard>
-          )}
-          <NCard style={{ gap: 10 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
-              <Trophy size={18} color={c.primary100} />
-              <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", flex: 1 }}>თანმიმდევრობა</NText>
-              <NText style={{ fontSize: 12, color: c.text200 }}>რეკორდი {d.streak.best} დღე</NText>
-            </View>
-            <Text style={[hubText.value, { color: c.text100, fontSize: 28, lineHeight: 36 }]}>
-              {d.streak.current} <Text style={[hubText.small, { color: c.text200 }]}>დღე ზედიზედ</Text>
-            </Text>
-            <NText style={{ fontSize: 12, color: c.text200 }}>
-              {d.streak.loggedToday
-                ? d.streak.nextMilestone
-                  ? `დღეს ჩაწერილია. შემდეგი ნიშნული: ${d.streak.nextMilestone} დღე.`
-                  : "დღეს ჩაწერილია. ყველა ნიშნული აღებულია!"
-                : d.streak.current > 0
-                  ? "დღეს ერთი ჩანაწერი — და სერია გრძელდება."
-                  : "პირველი ჩანაწერით სერია იწყება. კვირაში ერთი გამოტოვება ბუნებრივია."}
-            </NText>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-              {[3, 7, 14, 30, 60, 100].map((m) => {
-                const reached = d.streak.reached.includes(m);
-                return (
-                  <View key={m} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: reached ? c.accent100 : c.bg200 }}>
-                    <NText style={{ fontSize: 11, color: reached ? c.primary100 : c.text300 }}>{m} დღე</NText>
+            ) : (
+              <HubCard>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <View style={[s.linkIcon, { backgroundColor: hubTint(hubInk("teal", dark), dark) }]}>
+                    <Scale size={20} color={hubInk("teal", dark)} strokeWidth={1.9} />
                   </View>
-                );
-              })}
-            </View>
-          </NCard>
-          <View>
-            <NLink
-              title="ჩემი რაციონი"
-              subtitle="7 დღე · კერძები · საყიდლების სია"
-              icon={<CalendarDays color={c.primary100} size={21} />}
-              onPress={() => router.push("/nutrition/plan")}
-            />
-            <View style={{ height: 1, backgroundColor: c.bg300 }} />
-            <NLink
-              title="კვების დღიური"
-              subtitle={`${d.mealCount} ჩანაწერი დღეს · ფოტო, შტრიხკოდი, ეტიკეტი, ძებნა, ხმა`}
-              icon={<Camera color={c.primary100} size={21} />}
-              onPress={() => router.push("/nutrition/diary")}
-            />
-            <View style={{ height: 1, backgroundColor: c.bg300 }} />
-            <NLink
-              title="ვარჯიში და ენერგია"
-              subtitle={d.activities.length ? `დღეს ${d.activities.length} ვარჯიში · ${d.burned.activities} კკალ` : "სირბილი, ძალოვანი, სიარული — და ბიუჯეტში ჩათვლა"}
-              icon={<Flame color={c.primary100} size={21} />}
-              onPress={() => router.push("/nutrition/activity")}
-            />
-            <View style={{ height: 1, backgroundColor: c.bg300 }} />
-            <NLink
-              title="ჩემი პროგრესი"
-              subtitle="კვირის შეჯამება, წონის პროგნოზი და ტენდენციები"
-              icon={<ChartNoAxesCombined color={c.primary100} size={21} />}
-              onPress={() => router.push("/nutrition/progress")}
-            />
-            <View style={{ height: 1, backgroundColor: c.bg300 }} />
-            <NLink
-              title="სხეულის ზომები"
-              subtitle={d.measurements[0] ? `ბოლო ჩანაწერი ${nutritionDateLabel(d.measurements[0].date)}` : "წელი, თეძო, მკერდი — სასწორის გარდა"}
-              icon={<Ruler color={c.primary100} size={21} />}
-              onPress={() => router.push("/nutrition/measurements")}
-            />
-          </View>
-          {d.facts.weightGoal && (
-            <NCard>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 9 }}
-              >
-                <Scale size={18} color={c.primary100} />
-                <NText>ერთი საერთო მიზანი</NText>
+                  <Text style={[hubText.cardTitle, { color: c.text100, flex: 1 }]}>წონის მიზანი</Text>
+                  <Pressable onPress={() => router.push("/nutrition/goal")} accessibilityRole="button" accessibilityLabel="მიზნის შეცვლა" style={s.iconButton}>
+                    <Target size={19} color={c.primary100} />
+                  </Pressable>
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 10 }}>
+                  <Text style={[hubText.value, { color: c.text100, fontSize: 30, lineHeight: 38 }]}>{d.facts.current?.kg ?? "—"}</Text>
+                  <ArrowUpRight size={18} color={c.text300} />
+                  <Text style={[hubText.value, { color: c.primary100, fontSize: 30, lineHeight: 38 }]}>{d.facts.weightGoal?.targetKg ?? d.program.config.targetKg} <Text style={[hubText.small, { color: c.text300 }]}>კგ</Text></Text>
+                </View>
+                <Text style={[hubText.caption, { color: c.text200 }]}>
+                  {d.projection.trendEta
+                    ? `მიმდინარე ტემპით მიზანს დაახლოებით ${nutritionDateLabel(d.projection.trendEta)}-ს მიაღწევ.`
+                    : d.projection.planEta
+                      ? `გეგმის ტემპით ორიენტირი: ${nutritionDateLabel(d.projection.planEta)}.`
+                      : "დღის სამიზნე გეგმიდანაა. წონას როცა ჩაწერ, პროგნოზიც გამოჩნდება."}
+                </Text>
+                <Pressable accessibilityRole="button" onPress={() => router.push("/health-metrics/weight")} style={[s.secondary, { backgroundColor: c.bg200 }]}>
+                  <Text style={[hubText.link, { color: c.text100 }]}>წონის ჩაწერა</Text>
+                </Pressable>
+              </HubCard>
+            )}
+          </HubSection>
+
+          <HubSection title="სერია და ნიშნულები">
+            <HubCard>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={[s.linkIcon, { backgroundColor: hubTint(hubInk("amber", dark), dark) }]}>
+                  <Trophy size={20} color={hubInk("amber", dark)} strokeWidth={1.9} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[hubText.value, { color: c.text100, fontSize: 22, lineHeight: 28 }]}>{d.streak.current} <Text style={[hubText.small, { color: c.text200 }]}>დღე ზედიზედ</Text></Text>
+                  <Text style={[hubText.small, { color: c.text300 }]}>რეკორდი {d.streak.best} დღე</Text>
+                </View>
               </View>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
-              >
-                <NText
-                  style={{
-                    fontSize: 27,
-                    lineHeight: 38,
-                    fontFamily: "NotoSansGeorgian_600SemiBold",
-                  }}
-                >
-                  {d.facts.current?.kg ?? "—"}
-                </NText>
-                <ArrowUpRight size={20} color={c.text200} />
-                <NText
-                  style={{
-                    fontSize: 27,
-                    lineHeight: 38,
-                    color: c.primary100,
-                    fontFamily: "NotoSansGeorgian_600SemiBold",
-                  }}
-                >
-                  {d.facts.weightGoal.targetKg} კგ
-                </NText>
+              <Text style={[hubText.caption, { color: c.text200 }]}>
+                {d.streak.loggedToday
+                  ? d.streak.nextMilestone
+                    ? `დღეს ჩაწერილია. შემდეგი ნიშნული ${d.streak.nextMilestone} დღეა.`
+                    : "დღეს ჩაწერილია. ყველა ნიშნული აღებულია!"
+                  : d.streak.current > 0
+                    ? "დღეს ერთი ჩანაწერი — და სერია გრძელდება."
+                    : "პირველი ჩანაწერით სერია იწყება. გამოტოვება ვალს არ ქმნის."}
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {[3, 7, 14, 30, 60, 100].map((m) => {
+                  const reached = d.streak.reached.includes(m);
+                  return (
+                    <View key={m} style={[s.pill, { backgroundColor: reached ? hubTint(hubInk("teal", dark), dark) : c.bg200 }]}>
+                      <Text style={[hubText.small, { color: reached ? hubInk("teal", dark) : c.text300 }]}>{m} დღე</Text>
+                    </View>
+                  );
+                })}
               </View>
-              <NText style={{ fontSize: 12, color: c.text200 }}>
-                {d.projection.trendEta
-                  ? `მიმდინარე ტემპით მიზანს დაახლოებით ${nutritionDateLabel(d.projection.trendEta)}-ს მიაღწევ.`
-                  : d.projection.planEta
-                    ? `გეგმის ტემპით ორიენტირი: ${nutritionDateLabel(d.projection.planEta)}.`
-                    : "იგივე მიზანი ჩანს წონის გვერდზეც და Medi-სთანაც."}
-              </NText>
-              <NButton
-                secondary
-                label="წონის აღრიცხვა"
-                onPress={() => router.push("/health-metrics/weight")}
-              />
-            </NCard>
-          )}
-          <NLink
-            title="დაელაპარაკე Medi-ს"
-            subtitle="„ორი ხინკალი ვჭამე“ — Medi ჩაწერს და დაითვლის"
-            icon={<Mic color={c.primary100} size={21} />}
-            onPress={() => router.push("/assistant")}
-          />
-          <NButton
-            secondary
-            label="როგორ გამოითვლება გეგმა?"
-            onPress={() => router.push("/nutrition/method")}
-          />
+            </HubCard>
+          </HubSection>
+
+          <HubSection title="მეტი">
+            <HubCard style={{ gap: 0, paddingVertical: 4 }}>
+              {link(CalendarDays, "teal", "ჩემი რაციონი", "7 დღის კერძები და საყიდლების სია", "/nutrition/plan")}
+              {link(Flame, "amber", "ვარჯიში და ენერგია", d.activities.length ? `დღეს ${d.activities.length} ვარჯიში · ${d.burned.activities} კკალ` : "სირბილი, ძალოვანი, სიარული — ბიუჯეტში ჩათვლით", "/nutrition/activity")}
+              {link(ChartNoAxesCombined, "blue", "პროგრესი", "კვირის შეჯამება, წონის პროგნოზი, ტენდენციები", "/nutrition/progress")}
+              {link(Ruler, "violet", "სხეულის ზომები", d.measurements[0] ? `ბოლო ჩანაწერი ${nutritionDateLabel(d.measurements[0].date)}` : "წელი, თეძო, მკერდი — სასწორის გარდა", "/nutrition/measurements")}
+              {link(Mic, "rose", "უთხარი Medi-ს", "„ორი ხინკალი ვჭამე“ — ჩაწერს და დაითვლის", "/assistant")}
+              {link(Settings2, "neutral", "პარამეტრები და შეხსენებები", "ბიუჯეტის წესები, კვების შეხსენებები, მეთოდი", "/nutrition/settings", true)}
+            </HubCard>
+          </HubSection>
+          <Pressable accessibilityRole="button" onPress={() => router.push("/nutrition/method")} style={{ paddingVertical: 8 }}>
+            <Text style={[hubText.small, { color: c.text300, textAlign: "center" }]}>როგორ ითვლება გეგმა და რატომ არის შეფასება მიახლოებითი →</Text>
+          </Pressable>
         </>
       )}
     </NScreen>
   );
 }
+
+const s = StyleSheet.create({
+  pill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  iconButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center", marginRight: -10 },
+  dayTile: { flex: 1, minWidth: 0, borderRadius: 16, padding: 12, gap: 6 },
+  dayIcon: { width: 30, height: 30, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  mealRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
+  link: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, minHeight: 64 },
+  linkIcon: { width: HUB.tile, height: HUB.tile, borderRadius: HUB.tileRadius, alignItems: "center", justifyContent: "center" },
+  secondary: { minHeight: 46, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+});

@@ -3,8 +3,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { Easing, useAnimatedProps, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
-import { Beef, BookOpen, Camera, Droplet, Droplets, Flame, Footprints, Salad, Wheat, type LucideIcon } from 'lucide-react-native';
+import { Beef, ChevronRight, Droplet, Droplets, Flame, Footprints, Salad, Wheat, type LucideIcon } from 'lucide-react-native';
 import { useNutritionDashboard } from '@/components/nutrition/ProgramUI';
+import { QuickLogTiles } from '@/components/nutrition/NutritionUi';
 import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { mealLabels } from '@/lib/nutrition';
@@ -12,7 +13,7 @@ import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const RING = 92;
+const RING = 96;
 const STROKE = 10;
 const groupDigits = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
@@ -77,9 +78,9 @@ function MacroChip({ macro }: { macro: Macro }) {
 }
 
 /**
- * Nutrition on Home the way Cal AI frames it: one ring for today's energy,
- * three macros with their own colour, the day's water / steps / streak in one
- * row, today's meals, and a camera button you cannot miss.
+ * Nutrition on Home: the day in one glance (ring, macros, water / steps /
+ * streak), then the four ways to log — each a single tap that lands in the
+ * diary with that method already open. Nothing here needs explaining.
  */
 export function HomeNutritionCard({ waterMl, waterGoalMl, steps }: { waterMl?: number; waterGoalMl?: number; steps?: number } = {}) {
   const c = useThemeColors();
@@ -109,21 +110,33 @@ export function HomeNutritionCard({ waterMl, waterGoalMl, steps }: { waterMl?: n
     { key: 'fat', label: 'ცხიმი', icon: Droplet, ink: 'sky', value: data?.today.fat ?? 0, target: data?.targets?.fat ?? null },
   ];
   const days = [
-    { key: 'water', icon: Droplets, ink: hubInk('sky', dark), value: waterGoal ? `${(water / 1000).toFixed(1)}/${(waterGoal / 1000).toFixed(1)} ლ` : `${(water / 1000).toFixed(1)} ლ`, label: 'წყალი', href: '/health-metrics/hydration' },
+    { key: 'water', icon: Droplets, ink: hubInk('sky', dark), value: waterGoal ? `${(water / 1000).toFixed(1)} / ${(waterGoal / 1000).toFixed(1)} ლ` : `${(water / 1000).toFixed(1)} ლ`, label: 'წყალი', href: '/health-metrics/hydration' },
     { key: 'steps', icon: Footprints, ink: hubInk('green', dark), value: groupDigits(stepCount), label: 'ნაბიჯი', href: '/health-metrics/steps' },
-    { key: 'streak', icon: Flame, ink: tealInk, value: streak ? `${streak} დღე` : '—', label: 'სერია', href: '/nutrition' },
+    { key: 'streak', icon: Flame, ink: tealInk, value: streak ? `${streak} დღე` : 'დაიწყე', label: 'სერია', href: '/nutrition' },
   ];
+  const headline = logged
+    ? target
+      ? over
+        ? `${groupDigits(-remaining!)} კკალ ბიუჯეტზე მეტი`
+        : `${groupDigits(remaining!)} კკალ კიდევ შეგიძლია`
+      : `${groupDigits(eaten)} კკალ დღეს`
+    : 'დღეს ჯერ არაფერი ჩაწერილა';
+  const caption = logged
+    ? target
+      ? `${groupDigits(eaten)} / ${groupDigits(target)} კკალ · ${data!.mealCount} კვება`
+      : `${data!.mealCount} კვება · მიზანს აირჩევ და ბიუჯეტიც გამოჩნდება`
+    : 'გადაიღე, დაასკანერე ან უბრალოდ თქვი — Medi დაითვლის.';
 
   return (
     <View style={[s.card, { backgroundColor: c.surface }]}>
-      <View style={s.top}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${headline}. კვების დღიურის გახსნა`} onPress={() => router.push('/nutrition/diary' as never)} style={s.top}>
         <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
           <EnergyRing progress={progress} color={logged ? energyInk : c.bg300} track={c.bg200} reduceMotion={reduceMotion} />
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               {logged ? (
                 <>
-                  <Text style={[hubText.value, { color: c.text100, fontSize: 18, lineHeight: 22 }]}>
+                  <Text style={[hubText.value, { color: c.text100, fontSize: 19, lineHeight: 24 }]}>
                     {groupDigits(target != null && remaining != null ? Math.abs(remaining) : eaten)}
                   </Text>
                   <Text style={[hubText.small, { color: c.text300, fontSize: 10, lineHeight: 13 }]}>
@@ -131,37 +144,20 @@ export function HomeNutritionCard({ waterMl, waterGoalMl, steps }: { waterMl?: n
                   </Text>
                 </>
               ) : (
-                <Salad size={30} color={energyInk} strokeWidth={1.7} />
+                <Salad size={32} color={energyInk} strokeWidth={1.6} />
               )}
             </View>
           </View>
         </View>
-
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Flame size={15} color={energyInk} strokeWidth={2.2} />
-            <Text numberOfLines={1} style={[hubText.small, { color: c.text200 }]}>
-              {logged && data ? `დღეს · ${data.mealCount} კვება` : 'დღეს'}
-            </Text>
+          <Text numberOfLines={2} style={[hubText.cardTitle, { color: c.text100, fontSize: 17, lineHeight: 24 }]}>{headline}</Text>
+          <Text numberOfLines={2} style={[hubText.caption, { color: c.text200 }]}>{caption}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 }}>
+            <Text style={[hubText.link, { color: c.primary100, fontSize: 12 }]}>დღიურის გახსნა</Text>
+            <ChevronRight size={14} color={c.primary100} />
           </View>
-          <Text numberOfLines={1} style={[hubText.value, { color: c.text100, fontSize: 19, lineHeight: 26 }]}>
-            {logged
-              ? target
-                ? `${groupDigits(eaten)} / ${groupDigits(target)} კკალ`
-                : `${groupDigits(eaten)} კკალ`
-              : 'ჯერ არაფერი ჩაწერილა'}
-          </Text>
-          <Text numberOfLines={2} style={[hubText.caption, { color: c.text200 }]}>
-            {logged
-              ? target
-                ? over
-                  ? `ბიუჯეტზე ${groupDigits(-remaining!)} კკალ-ით მეტი`
-                  : `ბიუჯეტამდე ${groupDigits(remaining!)} კკალ`
-                : 'აირჩიე მიზანი და დღიური სამიზნე გამოჩნდება'
-              : 'გადაიღე, დაასკანერე ან უბრალოდ თქვი — Medi დაითვლის'}
-          </Text>
         </View>
-      </View>
+      </Pressable>
 
       {logged ? (
         <View style={s.macros}>
@@ -171,9 +167,9 @@ export function HomeNutritionCard({ waterMl, waterGoalMl, steps }: { waterMl?: n
         </View>
       ) : null}
 
-      <View style={s.days}>
-        {days.map((day) => (
-          <Pressable key={day.key} accessibilityRole="button" accessibilityLabel={`${day.label}: ${day.value}`} onPress={() => router.push(day.href as never)} style={s.day}>
+      <View style={[s.days, { backgroundColor: c.bg100 }]}>
+        {days.map((day, index) => (
+          <Pressable key={day.key} accessibilityRole="button" accessibilityLabel={`${day.label}: ${day.value}`} onPress={() => router.push(day.href as never)} style={[s.day, index > 0 && { borderLeftWidth: 1, borderLeftColor: c.bg300 }]}>
             <View style={[s.dayIcon, { backgroundColor: hubTint(day.ink, dark) }]}>
               <day.icon size={14} color={day.ink} strokeWidth={2.2} />
             </View>
@@ -186,38 +182,20 @@ export function HomeNutritionCard({ waterMl, waterGoalMl, steps }: { waterMl?: n
       </View>
 
       {data && data.todayMeals.length > 0 ? (
-        <View style={{ gap: 6 }}>
+        <View style={{ gap: 2 }}>
           {data.todayMeals.slice(0, 3).map((meal) => (
             <Pressable key={meal.id} accessibilityRole="button" accessibilityLabel={`${mealLabels[meal.type]} · ${Math.round(meal.totals.calories)} კკალ`} onPress={() => router.push('/nutrition/diary' as never)} style={s.meal}>
-              <Text numberOfLines={1} style={[hubText.body, { color: c.text100, flex: 1 }]}>
-                <Text style={{ color: c.text300 }}>{mealLabels[meal.type]} · </Text>
-                {meal.title || meal.names.join(' · ')}
-              </Text>
+              <Text style={[hubText.small, { color: c.text300, width: 64 }]}>{mealLabels[meal.type]}</Text>
+              <Text numberOfLines={1} style={[hubText.body, { color: c.text100, flex: 1 }]}>{meal.title || meal.names.join(' · ')}</Text>
               <Text style={[hubText.value, { color: c.text100, fontSize: 13 }]}>{groupDigits(meal.totals.calories)}</Text>
             </Pressable>
           ))}
         </View>
       ) : null}
 
-      <View style={s.actions}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="გადაიღე კერძი და დაითვალე კალორიები"
-          onPress={() => router.push('/nutrition/diary' as never)}
-          style={[s.primary, { backgroundColor: dark ? '#0D9488' : '#0F766E' }]}
-        >
-          <Camera size={20} color="#FFFFFF" strokeWidth={2} />
-          <Text style={[hubText.link, { color: '#FFFFFF', fontSize: 14 }]}>ჩაწერე კვება</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="კვების დღიური და გეგმა"
-          onPress={() => router.push('/nutrition' as never)}
-          style={[s.secondary, { backgroundColor: c.bg200 }]}
-        >
-          <BookOpen size={19} color={c.text100} strokeWidth={1.9} />
-          <Text style={[hubText.link, { color: c.text100 }]}>ჰაბი</Text>
-        </Pressable>
+      <View style={{ gap: 8 }}>
+        <Text style={[hubText.small, { color: c.text300, textTransform: 'uppercase', letterSpacing: 0.6 }]}>ჩაწერე ერთი შეხებით</Text>
+        <QuickLogTiles />
       </View>
     </View>
   );
@@ -232,27 +210,8 @@ const s = StyleSheet.create({
   macroIcon: { width: 24, height: 24, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   macroTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   macroFill: { height: 4, borderRadius: 2 },
-  days: { flexDirection: 'row', gap: 8 },
-  day: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
+  days: { flexDirection: 'row', borderRadius: 16, paddingVertical: 8 },
+  day: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, minHeight: 40 },
   dayIcon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  meal: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 32 },
-  actions: { flexDirection: 'row', gap: 10 },
-  primary: {
-    flex: 1.4,
-    minHeight: 48,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  secondary: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
+  meal: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 30 },
 });

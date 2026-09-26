@@ -16,7 +16,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
@@ -27,7 +27,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleCheck,
-  Flame,
   Info,
   Leaf,
   Plus,
@@ -46,6 +45,7 @@ import { BarcodeScannerModal } from "@/components/nutrition/BarcodeScannerModal"
 import { FoodSearchModal, type FoodPick } from "@/components/nutrition/FoodSearchModal";
 import { DescribeMealModal } from "@/components/nutrition/DescribeMealModal";
 import { PortionSheet } from "@/components/nutrition/PortionSheet";
+import { MacroLine, QuickLogTiles, ScoreBadge } from "@/components/nutrition/NutritionUi";
 import {
   foodTotals,
   localDay,
@@ -58,7 +58,6 @@ import {
   foodFields,
   itemFromFields,
   healthScore,
-  healthScoreLabel,
   newUuid,
   sourceLabels,
   type FoodItem,
@@ -82,6 +81,7 @@ function NutritionScreen({ owner }: { owner: string }) {
   const c = useThemeColors(),
     safe = useSafeAreaInsets(),
     router = useRouter();
+  const params = useLocalSearchParams<{ method?: string }>();
   const [day, setDay] = useState(localDay()),
     [meals, setMeals] = useState<Meal[]>([]),
     [draft, setDraft] = useState<Meal | null>(null);
@@ -354,7 +354,6 @@ function NutritionScreen({ owner }: { owner: string }) {
   const pickMethod = (method: LogMethod) => {
     setSheet(null);
     setSheetError("");
-    if (!draft) return;
     if (method === "camera") void pick(true, "photo");
     else if (method === "gallery") void pick(false, "photo");
     else if (method === "label") void pick(true, "label");
@@ -362,8 +361,25 @@ function NutritionScreen({ owner }: { owner: string }) {
     else if (method === "describe") setTimeout(() => setSheet("describe"), 250);
     else if (method === "search") setTimeout(() => setSheet("search"), 250);
     else if (method === "saved") setTimeout(() => setSheet("saved"), 250);
-    else editItem(draft.items.length);
+    else editItem(draft?.items.length || 0);
   };
+  /** One tap from Home or the hub: a fresh meal with that method already running. */
+  const startWith = (method: LogMethod) => {
+    if (busy) return;
+    newMeal(false);
+    setTimeout(() => pickMethod(method), 50);
+  };
+  const handledMethod = useRef<string | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      const method = typeof params.method === "string" ? params.method : "";
+      if (!method || handledMethod.current === method) return;
+      handledMethod.current = method;
+      if (!draft) startWith(method as LogMethod);
+      router.setParams({ method: "" });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [params.method]),
+  );
   const onFoodPick = (pickResult: FoodPick) => {
     setSheet(null);
     addItems(pickResult.items, pickResult.source, pickResult.title);
@@ -431,11 +447,10 @@ function NutritionScreen({ owner }: { owner: string }) {
       style={[s.button, { backgroundColor: primary ? "#0F766E" : c.bg200, opacity: busy || disabled ? 0.5 : 1 }]}
     >
       {icon}
-      <Text style={[txt, { color: primary ? "#fff" : c.text100, fontWeight: "600" }]}>{label}</Text>
+      <Text style={[txt, { color: primary ? "#fff" : c.text100, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{label}</Text>
     </Pressable>
   );
   const inputStyle = [s.input, { backgroundColor: c.bg200, color: c.text100, borderColor: c.bg300 }];
-  const scoreColor = (value: number) => (value >= 8 ? c.success : value >= 5 ? "#B45309" : c.danger);
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, backgroundColor: c.bg100, paddingTop: safe.top }}>
       <View style={s.header}>
@@ -471,7 +486,7 @@ function NutritionScreen({ owner }: { owner: string }) {
             <Pressable accessibilityLabel="წინა დღე" onPress={() => setDay(shiftDay(day, -1))} style={s.icon}>
               <ChevronLeft color={c.text100} />
             </Pressable>
-            <Text style={[txt, { flex: 1, textAlign: "center", fontWeight: "600" }]}>
+            <Text style={[txt, { flex: 1, textAlign: "center", fontFamily: "NotoSansGeorgian_600SemiBold" }]}>
               {day === localDay() ? "დღეს" : new Date(day + "T12:00:00").toLocaleDateString("ka-GE", { day: "numeric", month: "long" })}
             </Text>
             <Pressable accessibilityLabel="შემდეგი დღე" disabled={day >= localDay()} onPress={() => setDay(shiftDay(day, 1))} style={[s.icon, { opacity: day >= localDay() ? 0.3 : 1 }]}>
@@ -497,12 +512,7 @@ function NutritionScreen({ owner }: { owner: string }) {
             <View style={s.row}>
               <Utensils color={c.primary100} size={21} />
               <Text style={[txt, { color: c.text200, flex: 1 }]}>{draft ? "არჩეული პორცია" : "აღრიცხული ენერგია"}</Text>
-              {score != null && (
-                <View style={[s.scoreBadge, { backgroundColor: c.bg200 }]}>
-                  <Flame size={13} color={scoreColor(score)} />
-                  <Text style={[txt, { fontSize: 12, fontFamily: "NotoSansGeorgian_600SemiBold", color: scoreColor(score) }]}>{score}/10 · {healthScoreLabel(score)}</Text>
-                </View>
-              )}
+              <ScoreBadge score={score} />
             </View>
             {draft && (
               <TextInput
@@ -515,9 +525,9 @@ function NutritionScreen({ owner }: { owner: string }) {
                 style={[txt, { fontSize: 18, fontFamily: "NotoSansGeorgian_600SemiBold", paddingVertical: 4 }]}
               />
             )}
-            <Text style={[txt, { fontSize: 40, fontWeight: "700", marginVertical: 4 }]}>
+            <Text style={[txt, { fontSize: 40, fontFamily: "NotoSansGeorgian_700Bold", marginVertical: 4 }]}>
               {sum.calories}
-              <Text style={{ fontSize: 16, fontWeight: "400" }}> კკალ</Text>
+              <Text style={{ fontSize: 16, fontFamily: "NotoSansGeorgian_400Regular" }}> კკალ</Text>
             </Text>
             <View style={[s.row, { justifyContent: "space-between" }]}>
               {[
@@ -527,7 +537,7 @@ function NutritionScreen({ owner }: { owner: string }) {
               ].map(([label, value]) => (
                 <View key={label}>
                   <Text style={[txt, { fontSize: 12, color: c.text200 }]}>{label}</Text>
-                  <Text style={[txt, { fontWeight: "600", marginTop: 4 }]}>{value} გ</Text>
+                  <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", marginTop: 4 }]}>{value} გ</Text>
                 </View>
               ))}
             </View>
@@ -549,43 +559,65 @@ function NutritionScreen({ owner }: { owner: string }) {
         {!draft && !loading && (
           <>
             {meals.length === 0 && !error && (
-              <View style={{ alignItems: "center", gap: 12, paddingVertical: 22 }}>
-                <Sparkles size={38} color={c.primary100} />
-                <Text style={[txt, { fontSize: 19, fontWeight: "600" }]}>რას მიირთმევ დღეს?</Text>
-                <Text style={[txt, { textAlign: "center", color: c.text200, lineHeight: 22 }]}>
-                  ფოტო, შტრიხკოდი, ეტიკეტი, ძებნა ან უბრალოდ თქვი — Medi დაითვლის, შენ გადაამოწმებ.
-                </Text>
+              <View style={[s.card, { backgroundColor: c.surface, gap: 14 }]}>
+                <View style={{ alignItems: "center", gap: 6, paddingTop: 6 }}>
+                  <Sparkles size={34} color={c.primary100} />
+                  <Text style={[txt, { fontSize: 19, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{day === localDay() ? "რას მიირთმევ დღეს?" : "ამ დღეს ჩანაწერი არ არის"}</Text>
+                  <Text style={[txt, { textAlign: "center", color: c.text200, lineHeight: 21, fontSize: 13 }]}>
+                    აირჩიე ერთი გზა. Medi დაითვლის, შენ გადაამოწმებ და შეინახავ.
+                  </Text>
+                </View>
+                <QuickLogTiles onPick={startWith} />
+                {button("სხვა გზები: გალერეა, ეტიკეტი, შენახული, ხელით", () => { newMeal(false); setTimeout(() => setSheet("methods"), 50); })}
               </View>
             )}
-            {meals.map((meal) => {
-              const mealScore = meal.healthScore ?? healthScore(meal.items);
-              return (
-                <View key={meal.id} style={[s.card, { backgroundColor: c.surface }]}>
-                  <View style={s.row}>
-                    <Utensils color={c.primary100} size={18} />
-                    <Text style={[txt, { flex: 1, fontWeight: "600" }]}>{mealLabels[meal.type]}</Text>
-                    {mealScore != null && <Text style={[txt, { fontSize: 12, color: scoreColor(mealScore) }]}>{mealScore}/10</Text>}
-                    <Pressable accessibilityLabel="კვების წაშლა" onPress={() => remove(meal)} disabled={busy} style={s.icon}>
-                      <Trash2 size={18} color={c.text200} />
-                    </Pressable>
+            {(["breakfast", "lunch", "dinner", "snack"] as const)
+              .filter((type) => meals.some((m) => m.type === type))
+              .map((type) => (
+                <View key={type} style={{ gap: 8 }}>
+                  <View style={[s.row, { paddingHorizontal: 4 }]}>
+                    <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 15, flex: 1 }]}>{mealLabels[type]}</Text>
+                    <Text style={[txt, { fontSize: 12, color: c.text300 }]}>{foodTotals(meals.filter((m) => m.type === type).flatMap((m) => m.items)).calories} კკალ</Text>
                   </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      openMeal(meal);
-                      setEditing(null);
-                      resetResult();
-                    }}
-                  >
-                    <Text style={[txt, { fontSize: 17, marginVertical: 8 }]}>{meal.title || meal.items.map((i) => i.name).join(" · ")}</Text>
-                    {!!meal.title && <Text numberOfLines={2} style={[txt, { fontSize: 12, color: c.text300, marginBottom: 6 }]}>{meal.items.map((i) => i.name).join(" · ")}</Text>}
-                    <Text style={[txt, { color: c.text200 }]}>
-                      {foodTotals(meal.items).calories} კკალ · {sourceLabels[meal.source] || sourceLabels.manual} · რედაქტირება
-                    </Text>
-                  </Pressable>
+                  {meals
+                    .filter((m) => m.type === type)
+                    .map((meal) => {
+                      const mealScore = meal.healthScore ?? healthScore(meal.items);
+                      const t = foodTotals(meal.items);
+                      return (
+                        <Pressable
+                          key={meal.id}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${meal.title || meal.items.map((i) => i.name).join(", ")} · ${t.calories} კკალ · რედაქტირება`}
+                          onPress={() => {
+                            openMeal(meal);
+                            setEditing(null);
+                            resetResult();
+                          }}
+                          style={[s.card, { backgroundColor: c.surface, gap: 8 }]}
+                        >
+                          <View style={[s.row, { alignItems: "flex-start" }]}>
+                            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                              <Text numberOfLines={2} style={[txt, { fontSize: 16, fontFamily: "NotoSansGeorgian_600SemiBold", lineHeight: 22 }]}>{meal.title || meal.items.map((i) => i.name).join(" · ")}</Text>
+                              {!!meal.title && <Text numberOfLines={2} style={[txt, { fontSize: 12, color: c.text300, lineHeight: 17 }]}>{meal.items.map((i) => i.name).join(" · ")}</Text>}
+                            </View>
+                            <Text style={[txt, { fontSize: 18, fontFamily: "NotoSansGeorgian_700Bold" }]}>{t.calories}<Text style={{ fontSize: 11, color: c.text300, fontFamily: "NotoSansGeorgian_400Regular" }}> კკალ</Text></Text>
+                          </View>
+                          <View style={s.row}>
+                            <View style={{ flex: 1, gap: 4 }}>
+                              <MacroLine protein={t.protein} carbs={t.carbs} fat={t.fat} />
+                              <Text style={[txt, { fontSize: 11, color: c.text300 }]}>{sourceLabels[meal.source] || sourceLabels.manual} · შეეხე რედაქტირებისთვის</Text>
+                            </View>
+                            <ScoreBadge score={mealScore} size="sm" />
+                            <Pressable accessibilityRole="button" accessibilityLabel="კვების წაშლა" onPress={() => remove(meal)} disabled={busy} style={[s.icon, { marginRight: -10 }]}>
+                              <Trash2 size={18} color={c.text300} />
+                            </Pressable>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
                 </View>
-              );
-            })}
+              ))}
           </>
         )}
         {draft && editing === null && (
@@ -628,7 +660,7 @@ function NutritionScreen({ owner }: { owner: string }) {
             {draft.items.map((item, index) => (
               <View key={index} style={[s.card, { backgroundColor: c.surface, gap: 12 }]}>
                 <View style={s.row}>
-                  <Text style={[txt, { flex: 1, fontWeight: "600", fontSize: 17 }]}>{item.name}</Text>
+                  <Text style={[txt, { flex: 1, fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 17 }]}>{item.name}</Text>
                   <Pressable
                     accessibilityLabel={savedItems[index] ? "შენახულია" : "შენახულებში დამატება"}
                     disabled={!!savedItems[index]}
@@ -641,9 +673,11 @@ function NutritionScreen({ owner }: { owner: string }) {
                     <X color={c.text200} size={18} />
                   </Pressable>
                 </View>
-                <Text style={[txt, { color: c.text200 }]}>
-                  {item.grams} გ · {Math.round(item.calories)} კკალ · ც {item.protein} · ნ {item.carbs} · ცხ {item.fat} გ
-                </Text>
+                <View style={[s.row, { alignItems: "baseline" }]}>
+                  <Text style={[txt, { fontSize: 22, fontFamily: "NotoSansGeorgian_700Bold" }]}>{Math.round(item.calories)}<Text style={{ fontSize: 12, color: c.text300, fontFamily: "NotoSansGeorgian_400Regular" }}> კკალ</Text></Text>
+                  <Text style={[txt, { color: c.text200, fontSize: 13 }]}>· {item.grams} გ</Text>
+                </View>
+                <MacroLine protein={item.protein} carbs={item.carbs} fat={item.fat} />
                 <View style={s.row}>
                   {button("½", () => setDraft({ ...draft, items: draft.items.map((v, n) => (n === index ? scaleFood(v, Math.max(0.1, v.grams / 2)) : v)) }))}
                   {button("×2", () => {
@@ -653,7 +687,7 @@ function NutritionScreen({ owner }: { owner: string }) {
                     }
                     setDraft({ ...draft, items: draft.items.map((v, n) => (n === index ? scaleFood(v, v.grams * 2) : v)) });
                   })}
-                  {button("შესწორება", () => editItem(index))}
+                  {button("რედაქტირება", () => editItem(index))}
                 </View>
               </View>
             ))}
@@ -677,7 +711,7 @@ function NutritionScreen({ owner }: { owner: string }) {
               </View>
             )}
             {draft.items.length > 0 && draft.items.length < 25 && button("+ კიდევ საკვების დამატება", () => setSheet("methods"), false, false, <Plus size={16} color={c.text100} />)}
-            <Text style={[txt, { fontWeight: "600", fontSize: 13 }]}>{draft.items.length ? "შენიშვნა" : "რა დაგვეხმარება შეფასებაში? (არასავალდებულო)"}</Text>
+            <Text style={[txt, { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 13 }]}>{draft.items.length ? "შენიშვნა" : "რა დაგვეხმარება შეფასებაში? (არასავალდებულო)"}</Text>
             <TextInput
               accessibilityLabel="პორციის აღწერა"
               placeholder="მაგ. ორი ნაჭერი, სოუსის გარეშე"
@@ -692,7 +726,7 @@ function NutritionScreen({ owner }: { owner: string }) {
         )}
         {draft && editing !== null && (
           <View style={{ gap: 12 }}>
-            <Text style={[txt, { fontSize: 20, fontWeight: "600" }]}>საკვების მონაცემები</Text>
+            <Text style={[txt, { fontSize: 20, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>საკვების მონაცემები</Text>
             <Text style={[txt, { color: c.text200 }]}>მიუთითე მთლიანი პორციის მნიშვნელობები, არა 100 გრამის. ეტიკეტიდან შეგიძლია გადაიტანო.</Text>
             {Object.entries({
               name: "საკვების სახელი",
@@ -763,7 +797,7 @@ function NutritionScreen({ owner }: { owner: string }) {
         <View style={{ flex: 1, justifyContent: "center", padding: 24 }}>
           <View style={[StyleSheet.absoluteFill, { backgroundColor: APP_MODAL_OVERLAY }]} />
           <View accessibilityViewIsModal style={{ backgroundColor: c.surface, borderRadius: 24, padding: 24, gap: 16 }}>
-            <Text style={[txt, { fontSize: 20, fontWeight: "700" }]}>{confirmation?.title}</Text>
+            <Text style={[txt, { fontSize: 20, fontFamily: "NotoSansGeorgian_700Bold" }]}>{confirmation?.title}</Text>
             <Text style={[txt, { color: c.text200, lineHeight: 22 }]}>{confirmation?.message}</Text>
             {button("გაუქმება", () => setConfirmation(null))}
             {button(
@@ -783,11 +817,10 @@ function NutritionScreen({ owner }: { owner: string }) {
 }
 const s = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 },
-  title: { fontSize: 20, fontWeight: "700" },
+  title: { fontSize: 20, fontFamily: "NotoSansGeorgian_700Bold" },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   icon: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   card: { padding: 18, borderRadius: 22 },
-  scoreBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10 },
   button: { minHeight: 46, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
   chip: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 5, paddingVertical: 10, minHeight: 44, borderRadius: 14, borderWidth: 1 },
   input: { borderRadius: 14, borderWidth: 1, padding: 14, fontSize: 16, minHeight: 48 },
