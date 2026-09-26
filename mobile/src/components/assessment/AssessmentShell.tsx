@@ -1,312 +1,223 @@
-import React from 'react';
-
-import { Pressable, ScrollView, Text, View } from 'react-native';
-
+import React, { useEffect } from 'react';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { useKeyboardMetrics } from '@/lib/useKeyboardHeight';
+import { authFooterBottomPad } from '@/lib/authChrome';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { FigmaAssessmentChevronLeft } from '@/components/assessment/figmaAssessmentIcons';
-
 import { AssessmentContinueButton } from '@/components/assessment/AssessmentContinueButton';
-
 import { AssessmentIntroIllustration } from '@/components/assessment/AssessmentIntroIllustration';
-
 import { AssessmentPhaseStepper } from '@/components/assessment/AssessmentPhaseStepper';
-
 import { useFigmaAssessmentIntro } from '@/constants/figmaAssessmentIntro';
-
-import { FIGMA_PROGRESS_HEIGHT, welcomeTopInset } from '@/constants/figmaWelcomeLayout';
-
+import {
+  FIGMA_PROGRESS_HEIGHT,
+  welcomeTopInset,
+} from '@/constants/figmaWelcomeLayout';
 import { ka } from '@/i18n/ka';
-
-
-
-
 type ProgressState = {
-
   visible: boolean;
-
   fraction: number;
-
 };
-
-
-
 type Props = {
-
   variant?: 'intro' | 'step' | 'phase-complete';
-
   title: string;
-
   body?: string;
-
+  stepLabel?: string;
   progress: ProgressState;
-
   children: React.ReactNode;
-
   footerExtra?: React.ReactNode;
-
   footerBelow?: React.ReactNode;
-
   primaryLabel: string;
-
   onPrimary: () => void;
-
   onBack?: () => void;
-
   onSkip?: () => void;
-
   canBack?: boolean;
-
   skippable?: boolean;
-
   loading?: boolean;
-
   primaryDisabled?: boolean;
-
   scrollContent?: boolean;
-
   centerContent?: boolean;
-
   fillBody?: boolean;
-
   primaryVariant?: 'primary' | 'recording';
-
   showPrimary?: boolean;
-
   largeTitle?: boolean;
-
   /** Figma 9217:164946 — title + picker + Continue stacked in the vertical center. */
   ctaInline?: boolean;
-
 };
-
-
-
 /** Figma Comprehensive Health Assessment — intro + step flows. */
-
 export function AssessmentShell({
-
   variant = 'step',
-
   title,
-
   body,
-
+  stepLabel,
   progress,
-
   children,
-
   footerExtra,
-
   footerBelow,
-
   primaryLabel,
-
   onPrimary,
-
   onBack,
-
   onSkip,
-
   canBack = false,
-
   skippable = false,
-
   loading = false,
-
   primaryDisabled = false,
-
   scrollContent = true,
-
   centerContent = false,
-
   fillBody = false,
-
   primaryVariant = 'primary',
-
   showPrimary = true,
-
   largeTitle = false,
-
   ctaInline = false,
-
 }: Props) {
   const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
-
   const insets = useSafeAreaInsets();
-
-  const topInset = welcomeTopInset(insets.top);
-
-
-
+  const { height: keyboardHeight, durationMs } = useKeyboardMetrics();
+  const footerPad = useSharedValue(authFooterBottomPad(0, insets.bottom));
+  useEffect(() => {
+    footerPad.value = withTiming(
+      authFooterBottomPad(keyboardHeight, insets.bottom),
+      { duration: durationMs },
+    );
+  }, [keyboardHeight, durationMs, insets.bottom, footerPad]);
+  const keyboardFooterStyle = useAnimatedStyle(() => ({
+    paddingBottom: footerPad.value,
+  }));
+  const topInset =
+    keyboardHeight > 0 ? Math.max(insets.top, 8) : welcomeTopInset(insets.top);
   if (variant === 'intro') {
-
     return (
-
       <View style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_INTRO.pageBg }}>
-
-        <View style={{ paddingTop: topInset, paddingHorizontal: FIGMA_ASSESSMENT_INTRO.contentPaddingX }}>
-
+        <View
+          style={{
+            paddingTop: topInset,
+            paddingHorizontal: FIGMA_ASSESSMENT_INTRO.contentPaddingX,
+          }}
+        >
           <AssessmentPhaseStepper activeIndex={0} />
-
         </View>
-
-
-
-        <View style={{ flex: 1, justifyContent: 'center', overflow: 'hidden' }} pointerEvents="box-none">
-
+        <View
+          style={{ flex: 1, justifyContent: 'center', overflow: 'hidden' }}
+          pointerEvents="box-none"
+        >
           <View
-
             style={{
-
               maxHeight: FIGMA_ASSESSMENT_INTRO.heroHeight,
               flexShrink: 1,
-
               alignItems: 'center',
-
               justifyContent: 'center',
-
             }}
-
             pointerEvents="none"
-
           >
-
             <AssessmentIntroIllustration />
-
           </View>
-
-
-
           <View
-
             style={{
-
               paddingHorizontal: FIGMA_ASSESSMENT_INTRO.contentPaddingX,
-
               paddingVertical: FIGMA_ASSESSMENT_INTRO.contentPaddingY,
               flexShrink: 0,
-
             }}
-
           >
-
             <View style={{ gap: FIGMA_ASSESSMENT_INTRO.textGap }}>
-
               <Text
-
                 style={{
-
                   fontFamily: 'NotoSansGeorgian_700Bold',
-
                   fontSize: FIGMA_ASSESSMENT_INTRO.titleSize,
-
                   lineHeight: FIGMA_ASSESSMENT_INTRO.titleLineHeight,
-
                   letterSpacing: -0.25,
-
                   color: FIGMA_ASSESSMENT_INTRO.titleColor,
-
                   textAlign: 'center',
-
                 }}
-
               >
-
                 {title}
-
               </Text>
-
               {body ? (
-
                 <Text
-
                   style={{
-
                     fontFamily: 'NotoSansGeorgian_400Regular',
-
                     fontSize: FIGMA_ASSESSMENT_INTRO.bodySize,
-
                     lineHeight: FIGMA_ASSESSMENT_INTRO.bodyLineHeight,
-
                     color: FIGMA_ASSESSMENT_INTRO.bodyColor,
-
                     textAlign: 'center',
-
                   }}
-
                 >
-
                   {body}
-
                 </Text>
-
               ) : null}
-
             </View>
-
           </View>
-
         </View>
-
-
-
         <View
-
           style={{
-
             paddingHorizontal: FIGMA_ASSESSMENT_INTRO.contentPaddingX,
-
             paddingTop: 8,
-
             paddingBottom: Math.max(insets.bottom, 16),
             zIndex: 2,
             elevation: 4,
-
           }}
-
         >
-
           {footerExtra}
-
           {showPrimary ? (
-
             <AssessmentContinueButton
-
               label={primaryLabel}
-
               onPress={onPrimary}
-
               loading={loading}
-
               disabled={primaryDisabled}
-
               variant={primaryVariant}
-
               tone="intro"
-
             />
-
           ) : null}
-
           {footerBelow}
-
         </View>
-
       </View>
-
     );
-
   }
-
   if (variant === 'phase-complete') {
     return (
       <View style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_INTRO.pageBg }}>
-        <View style={{ paddingTop: topInset, paddingHorizontal: FIGMA_ASSESSMENT_INTRO.contentPaddingX }}>
+        <View
+          style={{
+            paddingTop: topInset,
+            paddingHorizontal: FIGMA_ASSESSMENT_INTRO.contentPaddingX,
+          }}
+        >
           <AssessmentPhaseStepper activeIndex={1} completedThrough={0} />
+          {canBack && onBack ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={ka.common.back}
+              onPress={onBack}
+              style={{ paddingVertical: 12 }}
+            >
+              <Text
+                style={{
+                  color: FIGMA_ASSESSMENT_INTRO.brandTeal,
+                  fontFamily: 'NotoSansGeorgian_600SemiBold',
+                }}
+              >
+                ← {ka.common.back}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
-
-        <View style={{ flex: 1, justifyContent: 'center' }}>
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: 'center',
+            paddingBottom: 16,
+          }}
+        >
           <View
             style={{
               paddingHorizontal: FIGMA_ASSESSMENT_INTRO.contentPaddingX,
@@ -341,10 +252,8 @@ export function AssessmentShell({
               ) : null}
             </View>
           </View>
-
           {children}
-        </View>
-
+        </ScrollView>
         <View
           style={{
             paddingHorizontal: FIGMA_ASSESSMENT_INTRO.contentPaddingX,
@@ -365,111 +274,73 @@ export function AssessmentShell({
       </View>
     );
   }
-
-  const titleSize = largeTitle ? 30 : 22;
-
-  const titleLineHeight = largeTitle ? 38 : 30;
-
-
-
+  const titleSize = keyboardHeight > 0 ? 22 : largeTitle ? 26 : 22;
+  const titleLineHeight = keyboardHeight > 0 ? 30 : largeTitle ? 35 : 30;
   const headerBlock = (
-
     <>
-
-      <Text
-
-        style={{
-
-          fontFamily: 'NotoSansGeorgian_700Bold',
-
-          fontSize: titleSize,
-
-          lineHeight: titleLineHeight,
-
-          letterSpacing: largeTitle ? -0.25 : 0,
-
-          color: FIGMA_ASSESSMENT_INTRO.titleColor,
-
-          textAlign: 'center',
-
-          marginTop: centerContent ? 0 : 12,
-
-        }}
-
-      >
-
-        {title}
-
-      </Text>
-
-
-
-      {body ? (
-
+      {stepLabel ? (
         <Text
-
+          accessibilityRole="text"
           style={{
-
-            fontFamily: 'NotoSansGeorgian_400Regular',
-
-            fontSize: 15,
-
-            lineHeight: 22,
-
-            color: FIGMA_ASSESSMENT_INTRO.bodyColor,
-
             textAlign: 'center',
-
-            marginTop: 10,
-
+            color: FIGMA_ASSESSMENT_INTRO.bodyColor,
+            fontFamily: 'NotoSansGeorgian_500Medium',
+            fontSize: 12,
+            marginTop: 8,
           }}
-
         >
-
-          {body}
-
+          {stepLabel}
         </Text>
-
       ) : null}
-
+      <Text
+        style={{
+          fontFamily: 'NotoSansGeorgian_700Bold',
+          fontSize: titleSize,
+          lineHeight: titleLineHeight,
+          letterSpacing: largeTitle ? -0.25 : 0,
+          color: FIGMA_ASSESSMENT_INTRO.titleColor,
+          textAlign: 'center',
+          marginTop: centerContent ? 0 : 12,
+        }}
+      >
+        {title}
+      </Text>
+      {body ? (
+        <Text
+          style={{
+            fontFamily: 'NotoSansGeorgian_400Regular',
+            fontSize: 15,
+            lineHeight: 22,
+            color: FIGMA_ASSESSMENT_INTRO.bodyColor,
+            textAlign: 'center',
+            marginTop: 10,
+          }}
+        >
+          {body}
+        </Text>
+      ) : null}
     </>
-
   );
-
-
-
   const bodyBlock = (
-
     <View
-
       style={
-
         centerContent
-
-          ? { flex: 1, justifyContent: 'center', width: '100%', paddingVertical: 8 }
-
+          ? {
+              flex: 1,
+              justifyContent: 'center',
+              width: '100%',
+              paddingVertical: 8,
+            }
           : fillBody
-
             ? { flex: 1, marginTop: 20, width: '100%' }
-
             : scrollContent
-
               ? { flex: 1, marginTop: 8, minHeight: 120 }
-
               : { marginTop: 20 }
-
       }
-
     >
-
       {children}
-
     </View>
-
   );
-
-
-
   if (ctaInline) {
     return (
       <View style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_INTRO.pageBg }}>
@@ -482,7 +353,6 @@ export function AssessmentShell({
             fraction={progress.visible ? progress.fraction : 0}
           />
         </View>
-
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <View style={{ padding: 16 }}>
             <Text
@@ -498,9 +368,7 @@ export function AssessmentShell({
               {title}
             </Text>
           </View>
-
           {children}
-
           <View style={{ padding: 16, gap: 24 }}>
             {showPrimary ? (
               <AssessmentContinueButton
@@ -518,231 +386,171 @@ export function AssessmentShell({
       </View>
     );
   }
-
   return (
-
-    <View style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_INTRO.pageBg }}>
-
-      <View style={{ paddingTop: topInset, paddingHorizontal: 16, paddingBottom: 8 }}>
-
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'android' ? 'height' : undefined}
+      style={{ flex: 1, backgroundColor: FIGMA_ASSESSMENT_INTRO.pageBg }}
+    >
+      <View
+        style={{
+          paddingTop: topInset,
+          paddingHorizontal: 16,
+          paddingBottom: 8,
+        }}
+      >
         <StepHeader
-
           canBack={canBack}
-
           onBack={onBack}
-
           skippable={skippable}
-
           onSkip={onSkip}
-
           fraction={progress.visible ? progress.fraction : 0}
-
         />
-
       </View>
-
-
-
       {scrollContent ? (
-
         <ScrollView
-
           style={{ flex: 1 }}
-
           contentContainerStyle={{
-
             flexGrow: 1,
-
             paddingHorizontal: 16,
-
             paddingBottom: 16,
-
           }}
-
           keyboardShouldPersistTaps="handled"
-
+          automaticallyAdjustKeyboardInsets={false}
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
-
         >
-
           {headerBlock}
-
           {bodyBlock}
-
         </ScrollView>
-
       ) : (
-
         <View style={{ flex: 1, paddingHorizontal: 16, paddingBottom: 16 }}>
-
           {centerContent ? (
-
             <>
-
               <View style={{ paddingTop: 4 }}>{headerBlock}</View>
-
               {bodyBlock}
-
             </>
-
           ) : (
-
             <>
-
               {headerBlock}
-
               {bodyBlock}
-
             </>
-
           )}
-
         </View>
-
       )}
-
-
-
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 16) }}>
-
+      <Animated.View
+        style={[
+          { paddingHorizontal: 16, paddingTop: 8 },
+          Platform.OS === 'android'
+            ? {
+                paddingBottom:
+                  keyboardHeight > 0
+                    ? 16
+                    : authFooterBottomPad(0, insets.bottom),
+              }
+            : keyboardFooterStyle,
+        ]}
+      >
         {footerExtra}
-
         {showPrimary ? (
-
           <AssessmentContinueButton
-
             label={primaryLabel}
-
             onPress={onPrimary}
-
             loading={loading}
-
             disabled={primaryDisabled}
-
             variant={primaryVariant}
-
           />
-
         ) : null}
-
         {footerBelow}
-
-      </View>
-
-    </View>
-
+      </Animated.View>
+    </KeyboardAvoidingView>
   );
-
 }
-
-
-
 function StepHeader({
-
   canBack,
-
   onBack,
-
   skippable,
-
   onSkip,
-
   fraction,
-
 }: {
-
   canBack: boolean;
-
   onBack?: () => void;
-
   skippable: boolean;
-
   onSkip?: () => void;
-
   fraction: number;
-
 }) {
-
   const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
-
   return (
-
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, maxHeight: 56, paddingVertical: 8 }}>
-
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        minHeight: 56,
+        maxHeight: 56,
+        paddingVertical: 8,
+      }}
+    >
       {canBack && onBack ? (
-
         <Pressable
-
           accessibilityRole="button"
-
           accessibilityLabel={ka.common.back}
-
           onPress={onBack}
-
           hitSlop={8}
-
-          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
-
-        >
-
-          <View style={{ width: 24, height: 24 }}>
-            <FigmaAssessmentChevronLeft color={FIGMA_ASSESSMENT_INTRO.bodyColor} />
-          </View>
-
-        </Pressable>
-
-      ) : (
-
-        <View style={{ width: 36 }} />
-
-      )}
-
-
-
-      <View style={{ flex: 1, height: FIGMA_PROGRESS_HEIGHT, borderRadius: 99, backgroundColor: FIGMA_ASSESSMENT_INTRO.trackGrey, overflow: 'hidden' }}>
-
-        <View
-
           style={{
-
-            height: '100%',
-
-            width: `${Math.round(fraction * 100)}%`,
-
-            backgroundColor: FIGMA_ASSESSMENT_INTRO.brandTeal,
-
-            borderRadius: 99,
-
+            width: 36,
+            height: 36,
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
-
-        />
-
-      </View>
-
-
-
-      {skippable && onSkip ? (
-
-        <Pressable accessibilityRole="button" onPress={onSkip} hitSlop={8} style={{ paddingHorizontal: 4 }}>
-
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, lineHeight: 22, color: FIGMA_ASSESSMENT_INTRO.brandTeal }}>
-
-            {ka.assessment.skipStep}
-
-          </Text>
-
+        >
+          <View style={{ width: 24, height: 24 }}>
+            <FigmaAssessmentChevronLeft
+              color={FIGMA_ASSESSMENT_INTRO.bodyColor}
+            />
+          </View>
         </Pressable>
-
       ) : (
-
-        <View style={{ width: 48 }} />
-
+        <View style={{ width: 36 }} />
       )}
-
+      <View
+        style={{
+          flex: 1,
+          height: FIGMA_PROGRESS_HEIGHT,
+          borderRadius: 99,
+          backgroundColor: FIGMA_ASSESSMENT_INTRO.trackGrey,
+          overflow: 'hidden',
+        }}
+      >
+        <View
+          style={{
+            height: '100%',
+            width: `${Math.round(fraction * 100)}%`,
+            backgroundColor: FIGMA_ASSESSMENT_INTRO.brandTeal,
+            borderRadius: 99,
+          }}
+        />
+      </View>
+      {skippable && onSkip ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onSkip}
+          hitSlop={8}
+          style={{ paddingHorizontal: 4 }}
+        >
+          <Text
+            style={{
+              fontFamily: 'NotoSansGeorgian_600SemiBold',
+              fontSize: 16,
+              lineHeight: 22,
+              color: FIGMA_ASSESSMENT_INTRO.brandTeal,
+            }}
+          >
+            {ka.assessment.skipStep}
+          </Text>
+        </Pressable>
+      ) : (
+        <View style={{ width: 48 }} />
+      )}
     </View>
-
   );
-
 }
-
-

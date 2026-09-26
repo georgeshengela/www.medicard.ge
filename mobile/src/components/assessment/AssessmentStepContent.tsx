@@ -156,6 +156,7 @@ function GateActions({
   return (
     <View style={{ flex: 1, justifyContent: 'flex-end', gap: 16, paddingBottom: 4 }}>
       <Pressable
+        accessibilityRole="button"
         onPress={onYes}
         style={{
           height: 52,
@@ -167,7 +168,7 @@ function GateActions({
       >
         <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 17, color: '#FFFFFF' }}>{yesLabel}</Text>
       </Pressable>
-      <Pressable onPress={onNo} style={{ alignItems: 'center', paddingVertical: 12 }}>
+      <Pressable accessibilityRole="button" onPress={onNo} style={{ alignItems: 'center', paddingVertical: 12 }}>
         <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: ASSESSMENT.brand }}>
           {noLabel}
         </Text>
@@ -556,7 +557,7 @@ export function stepCanContinue(step: AssessmentStep, form: AssessmentFormState)
     case 'medications-list':
       return form.medications.length > 0;
     case 'allergies':
-      return true;
+      return form.allergies.length > 0;
     case 'conditions-gate':
       return form.hasConditions !== null;
     case 'conditions-list':

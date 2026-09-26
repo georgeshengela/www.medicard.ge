@@ -1,7 +1,12 @@
 import type { Gender, HealthProfile } from '@/lib/api';
-import { ageFromBirthDate, birthDateIso, parseBirthDate } from '@/components/assessment/DateWheelPicker';
+import {
+  ageFromBirthDate,
+  birthDateIso,
+  parseBirthDate,
+} from '@/components/assessment/DateWheelPicker';
 
 export type AssessmentFormState = {
+  confirmedSteps?: string[];
   legalName: string;
   birthMonth: number;
   birthDay: number;
@@ -39,23 +44,23 @@ export function defaultAssessmentForm(): AssessmentFormState {
     birthYear: year,
     gender: null,
     genderOther: '',
-    bodyType: 'ECTOMORPH',
+    bodyType: null,
     heightCm: 170,
     heightUnit: 'cm',
     weightKg: 70,
     weightUnit: 'kg',
-    bloodType: 'A-',
+    bloodType: null,
     fitnessLevel: 3,
     sleepLevel: 3,
     smokingStatus: null,
-    mood: 'NEUTRAL',
+    mood: null,
     dietType: null,
     takesMedications: null,
     medications: [],
     allergies: [],
     hasConditions: null,
     chronicConditions: [],
-    checkupFrequency: 'MONTHLY',
+    checkupFrequency: null,
     healthNote: '',
     healthGoals: [],
     voiceRecorded: false,
@@ -72,9 +77,15 @@ export function birthDateFromForm(form: AssessmentFormState): string {
 
 export const LBS_PER_KG = 2.2046226218;
 
-export function displayWeightForUnit(weightKg: number, unit: 'kg' | 'lbs'): { value: string; unitLabel: string } {
+export function displayWeightForUnit(
+  weightKg: number,
+  unit: 'kg' | 'lbs',
+): { value: string; unitLabel: string } {
   if (unit === 'lbs') {
-    return { value: String(Math.round(weightKg * LBS_PER_KG)), unitLabel: 'lbs' };
+    return {
+      value: String(Math.round(weightKg * LBS_PER_KG)),
+      unitLabel: 'lbs',
+    };
   }
   return { value: String(Math.round(weightKg * 10) / 10), unitLabel: 'კგ' };
 }
@@ -85,18 +96,28 @@ export function computeBmi(heightCm: number, weightKg: number): number | null {
   return Math.round((weightKg / (m * m)) * 10) / 10;
 }
 
-function extraFromProfile(profile: HealthProfile | null): Partial<AssessmentFormState> {
+function extraFromProfile(
+  profile: HealthProfile | null,
+): Partial<AssessmentFormState> {
   const extra = (profile?.extraAnswers ?? {}) as Record<string, unknown>;
   return {
     legalName: typeof extra.legalName === 'string' ? extra.legalName : '',
     genderOther: typeof extra.genderOther === 'string' ? extra.genderOther : '',
-    bodyType: typeof extra.bodyType === 'string' ? extra.bodyType : 'ECTOMORPH',
-    fitnessLevel: typeof extra.fitnessLevel === 'number' ? extra.fitnessLevel : 3,
+    bodyType: typeof extra.bodyType === 'string' ? extra.bodyType : null,
+    fitnessLevel:
+      typeof extra.fitnessLevel === 'number' ? extra.fitnessLevel : 3,
     sleepLevel: typeof extra.sleepLevel === 'number' ? extra.sleepLevel : 3,
     mood: typeof extra.mood === 'string' ? extra.mood : null,
-    takesMedications: typeof extra.takesMedications === 'boolean' ? extra.takesMedications : null,
-    hasConditions: typeof extra.hasConditions === 'boolean' ? extra.hasConditions : null,
-    checkupFrequency: typeof extra.checkupFrequency === 'string' ? extra.checkupFrequency : null,
+    takesMedications:
+      typeof extra.takesMedications === 'boolean'
+        ? extra.takesMedications
+        : null,
+    hasConditions:
+      typeof extra.hasConditions === 'boolean' ? extra.hasConditions : null,
+    checkupFrequency:
+      typeof extra.checkupFrequency === 'string'
+        ? extra.checkupFrequency
+        : null,
     healthNote: typeof extra.healthNote === 'string' ? extra.healthNote : '',
     weightUnit: extra.weightUnit === 'lbs' ? 'lbs' : 'kg',
     heightUnit: extra.heightUnit === 'ft' ? 'ft' : 'cm',
@@ -106,7 +127,12 @@ function extraFromProfile(profile: HealthProfile | null): Partial<AssessmentForm
 
 export function formFromProfile(
   profile: HealthProfile | null,
-  user: { gender: Gender | null; birthDate: string | null; name?: string; fullName?: string },
+  user: {
+    gender: Gender | null;
+    birthDate: string | null;
+    name?: string;
+    fullName?: string;
+  },
 ): AssessmentFormState {
   const base = defaultAssessmentForm();
   const parsed = parseBirthDate(user.birthDate);
@@ -115,6 +141,24 @@ export function formFromProfile(
   return {
     ...base,
     ...extra,
+    confirmedSteps: Array.from(
+      new Set([
+        ...(Array.isArray(profile?.extraAnswers?.confirmedSteps)
+          ? profile.extraAnswers.confirmedSteps.filter(
+              (v): v is string => typeof v === 'string',
+            )
+          : []),
+        ...(user.birthDate ? ['birthdate'] : []),
+        ...(profile?.heightCm != null ? ['height'] : []),
+        ...(profile?.weightKg != null ? ['weight'] : []),
+        ...(typeof profile?.extraAnswers?.fitnessLevel === 'number'
+          ? ['fitness-level']
+          : []),
+        ...(typeof profile?.extraAnswers?.sleepLevel === 'number'
+          ? ['sleep-level']
+          : []),
+      ]),
+    ),
     legalName: extra.legalName || user.fullName || user.name || '',
     birthMonth: parsed.month,
     birthDay: parsed.day,
@@ -132,13 +176,20 @@ export function formFromProfile(
   };
 }
 
-export function extraAnswersPayload(form: AssessmentFormState): Record<string, unknown> {
+export function extraAnswersPayload(
+  form: AssessmentFormState,
+): Record<string, unknown> {
   return {
+    confirmedSteps: form.confirmedSteps ?? [],
     legalName: form.legalName,
     genderOther: form.genderOther,
     bodyType: form.bodyType,
-    fitnessLevel: form.fitnessLevel,
-    sleepLevel: form.sleepLevel,
+    fitnessLevel: form.confirmedSteps?.includes('fitness-level')
+      ? form.fitnessLevel
+      : undefined,
+    sleepLevel: form.confirmedSteps?.includes('sleep-level')
+      ? form.sleepLevel
+      : undefined,
     mood: form.mood,
     takesMedications: form.takesMedications,
     hasConditions: form.hasConditions,
@@ -154,6 +205,10 @@ function mapDietType(diet: string | null): string | undefined {
   if (!diet) return undefined;
   const map: Record<string, string> = {
     BALANCED: 'OMNIVORE',
+    OMNIVORE: 'OMNIVORE',
+    VEGAN: 'VEGAN',
+    KETO: 'KETO',
+    OTHER: 'OTHER',
     VEGETARIAN: 'VEGETARIAN',
     PROTEIN: 'OTHER',
     GLUTEN_FREE: 'OTHER',
@@ -161,13 +216,22 @@ function mapDietType(diet: string | null): string | undefined {
   return map[diet] ?? 'OTHER';
 }
 
-export function fullProfilePayload(form: AssessmentFormState, stepIndex: number): Record<string, unknown> {
+export function fullProfilePayload(
+  form: AssessmentFormState,
+  stepIndex: number,
+): Record<string, unknown> {
   return {
     currentStepIndex: stepIndex,
     gender: form.gender ?? undefined,
-    birthDate: birthDateFromForm(form),
-    heightCm: form.heightCm,
-    weightKg: form.weightKg,
+    birthDate: form.confirmedSteps?.includes('birthdate')
+      ? birthDateFromForm(form)
+      : undefined,
+    heightCm: form.confirmedSteps?.includes('height')
+      ? form.heightCm
+      : undefined,
+    weightKg: form.confirmedSteps?.includes('weight')
+      ? form.weightKg
+      : undefined,
     smokingStatus: form.smokingStatus ?? undefined,
     dietType: mapDietType(form.dietType),
     medications: form.medications,
@@ -182,18 +246,27 @@ export function fullProfilePayload(form: AssessmentFormState, stepIndex: number)
 export function completePayload(form: AssessmentFormState): {
   gender: Gender;
   birthDate: string;
-  heightCm: number;
-  weightKg: number;
+  heightCm?: number;
+  weightKg?: number;
 } {
   if (!form.gender) throw new Error('gender required');
+  if (!form.confirmedSteps?.includes('birthdate'))
+    throw new Error('birthdate required');
   return {
     gender: form.gender,
     birthDate: birthDateFromForm(form),
-    heightCm: form.heightCm,
-    weightKg: form.weightKg,
+    ...(form.confirmedSteps?.includes('height')
+      ? { heightCm: form.heightCm }
+      : {}),
+    ...(form.confirmedSteps?.includes('weight')
+      ? { weightKg: form.weightKg }
+      : {}),
   };
 }
 
-export function patchPayloadForStep(form: AssessmentFormState, stepIndex: number): Record<string, unknown> {
+export function patchPayloadForStep(
+  form: AssessmentFormState,
+  stepIndex: number,
+): Record<string, unknown> {
   return fullProfilePayload(form, stepIndex);
 }

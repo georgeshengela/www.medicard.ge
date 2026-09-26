@@ -47,8 +47,8 @@ const patchHealthProfileSchema = z
 const completeSchema = z.object({
   gender: genderSchema,
   birthDate: birthDateSchema,
-  heightCm: z.number().min(80).max(250),
-  weightKg: z.number().min(20).max(300),
+  heightCm: z.number().min(80).max(250).optional(),
+  weightKg: z.number().min(20).max(300).optional(),
 });
 
 async function loadProfile(userId) {

@@ -1,19 +1,65 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { AssessmentPhaseStepper } from '@/components/assessment/AssessmentPhaseStepper';
 import { useFigmaAssessmentIntro } from '@/constants/figmaAssessmentIntro';
+import type { AssessmentFormState } from '@/lib/assessmentForm';
+import { ACTIVE_ASSESSMENT_STEPS } from '@/constants/assessmentSteps';
 import { ka } from '@/i18n/ka';
 
 /** Assessment phase complete — transition to personal info (Figma stepper state). */
-export function AssessmentCompleteContent() {
+export function AssessmentCompleteContent({
+  form,
+  onEdit,
+}: {
+  form: AssessmentFormState;
+  onEdit: (index: number) => void;
+}) {
+  const confirmed = new Set(form.confirmedSteps ?? []);
+  const rows = [
+    { type: 'legal-name', label: 'სახელი', value: form.legalName },
+    {
+      type: 'weight',
+      label: 'წონა',
+      value: confirmed.has('weight') ? `${form.weightKg} კგ` : '',
+    },
+    {
+      type: 'height',
+      label: 'სიმაღლე',
+      value: confirmed.has('height') ? `${form.heightCm} სმ` : '',
+    },
+    { type: 'blood-type', label: 'სისხლის ჯგუფი', value: form.bloodType },
+    {
+      type: 'medications-gate',
+      label: 'მედიკამენტები',
+      value:
+        form.takesMedications === false
+          ? 'არ ვიღებ'
+          : form.medications.join(', '),
+    },
+    {
+      type: 'allergies',
+      label: 'ალერგიები',
+      value:
+        form.allergies.join(', ') ||
+        (confirmed.has('allergies') ? 'არ მაქვს' : ''),
+    },
+    {
+      type: 'conditions-gate',
+      label: 'ქრონიკული მდგომარეობები',
+      value:
+        form.hasConditions === false
+          ? 'არ მაქვს'
+          : form.chronicConditions.join(', '),
+    },
+  ];
   const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
   return (
     <View style={{ alignItems: 'center', paddingVertical: 16, gap: 24 }}>
       <View
         style={{
-          width: 88,
-          height: 88,
-          borderRadius: 44,
+          width: 64,
+          height: 64,
+          borderRadius: 32,
           backgroundColor: FIGMA_ASSESSMENT_INTRO.selectedSoft,
           borderWidth: 2,
           borderColor: '#14B8A6',
@@ -35,6 +81,72 @@ export function AssessmentCompleteContent() {
       >
         {ka.assessment.steps.completeBody}
       </Text>
+      <View style={{ width: '100%', paddingHorizontal: 20 }}>
+        <Text
+          style={{
+            fontFamily: 'NotoSansGeorgian_600SemiBold',
+            fontSize: 16,
+            color: FIGMA_ASSESSMENT_INTRO.titleColor,
+            marginBottom: 8,
+          }}
+        >
+          გადაამოწმე შენი პასუხები
+        </Text>
+        {rows.map((row) => (
+          <Pressable
+            key={row.type}
+            accessibilityRole="button"
+            accessibilityLabel={`${row.label}: ${row.value || 'არ არის მითითებული'}. შეცვლა`}
+            onPress={() =>
+              onEdit(
+                ACTIVE_ASSESSMENT_STEPS.findIndex(
+                  (step) => step.type === row.type,
+                ),
+              )
+            }
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              minHeight: 60,
+              paddingVertical: 12,
+              borderBottomWidth: 1,
+              borderColor: FIGMA_ASSESSMENT_INTRO.trackGrey,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontFamily: 'NotoSansGeorgian_500Medium',
+                  fontSize: 13,
+                  color: FIGMA_ASSESSMENT_INTRO.bodyColor,
+                }}
+              >
+                {row.label}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: 'NotoSansGeorgian_600SemiBold',
+                  fontSize: 15,
+                  lineHeight: 23,
+                  color: FIGMA_ASSESSMENT_INTRO.titleColor,
+                }}
+              >
+                {row.value || 'არ არის მითითებული'}
+              </Text>
+            </View>
+            <Text
+              style={{
+                fontFamily: 'NotoSansGeorgian_500Medium',
+                fontSize: 12,
+                color: FIGMA_ASSESSMENT_INTRO.brandTeal,
+              }}
+            >
+              შეცვლა
+            </Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
