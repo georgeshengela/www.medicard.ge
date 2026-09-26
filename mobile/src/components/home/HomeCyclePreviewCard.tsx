@@ -8,6 +8,7 @@ import { WEEKDAYS_KA } from '@/constants/cycle';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
+import { useThemeColors } from '@/theme/colors';
 import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import type { CycleBundle, CycleDayMark } from '@/lib/api';
 import { loadCycleView } from '@/lib/cycleOffline';
@@ -195,6 +196,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
   const { user } = useAuth();
   const FIGMA_CHAT = useFigmaChat();
   const c = useCycleColors();
+  const theme = useThemeColors();
   const roseFill = c.accentSoft;
   const roseLine = c.border;
   const [bundle, setBundle] = useState<CycleBundle | null>(null);
@@ -294,44 +296,17 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
         : 0;
 
   const title = ka.modules.cycle.title;
-  const cta = setupNeeded ? ka.home.cycleSetupCta : ka.home.cycleCta;
 
   if (!ready) {
     return (
       <View>
-        <View style={{ paddingBottom: 12 }}>
-        <Text
-          accessibilityRole="header"
-          style={{
-            fontFamily: 'NotoSansGeorgian_700Bold',
-            fontSize: 17,
-            lineHeight: 24,
-            color: c.ink,
-          }}
-        >
-          {title}
-        </Text>
-      </View>
-        <MetricCardSkeleton />
+          <MetricCardSkeleton />
       </View>
     );
   }
 
   return (
     <View>
-      <View style={{ paddingBottom: 12 }}>
-        <Text
-          accessibilityRole="header"
-          style={{
-            fontFamily: 'NotoSansGeorgian_700Bold',
-            fontSize: 17,
-            lineHeight: 24,
-            color: c.ink,
-          }}
-        >
-          {title}
-        </Text>
-      </View>
 
       <TouchableOpacity
         accessibilityRole="button"
@@ -346,14 +321,11 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
         <View
           pointerEvents="none"
           style={{
-            backgroundColor: c.card,
-            borderWidth: 1,
-            borderColor: c.border,
-            borderRadius: 24,
-            padding: 16,
+            backgroundColor: theme.surface,
+            borderRadius: 22,
+            padding: 18,
             gap: 16,
             overflow: 'hidden',
-            ...FIGMA_CHAT.shadowXs,
           }}
         >
           {!ready ? (
@@ -572,28 +544,6 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
             </>
           )}
 
-          <View style={{ height: 1, backgroundColor: c.border }} />
-
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: 'NotoSansGeorgian_600SemiBold',
-                fontSize: 14,
-                lineHeight: 20,
-                color: c.brand,
-              }}
-            >
-              {cta}
-            </Text>
-            <CalendarHeart size={20} color={c.brand} strokeWidth={2} />
-          </View>
         </View>
       </TouchableOpacity>
     </View>

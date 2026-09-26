@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { HUB, hubTint } from '@/theme/hub';
 
 type Action = {
   key: string;
@@ -43,8 +44,8 @@ export function HomeQuickActions() {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
-      style={{ marginHorizontal: -20 }}
+      contentContainerStyle={{ paddingHorizontal: HUB.gutter, gap: 10 }}
+      style={{ marginHorizontal: -HUB.gutter }}
     >
       {ACTIONS.map((action) => {
         const ink = dark ? action.dark : action.light;
@@ -56,7 +57,7 @@ export function HomeQuickActions() {
             onPress={() => router.push(action.href as never)}
             style={[s.tile, { backgroundColor: c.surface }]}
           >
-            <View style={[s.iconWrap, { backgroundColor: `${ink}${dark ? '26' : '14'}` }]}>
+            <View style={[s.iconWrap, { backgroundColor: hubTint(ink, dark) }]}>
               <action.icon size={22} color={ink} strokeWidth={1.9} />
             </View>
             <Text numberOfLines={1} style={[s.label, { color: c.text100 }]}>

@@ -2,10 +2,10 @@ import React, { useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MedicationFigmaStepRing } from '@/components/medications/MedicationCircularProgress';
-import { MedCard } from '@/components/medications/MedicationUI';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { DoseCarouselSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
+import { useThemeColors } from '@/theme/colors';
 import type { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import type { ScheduledDose } from '@/lib/api';
@@ -14,7 +14,7 @@ import { computeTodayDoses } from '@/lib/home/todayDoses';
 
 /** Figma 11416:83298 — 288×~88 peeking dose cards, 8px gap. */
 const CARD_W = 288;
-const CARD_GAP = 8;
+const CARD_GAP = 10;
 const SNAP = CARD_W + CARD_GAP;
 type MedConfig = ReturnType<typeof parseMedicationConfig>;
 
@@ -45,6 +45,7 @@ function NextDoseCard({
   onOpen: () => void;
 }) {
   const FIGMA_MEDS = useFigmaMeds();
+  const c = useThemeColors();
   const subtitle = formLabel(cfg, dose.dosage);
 
   return (
@@ -54,11 +55,9 @@ function NextDoseCard({
       style={{
         width: CARD_W,
         minHeight: 88,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: FIGMA_MEDS.border,
-        backgroundColor: FIGMA_MEDS.cardBg,
-        padding: 12,
+        borderRadius: 20,
+        backgroundColor: c.surface,
+        padding: 16,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
@@ -70,7 +69,7 @@ function NextDoseCard({
             fontFamily: 'NotoSansGeorgian_500Medium',
             fontSize: 12,
             lineHeight: 16,
-            color: FIGMA_MEDS.textSecondary,
+            color: c.text200,
           }}
           numberOfLines={1}
         >
@@ -81,7 +80,7 @@ function NextDoseCard({
             fontFamily: 'NotoSansGeorgian_600SemiBold',
             fontSize: 18,
             lineHeight: 24,
-            color: FIGMA_MEDS.textPrimary,
+            color: c.text100,
           }}
           numberOfLines={1}
         >
@@ -93,7 +92,7 @@ function NextDoseCard({
               fontFamily: 'NotoSansGeorgian_400Regular',
               fontSize: 14,
               lineHeight: 20,
-              color: FIGMA_MEDS.textSecondary,
+              color: c.text200,
             }}
             numberOfLines={1}
           >
@@ -130,8 +129,7 @@ export function HomeNextDoseSection({ meds }: Props) {
   return (
     <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
       <HomeSectionTitle title={ka.home.nextDose} style={{ fontSize: 17, lineHeight: 24, marginBottom: 12 }} />
-      <MedCard style={{ padding: 16, overflow: 'hidden' }}>
-        <ScrollView
+      <ScrollView
           horizontal
           nestedScrollEnabled
           showsHorizontalScrollIndicator={false}
@@ -139,7 +137,8 @@ export function HomeNextDoseSection({ meds }: Props) {
           snapToInterval={SNAP}
           snapToAlignment="start"
           disableIntervalMomentum
-          contentContainerStyle={{ gap: CARD_GAP }}
+          style={{ marginHorizontal: -20 }}
+          contentContainerStyle={{ gap: CARD_GAP, paddingHorizontal: 20 }}
         >
           {pending.map((dose) => {
             const med = medications.find((item) => item.id === dose.medicationId);
@@ -159,7 +158,6 @@ export function HomeNextDoseSection({ meds }: Props) {
             );
           })}
         </ScrollView>
-      </MedCard>
     </View>
   );
 }

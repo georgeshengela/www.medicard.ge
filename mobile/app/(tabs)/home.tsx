@@ -10,12 +10,7 @@ import {
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import {
-  ChevronRight,
-  ClipboardList,
-  FileHeart,
-  MessageCircle,
-} from 'lucide-react-native';
+import { ChevronRight, ClipboardList, FileHeart, MessageCircle, type LucideIcon } from 'lucide-react-native';
 import { Disclaimer } from '@/components/Disclaimer';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeAskMedi } from '@/components/home/HomeAskMedi';
@@ -29,6 +24,7 @@ import {
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HomeNextDoseSection } from '@/components/home/HomeNextDoseSection';
 import { HomeQuickActions } from '@/components/home/HomeQuickActions';
+import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { useHydration } from '@/hooks/useHydration';
@@ -42,7 +38,9 @@ import { computeTodayDoses } from '@/lib/home/todayDoses';
 import { getCyclePromptSeen, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { todayYmd } from '@/lib/medications.shared';
 import { useAuth } from '@/store/AuthContext';
-import { useThemeColors } from '@/theme/colors';
+import { useIsDark, useThemeColors } from '@/theme/colors';
+import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
+import { ka } from '@/i18n/ka';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
 import { analysisFromProfile } from '@/types/onboardingAnalysis';
 
@@ -54,6 +52,7 @@ export default function Home() {
   const { user, healthProfile, refresh } = useAuth();
   const router = useRouter();
   const c = useThemeColors();
+  const dark = useIsDark();
   const insets = useSafeAreaInsets();
   const tabInset = useTabBarInset(20);
   const hydration = useHydration();
@@ -167,22 +166,7 @@ export default function Home() {
   }
 
   const heading = (title: string, href?: string, linkLabel = 'ყველას ნახვა') => (
-    <View style={s.sectionHeading}>
-      <Text accessibilityRole="header" style={[s.sectionTitle, { color: c.text100 }]}>
-        {title}
-      </Text>
-      {href ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${title} — ${linkLabel}`}
-          onPress={() => open(href)}
-          style={s.textButton}
-        >
-          <Text style={[s.link, { color: c.primary100 }]}>{linkLabel}</Text>
-          <ChevronRight size={15} color={c.primary100} />
-        </Pressable>
-      ) : null}
-    </View>
+    <HomeSectionHeading title={title} linkLabel={href ? linkLabel : undefined} onLink={href ? () => open(href) : undefined} />
   );
 
   const sections = {
@@ -217,6 +201,7 @@ export default function Home() {
     ),
     cycle: (
       <View style={s.section}>
+        {heading(ka.cycle.title, '/cycle', 'ციკლის ნახვა')}
         <HomeCyclePreviewCard onPress={() => open('/cycle')} />
       </View>
     ),
@@ -241,56 +226,42 @@ export default function Home() {
     recentActivity: (
       <View style={s.section}>
         {heading('შენი ისტორია', '/(tabs)/records')}
-        <View style={{ backgroundColor: c.surface, borderRadius: 22, paddingHorizontal: 18, paddingBottom: 2 }}>
-          <Pressable
-            accessibilityRole="button"
+        <View style={[s.list, { backgroundColor: c.surface }]}>
+          <HistoryRow
+            icon={FileHeart}
+            ink={hubInk('teal', dark)}
+            tint={hubTint(hubInk('teal', dark), dark)}
+            title="შენახული დოკუმენტები"
+            detail="ანალიზები, სურათები და წინა ჩანაწერები"
             onPress={() => open('/(tabs)/records')}
-            style={s.inlineRow}
-          >
-            <FileHeart size={22} color={c.primary100} strokeWidth={1.9} />
-            <View style={{ flex: 1, gap: 3 }}>
-              <Text style={[s.rowTitle, { color: c.text100 }]}>შენახული დოკუმენტები</Text>
-              <Text style={[s.caption, { color: c.text200 }]}>ანალიზები, სურათები და წინა ჩანაწერები</Text>
-            </View>
-            <ChevronRight size={18} color={c.text300} />
-          </Pressable>
+          />
           {chats.map((chat) => (
-            <Pressable
+            <HistoryRow
               key={chat.id}
-              accessibilityRole="button"
+              icon={MessageCircle}
+              ink={c.text200}
+              tint={c.bg200}
+              title={chat.title}
+              detail={`${chat.mode === 'CONSILIUM' ? 'AI კონსილიუმი' : 'საუბარი მედისთან'} · ${formatRelative(chat.updatedAt)}`}
               accessibilityLabel={`საუბრის გაგრძელება: ${chat.title}`}
+              rule
               onPress={() =>
                 open(
                   `/chat/${chat.mode === 'CONSILIUM' ? 'consilium' : 'doctor'}?sessionId=${encodeURIComponent(chat.id)}`,
                 )
               }
-              style={[s.inlineRow, { borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.bg300, alignItems: 'flex-start' }]}
-            >
-              <MessageCircle size={20} color={c.text200} style={{ marginTop: 2 }} strokeWidth={1.9} />
-              <View style={{ flex: 1, gap: 3 }}>
-                <Text numberOfLines={2} style={[s.rowTitle, { color: c.text100 }]}>
-                  {chat.title}
-                </Text>
-                <Text style={[s.caption, { color: c.text200 }]}>
-                  {chat.mode === 'CONSILIUM' ? 'AI კონსილიუმი' : 'საუბარი მედისთან'} · {formatRelative(chat.updatedAt)}
-                </Text>
-              </View>
-              <ChevronRight size={16} color={c.text300} style={{ marginTop: 3 }} />
-            </Pressable>
+            />
           ))}
           {analysisFromProfile(extra ?? {}) ? (
-            <Pressable
-              accessibilityRole="button"
+            <HistoryRow
+              icon={ClipboardList}
+              ink={c.text200}
+              tint={c.bg200}
+              title="ჯანმრთელობის კითხვარის შედეგები"
+              detail="შენი პასუხების მიხედვით შედგენილი შეჯამება"
+              rule
               onPress={() => open('/(auth)/profile-setup/results?preview=1')}
-              style={[s.inlineRow, { borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.bg300 }]}
-            >
-              <ClipboardList size={20} color={c.text200} strokeWidth={1.9} />
-              <View style={{ flex: 1, gap: 3 }}>
-                <Text style={[s.rowTitle, { color: c.text100 }]}>ჯანმრთელობის კითხვარის შედეგები</Text>
-                <Text style={[s.caption, { color: c.text200 }]}>შენი პასუხების მიხედვით შედგენილი შეჯამება</Text>
-              </View>
-              <ChevronRight size={16} color={c.text300} />
-            </Pressable>
+            />
           ) : null}
         </View>
       </View>
@@ -340,46 +311,64 @@ export default function Home() {
   );
 }
 
+function HistoryRow({
+  icon: Icon,
+  ink,
+  tint,
+  title,
+  detail,
+  onPress,
+  accessibilityLabel,
+  rule = false,
+}: {
+  icon: LucideIcon;
+  ink: string;
+  tint: string;
+  title: string;
+  detail: string;
+  onPress: () => void;
+  accessibilityLabel?: string;
+  rule?: boolean;
+}) {
+  const c = useThemeColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? `${title}. ${detail}`}
+      onPress={onPress}
+      style={[s.inlineRow, rule ? { borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.bg300 } : null]}
+    >
+      <View style={[s.rowTile, { backgroundColor: tint }]}>
+        <Icon size={19} color={ink} strokeWidth={1.9} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text numberOfLines={2} style={[hubText.cardTitle, { color: c.text100, fontSize: 14, lineHeight: 20 }]}>
+          {title}
+        </Text>
+        <Text numberOfLines={2} style={[hubText.caption, { color: c.text200 }]}>
+          {detail}
+        </Text>
+      </View>
+      <ChevronRight size={17} color={c.text300} />
+    </Pressable>
+  );
+}
+
 const s = StyleSheet.create({
-  section: { paddingHorizontal: 20, marginTop: 28 },
-  sectionHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    flex: 1,
-    fontFamily: 'NotoSansGeorgian_700Bold',
-    fontSize: 17,
-    lineHeight: 24,
-  },
-  link: {
-    fontFamily: 'NotoSansGeorgian_600SemiBold',
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  textButton: {
-    minHeight: 44,
-    flexDirection: 'row',
-    gap: 2,
-    alignItems: 'center',
-  },
-  rowTitle: {
-    fontFamily: 'NotoSansGeorgian_600SemiBold',
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  caption: {
-    fontFamily: 'NotoSansGeorgian_400Regular',
-    fontSize: 12,
-    lineHeight: 18,
-  },
+  section: { paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap },
+  list: { borderRadius: HUB.cardRadius, paddingHorizontal: 16, paddingVertical: 2 },
   inlineRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 16,
+    paddingVertical: 14,
   },
+  rowTile: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  caption: hubText.caption,
 });
