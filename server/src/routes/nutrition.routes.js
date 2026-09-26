@@ -1,5 +1,6 @@
 import { nutritionProgramRouter, adminNutritionProgramRouter } from './nutrition-program.routes.js';
 import { nutritionPlusRouter } from './nutrition-plus.routes.js';
+import { nutritionFastingRouter } from './nutrition-fasting.routes.js';
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import multer from "multer";
@@ -64,6 +65,7 @@ const estimateLimiter = rateLimit({
 });
 r.use(requireAuth, noCache);
 r.use(nutritionProgramRouter);
+r.use("/fasting", nutritionFastingRouter);
 r.use(nutritionPlusRouter);
 r.get(
   "/settings",

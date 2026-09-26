@@ -58,3 +58,27 @@ export function eighteenMonthsAgo(from = new Date()): Date {
   d.setMonth(d.getMonth() - 18);
   return d;
 }
+
+/** One diary meal as written to Apple Health / Health Connect (portion totals). */
+export type HealthMeal = {
+  id: string;
+  /** ISO time the meal is filed at; see mealHealthTime. */
+  at: string;
+  type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber?: number | null;
+  sugar?: number | null;
+  /** milligrams */
+  sodium?: number | null;
+};
+
+/** The diary stores a day and a meal type, not a clock time; file each type at a fixed local time. */
+export function mealHealthTime(ymd: string, type: HealthMeal['type']): Date {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const [hour, minute] = { breakfast: [8, 30], lunch: [13, 30], snack: [16, 30], dinner: [19, 30] }[type];
+  return new Date(y, m - 1, d, hour, minute, 0, 0);
+}

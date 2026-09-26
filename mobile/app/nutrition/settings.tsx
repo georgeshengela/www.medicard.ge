@@ -1,9 +1,16 @@
 import React, { useCallback, useRef, useState } from "react";
 import { Pressable, Switch, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Bell, Flame, Footprints, RefreshCcw } from "lucide-react-native";
+import { Bell, Flame, Footprints, HeartPulse, Minus, PieChart, Plus, RefreshCcw } from "lucide-react-native";
 import { api } from "@/lib/api";
-import { defaultNutritionPreferences, type NutritionPreferences } from "@/lib/nutritionProgram";
+import { defaultNutritionPreferences, MACRO_BOUNDS, MACRO_PRESETS, macroGrams, nutritionProgramApi, type MacroShares, type NutritionPreferences } from "@/lib/nutritionProgram";
+import {
+  backfillNutritionToHealth,
+  disableNutritionHealthWrite,
+  enableNutritionHealthWrite,
+  isNutritionHealthWriteEnabled,
+  nutritionHealthName,
+} from "@/lib/nutritionHealth";
 import { getNotificationPermissionGranted, requestNotificationPermission, syncNutritionReminders } from "@/lib/notifications";
 import { localAccountId } from "@/lib/localAccount";
 import { useAuth } from "@/store/AuthContext";
@@ -25,15 +32,26 @@ function Settings() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [permission, setPermission] = useState<boolean | null>(null);
+  const [calories, setCalories] = useState<number | null>(null);
+  const [healthOn, setHealthOn] = useState(false);
+  const [healthBusy, setHealthBusy] = useState(false);
+  const [healthNote, setHealthNote] = useState("");
   const seq = useRef(0);
   const load = useCallback(async () => {
     const n = ++seq.current;
     setError("");
     try {
-      const [data, granted] = await Promise.all([api.nutrition.preferences.get(), getNotificationPermissionGranted().catch(() => false)]);
+      const [data, granted, dashboard, health] = await Promise.all([
+        api.nutrition.preferences.get(),
+        getNotificationPermissionGranted().catch(() => false),
+        nutritionProgramApi.dashboard().catch(() => null),
+        isNutritionHealthWriteEnabled().catch(() => false),
+      ]);
       if (n !== seq.current) return;
       setPrefs({ ...defaultNutritionPreferences(), ...data.preferences });
       setPermission(granted);
+      setCalories(dashboard?.targets?.calories ?? null);
+      setHealthOn(health);
     } catch (e) {
       if (n === seq.current) setError((e as Error).message);
     }
@@ -73,6 +91,53 @@ function Settings() {
     }
     await save({ ...prefs, reminders: { ...prefs.reminders, enabled: true } });
   };
+  const shares: MacroShares = prefs ? { protein: prefs.macros.protein, carbs: prefs.macros.carbs, fat: prefs.macros.fat } : { protein: 20, carbs: 50, fat: 30 };
+  const custom = prefs?.macros.mode === "custom";
+  const choosePreset = (preset: MacroShares, key: string) => {
+    if (!prefs) return;
+    void save({ ...prefs, macros: { mode: key === "balanced" ? "auto" : "custom", ...preset } });
+  };
+  /** Moving protein or carbs by 5 points takes the difference from fat, so the total stays 100. */
+  const nudge = (key: "protein" | "carbs", delta: number) => {
+    if (!prefs) return;
+    const next = { ...shares, [key]: shares[key] + delta, fat: shares.fat - delta };
+    const inside = (k: keyof MacroShares) => next[k] >= MACRO_BOUNDS[k][0] && next[k] <= MACRO_BOUNDS[k][1];
+    if (!inside(key) || !inside("fat")) return;
+    void save({ ...prefs, macros: { mode: "custom", ...next } });
+  };
+  const healthName = nutritionHealthName();
+  const toggleHealth = async (value: boolean) => {
+    setHealthBusy(true);
+    setHealthNote("");
+    setError("");
+    try {
+      if (!value) {
+        await disableNutritionHealthWrite();
+        setHealthOn(false);
+        setHealthNote(`${healthName}-ში ახალი კვებები აღარ ჩაიწერება. უკვე ჩაწერილი იქ რჩება.`);
+        return;
+      }
+      // The system sheet is shown only from this switch press.
+      const result = await enableNutritionHealthWrite();
+      if (!result.ok) {
+        setHealthNote(
+          result.reason === "expo_go"
+            ? "Expo Go-ში ჯანმრთელობის აპთან კავშირი არ მუშაობს — საჭიროა აპის build."
+            : result.reason === "not_installed"
+              ? "Health Connect არ არის დაყენებული. დააყენე და სცადე თავიდან."
+              : result.reason === "denied"
+                ? `${healthName}-მა ჩაწერის ნებართვა არ მისცა. ჩართე კვების ჩაწერა ${healthName}-ის პარამეტრებში.`
+                : "კავშირი ვერ შედგა. სცადე თავიდან.",
+        );
+        return;
+      }
+      setHealthOn(true);
+      const count = await backfillNutritionToHealth(7).catch(() => 0);
+      setHealthNote(count ? `ჩართულია · ბოლო 7 დღის ${count} კვება ჩაიწერა` : "ჩართულია · ახალი კვებები ავტომატურად ჩაიწერება");
+    } finally {
+      setHealthBusy(false);
+    }
+  };
   const row = (icon: React.ReactNode, title: string, detail: string, value: boolean, onChange: (v: boolean) => void) => (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
       <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: c.bg200, alignItems: "center", justifyContent: "center" }}>{icon}</View>
@@ -99,7 +164,7 @@ function Settings() {
     </View>
   );
   return (
-    <NScreen title="კვების პარამეტრები" subtitle="ბიუჯეტის წესები და შეხსენებები">
+    <NScreen title="კვების პარამეტრები" subtitle="ბიუჯეტი, მაკროები, შეხსენებები">
       {!!error && <NError message={error} retry={() => void load()} />}
       {!prefs ? (
         <NLoading />
@@ -111,6 +176,67 @@ function Settings() {
             {row(<Footprints size={20} color={c.primary100} />, "ნაბიჯების ჩათვლა", "ნაბიჯების სინქრონიდან სავარაუდო ენერგია დამწვარში ჩაითვლება.", prefs.countSteps, (v) => void save({ ...prefs, countSteps: v }))}
             {row(<RefreshCcw size={20} color={c.primary100} />, "გუშინდელი ნაშთის გადმოტანა", "თუ გუშინ სამიზნეზე ნაკლები მიიღე, 200 კკალ-მდე დღეს გადმოგყვება. გადაჭარბება არასდროს „ივალება“.", prefs.rollover, (v) => void save({ ...prefs, rollover: v }))}
           </NCard>
+          <NCard>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <PieChart size={20} color={c.primary100} />
+              <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 16, flex: 1 }}>მაკროების განაწილება</NText>
+            </View>
+            <NText style={{ fontSize: 12, color: c.text200, lineHeight: 18 }}>
+              დღის კალორიას გეგმა ითვლის; აქ ირჩევ, როგორ გადანაწილდეს ცილაზე, ნახშირწყლებსა და ცხიმზე.
+            </NText>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {MACRO_PRESETS.map((p) => {
+                const active = p.shares.protein === shares.protein && p.shares.carbs === shares.carbs && p.shares.fat === shares.fat;
+                return (
+                  <Pressable key={p.key} accessibilityRole="button" accessibilityState={{ selected: active }} accessibilityLabel={`${p.label}: ცილა ${p.shares.protein}%, ნახშირწყლები ${p.shares.carbs}%, ცხიმი ${p.shares.fat}%`} disabled={busy} onPress={() => choosePreset(p.shares, p.key)} style={{ width: "48%", flexGrow: 1, minHeight: 60, padding: 10, borderRadius: 14, borderWidth: 1.5, backgroundColor: active ? c.accent100 : c.bg200, borderColor: active ? c.primary100 : "transparent", gap: 2 }}>
+                    <Text style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 13, color: c.text100 }}>{p.label}</Text>
+                    <Text style={{ fontFamily: "NotoSansGeorgian_400Regular", fontSize: 11, color: c.text200 }}>{p.shares.protein} / {p.shares.carbs} / {p.shares.fat} · {p.detail}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {([
+              ["protein", "ცილა"],
+              ["carbs", "ნახშირწყლები"],
+              ["fat", "ცხიმი"],
+            ] as const).map(([key, label]) => {
+              const grams = calories ? macroGrams(calories, shares)[key] : null;
+              return (
+                <View key={key} style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 }}>
+                  <View style={{ flex: 1 }}>
+                    <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>{label} · {shares[key]}%</NText>
+                    <NText style={{ fontSize: 12, color: c.text200 }}>{grams != null ? `${grams} გ დღეში` : "გრამები გეგმის შექმნის შემდეგ გამოჩნდება"}</NText>
+                  </View>
+                  {key !== "fat" && (
+                    <>
+                      <Pressable accessibilityRole="button" accessibilityLabel={`${label} 5%-ით ნაკლები`} disabled={busy} onPress={() => nudge(key, -5)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.bg200, alignItems: "center", justifyContent: "center" }}>
+                        <Minus size={16} color={c.text100} />
+                      </Pressable>
+                      <Pressable accessibilityRole="button" accessibilityLabel={`${label} 5%-ით მეტი`} disabled={busy} onPress={() => nudge(key, 5)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.bg200, alignItems: "center", justifyContent: "center" }}>
+                        <Plus size={16} color={c.text100} />
+                      </Pressable>
+                    </>
+                  )}
+                </View>
+              );
+            })}
+            <NText style={{ fontSize: 11, color: c.text300, lineHeight: 17 }}>
+              {custom ? "საკუთარი განაწილება · ცხიმი ავტომატურად ავსებს 100%-ს." : "ნაგულისხმევი: 20 / 50 / 30."} ზღვრები: ცილა 10–40%, ნახშირწყლები 15–65%, ცხიმი 15–50%. თირკმლის დაავადებისას ცილის რაოდენობა ექიმთან შეათანხმე.
+            </NText>
+          </NCard>
+          {healthName && (
+            <NCard>
+              {row(
+                <HeartPulse size={20} color={c.primary100} />,
+                `${healthName}-ში ჩაწერა`,
+                `დადასტურებული კვების კალორია, ცილა, ნახშირწყლები და ცხიმი ${healthName}-ში გადავა — სხვა აპები და საათი დაინახავს.`,
+                healthOn,
+                (v) => void toggleHealth(v),
+              )}
+              {healthBusy && <NText style={{ fontSize: 12, color: c.text200 }}>მიმდინარეობს…</NText>}
+              {!!healthNote && <NText accessibilityLiveRegion="polite" style={{ fontSize: 12, color: c.text200 }}>{healthNote}</NText>}
+            </NCard>
+          )}
           <NCard>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <Bell size={20} color={c.primary100} />

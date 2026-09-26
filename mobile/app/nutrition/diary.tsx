@@ -27,6 +27,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleCheck,
+  Copy,
+  CopyPlus,
   Info,
   Leaf,
   Plus,
@@ -46,6 +48,8 @@ import { FoodSearchModal, type FoodPick } from "@/components/nutrition/FoodSearc
 import { DescribeMealModal } from "@/components/nutrition/DescribeMealModal";
 import { PortionSheet } from "@/components/nutrition/PortionSheet";
 import { MacroLine, QuickLogTiles, ScoreBadge } from "@/components/nutrition/NutritionUi";
+import { CopyMealsSheet } from "@/components/nutrition/CopyMealsSheet";
+import { removeMealFromHealth, syncMealsToHealth } from "@/lib/nutritionHealth";
 import {
   foodTotals,
   localDay,
@@ -104,6 +108,8 @@ function NutritionScreen({ owner }: { owner: string }) {
   const [product, setProduct] = useState<SavedFood | null>(null);
   const [correction, setCorrection] = useState("");
   const [savedItems, setSavedItems] = useState<Record<string, boolean>>({});
+  const [copying, setCopying] = useState<Meal[] | null>(null);
+  const [copyError, setCopyError] = useState("");
   const scroll = useRef<ScrollView>(null);
   const mealBaseline = useRef("");
   const itemBaseline = useRef("");
@@ -412,7 +418,8 @@ function NutritionScreen({ owner }: { owner: string }) {
   const save = () =>
     run(async () => {
       if (!draft || !draft.items.length) return;
-      await api.nutrition.save(draft);
+      const { meal: saved } = await api.nutrition.save(draft);
+      void syncMealsToHealth([saved]);
       if (!alive.current) return;
       setDraft(null);
       resetResult();
@@ -433,8 +440,46 @@ function NutritionScreen({ owner }: { owner: string }) {
       action: () =>
         void run(async () => {
           await api.nutrition.remove(meal.id);
+          void removeMealFromHealth(meal.id);
           if (alive.current) await load();
         }),
+    });
+  /** Copy the chosen meals with fresh ids; a retry after a network error reuses them. */
+  const copyIds = useRef<Record<string, string>>({});
+  const copyMeals = (date: string, type?: Meal["type"]) =>
+    run(async () => {
+      if (!copying?.length) return;
+      setCopyError("");
+      try {
+        const copies = copying.map((m) => {
+          const key = `${m.id}:${date}:${type || ""}`;
+          copyIds.current[key] = copyIds.current[key] || newUuid();
+          return { fromId: m.id, id: copyIds.current[key] };
+        });
+        const { meals: created } = await api.nutrition.copy({ date, type, copies });
+        copyIds.current = {};
+        void syncMealsToHealth(created);
+        if (!alive.current) return;
+        setCopying(null);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        setMessage(created.length === 1 ? "კვება დაკოპირდა" : `${created.length} კვება დაკოპირდა`);
+        if (date !== day) setDay(date);
+        else await load();
+      } catch (e) {
+        setCopyError((e as Error).message);
+      }
+    });
+  /** Today is empty: offer yesterday's meals in one step. */
+  const repeatYesterday = () =>
+    run(async () => {
+      const { meals: previous } = await api.nutrition.list(shiftDay(localDay(), -1));
+      if (!alive.current) return;
+      if (!previous.length) {
+        setMessage("გუშინ ჩანაწერი არ არის.");
+        return;
+      }
+      setCopyError("");
+      setCopying(previous);
     });
   const sum = foodTotals(draft?.items || meals.flatMap((m) => m.items));
   const score = draft?.items.length ? healthScore(draft.items) : null;
@@ -569,8 +614,11 @@ function NutritionScreen({ owner }: { owner: string }) {
                 </View>
                 <QuickLogTiles onPick={startWith} />
                 {button("სხვა გზები: გალერეა, ეტიკეტი, შენახული, ხელით", () => { newMeal(false); setTimeout(() => setSheet("methods"), 50); })}
+                {day === localDay() && button("გუშინდელი კვების გამეორება", () => void repeatYesterday(), false, false, <CopyPlus size={16} color={c.text100} />)}
               </View>
             )}
+            {meals.length > 0 && day !== localDay() &&
+              button("ამ დღის კოპირება", () => { setCopyError(""); setCopying(meals); }, false, false, <CopyPlus size={16} color={c.text100} />)}
             {(["breakfast", "lunch", "dinner", "snack"] as const)
               .filter((type) => meals.some((m) => m.type === type))
               .map((type) => (
@@ -609,6 +657,9 @@ function NutritionScreen({ owner }: { owner: string }) {
                               <Text style={[txt, { fontSize: 11, color: c.text300 }]}>{sourceLabels[meal.source] || sourceLabels.manual} · შეეხე რედაქტირებისთვის</Text>
                             </View>
                             <ScoreBadge score={mealScore} size="sm" />
+                            <Pressable accessibilityRole="button" accessibilityLabel="კვების კოპირება" onPress={() => { setCopyError(""); setCopying([meal]); }} disabled={busy} style={[s.icon, { marginRight: -12 }]}>
+                              <Copy size={18} color={c.text300} />
+                            </Pressable>
                             <Pressable accessibilityRole="button" accessibilityLabel="კვების წაშლა" onPress={() => remove(meal)} disabled={busy} style={[s.icon, { marginRight: -10 }]}>
                               <Trash2 size={18} color={c.text300} />
                             </Pressable>
@@ -780,6 +831,7 @@ function NutritionScreen({ owner }: { owner: string }) {
         )}
       </View>
       <Stack.Screen options={{ gestureEnabled: !draft && !busy }} />
+      <CopyMealsSheet meals={copying} busy={busy} error={copyError} onClose={() => setCopying(null)} onCopy={(date, type) => void copyMeals(date, type)} />
       <LogMethodSheet visible={sheet === "methods"} aiEnabled={enabled} onPick={pickMethod} onClose={() => setSheet(null)} />
       <BarcodeScannerModal visible={sheet === "barcode" && !product} busy={busy} error={sheetError} onClose={() => setSheet(null)} onCode={(code) => void lookupBarcode(code)} />
       <PortionSheet

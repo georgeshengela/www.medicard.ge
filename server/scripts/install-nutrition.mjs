@@ -9,6 +9,7 @@ try {
     "20260924-nutrition.sql",
     "20260924-nutrition-program.sql",
     "20260926-nutrition-plus.sql",
+    "20260927-nutrition-more.sql",
   ]) {
     const sql = readFileSync(
       new URL("../prisma/" + file, import.meta.url),

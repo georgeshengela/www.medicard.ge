@@ -51,6 +51,7 @@ export const NOTIF_PREFIX = {
   quota: 'quota:',
   pets: 'pets:',
   nutrition: 'nutrition:',
+  fasting: 'fasting:',
 } as const;
 
 function flagOn(value: unknown) {
@@ -599,6 +600,43 @@ export async function syncNutritionReminders(
     }
   }
   return scheduled;
+}
+
+/**
+ * One local notification when a running fast reaches its goal. Replaced on
+ * every start, end or edit; never scheduled for another account or a past time.
+ */
+export async function syncFastingNotification(
+  fast: { id: string; goalAt: string; targetMinutes: number; endedAt: string | null } | null,
+  notify: boolean,
+  expectedOwner = localAccountId(),
+): Promise<boolean> {
+  if (!expectedOwner || localAccountId() !== expectedOwner) return false;
+  await cancelNotificationsByPrefix(NOTIF_PREFIX.fasting);
+  if (!fast || fast.endedAt || !notify) return false;
+  const at = new Date(fast.goalAt);
+  if (!(at.getTime() > Date.now() + 30_000)) return false;
+  if (!(await getNotificationPermissionGranted()) || localAccountId() !== expectedOwner) return false;
+  const copy = applyPushCopy('fasting-goal', { hours: Math.round(fast.targetMinutes / 60) });
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: `${NOTIF_PREFIX.fasting}goal`,
+      content: {
+        title: copy.title,
+        body: copy.body,
+        sound: 'default',
+        data: { type: 'fasting_goal', templateKey: 'fasting-goal', fastId: fast.id, route: '/nutrition/fasting' },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: at,
+        ...(Platform.OS === 'android' ? { channelId: NUTRITION_CHANNEL_ID } : {}),
+      },
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function getScheduledReminderCounts(): Promise<ScheduledReminderCounts> {

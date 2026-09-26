@@ -20,6 +20,7 @@ import {
   defaultPreferences,
   preferenceInput,
 } from "./nutritionPlus.js";
+import { applyMacroSplit, publicFast } from "./nutritionMore.js";
 import {
   profileNutritionAllergies,
   nutritionMealPlanning,
@@ -166,7 +167,7 @@ export async function readNutritionPreferences(userId, db = prisma) {
 }
 export async function nutritionDashboard(user, day, db = prisma) {
   const from = shiftCivil(day, -6), yesterday = shiftCivil(day, -1), streakFrom = shiftCivil(day, -400);
-  const [facts, program, meals, history, planned, activities, metric, hydrationGoal, preferences, mealDates, measurements] = await Promise.all([
+  const [facts, program, meals, history, planned, activities, metric, hydrationGoal, preferences, mealDates, measurements, openFast] = await Promise.all([
     nutritionFacts(user, db, day),
     readNutritionProgram(user.id, db),
     db.$queryRaw`SELECT id,date,type,title,items,source FROM "NutritionMeal" WHERE "userId"=${user.id} AND date>=${from} AND date<=${day} ORDER BY date,"createdAt" LIMIT 7000`,
@@ -178,8 +179,13 @@ export async function nutritionDashboard(user, day, db = prisma) {
     readNutritionPreferences(user.id, db),
     db.$queryRaw`SELECT DISTINCT date FROM "NutritionMeal" WHERE "userId"=${user.id} AND date>=${streakFrom} AND date<=${day}`,
     db.$queryRaw`SELECT date,"waistCm","hipsCm","chestCm","armCm","thighCm" FROM "BodyMeasurement" WHERE "userId"=${user.id} AND date<=${day} ORDER BY date DESC LIMIT 12`,
+    // Optional until the fasting table is installed; the diary must not fail without it.
+    db.$queryRaw`SELECT * FROM "NutritionFast" WHERE "userId"=${user.id} AND "endedAt" IS NULL LIMIT 1`.catch(() => []),
   ]);
-  const state = programState(program, facts, day);
+  const plan = programState(program, facts, day);
+  // The person's macro split re-divides the plan's calories; the calorie target is unchanged.
+  const state = { ...plan, targets: applyMacroSplit(plan.targets, preferences.macros) };
+  const { fasting: _fastingSettings, ...publicPreferences } = preferences;
   const todayMeals = meals.filter((m) => m.date === day);
   const today = totals(todayMeals.flatMap((m) => m.items));
   const days = summarizeNutritionDays(meals, from, 7, history);
@@ -216,7 +222,8 @@ export async function nutritionDashboard(user, day, db = prisma) {
     water: { ml: Math.max(0, Number(metric[0]?.hydrationMl) || 0), goalMl: Number(hydrationGoal[0]?.goalMl) || null },
     streak: computeStreak(mealDates.map((r) => r.date), day),
     projection: weightProjection(facts.weightHistory, facts.weightGoal, day, program?.active ? pace : 0),
-    preferences,
+    preferences: publicPreferences,
+    fasting: { active: openFast?.[0] ? publicFast(openFast[0]) : null },
     measurements,
     planned: planned.filter(
       (p) =>

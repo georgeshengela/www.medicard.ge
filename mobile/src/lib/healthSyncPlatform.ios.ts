@@ -3,6 +3,7 @@ import {
   eighteenMonthsAgo,
   type CycleHealthPayload,
   type HealthConnectResult,
+  type HealthMeal,
   ymdToLocalNoon,
 } from '@/lib/healthSync.shared';
 import { weekStart } from '@/lib/healthMetrics.shared';
@@ -417,5 +418,54 @@ export async function fetchStepsNative(since: Date): Promise<StepSample[]> {
       console.warn('[fetchStepsNative]', err);
     }
     return [];
+  }
+}
+
+/* ---------- nutrition write-back (Medicard diary → Apple Health) ---------- */
+const NUTRITION_WRITE_TYPES = [
+  'HKQuantityTypeIdentifierDietaryEnergyConsumed',
+  'HKQuantityTypeIdentifierDietaryProtein',
+  'HKQuantityTypeIdentifierDietaryCarbohydrates',
+  'HKQuantityTypeIdentifierDietaryFatTotal',
+] as const;
+const MEAL_KEY = 'MedicardMealId';
+// NSComparisonPredicate equalTo; passed as a number so no runtime enum object is needed.
+const EQUAL_TO = 4;
+
+export async function connectNutritionWriteNative(): Promise<HealthConnectResult> {
+  try {
+    const HealthKit = kitMod || (await loadHealthKit());
+    const granted = await HealthKit.requestAuthorization({ toShare: [...NUTRITION_WRITE_TYPES] });
+    return granted ? { ok: true } : { ok: false, reason: 'denied' };
+  } catch (err) {
+    return { ok: false, reason: 'error', message: err instanceof Error ? err.message : undefined };
+  }
+}
+
+export async function deleteMealNative(mealId: string): Promise<void> {
+  const HealthKit = await loadHealthKit();
+  const filter = { metadata: { withMetadataKey: MEAL_KEY, operatorType: EQUAL_TO, value: mealId } } as never;
+  for (const type of NUTRITION_WRITE_TYPES) {
+    // Samples Apple Health refuses to delete (no share access) are left alone.
+    await HealthKit.deleteObjects(type, filter).catch(() => 0);
+  }
+}
+
+/** Replaces the meal's samples: delete by the meal id, then write energy and macros. */
+export async function writeMealNative(meal: HealthMeal): Promise<void> {
+  const HealthKit = await loadHealthKit();
+  await deleteMealNative(meal.id);
+  const start = new Date(meal.at);
+  const end = new Date(start.getTime() + 60_000);
+  const metadata = { [MEAL_KEY]: meal.id, HKFoodType: meal.name.slice(0, 120) } as never;
+  const values: [(typeof NUTRITION_WRITE_TYPES)[number], string, number][] = [
+    ['HKQuantityTypeIdentifierDietaryEnergyConsumed', 'kcal', meal.calories],
+    ['HKQuantityTypeIdentifierDietaryProtein', 'g', meal.protein],
+    ['HKQuantityTypeIdentifierDietaryCarbohydrates', 'g', meal.carbs],
+    ['HKQuantityTypeIdentifierDietaryFatTotal', 'g', meal.fat],
+  ];
+  for (const [type, unit, value] of values) {
+    if (!(value > 0)) continue;
+    await HealthKit.saveQuantitySample(type, unit as never, Math.round(value * 10) / 10, start, end, metadata);
   }
 }

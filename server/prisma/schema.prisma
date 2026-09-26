@@ -14,6 +14,7 @@ model User {
   nutritionPlannedMeals NutritionPlannedMeal[]
   nutritionFoods NutritionFood[]
   nutritionActivities NutritionActivity[]
+  nutritionFasts NutritionFast[]
   nutritionPreference NutritionPreference?
   bodyMeasurements BodyMeasurement[]
   communityCommentLikes CommunityCommentLike[]
@@ -2224,6 +2225,7 @@ model NutritionFood {
  serving Json?
  source String @default("custom")
  barcode String?
+ recipe Json?
  favorite Boolean @default(false)
  useCount Int @default(0)
  lastUsedAt DateTime @default(now()) @db.Timestamptz(6)
@@ -2238,6 +2240,19 @@ model NutritionProduct {
  source String @default("openfoodfacts")
  hits Int @default(0)
  fetchedAt DateTime @default(now()) @db.Timestamptz(6)
+}
+model NutritionFast {
+ id String @id
+ userId String
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ startedAt DateTime @db.Timestamptz(6)
+ endedAt DateTime? @db.Timestamptz(6)
+ targetMinutes Int
+ protocol String @default("custom")
+ note String @default("")
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+ @@index([userId,startedAt(sort: Desc)])
 }
 model NutritionActivity {
  id String @id

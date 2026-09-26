@@ -4,6 +4,7 @@ import {
   eighteenMonthsAgo,
   type CycleHealthPayload,
   type HealthConnectResult,
+  type HealthMeal,
   ymdToLocalNoon,
 } from '@/lib/healthSync.shared';
 import { weekStart } from '@/lib/healthMetrics.shared';
@@ -383,4 +384,64 @@ export async function fetchStepsNative(since: Date): Promise<StepSample[]> {
   } catch {
     return [];
   }
+}
+
+/* ---------- nutrition write-back (Medicard diary → Health Connect) ---------- */
+const NUTRITION_WRITE = { accessType: 'write' as const, recordType: 'Nutrition' as const };
+const clientId = (mealId: string) => `medicard-meal-${mealId}`;
+
+export async function connectNutritionWriteNative(): Promise<HealthConnectResult> {
+  try {
+    const ready = readyCache || (await ensureReady());
+    readyCache = ready;
+    if (!ready.ok) {
+      if (ready.reason === 'not_installed') await openHealthConnectStore();
+      return ready;
+    }
+    const HC = await loadHealthConnect();
+    await HC.requestPermission([NUTRITION_WRITE]);
+    const granted = await HC.getGrantedPermissions().catch(() => []);
+    return granted.some((p: { accessType?: string; recordType?: string }) => p.accessType === 'write' && p.recordType === 'Nutrition')
+      ? { ok: true }
+      : { ok: false, reason: 'denied' };
+  } catch (err) {
+    return { ok: false, reason: 'error', message: err instanceof Error ? err.message : undefined };
+  }
+}
+
+/** Upsert by client record id: a newer version replaces the same meal in Health Connect. */
+export async function writeMealNative(meal: HealthMeal): Promise<void> {
+  const HC = await loadHealthConnect();
+  if (!readyCache?.ok) {
+    readyCache = await ensureReady();
+    if (!readyCache.ok) return;
+  }
+  const start = new Date(meal.at);
+  const grams = (value: number | null | undefined) =>
+    value != null && value > 0 ? { value: Math.round(value * 10) / 10, unit: 'grams' as const } : undefined;
+  const record = {
+    recordType: 'Nutrition' as const,
+    startTime: start.toISOString(),
+    endTime: new Date(start.getTime() + 60_000).toISOString(),
+    name: meal.name.slice(0, 120),
+    mealType: { breakfast: HC.MealType.BREAKFAST, lunch: HC.MealType.LUNCH, dinner: HC.MealType.DINNER, snack: HC.MealType.SNACK }[meal.type],
+    energy: { value: Math.round(meal.calories), unit: 'kilocalories' as const },
+    protein: grams(meal.protein),
+    totalCarbohydrate: grams(meal.carbs),
+    totalFat: grams(meal.fat),
+    dietaryFiber: grams(meal.fiber),
+    sugar: grams(meal.sugar),
+    sodium: meal.sodium != null && meal.sodium > 0 ? { value: Math.round(meal.sodium), unit: 'milligrams' as const } : undefined,
+    metadata: { clientRecordId: clientId(meal.id), clientRecordVersion: Date.now() },
+  };
+  await HC.insertRecords([record as never]);
+}
+
+export async function deleteMealNative(mealId: string): Promise<void> {
+  const HC = await loadHealthConnect();
+  if (!readyCache?.ok) {
+    readyCache = await ensureReady();
+    if (!readyCache.ok) return;
+  }
+  await HC.deleteRecordsByUuids('Nutrition', [], [clientId(mealId)]);
 }

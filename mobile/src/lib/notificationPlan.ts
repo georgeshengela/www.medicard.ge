@@ -168,7 +168,7 @@ export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' |
   if (id.startsWith('quota:')) return 'quota';
   if (id.startsWith('qa:')) return 'qa';
   if (id.startsWith('pets:')) return 'pets';
-  if (id.startsWith('nutrition:')) return 'nutrition';
+  if (id.startsWith('nutrition:') || id.startsWith('fasting:')) return 'nutrition';
   return 'other';
 }
 

@@ -177,7 +177,7 @@ export async function listSavedFoods(userId, db, { favorite = null, limit = 60 }
 }
 export async function saveFood(userId, input, db) {
   const rows = await db.$queryRaw`INSERT INTO "NutritionFood" (id,"userId",name,brand,per100,serving,source,barcode,favorite) VALUES (${input.id},${userId},${input.name},${input.brand},${JSON.stringify(input.per100)}::jsonb,${input.serving ? JSON.stringify(input.serving) : null}::jsonb,${input.source},${input.barcode},${input.favorite})
-    ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,brand=EXCLUDED.brand,per100=EXCLUDED.per100,serving=EXCLUDED.serving,source=EXCLUDED.source,barcode=EXCLUDED.barcode,favorite=EXCLUDED.favorite,"updatedAt"=NOW() WHERE "NutritionFood"."userId"=${userId} RETURNING *`;
+    ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,brand=EXCLUDED.brand,per100=EXCLUDED.per100,serving=EXCLUDED.serving,source=EXCLUDED.source,barcode=EXCLUDED.barcode,favorite=EXCLUDED.favorite,"updatedAt"=NOW() WHERE "NutritionFood"."userId"=${userId} AND "NutritionFood".source<>'recipe' RETURNING *`;
   return rows[0] || null;
 }
 export async function touchFoods(userId, ids, db) {

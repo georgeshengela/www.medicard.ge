@@ -11,7 +11,26 @@ export type NutritionTargets = NutritionTotals & {
   maintenance: number;
   adjustment: number;
   method: string;
+  /** Present when the person chose their own macro split (energy shares, %). */
+  split?: MacroShares;
 };
+export type MacroShares = { protein: number; carbs: number; fat: number };
+export type MacroPreference = MacroShares & { mode: "auto" | "custom" };
+export const MACRO_PRESETS: { key: string; label: string; detail: string; shares: MacroShares }[] = [
+  { key: "balanced", label: "ბალანსი", detail: "გეგმის ნაგულისხმევი", shares: { protein: 20, carbs: 50, fat: 30 } },
+  { key: "highProtein", label: "მეტი ცილა", detail: "ძალოვანი ვარჯიში, გაჯერება", shares: { protein: 30, carbs: 40, fat: 30 } },
+  { key: "lowerCarb", label: "ნაკლები ნახშირწყალი", detail: "ზომიერად დაბალი", shares: { protein: 30, carbs: 25, fat: 45 } },
+  { key: "endurance", label: "გამძლეობა", detail: "სირბილი, ველოსიპედი", shares: { protein: 20, carbs: 55, fat: 25 } },
+];
+export const MACRO_BOUNDS: Record<keyof MacroShares, [number, number]> = { protein: [10, 40], carbs: [15, 65], fat: [15, 50] };
+/** Grams for a calorie target and a split: 4 kcal per gram of protein and carbs, 9 for fat. */
+export function macroGrams(calories: number, shares: MacroShares): MacroShares {
+  return {
+    protein: Math.round((calories * shares.protein) / 100 / 4),
+    carbs: Math.round((calories * shares.carbs) / 100 / 4),
+    fat: Math.round((calories * shares.fat) / 100 / 9),
+  };
+}
 export type ProgramConfig = {
   mode: "lose" | "maintain" | "gain";
   weightKg: number;
@@ -87,12 +106,14 @@ export type NutritionPreferences = {
   addBurned: boolean;
   countSteps: boolean;
   reminders: { enabled: boolean; breakfast: string; lunch: string; dinner: string };
+  macros: MacroPreference;
 };
 export const defaultNutritionPreferences = (): NutritionPreferences => ({
   rollover: false,
   addBurned: false,
   countSteps: true,
   reminders: { enabled: false, breakfast: "08:30", lunch: "13:30", dinner: "19:30" },
+  macros: { mode: "auto", protein: 20, carbs: 50, fat: 30 },
 });
 export type BodyMeasurement = {
   date: string;
@@ -156,6 +177,8 @@ export type NutritionDashboard = {
   streak: NutritionStreak;
   projection: WeightProjection;
   preferences: NutritionPreferences;
+  /** Optional: older servers do not send it. */
+  fasting?: { active: import("./fasting").Fast | null };
   measurements: BodyMeasurement[];
   days: NutritionDay[];
   planned: PlannedMeal[];

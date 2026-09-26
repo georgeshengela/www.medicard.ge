@@ -65,6 +65,8 @@ export type SavedFood = {
   kind?: "saved" | "catalog" | "product" | "usda";
   quality?: "reference" | "estimate" | "label";
   nutriscore?: string | null;
+  /** The person's own recipe: ingredients (portion totals) and number of servings. */
+  recipe?: { servings: number; items: FoodItem[]; totalGrams?: number } | null;
 };
 export const mealLabels = {
   breakfast: "საუზმე",

@@ -28,7 +28,8 @@ import {
   measurementInput,
 } from "../lib/nutritionPlus.js";
 import { nutritionFacts, readNutritionPreferences, nutritionError } from "../lib/nutritionProgramStore.js";
-import { foodItem } from "../lib/nutrition.js";
+import { foodItem, totals, healthScore } from "../lib/nutrition.js";
+import { recipeInput, recipeToFood, copyInput, copiedMeals } from "../lib/nutritionMore.js";
 
 // Mounted only after the parent's authentication and no-cache middleware.
 export const nutritionPlusRouter = Router();
@@ -125,6 +126,67 @@ r.post(
   }),
 );
 
+/* ---------- personal recipes (stored as saved foods) ---------- */
+const recipeRow = (row) => ({ ...row, kind: "saved" });
+r.get(
+  "/recipes",
+  wrap(async (req, res) => {
+    const rows = await prisma.$queryRaw`SELECT * FROM "NutritionFood" WHERE "userId"=${req.user.id} AND source='recipe' ORDER BY favorite DESC,"lastUsedAt" DESC LIMIT 200`;
+    res.json({ recipes: rows.map(recipeRow) });
+  }),
+);
+r.get(
+  "/recipes/:id",
+  wrap(async (req, res) => {
+    const [row] = await prisma.$queryRaw`SELECT * FROM "NutritionFood" WHERE id=${z.string().uuid().parse(req.params.id)} AND "userId"=${req.user.id} AND source='recipe'`;
+    if (!row) throw nutritionError("რეცეპტი ვერ მოიძებნა.", 404);
+    res.json({ recipe: recipeRow(row) });
+  }),
+);
+r.put(
+  "/recipes/:id",
+  wrap(async (req, res) => {
+    const input = recipeInput.parse(req.body);
+    if (input.id !== req.params.id) throw nutritionError("ჩანაწერის ნომერი არ ემთხვევა.");
+    const food = recipeToFood(input);
+    // A new recipe counts toward the saved-food cap; an edit of an existing one does not.
+    const [count] = await prisma.$queryRaw`SELECT count(*)::int n, count(*) FILTER (WHERE id=${input.id})::int own FROM "NutritionFood" WHERE "userId"=${req.user.id}`;
+    if (!count.own && count.n >= 500) throw nutritionError("შენახული საკვების ლიმიტი (500) ამოწურულია. წაშალე ძველი ჩანაწერები.");
+    const rows = await prisma.$queryRaw`INSERT INTO "NutritionFood" (id,"userId",name,brand,per100,serving,source,barcode,favorite,recipe) VALUES (${food.id},${req.user.id},${food.name},'',${JSON.stringify(food.per100)}::jsonb,${JSON.stringify(food.serving)}::jsonb,'recipe',NULL,${food.favorite},${JSON.stringify(food.recipe)}::jsonb)
+      ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,per100=EXCLUDED.per100,serving=EXCLUDED.serving,favorite=EXCLUDED.favorite,recipe=EXCLUDED.recipe,"updatedAt"=NOW() WHERE "NutritionFood"."userId"=${req.user.id} AND "NutritionFood".source='recipe' RETURNING *`;
+    if (!rows[0]) throw nutritionError("რეცეპტი ვერ მოიძებნა.", 404);
+    const t = totals(input.items);
+    res.json({
+      recipe: recipeRow(rows[0]),
+      totals: t,
+      perServing: Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v == null ? null : Math.round((v / input.servings) * 10) / 10])),
+      healthScore: healthScore(input.items),
+    });
+  }),
+);
+
+/* ---------- copy meals ---------- */
+/** Repeat one meal or a whole day on another date. Client ids make a retry safe. */
+r.post(
+  "/meals/copy",
+  wrap(async (req, res) => {
+    const input = copyInput.parse(req.body);
+    if (input.date > today(req)) throw nutritionError("მომავალი დღის კვება ვერ ჩაიწერება.");
+    const fromIds = input.copies.map((c) => c.fromId);
+    const sources = await prisma.$queryRaw`SELECT * FROM "NutritionMeal" WHERE "userId"=${req.user.id} AND id = ANY(${fromIds}::text[])`;
+    const meals = copiedMeals(sources, input);
+    if (!meals.length) throw nutritionError("დასაკოპირებელი კვება ვერ მოიძებნა.", 404);
+    await prisma.$transaction(
+      meals.map(
+        (m) => prisma.$executeRaw`INSERT INTO "NutritionMeal" (id,"userId",date,type,items,note,title,source) VALUES (${m.id},${req.user.id},${m.date},${m.type},${JSON.stringify(m.items)}::jsonb,${m.note},${m.title},${m.source}) ON CONFLICT (id) DO NOTHING`,
+      ),
+    );
+    const ids = meals.map((m) => m.id);
+    const rows = await prisma.$queryRaw`SELECT * FROM "NutritionMeal" WHERE "userId"=${req.user.id} AND id = ANY(${ids}::text[])`;
+    res.json({ meals: rows.map((row) => ({ ...row, totals: totals(row.items), healthScore: healthScore(row.items) })) });
+  }),
+);
+
 /* ---------- barcode ---------- */
 r.get(
   "/barcode/:code",
@@ -174,14 +236,22 @@ r.delete(
 /* ---------- preferences ---------- */
 r.get(
   "/preferences",
-  wrap(async (req, res) => res.json({ preferences: await readNutritionPreferences(req.user.id, prisma) })),
+  wrap(async (req, res) => {
+    const { fasting: _fasting, ...preferences } = await readNutritionPreferences(req.user.id, prisma);
+    res.json({ preferences });
+  }),
 );
 r.put(
   "/preferences",
   wrap(async (req, res) => {
-    const input = preferenceInput.parse(req.body);
+    // Older app versions send only the keys they know; newer keys keep their stored value.
+    // Fasting settings belong to the fasting endpoints and are never replaced here.
+    const body = z.record(z.string(), z.unknown()).parse(req.body);
+    const stored = await readNutritionPreferences(req.user.id, prisma);
+    const input = preferenceInput.parse({ ...stored, ...body, fasting: stored.fasting });
     await prisma.$executeRaw`INSERT INTO "NutritionPreference" ("userId",data) VALUES (${req.user.id},${JSON.stringify(input)}::jsonb) ON CONFLICT ("userId") DO UPDATE SET data=EXCLUDED.data,"updatedAt"=NOW()`;
-    res.json({ preferences: input });
+    const { fasting: _fasting, ...publicPreferences } = input;
+    res.json({ preferences: publicPreferences });
   }),
 );
 

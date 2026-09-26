@@ -2155,6 +2155,25 @@ export const api = {
       get: () => request<{preferences:import('./nutritionProgram').NutritionPreferences}>('/api/nutrition/preferences'),
       save: (preferences:import('./nutritionProgram').NutritionPreferences) => request<{preferences:import('./nutritionProgram').NutritionPreferences}>('/api/nutrition/preferences',{method:'PUT',body:preferences}),
     },
+    /** Repeat one meal or a whole day; new client ids make a retry safe. */
+    copy: (input:{date:string; type?:import('./nutrition').Meal['type']; copies:{fromId:string; id:string}[]}) =>
+      request<{meals:import('./nutrition').Meal[]}>('/api/nutrition/meals/copy',{method:'POST',body:input}),
+    recipes: {
+      list: () => request<{recipes:import('./nutrition').SavedFood[]}>('/api/nutrition/recipes'),
+      get: (id:string) => request<{recipe:import('./nutrition').SavedFood}>('/api/nutrition/recipes/'+encodeURIComponent(id)),
+      save: (recipe:{id:string; name:string; servings:number; items:import('./nutrition').FoodItem[]; favorite:boolean}) =>
+        request<{recipe:import('./nutrition').SavedFood}>('/api/nutrition/recipes/'+recipe.id,{method:'PUT',body:recipe}),
+      remove: (id:string) => request('/api/nutrition/foods/'+id,{method:'DELETE'}),
+    },
+    fasting: {
+      get: () => request<import('./fasting').FastingState>('/api/nutrition/fasting'),
+      screening: (answers:import('./fasting').FastingScreeningAnswers) => request<import('./fasting').FastingState>('/api/nutrition/fasting/screening',{method:'PUT',body:answers}),
+      settings: (settings:{protocol:string; targetMinutes:number; notify:boolean}) => request<{settings:import('./fasting').FastingState['settings']}>('/api/nutrition/fasting/settings',{method:'PUT',body:settings}),
+      start: (input:{id:string; protocol:string; targetMinutes:number; startedAt?:string}) => request<{fast:import('./fasting').Fast}>('/api/nutrition/fasting/start',{method:'POST',body:input}),
+      end: (id:string, endedAt?:string) => request<{fast:import('./fasting').Fast}>('/api/nutrition/fasting/'+id+'/end',{method:'POST',body:endedAt?{endedAt}:{}}),
+      edit: (id:string, input:{startedAt:string; endedAt:string|null; targetMinutes:number; note:string}) => request<{fast:import('./fasting').Fast}>('/api/nutrition/fasting/'+id,{method:'PUT',body:input}),
+      remove: (id:string) => request('/api/nutrition/fasting/'+id,{method:'DELETE'}),
+    },
     measurements: {
       list: () => request<{measurements:import('./nutritionProgram').BodyMeasurement[]}>('/api/nutrition/measurements'),
       save: (date:string, m:Omit<import('./nutritionProgram').BodyMeasurement,'date'>) => request('/api/nutrition/measurements/'+date,{method:'PUT',body:m}),

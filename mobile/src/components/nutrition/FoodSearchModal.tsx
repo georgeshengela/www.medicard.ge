@@ -145,6 +145,7 @@ export function FoodSearchModal({
           {Math.round(food.per100.calories)} კკალ / 100 გ · ც {food.per100.protein} · ნ {food.per100.carbs} · ცხ {food.per100.fat}
           {food.brand ? ` · ${food.brand}` : ""}
           {food.kind === "catalog" && food.quality === "estimate" ? " · შეფასება" : ""}
+          {food.source === "recipe" ? ` · რეცეპტი, ${Math.round((food.per100.calories * (food.serving?.grams || 100)) / 100)} კკალ/პორცია` : ""}
         </Text>
       </View>
       {food.favorite ? <BookmarkCheck size={18} color={c.primary100} /> : null}

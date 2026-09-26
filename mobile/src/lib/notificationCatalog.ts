@@ -261,6 +261,15 @@ export function notificationCatalog(): NotificationCatalogItem[] {
       data: { type: 'nutrition_reminder', meal: 'dinner', route: '/nutrition/diary' },
     }),
     item({
+      id: 'fasting-goal',
+      group: 'nutrition',
+      send: 'local',
+      label: 'შიმშილის მიზანი შესრულდა',
+      how: 'Local · DATE ტაიმერის დაწყებისას (fasting:goal). syncFastingNotification.',
+      channelId: NUTRITION_CHANNEL_ID,
+      data: { type: 'fasting_goal', route: '/nutrition/fasting' },
+    }),
+    item({
       id: 'engage-weekly',
       group: 'engage',
       send: 'local',

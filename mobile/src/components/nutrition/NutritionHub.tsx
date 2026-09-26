@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   CalendarDays,
   ChartNoAxesCombined,
+  ChefHat,
   Droplet,
   Flame,
   Footprints,
@@ -14,12 +15,14 @@ import {
   Settings2,
   Sparkles,
   Target,
+  Timer,
   Trophy,
   type LucideIcon,
 } from "lucide-react-native";
 import { useAuth } from "@/store/AuthContext";
 import { nutritionDateLabel } from "@/lib/nutritionProgram";
 import { mealLabels } from "@/lib/nutrition";
+import { fastProgress, hoursLabel, timeLabel } from "@/lib/fasting";
 import { useIsDark, useThemeColors } from "@/theme/colors";
 import { HUB, hubInk, hubText, hubTint, type HubInk } from "@/theme/hub";
 import { HubFeatureCard } from "@/components/home/HubFeatureCard";
@@ -115,6 +118,32 @@ function Hub() {
               </View>
             </HubCard>
           </HubSection>
+
+          {d.fasting?.active && (
+            <HubSection title="შიმშილი მიმდინარეობს" linkLabel="ტაიმერი" onLink={() => router.push("/nutrition/fasting")}>
+              <Pressable accessibilityRole="button" accessibilityLabel="შიმშილის ტაიმერის გახსნა" onPress={() => router.push("/nutrition/fasting")}>
+                <HubCard>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    <View style={[s.linkIcon, { backgroundColor: hubTint(hubInk("violet", dark), dark) }]}>
+                      <Timer size={20} color={hubInk("violet", dark)} strokeWidth={1.9} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[hubText.cardTitle, { color: c.text100 }]}>
+                        {fastProgress(d.fasting.active) >= 1 ? "მიზანი შესრულდა" : `მიზანი ${timeLabel(d.fasting.active.goalAt)}-ზე`}
+                      </Text>
+                      <Text style={[hubText.caption, { color: c.text200 }]}>
+                        დაიწყო {timeLabel(d.fasting.active.startedAt)} · {hoursLabel(d.fasting.active.targetMinutes)} ფანჯარა
+                      </Text>
+                    </View>
+                    <ArrowUpRight size={18} color={c.text300} />
+                  </View>
+                  <View style={[s.track, { backgroundColor: c.bg200 }]}>
+                    <View style={[s.fill, { width: `${Math.round(fastProgress(d.fasting.active) * 100)}%`, backgroundColor: hubInk("violet", dark) }]} />
+                  </View>
+                </HubCard>
+              </Pressable>
+            </HubSection>
+          )}
 
           {d.todayMeals.length > 0 && (
             <HubSection title="დღეს ჩაწერილი" linkLabel="ყველა" onLink={() => router.push("/nutrition/diary")}>
@@ -212,11 +241,13 @@ function Hub() {
           <HubSection title="მეტი">
             <HubCard style={{ gap: 0, paddingVertical: 4 }}>
               {link(CalendarDays, "teal", "ჩემი რაციონი", "7 დღის კერძები და საყიდლების სია", "/nutrition/plan")}
+              {link(ChefHat, "green", "ჩემი რეცეპტები", "საკუთარი კერძები — ერთხელ ჩაწერე, მერე ერთი შეხებით", "/nutrition/recipes")}
+              {link(Timer, "violet", "ინტერვალური შიმშილი", d.fasting?.active ? "ტაიმერი ჩართულია" : "16:8 და სხვა ფანჯრები, ტაიმერი და სერია", "/nutrition/fasting")}
               {link(Flame, "amber", "ვარჯიში და ენერგია", d.activities.length ? `დღეს ${d.activities.length} ვარჯიში · ${d.burned.activities} კკალ` : "სირბილი, ძალოვანი, სიარული — ბიუჯეტში ჩათვლით", "/nutrition/activity")}
               {link(ChartNoAxesCombined, "blue", "პროგრესი", "კვირის შეჯამება, წონის პროგნოზი, ტენდენციები", "/nutrition/progress")}
               {link(Ruler, "violet", "სხეულის ზომები", d.measurements[0] ? `ბოლო ჩანაწერი ${nutritionDateLabel(d.measurements[0].date)}` : "წელი, თეძო, მკერდი — სასწორის გარდა", "/nutrition/measurements")}
               {link(Mic, "rose", "უთხარი Medi-ს", "„ორი ხინკალი ვჭამე“ — ჩაწერს და დაითვლის", "/assistant")}
-              {link(Settings2, "neutral", "პარამეტრები და შეხსენებები", "ბიუჯეტის წესები, კვების შეხსენებები, მეთოდი", "/nutrition/settings", true)}
+              {link(Settings2, "neutral", "პარამეტრები და შეხსენებები", "ბიუჯეტი, მაკროები, შეხსენებები, Health", "/nutrition/settings", true)}
             </HubCard>
           </HubSection>
           <Pressable accessibilityRole="button" onPress={() => router.push("/nutrition/method")} style={{ paddingVertical: 8 }}>
@@ -237,4 +268,6 @@ const s = StyleSheet.create({
   link: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, minHeight: 64 },
   linkIcon: { width: HUB.tile, height: HUB.tile, borderRadius: HUB.tileRadius, alignItems: "center", justifyContent: "center" },
   secondary: { minHeight: 46, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  track: { height: 8, borderRadius: 4, overflow: "hidden" },
+  fill: { height: 8, borderRadius: 4 },
 });

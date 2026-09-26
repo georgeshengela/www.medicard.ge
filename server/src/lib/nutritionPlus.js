@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { civilDate, totals } from "./nutrition.js";
 import { shiftCivil } from "./nutritionProgram.js";
+import { macroInput, defaultMacros, fastingSettingsSchema, defaultFastingSettings } from "./nutritionMore.js";
 
 export const MILESTONES = [3, 7, 14, 30, 60, 100, 365];
 /**
@@ -80,6 +81,9 @@ export const preferenceInput = z
       })
       .strict()
       .default(() => ({ ...REMINDER_DEFAULTS })),
+    macros: macroInput.default(defaultMacros),
+    // Owned by the fasting endpoints; the general preference save keeps the stored value.
+    fasting: fastingSettingsSchema.default(defaultFastingSettings),
   })
   .strict();
 export const defaultPreferences = () => preferenceInput.parse({});
