@@ -150,8 +150,11 @@ export default function Records() {
                       accessibilityRole="button"
                       accessibilityLabel={ka.common.delete}
                       hitSlop={10}
-                      className="ml-2"
-                      onPress={() => removeRecord(record.id)}
+                      className="ml-2 p-1"
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        removeRecord(record.id);
+                      }}
                     >
                       <Trash2 size={16} color={colors.text300} strokeWidth={2} />
                     </Pressable>
@@ -190,8 +193,11 @@ export default function Records() {
                       accessibilityRole="button"
                       accessibilityLabel={ka.common.delete}
                       hitSlop={10}
-                      className="ml-2 mr-1"
-                      onPress={() => removeChat(chat.id)}
+                      className="ml-2 mr-1 p-1"
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        removeChat(chat.id);
+                      }}
                     >
                       <Trash2 size={16} color={colors.text300} strokeWidth={2} />
                     </Pressable>

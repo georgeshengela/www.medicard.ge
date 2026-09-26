@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { TouchableOpacity, View, type LayoutChangeEvent } from 'react-native';
+import { TouchableOpacity, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -12,7 +12,7 @@ import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 
-export const TAB_BAR_HEIGHT = 58;
+export const TAB_BAR_HEIGHT = 64;
 export const TAB_BAR_SIDE = 20;
 /** Extra clearance so the last Home / Meds cards sit above the overlay pill (OBS-VIS-01). */
 export const TAB_BAR_SCROLL_EXTRA = 96;
@@ -118,6 +118,9 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
   return (
     <Animated.View
       pointerEvents={visible ? 'box-none' : 'none'}
+      accessibilityElementsHidden={!visible}
+      importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
+      aria-hidden={!visible}
       style={[
         {
           position: 'absolute',
@@ -171,13 +174,13 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
         ) : null}
 
         {LEFT_TABS.map((tab) => (
-          <TabButton key={tab.name} tab={tab} focused={tab.name === selected} color={tab.name === selected ? colors.primary200 : colors.text300} onPress={() => goTab(tab)} />
+          <TabButton key={tab.name} tab={tab} focused={tab.name === selected} color={tab.name === selected ? colors.primary100 : colors.text200} onPress={() => goTab(tab)} />
         ))}
 
         <View style={{ flex: 1, height: '100%' }} />
 
         {RIGHT_TABS.map((tab) => (
-          <TabButton key={tab.name} tab={tab} focused={tab.name === selected} color={tab.name === selected ? colors.primary200 : colors.text300} onPress={() => goTab(tab)} />
+          <TabButton key={tab.name} tab={tab} focused={tab.name === selected} color={tab.name === selected ? colors.primary100 : colors.text200} onPress={() => goTab(tab)} />
         ))}
       </View>
 
@@ -216,7 +219,7 @@ export function FloatingTabBar({ visible = true }: { visible?: boolean }) {
             shadowRadius: 10,
           }}
         >
-          <Footprints size={24} color="#FFFFFF" strokeWidth={2.4} />
+          <Footprints size={22} color="#FFFFFF" strokeWidth={2.2} /><Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '700', marginTop: 1 }}>RUN</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -249,7 +252,8 @@ function TabButton({
         zIndex: 1,
       }}
     >
-      <tab.Icon size={23} color={color} strokeWidth={focused ? 2.5 : 1.9} />
+      <tab.Icon size={20} color={color} strokeWidth={focused ? 2.3 : 1.8} />
+      <Text numberOfLines={1} style={{ color, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 9, marginTop: 4 }}>{tab.name === 'medications' ? 'წამლები' : tab.title}</Text>
     </TouchableOpacity>
   );
 }

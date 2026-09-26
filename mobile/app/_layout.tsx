@@ -360,7 +360,7 @@ function AppShell() {
             </Stack>
           </View>
           <AppChromeOverlay interactive={chromeInteractive}>
-            {user && !['run', 'medi-quest', 'medi-companion', 'pets', 'assistant', 'community', 'nutrition'].includes(segments[0]) ? <FloatingTabBar visible={showTabBar} /> : null}
+            {user && !['(auth)', 'run', 'medi-quest', 'medi-companion', 'pets', 'assistant', 'community', 'nutrition'].includes(segments[0]) ? <FloatingTabBar visible={showTabBar} /> : null}
             {user ? <ActiveRunBadge /> : null}
           </AppChromeOverlay>
           <DailyCheckInHost />
