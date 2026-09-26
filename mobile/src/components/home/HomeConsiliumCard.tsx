@@ -1,73 +1,111 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { HomeConsiliumArt } from '@/components/home/HomeConsiliumArt';
-import { useFigmaChat } from '@/constants/figmaChatLayout';
-import { HOME_SPACE as S } from '@/constants/homeSpacing';
-import { ka } from '@/i18n/ka';
+import {
+  ArrowUpRight,
+  Brain,
+  MessagesSquare,
+  ScanSearch,
+} from 'lucide-react-native';
+import { useIsDark } from '@/theme/colors';
 
-type Props = {
-  onPress: () => void;
-};
-
-/** Figma 11416:93609 — consilium promo card. Title lives in the card, like Explore Doctors. */
-export function HomeConsiliumCard({ onPress }: Props) {
-  const FIGMA = useFigmaChat();
-
+/** AI perspectives, never a claim that human doctors have been convened. */
+export function HomeConsiliumCard({ onPress }: { onPress: () => void }) {
+  const dark = useIsDark();
+  const ink = dark ? '#EEEAFE' : '#373259';
+  const secondary = dark ? '#CBC6E5' : '#615D7D';
+  const accent = dark ? '#C4B5FD' : '#6B50A0';
   return (
-    <View style={{ marginTop: S.sectionTop }}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={ka.modules.consilium.title}
-        onPress={onPress}
-        className="active:opacity-88"
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="AI კონსილიუმი — განხილვის დაწყება"
+      onPress={onPress}
+      style={{
+        padding: 22,
+        borderRadius: 24,
+        backgroundColor: dark ? '#202039' : '#F0EDF9',
+        borderWidth: 1,
+        borderColor: dark ? '#3C3757' : '#DFD8EF',
+        gap: 16,
+      }}
+    >
+      <View
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
+        style={{ flexDirection: 'row', gap: 8 }}
       >
-        <View
+        {[Brain, ScanSearch, MessagesSquare].map((Icon, index) => (
+          <View
+            key={index}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 14,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: dark ? '#302B49' : '#E5DEF3',
+            }}
+          >
+            <Icon size={21} color={accent} strokeWidth={1.6} />
+          </View>
+        ))}
+      </View>
+      <View style={{ gap: 8 }}>
+        <Text
           style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: FIGMA.cardBg,
-            borderWidth: 1,
-            borderColor: FIGMA.border,
-            borderRadius: 24,
-            overflow: 'hidden',
-            ...FIGMA.shadowXs,
+            fontFamily: 'NotoSansGeorgian_700Bold',
+            fontSize: 21,
+            lineHeight: 30,
+            color: ink,
           }}
         >
-          <View style={{ flex: 1, minWidth: 0, padding: 16, gap: 8 }}>
-            <Text
-              style={{
-                fontFamily: 'NotoSansGeorgian_600SemiBold',
-                fontSize: 16,
-                lineHeight: 22,
-                color: FIGMA.textPrimary,
-              }}
-            >
-              {ka.modules.consilium.title}
-            </Text>
-            <Text
-              style={{
-                fontFamily: 'NotoSansGeorgian_400Regular',
-                fontSize: 14,
-                lineHeight: 20,
-                color: FIGMA.textSecondary,
-              }}
-            >
-              {ka.modules.consilium.subtitle}
-            </Text>
-            <Text
-              style={{
-                fontFamily: 'NotoSansGeorgian_600SemiBold',
-                fontSize: 14,
-                lineHeight: 20,
-                color: FIGMA.brand,
-              }}
-            >
-              {ka.home.consiliumCta}
-            </Text>
-          </View>
-          <HomeConsiliumArt />
-        </View>
-      </Pressable>
-    </View>
+          ერთი კითხვა.{'\n'}რამდენიმე AI პერსპექტივა.
+        </Text>
+        <Text
+          style={{
+            fontFamily: 'NotoSansGeorgian_400Regular',
+            fontSize: 13,
+            lineHeight: 22,
+            color: secondary,
+          }}
+        >
+          მოუყევი, რა გაწუხებს — მიიღე საკითხის განხილვა სხვადასხვა სამედიცინო
+          მიმართულებით და საერთო შეჯამება.
+        </Text>
+      </View>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          justifyContent: 'space-between',
+          borderTopWidth: 1,
+          borderColor: dark ? '#3C3757' : '#DFD8EF',
+          paddingTop: 14,
+        }}
+      >
+        <Text
+          style={{
+            flex: 1,
+            fontFamily: 'NotoSansGeorgian_600SemiBold',
+            fontSize: 14,
+            lineHeight: 22,
+            color: accent,
+          }}
+        >
+          დაიწყე განხილვა
+        </Text>
+        <ArrowUpRight size={21} color={accent} />
+      </View>
+      <Text
+        style={{
+          fontFamily: 'NotoSansGeorgian_400Regular',
+          fontSize: 11,
+          lineHeight: 18,
+          color: secondary,
+        }}
+      >
+        AI განხილვაა — არა ექიმების კონსულტაცია.
+      </Text>
+    </Pressable>
   );
 }

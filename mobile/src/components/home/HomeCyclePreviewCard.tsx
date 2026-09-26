@@ -13,17 +13,23 @@ import type { CycleBundle, CycleDayMark } from '@/lib/api';
 import { loadCycleView } from '@/lib/cycleOffline';
 import { isCyclePrivacyLockEnabled } from '@/lib/cycleReminderPrefs';
 import { addDaysToKey, daysBetween, parseDateKey } from '@/lib/cyclePhase';
-import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonical';
+import {
+  cycleToday,
+  phaseFromBundle,
+  usedCycleLength,
+} from '@/lib/cycleCanonical';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
-import { forecastPresentationAllowed, suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
+import {
+  forecastPresentationAllowed,
+  suppressCycleLengthChrome,
+} from '@/lib/cycleForecastEligibility';
 import { useAuth } from '@/store/AuthContext';
 
 const RING = 88;
 const STROKE = 8;
-
 
 type Props = {
   onPress: () => void;
@@ -53,7 +59,14 @@ function MiniRing({
   const clamped = Math.min(1, Math.max(0, progress));
 
   return (
-    <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{
+        width: RING,
+        height: RING,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
       <Svg width={RING} height={RING}>
         <Circle
           cx={RING / 2}
@@ -103,27 +116,45 @@ function MiniRing({
   );
 }
 
-function WeekDots({ today, marks }: { today: string; marks: Record<string, CycleDayMark> }) {
+function WeekDots({
+  today,
+  marks,
+}: {
+  today: string;
+  marks: Record<string, CycleDayMark>;
+}) {
   const FIGMA_CHAT = useFigmaChat();
   const c = useCycleColors();
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDaysToKey(today, i - 3)), [today]);
+  const days = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDaysToKey(today, i - 3)),
+    [today],
+  );
 
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
       {days.map((key) => {
         const mark = marks[key];
         const isToday = key === today;
-        const fill = mark?.period ? c.period : mark?.ovulation ? c.ovulation : mark?.fertile ? c.fertile : c.border;
+        const fill = mark?.period
+          ? c.period
+          : mark?.ovulation
+            ? c.ovulation
+            : mark?.fertile
+              ? c.fertile
+              : c.border;
         const { d } = parseDateKey(key);
 
         return (
-          <View key={key} style={{ alignItems: 'center', width: 36, gap: 4 }}>
+          <View
+            key={key}
+            style={{ alignItems: 'center', flex: 1, maxWidth: 36, gap: 4 }}
+          >
             <Text
               style={{
                 fontFamily: 'NotoSansGeorgian_500Medium',
                 fontSize: 10,
                 lineHeight: 13,
-                color: isToday ? c.period : c.muted,
+                color: isToday ? c.todayRing : c.muted,
               }}
             >
               {weekdayShort(key)}
@@ -135,9 +166,12 @@ function WeekDots({ today, marks }: { today: string; marks: Record<string, Cycle
                 borderRadius: 14,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: mark?.period || mark?.ovulation || mark?.fertile ? `${fill}22` : FIGMA_CHAT.white,
+                backgroundColor:
+                  mark?.period || mark?.ovulation || mark?.fertile
+                    ? `${fill}22`
+                    : c.card,
                 borderWidth: isToday ? 2 : 1,
-                borderColor: isToday ? c.period : fill,
+                borderColor: isToday ? c.todayRing : fill,
               }}
             >
               <Text
@@ -217,7 +251,9 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
   const hideLengthChrome = suppressCycleLengthChrome(bundle);
   const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
   const caps = cycleModeCapabilities(bundle?.profile.mode);
-  const pregnancy = caps.showPregnancyOverview ? bundle?.pregnancy ?? null : null;
+  const pregnancy = caps.showPregnancyOverview
+    ? (bundle?.pregnancy ?? null)
+    : null;
   const peri = caps.showPerimenopauseTracking;
   const postpartum = caps.showPostpartumOverview;
   const setupNeeded =
@@ -227,7 +263,9 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
     !caps.showPregnancyOverview &&
     !caps.showPostpartumOverview;
 
-  const phase = bundle ? phaseFromBundle(bundle, today) : { day: null, phase: 'unknown' as const, phaseKa: '' };
+  const phase = bundle
+    ? phaseFromBundle(bundle, today)
+    : { day: null, phase: 'unknown' as const, phaseKa: '' };
 
   const nextLine = useMemo(() => {
     const start = bundle?.predictions?.nextPeriodStart;
@@ -238,7 +276,15 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
     return ka.home.cycleNextIn(n);
   }, [bundle?.predictions?.nextPeriodStart, today]);
 
-  const phaseColor = ({period:c.period,fertile:c.fertile,ovulation:c.ovulation,follicular:c.follicular,luteal:c.luteal,unknown:c.mutedSoft})[phase.phase] ?? c.gaugeProgress;
+  const phaseColor =
+    {
+      period: c.period,
+      fertile: c.fertile,
+      ovulation: c.ovulation,
+      follicular: c.follicular,
+      luteal: c.luteal,
+      unknown: c.mutedSoft,
+    }[phase.phase] ?? c.gaugeProgress;
   const progress = pregnancy?.age
     ? Math.min(1, pregnancy.age.dayOfPregnancy / 280)
     : hideLengthChrome
@@ -253,18 +299,19 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
   if (!ready) {
     return (
       <View>
-        <View style={{ paddingVertical: 8 }}>
-          <Text
-            style={{
-              fontFamily: 'NotoSansGeorgian_600SemiBold',
-              fontSize: 16,
-              lineHeight: 22,
-              color: c.ink,
-            }}
-          >
-            {title}
-          </Text>
-        </View>
+        <View style={{ paddingBottom: 12 }}>
+        <Text
+          accessibilityRole="header"
+          style={{
+            fontFamily: 'NotoSansGeorgian_700Bold',
+            fontSize: 17,
+            lineHeight: 24,
+            color: c.ink,
+          }}
+        >
+          {title}
+        </Text>
+      </View>
         <MetricCardSkeleton />
       </View>
     );
@@ -272,12 +319,13 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
 
   return (
     <View>
-      <View style={{ paddingVertical: 8 }}>
+      <View style={{ paddingBottom: 12 }}>
         <Text
+          accessibilityRole="header"
           style={{
-            fontFamily: 'NotoSansGeorgian_600SemiBold',
-            fontSize: 16,
-            lineHeight: 22,
+            fontFamily: 'NotoSansGeorgian_700Bold',
+            fontSize: 17,
+            lineHeight: 24,
             color: c.ink,
           }}
         >
@@ -311,7 +359,9 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
           {!ready ? (
             <MetricCardSkeleton />
           ) : setupNeeded || !bundle ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+            >
               <View
                 style={{
                   width: 64,
@@ -335,7 +385,9 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                   color: c.ink,
                 }}
               >
-                {privacyLocked ? ka.cycle.privacyLockTitle : ka.home.cycleSetupBody}
+                {privacyLocked
+                  ? ka.cycle.privacyLockTitle
+                  : ka.home.cycleSetupBody}
               </Text>
             </View>
           ) : postpartum ? (
@@ -396,17 +448,29 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                   {offline
                     ? ka.cycle.offlineBanner
                     : bundle.perimenopause?.lastRecordedBleeding?.date
-                      ? ka.cycle.periLastBleeding(formatCycleDateKa(bundle.perimenopause.lastRecordedBleeding.date))
+                      ? ka.cycle.periLastBleeding(
+                          formatCycleDateKa(
+                            bundle.perimenopause.lastRecordedBleeding.date,
+                          ),
+                        )
                       : ka.cycle.periNoBleeding}
                 </Text>
               </View>
             </>
           ) : (
             <>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+              >
                 <MiniRing
                   progress={progress}
-                  color={pregnancy ? c.gaugeProgress : hideLengthChrome ? c.mutedSoft : phaseColor}
+                  color={
+                    pregnancy
+                      ? c.gaugeProgress
+                      : hideLengthChrome
+                        ? c.mutedSoft
+                        : phaseColor
+                  }
                   center={
                     pregnancy?.age
                       ? String(pregnancy.age.week)
@@ -416,7 +480,13 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                           ? String(phase.day)
                           : '—'
                   }
-                  caption={pregnancy ? ka.cycle.week : hideLengthChrome ? ' ' : ka.cycle.day}
+                  caption={
+                    pregnancy
+                      ? ka.cycle.week
+                      : hideLengthChrome
+                        ? ' '
+                        : ka.cycle.day
+                  }
                 />
                 <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
                   <Text
@@ -432,11 +502,14 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                       ? ka.cycle.pregnancyModeTitle
                       : hideLengthChrome
                         ? ka.cycle.postpartumReturnGathering
-                      : phase.day != null
-                        ? displayPhaseLabel(phase.phase, phase.phaseKa, {
-                            loggedPeriod: isBleedFlow(bundle?.logs.find((l) => l.date === today)?.flow),
-                          })
-                        : ka.modules.cycle.subtitle}
+                        : phase.day != null
+                          ? displayPhaseLabel(phase.phase, phase.phaseKa, {
+                              loggedPeriod: isBleedFlow(
+                                bundle?.logs.find((l) => l.date === today)
+                                  ?.flow,
+                              ),
+                            })
+                          : ka.modules.cycle.subtitle}
                   </Text>
                   <Text
                     style={{
@@ -449,14 +522,17 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                     {offline
                       ? ka.cycle.offlineBanner
                       : pregnancy?.age
-                      ? ka.cycle.pregnancyWeekDay(pregnancy.age.week, pregnancy.age.day)
-                      : pregnancy
-                        ? ka.cycle.pregnancyModeTitle
-                      : hideLengthChrome
-                        ? ka.cycle.postpartumReturnLearning
-                      : phase.day != null
-                        ? ka.home.cycleDayOf(phase.day, cycleLen)
-                        : ka.modules.cycle.subtitle}
+                        ? ka.cycle.pregnancyWeekDay(
+                            pregnancy.age.week,
+                            pregnancy.age.day,
+                          )
+                        : pregnancy
+                          ? ka.cycle.pregnancyModeTitle
+                          : hideLengthChrome
+                            ? ka.cycle.postpartumReturnLearning
+                            : phase.day != null
+                              ? ka.home.cycleDayOf(phase.day, cycleLen)
+                              : ka.modules.cycle.subtitle}
                   </Text>
                   {pregnancy ? null : caps.showTtcOverview ? (
                     <Text
@@ -470,7 +546,9 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                       {ka.cycle.homeTtcLabel}
                     </Text>
                   ) : null}
-                  {pregnancy || !caps.showNextPeriodForecast || !forecastPresentationAllowed(bundle) ? null : nextLine ? (
+                  {pregnancy ||
+                  !caps.showNextPeriodForecast ||
+                  !forecastPresentationAllowed(bundle) ? null : nextLine ? (
                     <Text
                       style={{
                         fontFamily: 'NotoSansGeorgian_600SemiBold',
@@ -485,13 +563,25 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                 </View>
               </View>
 
-              {pregnancy || !bundle ? null : <WeekDots today={today} marks={bundle.predictions.calendar ?? {}} />}
+              {pregnancy || !bundle ? null : (
+                <WeekDots
+                  today={today}
+                  marks={bundle.predictions.calendar ?? {}}
+                />
+              )}
             </>
           )}
 
           <View style={{ height: 1, backgroundColor: c.border }} />
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
             <Text
               style={{
                 fontFamily: 'NotoSansGeorgian_600SemiBold',

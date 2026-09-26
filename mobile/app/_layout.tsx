@@ -337,6 +337,7 @@ function AppShell() {
           <Stack.Screen name="nutrition/plan" options={{ headerShown: false }} />
           <Stack.Screen name="nutrition/progress" options={{ headerShown: false }} />
           <Stack.Screen name="nutrition/method" options={{ headerShown: false }} />
+              <Stack.Screen name="explore" options={{ headerShown: false }} />
               <Stack.Screen name="assistant" options={{ headerShown: false }} />
               <Stack.Screen name="module" options={{ headerShown: false }} />
               <Stack.Screen name="cycle" options={{ headerShown: false }} />

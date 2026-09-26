@@ -1,5 +1,4 @@
-import { medicationCourseIncludesDate } from '@/lib/notificationPlan';
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MedicationFigmaStepRing } from '@/components/medications/MedicationCircularProgress';
@@ -7,10 +6,11 @@ import { MedCard } from '@/components/medications/MedicationUI';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
 import { DoseCarouselSkeleton } from '@/components/ui/Skeleton';
 import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
-import { useMedications } from '@/hooks/useMedications';
+import type { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import type { ScheduledDose } from '@/lib/api';
-import { findDoseLog, parseMedicationConfig, todayYmd } from '@/lib/medications.shared';
+import { parseMedicationConfig, todayYmd } from '@/lib/medications.shared';
+import { computeTodayDoses } from '@/lib/home/todayDoses';
 
 /** Figma 11416:83298 — 288×~88 peeking dose cards, 8px gap. */
 const CARD_W = 288;
@@ -19,7 +19,8 @@ const SNAP = CARD_W + CARD_GAP;
 type MedConfig = ReturnType<typeof parseMedicationConfig>;
 
 type Props = {
-  refreshing?: boolean;
+  /** Shared medications bundle — Home loads it once for the hero rings and this carousel. */
+  meds: ReturnType<typeof useMedications>;
 };
 
 function formLabel(cfg: MedConfig, dosage: string) {
@@ -105,44 +106,20 @@ function NextDoseCard({
   );
 }
 
-export function HomeNextDoseSection({ refreshing }: Props) {
+export function HomeNextDoseSection({ meds }: Props) {
   const router = useRouter();
-  const { medications, schedule, doseLogs, load, loading } = useMedications();
+  const { medications, schedule, doseLogs, loading } = meds;
   const today = todayYmd();
 
-  useEffect(() => {
-    if (refreshing) void load();
-  }, [refreshing, load]);
-
-  const { pending, progressByMed } = useMemo(() => {
-    const todayDoses = schedule
-      .filter((dose) => {
-        const med = medications.find((item) => item.id === dose.medicationId);
-        if (!med?.active) return false;
-        const cfg = parseMedicationConfig(med.config);
-          if (!medicationCourseIncludesDate(cfg, today)) return false;
-        if (!cfg.daysOfWeek?.length) return true;
-        const dow = (new Date().getDay() + 6) % 7;
-        return cfg.daysOfWeek.includes(dow);
-      })
-      .sort((a, b) => a.time.localeCompare(b.time));
-
-    const progressByMed = new Map<string, { taken: number; total: number }>();
-    for (const dose of todayDoses) {
-      const prev = progressByMed.get(dose.medicationId) ?? { taken: 0, total: 0 };
-      prev.total += 1;
-      if (findDoseLog(doseLogs, dose.medicationId, today, dose.time)?.status === 'taken') prev.taken += 1;
-      progressByMed.set(dose.medicationId, prev);
-    }
-
-    const pending = todayDoses.filter((dose) => !findDoseLog(doseLogs, dose.medicationId, today, dose.time));
-    return { pending, progressByMed };
-  }, [doseLogs, medications, schedule, today]);
+  const { pending, progressByMed } = useMemo(
+    () => computeTodayDoses(medications, schedule, doseLogs, today),
+    [doseLogs, medications, schedule, today],
+  );
 
   if (loading) {
     return (
-      <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-        <HomeSectionTitle title={ka.home.nextDose} />
+      <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
+        <HomeSectionTitle title={ka.home.nextDose} style={{ fontSize: 17, lineHeight: 24, marginBottom: 12 }} />
         <DoseCarouselSkeleton />
       </View>
     );
@@ -151,8 +128,8 @@ export function HomeNextDoseSection({ refreshing }: Props) {
   if (pending.length === 0) return null;
 
   return (
-    <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-      <HomeSectionTitle title={ka.home.nextDose} />
+    <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
+      <HomeSectionTitle title={ka.home.nextDose} style={{ fontSize: 17, lineHeight: 24, marginBottom: 12 }} />
       <MedCard style={{ padding: 16, overflow: 'hidden' }}>
         <ScrollView
           horizontal

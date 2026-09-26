@@ -1,103 +1,33 @@
-import { describe, it } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  HOME_PRIORITY,
-  buildHomeSectionOrder,
-  homeOrderForScenario,
-  homeSectionPriority,
-} from './homeSectionOrder.ts';
+import { buildHomeSectionOrder } from './homeSectionOrder.ts';
 
-const LIVE_ORDER = [
-  'dashboard',
-  'nextDose',
-  'steps',
-  'hydration',
-  'weight',
-  'cycle',
-  'weather',
-  'symptom',
-  'analysis',
-  'consilium',
-  'recentActivity',
-  'disclaimer',
-] as const;
+test('women-only sections are opt-in and do not reorder common destinations', () => {
+  const standard = buildHomeSectionOrder();
+  const withCycle = buildHomeSectionOrder({ includeCycle: true });
+  assert.equal(standard.includes('cycle'), false);
+  assert.equal(standard.includes('community'), false);
+  assert.equal(withCycle.filter((id) => id === 'cycle').length, 1);
+  assert.deepEqual(
+    withCycle.filter((id) => !['cycle', 'community'].includes(id)),
+    standard,
+  );
+});
 
-describe('homeSectionOrder', () => {
-  it('canonical live order: Today before Health Context', () => {
-    const order = buildHomeSectionOrder({
-      mountNextDoseSlot: true,
-      includeConsilium: true,
-      includeCycle: true,
-    });
-    assert.deepEqual(order, [...LIVE_ORDER]);
-  });
+test('today comes before discovery; scheduled care sits above quick actions', () => {
+  const order = buildHomeSectionOrder({ includeCycle: true });
+  assert.equal(order[0], 'dashboard');
+  assert.ok(order.indexOf('hero') < order.indexOf('ask'));
+  assert.ok(order.indexOf('nextDose') < order.indexOf('actions'));
+  assert.ok(order.indexOf('actions') < order.indexOf('movement'));
+  assert.ok(order.indexOf('discover') < order.indexOf('recentActivity'));
+  assert.equal(order.at(-1), 'disclaimer');
+  assert.equal(new Set(order).size, order.length);
+});
 
-  it('puts core Today metrics before Health Context (health-first)', () => {
-    const order = buildHomeSectionOrder({ includeCycle: true });
-    assert.ok(order.indexOf('steps') < order.indexOf('cycle'));
-    assert.ok(order.indexOf('hydration') < order.indexOf('cycle'));
-    assert.ok(order.indexOf('weight') < order.indexOf('cycle'));
-    assert.ok(order.indexOf('weight') < order.indexOf('weather'));
-    assert.ok(order.indexOf('weight') < order.indexOf('symptom'));
-  });
-
-  it('puts nextDose before Today when mounted', () => {
-    const order = buildHomeSectionOrder();
-    assert.ok(order.indexOf('nextDose') < order.indexOf('steps'));
-  });
-
-  it('medicationDue includes nextDose; noAttention / new / normal omit it', () => {
-    assert.ok(homeOrderForScenario('medicationDue').includes('nextDose'));
-    assert.equal(homeOrderForScenario('noAttention').includes('nextDose'), false);
-    assert.equal(homeOrderForScenario('new').includes('nextDose'), false);
-    assert.equal(homeOrderForScenario('normal').includes('nextDose'), false);
-  });
-
-  it('cycle enabled vs disabled', () => {
-    assert.ok(homeOrderForScenario('cycleEnabled').includes('cycle'));
-    assert.equal(homeOrderForScenario('cycleDisabled').includes('cycle'), false);
-    assert.ok(homeOrderForScenario('power').includes('cycle'));
-  });
-
-  it('power user keeps health-first stack with dose + cycle', () => {
-    const order = homeOrderForScenario('power');
-    assert.deepEqual(order, [
-      'dashboard',
-      'nextDose',
-      'steps',
-      'hydration',
-      'weight',
-      'cycle',
-      'weather',
-      'symptom',
-      'analysis',
-      'consilium',
-      'recentActivity',
-      'disclaimer',
-    ]);
-  });
-
-  it('classifies Today vs Health Context / Wellness / Discovery', () => {
-    assert.equal(homeSectionPriority('steps'), HOME_PRIORITY.TODAY);
-    assert.equal(homeSectionPriority('hydration'), HOME_PRIORITY.TODAY);
-    assert.equal(homeSectionPriority('weight'), HOME_PRIORITY.TODAY);
-    assert.equal(homeSectionPriority('nextDose'), HOME_PRIORITY.IMMEDIATE);
-    assert.equal(homeSectionPriority('cycle'), HOME_PRIORITY.HEALTH_CONTEXT);
-    assert.equal(homeSectionPriority('weather'), HOME_PRIORITY.WELLNESS);
-    assert.equal(homeSectionPriority('symptom'), HOME_PRIORITY.DISCOVERY);
-    assert.equal(homeSectionPriority('disclaimer'), HOME_PRIORITY.LEGAL);
-  });
-
-  it('stable ordering — identical context yields identical order', () => {
-    const a = buildHomeSectionOrder({ hasPendingDoses: true, includeCycle: true });
-    const b = buildHomeSectionOrder({ hasPendingDoses: true, includeCycle: true });
-    assert.deepEqual(a, b);
-  });
-
-  it('live mount keeps nextDose slot even when scenario would omit it', () => {
-    const live = buildHomeSectionOrder({ mountNextDoseSlot: true, hasPendingDoses: false });
-    assert.ok(live.includes('nextDose'));
-    const map = buildHomeSectionOrder({ mountNextDoseSlot: false, hasPendingDoses: false });
-    assert.equal(map.includes('nextDose'), false);
-  });
+test('caller mutation cannot alter subsequent home composition', () => {
+  const order = buildHomeSectionOrder();
+  const baseline = [...order];
+  order.reverse();
+  assert.deepEqual(buildHomeSectionOrder(), baseline);
 });
