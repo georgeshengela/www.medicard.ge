@@ -17,6 +17,19 @@ const QTY_RE = /(?:#|№)?\s*(\d+)\s*(?:ტ(?:აბ(?:l)?)?|tablet|კაფ|ca
 
 const MODIFIERS = ['forte', 'plus', 'express', 'extra', 'duo', 'es', 'max', 'rapid'];
 
+/** Georgian spellings of the same modifiers — a Latin-named source writes "Forte", a
+ * Georgian-only one writes "ფორტე", and without this the two signatures diverge on
+ * this token alone even when the brand and strength already agree. */
+const MODIFIER_ALIASES_GEO = {
+  forte: ['ფორტე', 'ფორტ'],
+  plus: ['პლუსი', 'პლუს'],
+  express: ['ექსპრესი', 'ექსპრეს'],
+  extra: ['ექსტრა'],
+  duo: ['დუო'],
+  max: ['მაქსი', 'მაქსიმუმ'],
+  rapid: ['რაპიდი', 'რაპიდ'],
+};
+
 /** Well-known Georgian trade names → Latin INN/brand for cross-pharmacy matching. */
 const STATIC_GEO_TO_LATIN = {
   ვიაგრა: 'viagra',
@@ -95,24 +108,52 @@ export function extractForm(raw) {
   return null;
 }
 
-/** Build Georgian→Latin map from "ქართული - Latin …" product titles. */
+/**
+ * A Latin brand phrase — up to 3 space-separated Latin-starting words, so a
+ * two-word brand (e.g. "Dip Rilif", "Cran Juice Forte") is captured whole
+ * instead of truncating to its first word.
+ */
+const LATIN_PHRASE_SRC = '[A-Za-z][A-Za-z0-9+-]*(?:\\s+[A-Za-z][A-Za-z0-9+-]*){0,2}';
+/** An optional trailing bare variant letter, e.g. the "A" in "Lorinden A". */
+const VARIANT_GAP_SRC = '(?:\\s[A-Za-z])?';
+
+function canonicalizePhrase(phrase) {
+  return phrase.toLowerCase().replace(/\s+/g, '');
+}
+
+/** Build Georgian→Latin map from "ქართული - Latin …" *or* "Latin - ქართული …" product titles. */
 export function buildGeoLatinMap(names) {
   const map = new Map();
+  const geoFirst = new RegExp(
+    `([\\u10a0-\\u10ff][\\u10a0-\\u10ff\\s®+-]{2,40}?${VARIANT_GAP_SRC})\\s*-\\s*(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})`,
+  );
+  const latinFirst = new RegExp(
+    `(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})\\s*-\\s*([\\u10a0-\\u10ff][\\u10a0-\\u10ff\\s®+-]{2,40}?${VARIANT_GAP_SRC})(?=\\s|$)`,
+  );
   for (const name of names) {
     const raw = String(name || '');
-    const m = raw.match(
-      /([\u10a0-\u10ff][\u10a0-\u10ff\s®+-]{2,40}?)\s*-\s*([A-Za-z][A-Za-z0-9+-]{2,24})/,
-    );
-    // Some sources write the pair the other way round, e.g. "Adora - ადორა …".
-    const rev = m
-      ? null
-      : raw.match(/([A-Za-z][A-Za-z0-9+-]{2,24})\s*-\s*([\u10a0-\u10ff][\u10a0-\u10ff\s®+-]{2,40}?)(?=\s|$)/);
+    const m = raw.match(geoFirst);
+    const rev = !m ? raw.match(latinFirst) : null;
     const geoPart = m ? m[1] : rev ? rev[2] : null;
     const latPart = m ? m[2] : rev ? rev[1] : null;
     if (!geoPart || !latPart) continue;
-    const geo = geoPart.replace(/®/g, '').trim().split(/\s+/)[0].toLowerCase();
-    const lat = latPart.toLowerCase().split(/\s+/)[0];
-    if (geo.length >= 4 && lat.length >= 4) map.set(geo, lat);
+
+    const latCanon = canonicalizePhrase(latPart);
+    if (latCanon.length < 4) continue;
+
+    // Register every significant word of the Georgian phrase (not just the
+    // first) so e.g. "დიპ რილიფი" (kept short by canonicalBrand's own
+    // 4-char minimum, landing on "რილიფი" alone) still finds this entry.
+    const geoWords = geoPart.replace(/®/g, '').trim().split(/\s+/).filter((w) => w.length >= 3);
+    for (const w of geoWords.slice(0, 2)) {
+      const key = w.toLowerCase();
+      if (key.length >= 3 && !map.has(key)) map.set(key, latCanon);
+    }
+    // Also register the full phrase (letters + any trailing variant letter) as
+    // its own exact key, so "Lorinden A" and "Lorinden N" don't collapse into
+    // the same bare "lorinden" bucket once the variant letter is stripped.
+    const fullGeoKey = canonicalizePhrase(geoPart.replace(/®/g, '').trim());
+    if (fullGeoKey.length >= 3 && !map.has(fullGeoKey)) map.set(fullGeoKey, latCanon);
   }
   return map;
 }
@@ -123,25 +164,33 @@ export function setGeoLatinMap(map) {
 
 function canonicalBrand(raw, geoLatinMap = geoLatinCache) {
   const cleaned = cleanRawName(raw);
-  const dashLatin = cleaned.match(/\s-\s*([A-Za-z][A-Za-z0-9+-]{2,20})/);
-  if (dashLatin) return dashLatin[1].toLowerCase().split(/\s+/)[0];
+  const dashLatin = cleaned.match(new RegExp(`\\s-\\s*(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})`));
+  if (dashLatin) return canonicalizePhrase(dashLatin[1]);
 
   const inlineLatin = cleaned.match(/\b([A-Z][a-z]{3,})\b/);
   if (inlineLatin) return inlineLatin[1].toLowerCase();
 
-  const geoWords = cleaned.match(/[\u10a0-\u10ff]{4,}/g) || [];
-  const geo = geoWords[0]?.toLowerCase() ?? '';
-  if (!geo) return '';
+  const geoWords = cleaned.match(/[\u10a0-\u10ff]{3,}/g) || [];
+  const longWords = geoWords.filter((w) => w.length >= 4);
+  if (!longWords.length) return '';
 
-  if (STATIC_GEO_TO_LATIN[geo]) return STATIC_GEO_TO_LATIN[geo];
-  if (geoLatinMap?.has(geo)) return geoLatinMap.get(geo);
+  for (const w of geoWords) {
+    const geo = w.toLowerCase();
+    if (geo.length < 3) continue;
+    if (STATIC_GEO_TO_LATIN[geo]) return STATIC_GEO_TO_LATIN[geo];
+    if (geoLatinMap?.has(geo)) return geoLatinMap.get(geo);
+  }
+
+  const geo = longWords[0].toLowerCase();
   if (geoLatinMap) {
     // A short shared prefix is often just a common pharmacological word root
     // (e.g. "ლეტროზოლ-ფარმოზი" vs "ლეტრომარა" both start with "ლეტრო…") rather
     // than the same brand — that would wrongly merge two different drugs under
     // one price comparison. Require the shorter side to be fully covered by an
-    // 8-char-or-more shared prefix before trusting the match.
+    // 8-char-or-more shared prefix before trusting the match, and skip very
+    // short registered keys (they carry no useful prefix to compare).
     for (const [g, l] of geoLatinMap) {
+      if (g.length < 5) continue;
       if (geo.startsWith(g.slice(0, Math.min(8, g.length))) || g.startsWith(geo.slice(0, Math.min(8, geo.length)))) {
         return l;
       }
@@ -152,10 +201,18 @@ function canonicalBrand(raw, geoLatinMap = geoLatinCache) {
 
 function extractModifiers(raw) {
   const lower = normalizeDrugName(raw);
+  const cleaned = cleanRawName(raw);
   // Word-boundary match, not a plain substring check: short modifiers like "es"
   // or "max" otherwise match inside an unrelated brand word (e.g. "algestin"
   // contains "es"), silently changing the signature and breaking the match.
-  return MODIFIERS.filter((m) => new RegExp(`\\b${m}\\b`).test(lower)).sort();
+  // Also check the Georgian spelling — a Latin-named source writes "Forte" and
+  // a Georgian-only one writes "ფორტე" for the exact same product, and without
+  // this only one side of the pair gets the modifier token.
+  return MODIFIERS.filter((m) => {
+    if (new RegExp(`\\b${m}\\b`).test(lower)) return true;
+    const aliases = MODIFIER_ALIASES_GEO[m];
+    return aliases?.some((geo) => cleaned.includes(geo));
+  }).sort();
 }
 
 /** Cross-pharmacy identity key (brand + strength + pack). Form wording differs by source. */
