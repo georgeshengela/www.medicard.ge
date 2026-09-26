@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { isAiSharingRequest, needsAiConsentPrompt } from './aiSharingRoutes.js';
+import { forgetAiConsent, hasFreshAiConsent, isAiSharingRequest, needsAiConsentPrompt, rememberAiConsent } from './aiSharingRoutes.js';
 
 describe('AI consent prompt gate', () => {
   it('does not prompt again after the current consent is accepted', () => {
@@ -29,5 +29,19 @@ describe('AI consent prompt gate', () => {
     ]) {
       assert.equal(isAiSharingRequest(path, 'POST'), true, path);
     }
+  });
+
+  it('remembers an accepted decision per account for a bounded time', () => {
+    forgetAiConsent();
+    assert.equal(hasFreshAiConsent('A', 0), false);
+    rememberAiConsent('A', { accepted: true, version: '2026-09-25.1' }, 0);
+    assert.equal(hasFreshAiConsent('A', 60_000), true);
+    assert.equal(hasFreshAiConsent('B', 60_000), false, 'another account never inherits consent');
+    assert.equal(hasFreshAiConsent('A', 16 * 60_000), false, 'stale memory re-checks the server');
+    rememberAiConsent('A', { accepted: false, version: '2026-09-25.1' }, 0);
+    assert.equal(hasFreshAiConsent('A', 0), false, 'a declined or revoked answer is never remembered as consent');
+    rememberAiConsent('A', { accepted: true, version: '2026-09-25.1' }, 0);
+    forgetAiConsent();
+    assert.equal(hasFreshAiConsent('A', 0), false);
   });
 });

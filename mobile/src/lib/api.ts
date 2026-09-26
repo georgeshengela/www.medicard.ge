@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
+import { forgetAiConsent, hasFreshAiConsent, rememberAiConsent } from '@/lib/aiSharingRoutes.js';
 import { publicApiErrorMessage } from './rateLimitCopy.js';
 import { getToken } from './storage';
 import { UploadTimeoutError, uploadWithDeadline } from './uploadDeadline';
@@ -1925,11 +1926,18 @@ export async function ensureAiSharingConsentForRequest(path: string, method = 'P
   const { localAccountId } = await import('@/lib/localAccount');
   const owner = localAccountId(), token = suppliedToken !== undefined ? suppliedToken : await getToken();
   if (!owner || !token) throw new ApiError('გთხოვ, შეხვიდე ანგარიშში.', 401);
+  // Already answered in this session: ask nothing and send nothing extra. The server re-checks every call.
+  if (!settings && hasFreshAiConsent(owner)) return;
   const status = await request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', { token, timeoutMs: 15_000 });
   if (owner !== localAccountId()) throw new ApiError('ანგარიში შეიცვალა.', 401);
+  rememberAiConsent(owner, status);
   if (needsAiConsentPrompt(status, settings)) {
     const accepted = await requestAiSharingPrompt(owner, status, async (decision, version) => {
-      try { return await request('/api/ai-consent', { method: 'PUT', body: { decision, version }, token, timeoutMs: 15_000 }); }
+      try {
+        const saved = await request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', { method: 'PUT', body: { decision, version }, token, timeoutMs: 15_000 });
+        rememberAiConsent(owner, saved);
+        return saved;
+      }
       catch (error) {
         if (error instanceof ApiError && error.status === 409) {
           const consentStatus = await request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', { token, timeoutMs: 15_000 });
@@ -2020,6 +2028,8 @@ function parseJsonBody<T>(status: number, text: string, retryRaw?: string | null
       (typeof (payload as { retryAfterSeconds?: number })?.retryAfterSeconds === 'number'
         ? Math.floor((payload as { retryAfterSeconds: number }).retryAfterSeconds)
         : undefined);
+    // Consent was withdrawn (possibly on another device): forget the session memory so the next AI request asks again.
+    if (status === 403 && (payload as { code?: string })?.code === 'AI_CONSENT_REQUIRED') forgetAiConsent();
     throw new ApiError(serverError, status, payload as Record<string, unknown>, wait);
   }
   return payload as T;
@@ -2255,12 +2265,18 @@ export const api = {
 
   aiConsent: {
     read: () => request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', { timeoutMs: 15_000 }),
-    save: (decision: 'accepted' | 'declined' | 'revoked', version: string) =>
-      request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', {
+    save: async (decision: 'accepted' | 'declined' | 'revoked', version: string) => {
+      const { localAccountId } = await import('@/lib/localAccount');
+      const owner = localAccountId();
+      forgetAiConsent();
+      const saved = await request<import('@/lib/aiSharingConsent').AiConsentStatus>('/api/ai-consent', {
         method: 'PUT',
         body: { decision, version },
         timeoutMs: 15_000,
-      }),
+      });
+      if (owner && owner === localAccountId()) rememberAiConsent(owner, saved);
+      return saved;
+    },
   },
 
   healthProfile: {

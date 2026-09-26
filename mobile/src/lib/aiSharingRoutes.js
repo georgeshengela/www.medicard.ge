@@ -12,3 +12,20 @@ export function needsAiConsentPrompt(status, settings = false) {
   if (settings) return true;
   return status?.accepted !== true;
 }
+
+/**
+ * Session memory of an accepted decision, so the app does not ask the server
+ * "may I?" before every single AI request. The server still checks consent on
+ * every provider call; a 403 AI_CONSENT_REQUIRED clears this memory.
+ */
+const FRESH_MS = 15 * 60 * 1000;
+let remembered = null;
+export function rememberAiConsent(owner, status, now = Date.now()) {
+  remembered = owner && status?.accepted === true ? { owner, version: status.version, at: now } : null;
+}
+export function hasFreshAiConsent(owner, now = Date.now()) {
+  return Boolean(remembered && owner && remembered.owner === owner && now - remembered.at < FRESH_MS);
+}
+export function forgetAiConsent() {
+  remembered = null;
+}

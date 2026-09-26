@@ -81,6 +81,7 @@
     "test:weather": "node --experimental-strip-types --test src/lib/weather/*.test.ts",
     "test:quest": "node --test src/lib/quest/logic.test.js src/lib/quest/smartContext.test.js src/lib/quest/questSmartEngage.test.js",
     "test:home": "node --experimental-strip-types --test src/lib/home/homeSectionOrder.test.ts",
+    "test:consent": "node --test src/lib/aiSharingRoutes.test.js",
     "test:engage": "node --experimental-strip-types --test src/lib/mediNotificationBrain.test.ts",
     "icons:generate": "node scripts/generate-app-icons.mjs",
     "store:screenshots": "node scripts/generate-app-store-bundle.mjs",
