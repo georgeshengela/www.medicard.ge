@@ -10,6 +10,24 @@ chatsRouter.use(requireAuth);
 
 const idParam = z.object({ id: z.string().uuid('არასწორი იდენტიფიკატორი') });
 
+/** Medi (assistant mode) conversations are kept like consultations so they reopen from "ჩემი ბარათი". */
+export const ASSISTANT_CHAT_MODE = 'ASSISTANT';
+export const ASSISTANT_MAX_MESSAGES = 200;
+const assistantAppend = z.object({
+  sessionId: z.string().uuid().optional(),
+  turns: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().trim().min(1).max(4000) }).strict()).min(1).max(6),
+}).strict();
+
+export function appendAssistantTurns(existing, turns, now = new Date()) {
+  const stamped = turns.map((t) => ({ role: t.role, content: t.content, timestamp: now.toISOString() }));
+  return [...(Array.isArray(existing) ? existing : []), ...stamped].slice(-ASSISTANT_MAX_MESSAGES);
+}
+
+export function assistantTitle(turns) {
+  const first = turns.find((t) => t.role === 'user')?.content?.replace(/\s+/g, ' ').trim() || 'საუბარი Medi-სთან';
+  return first.length <= 60 ? first : first.slice(0, 57) + '…';
+}
+
 chatsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -27,6 +45,25 @@ chatsRouter.get(
         preview: lastAssistantPreview(messages),
       })),
     });
+  }),
+);
+
+chatsRouter.post(
+  '/assistant',
+  asyncHandler(async (req, res) => {
+    const { sessionId, turns } = assistantAppend.parse(req.body);
+    const saved = await prisma.$transaction(async (tx) => {
+      const current = sessionId
+        ? await tx.chatSession.findFirst({ where: { id: sessionId, userId: req.user.id, mode: ASSISTANT_CHAT_MODE } })
+        : null;
+      if (sessionId && !current) return null;
+      if (!current) {
+        return tx.chatSession.create({ data: { userId: req.user.id, mode: ASSISTANT_CHAT_MODE, title: assistantTitle(turns), messages: appendAssistantTurns([], turns) } });
+      }
+      return tx.chatSession.update({ where: { id: current.id }, data: { messages: appendAssistantTurns(current.messages, turns), updatedAt: new Date() } });
+    });
+    if (!saved) return res.status(404).json({ error: 'საუბარი ვერ მოიძებნა.' });
+    return res.json({ sessionId: saved.id });
   }),
 );
 

@@ -179,7 +179,7 @@ export type ChatMessage = {
 export type ChatSummary = {
   id: string;
   title: string;
-  mode: 'DOCTOR' | 'CONSILIUM';
+  mode: 'DOCTOR' | 'CONSILIUM' | 'ASSISTANT';
   messageCount: number;
   preview: string;
   createdAt: string;
@@ -2659,10 +2659,13 @@ export const api = {
   chats: {
     list: () => request<{ sessions: ChatSummary[] }>('/api/chats'),
     get: (id: string) =>
-      request<{ session: { id: string; title: string; mode: 'DOCTOR' | 'CONSILIUM'; messages: ChatMessage[] } }>(
+      request<{ session: { id: string; title: string; mode: 'DOCTOR' | 'CONSILIUM' | 'ASSISTANT'; messages: ChatMessage[] } }>(
         `/api/chats/${id}`,
       ),
     remove: (id: string) => request<{ deleted: boolean }>(`/api/chats/${id}`, { method: 'DELETE' }),
+    /** Save Medi (assistant mode) turns so the conversation reopens from "ჩემი ბარათი". */
+    appendAssistant: (body: { sessionId?: string; turns: Array<{ role: 'user' | 'assistant'; content: string }> }) =>
+      request<{ sessionId: string }>('/api/chats/assistant', { method: 'POST', body: { ...body, turns: body.turns.map((t) => ({ role: t.role, content: t.content.slice(0, 4000) })).filter((t) => t.content.trim()) } }),
   },
 
   records: {

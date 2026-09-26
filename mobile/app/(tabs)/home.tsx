@@ -47,6 +47,7 @@ import { requestHealthRefresh } from '@/lib/healthDataSync';
 import { buildHomeSectionOrder } from '@/lib/home/homeSectionOrder';
 import { primaryGoalFromProfile } from '@/lib/assessmentForm';
 import { profileCompletion } from '@/lib/profileCompletion';
+import { mediRoute } from '@/lib/mediModes';
 import { computeTodayDoses } from '@/lib/home/todayDoses';
 import { getCyclePromptSeen, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { todayYmd } from '@/lib/medications.shared';
@@ -239,7 +240,7 @@ export default function Home() {
           <HubFeatureCard
             tone="spotlight"
             stackLead
-            accessibilityLabel="AI კონსილიუმი — განხილვის დაწყება"
+            accessibilityLabel="ღრმა ანალიზი Medi-სთან — დაწყება"
             lead={
               <View accessible={false} importantForAccessibility="no-hide-descendants" style={s.consiliumLead}>
                 {[Brain, ScanSearch, MessagesSquare].map((Icon, index) => (
@@ -249,11 +250,11 @@ export default function Home() {
                 ))}
               </View>
             }
-            title="AI კონსილიუმი"
+            title="ღრმა ანალიზი"
             body="ერთი კითხვა — რამდენიმე სამედიცინო მიმართულების AI პასუხი და საერთო შეჯამება."
             cta="დაიწყე განხილვა"
             note="AI განხილვაა, არა ექიმების კონსულტაცია."
-            onPress={() => open('/chat/consilium')}
+            onPress={() => open(mediRoute({ mode: 'deep' }))}
           />
         </View>
       </View>

@@ -68,7 +68,7 @@ export async function loadAssistantContext(user, domains, scope, db = prisma, pe
   }
   if (requested.has('records')) context.records = (await db.medicalRecord.findMany({ where: { userId }, take: 12, orderBy: { createdAt: 'desc' } }))
     .map(r => ({ id: r.id, type: r.type, createdAt: r.createdAt, analysisExcerpt: trim(r.aiAnalysis) }));
-  if (requested.has('consultations')) context.consultations = (await db.chatSession.findMany({ where: { userId }, take: 6, orderBy: { updatedAt: 'desc' } }))
+  if (requested.has('consultations')) context.consultations = (await db.chatSession.findMany({ where: { userId, mode: { in: ['DOCTOR', 'CONSILIUM'] } }, take: 6, orderBy: { updatedAt: 'desc' } }))
     .map(r => ({ id: r.id, title: r.title, mode: r.mode, updatedAt: r.updatedAt,
       messages: (Array.isArray(r.messages) ? r.messages : []).slice(-4).map(m => ({ role: m.role, content: trim(m.content, 700) })) }));
   return context;

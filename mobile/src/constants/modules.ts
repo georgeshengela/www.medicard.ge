@@ -87,7 +87,7 @@ export const MODULE_TILES: ModuleTile[] = [
     title: ka.modules.consilium.title,
     subtitle: ka.modules.consilium.subtitle,
     icon: Users,
-    href: '/chat/consilium',
+    href: '/assistant?mode=deep',
     tint: 'bg-accent-100/60',
     iconColor: '#14B8A6',
   },

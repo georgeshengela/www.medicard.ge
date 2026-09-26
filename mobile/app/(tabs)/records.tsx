@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { mediModeForSession, mediRoute } from '@/lib/mediModes';
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { ChevronRight, FileText, FolderHeart, MessageSquareText, Plus, Trash2 } from 'lucide-react-native';
@@ -172,7 +173,7 @@ export default function Records() {
                   key={chat.id}
                   className="mb-2.5"
                   onPress={() =>
-                    router.push(`/chat/${chat.mode === 'CONSILIUM' ? 'consilium' : 'doctor'}?sessionId=${chat.id}`)
+                    router.push(mediRoute({ mode: mediModeForSession(chat.mode), sessionId: chat.id }) as never)
                   }
                 >
                   <View className="flex-row items-center">

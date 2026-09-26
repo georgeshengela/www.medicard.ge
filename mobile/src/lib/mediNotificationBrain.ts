@@ -105,8 +105,9 @@ export async function buildEngageSnapshot(user?: User | null, health?: HealthPro
   let scheduleGap: UnfinishedDraft | null = null;
   try {
     const { sessions } = await api.chats.list();
-    const latest = sessions?.[0];
-    if (latest?.updatedAt) {
+    // Consultation nudges follow clinical chats only, not Medi action conversations.
+    const latest = sessions?.find((row) => row.mode === 'DOCTOR' || row.mode === 'CONSILIUM');
+    if (latest?.updatedAt && (latest.mode === 'DOCTOR' || latest.mode === 'CONSILIUM')) {
       lastChatAt = new Date(latest.updatedAt).getTime();
       lastChatId = latest.id;
       lastChatMode = latest.mode;

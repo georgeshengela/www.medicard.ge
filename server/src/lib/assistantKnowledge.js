@@ -48,7 +48,7 @@ export const ASSISTANT_FEATURES = Object.freeze([
   feature('pregnancy_timeline', 'ორსულობის კვირები', '/cycle/pregnancy/timeline', 'cycle', 'ორსულობის ეტაპების მიმოხილვა.'),
   feature('pregnancy_care', 'ორსულობის მოვლის გეგმა', '/cycle/pregnancy/care-plan', 'cycle', 'ვიზიტების, მოვლის ეტაპებისა და შეხსენებების მართვა.'),
   feature('doctor', 'Medi ექიმი', '/chat/doctor', 'analysis', 'კონსულტაციის ჩათი. კონკრეტული ჩივილის გადაცემისთვის გამოიყენე consult.'),
-  feature('consilium', 'კონსილიუმი', '/chat/consilium', 'analysis', 'სპეციალისტების ერთობლივი AI განხილვა. ჩივილი გადაიტანე consult მოქმედებით.'),
+  feature('consilium', 'ღრმა ანალიზი (კონსილიუმი)', '/chat/consilium', 'analysis', 'სპეციალისტების ერთობლივი AI განხილვა. ჩივილი გადაიტანე consult მოქმედებით.'),
   feature('symptoms', 'რა გაწუხებს დღეს?', '/symptoms', 'analysis', 'სიმპტომების შერჩევა, სხეულის რუკა და შეფასების ნაბიჯები.'),
   feature('symptoms_history', 'სიმპტომების ისტორია', '/symptoms/history', 'analysis', 'წინა შეფასებების ნახვა.'),
   feature('lab', 'ანალიზის სკანირება', '/lab/analyze', 'analysis', 'ატვირთე ლაბორატორიული დოკუმენტი ან გადაიღე ფოტო; ფაილს თავად ირჩევ.'),

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, Text, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AssistantDirectory } from '@/components/assistant/AssistantDirectory';
 import { AssistantTalkDock } from '@/components/assistant/AssistantTalkDock';
 import { AssistantVoiceStage } from '@/components/assistant/AssistantVoiceStage';
@@ -15,14 +15,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AssistantForm } from '@/components/assistant/AssistantForm';
 import { api, assistantRequest, ApiError } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
+import { MediConsultation } from '@/components/chat/MediConsultation';
+import { ChatTopNav } from '@/components/chat/ChatTopNav';
+import { MediModeSwitch } from '@/components/assistant/MediModeSwitch';
+import { apiModeFor, legacyChatRouteToMedi, mediModeFromParam, mediRoute } from '@/lib/mediModes';
 import { assistantDisplay, assistantFieldLabels, stageAssistantLaunch, type AssistantAction, type AssistantChoices, type AssistantNative, type AssistantPlan, type AssistantReview, type AssistantTool, type AssistantFeature, type AssistantGroup } from '@/lib/assistant';
 
 type Turn = { role: 'user' | 'assistant'; content: string };
+/** One Medi (2026-09-27): the only Medi screen. ?mode=doctor|deep opens the consultation modes in place. */
 export default function AssistantScreen() {
   const { user } = useAuth();
-  return user ? <AssistantSession key={user.id} owner={user.id} /> : null;
+  const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string; sessionId?: string; prefill?: string }>();
+  if (!user) return null;
+  const mode = mediModeFromParam(params.mode);
+  const apiMode = apiModeFor(mode);
+  const sessionId = typeof params.sessionId === 'string' ? params.sessionId : undefined;
+  if (apiMode) {
+    return <MediConsultation apiMode={apiMode} sessionId={sessionId} prefill={typeof params.prefill === 'string' ? params.prefill : undefined}
+      header={({ title, icon }) => <View>
+        <ChatTopNav title={title} icon={icon} onBack={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home' as never))} onSettings={() => router.push('/profile/ai-data' as never)} />
+        <MediModeSwitch value={mode} onChange={next => router.replace(mediRoute({ mode: next }) as never)} />
+      </View>} />;
+  }
+  return <AssistantSession key={`${user.id}:${sessionId ?? 'new'}`} owner={user.id} sessionId={sessionId} />;
 }
-function AssistantSession({ owner }: { owner: string }) {
+function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: string }) {
   const C = useThemeColors(), router = useRouter();
   const { refreshHealthProfile } = useAuth();
   const scope = 'auto' as const;
@@ -47,6 +65,21 @@ function AssistantSession({ owner }: { owner: string }) {
   const [receipt, setReceipt] = useState<AssistantReview | null>(null);
   const alive = useRef(true), working = useRef(false), generation = useRef(0), scroll = useRef<ScrollView>(null);
   const focused = useRef(true);
+  // Medi conversations are saved like consultations (ChatSession mode ASSISTANT) and reopen from "ჩემი ბარათი".
+  const conversation = useRef<string | undefined>(sessionId), saving = useRef<Promise<unknown>>(Promise.resolve());
+  const persist = (turns: Turn[]) => {
+    saving.current = saving.current.then(() => api.chats.appendAssistant({ sessionId: conversation.current, turns })
+      .then(r => { if (owner === localAccountId()) conversation.current = r.sessionId; })).catch(() => undefined);
+  };
+  useEffect(() => {
+    if (!sessionId) return;
+    let current = true;
+    api.chats.get(sessionId).then(r => {
+      if (!current || owner !== localAccountId() || r.session.mode !== 'ASSISTANT') return;
+      setHistory((r.session.messages ?? []).slice(-12).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content })) as Turn[]);
+    }).catch(() => undefined);
+    return () => { current = false; };
+  }, [sessionId, owner]);
   const retryPlan = useRef<{ value: string; fromVoice: boolean; petId?: string } | null>(null);
   const valid = (n = generation.current) => alive.current && focused.current && owner === localAccountId() && n === generation.current;
   const speech = useAssistantSpeech(owner, voiceOutput, setNotice);
@@ -84,7 +117,7 @@ function AssistantSession({ owner }: { owner: string }) {
   function cancelReview() {
     speech.stop(); setReview(null); setDraft(null); setManual(false); setReceipt(null); setFocusFields(undefined); setSuggestions([]);
     const reply = 'კარგი, გაუქმებულია.';
-    setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]); void speech.say(reply);
+    setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]); void speech.say(reply); persist([{ role: 'assistant', content: reply }]);
   }
   useFocusEffect(useCallback(() => {
     let current = true;
@@ -127,11 +160,15 @@ function AssistantSession({ owner }: { owner: string }) {
       assistantHaptic('success');
       if (result.native) {
         // Open immediately; waiting for TTS playback made native handoffs feel stalled.
-        if (stageAssistantLaunch(owner, result.operationId, result.native)) router.push(result.native.route as never);
+        // A consultation handoff switches /assistant's mode in place instead of opening another screen.
+        if (stageAssistantLaunch(owner, result.operationId, result.native)) {
+          if (result.native.route.startsWith('/chat/')) router.replace(legacyChatRouteToMedi(result.native.route) as never);
+          else router.push(result.native.route as never);
+        }
       } else {
         const petName = choices.petId?.find(p => p.value === current.args.petId)?.label;
         const reply = current.tool === 'medication_add' ? `${String(current.args.medName)} დამატებულია.` : current.tool === 'pet_care_plan' && petName ? `${petName}ს გეგმა შენახულია — ${String(current.args.startOn)}${current.args.dueTime ? ', ' + String(current.args.dueTime) : ''}.` : 'შენახულია.';
-        setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]); void speech.say(reply);
+        setHistory(h => [...h, { role: 'assistant', content: reply }].slice(-12) as Turn[]); void speech.say(reply); persist([{ role: 'assistant', content: reply }]);
         void afterSaved(current, n).catch(() => { if (valid(n)) setNotice('ჩანაწერი შენახულია. მონაცემების ან შეხსენებების განახლებისთვის შესაბამისი გვერდი გახსენი.'); });
       }
     } catch (e) { if (valid(n)) setError(e instanceof Error ? e.message : 'მოქმედება ვერ შესრულდა.'); }
@@ -155,6 +192,7 @@ function AssistantSession({ owner }: { owner: string }) {
       const result = await assistantRequest<AssistantPlan>('plan', owner, { text: value, scope, history: history.slice(-10), draft: currentDraft, ...(petId ? { subjectId: petId } : {}) });
       if (!valid(n)) return;
       setHistory(h => [...h, { role: 'assistant', content: result.reply }].slice(-12) as Turn[]);
+      persist([{ role: 'user', content: value }, { role: 'assistant', content: result.reply }]);
       void speech.say(result.review ? reviewSpeech(result.review) : result.reply);
       setText(''); setReview(result.review); setDraft(result.draft); setFocusFields(result.guidance?.fields); setManual(false); setSuggestions(result.suggestions || []);
       if (fromVoice) setVoiceMode(true);
@@ -211,12 +249,12 @@ function AssistantSession({ owner }: { owner: string }) {
     style={{ minHeight: 46, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 16, justifyContent: 'center', alignItems: 'center', backgroundColor: primary ? '#0F766E' : C.bg200, opacity: busy ? .6 : 1 }}>
     <Text style={{ color: primary ? '#FFFFFF' : C.text100, fontSize: 13, fontFamily: 'NotoSansGeorgian_700Bold' }}>{label}</Text>
   </Pressable>;
-  const resetConversation = () => { if (working.current || capture.isBusy()) return; speech.stop(); generation.current++; setHistory([]); setReview(null); setDraft(null); setReceipt(null); setText(''); setManual(false); setMenu(false); setError(null); setNotice(null); setHistoryOpen(false); setVoiceMode(true); };
+  const resetConversation = () => { if (working.current || capture.isBusy()) return; speech.stop(); generation.current++; conversation.current = undefined; if (sessionId) router.replace('/assistant' as never); setHistory([]); setReview(null); setDraft(null); setReceipt(null); setText(''); setManual(false); setMenu(false); setError(null); setNotice(null); setHistoryOpen(false); setVoiceMode(true); };
   const header = <View style={{ paddingTop: insets.top, backgroundColor: C.bg100 }}><View style={{ height: 62, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
     <Pressable accessibilityRole="button" accessibilityLabel="უკან დაბრუნება" onPress={() => { if (picker) setPicker(false); else if (manual) setManual(false); else if (menu || historyOpen) { setMenu(false); setHistoryOpen(false); } else if (router.canGoBack()) router.back(); else router.replace('/(tabs)/home' as never); }} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 }}><ChevronLeft size={24} color={C.text100} /></Pressable>
     <View style={{ flex: 1, gap: 2 }}><Text style={{ color: C.text100, fontSize: 20, fontFamily: 'NotoSansGeorgian_700Bold' }}>Medi<Text style={{ color: C.primary200 }}>.</Text></Text><Text style={{ ...quiet, fontSize: 11 }}>შენი ასისტენტი</Text></View>
     <Pressable accessibilityRole="button" accessibilityLabel="საუბრის პარამეტრები" accessibilityState={{ expanded: menu }} disabled={!!busy || capture.phase !== 'idle'} onPress={() => { speech.stop(); Keyboard.dismiss(); setMenu(!menu); }} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: menu ? C.bg200 : 'transparent' }}><Ellipsis size={23} color={C.text200} /></Pressable>
-  </View></View>;
+  </View><MediModeSwitch value="medi" onChange={next => { if (next !== 'medi') router.replace(mediRoute({ mode: next }) as never); }} /></View>;
   return <ChatScreenShell style={{ backgroundColor: C.bg100 }} header={header}
     footer={picker || menu || historyOpen ? undefined : <AssistantTalkDock voice={voice} voiceOutput={voiceOutput} phase={capture.phase} duration={capture.duration} metering={capture.metering}
       speechPhase={speech.phase} muted={speech.muted} busy={busy} reviewing={!!review} text={text} onText={setText} onSend={() => void send()} tapMode={tapMode}

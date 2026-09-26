@@ -159,7 +159,7 @@ aiRouter.post(
     const { message, mode, sessionId, context } = querySchema.parse(req.body);
 
     const session = sessionId
-      ? await prisma.chatSession.findFirst({ where: { id: sessionId, userId: req.user.id } })
+      ? await prisma.chatSession.findFirst({ where: { id: sessionId, userId: req.user.id, mode: { in: ['DOCTOR', 'CONSILIUM'] } } })
       : null;
 
     if (sessionId && !session) {

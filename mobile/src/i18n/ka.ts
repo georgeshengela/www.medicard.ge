@@ -567,6 +567,7 @@ export const ka = {
   },
 
   chat: {
+    mediModes: { medi: 'Medi', doctor: 'ექიმთან', deep: 'ღრმა ანალიზი' } as Record<'medi' | 'doctor' | 'deep', string>,
     navDoctorTitle: 'Medi',
     navModelBadge: 'AI',
     chatsRemaining: (remaining: number) =>
@@ -1405,10 +1406,10 @@ export const ka = {
       ],
     },
     consilium: {
-      title: 'კონსილიუმი',
+      title: 'ღრმა ანალიზი',
       subtitle: 'რამდენიმე სპეციალისტის ერთობლივი დასკვნა',
       inputPlaceholder: 'აღწერე შემთხვევა დეტალურად…',
-      emptyTitle: 'მოიწვიე კონსილიუმი',
+      emptyTitle: 'ღრმა ანალიზი',
       emptyBody: 'აღწერე სრული სურათი: ჩივილები, ანამნეზი, ჩატარებული კვლევები და მიმდინარე მკურნალობა. სისტემა შეარჩევს რელევანტურ სპეციალისტებს.',
     },
     calendar: {

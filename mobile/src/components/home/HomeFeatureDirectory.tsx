@@ -132,9 +132,9 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
         icon: Sparkles,
       },
       {
-        title: 'AI კონსილიუმი',
+        title: 'ღრმა ანალიზი',
         detail: 'საკითხის განხილვა რამდენიმე AI პერსპექტივით',
-        href: '/chat/consilium',
+        href: '/assistant?mode=deep',
         icon: Users,
       },
     ],
