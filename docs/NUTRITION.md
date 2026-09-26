@@ -61,3 +61,34 @@ Reproduced a 503 on the main API with a generated, non-personal banana illustrat
 Verification: TypeScript passed. All 16 targeted tests passed, including a real multipart request through the SDK/consent transport and a revocation just before transmission. After deploying bef1aa7, the identical generated banana fixture that returned 503 now completed against https://medicard.ge through the signed-in Expo web app, returning a valid editable portion (107 kcal / 120 g). Half-portion recalculation updated energy and every macro. Browser UI inspected at 393×852 in light and dark themes; scan animation and result/retry layout checked. This is a transport/UI check, not a clinical validation of nutritional accuracy. No test meal was saved to the demo account.
 
 Native limitation: Maestro was attempted on emulator-5554 but stalled with a Windows file-lock error in its SessionStore heartbeat. Only this attempt's confirmed Java/ADB child processes were stopped. Native camera, physical-device haptics and keyboard behavior still need a device check; they are not claimed verified.
+
+
+## Cal AI parity build — 2026-09-26 (app 1.0.0.12.0, native train)
+
+Goal: every daily-use capability of Cal AI, kept inside MEDICARD's consent, privacy and safety rules. Additive SQL `20260926-nutrition-plus.sql` (installer already in the release command): `NutritionMeal.title`, `NutritionFood` (saved / custom / favourite foods per account), `NutritionProduct` (shared, non-personal barcode cache), `NutritionActivity`, `NutritionPreference`, `BodyMeasurement`. Prisma models mirror the SQL; no `db push`.
+
+**Logging methods (one `+` menu on `/nutrition/diary`):**
+- Photo / gallery → `POST /api/nutrition/estimate` (`mode=photo`), unchanged consent path. Returns `dishName`, per-item `fiber`/`sugar` (g) and `sodium` (mg), `uncertainty`, `explanation`, `healthScore`.
+- Label → `mode=label`: the photo is a Nutrition Facts table; one item, scaled to the labelled serving or the stated amount.
+- Describe or dictate → `mode=text` without a photo. Voice uses the existing Medi transcription path (same disclosure category: recorded audio → OpenRouter → Google Vertex). The transcript is shown and editable before estimation.
+- Fix results → `mode=fix` with the previous items, the correction text and the photo if still on screen. The whole meal is re-estimated; the user still confirms.
+- Barcode → live `expo-camera` viewfinder (`BarcodeScannerModal`), or typed digits. Only the code goes to the server; the server queries Open Food Facts (`world.openfoodfacts.org`, product facts only, no user data, 30-day cache in `NutritionProduct`). A saved food with that barcode wins over the network. Unknown code → label scan / manual fallback message.
+- Search → `GET /api/nutrition/foods/search`: saved foods first, then the curated Georgian/international catalog (`server/src/data/nutrition-catalog.json`, ~120 foods per 100 g, composite dishes flagged `estimate`), then Open Food Facts text search and optional USDA FoodData Central (`USDA_FDC_API_KEY`). Off in tests.
+- Saved / recent → recent meals repeat in one tap; favourites and custom foods are per account (500 cap). Any result item can be bookmarked without logging it.
+- Manual → unchanged, plus optional fiber / sugar / sodium fields.
+
+**Result screen:** dish title (editable), health score 1–10 (deterministic heuristic in `healthScore`: protein share, fiber density, sugar, sodium, energy density; never a diagnosis), macro + micro totals, per-item ½ / ×2 / edit / bookmark, "tell Medi what is wrong" correction box, add more items via any method. Estimates never save automatically.
+
+**Energy budget:** `NutritionPreference` holds `rollover` (up to 200 kcal of yesterday's unused target, never from an unlogged day, never a debt), `addBurned` (activities + step energy added to the day's budget) and `countSteps`. Activities are MET-based (`ACTIVITY_KINDS`) unless the person types their own kcal; steps use 0.00057 kcal × kg per step from `HealthMetricDaily.steps`. The dashboard returns `budget`, `rollover`, `burned` and `remaining` against the budget.
+
+**Dashboard additions (`GET /api/nutrition/program/dashboard`):** `streak` (consecutive logged days ending today or yesterday, best, milestones 3/7/14/30/60/100/365), `week` (recorded days, days inside 60–105% of target, averages, balance), `todayMeals`, `activities`, `steps`, `water` (daily metric + hydration goal), `projection` (least-squares trend over ≤28 weights, ≥3 points spanning ≥7 days, ETA only when moving toward the goal; plan ETA from the chosen pace), `preferences`, `measurements`.
+
+**Screens:** hub shows streak, budget breakdown, water / steps / burned tiles, today's meals, milestones and links to `/nutrition/activity`, `/nutrition/settings`, `/nutrition/measurements`. Home card shows the ring against the budget, macros, water / steps / streak and up to three meals. Progress shows the week summary, the weight projection and tape measurements.
+
+**Reminders:** `syncNutritionReminders` schedules three DAILY local notifications (`nutrition:` prefix, `nutrition-reminders` channel) from the saved preferences. Permission is requested only from the toggle press. Copy keys `nutrition-breakfast|lunch|dinner` are in the push copy catalog.
+
+**Medi:** new signed action `nutrition_log` (`POST /api/nutrition/quick-log`): the user's own words are estimated in text mode and saved after confirmation; Medi never invents foods or amounts. Assistant nutrition context now includes budget, burned energy, streak, week summary, water, steps, projection and today's meals.
+
+**Not done / deliberately out:** home-screen widgets and HealthKit write-back need a native module and a separate train; Medi Quest still excludes calories by design (`smartQuestEngine.js`); no paywall, trial, referral or family plan (the app is free); no depth-sensor volume claim. Accuracy of AI estimates remains unvalidated against weighed portions — the UI keeps saying so.
+
+**Verification:** server `nutritionPlus.test.js` (health score, modes, streak, activity/steps energy, budget, projection, week summary, preferences, Open Food Facts normalisation, catalog search, portion maths) + existing nutrition HTTP gates; mobile `tests/nutrition.test.cjs` extended; TypeScript typecheck passed. Native camera barcode scanning, hold-to-talk dictation and reminder banners need a device build (native train, camera permission strings changed).

@@ -125,3 +125,7 @@ Every form must keep the focused input and primary action above the keyboard, wi
 ## Publish completed changes (owner requirement, 2026-09-24)
 
 After completing and verifying requested app/backend changes, commit and push the relevant finished changes to the existing Git remote so the owner can test. Check deployment when backend behavior changes. Preserve unrelated in-progress edits and never commit secrets. Report the deployed/verified state accurately.
+
+## Nutrition · Cal AI parity (2026-09-26, app 1.0.0.12.0)
+
+`/nutrition/diary` logs food eight ways from one `+` menu: photo, gallery, barcode (`expo-camera` viewfinder → Open Food Facts via our server, code only), label scan, describe/dictate (text mode, no photo), search (saved → Georgian catalog `server/src/data/nutrition-catalog.json` → Open Food Facts / optional USDA), saved/recent, manual. `POST /api/nutrition/estimate` takes `mode=photo|label|text|fix`; only text and fix may omit the photo. Health score is a deterministic heuristic (`healthScore`), never AI. Budget = target + burned (if `addBurned`) + rollover ≤200 (if `rollover`), from `NutritionPreference`. Streak, week summary, projection, water/steps, measurements and activities ride on the dashboard. Meal reminders use the `nutrition:` prefix. Medi action `nutrition_log` → `/api/nutrition/quick-log`. Keep estimates unsaved until the person confirms; never claim accuracy. Quest still excludes calories; widgets/HealthKit write-back are a separate native train. See docs/NUTRITION.md.

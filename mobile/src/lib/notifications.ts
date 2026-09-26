@@ -37,6 +37,7 @@ export const WEIGHT_CHANNEL_ID = 'weight-reminders';
 export const VISIT_CHANNEL_ID = 'doctor-visit-reminders';
 export const ENGAGE_CHANNEL_ID = 'medi-engage';
 export const PET_CARE_CHANNEL_ID = 'pet-care-reminders';
+export const NUTRITION_CHANNEL_ID = 'nutrition-reminders';
 export const QA_PREFIX = 'qa:';
 
 export const NOTIF_PREFIX = {
@@ -49,6 +50,7 @@ export const NOTIF_PREFIX = {
   engage: 'engage:',
   quota: 'quota:',
   pets: 'pets:',
+  nutrition: 'nutrition:',
 } as const;
 
 function flagOn(value: unknown) {
@@ -182,6 +184,13 @@ async function ensureAndroidChannels(): Promise<void> {
   });
   await Notifications.setNotificationChannelAsync(STEPS_CHANNEL_ID, {
     name: 'ნაბიჯების შეხსენებები',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    vibrationPattern: [0, 180, 120, 180],
+    lightColor: '#14B8A6',
+    sound: 'default',
+  });
+  await Notifications.setNotificationChannelAsync(NUTRITION_CHANNEL_ID, {
+    name: 'კვების შეხსენებები',
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 180, 120, 180],
     lightColor: '#14B8A6',
@@ -538,9 +547,59 @@ export type ScheduledReminderCounts = {
   quota: number;
   qa: number;
   pets: number;
+  nutrition: number;
   other: number;
   total: number;
 };
+
+/**
+ * Meal reminders: three daily local notifications from the person's nutrition
+ * preferences. Rewritten whole; never touches other prefixes. The reminder
+ * only nudges — it never claims a meal was or was not logged.
+ */
+export async function syncNutritionReminders(
+  reminders: { enabled: boolean; breakfast: string; lunch: string; dinner: string } | null,
+  expectedOwner = localAccountId(),
+): Promise<number> {
+  if (!expectedOwner || localAccountId() !== expectedOwner) return 0;
+  await cancelNotificationsByPrefix(NOTIF_PREFIX.nutrition);
+  if (!reminders?.enabled) return 0;
+  const granted = await getNotificationPermissionGranted();
+  if (!granted || localAccountId() !== expectedOwner) return 0;
+  let scheduled = 0;
+  const slots: Array<['breakfast' | 'lunch' | 'dinner', string]> = [
+    ['breakfast', reminders.breakfast],
+    ['lunch', reminders.lunch],
+    ['dinner', reminders.dinner],
+  ];
+  for (const [meal, time] of slots) {
+    const [hour, minute] = time.split(':').map(Number);
+    if (!Number.isInteger(hour) || !Number.isInteger(minute)) continue;
+    if (localAccountId() !== expectedOwner) break;
+    const copy = applyPushCopy(`nutrition-${meal}`, { time });
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${NOTIF_PREFIX.nutrition}${meal}`,
+        content: {
+          title: copy.title,
+          body: copy.body,
+          sound: 'default',
+          data: { type: 'nutrition_reminder', templateKey: `nutrition-${meal}`, meal, route: '/nutrition/diary' },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour,
+          minute,
+          ...(Platform.OS === 'android' ? { channelId: NUTRITION_CHANNEL_ID } : {}),
+        },
+      });
+      scheduled += 1;
+    } catch {
+      // Native scheduler unavailable (web / Expo Go without the module).
+    }
+  }
+  return scheduled;
+}
 
 export async function getScheduledReminderCounts(): Promise<ScheduledReminderCounts> {
   const empty: ScheduledReminderCounts = {
@@ -553,6 +612,7 @@ export async function getScheduledReminderCounts(): Promise<ScheduledReminderCou
     quota: 0,
     qa: 0,
     pets: 0,
+    nutrition: 0,
     other: 0,
     total: 0,
   };

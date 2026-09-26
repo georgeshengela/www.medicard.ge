@@ -45,6 +45,8 @@ export async function loadAssistantContext(user, domains, scope, db = prisma, pe
       goal:d.facts.weightGoal,currentWeight:d.facts.current,
       diet:d.program?.config?.diet,allergens:d.program?.config?.allergens,
       professionalReviewNeeded:d.facts.professionalReviewNeeded,
+      budget:d.budget,burned:d.burned,streak:d.streak?{current:d.streak.current,best:d.streak.best,loggedToday:d.streak.loggedToday}:null,
+      week:d.week,water:d.water,steps:d.steps,projection:d.projection,todayMeals:d.todayMeals,
       planned:d.planned.map(p=>({id:p.id,type:p.type,title:p.data.title,eaten:p.eaten,totals:p.data.totals})),
       instruction:'Only saved diary meals count as intake. Unlogged food is unknown. Planned meals are not consumed. Do not infer protected health details from a review flag.' };
   }

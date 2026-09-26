@@ -11,6 +11,16 @@ import {
 } from "./nutritionProgram.js";
 import { totals } from "./nutrition.js";
 import {
+  computeStreak,
+  stepsKcal,
+  energyBudget,
+  weightProjection,
+  weekSummary,
+  mealSummary,
+  defaultPreferences,
+  preferenceInput,
+} from "./nutritionPlus.js";
+import {
   profileNutritionAllergies,
   nutritionMealPlanning,
 } from "./nutritionAllergies.js";
@@ -149,27 +159,65 @@ export function programState(program, facts, today) {
     targets: program.active && !reasons.length ? program.targets : null,
   };
 }
+export async function readNutritionPreferences(userId, db = prisma) {
+  const [row] = await db.$queryRaw`SELECT data FROM "NutritionPreference" WHERE "userId"=${userId}`;
+  const parsed = preferenceInput.safeParse(row?.data || {});
+  return parsed.success ? parsed.data : defaultPreferences();
+}
 export async function nutritionDashboard(user, day, db = prisma) {
-  const from = shiftCivil(day, -6);
-  const [facts, program, meals, history, planned] = await Promise.all([
+  const from = shiftCivil(day, -6), yesterday = shiftCivil(day, -1), streakFrom = shiftCivil(day, -400);
+  const [facts, program, meals, history, planned, activities, metric, hydrationGoal, preferences, mealDates, measurements] = await Promise.all([
     nutritionFacts(user, db, day),
     readNutritionProgram(user.id, db),
-    db.$queryRaw`SELECT id,date,type,items FROM "NutritionMeal" WHERE "userId"=${user.id} AND date>=${from} AND date<=${day} ORDER BY date,id LIMIT 7000`,
+    db.$queryRaw`SELECT id,date,type,title,items,source FROM "NutritionMeal" WHERE "userId"=${user.id} AND date>=${from} AND date<=${day} ORDER BY date,"createdAt" LIMIT 7000`,
     db.$queryRaw`SELECT date,targets FROM "NutritionTargetHistory" WHERE "userId"=${user.id} AND date<=${day} ORDER BY date DESC LIMIT 35`,
     db.$queryRaw`SELECT p.*, (m.id IS NOT NULL) AS eaten FROM "NutritionPlannedMeal" p LEFT JOIN "NutritionMeal" m ON m.id=p.id AND m."userId"=p."userId" WHERE p."userId"=${user.id} AND p.date=${day} ORDER BY p.type`,
+    db.$queryRaw`SELECT id,date,kind,minutes,kcal,note,source FROM "NutritionActivity" WHERE "userId"=${user.id} AND date=${day} ORDER BY "createdAt"`,
+    db.$queryRaw`SELECT steps,"hydrationMl" FROM "HealthMetricDaily" WHERE "userId"=${user.id} AND date=${day}`,
+    db.$queryRaw`SELECT "goalMl" FROM "HydrationPreference" WHERE "userId"=${user.id}`,
+    readNutritionPreferences(user.id, db),
+    db.$queryRaw`SELECT DISTINCT date FROM "NutritionMeal" WHERE "userId"=${user.id} AND date>=${streakFrom} AND date<=${day}`,
+    db.$queryRaw`SELECT date,"waistCm","hipsCm","chestCm","armCm","thighCm" FROM "BodyMeasurement" WHERE "userId"=${user.id} AND date<=${day} ORDER BY date DESC LIMIT 12`,
   ]);
   const state = programState(program, facts, day);
-  const today = totals(
-    meals.filter((m) => m.date === day).flatMap((m) => m.items),
-  );
+  const todayMeals = meals.filter((m) => m.date === day);
+  const today = totals(todayMeals.flatMap((m) => m.items));
+  const days = summarizeNutritionDays(meals, from, 7, history);
+  const steps = Math.max(0, Number(metric[0]?.steps) || 0);
+  const weightKg = facts.current?.kg || program?.config?.weightKg || null;
+  const burned = {
+    activities: activities.reduce((s, a) => s + (a.kcal || 0), 0),
+    steps: preferences.countSteps ? stepsKcal(steps, weightKg) : 0,
+  };
+  burned.total = burned.activities + burned.steps;
+  const yesterdayDay = days.find((d) => d.date === yesterday);
+  const budget = energyBudget({
+    target: state.targets?.calories || null,
+    preferences,
+    burned: burned.total,
+    yesterday: yesterdayDay ? { target: yesterdayDay.target?.calories || null, eaten: yesterdayDay.totals.calories, recorded: yesterdayDay.recorded } : null,
+  });
+  const pace = program?.config?.mode === "gain" ? 0.2 : program?.config?.pace === "gentle" ? 0.25 : 0.4;
   return {
     ...state,
     facts: publicNutritionFacts(facts),
     date: day,
     today,
-    remaining: state.targets ? state.targets.calories - today.calories : null,
-    days: summarizeNutritionDays(meals, from, 7, history),
-    mealCount: meals.filter((m) => m.date === day).length,
+    remaining: state.targets ? (budget.budget ?? state.targets.calories) - today.calories : null,
+    budget: budget.budget,
+    rollover: budget.rollover,
+    burned: { ...burned, counted: budget.burnedCounted },
+    days,
+    week: weekSummary(days),
+    mealCount: todayMeals.length,
+    todayMeals: todayMeals.map(mealSummary),
+    activities,
+    steps,
+    water: { ml: Math.max(0, Number(metric[0]?.hydrationMl) || 0), goalMl: Number(hydrationGoal[0]?.goalMl) || null },
+    streak: computeStreak(mealDates.map((r) => r.date), day),
+    projection: weightProjection(facts.weightHistory, facts.weightGoal, day, program?.active ? pace : 0),
+    preferences,
+    measurements,
     planned: planned.filter(
       (p) =>
         p.programRevision === program?.revision &&

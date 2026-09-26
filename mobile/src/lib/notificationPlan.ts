@@ -158,7 +158,7 @@ export function routeFromNotificationData(data: Record<string, unknown> | undefi
   }
 }
 
-export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' | 'steps' | 'weight' | 'engage' | 'quota' | 'qa' | 'pets' | 'other' {
+export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' | 'steps' | 'weight' | 'engage' | 'quota' | 'qa' | 'pets' | 'nutrition' | 'other' {
   if (id.startsWith('med:')) return 'med';
   if (id.startsWith('cycle:')) return 'cycle';
   if (id.startsWith('visit:')) return 'visit';
@@ -168,6 +168,7 @@ export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' |
   if (id.startsWith('quota:')) return 'quota';
   if (id.startsWith('qa:')) return 'qa';
   if (id.startsWith('pets:')) return 'pets';
+  if (id.startsWith('nutrition:')) return 'nutrition';
   return 'other';
 }
 

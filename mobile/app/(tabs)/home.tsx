@@ -222,7 +222,7 @@ export default function Home() {
     nutrition: (
       <View style={s.section}>
         {heading('კვება', '/nutrition/progress', 'პროგრესი')}
-        <HomeNutritionCard />
+        <HomeNutritionCard waterMl={hydration.todayMl} waterGoalMl={hydration.goalMl} steps={steps.bundle?.todayTotal} />
       </View>
     ),
     checkup: (

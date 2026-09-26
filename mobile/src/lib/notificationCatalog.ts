@@ -7,6 +7,7 @@ import {
   STEPS_CHANNEL_ID,
   VISIT_CHANNEL_ID,
   WEIGHT_CHANNEL_ID,
+  NUTRITION_CHANNEL_ID,
   ENGAGE_CHANNEL_ID,
   presentNotificationNow,
 } from '@/lib/notifications';
@@ -14,7 +15,7 @@ import { previewPushCopy } from '@/lib/pushCopy';
 
 export type NotificationSendKind = 'local' | 'remote';
 
-export type NotificationCatalogGroup = 'med' | 'cycle' | 'visit' | 'steps' | 'weight' | 'admin' | 'engage';
+export type NotificationCatalogGroup = 'med' | 'cycle' | 'visit' | 'steps' | 'weight' | 'nutrition' | 'admin' | 'engage';
 
 export type NotificationCatalogItem = {
   id: string;
@@ -36,6 +37,7 @@ export const NOTIFICATION_GROUP_LABELS: Record<NotificationCatalogGroup, string>
   visit: 'ვიზიტი',
   steps: 'ნაბიჯები',
   weight: 'წონა',
+  nutrition: 'კვება',
   admin: 'ადმინი · remote push',
   engage: 'Medi companion',
 };
@@ -46,6 +48,7 @@ export const NOTIFICATION_GROUPS: NotificationCatalogGroup[] = [
   'visit',
   'steps',
   'weight',
+  'nutrition',
   'admin',
   'engage',
 ];
@@ -229,6 +232,33 @@ export function notificationCatalog(): NotificationCatalogItem[] {
       how: 'Local · WEEKLY. saveWeightGoal → syncWeightGoalReminders.',
       channelId: WEIGHT_CHANNEL_ID,
       data: { type: 'weight-goal', goalId: 'qa-weight', route: '/health-metrics/weight' },
+    }),
+    item({
+      id: 'nutrition-breakfast',
+      group: 'nutrition',
+      send: 'local',
+      label: 'საუზმის შეხსენება',
+      how: 'Local · DAILY კვების პარამეტრებიდან (nutrition:breakfast). syncNutritionReminders.',
+      channelId: NUTRITION_CHANNEL_ID,
+      data: { type: 'nutrition_reminder', meal: 'breakfast', route: '/nutrition/diary' },
+    }),
+    item({
+      id: 'nutrition-lunch',
+      group: 'nutrition',
+      send: 'local',
+      label: 'სადილის შეხსენება',
+      how: 'Local · DAILY (nutrition:lunch).',
+      channelId: NUTRITION_CHANNEL_ID,
+      data: { type: 'nutrition_reminder', meal: 'lunch', route: '/nutrition/diary' },
+    }),
+    item({
+      id: 'nutrition-dinner',
+      group: 'nutrition',
+      send: 'local',
+      label: 'ვახშმის შეხსენება',
+      how: 'Local · DAILY (nutrition:dinner).',
+      channelId: NUTRITION_CHANNEL_ID,
+      data: { type: 'nutrition_reminder', meal: 'dinner', route: '/nutrition/diary' },
     }),
     item({
       id: 'engage-weekly',

@@ -12,6 +12,10 @@ model User {
   nutritionProgram NutritionProgram?
   nutritionTargets NutritionTargetHistory[]
   nutritionPlannedMeals NutritionPlannedMeal[]
+  nutritionFoods NutritionFood[]
+  nutritionActivities NutritionActivity[]
+  nutritionPreference NutritionPreference?
+  bodyMeasurements BodyMeasurement[]
   communityCommentLikes CommunityCommentLike[]
   communityAliases CommunityAlias[]
   communityMember CommunityMember?
@@ -2205,9 +2209,68 @@ model NutritionMeal {
  items Json
  note String @default("")
  source String @default("manual")
+ title String @default("")
  createdAt DateTime @default(now())
  updatedAt DateTime @default(now())
  @@index([userId,date])
+}
+model NutritionFood {
+ id String @id
+ userId String
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ name String
+ brand String @default("")
+ per100 Json
+ serving Json?
+ source String @default("custom")
+ barcode String?
+ favorite Boolean @default(false)
+ useCount Int @default(0)
+ lastUsedAt DateTime @default(now()) @db.Timestamptz(6)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+ @@index([userId,lastUsedAt(sort: Desc)])
+ @@index([userId,barcode])
+}
+model NutritionProduct {
+ barcode String @id
+ data Json
+ source String @default("openfoodfacts")
+ hits Int @default(0)
+ fetchedAt DateTime @default(now()) @db.Timestamptz(6)
+}
+model NutritionActivity {
+ id String @id
+ userId String
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ date String
+ kind String
+ minutes Int
+ kcal Int
+ note String @default("")
+ source String @default("manual")
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+ @@index([userId,date])
+}
+model NutritionPreference {
+ userId String @id
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ data Json @default("{}")
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+}
+model BodyMeasurement {
+ userId String
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ date String
+ waistCm Float?
+ hipsCm Float?
+ chestCm Float?
+ armCm Float?
+ thighCm Float?
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+ @@id([userId,date])
 }
 model NutritionSettings {
  programEnabled Boolean @default(true)

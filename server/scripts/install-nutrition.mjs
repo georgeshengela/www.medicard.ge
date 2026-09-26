@@ -8,6 +8,7 @@ try {
   for (const file of [
     "20260924-nutrition.sql",
     "20260924-nutrition-program.sql",
+    "20260926-nutrition-plus.sql",
   ]) {
     const sql = readFileSync(
       new URL("../prisma/" + file, import.meta.url),

@@ -13,7 +13,7 @@ export function literalAssistantAction({ scope, text, draft }) {
 }
 
 const TOOL_DOMAINS = {
-  nutrition_goal: ['nutrition'], nutrition_eat: ['nutrition'],
+  nutrition_goal: ['nutrition'], nutrition_eat: ['nutrition'], nutrition_log: ['nutrition'],
   hydration_add: ['metrics'], hydration_goal: ['metrics'], metric_record: ['metrics'],
   weight_goal: ['profile', 'metrics', 'goals'], steps_goal: ['goals', 'metrics'], profile_update: ['profile'],
   medication_add: ['medications'], medication_update: ['medications'], medication_stop: ['medications'], dose_record: ['medications'],

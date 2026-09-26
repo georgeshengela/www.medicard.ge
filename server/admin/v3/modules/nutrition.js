@@ -299,6 +299,21 @@
           [data.scans.total, "AI შეფასება · 7 დღე"],
           [data.scans.failed, "შეფასების შეცდომა"],
           [(data.scans.averageMs / 1000).toFixed(1) + " წმ", "საშუალო AI დრო"],
+          ...(data.sources
+            ? [
+                [data.sources.photo, "ფოტოდან · 30 დღე"],
+                [data.sources.barcode + data.sources.label, "შტრიხკოდი / ეტიკეტი · 30 დღე"],
+                [data.sources.text, "აღწერით / ხმით · 30 დღე"],
+                [data.sources.search + data.sources.manual, "ძებნა / ხელით · 30 დღე"],
+              ]
+            : []),
+          ...(data.extras
+            ? [
+                [data.extras.foods, "შენახული საკვები"],
+                [data.extras.products, "ქეშირებული პროდუქტი"],
+                [data.extras.activities, "ვარჯიშის ჩანაწერი"],
+              ]
+            : []),
         ]
           .map(
             ([value, label]) =>

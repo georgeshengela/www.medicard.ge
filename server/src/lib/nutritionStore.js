@@ -1,8 +1,8 @@
 // Every read and mutation is scoped to the authenticated account, never body.userId.
 export async function saveMeal(db, userId, input) {
   const rows =
-    await db.$queryRaw`INSERT INTO "NutritionMeal" (id,"userId",date,type,items,note,source) VALUES (${input.id},${userId},${input.date},${input.type},${JSON.stringify(input.items)}::jsonb,${input.note},${input.source})
- ON CONFLICT (id) DO UPDATE SET date=EXCLUDED.date,type=EXCLUDED.type,items=EXCLUDED.items,note=EXCLUDED.note,source=EXCLUDED.source,"updatedAt"=NOW() WHERE "NutritionMeal"."userId"=${userId} RETURNING *`;
+    await db.$queryRaw`INSERT INTO "NutritionMeal" (id,"userId",date,type,items,note,title,source) VALUES (${input.id},${userId},${input.date},${input.type},${JSON.stringify(input.items)}::jsonb,${input.note},${input.title || ""},${input.source})
+ ON CONFLICT (id) DO UPDATE SET date=EXCLUDED.date,type=EXCLUDED.type,items=EXCLUDED.items,note=EXCLUDED.note,title=EXCLUDED.title,source=EXCLUDED.source,"updatedAt"=NOW() WHERE "NutritionMeal"."userId"=${userId} RETURNING *`;
   return rows[0] || null;
 }
 export function listMeals(db, userId, from, to) {

@@ -49,6 +49,9 @@ test("totals use portion values once", () =>
     protein: 8,
     carbs: 84,
     fat: 0.8,
+    fiber: null,
+    sugar: null,
+    sodium: null,
   }));
 test("AI nonfood and structured food are handled", () => {
   assert.equal(

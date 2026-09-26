@@ -73,6 +73,68 @@ export type NutritionDay = {
   totals: NutritionTotals;
   target: NutritionTargets | null;
 };
+export type NutritionActivity = {
+  id: string;
+  date: string;
+  kind: string;
+  minutes: number;
+  kcal: number;
+  note: string;
+  source: "manual" | "steps";
+};
+export type NutritionPreferences = {
+  rollover: boolean;
+  addBurned: boolean;
+  countSteps: boolean;
+  reminders: { enabled: boolean; breakfast: string; lunch: string; dinner: string };
+};
+export const defaultNutritionPreferences = (): NutritionPreferences => ({
+  rollover: false,
+  addBurned: false,
+  countSteps: true,
+  reminders: { enabled: false, breakfast: "08:30", lunch: "13:30", dinner: "19:30" },
+});
+export type BodyMeasurement = {
+  date: string;
+  waistCm: number | null;
+  hipsCm: number | null;
+  chestCm: number | null;
+  armCm: number | null;
+  thighCm: number | null;
+};
+export type NutritionStreak = {
+  current: number;
+  best: number;
+  loggedToday: boolean;
+  nextMilestone: number | null;
+  reached: number[];
+};
+export type WeightProjection = {
+  current: number | null;
+  target: number | null;
+  trendKgPerWeek: number | null;
+  trendEta: string | null;
+  planEta: string | null;
+  direction: "down" | "up" | "reached" | null;
+  remainingKg: number | null;
+};
+export type NutritionWeekSummary = {
+  recordedDays: number;
+  targetDays: number;
+  onTargetDays: number;
+  averageCalories: number | null;
+  balanceCalories: number | null;
+  averageProtein: number | null;
+};
+export type MealSummary = {
+  id: string;
+  date: string;
+  type: Meal["type"];
+  title: string;
+  source: Meal["source"];
+  names: string[];
+  totals: NutritionTotals;
+};
 export type NutritionDashboard = {
   program: NutritionProgram | null;
   targets: NutritionTargets | null;
@@ -80,9 +142,21 @@ export type NutritionDashboard = {
   mealPlanning?: MealPlanningAvailability;
   reasons: string[];
   date: string;
-  today: NutritionTotals;
+  today: NutritionTotals & { fiber?: number | null; sugar?: number | null; sodium?: number | null };
   remaining: number | null;
+  budget: number | null;
+  rollover: number;
+  burned: { activities: number; steps: number; total: number; counted: number };
+  week: NutritionWeekSummary;
   mealCount: number;
+  todayMeals: MealSummary[];
+  activities: NutritionActivity[];
+  steps: number;
+  water: { ml: number; goalMl: number | null };
+  streak: NutritionStreak;
+  projection: WeightProjection;
+  preferences: NutritionPreferences;
+  measurements: BodyMeasurement[];
   days: NutritionDay[];
   planned: PlannedMeal[];
   facts: {

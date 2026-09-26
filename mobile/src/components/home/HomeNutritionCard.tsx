@@ -3,10 +3,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { Easing, useAnimatedProps, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
-import { Beef, BookOpen, Camera, Droplet, Flame, Salad, Wheat, type LucideIcon } from 'lucide-react-native';
+import { Beef, BookOpen, Camera, Droplet, Droplets, Flame, Footprints, Salad, Wheat, type LucideIcon } from 'lucide-react-native';
 import { useNutritionDashboard } from '@/components/nutrition/ProgramUI';
 import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { mealLabels } from '@/lib/nutrition';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 
@@ -15,7 +16,7 @@ const RING = 92;
 const STROKE = 10;
 const groupDigits = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
-/** Energy ring: eaten against the daily target, filling once on mount like the day rings. */
+/** Energy ring: eaten against the daily budget, filling once on mount like the day rings. */
 function EnergyRing({ progress, color, track, reduceMotion }: { progress: number; color: string; track: string; reduceMotion: boolean }) {
   const r = RING / 2 - STROKE / 2;
   const circumference = 2 * Math.PI * r;
@@ -77,29 +78,40 @@ function MacroChip({ macro }: { macro: Macro }) {
 
 /**
  * Nutrition on Home the way Cal AI frames it: one ring for today's energy,
- * three macros with their own colour, and a camera button you cannot miss.
+ * three macros with their own colour, the day's water / steps / streak in one
+ * row, today's meals, and a camera button you cannot miss.
  */
-export function HomeNutritionCard() {
+export function HomeNutritionCard({ waterMl, waterGoalMl, steps }: { waterMl?: number; waterGoalMl?: number; steps?: number } = {}) {
   const c = useThemeColors();
   const dark = useIsDark();
   const router = useRouter();
   const reduceMotion = usePrefersReducedMotion();
   const { data, loading } = useNutritionDashboard();
   const energyInk = hubInk('amber', dark);
+  const tealInk = hubInk('teal', dark);
 
   if (loading && !data) return <MetricCardSkeleton />;
 
   const eaten = data?.today.calories ?? 0;
-  const target = data?.targets?.calories ?? null;
+  const target = data?.budget ?? data?.targets?.calories ?? null;
   const logged = (data?.mealCount ?? 0) > 0;
   const remaining = data?.remaining ?? null;
   const over = target != null && remaining != null && remaining < 0;
   const progress = target ? Math.min(1, eaten / target) : logged ? 1 : 0;
+  const water = waterMl ?? data?.water.ml ?? 0;
+  const waterGoal = waterGoalMl ?? data?.water.goalMl ?? null;
+  const stepCount = steps ?? data?.steps ?? 0;
+  const streak = data?.streak.current ?? 0;
 
   const macros: Macro[] = [
     { key: 'protein', label: 'ცილა', icon: Beef, ink: 'rose', value: data?.today.protein ?? 0, target: data?.targets?.protein ?? null },
     { key: 'carbs', label: 'ნახშ.', icon: Wheat, ink: 'amber', value: data?.today.carbs ?? 0, target: data?.targets?.carbs ?? null },
     { key: 'fat', label: 'ცხიმი', icon: Droplet, ink: 'sky', value: data?.today.fat ?? 0, target: data?.targets?.fat ?? null },
+  ];
+  const days = [
+    { key: 'water', icon: Droplets, ink: hubInk('sky', dark), value: waterGoal ? `${(water / 1000).toFixed(1)}/${(waterGoal / 1000).toFixed(1)} ლ` : `${(water / 1000).toFixed(1)} ლ`, label: 'წყალი', href: '/health-metrics/hydration' },
+    { key: 'steps', icon: Footprints, ink: hubInk('green', dark), value: groupDigits(stepCount), label: 'ნაბიჯი', href: '/health-metrics/steps' },
+    { key: 'streak', icon: Flame, ink: tealInk, value: streak ? `${streak} დღე` : '—', label: 'სერია', href: '/nutrition' },
   ];
 
   return (
@@ -143,10 +155,10 @@ export function HomeNutritionCard() {
             {logged
               ? target
                 ? over
-                  ? `სამიზნეზე ${groupDigits(-remaining!)} კკალ-ით მეტი`
-                  : `მიზნამდე ${groupDigits(remaining!)} კკალ`
+                  ? `ბიუჯეტზე ${groupDigits(-remaining!)} კკალ-ით მეტი`
+                  : `ბიუჯეტამდე ${groupDigits(remaining!)} კკალ`
                 : 'აირჩიე მიზანი და დღიური სამიზნე გამოჩნდება'
-              : 'გადაიღე კერძი — მედი კალორიებსა და შემადგენლობას დაითვლის'}
+              : 'გადაიღე, დაასკანერე ან უბრალოდ თქვი — Medi დაითვლის'}
           </Text>
         </View>
       </View>
@@ -159,6 +171,34 @@ export function HomeNutritionCard() {
         </View>
       ) : null}
 
+      <View style={s.days}>
+        {days.map((day) => (
+          <Pressable key={day.key} accessibilityRole="button" accessibilityLabel={`${day.label}: ${day.value}`} onPress={() => router.push(day.href as never)} style={s.day}>
+            <View style={[s.dayIcon, { backgroundColor: hubTint(day.ink, dark) }]}>
+              <day.icon size={14} color={day.ink} strokeWidth={2.2} />
+            </View>
+            <View style={{ minWidth: 0, flex: 1 }}>
+              <Text numberOfLines={1} style={[hubText.value, { color: c.text100, fontSize: 13, lineHeight: 18 }]}>{day.value}</Text>
+              <Text numberOfLines={1} style={[hubText.small, { color: c.text300, fontSize: 10, lineHeight: 13 }]}>{day.label}</Text>
+            </View>
+          </Pressable>
+        ))}
+      </View>
+
+      {data && data.todayMeals.length > 0 ? (
+        <View style={{ gap: 6 }}>
+          {data.todayMeals.slice(0, 3).map((meal) => (
+            <Pressable key={meal.id} accessibilityRole="button" accessibilityLabel={`${mealLabels[meal.type]} · ${Math.round(meal.totals.calories)} კკალ`} onPress={() => router.push('/nutrition/diary' as never)} style={s.meal}>
+              <Text numberOfLines={1} style={[hubText.body, { color: c.text100, flex: 1 }]}>
+                <Text style={{ color: c.text300 }}>{mealLabels[meal.type]} · </Text>
+                {meal.title || meal.names.join(' · ')}
+              </Text>
+              <Text style={[hubText.value, { color: c.text100, fontSize: 13 }]}>{groupDigits(meal.totals.calories)}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
       <View style={s.actions}>
         <Pressable
           accessibilityRole="button"
@@ -167,7 +207,7 @@ export function HomeNutritionCard() {
           style={[s.primary, { backgroundColor: dark ? '#0D9488' : '#0F766E' }]}
         >
           <Camera size={20} color="#FFFFFF" strokeWidth={2} />
-          <Text style={[hubText.link, { color: '#FFFFFF', fontSize: 14 }]}>გადაიღე კერძი</Text>
+          <Text style={[hubText.link, { color: '#FFFFFF', fontSize: 14 }]}>ჩაწერე კვება</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -176,7 +216,7 @@ export function HomeNutritionCard() {
           style={[s.secondary, { backgroundColor: c.bg200 }]}
         >
           <BookOpen size={19} color={c.text100} strokeWidth={1.9} />
-          <Text style={[hubText.link, { color: c.text100 }]}>დღიური</Text>
+          <Text style={[hubText.link, { color: c.text100 }]}>ჰაბი</Text>
         </Pressable>
       </View>
     </View>
@@ -192,6 +232,10 @@ const s = StyleSheet.create({
   macroIcon: { width: 24, height: 24, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   macroTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   macroFill: { height: 4, borderRadius: 2 },
+  days: { flexDirection: 'row', gap: 8 },
+  day: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
+  dayIcon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  meal: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 32 },
   actions: { flexDirection: 'row', gap: 10 },
   primary: {
     flex: 1.4,

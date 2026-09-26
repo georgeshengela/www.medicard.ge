@@ -55,6 +55,8 @@ add('nutrition_goal', 'კვების მიზნის შერჩევ�
   'Open the native nutrition goal wizard with the stated desired weight OR amount to lose. Do not invent calorie targets or a deadline. Current weight, safety and preferences are confirmed there.');
 add('nutrition_eat', 'რაციონის კვების აღრიცხვა', 'human', fields({plannedMealId:id}), a => `/api/nutrition/plan/${a.plannedMealId}/eat`,
   'Mark an owned planned meal actually eaten only when user explicitly says they ate it. Resolve plannedMealId from nutrition context. Does not record a vague meal or photo.');
+add('nutrition_log', 'კვების აღრიცხვა აღწერით', 'human', fields({ description: text(500), mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack']).optional(), date: dateKey.optional() }), '/api/nutrition/quick-log',
+  'Record food the user says they ATE (past or just now) from their own words, e.g. "ორი ხინკალი და სალათი". Copy the food description verbatim into description; never add foods, amounts or calories yourself. The server estimates nutrients and the user confirms first. Not for planned meals, not for future intentions, not for pets.');
 add('weight_goal', 'წონის მიზნის დამატება', 'human', fields({ targetKg: z.number().min(20).max(300), startKg: z.number().min(20).max(300), deadlineYmd: dateKey }), null,
   'Ask for missing current weight/deadline. Use stored recent weight when available. User goal is not a medical recommendation; never invent a target, deadline or safe rate.');
 add('steps_goal', 'ნაბიჯების მიზანი', 'human', fields({ targetSteps: z.number().int().min(500).max(100000), deadlineYmd: dateKey }), null);

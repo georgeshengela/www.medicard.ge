@@ -2117,16 +2117,48 @@ export const api = {
   nutrition: {
     settings: () => request<{photoEnabled:boolean}>('/api/nutrition/settings'),
     list: (date:string) => request<{meals:import('./nutrition').Meal[];truncated:boolean}>('/api/nutrition/meals?from='+encodeURIComponent(date)),
-    save: (meal:import('./nutrition').Meal) => request('/api/nutrition/meals/'+meal.id,{method:'PUT',body:{id:meal.id,date:meal.date,type:meal.type,items:meal.items,note:meal.note,source:meal.source}}),
+    range: (from:string,to:string) => request<{meals:import('./nutrition').Meal[];truncated:boolean}>('/api/nutrition/meals?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to)),
+    save: (meal:import('./nutrition').Meal) => request<{meal:import('./nutrition').Meal}>('/api/nutrition/meals/'+meal.id,{method:'PUT',body:{id:meal.id,date:meal.date,type:meal.type,items:meal.items,note:meal.note,title:meal.title||'',source:meal.source}}),
     remove: (id:string) => request('/api/nutrition/meals/'+id,{method:'DELETE'}),
-    estimate: async (file:UploadFile, description:string) => {
+    /** One endpoint, four modes. Only text and fix may run without a photo. */
+    estimate: async (file:UploadFile|null, options:{mode?:import('./nutrition').EstimateMode; description?:string; correction?:string; previous?:import('./nutrition').FoodItem[]}={}) => {
       const { localAccountId }=await import('@/lib/localAccount');
       const owner=localAccountId();
+      const mode=options.mode||'photo';
+      const fields={mode,description:options.description||'',correction:options.correction||'',previous:JSON.stringify(options.previous||[])};
       let result:import('./nutrition').FoodEstimate;
-      if(Platform.OS!=='web') result=await uploadNativeMultipart<import('./nutrition').FoodEstimate>('/api/nutrition/estimate',file,'photo',{description});
-      else { const formData=new FormData(); await appendUploadFile(formData,'photo',file);formData.append('description',description);result=await request<import('./nutrition').FoodEstimate>('/api/nutrition/estimate',{method:'POST',formData,timeoutMs:60000}); }
+      if(!file) result=await request<import('./nutrition').FoodEstimate>('/api/nutrition/estimate',{method:'POST',body:{...fields,previous:options.previous||[]},timeoutMs:60000});
+      else if(Platform.OS!=='web') result=await uploadNativeMultipart<import('./nutrition').FoodEstimate>('/api/nutrition/estimate',file,'photo',fields);
+      else { const formData=new FormData(); await appendUploadFile(formData,'photo',file); for(const [k,v] of Object.entries(fields)) formData.append(k,v); result=await request<import('./nutrition').FoodEstimate>('/api/nutrition/estimate',{method:'POST',formData,timeoutMs:60000}); }
       if(owner!==localAccountId())throw new ApiError('ანგარიში შეიცვალა.',401);
       return result;
+    },
+    quickLog: (input:{description:string; mealType?:import('./nutrition').Meal['type']; date?:string; id?:string; source?:'text'|'voice'}) =>
+      request<{meal:import('./nutrition').Meal; uncertainty:string; explanation:string}>('/api/nutrition/quick-log',{method:'POST',body:input,timeoutMs:60000}),
+    foods: {
+      search: (q:string) => request<{saved:import('./nutrition').SavedFood[];catalog:import('./nutrition').SavedFood[];products:import('./nutrition').SavedFood[]}>('/api/nutrition/foods/search?q='+encodeURIComponent(q),{timeoutMs:20000}),
+      recent: () => request<{foods:import('./nutrition').SavedFood[];meals:import('./nutrition').Meal[]}>('/api/nutrition/foods/recent'),
+      list: (favorite?:boolean) => request<{foods:import('./nutrition').SavedFood[]}>('/api/nutrition/foods'+(favorite==null?'':'?favorite='+(favorite?'1':'0'))),
+      save: (food:import('./nutrition').SavedFood) => request<{food:import('./nutrition').SavedFood}>('/api/nutrition/foods/'+food.id,{method:'PUT',body:{id:food.id,name:food.name,brand:food.brand||'',per100:food.per100,serving:food.serving,source:food.source||'custom',barcode:food.barcode||null,favorite:!!food.favorite}}),
+      fromItem: (item:import('./nutrition').FoodItem, favorite=true) => request<{food:import('./nutrition').SavedFood}>('/api/nutrition/foods/from-item',{method:'POST',body:{item,favorite}}),
+      favorite: (id:string, favorite:boolean) => request('/api/nutrition/foods/'+id,{method:'PATCH',body:{favorite}}),
+      used: (ids:string[]) => request('/api/nutrition/foods/used',{method:'POST',body:{ids}}),
+      remove: (id:string) => request('/api/nutrition/foods/'+id,{method:'DELETE'}),
+    },
+    barcode: (code:string) => request<{product:import('./nutrition').SavedFood; code:string}>('/api/nutrition/barcode/'+encodeURIComponent(code),{timeoutMs:15000}),
+    activities: {
+      list: (from:string,to:string) => request<{activities:import('./nutritionProgram').NutritionActivity[]; kinds:Record<string,{met:number;label:string}>}>('/api/nutrition/activities?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to)),
+      save: (a:{id:string;date:string;kind:string;minutes:number;kcal:number|null;note:string}) => request<{activity:import('./nutritionProgram').NutritionActivity; estimated:boolean}>('/api/nutrition/activities/'+a.id,{method:'PUT',body:a}),
+      remove: (id:string) => request('/api/nutrition/activities/'+id,{method:'DELETE'}),
+    },
+    preferences: {
+      get: () => request<{preferences:import('./nutritionProgram').NutritionPreferences}>('/api/nutrition/preferences'),
+      save: (preferences:import('./nutritionProgram').NutritionPreferences) => request<{preferences:import('./nutritionProgram').NutritionPreferences}>('/api/nutrition/preferences',{method:'PUT',body:preferences}),
+    },
+    measurements: {
+      list: () => request<{measurements:import('./nutritionProgram').BodyMeasurement[]}>('/api/nutrition/measurements'),
+      save: (date:string, m:Omit<import('./nutritionProgram').BodyMeasurement,'date'>) => request('/api/nutrition/measurements/'+date,{method:'PUT',body:m}),
+      remove: (date:string) => request('/api/nutrition/measurements/'+date,{method:'DELETE'}),
     },
   },
   health: () => request<{ status: string }>('/health', { token: null, timeoutMs: 12_000 }),

@@ -40,7 +40,7 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
   {
     title: 'ყოველდღიური ზრუნვა',
     items: [
-      {title:'კვების დღიური',detail:'ფოტო, კალორიები და საკვები ნივთიერებები',href:'/nutrition',icon:Utensils},
+      {title:'კვების დღიური',detail:'ფოტო, შტრიხკოდი, ეტიკეტი, ძებნა და აღწერა',href:'/nutrition',icon:Utensils},
       {
         title: 'წამლები და განრიგი',
         detail: 'მიღება, შეხსენებები და კალენდარი',

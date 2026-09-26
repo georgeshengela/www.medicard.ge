@@ -9,12 +9,15 @@ type Props = {
   scanning: boolean;
   disabled: boolean;
   enabled: boolean;
+  /** Nutrition-facts label mode: the photo is a printed table, not a dish. */
+  label?: boolean;
   onCamera: () => void;
   onGallery: () => void;
+  onMore?: () => void;
 };
 
 /** The beam shows activity only, never fabricated recognition/progress. */
-export function NutritionScanner({ photoUri, scanning, disabled, enabled, onCamera, onGallery }: Props) {
+export function NutritionScanner({ photoUri, scanning, disabled, enabled, label = false, onCamera, onGallery, onMore }: Props) {
   const c = useThemeColors();
   const { width } = useWindowDimensions();
   const height = Math.min(280, Math.max(200, width * 0.64));
@@ -45,11 +48,13 @@ export function NutritionScanner({ photoUri, scanning, disabled, enabled, onCame
       <View style={s.intro}>
         <View style={[s.eyebrow, { backgroundColor: c.accent100 }]}>
           <ScanLine size={15} color={c.primary100} />
-          <Text style={[s.brand, { color: c.primary100 }]}>MEDI SCAN</Text>
+          <Text style={[s.brand, { color: c.primary100 }]}>{label ? 'MEDI LABEL' : 'MEDI SCAN'}</Text>
         </View>
-        <Text style={[txt, s.heading]}>{photoUri ? 'შენი კერძი, უფრო გასაგებად' : 'რას მიირთმევ?'}</Text>
+        <Text style={[txt, s.heading]}>{label ? (photoUri ? 'ეტიკეტი შერჩეულია' : 'გადაიღე Nutrition Facts') : photoUri ? 'შენი კერძი, უფრო გასაგებად' : 'რას მიირთმევ?'}</Text>
         <Text style={[txt, s.subtitle, { color: c.text200 }]}>
-          {photoUri ? 'ფოტოს მიხედვით შევაფასებთ პორციასა და საკვებ ნივთიერებებს.' : 'ერთი ფოტო — და კვების ჩანაწერის შევსება ბევრად მარტივია.'}
+          {label
+            ? 'ცხრილიდან მნიშვნელობებს წავიკითხავთ და ულუფაზე გადავიყვანთ.'
+            : photoUri ? 'ფოტოს მიხედვით შევაფასებთ პორციასა და საკვებ ნივთიერებებს.' : 'ერთი ფოტო — და კვების ჩანაწერის შევსება ბევრად მარტივია.'}
         </Text>
       </View>
 
@@ -81,7 +86,7 @@ export function NutritionScanner({ photoUri, scanning, disabled, enabled, onCame
         <View style={[s.finderLabel, { backgroundColor: photoUri ? '#111827' : c.bg100 }]}>
           {photoUri ? <Check size={13} color="#99F6E4" /> : <Focus size={13} color={c.text200} />}
           <Text style={[txt, { fontSize: 11, color: photoUri ? '#FFFFFF' : c.text200 }]}>
-            {scanning ? 'ფოტო მუშავდება' : photoUri ? 'ფოტო შერჩეულია' : 'თეფში სრულად მოაქციე კადრში'}
+            {scanning ? 'ფოტო მუშავდება' : photoUri ? 'ფოტო შერჩეულია' : label ? 'ცხრილი მკაფიოდ და სწორად მოაქციე კადრში' : 'თეფში სრულად მოაქციე კადრში'}
           </Text>
         </View>
       </View>
@@ -106,8 +111,13 @@ export function NutritionScanner({ photoUri, scanning, disabled, enabled, onCame
 
       {!photoUri && enabled && (
         <View style={s.tips}>
-          <Sun size={16} color={c.primary100} /><Text style={[txt, s.small, { color: c.text200, flex: 1 }]}>კარგი განათება და ზემოდან გადაღებული კადრი შეფასებას ეხმარება.</Text>
+          <Sun size={16} color={c.primary100} /><Text style={[txt, s.small, { color: c.text200, flex: 1 }]}>{label ? 'ბრტყლად, ანარეკლის გარეშე — ციფრები ხელით აღარ დაგჭირდება.' : 'კარგი განათება და ზემოდან გადაღებული კადრი შეფასებას ეხმარება.'}</Text>
         </View>
+      )}
+      {!photoUri && onMore && (
+        <Pressable accessibilityRole="button" accessibilityLabel="სხვა გზები: შტრიხკოდი, ეტიკეტი, ძებნა, აღწერა" onPress={onMore} style={[s.more, { backgroundColor: c.bg200 }]}>
+          <Text style={[txt, { fontSize: 13, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>შტრიხკოდი · ეტიკეტი · ძებნა · აღწერა</Text>
+        </Pressable>
       )}
       {!enabled && <Text style={[txt, s.small, { color: c.text200 }]}>ფოტოს შეფასება დროებით მიუწვდომელია. კვება შეგიძლია ხელით დაამატო.</Text>}
       {photoUri && (
@@ -151,4 +161,5 @@ const s = StyleSheet.create({
   tips: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 }, small: { fontSize: 12, lineHeight: 20 }, privacy: { flex: 1, fontSize: 11, lineHeight: 18 },
   status: { gap: 6 }, statusTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15 },
   steps: { flexDirection: 'row', gap: 13 },
+  more: { minHeight: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
 });

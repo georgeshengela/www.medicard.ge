@@ -19,7 +19,7 @@ export const ASSISTANT_FEATURES = Object.freeze([
   feature('weight', 'წონის კონტროლი', '/health-metrics/weight', 'daily', 'გაზომვები და წონის ცვლილება.'),
   feature('weight_history', 'წონის ისტორია', '/health-metrics/weight/history', 'daily', 'შენახული გაზომვები თარიღებით.'),
   feature('nutrition', 'კვება და მიზანი', '/nutrition', 'daily', 'დღის კალორიები, მაკრონუტრიენტები და შენახული კვების დღიური. არშეყვანილი საკვები უცნობია.'),
-  feature('nutrition_diary', 'კვების ჩაწერა', '/nutrition/diary', 'daily', 'ფოტოს შეფასება ან ხელით ჩაწერა და პორციის გადამოწმება.'),
+  feature('nutrition_diary', 'კვების ჩაწერა', '/nutrition/diary', 'daily', 'ფოტო, შტრიხკოდი, ეტიკეტი, ძებნა, შენახული საკვები ან სიტყვიერი აღწერა; პორციის გადამოწმება და შესწორება. ნათქვამი კვების ჩასაწერად nutrition_log მოქმედება.'),
   feature('nutrition_goal', 'კვების გეგმა', '/nutrition/goal', 'daily', 'წონის საერთო მიზანი, საჭირო მონაცემები, უსაფრთხოების გადამოწმება და დღის სამიზნე. კონკრეტული მიზნის გადასატანად nutrition_goal მოქმედება.'),
   feature('nutrition_plan', 'ჩემი რაციონი', '/nutrition/plan', 'daily', '7 დღის კერძები, ალტერნატივები და საყიდლების სია. მხოლოდ მივირთვი ღილაკი ან nutrition_eat წერს კვებას დღიურში.'),
   feature('nutrition_progress', 'კვების პროგრესი', '/nutrition/progress', 'daily', 'აღრიცხული კალორიებისა და წონის ცვლილება, არასრული დღეების ცალკე აღნიშვნით.'),
