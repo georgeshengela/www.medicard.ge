@@ -10,20 +10,35 @@ import {
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { ChevronRight, ClipboardList, FileHeart, MessageCircle, type LucideIcon } from 'lucide-react-native';
+import {
+  Activity,
+  CalendarCheck,
+  ChevronRight,
+  ClipboardList,
+  FileHeart,
+  FlaskConical,
+  HeartHandshake,
+  MessageCircle,
+  PawPrint,
+  Scale,
+  ScanFace,
+  ScanLine,
+  ShoppingBag,
+  Stethoscope,
+  Trophy,
+  Users,
+  type LucideIcon,
+} from 'lucide-react-native';
 import { Disclaimer } from '@/components/Disclaimer';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeAskMedi } from '@/components/home/HomeAskMedi';
 import { HomeCyclePreviewCard } from '@/components/home/HomeCyclePreviewCard';
 import { HomeDayRings, type DayRing } from '@/components/home/HomeDayRings';
-import { HomeDiscoverGrid } from '@/components/home/HomeDiscoverGrid';
-import {
-  HomeCommunityDiscovery,
-  HomeRunDiscovery,
-} from '@/components/home/HomeDiscoveryCards';
+import { HomeRunDiscovery } from '@/components/home/HomeDiscoveryCards';
+import { HomeNutritionCard } from '@/components/home/HomeNutritionCard';
+import { HubLinkRow, HubTileGrid, type HubTile } from '@/components/home/HubTiles';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HomeNextDoseSection } from '@/components/home/HomeNextDoseSection';
-import { HomeQuickActions } from '@/components/home/HomeQuickActions';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { normalizeAvatarForGender } from '@/constants/avatarAssets';
@@ -43,6 +58,24 @@ import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
 import { ka } from '@/i18n/ka';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
 import { analysisFromProfile } from '@/types/onboardingAnalysis';
+
+/** Four AI check-ups, one per question a person actually has. */
+const CHECKUP_TILES: HubTile[] = [
+  { key: 'symptoms', title: 'სიმპტომები', detail: 'აღწერე, რა და სად გაწუხებს', href: '/symptoms', icon: Stethoscope, ink: 'teal' },
+  { key: 'lab', title: 'ლაბორატორია', detail: 'ატვირთე ანალიზის პასუხი', href: '/module/lab', icon: FlaskConical, ink: 'blue' },
+  { key: 'imaging', title: 'გამოსახულება', detail: 'რენტგენი, ექო, MRI', href: '/module/imaging', icon: ScanLine, ink: 'sky' },
+  { key: 'skin', title: 'კანი', detail: 'ფოტოს შეფასება და მოვლა', href: '/module/skin', icon: ScanFace, ink: 'rose' },
+];
+
+/** Everything else a person manages here, one tile each, no duplicates of the blocks above. */
+const SERVICE_TILES: HubTile[] = [
+  { key: 'visits', title: 'ვიზიტები', detail: 'დაგეგმილი შეხვედრები', href: '/visits', icon: CalendarCheck, ink: 'teal' },
+  { key: 'weight', title: 'წონა და მიზანი', detail: 'ჩანაწერები და პროგრესი', href: '/health-metrics/weight', icon: Scale, ink: 'violet' },
+  { key: 'pets', title: 'ჩემი ცხოველები', detail: 'მოვლა და Medi Vet', href: '/pets', icon: PawPrint, ink: 'green' },
+  { key: 'pharmacy', title: 'აფთიაქი', detail: 'პროდუქტების მოძებნა', href: '/pharmacy', icon: ShoppingBag, ink: 'sky' },
+  { key: 'metrics', title: 'მაჩვენებლები', detail: 'ყველა გაზომვა ერთად', href: '/health-metrics', icon: Activity, ink: 'blue' },
+  { key: 'lab-history', title: 'ლაბ. ისტორია', detail: 'შედეგები დროთა განმავლობაში', href: '/lab', icon: FlaskConical, ink: 'neutral' },
+];
 
 /** "4 200" — Hermes has no ka-GE grouping, so group by hand. */
 const groupDigits = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -193,34 +226,58 @@ export default function Home() {
       </View>
     ),
     nextDose: <HomeNextDoseSection meds={meds} />,
-    actions: (
-      <View style={s.section}>
-        {heading('სწრაფი მოქმედებები', '/explore', 'ყველა')}
-        <HomeQuickActions />
-      </View>
-    ),
     cycle: (
       <View style={s.section}>
-        {heading(ka.cycle.title, '/cycle', 'ციკლის ნახვა')}
+        {heading('ქალის ჯანმრთელობა', '/cycle', 'ციკლის ნახვა')}
         <HomeCyclePreviewCard onPress={() => open('/cycle')} />
+        <HubLinkRow
+          icon={HeartHandshake}
+          ink="rose"
+          title="ქალების სივრცე"
+          detail="ჰკითხე, გაუზიარე და იპოვე მხარდაჭერა"
+          href="/community"
+          style={{ marginTop: 10 }}
+        />
       </View>
     ),
-    community: (
+    nutrition: (
       <View style={s.section}>
-        {heading('საზოგადოება')}
-        <HomeCommunityDiscovery />
+        {heading('კვება', '/nutrition/progress', 'პროგრესი')}
+        <HomeNutritionCard />
+      </View>
+    ),
+    checkup: (
+      <View style={s.section}>
+        {heading('შემოწმება AI-სთან')}
+        <HubTileGrid tiles={CHECKUP_TILES} />
+        <HubLinkRow
+          icon={Users}
+          ink="violet"
+          title="AI კონსილიუმი"
+          detail="რამდენიმე AI პერსპექტივა ერთად"
+          href="/chat/consilium"
+          style={{ marginTop: 12 }}
+        />
       </View>
     ),
     movement: (
       <View style={s.section}>
-        {heading('გაისეირნე დღეს')}
+        {heading('მოძრაობა')}
         <HomeRunDiscovery />
+        <HubLinkRow
+          icon={Trophy}
+          ink="amber"
+          title="MEDI QUEST"
+          detail="მისიები, პროგრესი და ჯილდოები"
+          href="/medi-quest"
+          style={{ marginTop: 12 }}
+        />
       </View>
     ),
-    discover: (
+    services: (
       <View style={s.section}>
-        {heading('აღმოაჩინე მეტი')}
-        <HomeDiscoverGrid />
+        {heading('სერვისები', '/explore', 'ყველა ფუნქცია')}
+        <HubTileGrid tiles={SERVICE_TILES} />
       </View>
     ),
     recentActivity: (

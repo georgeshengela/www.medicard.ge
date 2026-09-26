@@ -1,9 +1,10 @@
 /**
  * Home hub composition — order and presence only, no UI.
  *
- * Reading order follows what a person can act on right now:
- *   greet → today's rings → ask Medi → doses due → quick actions →
- *   women's health (opt-in) → movement → discover → history → legal
+ * Reading order follows what a person can act on right now, then what they
+ * come to MEDICARD for, grouped so each block has one job:
+ *   greet → today's rings → ask Medi → doses due → women's health (opt-in) →
+ *   nutrition → AI check-ups → movement → services → history → legal
  *
  * Stable and deterministic: no health scoring, promotional ranking, or device upsells.
  */
@@ -12,11 +13,11 @@ export type HomeSectionId =
   | 'hero'
   | 'ask'
   | 'nextDose'
-  | 'actions'
   | 'cycle'
-  | 'community'
+  | 'nutrition'
+  | 'checkup'
   | 'movement'
-  | 'discover'
+  | 'services'
   | 'recentActivity'
   | 'disclaimer';
 
@@ -25,16 +26,16 @@ const ORDER: readonly HomeSectionId[] = [
   'hero',
   'ask',
   'nextDose',
-  'actions',
   'cycle',
-  'community',
+  'nutrition',
+  'checkup',
   'movement',
-  'discover',
+  'services',
   'recentActivity',
   'disclaimer',
 ];
 
-const FEMALE_ONLY: ReadonlySet<HomeSectionId> = new Set(['cycle', 'community']);
+const FEMALE_ONLY: ReadonlySet<HomeSectionId> = new Set(['cycle']);
 
 export function buildHomeSectionOrder({
   includeCycle = false,
