@@ -725,7 +725,10 @@
     saveGroupState(map);
   }
 
+  let headerTab = null;
   function syncHeader(tab, copy) {
+    if (headerTab !== tab) setHeaderActions('');
+    headerTab = tab;
     const row = copy[tab];
     if (!row) return;
     const kicker = el('page-kicker');

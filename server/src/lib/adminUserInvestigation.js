@@ -1,3 +1,4 @@
+import { collectModuleUsage } from './adminProductUsage.js';
 import { prisma } from './prisma.js';
 import { APP_VERSION_POLICY } from './appVersionPolicy.js';
 import { ensureAppActivityTable } from './appActivity.js';
@@ -220,6 +221,7 @@ export async function getUserInvestigation(userId, range = {}, policy = APP_VERS
     audit,
     mediPeriodCount,
     locationRow,
+    moduleUsage,
   ] = await Promise.all([
     ignoreMissing(() => prisma.$queryRaw`
       SELECT "firstAt", "lastAt", "platform", "appVersion", "activityType", "date"
@@ -312,6 +314,7 @@ export async function getUserInvestigation(userId, range = {}, policy = APP_VERS
     listAdminAudit({ targetId: userId, limit: 40, offset: 0 }).catch(() => ({ entries: [] })),
     countMediInRange(userId, fromDt, toExclusiveDt),
     loadUserLocationRow(userId).catch(() => null),
+    collectModuleUsage(prisma, userId, fromDt, toExclusiveDt),
   ]);
 
   const decisions = await enrichDecisions(listed.decisions || [], policy);
@@ -371,6 +374,7 @@ export async function getUserInvestigation(userId, range = {}, policy = APP_VERS
   const weeklyPeriod = weeklyOpened.filter((row) => inRange(row.occurredAt, fromDt, toExclusiveDt)).length;
 
   const productUsage = {
+    ...moduleUsage,
     medi: featureRow({
       used: Boolean(mediAgg?._count?._all || chats.length),
       firstUsed: safeDate(mediFirst),
@@ -395,7 +399,7 @@ export async function getUserInvestigation(userId, range = {}, policy = APP_VERS
       lastUsed: healthFlags.hydration_last || null,
       periodCount: healthFlags.hydration_period || 0,
     }),
-    steps: featureRow({
+    step_tracking: featureRow({
       used: Number(healthFlags.steps_all) > 0,
       firstUsed: healthFlags.steps_first || null,
       lastUsed: healthFlags.steps_last || null,
@@ -421,7 +425,7 @@ export async function getUserInvestigation(userId, range = {}, policy = APP_VERS
     }),
   };
 
-  const healthKeys = ['medications', 'cycle', 'hydration', 'steps', 'weight', 'visits', 'weekly_report'];
+  const healthKeys = ['medications', 'cycle', 'hydration', 'step_tracking', 'weight', 'visits', 'weekly_report'];
   const healthUsed = healthKeys.filter((key) => productUsage[key].used);
 
   const suppressionReasons = {};

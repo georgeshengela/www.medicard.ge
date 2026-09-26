@@ -696,7 +696,9 @@
     const ov = profileExtra.investigation?.overview || {};
     const usageMap = profileExtra.investigation?.productUsage || {};
     const notes = profileExtra.investigation?.notifications || profileExtra.notifications || {};
-    const featUsed = Object.values(usageMap).filter((f) => f?.used).length;
+    const featureKeys = Object.keys(typeof FEATURE_USAGE_LABELS === 'object' ? FEATURE_USAGE_LABELS : {});
+    const featUsed = featureKeys.filter(key => usageMap[key]?.available !== false && usageMap[key]?.used).length;
+    const featUnknown = featureKeys.filter(key => !Object.hasOwn(usageMap, key) || usageMap[key]?.available === false).length;
     const featTotal = Object.keys(typeof FEATURE_USAGE_LABELS === 'object' ? FEATURE_USAGE_LABELS : {}).length || 8;
     const lastActiveAt = profileExtra.activity?.lastActiveAt || ov.lastActiveAt || null;
     const lastActive = lastActiveAt
@@ -759,25 +761,7 @@
             <option value="BLOCKED" ${user.status === 'BLOCKED' ? 'selected' : ''}>დაბლოკილი</option>
           </select>`,
         }) : ''}
-        ${V.field ? V.field({
-          id: 'edit-package',
-          label: 'თვიური პაკეტი',
-          control: `<select id="edit-package" class="v3-input">${pkgOptions}</select>`,
-          help: 'გადახდილი პაკეტი იწყებს ახალ პერიოდს',
-        }) : ''}
-        <div class="v3-user-edit-spacer" aria-hidden="true"></div>
-        ${V.field ? V.field({
-          id: 'edit-started',
-          label: 'პაკეტის დაწყება',
-          help: 'თბილისის კალენდარული დღე',
-          control: `<input id="edit-started" class="v3-input" type="date" value="${toDateInputTbilisi(user.packageStartedAt)}" ${isPaid ? '' : 'disabled'} />`,
-        }) : ''}
-        ${V.field ? V.field({
-          id: 'edit-expires',
-          label: 'პაკეტის ვადა',
-          help: 'თბილისის კალენდარული დღე',
-          control: `<input id="edit-expires" class="v3-input" type="date" value="${toDateInputTbilisi(user.packageExpiresAt)}" ${isPaid ? '' : 'disabled'} />`,
-        }) : ''}
+        <p class="v3-user-edit-full muted">წვდომა უფასოა — ფასიანი პაკეტის მინიჭება საჭირო არ არის.</p>
         ${V.field ? `<div class="v3-user-edit-full">${V.field({
           id: 'edit-note',
           label: 'ადმინ შენიშვნა',
@@ -822,8 +806,8 @@
             </div>
           </div>
           <div class="v3-user-hero-actions">
-            <button type="button" class="btn ghost compact" id="user-reset-usage">${ico('refresh')} ლიმიტის განულება</button>
-            ${isPaid ? `<button type="button" class="btn ghost compact" id="user-renew">${ico('calendar')} +30 დღე</button>` : ''}
+            <span class="muted">უფასო წვდომა</span>
+
           </div>
         </section>
 
@@ -849,7 +833,7 @@
             <span class="v3-user-kpi-copy">
               <span>პროდუქტი</span>
               <strong>${featUsed}<span class="v3-user-kpi-den"> / ${featTotal}</span></strong>
-              <em>მოდული გამოყენებული</em>
+              <em>მოდული გამოყენებული${featUnknown ? ` · ${featUnknown} უცნობია` : ''}</em>
             </span>
           </article>
           <article class="v3-user-kpi">
@@ -878,7 +862,7 @@
                 <h3>${ico('settings')} ანგარიშის რედაქტირება</h3>
                 ${V.infoButton ? V.infoButton('users.accountStatus') : ''}
               </div>
-              <p class="v3-user-edit-lead">სტატუსი, პაკეტი და შენიშვნა — ვადები თბილისის კალენდარული დღით.</p>
+              <p class="v3-user-edit-lead">საკონტაქტო მონაცემები, ანგარიშის სტატუსი და შიდა შენიშვნა.</p>
               ${formHtml}
             </div>
           </aside>
@@ -964,22 +948,12 @@
     });
 
     $('user-save')?.addEventListener('click', async () => {
-      const packageCode = $('edit-package')?.value;
-      const expiresRaw = $('edit-expires')?.value.trim() || '';
-      const startedRaw = $('edit-started')?.value.trim() || '';
       const body = {
         fullName: $('edit-name')?.value.trim(),
         email: $('edit-email')?.value.trim(),
         phone: $('edit-phone')?.value.trim() || null,
         gender: $('edit-gender')?.value || null,
         status: $('edit-status')?.value,
-        packageCode,
-        packageStartedAt: packageCode === 'FREE'
-          ? null
-          : (startedRaw ? packageDateToIso(startedRaw, false) : undefined),
-        packageExpiresAt: packageCode === 'FREE'
-          ? null
-          : (expiresRaw ? packageDateToIso(expiresRaw, true) : null),
         adminNote: $('edit-note')?.value.trim() || null,
       };
       const btn = $('user-save');

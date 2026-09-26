@@ -23,6 +23,11 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 const ICONS = {
+  image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m3 17 5-5 4 4 4-6 5 7"/>',
+  heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>',
+  map: '<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6ZM9 3v15M15 6v15"/>',
+  award: '<circle cx="12" cy="8" r="5"/><path d="m8 12-2 10 6-3 6 3-2-10"/>',
+
   layout: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
   users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
@@ -2356,11 +2361,26 @@ const USER_TABS = [
   ['audit', 'აუდიტი', 'shield'],
 ];
 const FEATURE_USAGE_LABELS = {
-  medi: 'Medi',
+  medi: 'Medi · AI გამოყენება',
+  assistant: 'მედი · შესრულებული მოქმედებები',
+  consilium: 'AI კონსილიუმი',
+  symptom_review: 'სიმპტომების განხილვა',
+  lab: 'ლაბორატორიული ანალიზი',
+  imaging: 'სამედიცინო გამოსახულება',
+  skin: 'კანის შეფასება',
+  skincare: 'კანის მოვლა',
+  records: 'შენახული ჩანაწერები',
+  pregnancy: 'ორსულობის აღრიცხვა',
+  medirun: 'MEDIRUN · სესიები',
+  quest: 'MEDI QUEST · დასრულებული მისიები',
+  pets: 'ჩემი ცხოველები',
+  medi_vet: 'Medi Vet · საუბრები',
+  nutrition: 'კვების დღიური',
+  community: 'ქალების სივრცე · გაწევრიანება',
   medications: 'მედიკამენტები',
   cycle: 'ციკლი',
   hydration: 'ჰიდრატაცია',
-  steps: 'ნაბიჯები',
+  step_tracking: 'ნაბიჯები',
   weight: 'წონა',
   visits: 'ვიზიტები',
   weekly_report: 'კვირის ანგარიში',
@@ -2368,11 +2388,15 @@ const FEATURE_USAGE_LABELS = {
 window.FEATURE_USAGE_LABELS = FEATURE_USAGE_LABELS;
 
 const FEATURE_USAGE_ICONS = {
+  assistant: 'spark', consilium: 'users', symptom_review: 'activity', lab: 'file',
+  imaging: 'image', skin: 'image', skincare: 'heart', records: 'file',
+  pregnancy: 'heart', medirun: 'map', quest: 'award', pets: 'heart',
+  medi_vet: 'spark', community: 'users',
   medi: 'spark',
   medications: 'pill',
   cycle: 'calendar',
   hydration: 'activity',
-  steps: 'zap',
+  step_tracking: 'zap',
   weight: 'activity',
   visits: 'calendar',
   weekly_report: 'file',
@@ -2458,14 +2482,16 @@ function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab)
       ${row('ბოლო აპის ვერსია', ov.appVersion || 'უცნობია', 'layers')}
       ${row('ნოტიფიკაციის ნებართვა', permKa(ov.notificationPermission), 'bell')}
     </div>`)}
-    ${sect('პროდუქტის ათვისება', 'layers', `<div class="v25-adopt">
+    ${sect('პროდუქტის ათვისება', 'layers', `<p class="adoption-explainer">დადასტურებული გამოყენება შენახული ჩანაწერებით. თარიღი — ბოლო ჩანაწერია; მისი არქონა გვერდის არგახსნას არ ნიშნავს. კატეგორიები შეიძლება გადაიკვეთოს.</p><div class="v25-adopt">
       ${Object.entries(FEATURE_USAGE_LABELS).map(([key, label]) => {
         const feat = usage[key] || {};
         const icoName = FEATURE_USAGE_ICONS[key] || 'activity';
-        const meta = feat.used ? (feat.lastUsed ? fmtDateShort(feat.lastUsed) : 'კი') : 'არა';
+        const available = Object.hasOwn(usage, key) && feat.available !== false;
+        const meta = !available ? 'მონაცემი მიუწვდომელია' : feat.used ? (feat.lastUsed ? fmtDateShort(feat.lastUsed) : 'გამოყენებულია') : 'ჯერ არ დაფიქსირებულა';
         return `<div class="v25-adopt-item${feat.used ? ' is-on' : ''}">
           <span class="v25-adopt-ico">${icon(icoName)}</span>
           <span class="v25-adopt-label">${escapeHtml(label)}</span>
+          <span class="v25-adopt-state">${!available ? 'უცნობია' : feat.used ? 'გამოყენებულია' : 'ჩანაწერი არ არის'}</span>
           <strong class="v25-adopt-meta">${escapeHtml(meta)}</strong>
         </div>`;
       }).join('')}
@@ -2505,18 +2531,19 @@ function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab)
   const usageRows = Object.entries(FEATURE_USAGE_LABELS).map(([key, label]) => {
     const feat = usage[key] || {};
     const active = feat.used && feat.lastUsed && (Date.now() - new Date(feat.lastUsed).getTime() < 86400000 * 2);
-    const status = !feat.used ? 'გამოუყენებელი' : active ? 'აქტიური' : 'გამოყენებული';
+    const available = Object.hasOwn(usage, key) && feat.available !== false;
+    const status = !available ? 'მიუწვდომელია' : !feat.used ? 'ჯერ არ დაფიქსირებულა' : active ? 'აქტიური' : 'გამოყენებული';
     const statusClass = !feat.used ? ' is-off' : (feat.used ? ' is-on' : '');
     const icoName = FEATURE_USAGE_ICONS[key] || 'activity';
     return `<div class="v25-feat-row">
       <div class="v25-feat-name"><b>${icon(icoName)} ${escapeHtml(label)}</b></div>
       <div class="v25-feat-status-cell"><span class="v25-feat-status${statusClass}">${status}</span></div>
       <div class="v25-feat-date"><em>${feat.lastUsed ? fmtDateShort(feat.lastUsed) : '—'}</em></div>
-      <div class="v25-feat-count"><em>${feat.periodCount ?? 0}</em></div>
+      <div class="v25-feat-count"><em>${available ? (feat.periodCount ?? 0) : '—'}</em></div>
     </div>`;
   }).join('');
   const usageHead = `<div class="v25-feat-head" aria-hidden="true">
-    <span>მოდული</span><span>სტატუსი</span><span>ბოლო გამოყენება</span><span>პერიოდი</span>
+    <span>მოდული</span><span>სტატუსი</span><span>ბოლო ჩანაწერი</span><span>პერიოდში</span>
   </div>`;
   const decisionList = notes.recentDecisions || extra.decisions || [];
   const decisions = decisionList.map((item) => `
