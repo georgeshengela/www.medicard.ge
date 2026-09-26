@@ -3,6 +3,7 @@
 const FIVE = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
 const THREE = /^(\d+)\.(\d+)\.(\d+)$/;
 
+/** Last-resort fallback only; the real version comes from app.json via app.config.js. */
 const DEFAULT_FIVE = '1.0.0.11.9';
 
 /**

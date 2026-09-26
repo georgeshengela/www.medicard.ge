@@ -171,7 +171,6 @@
     ],
     "extra": {
       "router": {},
-      "medicardInternalVersion": "1.0.0.11.23",
       "apiUrl": "https://medicard.ge",
       "privacyPolicyUrl": "https://medicard.ge/privacy",
       "termsOfServiceUrl": "https://medicard.ge/terms",

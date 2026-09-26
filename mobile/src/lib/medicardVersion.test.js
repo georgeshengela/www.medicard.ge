@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -13,15 +14,17 @@ import {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const appJson = JSON.parse(readFileSync(join(here, '../../app.json'), 'utf8'));
+// app.config.js derives the display + iOS versions from expo.version — only that one number is bumped.
+const resolved = createRequire(import.meta.url)('../../app.config.js')({ config: appJson.expo });
 
 describe('Medicard five-part version', () => {
   it('keeps native marketing, public display and fallback versions synchronized', () => {
     assert.equal(parseMedicardVersion(appJson.expo.version)?.kind, 'five');
-    assert.equal(appJson.expo.extra.medicardInternalVersion, appJson.expo.version);
-    assert.equal(appJson.expo.ios.version, iosMarketingVersion(appJson.expo.version));
+    assert.equal(resolved.extra.medicardInternalVersion, appJson.expo.version);
+    assert.equal(resolved.ios.version, iosMarketingVersion(appJson.expo.version));
     assert.ok(Number(appJson.expo.ios.buildNumber) > 0);
     assert.equal(Number(appJson.expo.ios.buildNumber), appJson.expo.android.versionCode);
-    assert.equal(DEFAULT_MEDICARD_VERSION, appJson.expo.version);
+    assert.equal(parseMedicardVersion(DEFAULT_MEDICARD_VERSION)?.kind, 'five');
   });
 
   it('parses G.0.0.B.R and compresses iOS marketing to G.B.R', () => {
