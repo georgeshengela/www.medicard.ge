@@ -4,7 +4,7 @@ import { useQuestDashboard } from '@/hooks/useQuestDashboard';
 import { useOffline } from '@/hooks/useOffline';
 import { QuestProfileCard } from './QuestProfileCard';
 
-export function HomeMediQuestSection({ edgeInset = 16 }: { edgeInset?: number }) {
+export function HomeMediQuestSection({ edgeInset = 16, hideTitle = false }: { edgeInset?: number; hideTitle?: boolean }) {
   const router = useRouter(), quest = useQuestDashboard(), offline = useOffline();
-  return <QuestProfileCard dashboard={quest.dashboard} loading={quest.loading} error={quest.error} stale={quest.stale || offline} edgeInset={edgeInset} onOpen={() => router.push('/medi-quest')} onRetry={() => void quest.refresh()} />;
+  return <QuestProfileCard dashboard={quest.dashboard} loading={quest.loading} error={quest.error} stale={quest.stale || offline} edgeInset={edgeInset} hideTitle={hideTitle} onOpen={() => router.push('/medi-quest')} onRetry={() => void quest.refresh()} />;
 }

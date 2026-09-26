@@ -10,14 +10,14 @@ import { levelRingProgress } from '@/lib/quest/logic.js';
 import { QCard, QText } from './QuestHubPrimitives';
 import { Bone } from '@/components/ui/Skeleton';
 
-export function QuestProfileCard({ dashboard, loading, error, stale, onOpen, onRetry, edgeInset = 16 }: { dashboard: QuestDashboard | null; loading: boolean; error: boolean; stale: boolean; onOpen: () => void; onRetry: () => void; edgeInset?: number }) {
+export function QuestProfileCard({ dashboard, loading, error, stale, onOpen, onRetry, edgeInset = 16, hideTitle = false }: { dashboard: QuestDashboard | null; loading: boolean; error: boolean; stale: boolean; onOpen: () => void; onRetry: () => void; edgeInset?: number; hideTitle?: boolean }) {
   const c = useThemeColors(), dark = useIsDark(), ink = dark ? '#5EEAD4' : '#0F766E';
   const profile = dashboard?.profile;
   const done = dashboard?.summary.dailyCompleted ?? 0, total = dashboard?.summary.dailyTotal ?? 0;
   const rewards = dashboard?.summary.unclaimedRewards ?? 0;
   return <View style={{ paddingHorizontal: edgeInset, gap: 9 }}>
-    <HomeSectionTitle title="MEDI QUEST" />
-    {loading && !dashboard ? <QCard><Bone width="65%" height={22} /><Bone height={78} radius={16} /></QCard> : <Pressable accessibilityRole="button" accessibilityLabel="MEDI QUEST — მისიები, პროგრესი და ჯილდოები" onPress={error && !dashboard ? onRetry : onOpen} className="active:opacity-90" style={{ borderRadius: 24, padding: 18, gap: 16, backgroundColor: c.surface, borderWidth: 1, borderColor: c.bg300 }}>
+    {hideTitle ? null : <HomeSectionTitle title="MEDI QUEST" />}
+    {loading && !dashboard ? <QCard><Bone width="65%" height={22} /><Bone height={78} radius={16} /></QCard> : <Pressable accessibilityRole="button" accessibilityLabel="MEDI QUEST — მისიები, პროგრესი და ჯილდოები" onPress={error && !dashboard ? onRetry : onOpen} className="active:opacity-90" style={{ borderRadius: 22, padding: 18, gap: 16, backgroundColor: c.surface }}>
       <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
         {profile ? <QuestLevelRing percent={levelRingProgress(profile).percent} label={String(profile.level)} size={66} accessibilityLabel={`დონე ${profile.level}`} /> : <View style={{ width: 54, height: 54, borderRadius: 18, backgroundColor: c.accent100, alignItems: 'center', justifyContent: 'center' }}><Flag size={25} color={ink} /></View>}
         <View style={{ flex: 1, gap: 3 }}><QText bold size={17}>{error && !dashboard ? 'განახლება ვერ მოხერხდა' : 'შენი ყოველდღიური პროგრესი'}</QText><QText size={12} muted>{error && !dashboard ? 'შეეხე ხელახლა საცდელად' : profile ? `დონე ${profile.level} · მისიები და ჯილდოები` : 'მისიები · ეტაპები · ჯილდოები'}</QText></View>

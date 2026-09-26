@@ -26,16 +26,16 @@ export function ProfileVersionCard() {
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        minHeight: 54,
-        paddingHorizontal: 14,
+        minHeight: 58,
+        paddingHorizontal: 16,
         paddingVertical: 10,
       }}
     >
       <View
         style={{
-          width: 34,
-          height: 34,
-          borderRadius: 10,
+          width: 40,
+          height: 40,
+          borderRadius: 13,
           backgroundColor: colors.accent100,
           alignItems: 'center',
           justifyContent: 'center',

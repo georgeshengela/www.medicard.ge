@@ -2,7 +2,8 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { useThemeColors } from '@/theme/colors';
+import { useIsDark, useThemeColors } from '@/theme/colors';
+import { hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 
 type Props = {
   icon: LucideIcon;
@@ -11,68 +12,58 @@ type Props = {
   onPress?: () => void;
   isLast?: boolean;
   danger?: boolean;
+  /** Tile colour from the hub palette; danger overrides it. */
+  ink?: HubInk;
 };
 
-export function ProfileMenuRow({ icon: Icon, label, value, onPress, isLast, danger }: Props) {
+/** One settings row in the hub language: tinted icon tile, label, optional value, chevron. */
+export function ProfileMenuRow({ icon: Icon, label, value, onPress, isLast, danger, ink = 'teal' }: Props) {
   const colors = useThemeColors();
-  const tint = danger ? colors.danger : colors.primary200;
+  const dark = useIsDark();
+  const tint = danger ? colors.danger : hubInk(ink, dark);
 
   return (
     <>
       <Pressable
         accessibilityRole={onPress ? 'button' : undefined}
+        accessibilityLabel={value ? `${label}: ${value}` : label}
         onPress={onPress}
         disabled={!onPress}
-        className="active:opacity-70"
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          minHeight: 54,
-          paddingHorizontal: 14,
+          minHeight: 58,
+          paddingHorizontal: 16,
           paddingVertical: 10,
+          gap: 12,
         }}
       >
         <View
           style={{
-            width: 34,
-            height: 34,
-            borderRadius: 10,
-            backgroundColor: `${tint}14`,
+            width: 40,
+            height: 40,
+            borderRadius: 13,
+            backgroundColor: danger ? colors.dangerBg : hubTint(tint, dark),
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Icon size={18} color={tint} strokeWidth={2.1} />
+          <Icon size={19} color={tint} strokeWidth={1.9} />
         </View>
         <Text
-          numberOfLines={1}
-          style={{
-            flex: 1,
-            marginLeft: 12,
-            fontFamily: 'NotoSansGeorgian_600SemiBold',
-            fontSize: 15,
-            color: danger ? colors.danger : colors.text100,
-          }}
+          numberOfLines={2}
+          style={[hubText.cardTitle, { flex: 1, fontSize: 14, lineHeight: 20, color: danger ? colors.danger : colors.text100 }]}
         >
           {label}
         </Text>
         {value ? (
-          <Text
-            numberOfLines={1}
-            style={{
-              maxWidth: 120,
-              marginRight: 6,
-              fontFamily: 'NotoSansGeorgian_400Regular',
-              fontSize: 13,
-              color: colors.text300,
-            }}
-          >
+          <Text numberOfLines={1} style={[hubText.caption, { maxWidth: 130, color: colors.text300 }]}>
             {value}
           </Text>
         ) : null}
-        {onPress ? <ChevronRight size={18} color={colors.text300} strokeWidth={2.1} /> : null}
+        {onPress ? <ChevronRight size={17} color={colors.text300} strokeWidth={2} /> : null}
       </Pressable>
-      {isLast ? null : <View style={{ height: 1, backgroundColor: colors.bg300, marginLeft: 60 }} />}
+      {isLast ? null : <View style={{ height: 1, backgroundColor: colors.bg300, marginLeft: 68 }} />}
     </>
   );
 }

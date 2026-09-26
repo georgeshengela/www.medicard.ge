@@ -1,28 +1,28 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
   BellRing,
   FileText,
+  Link2,
+  Lock,
   LogOut,
   Mail,
   MessageSquareText,
   Pill,
   Save,
-  Scale,
-  Sparkles,
   ShieldCheck,
+  Sparkles,
   Trash2,
+  type LucideIcon,
 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
 import { GenderSelect } from '@/components/ui/GenderSelect';
 import { ThemeSelect } from '@/components/ui/ThemeSelect';
 import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeLandingSelect } from '@/components/home/HomeLandingSelect';
-import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
-import { ProfileStreakCard } from '@/components/check-in/ProfilePointsCard';
+import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
 import { DeleteAccountModal } from '@/components/profile/DeleteAccountModal';
@@ -48,7 +48,8 @@ import {
   setPushOptedIn,
 } from '@/lib/notifications';
 import { getCyclePromptSeen } from '@/lib/homeScreenPrefs';
-import { useThemeColors } from '@/theme/colors';
+import { useIsDark, useThemeColors } from '@/theme/colors';
+import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { livingPlaceLine } from '@/lib/userLocation';
 import { useAuth } from '@/store/AuthContext';
 import { requestQuestRefresh } from '@/lib/quest/cache';
@@ -68,11 +69,10 @@ function optionLabel(group: 'smokingStatus' | 'chronicConditions', key: string):
 }
 
 export default function Profile() {
-  const { user, stats, refresh, signOut, deleteAccount, healthProfile, setUser } = useAuth();
+  const { user, stats, refresh, signOut, deleteAccount, healthProfile } = useAuth();
   const colors = useThemeColors();
   const tabInset = useTabBarInset();
   const router = useRouter();
-
 
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
@@ -107,19 +107,18 @@ export default function Profile() {
   const openNotificationSettings = async () => {
     const alreadyOn = await isNotificationsEnabled();
     if (alreadyOn) {
-      router.push('/profile/permissions');
+      router.push('/profile/notifications');
       return;
     }
-
+    // Permission is requested here, from the tap, never from an effect.
     const asked = await requestNotificationPermission();
     if (asked) {
       await setPushOptedIn(true);
       await registerPushTokenWithServer({ skipPermissionProbe: true }).catch(() => undefined);
       setNotificationsOn(await isNotificationsEnabled());
-      router.push('/profile/permissions');
+      router.push('/profile/notifications');
       return;
     }
-
     setNotificationsOn(await isNotificationsEnabled());
     Alert.alert(ka.profile.notifications, ka.meds.notificationsDenied, [
       { text: ka.common.cancel, style: 'cancel' },
@@ -140,10 +139,7 @@ export default function Profile() {
       await deleteAccount();
       setDeleteOpen(false);
     } catch (error) {
-      Alert.alert(
-        ka.profile.deleteAccount,
-        error instanceof ApiError ? error.message : ka.profile.deleteAccountFailed,
-      );
+      Alert.alert(ka.profile.deleteAccount, error instanceof ApiError ? error.message : ka.profile.deleteAccountFailed);
     } finally {
       setDeleteBusy(false);
     }
@@ -158,16 +154,11 @@ export default function Profile() {
 
   const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
   const storedAvatar = typeof extra.avatarId === 'string' ? extra.avatarId : null;
-  const avatarId = storedAvatar
-    ? normalizeAvatarForGender(storedAvatar, user?.gender ?? null)
-    : null;
+  const avatarId = storedAvatar ? normalizeAvatarForGender(storedAvatar, user?.gender ?? null) : null;
   const avatarSource = avatarId && isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : null;
 
   const bmi = healthProfile?.bmi ?? bmiFromWeight(healthProfile?.weightKg, healthProfile?.heightCm);
-  const smoking =
-    healthProfile?.smokingStatus != null
-      ? optionLabel('smokingStatus', healthProfile.smokingStatus)
-      : null;
+  const smoking = healthProfile?.smokingStatus != null ? optionLabel('smokingStatus', healthProfile.smokingStatus) : null;
   const allergyLabels = (healthProfile?.allergies ?? [])
     .filter((item) => item && item !== 'none')
     .map((item) => optionLabel('chronicConditions', item));
@@ -175,275 +166,205 @@ export default function Profile() {
     .filter((item) => item && item !== 'none')
     .map((item) => optionLabel('chronicConditions', item));
 
+  const facts: { label: string; value: string }[] = [];
+  if (user?.gender) facts.push({ label: ka.auth.gender, value: GENDER_LABELS[user.gender] });
+  if (user?.age != null) facts.push({ label: ka.profile.age, value: `${user.age} ${ka.profile.years}` });
+  if (user?.birthDate) facts.push({ label: ka.auth.birthDate, value: isoToDisplay(user.birthDate) || '' });
+  if (healthProfile?.heightCm != null)
+    facts.push({
+      label: ka.profile.height,
+      value:
+        extra.heightUnit === 'ft'
+          ? formatHeightInches(cmToInches(healthProfile.heightCm))
+          : `${Math.round(healthProfile.heightCm)} ${ka.profile.cm}`,
+    });
+  if (healthProfile?.weightKg != null) {
+    const shown = displayWeightForUnit(healthProfile.weightKg, extra.weightUnit === 'lbs' ? 'lbs' : 'kg');
+    facts.push({ label: ka.profile.weight, value: `${shown.value} ${shown.unitLabel === 'lbs' ? ka.assessment.lbs : ka.profile.kg}` });
+  }
+  if (bmi != null) facts.push({ label: ka.profile.bmi, value: `${bmi.toFixed(1)} · ${ka.home.bmi.categories[bmiCategory(bmi)]}` });
+  if (healthProfile?.bloodType) facts.push({ label: ka.profile.bloodType, value: healthProfile.bloodType });
+  if (smoking) facts.push({ label: ka.profile.smoking, value: smoking });
+  if (allergyLabels.length) facts.push({ label: ka.profile.allergies, value: allergyLabels.join(', ') });
+  if (conditionLabels.length) facts.push({ label: ka.profile.conditions, value: conditionLabels.join(', ') });
+
+  const hasMedical = Boolean(user?.gender && user?.birthDate);
+
   return (
     <ScrollView
-      className="flex-1 bg-bg-100"
-      style={{ backgroundColor: colors.bg100 }}
-      contentContainerStyle={{ paddingBottom: tabInset }}
-      contentContainerClassName="px-4 pt-3"
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary200} />}
+      style={{ flex: 1, backgroundColor: colors.bg100 }}
+      contentContainerStyle={{ paddingBottom: tabInset, paddingTop: 6, width: '100%', maxWidth: 760, alignSelf: 'center' }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary100} />}
       showsVerticalScrollIndicator={false}
     >
-      <Card>
-        <View className="flex-row items-center">
-          <View
-            style={{
-              width: 76,
-              height: 76,
-              borderRadius: 38,
-              padding: 3,
-              backgroundColor: profileAccent ? '#F59E0B' : `${colors.primary200}33`,
-              borderWidth: profileAccent ? 2 : 0,
-              borderColor: profileAccent ? '#B45309' : 'transparent',
-            }}
-            accessibilityLabel={profileAccent ? rewards.title + ' accent' : undefined}
-          >
+      {/* Identity */}
+      <View style={[s.section, { marginTop: 8 }]}>
+        <View style={[s.card, { backgroundColor: colors.surface, gap: 16 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <View
+              accessibilityLabel={profileAccent ? `${rewards.title} accent` : undefined}
               style={{
-                flex: 1,
-                borderRadius: 35,
-                overflow: 'hidden',
-                backgroundColor: colors.accent100,
-                alignItems: 'center',
-                justifyContent: 'center',
+                width: 72,
+                height: 72,
+                borderRadius: 36,
+                padding: 3,
+                backgroundColor: profileAccent ? '#F59E0B' : colors.accent100,
               }}
             >
-              {avatarSource ? (
-                <Image
-                  source={avatarSource}
-                  resizeMode="contain"
-                  style={{ width: 70, height: 70, borderRadius: 35 }}
-                />
-              ) : (
-                <Text className="text-xl font-bold text-primary-100">{initials || '·'}</Text>
-              )}
+              <View style={{ flex: 1, borderRadius: 33, overflow: 'hidden', backgroundColor: colors.accent100, alignItems: 'center', justifyContent: 'center' }}>
+                {avatarSource ? (
+                  <Image source={avatarSource} resizeMode="contain" style={{ width: 66, height: 66, borderRadius: 33 }} />
+                ) : (
+                  <Text style={[hubText.value, { fontSize: 20, color: colors.primary100 }]}>{initials || '·'}</Text>
+                )}
+              </View>
             </View>
-          </View>
-          <View className="ml-3.5 flex-1">
-            <Text
-              style={{
-                fontFamily: 'NotoSansGeorgian_700Bold',
-                fontSize: 20,
-                lineHeight: 26,
-                color: colors.text100,
-              }}
-            >
-              {user?.fullName}
-            </Text>
-            {livingPlaceLine(healthProfile) ? (
-              <Text
-                style={{
-                  marginTop: 4,
-                  fontFamily: 'NotoSansGeorgian_500Medium',
-                  fontSize: 13,
-                  lineHeight: 18,
-                  color: colors.text200,
-                }}
-              >
-                {livingPlaceLine(healthProfile)}
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <Text numberOfLines={2} style={[s.name, { color: colors.text100 }]}>
+                {user?.fullName}
               </Text>
-            ) : null}
-            <View className="mt-2 flex-row flex-wrap items-center" style={{ gap: 8 }}>
+              {livingPlaceLine(healthProfile) ? (
+                <Text numberOfLines={1} style={[hubText.caption, { color: colors.text200 }]}>
+                  {livingPlaceLine(healthProfile)}
+                </Text>
+              ) : null}
               {user?.createdAt ? (
-                <Text className="text-xs text-text-300">
+                <Text numberOfLines={1} style={[hubText.small, { color: colors.text300 }]}>
                   {ka.profile.memberSince} {formatDate(user.createdAt)}
                 </Text>
               ) : null}
             </View>
           </View>
-        </View>
-
-        <View className="mt-4" style={{ gap: 10 }}>
-          {user?.phone ? <HeroFact label={ka.profile.phone} value={user.phone} /> : null}
-          {user?.email ? <HeroFact label={ka.profile.email} value={user.email} /> : null}
-        </View>
-      </Card>
-
-      <ProfileStreakCard
-        currentStreak={user?.currentStreak ?? 0}
-        onPress={() => router.push('/profile/streak')}
-      />
-
-      <View style={{ position: 'relative', marginTop: 8 }}>
-        <HomeMediQuestSection edgeInset={0} />
-      </View>
-
-      {user?.gender === 'FEMALE' && <Pressable accessibilityRole="button" onPress={() => router.push('/community' as never)} style={{ marginTop: 20, padding: 20, borderRadius: 24, backgroundColor: colors.accent100, gap: 8 }}><Text style={{ color: colors.primary100, fontSize: 19, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>ქალების სივრცე</Text><Text style={{ color: colors.text200, fontSize: 13, lineHeight: 21 }}>შენი ამბავი, შენი არჩევანი — გაუზიარე გამოცდილება სახელით ან ანონიმურად.</Text><Text style={{ color: colors.primary100, fontSize: 13 }}>შემოუერთდი საუბარს →</Text></Pressable>}
-      <ProfilePetsSection />
-
-      <View className="mt-5">
-        <HomeSectionTitle title={ka.profile.appearance} />
-        <Card>
-          <ThemeSelect />
-        </Card>
-      </View>
-
-      {user?.gender === 'FEMALE' ? (
-        <View className="mt-5">
-          <HomeSectionTitle title={ka.profile.homeLandingTitle} />
-          <Card>
-            <HomeLandingSelect />
-          </Card>
-        </View>
-      ) : null}
-
-      <View className="mt-5">
-        <HomeSectionTitle title={ka.profile.medicalProfile} />
-        {user?.gender && user?.birthDate && !editingMedical ? (
-          <Card>
-            <FactRow label={ka.auth.gender} value={GENDER_LABELS[user.gender]} />
-            <FactRow label={ka.profile.age} value={`${user.age ?? '·'} ${ka.profile.years}`} />
-            <FactRow label={ka.auth.birthDate} value={(isoToDisplay(user.birthDate) || '')} />
-            {healthProfile?.heightCm != null ? (
-              <FactRow
-                label={ka.profile.height}
-                value={
-                  extra.heightUnit === 'ft'
-                    ? formatHeightInches(cmToInches(healthProfile.heightCm))
-                    : `${Math.round(healthProfile.heightCm)} ${ka.profile.cm}`
-                }
-              />
-            ) : null}
-            {healthProfile?.weightKg != null ? (
-              <FactRow
-                label={ka.profile.weight}
-                value={(() => {
-                  const shown = displayWeightForUnit(
-                    healthProfile.weightKg,
-                    extra.weightUnit === 'lbs' ? 'lbs' : 'kg',
-                  );
-                  return `${shown.value} ${shown.unitLabel === 'lbs' ? ka.assessment.lbs : ka.profile.kg}`;
-                })()}
-              />
-            ) : null}
-            {bmi != null ? (
-              <FactRow
-                label={ka.profile.bmi}
-                value={`${bmi.toFixed(1)} · ${ka.home.bmi.categories[bmiCategory(bmi)]}`}
-              />
-            ) : null}
-            {bmi != null ? <MedicalSourcesLink sourceIds={['bmi']} /> : null}
-            {healthProfile?.bloodType ? (
-              <FactRow label={ka.profile.bloodType} value={healthProfile.bloodType} last={!smoking && !allergyLabels.length && !conditionLabels.length} />
-            ) : null}
-            {smoking ? <FactRow label={ka.profile.smoking} value={smoking} last={!allergyLabels.length && !conditionLabels.length} /> : null}
-            {allergyLabels.length ? (
-              <FactRow label={ka.profile.allergies} value={allergyLabels.join(', ')} last={!conditionLabels.length} />
-            ) : null}
-            {conditionLabels.length ? (
-              <FactRow label={ka.profile.conditions} value={conditionLabels.join(', ')} last />
-            ) : null}
-            <View className="mt-3">
-              <Button
-                label={ka.profile.editMedical}
-                variant="ghost"
-                size="sm"
-                icon={Scale}
-                onPress={() => setEditingMedical(true)}
-              />
+          {user?.email || user?.phone ? (
+            <View style={{ gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.bg300, paddingTop: 12 }}>
+              {user?.email ? <Fact label={ka.profile.email} value={user.email} /> : null}
+              {user?.phone ? <Fact label={ka.profile.phone} value={user.phone} /> : null}
             </View>
-          </Card>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Stats: three doors, not three numbers */}
+      <View style={s.section}>
+        <HomeSectionHeading title={ka.profile.stats} />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <StatTile icon={FileText} ink="teal" value={stats?.records ?? 0} label={ka.profile.statRecords} onPress={() => router.push('/(tabs)/records')} />
+          <StatTile icon={MessageSquareText} ink="blue" value={stats?.chats ?? 0} label={ka.profile.statChats} onPress={() => router.push('/(tabs)/records')} />
+          <StatTile icon={Pill} ink="violet" value={stats?.activeMedications ?? 0} label={ka.profile.statMeds} onPress={() => router.push('/(tabs)/medications')} />
+        </View>
+      </View>
+
+      {/* Quest */}
+      <View style={s.section}>
+        <HomeSectionHeading title="MEDI QUEST" />
+        <HomeMediQuestSection edgeInset={0} hideTitle />
+      </View>
+
+      {/* Pets */}
+      <View style={s.section}>
+        <HomeSectionHeading title="ჩემი ცხოველები" linkLabel="ყველას ნახვა" onLink={() => router.push('/pets')} />
+        <ProfilePetsSection hideTitle />
+      </View>
+
+      {/* Medical profile */}
+      <View style={s.section}>
+        <HomeSectionHeading
+          title={ka.profile.medicalProfile}
+          linkLabel={hasMedical && !editingMedical ? ka.profile.editMedical : undefined}
+          onLink={hasMedical && !editingMedical ? () => setEditingMedical(true) : undefined}
+        />
+        {hasMedical && !editingMedical ? (
+          <View style={[s.card, { backgroundColor: colors.surface, paddingVertical: 4 }]}>
+            {facts.map((fact, index) => (
+              <View key={fact.label}>
+                <View style={[s.factRow, index ? { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.bg300 } : null]}>
+                  <Text style={[hubText.body, { color: colors.text200, flex: 1 }]}>{fact.label}</Text>
+                  <Text style={[hubText.cardTitle, { color: colors.text100, maxWidth: '60%', textAlign: 'right', fontSize: 14, lineHeight: 20 }]}>
+                    {fact.value}
+                  </Text>
+                </View>
+                {fact.label === ka.profile.bmi ? (
+                  <View style={{ paddingBottom: 6 }}>
+                    <MedicalSourcesLink sourceIds={['bmi']} />
+                  </View>
+                ) : null}
+              </View>
+            ))}
+          </View>
         ) : (
           <MedicalProfileCard
             onFemaleSaved={() => setShowCyclePrompt(true)}
             onSaved={() => setEditingMedical(false)}
-            allowCancel={Boolean(user?.gender && user?.birthDate)}
+            allowCancel={hasMedical}
             onCancel={() => setEditingMedical(false)}
           />
         )}
       </View>
 
-      <View className="mt-5">
-        <HomeSectionTitle title={ka.profile.stats} />
-        <View className="flex-row">
-          <StatTile icon={FileText} value={stats?.records ?? 0} label={ka.profile.statRecords} />
-          <View className="w-2.5" />
-          <StatTile icon={MessageSquareText} value={stats?.chats ?? 0} label={ka.profile.statChats} />
-          <View className="w-2.5" />
-          <StatTile icon={Pill} value={stats?.activeMedications ?? 0} label={ka.profile.statMeds} />
+      {/* Settings */}
+      <View style={s.section}>
+        <HomeSectionHeading title={ka.profile.settings} />
+        <View style={{ gap: 12 }}>
+          <View style={[s.card, { backgroundColor: colors.surface, gap: 10 }]}>
+            <Text style={[hubText.caption, { color: colors.text200 }]}>{ka.profile.appearance}</Text>
+            <ThemeSelect />
+          </View>
+          {user?.gender === 'FEMALE' ? (
+            <View style={[s.card, { backgroundColor: colors.surface, gap: 10 }]}>
+              <Text style={[hubText.caption, { color: colors.text200 }]}>{ka.profile.homeLandingTitle}</Text>
+              <HomeLandingSelect />
+            </View>
+          ) : null}
+          <View style={[s.list, { backgroundColor: colors.surface }]}>
+            <ProfileMenuRow
+              icon={BellRing}
+              ink="amber"
+              label={ka.profile.notifications}
+              value={notificationsOn == null ? undefined : notificationsOn ? ka.meds.notificationsEnabled : ka.profile.notificationsOff}
+              onPress={() => void openNotificationSettings()}
+            />
+            <ProfileMenuRow icon={Link2} ink="sky" label={ka.profile.permissions} onPress={() => router.push('/profile/permissions')} />
+            <ProfileMenuRow
+              icon={Sparkles}
+              ink="violet"
+              label={ka.profile.aiEngine}
+              value={
+                user?.aiEngine === 'ling_free'
+                  ? ka.profile.aiEngineLing
+                  : user?.aiEngine === 'evidencemd'
+                    ? ka.profile.aiEngineEvidence
+                    : ka.profile.aiEngineGemini
+              }
+              onPress={() => router.push('/profile/ai')}
+            />
+            <ProfileMenuRow icon={ShieldCheck} ink="teal" label="AI და კონფიდენციალურობა" onPress={() => router.push('/profile/ai-data')} isLast />
+          </View>
         </View>
       </View>
 
-<View className="mt-5">
-        <HomeSectionTitle title={ka.profile.settings} />
-        <Card padded={false}>
-          <ProfileMenuRow icon={ShieldCheck} label="კონფიდენციალობა და მონაცემები" onPress={() => router.push('/profile/ai-data')} />
-          <ProfileMenuRow
-            icon={ShieldCheck}
-            label={ka.profile.permissions}
-            onPress={() => router.push('/profile/permissions')}
-          />
-          <ProfileMenuRow
-            icon={Sparkles}
-            label={ka.profile.aiEngine}
-            value={
-              user?.aiEngine === 'ling_free'
-                ? ka.profile.aiEngineLing
-                : user?.aiEngine === 'evidencemd'
-                  ? ka.profile.aiEngineEvidence
-                  : ka.profile.aiEngineGemini
-            }
-            onPress={() => router.push('/profile/ai')}
-          />
-          <ProfileMenuRow
-            icon={BellRing}
-            label={ka.profile.notifications}
-            value={
-              notificationsOn == null
-                ? undefined
-                : notificationsOn
-                  ? ka.meds.notificationsEnabled
-                  : ka.profile.notificationsOff
-            }
-            onPress={() => router.push('/profile/notifications')}
-            isLast
-          />
-        </Card>
-      </View>
-
-      <View className="mt-5">
-        <HomeSectionTitle title={ka.profile.legal} />
-        <Card padded={false}>
-          <ProfileMenuRow
-            icon={ShieldCheck}
-            label={ka.profile.privacyPolicy}
-            onPress={() => router.push('/profile/privacy')}
-          />
-          <ProfileMenuRow
-            icon={FileText}
-            label={ka.profile.terms}
-            onPress={() => router.push('/profile/terms')}
-          />
-          <ProfileMenuRow
-            icon={Mail}
-            label={ka.profile.support}
-            value={ka.profile.supportEmail}
-            onPress={() => void Linking.openURL(SUPPORT_MAILTO)}
-            isLast
-          />
-        </Card>
-      </View>
-
-      <View className="mt-5">
-        <HomeSectionTitle title={ka.profile.about} />
-        <Card padded={false}>
+      {/* App */}
+      <View style={s.section}>
+        <HomeSectionHeading title="აპლიკაცია" />
+        <View style={[s.list, { backgroundColor: colors.surface }]}>
+          <ProfileMenuRow icon={Lock} ink="neutral" label={ka.profile.privacyPolicy} onPress={() => router.push('/profile/privacy')} />
+          <ProfileMenuRow icon={FileText} ink="neutral" label={ka.profile.terms} onPress={() => router.push('/profile/terms')} />
+          <ProfileMenuRow icon={Mail} ink="neutral" label={ka.profile.support} value={ka.profile.supportEmail} onPress={() => void Linking.openURL(SUPPORT_MAILTO)} />
           <ProfileVersionCard />
-        </Card>
-      </View>
-
-      <View className="mt-5">
-        <Button label={ka.auth.signOut} icon={LogOut} variant="danger" onPress={confirmSignOut} />
-        <View className="mt-3">
-          <Button
-            label={ka.profile.deleteAccount}
-            icon={Trash2}
-            variant="ghost"
-            onPress={() => setDeleteOpen(true)}
-          />
         </View>
       </View>
 
-      <Text className="mt-6 text-center text-xs leading-5 text-text-300">{ka.app.disclaimer}</Text>
+      {/* Account */}
+      <View style={s.section}>
+        <HomeSectionHeading title={ka.profile.account} />
+        <View style={[s.list, { backgroundColor: colors.surface }]}>
+          <ProfileMenuRow icon={LogOut} danger label={ka.auth.signOut} onPress={confirmSignOut} />
+          <ProfileMenuRow icon={Trash2} danger label={ka.profile.deleteAccount} onPress={() => setDeleteOpen(true)} isLast />
+        </View>
+      </View>
+
+      <Text style={[hubText.small, { color: colors.text300, textAlign: 'center', marginTop: 24, paddingHorizontal: HUB.gutter }]}>
+        {ka.app.disclaimer}
+      </Text>
 
       <DefaultHomePrompt visible={showCyclePrompt} onClose={() => setShowCyclePrompt(false)} />
       <DeleteAccountModal
@@ -456,39 +377,47 @@ export default function Profile() {
   );
 }
 
-function HeroFact({ label, value }: { label: string; value: string }) {
+function Fact({ label, value }: { label: string; value: string }) {
   const colors = useThemeColors();
   return (
-    <View className="flex-row items-center justify-between">
-      <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: colors.text300 }}>
-        {label}
-      </Text>
-      <Text
-        numberOfLines={1}
-        style={{
-          flex: 1,
-          marginLeft: 12,
-          textAlign: 'right',
-          fontFamily: 'NotoSansGeorgian_600SemiBold',
-          fontSize: 13,
-          color: colors.text100,
-        }}
-      >
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <Text style={[hubText.caption, { color: colors.text300 }]}>{label}</Text>
+      <Text numberOfLines={1} style={[hubText.link, { flex: 1, textAlign: 'right', color: colors.text100 }]}>
         {value}
       </Text>
     </View>
   );
 }
 
-function FactRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+function StatTile({
+  icon: Icon,
+  ink,
+  value,
+  label,
+  onPress,
+}: {
+  icon: LucideIcon;
+  ink: HubInk;
+  value: number;
+  label: string;
+  onPress: () => void;
+}) {
+  const colors = useThemeColors();
+  const dark = useIsDark();
+  const inkHex = hubInk(ink, dark);
   return (
-    <>
-      <View className="flex-row items-center">
-        <Text className="flex-1 text-base text-text-200">{label}</Text>
-        <Text className="max-w-[58%] text-right text-base font-bold text-text-100">{value}</Text>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${value} ${label}`}
+      onPress={onPress}
+      style={[s.stat, { backgroundColor: colors.surface }]}
+    >
+      <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: hubTint(inkHex, dark) }}>
+        <Icon size={18} color={inkHex} strokeWidth={2} />
       </View>
-      {last ? null : <View className="my-3 h-px bg-bg-300" />}
-    </>
+      <Text style={[hubText.value, { fontSize: 22, lineHeight: 28, color: colors.text100 }]}>{value}</Text>
+      <Text numberOfLines={1} style={[hubText.small, { color: colors.text200 }]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -504,6 +433,7 @@ function MedicalProfileCard({
   onCancel?: () => void;
 }) {
   const { user, updateProfile } = useAuth();
+  const colors = useThemeColors();
 
   const [gender, setGender] = useState<Gender | null>(user?.gender ?? null);
   const [birthDate, setBirthDate] = useState(user?.birthDate ? (isoToDisplay(user.birthDate) || '') : '');
@@ -513,13 +443,10 @@ function MedicalProfileCard({
   const save = async () => {
     const next: typeof errors = {};
     if (!gender) next.gender = ka.auth.selectGender;
-
     const parsed = parseBirthDate(birthDate);
     if (!parsed.ok) next.birthDate = parsed.error;
-
     setErrors(next);
     if (!gender || !parsed.ok) return;
-
     setBusy(true);
     try {
       await updateProfile({ gender, birthDate: parsed.iso });
@@ -536,11 +463,12 @@ function MedicalProfileCard({
   };
 
   return (
-    <Card>
-      <Text className="text-base font-bold text-text-100">{ka.profile.completeProfile}</Text>
-      <Text className="mt-1 text-sm leading-5 text-text-300">{ka.profile.completeProfileBody}</Text>
-
-      <View className="mt-4 gap-4">
+    <View style={[s.card, { backgroundColor: colors.surface, gap: 14 }]}>
+      <View style={{ gap: 4 }}>
+        <Text style={[hubText.cardTitle, { color: colors.text100 }]}>{ka.profile.completeProfile}</Text>
+        <Text style={[hubText.caption, { color: colors.text200 }]}>{ka.profile.completeProfileBody}</Text>
+      </View>
+      <View style={{ gap: 14 }}>
         <GenderSelect
           label={ka.auth.gender}
           value={gender}
@@ -550,47 +478,30 @@ function MedicalProfileCard({
           }}
           error={errors.gender}
         />
-
-        <DateField
-          label={ka.auth.birthDate}
-          value={birthDate}
-          onChangeText={setBirthDate}
-          error={errors.birthDate}
-        />
+        <DateField label={ka.auth.birthDate} value={birthDate} onChangeText={setBirthDate} error={errors.birthDate} />
       </View>
-
-      {errors.form ? <Text className="mt-3 text-sm text-state-danger">{errors.form}</Text> : null}
-
-      <View className="mt-4">
+      {errors.form ? <Text style={[hubText.caption, { color: colors.danger }]}>{errors.form}</Text> : null}
+      <View style={{ gap: 8 }}>
         <Button label={ka.profile.save} icon={Save} loading={busy} onPress={save} />
-        {allowCancel ? (
-          <View className="mt-2">
-            <Button label={ka.common.cancel} variant="ghost" onPress={onCancel} />
-          </View>
-        ) : null}
+        {allowCancel ? <Button label={ka.common.cancel} variant="ghost" onPress={onCancel} /> : null}
       </View>
-    </Card>
-  );
-}
-
-function StatTile({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: typeof FileText;
-  value: number;
-  label: string;
-}) {
-  const colors = useThemeColors();
-
-  return (
-    <View className="flex-1 items-center rounded-2xl border border-bg-300 bg-surface py-4">
-      <View className="h-9 w-9 items-center justify-center rounded-xl bg-accent-100">
-        <Icon size={18} color={colors.primary200} strokeWidth={2.1} />
-      </View>
-      <Text className="mt-1.5 text-xl font-bold text-text-100">{value}</Text>
-      <Text className="text-xs text-text-300">{label}</Text>
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  section: { paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap },
+  card: { borderRadius: HUB.cardRadius, padding: HUB.cardPad },
+  list: { borderRadius: HUB.cardRadius, overflow: 'hidden' },
+  name: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 27 },
+  factRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13 },
+  stat: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    gap: 6,
+  },
+});
