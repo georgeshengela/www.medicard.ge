@@ -30,6 +30,43 @@ const MODIFIER_ALIASES_GEO = {
   rapid: ['რაპიდი', 'რაპიდ'],
 };
 
+/**
+ * Generic dosage-form / container words — never a drug's identity, so never a
+ * valid brand key. Without this, a product name shaped "{form word} {actual
+ * brand} - Latin" registers the FORM word as the brand: "ქრონობიენ LP 1.9მგ
+ * 60 ტაბლეტი პილეჟე - Pileje" put "ტაბლეტი" (plain "tablet") in the map as
+ * the key for "pileje" — and since almost every tablet-form drug's name
+ * contains the word "ტაბლეტი", that one bad entry was silently reachable
+ * from hundreds of completely unrelated products the next time any of them
+ * got re-matched.
+ */
+const GENERIC_FORM_WORDS = new Set([
+  'ტაბლეტი', 'ტაბლეტები', 'ტაბ',
+  'კაფსულა', 'კაფსულები', 'კაფს',
+  'გელი', 'ჟელე',
+  'კრემი',
+  'სიროფი',
+  'ხსნარი',
+  'მალამო',
+  'წვეთები', 'წვეთი',
+  'ფხვნილი',
+  'ამპულა', 'ამპულები',
+  'ფლაკონი',
+  'სუსპენზია',
+  'ლოსიონი',
+  'სპრეი',
+  'პასტა',
+  'შამპუნი',
+  'ინექცია', 'საინექციო',
+  'ტუბი', 'ტუბიკი',
+  'პაკეტი', 'პაკეტები',
+  'სანთელი', 'სუპოზიტორია',
+]);
+
+function stripGenericFormWords(words) {
+  return words.filter((w) => !GENERIC_FORM_WORDS.has(w.toLowerCase()));
+}
+
 /** Well-known Georgian trade names → Latin INN/brand for cross-pharmacy matching. */
 const STATIC_GEO_TO_LATIN = {
   ვიაგრა: 'viagra',
@@ -155,7 +192,9 @@ export function buildGeoLatinMap(names) {
     // enough for every real case: canonicalBrand's own lookup checks a
     // product's words in the same left-to-right order, so it reaches this
     // exact first word too, however short (e.g. "დიპ" in "დიპ რილიფი").
-    const geoWords = geoPart.replace(/®/g, '').trim().split(/\s+/).filter((w) => w.length >= 3);
+    const geoWords = stripGenericFormWords(
+      geoPart.replace(/®/g, '').trim().split(/\s+/).filter((w) => w.length >= 3),
+    );
     const first = geoWords[0];
     if (first) {
       const key = first.toLowerCase();
@@ -182,7 +221,7 @@ function canonicalBrand(raw, geoLatinMap = geoLatinCache) {
   const inlineLatin = cleaned.match(/\b([A-Z][a-z]{3,})\b/);
   if (inlineLatin) return inlineLatin[1].toLowerCase();
 
-  const geoWords = cleaned.match(/[\u10a0-\u10ff]{3,}/g) || [];
+  const geoWords = stripGenericFormWords(cleaned.match(/[\u10a0-\u10ff]{3,}/g) || []);
   const longWords = geoWords.filter((w) => w.length >= 4);
   if (!longWords.length) return '';
 
