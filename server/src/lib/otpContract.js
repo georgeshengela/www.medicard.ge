@@ -15,7 +15,7 @@ export function evaluateOtpRow(row, now = new Date()) {
     return { ok: false, status: 400, error: 'კოდი არასწორია ან ვადა გაუვიდა.' };
   }
   if ((row.attempts ?? 0) >= OTP_MAX_ATTEMPTS) {
-    return { ok: false, status: 429, error: 'მეტისმეტი მცდელობა. მოითხოვეთ ახალი კოდი.' };
+    return { ok: false, status: 429, error: 'მეტისმეტი მცდელობა. მოითხოვე ახალი კოდი.' };
   }
   return { ok: true };
 }

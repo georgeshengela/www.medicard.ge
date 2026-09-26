@@ -2,7 +2,7 @@ import { getUsage, reserveAiCredit, commitAiCredit, releaseAiCredit } from '../l
 import { FREE_CONSUMER_RELEASE } from '../lib/consumerAccess.js';
 
 export const QUOTA_EXCEEDED_MESSAGE_KA =
-  'დღიური ლიმიტი ამოიწურა. განახლდება ხვალ ამავე საათზე, ან აირჩიეთ უფრო მაღალი გეგმა.';
+  'დღიური ლიმიტი ამოიწურა. განახლდება ხვალ ამავე საათზე, ან აირჩიე უფრო მაღალი გეგმა.';
 
 export const AI_RATE_LIMIT_MESSAGE_KA = 'ძალიან ბევრი AI მოთხოვნა. ცოტა ხანში სცადე.';
 
@@ -12,7 +12,7 @@ function quotaBody(usage, { code = 'DAILY_LIMIT_REACHED', error = QUOTA_EXCEEDED
     error,
     code,
     upsell: {
-      title: 'განაახლეთ გეგმა',
+      title: 'განაახლე გეგმა',
       body: 'სტანდარტი — 50 AI / დღე · ულტიმატი — შეუზღუდავი.',
       cta: 'გეგმის არჩევა',
     },

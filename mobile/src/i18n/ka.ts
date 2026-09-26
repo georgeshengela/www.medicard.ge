@@ -76,7 +76,7 @@ export const ka = {
     forgotPasswordReset: 'პაროლის შეცვლა',
     forgotPasswordResetSuccess: 'პაროლი შეიცვალა! შეგიძლია შეხვიდე ანგარიშში.',
     forgotPasswordHelp: 'ელ-ფოსტა არ გახსოვთ?',
-    forgotPasswordHelpContact: 'დაგვიკავშირდით: support@medicard.ge',
+    forgotPasswordHelpContact: 'დაგვიკავშირდი: support@medicard.ge',
     passwordStrengthWeak: 'პაროლის სიძლიერე: სუსტი — დაამატე სიმბოლოები 💪',
     passwordStrengthFair: 'პაროლის სიძლიერე: საშუალო — კარგია, მაგრამ შეიძლება უკეთესი ✨',
     passwordStrengthStrong: 'პაროლის სიძლიერე: შესანიშნავია! ✅',
@@ -2623,7 +2623,7 @@ export const ka = {
     interactionScreenBody:
       'Medi შენს აქტიურ მედიკამენტებს შესაძლო ურთიერთქმედებებისა და რისკების გამოსავლენად გადაამოწმებს. ეს უსაფრთხოებას არ ადასტურებს — საბოლოო სიტყვა ექიმისაა.',
     supportTitle: 'გჭირდება დახმარება?',
-    supportBody: 'დაგვიკავშირდით ჩატში ან ექიმთან კონსულტაციისთვის.',
+    supportBody: 'დაგვიკავშირდი ჩატში ან ექიმთან კონსულტაციისთვის.',
     reminderSettingsTitle: 'შეხსენებების პარამეტრები',
     reminderPush: 'Push შეტყობინებები',
     reminderSound: 'ხმოვანი სიგნალი',

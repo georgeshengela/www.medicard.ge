@@ -40,7 +40,7 @@ function sniffImageMime(buffer, declared) {
 function acceptPetPhoto(_req, file, cb) {
   const mime = String(file.mimetype || '').toLowerCase();
   if (mime === 'image/heic' || mime === 'image/heif') {
-    cb(Object.assign(new Error('ატვირთეთ JPEG, PNG ან WEBP ფოტო.'), { status: 400 }));
+    cb(Object.assign(new Error('ატვირთე JPEG, PNG ან WEBP ფოტო.'), { status: 400 }));
     return;
   }
   if (!ALLOWED_IMAGE.has(mime) && mime !== 'image/jpg') {
@@ -257,7 +257,7 @@ petsRouter.post(
     }
     const mime = sniffImageMime(req.file.buffer, String(req.file.mimetype || '').toLowerCase());
     if (mime === 'image/heic') {
-      return res.status(400).json({ error: 'ატვირთეთ JPEG, PNG ან WEBP ფოტო.' });
+      return res.status(400).json({ error: 'ატვირთე JPEG, PNG ან WEBP ფოტო.' });
     }
     if (!ALLOWED_IMAGE.has(mime)) {
       return res.status(400).json({ error: 'დაშვებულია მხოლოდ JPG, PNG, WEBP ან GIF ფოტო.' });

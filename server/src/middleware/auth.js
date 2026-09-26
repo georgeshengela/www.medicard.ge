@@ -45,7 +45,7 @@ export async function requireAuth(req, res, next) {
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
 
   if (!token) {
-    return res.status(401).json({ error: 'ავტორიზაცია საჭიროა. გთხოვთ, შეხვიდეთ სისტემაში.' });
+    return res.status(401).json({ error: 'ავტორიზაცია საჭიროა. შედი ანგარიშში.' });
   }
 
   try {
@@ -56,7 +56,7 @@ export async function requireAuth(req, res, next) {
 
     const userId = typeof payload.sub === 'string' ? payload.sub : String(payload.sub ?? '');
     if (!userId || userId === 'undefined' || userId === 'null') {
-      return res.status(401).json({ error: 'მომხმარებელი ვერ მოიძებნა. გთხოვთ, ხელახლა შეხვიდეთ.' });
+      return res.status(401).json({ error: 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.' });
     }
 
     let user = await prisma.user.findUnique({
@@ -73,12 +73,12 @@ export async function requireAuth(req, res, next) {
     }
 
     if (!user) {
-      return res.status(401).json({ error: 'მომხმარებელი ვერ მოიძებნა. გთხოვთ, ხელახლა შეხვიდეთ.' });
+      return res.status(401).json({ error: 'მომხმარებელი ვერ მოიძებნა. ხელახლა შედი ანგარიშში.' });
     }
 
     if (user.status === 'BLOCKED') {
       return res.status(403).json({
-        error: 'თქვენი ანგარიში დაბლოკილია. დაგვიკავშირდით მხარდაჭერას.',
+        error: 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.',
         code: 'ACCOUNT_BLOCKED',
       });
     }
@@ -90,7 +90,7 @@ export async function requireAuth(req, res, next) {
     const expired = error?.name === 'TokenExpiredError';
     return res.status(401).json({
       error: expired
-        ? 'სესიის ვადა ამოიწურა. გთხოვთ, ხელახლა შეხვიდეთ სისტემაში.'
+        ? 'სესიის ვადა ამოიწურა. ხელახლა შედი ანგარიშში.'
         : 'ავტორიზაციის ტოკენი არასწორია.',
       code: expired ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
     });

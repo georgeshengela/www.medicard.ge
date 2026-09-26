@@ -12,7 +12,7 @@ medicationsRouter.use(requireAuth);
 const timeList = z
   .string()
   .trim()
-  .min(1, 'მიუთითეთ მიღების დრო')
+  .min(1, 'მიუთითე მიღების დრო')
   .transform((value) =>
     value
       .split(',')
@@ -24,8 +24,8 @@ const timeList = z
   .transform((times) => [...new Set(times)].sort().join(', '));
 
 const createSchema = z.object({
-  medName: z.string().trim().min(2, 'მიუთითეთ მედიკამენტის დასახელება').max(120),
-  dosage: z.string().trim().min(1, 'მიუთითეთ დოზა').max(80),
+  medName: z.string().trim().min(2, 'მიუთითე მედიკამენტის დასახელება').max(120),
+  dosage: z.string().trim().min(1, 'მიუთითე დოზა').max(80),
   frequency: timeList,
   notes: z.string().trim().max(300).optional(),
   active: z.boolean().default(true),

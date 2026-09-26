@@ -195,7 +195,7 @@ export async function describeImage({ buffer, mimeType, kind, patientContext, mo
     }
   }
 
-  throw new AiEngineError('გამოსახულების ანალიზი ვერ შესრულდა. სცადეთ სხვა ფოტო ან მოგვიანებით.', {
+  throw new AiEngineError('გამოსახულების ანალიზი ვერ შესრულდა. სცადე სხვა ფოტო ან მოგვიანებით.', {
     status: 502,
     cause: new Error(errors.join(' | ')),
   });

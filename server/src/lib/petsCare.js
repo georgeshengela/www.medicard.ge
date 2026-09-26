@@ -59,7 +59,7 @@ export function careConflict(message, code, extra = {}) {
 
 function requireKind(value) {
   const kind = String(value || '').trim();
-  if (!CARE_KINDS.includes(kind)) fail('აირჩიეთ მოვლის კატეგორია.');
+  if (!CARE_KINDS.includes(kind)) fail('აირჩიე მოვლის კატეგორია.');
   return kind;
 }
 
@@ -69,7 +69,7 @@ function optionalText(value, max, field) {
 
 function requireTitle(value) {
   const title = optionalText(value, TITLE_MAX, 'სათაური');
-  if (!title) fail('შეიყვანეთ სახელი.');
+  if (!title) fail('შეიყვანე სახელი.');
   return title;
 }
 
@@ -97,7 +97,7 @@ export function optionalTime(value) {
 function optionalRoute(value) {
   if (value == null || value === '') return null;
   const route = String(value).trim();
-  if (!CARE_ROUTES.includes(route)) fail('აირჩიეთ მიღების გზა.');
+  if (!CARE_ROUTES.includes(route)) fail('აირჩიე მიღების გზა.');
   return route;
 }
 
@@ -111,7 +111,7 @@ function optionalDosePair(dose, doseUnit) {
 
 function requireSource(value) {
   const source = String(value || 'USER_ENTERED').trim();
-  if (!CARE_SOURCES.includes(source)) fail('აირჩიეთ გეგმის წყარო.');
+  if (!CARE_SOURCES.includes(source)) fail('აირჩიე გეგმის წყარო.');
   return source;
 }
 
@@ -144,7 +144,7 @@ export function mergeProductUpdate(current, patch, todayYmd) {
 
 function normalizeRecurrence(input) {
   const recurrenceKind = String(input.recurrenceKind || 'ONCE').trim();
-  if (!RECURRENCE_KINDS.includes(recurrenceKind)) fail('აირჩიეთ გამეორება.');
+  if (!RECURRENCE_KINDS.includes(recurrenceKind)) fail('აირჩიე გამეორება.');
   if (input.intervalUnit === 'YEAR' || recurrenceKind === 'EVERY_N_YEARS') {
     fail('წლიური ინტერვალი ამ ვერსიაში არ არის მხარდაჭერილი.');
   }
@@ -159,7 +159,7 @@ function normalizeRecurrence(input) {
     }
     recurrenceBasis = 'FIXED_CALENDAR';
   } else if (!RECURRENCE_BASES.includes(recurrenceBasis) || recurrenceBasis === 'NONE') {
-    fail('აირჩიეთ, კალენდარს მიჰყვება თუ დადასტურებულ მიღებას.');
+    fail('აირჩიე, კალენდარს მიჰყვება თუ დადასტურებულ მიღებას.');
   }
 
   let intervalCount = input.intervalCount == null || input.intervalCount === '' ? null : Number(input.intervalCount);
@@ -169,7 +169,7 @@ function normalizeRecurrence(input) {
   } else if (recurrenceKind === 'DAILY_COURSE') {
     intervalCount = 1;
   } else {
-    if (!Number.isInteger(intervalCount) || intervalCount < 1) fail('მიუთითეთ ინტერვალი.');
+    if (!Number.isInteger(intervalCount) || intervalCount < 1) fail('მიუთითე ინტერვალი.');
     if (recurrenceKind === 'EVERY_N_DAYS' && intervalCount > MAX_INTERVAL_DAYS) fail('დღეების ინტერვალი ძალიან დიდია.');
     if (recurrenceKind === 'EVERY_N_WEEKS' && intervalCount > MAX_INTERVAL_WEEKS) fail('კვირების ინტერვალი ძალიან დიდია.');
     if (recurrenceKind === 'EVERY_N_MONTHS' && intervalCount > MAX_INTERVAL_MONTHS) fail('თვეების ინტერვალი ძალიან დიდია.');
@@ -301,7 +301,7 @@ export function normalizeEventInput(input, { todayYmd, allowFuture = false } = {
 
 export function normalizeCompleteInput(input, { todayYmd } = {}) {
   const occurrence = String(input.occurrenceKey || '').trim();
-  if (!occurrence) fail('მიუთითეთ მოვლის შემთხვევა.');
+  if (!occurrence) fail('მიუთითე მოვლის შემთხვევა.');
   const revision = Number(input.revision);
   if (!Number.isInteger(revision) || revision < 1) fail('გეგმის ვერსია არასწორია.');
   const dose = optionalDosePair(input.dose, input.doseUnit);

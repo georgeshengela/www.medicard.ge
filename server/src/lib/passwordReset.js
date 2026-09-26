@@ -26,7 +26,7 @@ export async function requestPasswordReset(email) {
   const user = await prisma.user.findUnique({ where: { email: normalized } });
 
   if (!user || user.status === 'BLOCKED') {
-    return { sent: true, message: 'თუ ელ-ფოსტა რეგისტრირებულია, კოდს მიიღებთ რამდენიმე წუთში.' };
+    return { sent: true, message: 'თუ ელ-ფოსტა რეგისტრირებულია, კოდს მიიღებ რამდენიმე წუთში.' };
   }
 
   const recent = await prisma.passwordReset.findFirst({
@@ -35,7 +35,7 @@ export async function requestPasswordReset(email) {
   });
 
   if (recent && Date.now() - recent.createdAt.getTime() < RESEND_COOLDOWN_MS) {
-    return { sent: true, message: 'კოდი უკვე გამოგზავნილია. სცადეთ ხელახლა ერთი წუთის შემდეგ.' };
+    return { sent: true, message: 'კოდი უკვე გამოგზავნილია. სცადე ხელახლა ერთი წუთის შემდეგ.' };
   }
 
   await prisma.passwordReset.updateMany({
@@ -58,7 +58,7 @@ export async function requestPasswordReset(email) {
 
   const result = {
     sent: true,
-    message: 'კოდი გამოგზავნილია თქვენს ელ-ფოსტაზე.',
+    message: 'კოდი გამოგზავნილია შენს ელ-ფოსტაზე.',
   };
 
   try {

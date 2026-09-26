@@ -44,7 +44,7 @@ export function ttcWindowBody(predictions, flags) {
 }
 
 export function latePeriodAlertKa() {
-  return 'მენსტრუაცია ბოლო პატერნზე გვიანია. ეს შეფასებაა, არა დიაგნოზი. თუ გაწუხებთ, მიმართეთ ექიმს.';
+  return 'მენსტრუაცია ბოლო პატერნზე გვიანია. ეს შეფასებაა, არა დიაგნოზი. თუ გაწუხებს, მიმართე ექიმს.';
 }
 
 export function irregularLengthAlertKa(lastGap) {
@@ -52,7 +52,7 @@ export function irregularLengthAlertKa(lastGap) {
 }
 
 export function pcosCautionKa() {
-  return 'თქვენ მიუთითეთ PCOS — სავარაუდო ოვულაცია და ნაყოფიერი ფანჯარა ნაკლებად საიმედოა. Medicard არ არის კონტრაცეფციის მეთოდი.';
+  return 'შენ მიუთითე PCOS — სავარაუდო ოვულაცია და ნაყოფიერი ფანჯარა ნაკლებად საიმედოა. Medicard არ არის კონტრაცეფციის მეთოდი.';
 }
 
 export function ttcReminderTone(flags) {

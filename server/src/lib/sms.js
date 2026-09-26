@@ -135,5 +135,5 @@ export async function getSmsBalance() {
 }
 
 export function buildOtpMessage(code) {
-  return `Medicard: თქვენი დამადასტურებელი კოდია ${code}. ვადა 10 წუთი.`;
+  return `Medicard: შენი დამადასტურებელი კოდია ${code}. ვადა 10 წუთი.`;
 }

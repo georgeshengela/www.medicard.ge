@@ -27,7 +27,7 @@ const GENDER_KA = {
   OTHER: 'სხვა',
 };
 
-export const genderSchema = z.enum(GENDERS, { error: 'აირჩიეთ სქესი' });
+export const genderSchema = z.enum(GENDERS, { error: 'აირჩიე სქესი' });
 
 /** Rejects Feb 30 and friends, which the regex alone would happily accept. */
 function isRealCalendarDate(value) {
@@ -40,12 +40,12 @@ function isRealCalendarDate(value) {
 
 /** Accepts `YYYY-MM-DD` from the client and hands Prisma a UTC-midnight Date for a `@db.Date` column. */
 export const birthDateSchema = z
-  .string({ error: 'შეიყვანეთ დაბადების თარიღი' })
+  .string({ error: 'შეიყვანე დაბადების თარიღი' })
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'დაბადების თარიღი უნდა იყოს ფორმატში წწწწ-თთ-დდ')
   .refine(isRealCalendarDate, 'ასეთი თარიღი არ არსებობს')
   .refine((value) => new Date(`${value}T00:00:00.000Z`) <= new Date(), 'დაბადების თარიღი მომავალში ვერ იქნება')
-  .refine((value) => (calculateAge(`${value}T00:00:00.000Z`) ?? 0) <= 120, 'შეამოწმეთ დაბადების თარიღი')
+  .refine((value) => (calculateAge(`${value}T00:00:00.000Z`) ?? 0) <= 120, 'შეამოწმე დაბადების თარიღი')
   .transform((value) => new Date(`${value}T00:00:00.000Z`));
 
 /**

@@ -131,7 +131,7 @@ export async function authorizePrivateUpload({
     return { ok: false, status: 400, error: 'ფაილის იდენტიფიკატორი არასწორია.' };
   }
   if (!userId) {
-    return { ok: false, status: 401, error: 'ავტორიზაცია საჭიროა. გთხოვთ, შეხვიდეთ სისტემაში.' };
+    return { ok: false, status: 401, error: 'ავტორიზაცია საჭიროა. შედი ანგარიშში.' };
   }
   const owner = await findOwner(userId, parsed);
   if (!owner) {

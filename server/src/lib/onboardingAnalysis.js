@@ -22,8 +22,8 @@ const openrouter = env.OPENROUTER_API_KEY
 const SCORE_BANDS = [
   { min: 0, max: 20, label: 'Critical', labelKa: 'კრიტიკული', color: '#22C55E', detailKa: 'საჭიროა დაუყოვნებლივი სამედიცინო კონსულტაცია და გეგმის შედგენა.' },
   { min: 21, max: 50, label: 'Suboptimal', labelKa: 'არაოპტიმალური', color: '#F43F5E', detailKa: 'რამდენიმე მაჩვენებელი საშუალო ნორმის ქვემოთაა — რეკომენდებულია ცვლილებები ყოველდღიურ ჩვევებში.' },
-  { min: 51, max: 70, label: 'Mild Risk', labelKa: 'მსუბუქი რისკი', color: '#F97316', detailKa: 'მსუბუქი გადახრები ოპტიმალური ჯანმრთელობისგან — პრევენცია და მონიტორინგი დაგეხმარებათ.' },
-  { min: 71, max: 100, label: 'Normal', labelKa: 'ნორმალური', color: '#14B8A6', detailKa: 'ძირითადი მაჩვენებლები ნორმალურ დიაპაზონშია — გააგრძელეთ ჯანსაღი ჩვევები.' },
+  { min: 51, max: 70, label: 'Mild Risk', labelKa: 'მსუბუქი რისკი', color: '#F97316', detailKa: 'მსუბუქი გადახრები ოპტიმალური ჯანმრთელობისგან — პრევენცია და მონიტორინგი დაგეხმარება.' },
+  { min: 71, max: 100, label: 'Normal', labelKa: 'ნორმალური', color: '#14B8A6', detailKa: 'ძირითადი მაჩვენებლები ნორმალურ დიაპაზონშია — გააგრძელე ჯანსაღი ჩვევები.' },
 ];
 
 function bandForScore(score) {
@@ -301,7 +301,7 @@ function buildFallbackRecommendations(profile) {
       diastolic: dia,
       summaryKa:
         sys <= 130 && dia <= 85
-          ? 'თქვენი არტერიული წნევა ნორმის ფარგლებშია.'
+          ? 'შენი არტერიული წნევა ნორმის ფარგლებშია.'
           : 'არტერიული წნევა საჭიროებს მონიტორინგს.',
     },
     sleep: {
@@ -335,7 +335,7 @@ function buildFallbackRecommendations(profile) {
     ],
     articles: [
       { titleKa: 'როგორ გავაუმჯობესოთ ჯანმრთელობა ყოველდღიური ჩვევებით', readMinutes: 3 },
-      { titleKa: 'კეტო დიეტა — რა უნდა იცოდეთ', readMinutes: 5 },
+      { titleKa: 'კეტო დიეტა — რა უნდა იცოდე', readMinutes: 5 },
       { titleKa: 'ენერგეტიკული სასმელები და გული', readMinutes: 3 },
     ],
   };
@@ -374,7 +374,7 @@ export async function generateOnboardingAnalysis({
         ? 'მსუბუქი ვიტამინის დეფიციტი ან ქოლესტერინის მცირე მომატება'
         : `${band.labelKa} — პრევენციული ზომები რეკომენდებულია`,
     summaryBodyKa:
-      'ანალიზი ეყრდნობა თქვენს პროფილს, ჩვევებს და შენახულ მაჩვენებლებს. რეკომენდებულია ცხოვრების წესის კორექცია და რეგულარული კონტროლი.',
+      'ანალიზი ეყრდნობა შენს პროფილს, ჩვევებს და შენახულ მაჩვენებლებს. რეკომენდებულია ცხოვრების წესის კორექცია და რეგულარული კონტროლი.',
     scoreRanges: SCORE_BANDS.map((b) => ({
       min: b.min,
       max: b.max,

@@ -47,7 +47,7 @@ export function validateCareDraft(input, { petId, todayYmd, ownedProductIds = ne
   if (draftPetId !== petId) fail('გეგმა ამ ცხოველს არ ეკუთვნის.');
 
   const kind = input.kind ? String(input.kind) : null;
-  if (kind && !CARE_KINDS.includes(kind)) fail('აირჩიეთ მოვლის კატეგორია.');
+  if (kind && !CARE_KINDS.includes(kind)) fail('აირჩიე მოვლის კატეგორია.');
 
   const title = input.title == null ? null : String(input.title).trim();
   if (title && title.length > TITLE_MAX) fail('სათაური ძალიან გრძელია.');

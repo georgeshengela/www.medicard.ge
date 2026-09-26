@@ -39,7 +39,7 @@ export function trimText(value, max, field) {
 
 export function requireName(value) {
   const name = trimText(value, NAME_MAX, 'სახელი');
-  if (!name) fail('შეიყვანეთ სახელი.');
+  if (!name) fail('შეიყვანე სახელი.');
   return name;
 }
 
@@ -66,7 +66,7 @@ export function parsePositiveNumber(value) {
     return value;
   }
   const raw = String(value ?? '').trim().replace(',', '.');
-  if (!raw) fail('შეიყვანეთ წონა.');
+  if (!raw) fail('შეიყვანე წონა.');
   const n = Number(raw);
   if (!Number.isFinite(n) || value === true || value === false) fail('წონა უნდა იყოს დადებითი რიცხვი.');
   if (n <= 0) fail('წონა უნდა იყოს დადებითი რიცხვი.');
@@ -75,7 +75,7 @@ export function parsePositiveNumber(value) {
 
 export function convertToKg(inputValue, inputUnit) {
   const unit = String(inputUnit || '').trim().toLowerCase();
-  if (!WEIGHT_UNITS.includes(unit)) fail('აირჩიეთ ერთეული: კგ, გ ან ფუნტი.');
+  if (!WEIGHT_UNITS.includes(unit)) fail('აირჩიე ერთეული: კგ, გ ან ფუნტი.');
   const amount = parsePositiveNumber(inputValue);
   let kg;
   if (unit === 'kg') kg = amount;
@@ -135,10 +135,10 @@ export function mergeWeightUpdate(current, patch, todayYmd) {
 
 export function normalizeAllergyInput(input, { todayYmd } = {}) {
   const category = String(input.category || 'unknown').trim();
-  if (!ALLERGY_CATEGORIES.includes(category)) fail('აირჩიეთ ალერგიის კატეგორია.');
+  if (!ALLERGY_CATEGORIES.includes(category)) fail('აირჩიე ალერგიის კატეგორია.');
   const reportedStatus = String(input.reportedStatus || '').trim();
   if (!ALLERGY_STATUSES.includes(reportedStatus)) {
-    fail('მიუთითეთ, სავარაუდოა თუ ვეტერინარის დადასტურებული.');
+    fail('მიუთითე, სავარაუდოა თუ ვეტერინარის დადასტურებული.');
   }
   return {
     name: requireName(input.name),
@@ -168,10 +168,10 @@ export function mergeAllergyUpdate(current, patch, todayYmd) {
 
 export function normalizeConditionInput(input, { todayYmd } = {}) {
   const status = String(input.status || '').trim();
-  if (!CONDITION_STATUSES.includes(status)) fail('აირჩიეთ მდგომარეობის სტატუსი.');
+  if (!CONDITION_STATUSES.includes(status)) fail('აირჩიე მდგომარეობის სტატუსი.');
   const reportedBasis = String(input.reportedBasis || '').trim();
   if (!CONDITION_BASES.includes(reportedBasis)) {
-    fail('მიუთითეთ, მფლობელის ჩანაწერია თუ ვეტერინარის დადასტურებული.');
+    fail('მიუთითე, მფლობელის ჩანაწერია თუ ვეტერინარის დადასტურებული.');
   }
   const onsetOn = optionalCivilDate(input.onsetOn, todayYmd, true);
   let resolvedOn = optionalCivilDate(input.resolvedOn, todayYmd, true);

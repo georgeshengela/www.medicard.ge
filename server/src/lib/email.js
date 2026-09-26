@@ -27,7 +27,7 @@ function resetEmailHtml({ code, fullName }) {
             <td style="padding:32px;">
               <p style="margin:0 0 12px;font-size:16px;line-height:24px;color:#0f172a;font-weight:600;">${greeting}</p>
               <p style="margin:0 0 24px;font-size:15px;line-height:24px;color:#64748b;">
-                მიიღეთ ეს კოდი Medicard აპში პაროლის აღსადგენად. კოდი მოქმედებს <strong style="color:#0f172a;">10 წუთის</strong> განმავლობაში.
+                შეიყვანე ეს კოდი Medicard აპში პაროლის აღსადგენად. კოდი მოქმედებს <strong style="color:#0f172a;">10 წუთის</strong> განმავლობაში.
               </p>
               <div style="text-align:center;margin:28px 0;">
                 <div style="display:inline-block;background:#f0fdfa;border:2px dashed #14b8a6;border-radius:16px;padding:20px 36px;">
@@ -36,7 +36,7 @@ function resetEmailHtml({ code, fullName }) {
                 </div>
               </div>
               <p style="margin:0 0 8px;font-size:13px;line-height:20px;color:#94a3b8;text-align:center;">
-                თუ პაროლის აღდგენა არ მოგითხოვიათ, უგულებელყოთ ეს წერილი.
+                თუ პაროლის აღდგენა არ მოგითხოვია, უბრალოდ უგულებელყავი ეს წერილი.
               </p>
             </td>
           </tr>

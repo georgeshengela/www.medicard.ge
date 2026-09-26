@@ -143,12 +143,12 @@ export async function askEvidenceMd({
       // The upstream account is out of credits — an operator problem, not a user error.
       console.error('[medicard] EvidenceMD credits exhausted:', error?.error?.message ?? error?.message);
       throw new AiEngineError(
-        'სამედიცინო ანალიზის სერვისი დროებით მიუწვდომელია. ვმუშაობთ აღდგენაზე — გთხოვთ, სცადოთ მოგვიანებით.',
+        'სამედიცინო ანალიზის სერვისი დროებით მიუწვდომელია. ვმუშაობთ აღდგენაზე — სცადე მოგვიანებით.',
         { status: 503, cause: error },
       );
     }
     if (status === 429) {
-      throw new AiEngineError('EvidenceMD დროებით გადატვირთულია. გთხოვთ, სცადოთ ერთი წუთის შემდეგ.', {
+      throw new AiEngineError('EvidenceMD დროებით გადატვირთულია. სცადე ერთი წუთის შემდეგ.', {
         status: 503,
         cause: error,
       });

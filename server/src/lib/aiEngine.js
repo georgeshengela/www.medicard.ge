@@ -204,12 +204,12 @@ function mapOpenRouterError(error) {
   }
   if (status === 402) {
     throw new AiEngineError(
-      'AI სერვისი დროებით მიუწვდომელია. ვმუშაობთ აღდგენაზე — გთხოვთ, სცადოთ მოგვიანებით.',
+      'AI სერვისი დროებით მიუწვდომელია. ვმუშაობთ აღდგენაზე — სცადე მოგვიანებით.',
       { status: 503, cause: error },
     );
   }
   if (status === 429) {
-    throw new AiEngineError('AI დროებით გადატვირთულია. გთხოვთ, სცადოთ ერთი წუთის შემდეგ.', {
+    throw new AiEngineError('AI დროებით გადატვირთულია. სცადე ერთი წუთის შემდეგ.', {
       status: 503,
       cause: error,
     });

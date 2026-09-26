@@ -91,14 +91,14 @@ function fail(message) {
 
 export function normalizePetIdentity(input, { todayYmd, partial = false } = {}) {
   const name = input.name == null ? undefined : String(input.name).trim();
-  if (!partial && (name == null || name.length < 1)) throw fail('შეიყვანეთ ცხოველის სახელი.');
+  if (!partial && (name == null || name.length < 1)) throw fail('შეიყვანე ცხოველის სახელი.');
   if (name != null && (name.length < 1 || name.length > PET_NAME_MAX)) {
     throw fail(`სახელი უნდა იყოს 1–${PET_NAME_MAX} სიმბოლო.`);
   }
 
   const speciesId = input.speciesId == null ? undefined : String(input.speciesId);
-  if (!partial && !getSpecies(speciesId)) throw fail('აირჩიეთ სახეობა.');
-  if (speciesId != null && !getSpecies(speciesId)) throw fail('აირჩიეთ სახეობა.');
+  if (!partial && !getSpecies(speciesId)) throw fail('აირჩიე სახეობა.');
+  if (speciesId != null && !getSpecies(speciesId)) throw fail('აირჩიე სახეობა.');
 
   let breedId = input.breedId == null ? undefined : String(input.breedId);
   if (!partial && breedId == null) breedId = 'unknown';
@@ -107,7 +107,7 @@ export function normalizePetIdentity(input, { todayYmd, partial = false } = {}) 
   }
   if (breedId === 'custom') {
     const custom = String(input.customBreed || '').trim();
-    if (!custom) throw fail('ჩაწერეთ ჯიში.');
+    if (!custom) throw fail('ჩაწერე ჯიში.');
     if (custom.length > CUSTOM_BREED_MAX) throw fail('ჯიშის სახელი ძალიან გრძელია.');
   }
   if (breedId && breedId !== 'custom' && input.customBreed != null && String(input.customBreed).trim()) {
@@ -115,7 +115,7 @@ export function normalizePetIdentity(input, { todayYmd, partial = false } = {}) 
   }
 
   const sex = input.sex == null ? (partial ? undefined : 'UNKNOWN') : String(input.sex);
-  if (sex != null && !SEX_VALUES.includes(sex)) throw fail('აირჩიეთ სქესი.');
+  if (sex != null && !SEX_VALUES.includes(sex)) throw fail('აირჩიე სქესი.');
 
   let neutered = input.neutered;
   if (neutered === undefined && !partial) neutered = null;
@@ -124,7 +124,7 @@ export function normalizePetIdentity(input, { todayYmd, partial = false } = {}) 
   }
 
   const ageKind = input.ageKind == null ? (partial ? undefined : 'UNKNOWN') : String(input.ageKind);
-  if (ageKind != null && !AGE_KINDS.includes(ageKind)) throw fail('აირჩიეთ ასაკის ტიპი.');
+  if (ageKind != null && !AGE_KINDS.includes(ageKind)) throw fail('აირჩიე ასაკის ტიპი.');
 
   const age = normalizeAgeFields(
     {
@@ -199,7 +199,7 @@ export function normalizeAgeFields(input, { todayYmd, required = true } = {}) {
     if (ymd > todayYmd) throw fail('დაბადების თარიღი მომავალში ვერ იქნება.');
     const parts = exactAgeParts(ymd, todayYmd);
     if (!parts) throw fail('დაბადების თარიღი მომავალში ვერ იქნება.');
-    if (parts.years > PET_MAX_YEARS) throw fail('შეამოწმეთ დაბადების თარიღი.');
+    if (parts.years > PET_MAX_YEARS) throw fail('შეამოწმე დაბადების თარიღი.');
     if (input.approxAgeYears != null || input.approxAgeMonths != null || input.approxAgeRecordedOn) {
       throw fail('ზუსტი თარიღისთვის მიახლოებითი ასაკი არ ინახება.');
     }
@@ -216,14 +216,14 @@ export function normalizeAgeFields(input, { todayYmd, required = true } = {}) {
     if (input.birthDate) throw fail('მიახლოებითი ასაკისთვის დაბადების თარიღი არ იწერება.');
     const years = input.approxAgeYears == null || input.approxAgeYears === '' ? null : Number(input.approxAgeYears);
     const months = input.approxAgeMonths == null || input.approxAgeMonths === '' ? null : Number(input.approxAgeMonths);
-    if (years == null && months == null) throw fail('მიუთითეთ წლები ან თვეები.');
+    if (years == null && months == null) throw fail('მიუთითე წლები ან თვეები.');
     if (years != null && (!Number.isInteger(years) || years < 0 || years > PET_MAX_YEARS)) {
       throw fail('ასაკი არასწორია.');
     }
     if (months != null && (!Number.isInteger(months) || months < 0 || months > 11)) {
       throw fail('თვეები უნდა იყოს 0–11.');
     }
-    if ((years ?? 0) === 0 && (months ?? 0) === 0) throw fail('მიუთითეთ ასაკი, ან აირჩიეთ უცნობი.');
+    if ((years ?? 0) === 0 && (months ?? 0) === 0) throw fail('მიუთითე ასაკი, ან აირჩიე უცნობი.');
     let recorded = input.approxAgeRecordedOn == null || input.approxAgeRecordedOn === ''
       ? todayYmd
       : String(input.approxAgeRecordedOn);
@@ -239,7 +239,7 @@ export function normalizeAgeFields(input, { todayYmd, required = true } = {}) {
     };
   }
 
-  throw fail('აირჩიეთ ასაკის ტიპი.');
+  throw fail('აირჩიე ასაკის ტიპი.');
 }
 
 export function mergePetUpdate(current, patch, todayYmd) {

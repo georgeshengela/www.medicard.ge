@@ -317,7 +317,7 @@ aiRouter.post(
     const isPdf = mimetype === 'application/pdf';
     if (mimetype === 'image/heic') {
       return res.status(400).json({
-        error: 'iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთეთ სურათი თავიდან JPEG ან PNG ფორმატში.',
+        error: 'iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთე სურათი თავიდან JPEG ან PNG ფორმატში.',
       });
     }
 
@@ -332,7 +332,7 @@ aiRouter.post(
       const { text, pages } = await extractPdfText(buffer);
       if (text.length < 24) {
         return res.status(422).json({
-          error: 'PDF-დან ტექსტის ამოკითხვა ვერ მოხერხდა. სცადეთ დოკუმენტის ფოტოს ატვირთვა.',
+          error: 'PDF-დან ტექსტის ამოკითხვა ვერ მოხერხდა. სცადე დოკუმენტის ფოტოს ატვირთვა.',
         });
       }
       visionNotes = `[PDF, ${pages} გვერდი]\n\n${text}`;
@@ -463,7 +463,7 @@ aiRouter.post(
         const { text, pages } = await extractPdfText(file.buffer);
         if (text.length < 24) {
           return res.status(422).json({
-            error: 'PDF-დან ტექსტის ამოკითხვა ვერ მოხერხდა. სცადეთ დოკუმენტის ფოტოს ატვირთვა.',
+            error: 'PDF-დან ტექსტის ამოკითხვა ვერ მოხერხდა. სცადე დოკუმენტის ფოტოს ატვირთვა.',
           });
         }
         pdfNotes.push(`[PDF, ${pages} გვერდი]\n\n${text}`);
@@ -473,7 +473,7 @@ aiRouter.post(
       const mimeType = sniffImageMime(file.buffer, declared);
       if (mimeType === 'image/heic') {
         return res.status(400).json({
-          error: 'iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთეთ სურათი თავიდან JPEG ან PNG ფორმატში.',
+          error: 'iPhone-ის HEIC ფოტო ვერ წავიკითხეთ. ატვირთე სურათი თავიდან JPEG ან PNG ფორმატში.',
         });
       }
       images.push({ buffer: file.buffer, mimeType });
@@ -780,7 +780,7 @@ aiRouter.post(
 
 const skincareSchema = z.object({
   skinType: z.string().trim().min(2).max(60),
-  concerns: z.array(z.string().trim().min(1).max(60)).min(1, 'აირჩიეთ მინიმუმ ერთი პრობლემა').max(10),
+  concerns: z.array(z.string().trim().min(1).max(60)).min(1, 'აირჩიე მინიმუმ ერთი პრობლემა').max(10),
   age: z.coerce.number().int().min(10).max(100).optional(),
   currentProducts: z.string().trim().max(1000).optional(),
 });
@@ -885,7 +885,7 @@ aiRouter.post(
 const symptomCheckSchema = z.object({
   includeHealthProfile: z.boolean().default(false),
   primarySymptom: z.string().trim().min(1).max(80).optional(),
-  symptoms: z.array(z.string().trim().min(1).max(80)).min(1, 'აირჩიეთ მინიმუმ ერთი სიმპტომი').max(16),
+  symptoms: z.array(z.string().trim().min(1).max(80)).min(1, 'აირჩიე მინიმუმ ერთი სიმპტომი').max(16),
   method: z.enum(['manual', 'anatomy']).optional(),
   mode: z.enum(['muscle', 'organ', 'search']).optional(),
   bodyPartId: z.string().trim().max(40).optional(),

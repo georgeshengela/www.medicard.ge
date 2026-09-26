@@ -312,7 +312,7 @@ async function assertUserLimits(tx, userId, reward, now, timeZone) {
       },
     });
     if (active >= maxActive) {
-      throw httpError('აქტიური უფლება უკვე გაქვთ.', 409, 'REWARD_USER_LIMIT');
+      throw httpError('აქტიური უფლება უკვე გაქვს.', 409, 'REWARD_USER_LIMIT');
     }
   }
 }

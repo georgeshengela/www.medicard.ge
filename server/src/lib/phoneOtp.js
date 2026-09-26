@@ -50,7 +50,7 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null }
       sent: true,
       phone: `+${normalized}`,
       masked: displayPhone(normalized),
-      message: 'კოდი უკვე გამოგზავნილია. სცადეთ ხელახლა ერთი წუთის შემდეგ.',
+      message: 'კოდი უკვე გამოგზავნილია. სცადე ხელახლა ერთი წუთის შემდეგ.',
       cooldownSec: Math.ceil((RESEND_COOLDOWN_MS - (Date.now() - recent.createdAt.getTime())) / 1000),
     };
   }

@@ -253,7 +253,7 @@ function TabButton({
       }}
     >
       <tab.Icon size={20} color={color} strokeWidth={focused ? 2.3 : 1.8} />
-      <Text numberOfLines={1} style={{ color, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 9, marginTop: 4 }}>{tab.name === 'medications' ? 'წამლები' : tab.title}</Text>
+      <Text numberOfLines={1} style={{ color, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 9, marginTop: 4 }}>{tab.name === 'medications' ? 'წამლები' : tab.name === 'records' ? 'ბარათი' : tab.title}</Text>
     </TouchableOpacity>
   );
 }

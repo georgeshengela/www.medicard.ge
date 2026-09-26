@@ -481,7 +481,7 @@ petsCareRouter.patch(
         return res.status(404).json(PET_CARE_NOT_FOUND);
       }
       if (row.status === 'CANCELLED') {
-        return sendConflict(res, 'გეგმა გაუქმებულია. განაახლეთ სია.', 'PET_CARE_SCHEDULE_CANCELLED');
+        return sendConflict(res, 'გეგმა გაუქმებულია. განაახლე სია.', 'PET_CARE_SCHEDULE_CANCELLED');
       }
       let data;
       try {
@@ -567,7 +567,7 @@ petsCareRouter.patch(
         return res.status(404).json(PET_CARE_NOT_FOUND);
       }
       if (row.status === 'CANCELLED') {
-        return sendConflict(res, 'გეგმა გაუქმებულია. განაახლეთ სია.', 'PET_CARE_SCHEDULE_CANCELLED');
+        return sendConflict(res, 'გეგმა გაუქმებულია. განაახლე სია.', 'PET_CARE_SCHEDULE_CANCELLED');
       }
       let patch;
       try {
@@ -681,13 +681,13 @@ petsCareRouter.post(
         const schedule = await tx.petCareSchedule.findFirst({ where: { id: scheduleId } });
         if (decideOwnedChild(schedule, pet.id, req.user.id).status !== 200) return { missing: true };
         if (schedule.status === 'CANCELLED') {
-          return { conflict: { message: 'გეგმა გაუქმებულია. განაახლეთ სია.', code: 'PET_CARE_SCHEDULE_CANCELLED' } };
+          return { conflict: { message: 'გეგმა გაუქმებულია. განაახლე სია.', code: 'PET_CARE_SCHEDULE_CANCELLED' } };
         }
         if (schedule.status !== 'ACTIVE') {
-          return { conflict: { message: 'გეგმა აღარ არის აქტიური. განაახლეთ სია.', code: 'PET_CARE_SCHEDULE_INACTIVE' } };
+          return { conflict: { message: 'გეგმა აღარ არის აქტიური. განაახლე სია.', code: 'PET_CARE_SCHEDULE_INACTIVE' } };
         }
         if (schedule.revision !== data.revision || parsed.revision !== schedule.revision) {
-          return { conflict: { message: 'გეგმა შეიცვალა. განაახლეთ სია და სცადეთ ხელახლა.', code: 'PET_CARE_REVISION_CONFLICT' } };
+          return { conflict: { message: 'გეგმა შეიცვალა. განაახლე სია და სცადე ხელახლა.', code: 'PET_CARE_REVISION_CONFLICT' } };
         }
         if (!isGeneratedOccurrence(schedule, parsed, { today: petTodayYmd(req) })) {
           return { conflict: { message: 'ეს შემთხვევა ამ გეგმას აღარ ეკუთვნის.', code: 'PET_CARE_OCCURRENCE_STALE' } };
@@ -721,7 +721,7 @@ petsCareRouter.post(
         }
         if (existingOcc?.status === 'SKIPPED' || existingOcc?.status === 'CANCELLED') {
           return {
-            conflict: { message: 'ეს შემთხვევა უკვე დასრულებულია. განაახლეთ სია.', code: 'PET_CARE_OCCURRENCE_RESOLVED' },
+            conflict: { message: 'ეს შემთხვევა უკვე დასრულებულია. განაახლე სია.', code: 'PET_CARE_OCCURRENCE_RESOLVED' },
           };
         }
 
@@ -778,7 +778,7 @@ petsCareRouter.post(
           data: derived,
         });
         if (bumped.count !== 1) {
-          return { conflict: { message: 'გეგმა შეიცვალა. განაახლეთ სია და სცადეთ ხელახლა.', code: 'PET_CARE_REVISION_CONFLICT' } };
+          return { conflict: { message: 'გეგმა შეიცვალა. განაახლე სია და სცადე ხელახლა.', code: 'PET_CARE_REVISION_CONFLICT' } };
         }
         const updatedSchedule = await tx.petCareSchedule.findFirst({ where: { id: schedule.id } });
         return { event, schedule: updatedSchedule, occurrence };
@@ -823,10 +823,10 @@ petsCareRouter.post(
         const schedule = await tx.petCareSchedule.findFirst({ where: { id: scheduleId } });
         if (decideOwnedChild(schedule, pet.id, req.user.id).status !== 200) return { missing: true };
         if (schedule.status !== 'ACTIVE') {
-          return { conflict: { message: 'გეგმა აღარ არის აქტიური. განაახლეთ სია.', code: 'PET_CARE_SCHEDULE_INACTIVE' } };
+          return { conflict: { message: 'გეგმა აღარ არის აქტიური. განაახლე სია.', code: 'PET_CARE_SCHEDULE_INACTIVE' } };
         }
         if (schedule.revision !== revision || parsed.revision !== schedule.revision) {
-          return { conflict: { message: 'გეგმა შეიცვალა. განაახლეთ სია და სცადეთ ხელახლა.', code: 'PET_CARE_REVISION_CONFLICT' } };
+          return { conflict: { message: 'გეგმა შეიცვალა. განაახლე სია და სცადე ხელახლა.', code: 'PET_CARE_REVISION_CONFLICT' } };
         }
         if (clientRequestId) {
           const existing = await tx.petCareOccurrence.findFirst({

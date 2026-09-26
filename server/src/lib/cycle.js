@@ -536,7 +536,7 @@ export const FETAL_SIZE_KA = {
   10: { size: 'მარწყვი', note: 'ორგანოების ძირითადი სტრუქტურა' },
   12: { size: 'ცაცხვი', note: 'პირველი ტრიმესტრის დასასრული' },
   14: { size: 'ქლიავი', note: 'მიმიკის კუნთები იწყებს მუშაობას' },
-  16: { size: 'ავოკადო', note: 'შეგიძლიათ იგრძნოთ მოძრაობა' },
+  16: { size: 'ავოკადო', note: 'შეგიძლია იგრძნო მოძრაობა' },
   18: { size: 'ბულგარული წიწაკა', note: 'სმენის განვითარება' },
   20: { size: 'ბანანი', note: 'შუა ორსულობა — ანატომიური სკანირება' },
   24: { size: 'სიმინდის თავი', note: 'ფილტვების მომწიფება იწყება' },
@@ -610,7 +610,7 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
     body:
       phase.day != null
         ? `დღეს ციკლის ${phase.day}-ე დღეა. სავარაუდო ფაზა: ${phase.phaseKa}. ეს კალენდარული შეფასებაა, არა ჰორმონის გაზომვა.`
-        : 'მონიშნეთ ბოლო მენსტრუაციის დასაწყისი უფრო ზუსტი პროგნოზებისთვის.',
+        : 'მონიშნე ბოლო მენსტრუაციის დასაწყისი უფრო ზუსტი პროგნოზებისთვის.',
     action: 'გახსენი დღის აღრიცხვა',
   });
 
@@ -619,7 +619,7 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
       id: 'cramps_care',
       tone: 'care',
       title: 'კრუნჩხვების შემსუბუქება',
-      body: 'სითბო მუცელზე, მსუბუქი გაჭიმვა და ჰიდრატაცია ხშირად ეხმარება. ძლიერი ტკივილისას მიმართეთ ექიმს.',
+      body: 'სითბო მუცელზე, მსუბუქი გაჭიმვა და ჰიდრატაცია ხშირად ეხმარება. ძლიერი ტკივილისას მიმართე ექიმს.',
       action: 'დალიე წყალი და დაისვენე',
     });
   }
@@ -686,7 +686,7 @@ export function buildLocalInsights({ profile, logs, predictions, pregnancy, aver
         ? 'აღრიცხვები და კონტრაცეფციის კონტექსტი'
         : phase.day != null
           ? `დღეს: სავარაუდო ${phase.phaseKa}`
-          : 'თქვენი ციკლის რჩევები',
+          : 'შენი ციკლის რჩევები',
     phaseLabel:
       contraception?.predictionAvailability === 'LIMITED'
         ? contraception.presentation?.phaseLabelOverride || phase.phaseKa
@@ -877,7 +877,7 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today, 
   if (heavyRun >= 8) {
     alerts.push({
       level: 'urgent',
-      messageKa: '8+ დღეა ძლიერი გამონადენი აღრიცხულია — მიმართეთ გინეკოლოგს.',
+      messageKa: '8+ დღეა ძლიერი გამონადენი აღრიცხულია — მიმართე გინეკოლოგს.',
       action: 'chat',
     });
   }
@@ -924,7 +924,7 @@ export function buildCycleAlerts({ profile, logs, predictions, inferred, today, 
     alerts.push({
       level: 'info',
       messageKa:
-        'ენდომეტრიოზისას ტკივილი და სიმპტომები შეიძლება ციკლის გარეთაც გამოჩნდეს — აღრიცხეთ ყველა დღე.',
+        'ენდომეტრიოზისას ტკივილი და სიმპტომები შეიძლება ციკლის გარეთაც გამოჩნდეს — აღრიცხე ყველა დღე.',
       action: null,
     });
   }

@@ -48,7 +48,7 @@ export function errorHandler(error, req, res, next) {
 
   console.error('[medicard] Unhandled error:', error);
   return res.status(500).json({
-    error: 'სერვერზე მოხდა შეცდომა. გთხოვთ, სცადოთ მოგვიანებით.',
+    error: 'სერვერზე მოხდა შეცდომა. სცადე მოგვიანებით.',
     ...(env.NODE_ENV === 'development' ? { detail: error?.message } : {}),
   });
 }

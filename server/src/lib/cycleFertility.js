@@ -99,7 +99,7 @@ export function buildTtcObservationCards({ logs = [], today, lastPeriodStart } =
       id: 'ttc_opk_logged',
       tone: 'fertile',
       title: 'აღრიცხული ოვულაციის ტესტი',
-      body: `დღეს აღრიცხეთ ${CYCLE_TEST_RESULT_KA[todayLog.ovulationTest]} ოვულაციის ტესტი. ეს ტესტის შედეგია, არა დადგენილი ოვულაცია.`,
+      body: `დღეს აღრიცხე ${CYCLE_TEST_RESULT_KA[todayLog.ovulationTest]} ოვულაციის ტესტი. ეს ტესტის შედეგია, არა დადგენილი ოვულაცია.`,
       action: null,
     });
   }
@@ -111,7 +111,7 @@ export function buildTtcObservationCards({ logs = [], today, lastPeriodStart } =
       id: 'ttc_opk_recent',
       tone: 'fertile',
       title: 'აღრიცხული დადებითი OPK',
-      body: `დადებითი ოვულაციის ტესტი აღრიცხეთ ${recentPositive.date}-ზე. ეს არ ადასტურებს, რომ ოვულაცია მოხდა.`,
+      body: `დადებითი ოვულაციის ტესტი აღრიცხე ${recentPositive.date}-ზე. ეს არ ადასტურებს, რომ ოვულაცია მოხდა.`,
       action: null,
     });
   }
@@ -135,7 +135,7 @@ export function buildTtcObservationCards({ logs = [], today, lastPeriodStart } =
       id: 'ttc_mucus_logged',
       tone: 'calm',
       title: 'აღრიცხული ლორწო',
-      body: `გუშინ აღრიცხეთ კვერცხის ცილისებრი ცერვიკალური ლორწო. ეს თქვენი დაკვირვებაა, არა დადგენილი ნაყოფიერება.`,
+      body: `გუშინ აღრიცხე კვერცხის ცილისებრი ცერვიკალური ლორწო. ეს შენი დაკვირვებაა, არა დადგენილი ნაყოფიერება.`,
       action: null,
     });
   }
@@ -146,10 +146,10 @@ export function buildTtcObservationCards({ logs = [], today, lastPeriodStart } =
       title: 'აღრიცხული ორსულობის ტესტი',
       body:
         todayLog.pregnancyTest === 'positive'
-          ? 'აღრიცხეთ დადებითი ორსულობის ტესტი. Medicard ამით ორსულობას არ ადასტურებს.'
+          ? 'აღრიცხე დადებითი ორსულობის ტესტი. Medicard ამით ორსულობას არ ადასტურებს.'
           : todayLog.pregnancyTest === 'negative'
-            ? 'აღრიცხეთ უარყოფითი ორსულობის ტესტი. ეს ერთი შედეგია, არა საბოლოო დასკვნა.'
-            : 'აღრიცხეთ გაურკვეველი ორსულობის ტესტი. ეს არც დადებითია და არც უარყოფითი.',
+            ? 'აღრიცხე უარყოფითი ორსულობის ტესტი. ეს ერთი შედეგია, არა საბოლოო დასკვნა.'
+            : 'აღრიცხე გაურკვეველი ორსულობის ტესტი. ეს არც დადებითია და არც უარყოფითი.',
       action: todayLog.pregnancyTest === 'positive' ? 'ორსულობის რეჟიმის განხილვა' : null,
     });
   }

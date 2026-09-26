@@ -36,7 +36,7 @@ const registerSchema = z.object({
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('ელ-ფოსტის ფორმატი არასწორია'),
-  password: z.string().min(1, 'შეიყვანეთ პაროლი'),
+  password: z.string().min(1, 'შეიყვანე პაროლი'),
 });
 
 const forgotPasswordSchema = z.object({
@@ -68,7 +68,7 @@ authRouter.post(
     const settings = await getAppSettings();
     if (!settings.allowRegistrations) {
       return res.status(403).json({
-        error: 'რეგისტრაცია დროებით გამორთულია. გთხოვთ, სცადოთ მოგვიანებით.',
+        error: 'რეგისტრაცია დროებით გამორთულია. სცადე მოგვიანებით.',
         code: 'REGISTRATIONS_CLOSED',
       });
     }
@@ -125,7 +125,7 @@ authRouter.post(
       }
       if (err?.code === 'REGISTER_UNCONFIRMED') {
         return res.status(500).json({
-          error: 'ანგარიში ვერ შეიქმნა. სცადეთ ხელახლა.',
+          error: 'ანგარიში ვერ შეიქმნა. სცადე ხელახლა.',
           code: 'REGISTER_UNCONFIRMED',
         });
       }
@@ -141,7 +141,7 @@ authRouter.post(
     }
     if (!confirmed?.id) {
       return res.status(500).json({
-        error: 'ანგარიში ვერ შეიქმნა. სცადეთ ხელახლა.',
+        error: 'ანგარიში ვერ შეიქმნა. სცადე ხელახლა.',
         code: 'REGISTER_UNCONFIRMED',
       });
     }
@@ -171,7 +171,7 @@ authRouter.post(
 
     if (found.status === 'BLOCKED') {
       return res.status(403).json({
-        error: 'თქვენი ანგარიში დაბლოკილია. დაგვიკავშირდით მხარდაჭერას.',
+        error: 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.',
         code: 'ACCOUNT_BLOCKED',
       });
     }
@@ -207,7 +207,7 @@ authRouter.post(
       return res.status(result.status).json({ error: result.error });
     }
 
-    return res.json({ ok: true, message: 'პაროლი წარმატებით შეიცვალა. შეგიძლიათ შეხვიდეთ ანგარიშში.' });
+    return res.json({ ok: true, message: 'პაროლი წარმატებით შეიცვალა. შეგიძლია შეხვიდე ანგარიშში.' });
   }),
 );
 
@@ -292,7 +292,7 @@ authRouter.post(
 
     if (user.status === 'BLOCKED') {
       return res.status(403).json({
-        error: 'თქვენი ანგარიში დაბლოკილია. დაგვიკავშირდით მხარდაჭერას.',
+        error: 'შენი ანგარიში დაბლოკილია. დაგვიკავშირდი მხარდაჭერას.',
         code: 'ACCOUNT_BLOCKED',
       });
     }
@@ -412,7 +412,7 @@ authRouter.get(
  */
 const updateProfileSchema = z
   .object({
-    fullName: z.string().trim().min(2, 'შეიყვანეთ სახელი და გვარი').max(120).optional(),
+    fullName: z.string().trim().min(2, 'შეიყვანე სახელი და გვარი').max(120).optional(),
     gender: genderSchema.optional(),
     birthDate: birthDateSchema.optional(),
     aiEngine: z.enum(['gemini_flash', 'ling_free', 'evidencemd']).optional(),

@@ -25,7 +25,7 @@ export const DEFAULT_SHARE_PERMISSIONS = Object.freeze({
   symptoms: false,
 });
 
-export const SHARE_AUTH_ERROR = 'ავტორიზაცია საჭიროა. გთხოვთ, შეხვიდეთ სისტემაში.';
+export const SHARE_AUTH_ERROR = 'ავტორიზაცია საჭიროა. შედი ანგარიშში.';
 export const SHARE_DENY_ERROR = 'ბმული ვერ მოიძებნა';
 
 const PERM_KEYS = ['period', 'cyclePhase', 'fertileWindow', 'symptoms'];
