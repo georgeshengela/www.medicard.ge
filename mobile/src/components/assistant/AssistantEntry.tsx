@@ -23,7 +23,8 @@ export function AssistantEntry({ tabBar }: { tabBar: boolean }) {
   };
   useEffect(() => { const a = Keyboard.addListener('keyboardDidShow', () => setKeyboard(true)); const b = Keyboard.addListener('keyboardDidHide', () => setKeyboard(false)); return () => { a.remove(); b.remove(); }; }, []);
   // Keep camera, maps, onboarding and conversations clear. Main screens retain one compact entry.
-  if (keyboard || ['assistant', '(auth)', 'chat', 'module', 'run', 'medipulsi', 'symptoms'].includes(segments[0]) || segments.includes('chat')) return null;
+  // The AI consent screen decides whether Medi may run at all; its own primary button must stay uncovered.
+  if (['(tabs)/home', 'profile/ai-data'].includes(segments.join('/')) || segments[0] === 'explore' || keyboard || ['assistant', '(auth)', 'chat', 'module', 'run', 'medipulsi', 'symptoms'].includes(segments[0]) || segments.includes('chat')) return null;
   return <Animated.View style={[styles.position, { right: Math.max(insets.right, 16), bottom: Math.max(insets.bottom, 12) + (tabBar ? 78 : 10) }, pressStyle]}>
     <Pressable accessibilityRole="button" accessibilityLabel="Medi — ხმოვანი ასისტენტის გახსნა"
       accessibilityHint="ხსნის საუბრის გვერდს" onPress={openAssistant}

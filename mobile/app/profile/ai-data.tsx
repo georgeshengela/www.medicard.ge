@@ -79,7 +79,7 @@ export default function AiDataProcessingScreen() {
       : copy?.intro;
   const updatedLine = status?.updatedAt
     ? english
-      ? `Last changed ${formatRelative(status.updatedAt)}`
+      ? `Last changed ${new Date(status.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
       : `ბოლო ცვლილება: ${formatRelative(status.updatedAt)}`
     : null;
 
