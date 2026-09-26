@@ -568,6 +568,7 @@ export const ka = {
 
   chat: {
     mediModes: { medi: 'Medi', doctor: 'ექიმთან', deep: 'ღრმა ანალიზი' } as Record<'medi' | 'doctor' | 'deep', string>,
+    mediModeSubtitles: { medi: 'შენი ასისტენტი', doctor: 'ჯანმრთელობის კითხვები და რჩევა', deep: 'რამდენიმე სპეციალისტის ხედვა' } as Record<'medi' | 'doctor' | 'deep', string>,
     navDoctorTitle: 'Medi',
     navModelBadge: 'AI',
     chatsRemaining: (remaining: number) =>

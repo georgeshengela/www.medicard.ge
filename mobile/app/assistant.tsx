@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ka } from '@/i18n/ka';
 import { Keyboard, Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AssistantDirectory } from '@/components/assistant/AssistantDirectory';
@@ -7,7 +8,7 @@ import { AssistantVoiceStage } from '@/components/assistant/AssistantVoiceStage'
 import { useAssistantVoice, assistantHaptic } from '@/components/assistant/useAssistantVoice';
 import { useAssistantSpeech } from '@/components/assistant/useAssistantSpeech';
 import { assistantDialogIntent, spokenAssistantReview, assistantFieldError } from '@/lib/assistantDialog';
-import { ChevronLeft, ChevronDown, Ellipsis, PawPrint, Check } from 'lucide-react-native';
+import { ChevronDown, Ellipsis, PawPrint, Check, SlidersHorizontal } from 'lucide-react-native';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
 import { ChatFormScroll, ChatScreenShell } from '@/components/chat/ChatScreenShell';
@@ -16,8 +17,7 @@ import { AssistantForm } from '@/components/assistant/AssistantForm';
 import { api, assistantRequest, ApiError } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
 import { MediConsultation } from '@/components/chat/MediConsultation';
-import { ChatTopNav } from '@/components/chat/ChatTopNav';
-import { MediModeSwitch } from '@/components/assistant/MediModeSwitch';
+import { MediHeader } from '@/components/assistant/MediHeader';
 import { apiModeFor, legacyChatRouteToMedi, mediModeFromParam, mediRoute } from '@/lib/mediModes';
 import { assistantDisplay, assistantFieldLabels, stageAssistantLaunch, type AssistantAction, type AssistantChoices, type AssistantNative, type AssistantPlan, type AssistantReview, type AssistantTool, type AssistantFeature, type AssistantGroup } from '@/lib/assistant';
 
@@ -26,6 +26,7 @@ type Turn = { role: 'user' | 'assistant'; content: string };
 export default function AssistantScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const theme = useThemeColors();
   const params = useLocalSearchParams<{ mode?: string; sessionId?: string; prefill?: string }>();
   if (!user) return null;
   const mode = mediModeFromParam(params.mode);
@@ -33,10 +34,9 @@ export default function AssistantScreen() {
   const sessionId = typeof params.sessionId === 'string' ? params.sessionId : undefined;
   if (apiMode) {
     return <MediConsultation apiMode={apiMode} sessionId={sessionId} prefill={typeof params.prefill === 'string' ? params.prefill : undefined}
-      header={({ title, icon }) => <View>
-        <ChatTopNav title={title} icon={icon} onBack={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home' as never))} onSettings={() => router.push('/profile/ai-data' as never)} />
-        <MediModeSwitch value={mode} onChange={next => router.replace(mediRoute({ mode: next }) as never)} />
-      </View>} />;
+      header={() => <MediHeader subtitle={ka.chat.mediModeSubtitles[mode]} mode={mode} onMode={next => router.replace(mediRoute({ mode: next }) as never)}
+        onBack={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home' as never))}
+        right={<Pressable accessibilityRole="button" accessibilityLabel="AI და კონფიდენციალურობა" onPress={() => router.push('/profile/ai-data' as never)} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}><SlidersHorizontal size={21} color={theme.text200} /></Pressable>} />} />;
   }
   return <AssistantSession key={`${user.id}:${sessionId ?? 'new'}`} owner={user.id} sessionId={sessionId} />;
 }
@@ -250,11 +250,9 @@ function AssistantSession({ owner, sessionId }: { owner: string; sessionId?: str
     <Text style={{ color: primary ? '#FFFFFF' : C.text100, fontSize: 13, fontFamily: 'NotoSansGeorgian_700Bold' }}>{label}</Text>
   </Pressable>;
   const resetConversation = () => { if (working.current || capture.isBusy()) return; speech.stop(); generation.current++; conversation.current = undefined; if (sessionId) router.replace('/assistant' as never); setHistory([]); setReview(null); setDraft(null); setReceipt(null); setText(''); setManual(false); setMenu(false); setError(null); setNotice(null); setHistoryOpen(false); setVoiceMode(true); };
-  const header = <View style={{ paddingTop: insets.top, backgroundColor: C.bg100 }}><View style={{ height: 62, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-    <Pressable accessibilityRole="button" accessibilityLabel="უკან დაბრუნება" onPress={() => { if (picker) setPicker(false); else if (manual) setManual(false); else if (menu || historyOpen) { setMenu(false); setHistoryOpen(false); } else if (router.canGoBack()) router.back(); else router.replace('/(tabs)/home' as never); }} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 }}><ChevronLeft size={24} color={C.text100} /></Pressable>
-    <View style={{ flex: 1, gap: 2 }}><Text style={{ color: C.text100, fontSize: 20, fontFamily: 'NotoSansGeorgian_700Bold' }}>Medi<Text style={{ color: C.primary200 }}>.</Text></Text><Text style={{ ...quiet, fontSize: 11 }}>შენი ასისტენტი</Text></View>
-    <Pressable accessibilityRole="button" accessibilityLabel="საუბრის პარამეტრები" accessibilityState={{ expanded: menu }} disabled={!!busy || capture.phase !== 'idle'} onPress={() => { speech.stop(); Keyboard.dismiss(); setMenu(!menu); }} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: menu ? C.bg200 : 'transparent' }}><Ellipsis size={23} color={C.text200} /></Pressable>
-  </View><MediModeSwitch value="medi" onChange={next => { if (next !== 'medi') router.replace(mediRoute({ mode: next }) as never); }} /></View>;
+  const goBack = () => { if (picker) setPicker(false); else if (manual) setManual(false); else if (menu || historyOpen) { setMenu(false); setHistoryOpen(false); } else if (router.canGoBack()) router.back(); else router.replace('/(tabs)/home' as never); };
+  const header = <MediHeader subtitle={ka.chat.mediModeSubtitles.medi} mode="medi" onMode={next => { if (next !== 'medi') router.replace(mediRoute({ mode: next }) as never); }} onBack={goBack}
+    right={<Pressable accessibilityRole="button" accessibilityLabel="საუბრის პარამეტრები" accessibilityState={{ expanded: menu }} disabled={!!busy || capture.phase !== 'idle'} onPress={() => { speech.stop(); Keyboard.dismiss(); setMenu(!menu); }} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: menu ? C.bg200 : 'transparent' }}><Ellipsis size={23} color={C.text200} /></Pressable>} />;
   return <ChatScreenShell style={{ backgroundColor: C.bg100 }} header={header}
     footer={picker || menu || historyOpen ? undefined : <AssistantTalkDock voice={voice} voiceOutput={voiceOutput} phase={capture.phase} duration={capture.duration} metering={capture.metering}
       speechPhase={speech.phase} muted={speech.muted} busy={busy} reviewing={!!review} text={text} onText={setText} onSend={() => void send()} tapMode={tapMode}

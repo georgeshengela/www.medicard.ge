@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CloudSun, Flame } from 'lucide-react-native';
 import { Meteocon, meteoconSlugFor } from '@/components/weather/Meteocon';
@@ -21,6 +21,7 @@ type Props = {
  * (weather, streak) now lives as a small pill beside the date.
  */
 export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: Props) {
+  const narrow = useWindowDimensions().width < 360;
   const c = useThemeColors();
   const dark = useIsDark();
   const router = useRouter();
@@ -71,9 +72,10 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
             </Pressable>
           ) : null}
         </View>
-        <Text accessibilityRole="header" numberOfLines={2} style={[s.title, { color: c.text100 }]}>
+        <Text accessibilityRole="header" numberOfLines={2} style={[s.title, narrow && s.titleNarrow, { color: c.text100 }]}>
           {greeting()}
-          {firstName ? `, ${firstName}` : ''}
+          {firstName ? `,
+${firstName}` : ''}
         </Text>
       </View>
 
@@ -138,6 +140,7 @@ const s = StyleSheet.create({
     lineHeight: 32,
     letterSpacing: -0.3,
   },
+  titleNarrow: { fontSize: 20, lineHeight: 28 },
   avatar: {
     width: 48,
     height: 48,

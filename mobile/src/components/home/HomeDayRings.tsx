@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -98,15 +98,19 @@ export function HomeDayRings({ rings }: { rings: DayRing[] }) {
   const reduceMotion = usePrefersReducedMotion();
   const palette = ringPalette(dark);
   const outer = SIZE / 2 - STROKE / 2;
+  // Narrow phones (≤360 pt): a smaller ring leaves room for "0.0 / 2.0 ლ" and the + button.
+  const { width } = useWindowDimensions();
+  const narrow = width < 360;
+  const shown = narrow ? 76 : SIZE;
 
   return (
-    <View style={[s.card, { backgroundColor: c.surface }]}>
+    <View style={[s.card, narrow && { gap: 10 }, { backgroundColor: c.surface }]}>
       <View
         accessible={false}
         importantForAccessibility="no-hide-descendants"
-        style={{ width: SIZE, height: SIZE }}
+        style={{ width: shown, height: shown }}
       >
-        <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+        <Svg width={shown} height={shown} viewBox={`0 0 ${SIZE} ${SIZE}`}>
           {rings.map((ring, index) => (
             <Ring
               key={ring.key}
@@ -141,7 +145,7 @@ export function HomeDayRings({ rings }: { rings: DayRing[] }) {
               >
                 <Icon size={16} color={color} strokeWidth={2.2} />
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text numberOfLines={1} style={[s.value, { color: c.text100 }]}>
+                  <Text numberOfLines={1} style={[s.value, narrow && { fontSize: 14 }, { color: c.text100 }]}>
                     {ring.value}
                   </Text>
                   <Text numberOfLines={1} style={[s.label, { color: c.text200 }]}>

@@ -372,7 +372,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                     lineHeight: 22,
                     color: c.ink,
                   }}
-                  numberOfLines={2}
+                  numberOfLines={3}
                 >
                   {ka.cycle.homePostpartumLabel}
                 </Text>
@@ -405,7 +405,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                     lineHeight: 22,
                     color: c.ink,
                   }}
-                  numberOfLines={2}
+                  numberOfLines={3}
                 >
                   {ka.cycle.homePeriLabel}
                 </Text>
@@ -468,7 +468,7 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
                       lineHeight: 22,
                       color: c.ink,
                     }}
-                    numberOfLines={2}
+                    numberOfLines={3}
                   >
                     {pregnancy
                       ? ka.cycle.pregnancyModeTitle

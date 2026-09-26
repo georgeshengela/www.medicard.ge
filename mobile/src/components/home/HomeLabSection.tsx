@@ -13,6 +13,8 @@ import { ka } from '@/i18n/ka';
 import { formatLabDateKa, isTodayYmd } from '@/lib/labExtract';
 import { moverChangeLabel, summarizeLabMovers } from '@/lib/labMovers';
 import type { LabFlag, LabParameter } from '@/types/lab';
+import { HUB, hubInk, hubTint } from '@/theme/hub';
+import { useIsDark, useThemeColors } from '@/theme/colors';
 
 type Spotlight = {
   key: string;
@@ -28,6 +30,9 @@ export function HomeLabSection({ edgeInset = 16 }: { edgeInset?: number }) {
   const router = useRouter();
   const FIGMA = useFigmaHomeDashboard();
   const T = useFigmaLab();
+  const c = useThemeColors();
+  const dark = useIsDark();
+  const labInk = hubInk('blue', dark);
   const { dates, byDate, panels } = useLab();
   const latest = dates[0];
   const params = latest ? (byDate.get(latest) ?? []).flatMap((panel) => panel.parameters) : [];
@@ -67,10 +72,9 @@ export function HomeLabSection({ edgeInset = 16 }: { edgeInset?: number }) {
         onPress={openLab}
         style={{
           marginHorizontal: edgeInset,
-          backgroundColor: FIGMA.setupCardBg,
-          borderWidth: 1,
-          borderColor: FIGMA.border,
-          borderRadius: 24,
+          // Hub card: flat surface, no border (Home design language).
+          backgroundColor: c.surface,
+          borderRadius: HUB.cardRadius,
           paddingHorizontal: 16,
           paddingVertical: 14,
           gap: 12,
@@ -79,15 +83,15 @@ export function HomeLabSection({ edgeInset = 16 }: { edgeInset?: number }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 14,
-              backgroundColor: T.iconWell,
+              width: HUB.tile,
+              height: HUB.tile,
+              borderRadius: HUB.tileRadius,
+              backgroundColor: hubTint(labInk, dark),
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <FlaskConical size={20} color={T.iconWellInk} strokeWidth={2.1} />
+            <FlaskConical size={20} color={labInk} strokeWidth={2.1} />
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             {latest ? (
