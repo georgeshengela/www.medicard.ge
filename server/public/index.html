@@ -30,7 +30,7 @@
   <link rel="apple-touch-icon" href="/icon.png" />
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="/landing.css?v=41" />
+  <link rel="stylesheet" href="/landing.css?v=42" />
   <noscript><style>.reveal{opacity:1;transform:none}</style></noscript>
 </head>
 <body>
@@ -79,8 +79,8 @@
           <div class="hero-stage">
             <div class="hero-orbit" aria-hidden="true"><i></i><i></i></div>
             <figure class="iphone" id="hero-phone">
-              <img class="iphone-chrome" src="/iphone-15-pro-max.svg" alt="" width="434" height="884" />
-              <div class="iphone-bezel"><div class="phone-screen"><img data-key="home" src="/screens/home.png" alt="" class="is-on" /><img data-key="medi" src="/screens/medi.png" alt="" /><img data-key="cycle" src="/screens/cycle.png" alt="" /><img data-key="symptoms" src="/screens/symptoms.png" alt="" /><img data-key="metrics" src="/screens/metrics.png" alt="" /><img data-key="meds" src="/screens/meds.png" alt="" /><img data-key="streak" src="/screens/streak.png" alt="" /><img data-key="profile" src="/screens/profile.png" alt="" /><img data-key="hydration" src="/screens/hydration.png" alt="" /><img data-key="signin" src="/screens/signin.png" alt="" /></div></div>
+              <img class="iphone-chrome" src="/iphone-16-pro-max.svg" alt="" width="470" height="956" />
+              <div class="iphone-bezel"><div class="phone-screen"><img data-key="home" src="/screens/v2/home.webp" alt="მედიქარდის მთავარი ეკრანი" class="is-on" width="660" height="1434" /><img data-key="hydration" src="/screens/v2/hydration.webp" alt="" width="660" height="1434" /><img data-key="run" src="/screens/v2/run.webp" alt="" width="660" height="1434" /><img data-key="symptoms" src="/screens/v2/symptoms.webp" alt="" width="660" height="1434" /><img data-key="analysis" src="/screens/v2/analysis.webp" alt="" width="660" height="1434" /><img data-key="cycle" src="/screens/v2/cycle.webp" alt="" width="660" height="1434" /><img data-key="log" src="/screens/v2/log.webp" alt="" width="660" height="1434" /></div></div>
             </figure>
             <p class="hero-aside">შენი სურათი.<br />შენი კონტროლი</p>
           </div>
@@ -95,11 +95,11 @@
         </div>
         <div class="day" role="tablist" aria-label="Day">
           <button type="button" data-day="home" class="is-on"><span class="ic ic-house" aria-hidden="true"></span><small>06:40</small><b>მთავარი</b></button>
-          <button type="button" data-day="meds"><span class="ic ic-pill" aria-hidden="true"></span><small>09:00</small><b>მედები</b></button>
-          <button type="button" data-day="metrics"><span class="ic ic-steps" aria-hidden="true"></span><small>13:20</small><b>ნაბიჯები</b></button>
-          <button type="button" data-day="cycle"><span class="ic ic-cycle" aria-hidden="true"></span><small>18:10</small><b>ციკლი</b></button>
-          <button type="button" data-day="medi"><span class="ic ic-chat" aria-hidden="true"></span><small>21:00</small><b>Medi</b></button>
-          <button type="button" data-day="streak"><span class="ic ic-medal" aria-hidden="true"></span><small>22:30</small><b>სტრიკი</b></button>
+          <button type="button" data-day="hydration"><span class="ic ic-water" aria-hidden="true"></span><small>09:00</small><b>წყალი</b></button>
+          <button type="button" data-day="run"><span class="ic ic-steps" aria-hidden="true"></span><small>13:20</small><b>MEDIRUN</b></button>
+          <button type="button" data-day="symptoms"><span class="ic ic-body" aria-hidden="true"></span><small>18:10</small><b>სიმპტომები</b></button>
+          <button type="button" data-day="analysis"><span class="ic ic-flask" aria-hidden="true"></span><small>21:00</small><b>ანალიზი</b></button>
+          <button type="button" data-day="cycle"><span class="ic ic-cycle" aria-hidden="true"></span><small>22:30</small><b>ციკლი</b></button>
         </div>
         </div>
         </div>
@@ -158,7 +158,7 @@
           <h2>ექვსი სივრცე, ერთი აპი</h2>
         </div>
         <div class="hub-grid">
-          <article class="hub reveal" tabindex="0" data-screen="metrics">
+          <article class="hub reveal" tabindex="0" data-screen="home">
             <div class="icon"><span class="ic ic-lg ic-apple" aria-hidden="true"></span></div>
             <h3>ყოველდღე</h3>
             <p>კვება, წამალი, ვიზიტი, მოძრაობა და ამინდი.</p>
@@ -182,7 +182,7 @@
               <li>საზოგადოება</li>
             </ul>
           </article>
-          <article class="hub hub-ai reveal delay-2" tabindex="0" data-screen="medi">
+          <article class="hub hub-ai reveal delay-2" tabindex="0" data-screen="analysis">
             <div class="icon"><span class="ic ic-lg ic-chat" aria-hidden="true"></span></div>
             <h3>Medi</h3>
             <p>ანალიზი, სურათი, კანი და სიმპტომი. დიაგნოზი არა.</p>
@@ -195,7 +195,7 @@
               <li>კონსილიუმი</li>
             </ul>
           </article>
-          <article class="hub reveal" tabindex="0" data-screen="profile">
+          <article class="hub reveal" tabindex="0" data-screen="log">
             <div class="icon"><span class="ic ic-lg ic-file" aria-hidden="true"></span></div>
             <h3>ჩანაწერები</h3>
             <p>დოკუმენტები, აფთიაქის ფასი და შენი პროფილი.</p>
@@ -206,7 +206,7 @@
               <li>კონფიდენციალურობა</li>
             </ul>
           </article>
-          <article class="hub reveal delay-1" tabindex="0" data-screen="streak">
+          <article class="hub reveal delay-1" tabindex="0" data-screen="run">
             <div class="icon"><span class="ic ic-lg ic-medal" aria-hidden="true"></span></div>
             <h3>მოძრაობა</h3>
             <p>სეირნობა, მისიები და ყოველდღიური სერია.</p>
@@ -376,6 +376,6 @@
       </div>
     </div>
   </footer>
-  <script src="/landing.js?v=17"></script>
+  <script src="/landing.js?v=18"></script>
 </body>
 </html>

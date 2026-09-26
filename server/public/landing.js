@@ -89,7 +89,7 @@
   );
   document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
 
-  const order = ["home", "medi", "cycle", "symptoms", "metrics", "meds", "streak", "profile"];
+  const order = ["home", "hydration", "run", "symptoms", "analysis", "cycle", "log"];
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let current = "home";
   let autoplay = null;
@@ -119,7 +119,7 @@
     autoplay = setInterval(() => {
       const i = order.indexOf(current);
       setScreen(order[(i + 1) % order.length], document.getElementById("hero-phone"));
-    }, 3200);
+    }, 3600);
   }
 
   const hero = document.querySelector(".hero-copy");
