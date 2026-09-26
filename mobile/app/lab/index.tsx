@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FlaskConical, Plus } from 'lucide-react-native';
+import { FlaskConical, MessageCircle, Plus } from 'lucide-react-native';
 import { LabAlignCard } from '@/components/lab/LabAlignCard';
 import { LabFilterBar } from '@/components/lab/LabFilterBar';
 import { LabBackChevron, LabChevronRight } from '@/components/lab/LabIcons';
@@ -13,6 +13,7 @@ import { useLab } from '@/hooks/useLab';
 import { ka } from '@/i18n/ka';
 import { labFlagCounts, labParamMatches, type LabFlagFilter } from '@/lib/labFilter';
 import { summarizeLabMovers } from '@/lib/labMovers';
+import { labMediPrompt } from '@/lib/labMediPrompt';
 import { formatLabDateKa, isTodayYmd } from '@/lib/labExtract';
 
 export default function LabHubScreen() {
@@ -54,7 +55,7 @@ export default function LabHubScreen() {
         </Pressable>
         <View style={{ flex: 1 }} />
         <Pressable
-          onPress={() => router.push('/module/lab' as never)}
+          onPress={() => router.push('/lab/analyze' as never)}
           style={{
             width: 40,
             height: 40,
@@ -77,6 +78,26 @@ export default function LabHubScreen() {
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32, gap: 16 }} showsVerticalScrollIndicator={false}>
         {dates.length ? <LabAlignCard panels={panels} onApplied={replaceAll} /> : null}
+        {dates.length ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={ka.lab.askMediChat}
+            onPress={() => {
+              const prefill = labMediPrompt(panels);
+              router.push({ pathname: '/chat/doctor', params: prefill ? { prefill } : {} } as never);
+            }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 16, backgroundColor: T.brandSoft }}
+          >
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: T.brand, alignItems: 'center', justifyContent: 'center' }}>
+              <MessageCircle size={20} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: T.textPrimary }}>{ka.lab.askMediChat}</Text>
+              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 19, color: T.textSecondary }}>{ka.lab.askMediChatHint}</Text>
+            </View>
+            <LabChevronRight color={T.textMuted} />
+          </Pressable>
+        ) : null}
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <StatCard
             label={ka.lab.testsCount}
@@ -137,7 +158,7 @@ export default function LabHubScreen() {
         ) : null}
         {!loading && !dates.length ? (
           <Pressable
-            onPress={() => router.push('/module/lab' as never)}
+            onPress={() => router.push('/lab/analyze' as never)}
             style={{
               borderRadius: 16,
               borderWidth: 1,

@@ -108,9 +108,9 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
         icon: Stethoscope,
       },
       {
-        title: 'ლაბორატორიული ანალიზი',
-        detail: 'შედეგების AI განმარტება',
-        href: '/module/lab',
+        title: 'ლაბორატორია',
+        detail: 'შედეგები, ნორმები და Medi-ს განმარტება',
+        href: '/lab',
         icon: FlaskConical,
       },
       {
@@ -153,12 +153,6 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
         detail: 'გაზომვები და ცვლილებები',
         href: '/health-metrics',
         icon: Activity,
-      },
-      {
-        title: 'ლაბორატორიული ისტორია',
-        detail: 'შენახული შედეგები დროთა განმავლობაში',
-        href: '/lab',
-        icon: FlaskConical,
       },
       {
         title: 'აფთიაქი',

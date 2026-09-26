@@ -51,7 +51,7 @@ export const MODULE_TILES: ModuleTile[] = [
     title: ka.modules.lab.title,
     subtitle: ka.modules.lab.subtitle,
     icon: FlaskConical,
-    href: '/module/lab',
+    href: '/lab/analyze',
     tint: 'bg-accent-100/60',
     iconColor: '#14B8A6',
   },

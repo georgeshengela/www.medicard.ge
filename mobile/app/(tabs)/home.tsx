@@ -57,7 +57,7 @@ import { HYDRATION_DROP_ML } from '@/types/hydration';
 /** Four AI check-ups, one per question a person actually has. */
 const CHECKUP_TILES: HubTile[] = [
   { key: 'symptoms', title: 'სიმპტომები', detail: 'აღწერე, რა და სად გაწუხებს', href: '/symptoms', icon: Stethoscope, ink: 'teal' },
-  { key: 'lab', title: 'ლაბორატორია', detail: 'ატვირთე ანალიზის პასუხი', href: '/module/lab', icon: FlaskConical, ink: 'blue' },
+  { key: 'lab', title: 'ლაბორატორია', detail: 'ატვირთე ან ნახე შედეგები', href: '/lab', icon: FlaskConical, ink: 'blue' },
   { key: 'imaging', title: 'გამოსახულება', detail: 'რენტგენი, ექო, MRI', href: '/module/imaging', icon: ScanLine, ink: 'sky' },
   { key: 'skin', title: 'კანი', detail: 'ფოტოს შეფასება და მოვლა', href: '/module/skin', icon: ScanFace, ink: 'rose' },
 ];
