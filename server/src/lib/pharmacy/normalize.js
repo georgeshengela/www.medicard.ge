@@ -141,20 +141,24 @@ export function buildGeoLatinMap(names) {
     const latCanon = canonicalizePhrase(latPart);
     if (latCanon.length < 4) continue;
 
-    // Register the second word too, but only when the first is short enough
-    // that canonicalBrand's own 4-char minimum would skip past it entirely
-    // (e.g. "დიპ რილიფი" landing on "რილიფი" alone). When the first word is
-    // already a real identifier on its own, do NOT also register the second —
-    // it is very often a generic manufacturer or chemical-class suffix shared
-    // across unrelated drugs ("... დენკი" / "...-Denk", "... სულფატი" /
-    // "...Sulfate"), and registering it standalone previously merged
-    // completely different drugs that happened to share that one word
-    // (e.g. "დოლო-დენკი" gel wrongly matched "სიმვა-დენკი" tablets; "ატროპინის
-    // სულფატი" wrongly matched "მაგნიუმის სულფატი").
+    // Register ONLY the first word of the Georgian phrase — never the second.
+    // A length threshold ("only skip the second word when the first is long
+    // enough") looked safe but wasn't: "პარა დენკი" (Para-Denk) has a short
+    // first word too, so it still registered "დენკი" standalone, which then
+    // wrongly matched "დოლო-დენკი" (Dolo-Denk, an unrelated gel) to
+    // "სიმვა-დენკი" (Simva-Denk tablets) — same failure as before, just
+    // triggered by a different short-first-word pair. A shared second word is
+    // very often a generic manufacturer or chemical-class suffix ("Denk",
+    // "Sulfate", "EGIS", "Normon", ...) that identifies nothing about the drug
+    // itself, so it must never be registered as an independent lookup key —
+    // no length threshold makes that safe. The first word alone is already
+    // enough for every real case: canonicalBrand's own lookup checks a
+    // product's words in the same left-to-right order, so it reaches this
+    // exact first word too, however short (e.g. "დიპ" in "დიპ რილიფი").
     const geoWords = geoPart.replace(/®/g, '').trim().split(/\s+/).filter((w) => w.length >= 3);
-    const wordsToRegister = geoWords[0] && geoWords[0].length < 5 ? geoWords.slice(0, 2) : geoWords.slice(0, 1);
-    for (const w of wordsToRegister) {
-      const key = w.toLowerCase();
+    const first = geoWords[0];
+    if (first) {
+      const key = first.toLowerCase();
       if (key.length >= 3 && !map.has(key)) map.set(key, latCanon);
     }
     // Also register the full phrase (letters + any trailing variant letter) as
