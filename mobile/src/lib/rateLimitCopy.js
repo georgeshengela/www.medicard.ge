@@ -14,9 +14,9 @@ function parseRetryAfterSeconds(retryRaw, payload) {
 function formatRateLimitMessage(seconds, fallback) {
   const wait = Math.max(1, Math.min(3600, Number(seconds) || 0));
   if (!Number.isFinite(Number(seconds)) || Number(seconds) <= 0) {
-    return fallback || 'ძალიან ბევრი მოთხოვნა. გთხოვთ, დაელოდოთ ერთ წუთს.';
+    return fallback || 'ძალიან ბევრი მოთხოვნა. დაელოდე ერთ წუთს.';
   }
-  return `ძალიან ბევრი მოთხოვნა. გთხოვთ, დაელოდოთ ${wait} წამს.`;
+  return `ძალიან ბევრი მოთხოვნა. დაელოდე ${wait} წამს.`;
 }
 
 function publicApiErrorMessage(status, payload, retryRaw, fallback) {

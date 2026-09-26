@@ -53,7 +53,7 @@ export function isAuthWriteRequest(req) {
 export function rateLimitPublicMessage(retryAfterSeconds = 60) {
   const seconds = Math.max(1, Math.min(3600, Number(retryAfterSeconds) || 60));
   return {
-    error: `ძალიან ბევრი მოთხოვნა. გთხოვთ, დაელოდოთ ${seconds} წამს.`,
+    error: `ძალიან ბევრი მოთხოვნა. დაელოდე ${seconds} წამს.`,
     code: 'RATE_LIMITED',
     retryAfterSeconds: seconds,
   };

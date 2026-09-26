@@ -88,7 +88,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         if (status.client.blockedByForceUpdate) {
           setGate({
             kind: 'update',
-            message: `განაახლეთ აპლიკაცია ვერსიამდე ${status.settings.minAppVersion} ან უფრო ახალამდე.`,
+            message: `განაახლე აპლიკაცია ვერსიამდე ${status.settings.minAppVersion} ან უფრო ახალამდე.`,
           });
           return;
         }

@@ -6,7 +6,7 @@
  *
  * Contract:
  *   LOGGED    → solid fill / filled glyph ●  / "აღრიცხული"
- *   DERIVED   → plain text, no fill          / "თქვენი ჩანაწერებით"
+ *   DERIVED   → plain text, no fill          / "შენი ჩანაწერებით"
  *   PREDICTED → dash/dot/hollow ◌ + wash ≤10% / "სავარაუდო" (+ leading ~)
  *   AI        → attribution chip + evidence  / "Medi-ს დაკვირვება"
  *

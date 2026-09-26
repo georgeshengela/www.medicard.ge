@@ -8,7 +8,7 @@ describe('rate-limit copy', () => {
   it('uses the server wait instead of always saying one minute', () => {
     assert.equal(
       publicApiErrorMessage(429, { error: 'ძალიან ბევრი მოთხოვნა. გთხოვთ, დაელოდოთ ერთ წუთს.', retryAfterSeconds: 12 }, '12', 'fallback'),
-      'ძალიან ბევრი მოთხოვნა. გთხოვთ, დაელოდოთ 12 წამს.',
+      'ძალიან ბევრი მოთხოვნა. დაელოდე 12 წამს.',
     );
     assert.equal(formatRateLimitMessage(12).includes('ერთ წუთს'), false);
   });

@@ -161,7 +161,7 @@ async function ensureWeightAccountScope() {
   const snapshot = await loadSessionSnapshot();
   if (snapshot?.user?.id) setLocalAccountId(snapshot.user.id);
   if (!localAccountId()) {
-    throw new Error('ანგარიში ვერ მოიძებნა. გთხოვთ, ხელახლა შეხვიდეთ.');
+    throw new Error('ანგარიში ვერ მოიძებნა. ხელახლა შედი ანგარიშში.');
   }
 }
 

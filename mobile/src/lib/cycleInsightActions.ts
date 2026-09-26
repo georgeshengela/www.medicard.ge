@@ -35,9 +35,9 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
       kind: 'open_log',
       steps: [
         'გახსენით დღის აღრიცხვის ეკრანი.',
-        'მონიშნეთ გამონადენის სიძლიერე (თუ არის).',
-        'დაამატეთ სიმპტომები და განწყობა — რაც უკეთესია მონაცემი, მით ზუსტი პროგნოზი.',
-        'დააჭირეთ „შენახვა“.',
+        'მონიშნე გამონადენის სიძლიერე (თუ არის).',
+        'დაამატე სიმპტომები და განწყობა — რაც უკეთესია მონაცემი, მით ზუსტი პროგნოზი.',
+        'დააჭირე „შენახვა“.',
       ],
       manualLabel: action || 'გახსენი აღრიცხვა',
       autoLabel: 'გახსენი და შეავსე შენიშვნა',
@@ -53,9 +53,9 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
       kind: 'open_log_bbt',
       steps: [
         'გახსენით აღრიცხვა → „დეტალები“ ჩანართი.',
-        'შეიყვანეთ ბაზალური ტემპერატურა (BBT) ან cervical mucus.',
-        'სურვილისამებრ დაამატეთ შენიშვნა.',
-        'შეინახეთ — ეს ზუსტობას ზრდის TTC რეჟიმში.',
+        'შეიყვანე ბაზალური ტემპერატურა (BBT) ან cervical mucus.',
+        'სურვილისამებრ დაამატე შენიშვნა.',
+        'შეინახე — ეს ზუსტობას ზრდის TTC რეჟიმში.',
       ],
       manualLabel: action || 'აღრიცხე BBT / ლორწო',
       autoLabel: 'გახსენი BBT ველით',
@@ -72,7 +72,7 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
       steps: [
         'გახსენით ორსულობის ეკრანი.',
         'გადაამოწმეთ კვირის რჩევები და ჩეკლისტი.',
-        'მონიშნეთ დღევანდელი ნაბიჯები (ვიტამინი, წყალი, დასვენება).',
+        'მონიშნე დღევანდელი ნაბიჯები (ვიტამინი, წყალი, დასვენება).',
       ],
       manualLabel: action || 'გახსენი ორსულობის ჩეკლისტი',
       route: { pathname: '/cycle/pregnancy' },
@@ -84,8 +84,8 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
       kind: 'open_settings',
       steps: [
         'გახსენით ციკლის პარამეტრები.',
-        'განაახლეთ „ბოლო მენსტრუაციის დასაწყისი“.',
-        'შეინახეთ — პროგნოზები განახლდება.',
+        'განაახლე „ბოლო მენსტრუაციის დასაწყისი“.',
+        'შეინახე — პროგნოზები განახლდება.',
       ],
       manualLabel: 'პარამეტრების გახსნა',
       route: { pathname: '/cycle/settings' },
@@ -96,9 +96,9 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
     return {
       kind: 'reminder',
       steps: [
-        'დალიეთ 1–2 ჭიქა წყალი ნელა.',
+        'დალიე 1–2 ჭიქა წყალი ნელა.',
         'დაჯექით ან დაემხეთ ზურგით 10–15 წუთით.',
-        'თბილი პაკი მუცელზე დაგეხმარებათ კრუნჩხვებისას.',
+        'თბილი პაკი მუცელზე დაგეხმარება კრუნჩხვებისას.',
       ],
       manualLabel: action || 'გავაკეთო ახლა',
       autoLabel: '30 წუთში შემაგონე',
@@ -113,9 +113,9 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
       kind: 'reminder',
       steps: [
         'დაჯექით კომფორტულად, ფეხები იატაკზე.',
-        '4 წამი შეიყვანეთ ჰაერი ცხვირით.',
+        '4 წამი შეიყვანე ჰაერი ცხვირით.',
         '4 წამი გააჩერეთ.',
-        '6 წამში ნელა ამოაგონოთ — გაიმეორეთ 5-ჯერ.',
+        '6 წამში ნელა ამოაგონოთ — გაიმეორე 5-ჯერ.',
       ],
       manualLabel: action || '5 წუთი სუნთქვა',
       autoLabel: '5 წუთში შემაგონე',
@@ -129,7 +129,7 @@ export function resolveInsightAction(card: CycleInsightCard): CycleInsightAction
     return {
       kind: 'reminder',
       steps: [
-        'გაუშვით 10–15 წუთიანი მსუბუქი სეირნობა.',
+        'გაუშვი 10–15 წუთიანი მსუბუქი სეირნობა.',
         'შეეცადეთ თანაბერი ტემპი, ღრმა სუნთქვა.',
         'დაბრუნების შემდეგ დააკვირდით განწყობას.',
       ],
