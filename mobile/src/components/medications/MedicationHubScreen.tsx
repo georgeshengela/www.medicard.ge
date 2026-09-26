@@ -10,6 +10,7 @@ import { MedsButton, MedsCard, MedsChip, MedsHairline, MedsIconTile, MedsRing } 
 import { UpcomingDoseCard } from '@/components/medications/UpcomingDoseCard';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { MedsHubSkeleton } from '@/components/ui/Skeleton';
+import { useMedicationImages } from '@/hooks/useMedicationImages';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary, type Medication } from '@/lib/api';
@@ -38,6 +39,7 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
   const router = useRouter();
   const tabInset = useTabBarInset();
   const { medications, schedule, doseLogs, setDoseLogs, refreshing, loading, onRefresh, load } = useMedications();
+  const images = useMedicationImages(medications);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [catalogProducts, setCatalogProducts] = useState<CatalogProductSummary[]>([]);
@@ -168,7 +170,8 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
             <MedsCard style={{ marginTop: 12, gap: 16 }}>
               {todayDoses.slice(0, TODAY_PREVIEW).map((dose, index) => {
                 const med = medications.find((m) => m.id === dose.medicationId);
-                const cfg = parseMedicationConfig(med?.config);
+                const baseCfg = parseMedicationConfig(med?.config);
+                const cfg = { ...baseCfg, imageUrl: images[dose.medicationId] ?? baseCfg.imageUrl };
                 const log = findDoseLog(doseLogs, dose.medicationId, today, dose.time);
                 return (
                   <View key={`${dose.medicationId}-${dose.time}`}>
@@ -258,6 +261,7 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
                 <ReminderRow
                   key={med.id}
                   med={med}
+                  imageUrl={images[med.id]}
                   showDivider={index > 0}
                   onOpen={() => router.push(`/medications/${med.id}` as never)}
                   onToggle={() => apiToggle(med, load)}
@@ -382,7 +386,19 @@ function PopularSearchRow({
   );
 }
 
-function ReminderRow({ med, showDivider, onOpen, onToggle }: { med: Medication; showDivider: boolean; onOpen: () => void; onToggle: () => void }) {
+function ReminderRow({
+  med,
+  imageUrl,
+  showDivider,
+  onOpen,
+  onToggle,
+}: {
+  med: Medication;
+  imageUrl?: string | null;
+  showDivider: boolean;
+  onOpen: () => void;
+  onToggle: () => void;
+}) {
   const c = useThemeColors();
   const cfg = parseMedicationConfig(med.config);
   const times = parseFrequencyTimes(med.frequency);
@@ -393,7 +409,7 @@ function ReminderRow({ med, showDivider, onOpen, onToggle }: { med: Medication; 
       {showDivider ? <MedsHairline style={{ marginBottom: 14 }} /> : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={med.medName} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <MedicationPillIcon color={cfg.pillColor} shape={cfg.pillShape ?? 'long'} size={44} border imageUrl={cfg.imageUrl} />
+          <MedicationPillIcon color={cfg.pillColor} shape={cfg.pillShape ?? 'long'} size={52} border imageUrl={imageUrl ?? cfg.imageUrl} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>
               {med.medName}

@@ -18,6 +18,7 @@ import {
 } from '@/components/medications/MedsHubUI';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { MONTHS_KA } from '@/constants/cycle';
+import { useMedicationImages } from '@/hooks/useMedicationImages';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import {
@@ -97,6 +98,7 @@ export default function MedicationRemindersScreen() {
   const insets = useSafeAreaInsets();
   const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
   const { schedule, medications, doseLogs, setDoseLogs, loading } = useMedications();
+  const images = useMedicationImages(medications);
   const today = useMemo(() => startOfDay(new Date()), []);
   const [selectedDate, setSelectedDate] = useState(today);
   const [reschedule, setReschedule] = useState<{ medicationId: string; time: string } | null>(null);
@@ -276,7 +278,7 @@ export default function MedicationRemindersScreen() {
                                 onPress={() => router.push(`/medications/${dose.medicationId}?time=${dose.time}&date=${selectedYmd}` as never)}
                                 style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
                               >
-                                <MedicationPillIcon color={cfg.pillColor} shape={cfg.pillShape} size={46} border imageUrl={cfg.imageUrl} />
+                                <MedicationPillIcon color={cfg.pillColor} shape={cfg.pillShape} size={46} border imageUrl={images[dose.medicationId] ?? cfg.imageUrl} />
                                 <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                                   <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>
                                     {dose.medName}

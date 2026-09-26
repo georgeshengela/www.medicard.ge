@@ -23,6 +23,7 @@ import { MedicationRescheduleSheet } from '@/components/medications/MedicationRe
 import { MedsCard, MedsChip, MedsInfoRow, MedsStatusPill, medsPrimaryFill } from '@/components/medications/MedsHubUI';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { DetailCardSkeleton } from '@/components/ui/Skeleton';
+import { useMedicationImages } from '@/hooks/useMedicationImages';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
@@ -51,6 +52,7 @@ export function MedicationDoseScreen() {
   const insets = useSafeAreaInsets();
   const { id, time, date } = useLocalSearchParams<{ id: string; time?: string; date?: string }>();
   const { medications, doseLogs, setDoseLogs, load, loading } = useMedications();
+  const images = useMedicationImages(medications);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const med = medications.find((item) => item.id === id);
   const cfg = parseMedicationConfig(med?.config);
@@ -141,7 +143,7 @@ export function MedicationDoseScreen() {
       >
         <MedsCard style={{ alignItems: 'center', gap: 14, paddingVertical: 26 }}>
           <View style={[s.hero, { backgroundColor: hubTint(teal, dark) }]}>
-            <MedicationPillIcon color={cfg.pillColor} shape={cfg.pillShape ?? 'long'} size={72} imageUrl={cfg.imageUrl} />
+            <MedicationPillIcon color={cfg.pillColor} shape={cfg.pillShape ?? 'long'} size={72} imageUrl={images[id] ?? cfg.imageUrl} />
           </View>
           <View style={{ alignItems: 'center', gap: 4 }}>
             <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, lineHeight: 29, color: c.text100, textAlign: 'center' }}>
