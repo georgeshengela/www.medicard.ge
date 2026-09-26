@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Plus, Tag } from 'lucide-react-native';
+import { MedsButton } from '@/components/medications/MedsHubUI';
 import { PharmacyComparePanel } from '@/components/pharmacy/PharmacyComparePanel';
 import { PharmacyProductImage } from '@/components/pharmacy/PharmacyProductImage';
 import { ProductHeroSkeleton } from '@/components/ui/Skeleton';
@@ -70,9 +71,7 @@ export default function PharmacyProductScreen() {
     >
       <View
         style={{
-          borderRadius: pharmPx(18),
-          borderWidth: 1,
-          borderColor: colors.bg300,
+          borderRadius: pharmPx(22),
           backgroundColor: colors.surface,
           alignItems: 'center',
           paddingHorizontal: pharmPx(16),
@@ -101,38 +100,21 @@ export default function PharmacyProductScreen() {
         ) : null}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() =>
-          router.push({ pathname: '/medications/add/setup', params: catalogProductSetupParams(product) })
-        }
-        style={{
-          marginTop: pharmPx(12),
-          minHeight: pharmPx(50),
-          borderRadius: pharmPx(14),
-          backgroundColor: colors.primary200,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: pharmPx(8),
-        }}
-      >
-        <Text style={{ color: colors.onPrimary, fontWeight: '800', fontSize: pharmPx(16) }}>
-          {ka.meds.addMedicationCta}
-        </Text>
-        <Plus size={pharmPx(19)} color={colors.onPrimary} strokeWidth={2.5} />
-      </Pressable>
+      <MedsButton
+        label={ka.meds.addMedicationCta}
+        icon={Plus}
+        onPress={() => router.push({ pathname: '/medications/add/setup', params: catalogProductSetupParams(product) })}
+        style={{ marginTop: pharmPx(12) }}
+      />
 
       {product.bestPriceGel != null ? (
         <View
           style={{
             marginTop: pharmPx(12),
-            borderRadius: pharmPx(16),
-            borderWidth: 1,
-            borderColor: colors.bg300,
+            borderRadius: pharmPx(22),
             backgroundColor: colors.surface,
-            paddingHorizontal: pharmPx(16),
-            paddingVertical: pharmPx(14),
+            paddingHorizontal: pharmPx(18),
+            paddingVertical: pharmPx(16),
           }}
         >
           <Text className="text-[12px] font-bold uppercase tracking-[1px] text-text-300">{ka.pharmacy.bestOffer}</Text>
@@ -169,7 +151,7 @@ export default function PharmacyProductScreen() {
       </View>
 
       {metaRows.length ? (
-        <View className="mt-6 overflow-hidden rounded-2xl border border-bg-300 bg-surface px-4">
+        <View className="mt-6 overflow-hidden rounded-[22px] bg-surface px-4">
           <Text className="border-b border-bg-300 py-3.5 text-[15px] font-bold text-text-100">{ka.pharmacy.detailsTitle}</Text>
           {metaRows.map((row, index) => (
             <View key={row.label} className={index < metaRows.length - 1 ? 'border-b border-bg-300' : ''}>
@@ -179,7 +161,7 @@ export default function PharmacyProductScreen() {
         </View>
       ) : null}
 
-      <View className="mt-5 rounded-xl border border-bg-300 bg-surface px-3 py-3">
+      <View className="mt-5 rounded-2xl bg-surface px-3 py-3">
         <Text className="text-center text-[12px] leading-[17px] text-text-300">{ka.pharmacy.disclaimer}</Text>
       </View>
     </ScrollView>

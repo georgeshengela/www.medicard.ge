@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { MedicationSheetApplyButton, MedicationSheetModal } from '@/components/medications/MedicationSheetUI';
-import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
+import { useIsDark, useThemeColors } from '@/theme/colors';
+import { hubInk, hubText, hubTint } from '@/theme/hub';
 
 const OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -13,26 +14,23 @@ type Props = {
   onApply: (timesPerDay: number) => void;
 };
 
+/** How many times a day — a 4×3 grid of counts instead of a scrolling list. */
 export function MedicationFrequencySheet({ visible, value, onClose, onApply }: Props) {
-  const FIGMA_MEDS = useFigmaMeds();
+  const c = useThemeColors();
+  const dark = useIsDark();
+  const teal = hubInk('teal', dark);
   const [draft, setDraft] = useState(value);
-  const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    if (!visible) return;
-    setDraft(value);
-    requestAnimationFrame(() => {
-      const index = Math.max(0, value - 1);
-      scrollRef.current?.scrollTo({ y: index * 48 - 88, animated: false });
-    });
+    if (visible) setDraft(value);
   }, [visible, value]);
 
   return (
     <MedicationSheetModal
       visible={visible}
       title={ka.meds.frequencySheetTitle}
+      subtitle={ka.meds.frequencyPickerHint}
       onClose={onClose}
-      contentStyle={{ paddingHorizontal: 0 }}
       footer={
         <MedicationSheetApplyButton
           onPress={() => {
@@ -42,50 +40,43 @@ export function MedicationFrequencySheet({ visible, value, onClose, onApply }: P
         />
       }
     >
-      <ScrollView
-        ref={scrollRef}
-        showsVerticalScrollIndicator={false}
-        style={{ maxHeight: 220 }}
-        contentContainerStyle={{ paddingVertical: 4, paddingHorizontal: 16 }}
-      >
-        {OPTIONS.map((n) => {
-          const active = draft === n;
-          const muted = Math.abs(n - draft) > 1;
-          return (
-            <Pressable
-              key={n}
-              onPress={() => setDraft(n)}
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                marginBottom: 2,
-                borderRadius: active ? 18 : 0,
-                borderWidth: active ? 1 : 0,
-                borderColor: FIGMA_MEDS.brand,
-                backgroundColor: active ? FIGMA_MEDS.brandQuaternary : 'transparent',
-              }}
-            >
-              <Text
+      <View style={{ paddingVertical: 10, gap: 16 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {OPTIONS.map((n) => {
+            const active = draft === n;
+            return (
+              <Pressable
+                key={n}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={ka.meds.timesPerDayLabel(n)}
+                onPress={() => setDraft(n)}
                 style={{
-                  textAlign: 'center',
-                  fontSize: active ? 24 : 20,
-                  lineHeight: active ? 30 : 26,
-                  fontWeight: '400',
-                  letterSpacing: -0.25,
-                  color: active ? FIGMA_MEDS.brand : muted ? FIGMA_MEDS.textMuted : FIGMA_MEDS.textSecondary,
+                  flexBasis: '22%',
+                  flexGrow: 1,
+                  minHeight: 56,
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: active ? hubTint(teal, dark) : c.bg200,
                 }}
               >
-                {n}
-              </Text>
-              {active ? (
-                <Text style={{ textAlign: 'center', fontSize: 12, color: FIGMA_MEDS.textSecondary, marginTop: 2 }}>
-                  {ka.meds.timesPerDayLabel(n)}
+                <Text
+                  style={{
+                    fontFamily: 'NotoSansGeorgian_700Bold',
+                    fontSize: 22,
+                    lineHeight: 28,
+                    color: active ? teal : c.text100,
+                  }}
+                >
+                  {n}
                 </Text>
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={[hubText.body, { color: c.text200, textAlign: 'center' }]}>{ka.meds.timesPerDayLabel(draft)}</Text>
+      </View>
     </MedicationSheetModal>
   );
 }

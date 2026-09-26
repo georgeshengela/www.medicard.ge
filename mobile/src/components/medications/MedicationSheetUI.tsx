@@ -1,50 +1,74 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, X } from 'lucide-react-native';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
-import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
+import { MedsButton, MedsChip } from '@/components/medications/MedsHubUI';
 import { ka } from '@/i18n/ka';
-
-const OVERLAY = APP_MODAL_OVERLAY;
+import { useThemeColors } from '@/theme/colors';
+import { hubText } from '@/theme/hub';
 
 type SheetProps = {
   visible: boolean;
   title: string;
+  subtitle?: string;
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
   contentStyle?: ViewStyle;
+  /** Wrap the body in a ScrollView (for long option lists). */
+  scrollable?: boolean;
 };
 
-export function MedicationSheetModal({ visible, title, onClose, children, footer, contentStyle }: SheetProps) {
-  const FIGMA_MEDS = useFigmaMeds();
+/**
+ * The one bottom sheet every medication picker uses: fading scrim (sibling,
+ * never a parent), a flat `surface` sheet with a handle, a section-title
+ * header and an optional pinned footer.
+ */
+export function MedicationSheetModal({ visible, title, subtitle, onClose, children, footer, contentStyle, scrollable }: SheetProps) {
+  const c = useThemeColors();
   const insets = useSafeAreaInsets();
-  const styles = createMedModalStyles(FIGMA_MEDS);
 
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
-      <View style={styles.root}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={ka.common.close} />
+      <View style={s.root}>
+        <Pressable style={s.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={ka.common.close} />
 
-        <View style={styles.stackWrap} pointerEvents="none">
-          <View style={styles.stackLayerOuter} />
-          <View style={styles.stackLayerInner} />
-        </View>
+        <View style={[s.sheet, { backgroundColor: c.surface, paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <View style={[s.handle, { backgroundColor: c.bg300 }]} />
 
-        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-          <View style={styles.handle} />
-
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-            <Pressable onPress={onClose} hitSlop={12} style={styles.closeHit}>
-              <X size={24} color={FIGMA_MEDS.textPrimary} strokeWidth={2} />
+          <View style={s.header}>
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <Text accessibilityRole="header" style={[hubText.sectionTitle, { color: c.text100 }]}>
+                {title}
+              </Text>
+              {subtitle ? <Text style={[hubText.caption, { color: c.text200 }]}>{subtitle}</Text> : null}
+            </View>
+            <Pressable
+              onPress={onClose}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={ka.common.close}
+              style={[s.close, { backgroundColor: c.bg200 }]}
+            >
+              <X size={18} color={c.text200} strokeWidth={2.2} />
             </Pressable>
           </View>
 
-          <View style={[styles.body, contentStyle]}>{children}</View>
+          {scrollable ? (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={[s.body, contentStyle]}
+            >
+              {children}
+            </ScrollView>
+          ) : (
+            <View style={[s.body, contentStyle]}>{children}</View>
+          )}
 
-          {footer ? <View style={styles.footer}>{footer}</View> : null}
+          {footer ? <View style={s.footer}>{footer}</View> : null}
         </View>
       </View>
     </Modal>
@@ -52,145 +76,57 @@ export function MedicationSheetModal({ visible, title, onClose, children, footer
 }
 
 export function MedicationSheetApplyButton({ label, onPress, disabled }: { label?: string; onPress: () => void; disabled?: boolean }) {
-  const FIGMA_MEDS = useFigmaMeds();
-  return (
-    <Pressable
-      disabled={disabled}
-      onPress={onPress}
-      style={{
-        backgroundColor: FIGMA_MEDS.ctaBg,
-        borderRadius: 16,
-        minHeight: 48,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'row',
-        gap: 10,
-        opacity: disabled ? 0.6 : 1,
-        ...FIGMA_MEDS.shadowInput,
-      }}
-    >
-      <Text style={{ color: FIGMA_MEDS.textOnBrand, fontWeight: '600', fontSize: 16 }}>{label ?? ka.meds.sheetApply}</Text>
-      <Check size={20} color={FIGMA_MEDS.textOnBrand} strokeWidth={2.5} />
-    </Pressable>
-  );
+  return <MedsButton label={label ?? ka.meds.sheetApply} onPress={onPress} disabled={disabled} icon={Check} />;
 }
 
-export function MedicationSheetChip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active?: boolean;
-  onPress: () => void;
-}) {
-  const FIGMA_MEDS = useFigmaMeds();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        minHeight: 32,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: active ? FIGMA_MEDS.brand : FIGMA_MEDS.borderTertiary,
-        backgroundColor: active ? FIGMA_MEDS.brandQuaternary : FIGMA_MEDS.cardBg,
-        ...FIGMA_MEDS.shadowInput,
-      }}
-    >
-      <Text style={{ fontSize: 14, fontWeight: '500', color: active ? FIGMA_MEDS.brand : FIGMA_MEDS.textPrimary }}>{label}</Text>
-    </Pressable>
-  );
+export function MedicationSheetChip({ label, active, onPress }: { label: string; active?: boolean; onPress: () => void }) {
+  return <MedsChip label={label} active={active} onPress={onPress} />;
 }
 
-function createMedModalStyles(t: ReturnType<typeof useFigmaMeds>) {
-  return StyleSheet.create({
+const s = StyleSheet.create({
   root: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: OVERLAY,
-  },
-  stackWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 52,
-    alignItems: 'stretch',
-  },
-  stackLayerOuter: {
-    position: 'absolute',
-    left: 33,
-    right: 33,
-    bottom: 8,
-    height: 24,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    backgroundColor: `${t.white}80`,
-  },
-  stackLayerInner: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 16,
-    height: 20,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    backgroundColor: `${t.white}B8`,
+    backgroundColor: APP_MODAL_OVERLAY,
   },
   sheet: {
-    backgroundColor: t.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: '88%',
-    borderTopWidth: 1,
-    borderColor: t.border,
-  },
-  body: {
-    paddingHorizontal: 16,
-    flexShrink: 1,
-    minHeight: 0,
-  },
-  footer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: t.borderTertiary,
-    backgroundColor: t.white,
+    paddingTop: 10,
   },
   handle: {
     width: 36,
-    height: 5,
-    borderRadius: 100,
-    backgroundColor: t.border,
+    height: 4,
+    borderRadius: 2,
     alignSelf: 'center',
-    marginTop: 5,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 4,
-    minHeight: 40,
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 6,
   },
-  title: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    lineHeight: 24,
-    color: t.textPrimary,
-  },
-  closeHit: {
-    width: 24,
-    height: 24,
+  close: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  body: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    flexShrink: 1,
+    minHeight: 0,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+  },
 });
-}

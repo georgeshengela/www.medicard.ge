@@ -24,9 +24,9 @@ import { MedicationFrequencySheet } from '@/components/medications/MedicationFre
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedicationShapePickerSheet } from '@/components/medications/MedicationShapePickerSheet';
 import { MedicationTimePickerSheet } from '@/components/medications/MedicationTimePickerSheet';
+import { DAY_TILE, MedsButton, MedsCard, PILL_COLORS } from '@/components/medications/MedsHubUI';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
-import { FIGMA_MEDS } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -79,7 +79,7 @@ export function MedicationSetupForm({
   const [endDate, setEndDate] = useState(addYearsToIso(todayYmd(), 1));
   const [refillReminder, setRefillReminder] = useState(true);
   const [refillThreshold, setRefillThreshold] = useState('12');
-  const [pillColor, setPillColor] = useState<string>(FIGMA_MEDS.pillColors[0]);
+  const [pillColor, setPillColor] = useState<string>(PILL_COLORS[0]);
   const [pillShape, setPillShape] = useState<PillShape>('diamond');
   const [busy, setBusy] = useState(false);
 
@@ -178,6 +178,8 @@ export function MedicationSetupForm({
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={{ paddingBottom: bottomClearance + ctaHeight + 24 }}
       >
         <View style={{ alignItems: 'center', paddingHorizontal: HUB.gutter, paddingTop: 24, paddingBottom: 8, gap: 20 }}>
@@ -234,9 +236,9 @@ export function MedicationSetupForm({
             <MedicationDateField label={ka.meds.startDateLabel} value={startDate} onChange={(iso) => {
               setStartDate(iso);
               if (endDate < iso) setEndDate(addYearsToIso(iso, 1));
-            }} maxIso={maxStartDate} embedded />
+            }} maxIso={maxStartDate} />
             <Divider color={c.bg300} />
-            <MedicationDateField label={ka.meds.endDateLabel} value={endDate} onChange={setEndDate} minIso={minEndDate} embedded isLast />
+            <MedicationDateField label={ka.meds.endDateLabel} value={endDate} onChange={setEndDate} minIso={minEndDate} isLast />
           </View>
         </View>
 
@@ -251,13 +253,16 @@ export function MedicationSetupForm({
                     key={`${letter}-${idx}`}
                     onPress={() => toggleDay(idx)}
                     style={{
-                      width: FIGMA_MEDS.daySize,
-                      height: FIGMA_MEDS.daySize,
+                      width: DAY_TILE,
+                      height: DAY_TILE,
                       borderRadius: 999,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      backgroundColor: active ? hubTint(teal, dark) : c.bg100,
+                      backgroundColor: active ? hubTint(teal, dark) : c.bg200,
                     }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={letter}
                   >
                     <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: active ? teal : c.text100 }}>{letter}</Text>
                   </Pressable>
@@ -281,7 +286,7 @@ export function MedicationSetupForm({
                     <Text style={[hubText.cardTitle, { color: c.text100 }]}>{ka.meds.refillThresholdLabel}</Text>
                     <Text style={[hubText.caption, { color: c.text200, marginTop: 4 }]}>{ka.meds.refillThresholdHint}</Text>
                   </View>
-                  <View style={[styles.stepper, { backgroundColor: c.bg100 }]}>
+                  <View style={[styles.stepper, { backgroundColor: c.bg200 }]}>
                     <TextInput
                       value={refillThreshold}
                       onChangeText={setRefillThreshold}
@@ -305,40 +310,37 @@ export function MedicationSetupForm({
 
         <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap, paddingBottom: 4 }}>
           <HomeSectionHeading title={ka.meds.pillColorLabel} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 4 }}>
-            {FIGMA_MEDS.pillColors.map((color) => (
-              <Pressable
-                key={color}
-                onPress={() => setPillColor(color)}
-                style={{ padding: 2, borderRadius: 999, borderWidth: pillColor === color ? 2 : 0, borderColor: c.primary200 }}
-              >
-                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: color, borderWidth: color === '#E5E7EB' ? 1 : 0, borderColor: c.bg300 }} />
-              </Pressable>
-            ))}
-          </ScrollView>
+          <MedsCard>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+              {PILL_COLORS.map((color) => {
+                const active = pillColor === color;
+                return (
+                  <Pressable
+                    key={color}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={color}
+                    onPress={() => setPillColor(color)}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: active ? hubTint(teal, dark) : 'transparent',
+                    }}
+                  >
+                    <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: color, borderWidth: color === '#E5E7EB' ? 1 : 0, borderColor: c.bg300 }} />
+                  </Pressable>
+                );
+              })}
+            </View>
+          </MedsCard>
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { bottom: 0, paddingBottom: bottomClearance, backgroundColor: c.bg100, borderColor: c.bg300 }]}>
-        <Pressable
-          disabled={busy}
-          onPress={save}
-          style={{
-            backgroundColor: c.primary200,
-            borderRadius: HUB.tileRadius,
-            minHeight: 52,
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexDirection: 'row',
-            gap: 8,
-            opacity: busy ? 0.65 : 1,
-          }}
-        >
-          <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16 }}>
-            {busy ? ka.common.loading : ka.meds.addMedicationCta}
-          </Text>
-          <Plus size={20} color={c.onPrimary} strokeWidth={2.5} />
-        </Pressable>
+      <View style={[styles.footer, { bottom: 0, paddingBottom: bottomClearance, backgroundColor: c.bg100 }]}>
+        <MedsButton label={ka.meds.addMedicationCta} icon={Plus} loading={busy} onPress={save} />
       </View>
 
       <MedicationDosageSheet
@@ -433,7 +435,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    padding: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: HUB.gutter,
+    paddingTop: 12,
   },
 });

@@ -1,16 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { CircleMinus, CirclePlus } from 'lucide-react-native';
-import { MedicationSheetApplyButton, MedicationSheetChip, MedicationSheetModal } from '@/components/medications/MedicationSheetUI';
-import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
+import React, { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
+import { Minus, Plus } from 'lucide-react-native';
+import { MedsChip, MedsRoundAction } from '@/components/medications/MedsHubUI';
+import { MedicationSheetApplyButton, MedicationSheetModal } from '@/components/medications/MedicationSheetUI';
 import { ka } from '@/i18n/ka';
+import { useThemeColors } from '@/theme/colors';
+import { hubText } from '@/theme/hub';
 import type { MedicationForm } from '@/types/medications';
 
-const DOSAGE_FORMS: { id: MedicationForm; labelKey: keyof typeof ka.meds.dosageUnitLabels }[] = [
-  { id: 'pills', labelKey: 'tablet' },
-  { id: 'capsules', labelKey: 'pill' },
-  { id: 'liquid', labelKey: 'teaspoon' },
-];
+const DOSAGE_FORMS: MedicationForm[] = ['pills', 'capsules', 'liquid', 'injection'];
 
 type Props = {
   visible: boolean;
@@ -21,7 +19,7 @@ type Props = {
 };
 
 export function MedicationDosageSheet({ visible, amount, form, onClose, onApply }: Props) {
-  const FIGMA_MEDS = useFigmaMeds();
+  const c = useThemeColors();
   const [draftAmount, setDraftAmount] = useState(amount);
   const [draftForm, setDraftForm] = useState<MedicationForm>(form);
 
@@ -31,17 +29,13 @@ export function MedicationDosageSheet({ visible, amount, form, onClose, onApply 
     setDraftForm(form);
   }, [visible, amount, form]);
 
-  const unitLabel = useMemo(() => {
-    const key = DOSAGE_FORMS.find((f) => f.id === draftForm)?.labelKey ?? 'tablet';
-    return ka.meds.dosageUnitLabels[key];
-  }, [draftForm]);
-
   const step = (delta: number) => setDraftAmount((v) => Math.max(1, Math.min(99, v + delta)));
 
   return (
     <MedicationSheetModal
       visible={visible}
       title={ka.meds.dosageSheetTitle}
+      subtitle={ka.meds.doseAmountHint}
       onClose={onClose}
       footer={
         <MedicationSheetApplyButton
@@ -52,51 +46,39 @@ export function MedicationDosageSheet({ visible, amount, form, onClose, onApply 
         />
       }
     >
-      <View style={{ paddingVertical: 16, gap: 16, alignItems: 'center' }}>
-        <View style={{ width: '100%', gap: 6, alignItems: 'center' }}>
-          <View
-            style={{
-              width: '100%',
-              flexDirection: 'row',
-              alignItems: 'center',
-              borderBottomWidth: 1,
-              borderColor: FIGMA_MEDS.borderTertiary,
-              paddingVertical: 12,
-              gap: 20,
-            }}
-          >
-            <Pressable onPress={() => step(-1)} hitSlop={10}>
-              <CircleMinus size={28} color={FIGMA_MEDS.textSecondary} strokeWidth={1.8} />
-            </Pressable>
+      <View style={{ paddingVertical: 12, gap: 22 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 22 }}>
+          <MedsRoundAction icon={Minus} onPress={() => step(-1)} accessibilityLabel="−1" tone="quiet" size={52} />
+          <View style={{ minWidth: 96, alignItems: 'center' }}>
             <Text
+              accessibilityLiveRegion="polite"
               style={{
-                flex: 1,
-                textAlign: 'center',
-                fontSize: 48,
-                lineHeight: 54,
-                fontWeight: '600',
+                fontFamily: 'NotoSansGeorgian_700Bold',
+                fontSize: 54,
+                lineHeight: 62,
                 letterSpacing: -1,
-                color: FIGMA_MEDS.textPrimary,
+                color: c.text100,
               }}
             >
               {draftAmount}
             </Text>
-            <Pressable onPress={() => step(1)} hitSlop={10}>
-              <CirclePlus size={28} color={FIGMA_MEDS.textSecondary} strokeWidth={1.8} />
-            </Pressable>
+            <Text style={[hubText.body, { color: c.text200, marginTop: -4 }]}>{ka.meds.formLabels[draftForm]}</Text>
           </View>
-          <Text style={{ fontSize: 16, lineHeight: 22, color: FIGMA_MEDS.textPrimary }}>{unitLabel}</Text>
+          <MedsRoundAction icon={Plus} onPress={() => step(1)} accessibilityLabel="+1" tone="tonal" size={52} />
         </View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
-          {DOSAGE_FORMS.map((item) => (
-            <MedicationSheetChip
-              key={item.id}
-              label={ka.meds.dosageUnitLabels[item.labelKey]}
-              active={draftForm === item.id}
-              onPress={() => setDraftForm(item.id)}
-            />
-          ))}
+        <View style={{ gap: 10 }}>
+          <Text style={[hubText.caption, { color: c.text200 }]}>{ka.meds.formTypeLabel}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {DOSAGE_FORMS.map((item) => (
+              <MedsChip
+                key={item}
+                label={ka.meds.formLabels[item]}
+                active={draftForm === item}
+                onPress={() => setDraftForm(item)}
+              />
+            ))}
+          </View>
         </View>
       </View>
     </MedicationSheetModal>

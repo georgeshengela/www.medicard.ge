@@ -1,39 +1,24 @@
-import { medicationCourseIncludesDate } from '@/lib/notificationPlan';
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import {
-  Bell,
-  ChevronRight,
-  Crown,
-  FlaskConical,
-  Pill,
-  Plus,
-  Search,
-} from 'lucide-react-native';
+import { CalendarDays, ChevronRight, Crown, FlaskConical, Pill, Plus, Search } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HubFeatureCard } from '@/components/home/HubFeatureCard';
 import { HubTileGrid, type HubTile } from '@/components/home/HubTiles';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
+import { MedsButton, MedsCard, MedsChip, MedsHairline, MedsIconTile, MedsRing } from '@/components/medications/MedsHubUI';
 import { UpcomingDoseCard } from '@/components/medications/UpcomingDoseCard';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
+import { MedsHubSkeleton } from '@/components/ui/Skeleton';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary, type Medication } from '@/lib/api';
+import { computeTodayDoses } from '@/lib/home/todayDoses';
 import { catalogProductMeta } from '@/lib/medicationCatalogNav';
 import {
   adherenceStats,
   findDoseLog,
-  formatTime12h,
+  formatTime24h,
   parseFrequencyTimes,
   parseMedicationConfig,
   saveDoseLog,
@@ -41,10 +26,10 @@ import {
 } from '@/lib/medications.shared';
 import { getPreference, setPreference } from '@/lib/storage';
 import { useIsDark, useThemeColors } from '@/theme/colors';
-import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
-import { MedsHubSkeleton } from '@/components/ui/Skeleton';
+import { HUB, hubInk, hubText } from '@/theme/hub';
 
 const ONBOARDING_KEY = 'medicard.meds.onboardingDone';
+const TODAY_PREVIEW = 4;
 
 type Props = { showOnboarding?: boolean };
 
@@ -75,6 +60,7 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
       .catch(() => undefined);
   }, []);
 
+  const todayView = useMemo(() => computeTodayDoses(medications, schedule, doseLogs, today), [medications, schedule, doseLogs, today]);
   const todayDoses = useMemo(
     () =>
       schedule
@@ -82,10 +68,10 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
           const med = medications.find((m) => m.id === d.medicationId);
           if (!med?.active) return false;
           const cfg = parseMedicationConfig(med.config);
-          if (!medicationCourseIncludesDate(cfg, today)) return false;
+          if (cfg.startDate && today < cfg.startDate) return false;
+          if (cfg.endDate && today > cfg.endDate) return false;
           if (!cfg.daysOfWeek?.length) return true;
-          const dow = (new Date().getDay() + 6) % 7;
-          return cfg.daysOfWeek.includes(dow);
+          return cfg.daysOfWeek.includes((new Date().getDay() + 6) % 7);
         })
         .sort((a, b) => a.time.localeCompare(b.time)),
     [schedule, medications, today],
@@ -100,13 +86,7 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
   const openAdd = () => router.push('/medications/add');
 
   const headerRight = () => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={ka.meds.quickAdd}
-      hitSlop={10}
-      onPress={openAdd}
-      style={{ paddingHorizontal: 4, paddingVertical: 4 }}
-    >
+    <Pressable accessibilityRole="button" accessibilityLabel={ka.meds.quickAdd} hitSlop={10} onPress={openAdd} style={{ paddingHorizontal: 4, paddingVertical: 4 }}>
       <Plus size={22} color={c.primary200} strokeWidth={2.3} />
     </Pressable>
   );
@@ -137,15 +117,24 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
   }
 
   const QUICK_TILES: HubTile[] = [
-    { key: 'add', title: ka.meds.quickAdd, detail: ka.meds.browseMedicationTitle, href: '/medications/add', icon: Plus, ink: 'teal' },
-    { key: 'search', title: ka.meds.quickSearch, detail: ka.pharmacy.compareHint, href: '/medications/add/search', icon: Search, ink: 'sky' },
-    { key: 'interaction', title: ka.meds.quickInteraction, detail: ka.meds.interactionCardCta, href: '/medications/interaction', icon: FlaskConical, ink: 'violet' },
-    { key: 'reminders', title: ka.meds.quickReminders, detail: ka.meds.drugReminderTitle, href: '/medications/reminders', icon: Bell, ink: 'amber' },
+    { key: 'add', title: ka.meds.quickAdd, detail: ka.meds.quickAddHint, href: '/medications/add', icon: Plus, ink: 'teal' },
+    { key: 'search', title: ka.meds.quickSearch, detail: ka.meds.quickSearchHint, href: '/medications/add/search', icon: Search, ink: 'sky' },
+    { key: 'calendar', title: ka.meds.quickCalendar, detail: ka.meds.quickCalendarHint, href: '/medications/reminders/calendar', icon: CalendarDays, ink: 'amber' },
+    { key: 'interaction', title: ka.meds.quickInteraction, detail: ka.meds.quickInteractionHint, href: '/medications/interaction', icon: FlaskConical, ink: 'violet' },
   ];
 
-  const heading = (title: string, href?: string) => (
-    <HomeSectionHeading title={title} linkLabel={href ? ka.meds.seeAll : undefined} onLink={href ? () => router.push(href as never) : undefined} />
+  const heading = (title: string, href?: string, label?: string) => (
+    <HomeSectionHeading title={title} linkLabel={href ? (label ?? ka.meds.seeAll) : undefined} onLink={href ? () => router.push(href as never) : undefined} />
   );
+
+  const nextPending = todayView.pending[0];
+  const spotlightTitle = todayView.total === 0 ? ka.meds.todayNothingPlanned : ka.meds.todayProgress(todayView.taken, todayView.total);
+  const spotlightBody =
+    todayView.total === 0
+      ? ka.meds.subtitle
+      : nextPending
+        ? ka.meds.nextDoseLine(formatTime24h(nextPending.time), nextPending.medName)
+        : ka.meds.todayAllTaken;
 
   return (
     <>
@@ -156,29 +145,34 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary100} />}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[s.section, { marginTop: 16 }]}>
-          {heading(ka.meds.todaySchedule, '/medications/reminders/calendar')}
-          <View style={[s.card, { backgroundColor: c.surface }]}>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <MetricCell value={`${stats.onTime}`} suffix="x" label={ka.meds.metricOnTime} />
-              <MetricCell value={`${stats.late}`} suffix="%" label={ka.meds.metricLate} />
-              <MetricCell value={`${stats.skipped}`} suffix="%" label={ka.meds.metricMissed} />
-            </View>
-          </View>
+        <View style={[s.section, { marginTop: 12 }]}>
+          {heading(ka.meds.todaySchedule, '/medications/reminders', ka.meds.remindersScreenTitle)}
+          <HubFeatureCard
+            tone="spotlight"
+            lead={<TodayRing taken={todayView.taken} total={todayView.total} />}
+            title={spotlightTitle}
+            body={spotlightBody}
+            cta={ka.meds.viewSchedule}
+            onPress={() => router.push('/medications/reminders')}
+          />
 
-          {todayDoses.length === 0 ? (
-            <View style={[s.card, { backgroundColor: c.surface, marginTop: 12 }]}>
-              <Text style={[hubText.body, { color: c.text200 }]}>{ka.meds.noDosesToday}</Text>
+          <MedsCard style={{ marginTop: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <MetricCell value={`${stats.onTime}`} suffix="%" label={ka.meds.metricOnTime} />
+              <MetricCell value={`${stats.skipped}`} suffix="%" label={ka.meds.metricMissed} />
+              <MetricCell value={`${activeMeds.length}`} suffix="" label={ka.meds.metricActive} />
             </View>
-          ) : (
-            <View style={[s.card, { backgroundColor: c.surface, marginTop: 12, gap: 16 }]}>
-              {todayDoses.slice(0, 3).map((dose, index) => {
+          </MedsCard>
+
+          {todayDoses.length > 0 ? (
+            <MedsCard style={{ marginTop: 12, gap: 16 }}>
+              {todayDoses.slice(0, TODAY_PREVIEW).map((dose, index) => {
                 const med = medications.find((m) => m.id === dose.medicationId);
                 const cfg = parseMedicationConfig(med?.config);
                 const log = findDoseLog(doseLogs, dose.medicationId, today, dose.time);
                 return (
                   <View key={`${dose.medicationId}-${dose.time}`}>
-                    {index > 0 ? <View style={[s.hairline, { backgroundColor: c.bg300, marginBottom: 16 }]} /> : null}
+                    {index > 0 ? <MedsHairline style={{ marginBottom: 16 }} /> : null}
                     <UpcomingDoseCard
                       dose={dose}
                       cfg={cfg}
@@ -190,8 +184,11 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
                   </View>
                 );
               })}
-            </View>
-          )}
+              {todayDoses.length > TODAY_PREVIEW ? (
+                <MedsButton tone="quiet" compact label={`${ka.meds.seeAll} (${todayDoses.length})`} onPress={() => router.push('/medications/reminders')} />
+              ) : null}
+            </MedsCard>
+          ) : null}
         </View>
 
         <View style={s.section}>
@@ -201,7 +198,7 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
 
         <View style={s.section}>
           {heading(ka.meds.browseMedicationTitle, '/medications/add/search')}
-          <View style={[s.card, { backgroundColor: c.surface, gap: 14 }]}>
+          <MedsCard style={{ gap: 14 }}>
             <MedSearchInput
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -210,23 +207,17 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <Text style={[hubText.caption, { color: c.text200 }]}>{ka.meds.mostCommon}</Text>
               {MED_POPULAR_CHIPS.map((chip) => (
-                <PopularChip
-                  key={chip.query}
-                  label={chip.labelKa}
-                  onPress={() => router.push({ pathname: '/medications/add/search', params: { q: chip.query } })}
-                />
+                <MedsChip key={chip.query} label={chip.labelKa} onPress={() => router.push({ pathname: '/medications/add/search', params: { q: chip.query } })} />
               ))}
             </View>
-            {catalogTotal > 0 ? (
-              <Text style={[hubText.small, { color: c.text300 }]}>{ka.pharmacy.catalogSize(catalogTotal)}</Text>
-            ) : null}
-          </View>
+            {catalogTotal > 0 ? <Text style={[hubText.small, { color: c.text300 }]}>{ka.pharmacy.catalogSize(catalogTotal)}</Text> : null}
+          </MedsCard>
         </View>
 
         {catalogProducts.length > 0 ? (
           <View style={s.section}>
             {heading(ka.meds.popularSearchesTitle, '/medications/add/search')}
-            <View style={[s.card, { backgroundColor: c.surface, padding: 0, overflow: 'hidden' }]}>
+            <MedsCard padded={false}>
               {catalogProducts.slice(0, 4).map((product, index) => (
                 <PopularSearchRow
                   key={product.id}
@@ -239,7 +230,7 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
                   showDivider={index < Math.min(catalogProducts.length, 4) - 1}
                 />
               ))}
-            </View>
+            </MedsCard>
           </View>
         ) : null}
 
@@ -255,20 +246,25 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
         </View>
 
         <View style={s.section}>
-          {heading(ka.meds.drugReminderTitle, '/medications/reminders')}
-          <View style={[s.card, { backgroundColor: c.surface, gap: 4 }]}>
-            <Text style={[hubText.small, { color: c.text200 }]}>{ka.meds.activeReminders}</Text>
-            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 30, lineHeight: 36, color: c.text100 }}>
-              {activeMeds.length}
-            </Text>
-          </View>
-          {activeMeds.length > 0 ? (
-            <View style={[s.card, { backgroundColor: c.surface, marginTop: 12, gap: 14 }]}>
-              {activeMeds.slice(0, 3).map((med, index) => (
-                <ReminderRow key={med.id} med={med} showDivider={index > 0} onToggle={() => apiToggle(med, load)} />
+          {heading(ka.meds.myMedications, activeMeds.length > 0 ? '/medications/reminders' : undefined)}
+          {activeMeds.length === 0 ? (
+            <MedsCard style={{ gap: 12 }}>
+              <Text style={[hubText.body, { color: c.text200 }]}>{ka.meds.emptyHint}</Text>
+              <MedsButton label={ka.meds.addMedicationCta} icon={Plus} tone="tonal" onPress={openAdd} />
+            </MedsCard>
+          ) : (
+            <MedsCard style={{ gap: 14 }}>
+              {activeMeds.map((med, index) => (
+                <ReminderRow
+                  key={med.id}
+                  med={med}
+                  showDivider={index > 0}
+                  onOpen={() => router.push(`/medications/${med.id}` as never)}
+                  onToggle={() => apiToggle(med, load)}
+                />
               ))}
-            </View>
-          ) : null}
+            </MedsCard>
+          )}
         </View>
       </ScrollView>
     </>
@@ -276,7 +272,6 @@ export function MedicationHubScreen({ showOnboarding }: Props) {
 }
 
 async function apiToggle(med: Medication, reload: () => void) {
-  const { api } = await import('@/lib/api');
   await api.medications.update(med.id, { active: !med.active }).catch(() => undefined);
   reload();
 }
@@ -287,15 +282,26 @@ const MED_POPULAR_CHIPS = [
   { query: 'atorvastatin', labelKa: 'ატორვასტატინი' },
 ] as const;
 
+/** The spotlight's lead: a ring that fills as today's doses get taken. */
+function TodayRing({ taken, total }: { taken: number; total: number }) {
+  return (
+    <MedsRing size={64} stroke={6} progress={total > 0 ? taken / total : 0} color="#99F6E4" track="rgba(255,255,255,0.16)">
+      <Text style={[hubText.value, { fontSize: 15, color: '#FFFFFF' }]}>{total > 0 ? `${taken}/${total}` : '—'}</Text>
+    </MedsRing>
+  );
+}
+
 function MetricCell({ value, suffix, label }: { value: string; suffix: string; label: string }) {
   const c = useThemeColors();
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1 }} accessible accessibilityLabel={`${label}: ${value}${suffix}`}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>
-        <Text style={[hubText.value, { fontSize: 22, color: c.text100 }]}>{value}</Text>
-        <Text style={[hubText.caption, { color: c.text200, paddingBottom: 2 }]}>{suffix}</Text>
+        <Text style={[hubText.value, { fontSize: 22, lineHeight: 28, color: c.text100 }]}>{value}</Text>
+        {suffix ? <Text style={[hubText.caption, { color: c.text200, paddingBottom: 3 }]}>{suffix}</Text> : null}
       </View>
-      <Text style={[hubText.caption, { color: c.text200, marginTop: 4 }]}>{label}</Text>
+      <Text numberOfLines={1} style={[hubText.caption, { color: c.text200, marginTop: 2 }]}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -303,7 +309,7 @@ function MetricCell({ value, suffix, label }: { value: string; suffix: string; l
 function MedSearchInput({ value, onChangeText, onSubmit }: { value: string; onChangeText: (v: string) => void; onSubmit: () => void }) {
   const c = useThemeColors();
   return (
-    <Pressable onPress={onSubmit} style={[s.searchShell, { backgroundColor: c.bg100 }]}>
+    <View style={[s.searchShell, { backgroundColor: c.bg100 }]}>
       <Search size={18} color={c.text300} strokeWidth={2} />
       <TextInput
         value={value}
@@ -311,18 +317,15 @@ function MedSearchInput({ value, onChangeText, onSubmit }: { value: string; onCh
         onSubmitEditing={onSubmit}
         placeholder={ka.meds.searchPlaceholder}
         placeholderTextColor={c.text300}
+        returnKeyType="search"
         style={[hubText.body, { flex: 1, fontSize: 15, color: c.text100, paddingVertical: 12 }]}
       />
-    </Pressable>
-  );
-}
-
-function PopularChip({ label, onPress }: { label: string; onPress: () => void }) {
-  const c = useThemeColors();
-  return (
-    <Pressable onPress={onPress} style={[s.chip, { backgroundColor: c.bg100 }]}>
-      <Text style={[hubText.link, { color: c.text100 }]}>{label}</Text>
-    </Pressable>
+      {value.trim() ? (
+        <Pressable onPress={onSubmit} hitSlop={8} accessibilityRole="button" accessibilityLabel={ka.meds.quickSearch}>
+          <ChevronRight size={18} color={c.primary100} strokeWidth={2.2} />
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -347,7 +350,7 @@ function PopularSearchRow({
   const dark = useIsDark();
   const priceInk = hubInk('green', dark);
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={title}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: HUB.cardPad, paddingVertical: 12 }}>
         <MedicationPillIcon size={44} border imageUrl={imageUrl} />
         <View style={{ flex: 1, gap: 3, minWidth: 0 }}>
@@ -366,43 +369,47 @@ function PopularSearchRow({
           ) : null}
         </View>
         {bestPriceGel != null ? (
-          <View style={{ alignItems: 'flex-end', gap: 2 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-              <Crown size={11} color={priceInk} strokeWidth={2.4} />
-              <Text style={[hubText.value, { fontSize: 14, color: priceInk }]}>{bestPriceGel.toFixed(2)} ₾</Text>
-            </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <Crown size={11} color={priceInk} strokeWidth={2.4} />
+            <Text style={[hubText.value, { fontSize: 14, color: priceInk }]}>{bestPriceGel.toFixed(2)} ₾</Text>
           </View>
         ) : (
           <ChevronRight size={18} color={c.text300} strokeWidth={2} />
         )}
       </View>
-      {showDivider ? <View style={[s.hairline, { backgroundColor: c.bg300, marginLeft: HUB.cardPad }]} /> : null}
+      {showDivider ? <MedsHairline inset={HUB.cardPad} /> : null}
     </Pressable>
   );
 }
 
-function ReminderRow({ med, showDivider, onToggle }: { med: Medication; showDivider: boolean; onToggle: () => void }) {
+function ReminderRow({ med, showDivider, onOpen, onToggle }: { med: Medication; showDivider: boolean; onOpen: () => void; onToggle: () => void }) {
   const c = useThemeColors();
   const cfg = parseMedicationConfig(med.config);
   const times = parseFrequencyTimes(med.frequency);
   const [on, setOn] = useState(med.active);
+  const schedule = times.length > 1 ? `${ka.meds.timesPerDayLabel(times.length)} · ${times.map(formatTime24h).join(', ')}` : ka.meds.reminderSchedule(times[0] ? formatTime24h(times[0]) : '');
   return (
     <View>
-      {showDivider ? <View style={[s.hairline, { backgroundColor: c.bg300, marginBottom: 14 }]} /> : null}
+      {showDivider ? <MedsHairline style={{ marginBottom: 14 }} /> : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <MedicationPillIcon shape={cfg.pillShape ?? 'long'} size={44} border imageUrl={cfg.imageUrl} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>{med.medName}</Text>
-          <Text style={[hubText.caption, { color: c.text200, marginTop: 2 }]}>
-            {ka.meds.reminderSchedule(times[0] ? formatTime12h(times[0]) : '')}
-          </Text>
-        </View>
+        <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={med.medName} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <MedicationPillIcon color={cfg.pillColor} shape={cfg.pillShape ?? 'long'} size={44} border imageUrl={cfg.imageUrl} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>
+              {med.medName}
+            </Text>
+            <Text numberOfLines={1} style={[hubText.caption, { color: c.text200, marginTop: 2 }]}>
+              {schedule}
+            </Text>
+          </View>
+        </Pressable>
         <Switch
           value={on}
           onValueChange={() => {
             setOn(!on);
             onToggle();
           }}
+          accessibilityLabel={`${med.medName}: ${on ? ka.meds.activeLabel : ka.meds.pausedLabel}`}
           trackColor={{ true: c.primary200, false: c.bg300 }}
           thumbColor="#fff"
         />
@@ -413,29 +420,18 @@ function ReminderRow({ med, showDivider, onToggle }: { med: Medication; showDivi
 
 function MedicationOnboarding({ onContinue }: { onContinue: () => void }) {
   const c = useThemeColors();
-  const dark = useIsDark();
-  const ink = hubInk('teal', dark);
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg100, paddingHorizontal: 20, justifyContent: 'center' }}>
+    <View style={{ flex: 1, backgroundColor: c.bg100, paddingHorizontal: HUB.gutter, justifyContent: 'center' }}>
       <View style={{ alignItems: 'center', marginBottom: 40, gap: 24 }}>
-        <View style={{ width: 88, height: 88, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: hubTint(ink, dark) }}>
-          <Pill size={44} color={ink} strokeWidth={1.6} />
-        </View>
+        <MedsIconTile icon={Pill} ink="teal" size={88} iconSize={44} style={{ borderRadius: 26 }} />
         <View style={{ gap: 12, alignItems: 'center' }}>
           <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 26, lineHeight: 33, color: c.text100, textAlign: 'center' }}>
             {ka.meds.onboardingEmptyTitle}
           </Text>
-          <Text style={[hubText.body, { fontSize: 16, lineHeight: 24, color: c.text200, textAlign: 'center' }]}>
-            {ka.meds.onboardingEmptyBody}
-          </Text>
+          <Text style={[hubText.body, { fontSize: 16, lineHeight: 24, color: c.text200, textAlign: 'center' }]}>{ka.meds.onboardingEmptyBody}</Text>
         </View>
       </View>
-      <Pressable
-        onPress={onContinue}
-        style={{ backgroundColor: c.primary200, borderRadius: HUB.tileRadius, minHeight: 52, alignItems: 'center', justifyContent: 'center' }}
-      >
-        <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16 }}>{ka.meds.onboardingContinue}</Text>
-      </Pressable>
+      <MedsButton label={ka.meds.onboardingContinue} onPress={onContinue} />
     </View>
   );
 }
@@ -447,8 +443,6 @@ export async function shouldShowMedicationOnboarding(): Promise<boolean> {
 
 const s = StyleSheet.create({
   section: { paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap },
-  card: { borderRadius: HUB.cardRadius, padding: HUB.cardPad },
-  hairline: { height: StyleSheet.hairlineWidth },
   searchShell: {
     minHeight: 46,
     borderRadius: HUB.tileRadius,
@@ -456,10 +450,5 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     gap: 10,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
   },
 });

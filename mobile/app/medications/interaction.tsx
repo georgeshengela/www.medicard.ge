@@ -1,22 +1,29 @@
 import React, { useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
-import { ShieldCheck } from 'lucide-react-native';
-import { Button } from '@/components/ui/Button';
+import { Plus, ShieldCheck } from 'lucide-react-native';
+import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
+import { MedsButton, MedsCard, MedsChip, MedsIconTile } from '@/components/medications/MedsHubUI';
 import { Markdown } from '@/components/ui/Markdown';
 import { QuotaSheet } from '@/components/QuotaSheet';
-import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
+import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/store/AuthContext';
+import { useThemeColors } from '@/theme/colors';
+import { HUB, hubText } from '@/theme/hub';
 
 export default function MedicationInteractionScreen() {
-  const FIGMA_MEDS = useFigmaMeds();
+  const c = useThemeColors();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { applyUsage } = useAuth();
+  const { medications } = useMedications();
   const [review, setReview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [quotaBlock, setQuotaBlock] = useState<number | undefined>(undefined);
+  const activeMeds = medications.filter((med) => med.active);
 
   const runReview = async () => {
     setBusy(true);
@@ -39,53 +46,51 @@ export default function MedicationInteractionScreen() {
   return (
     <>
       <Stack.Screen options={{ title: ka.meds.reviewTitle }} />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <View
-          style={{
-            backgroundColor: FIGMA_MEDS.brandQuaternary,
-            borderRadius: 24,
-            padding: 20,
-            borderWidth: 1,
-            borderColor: FIGMA_MEDS.brandBorder,
-            alignItems: 'center',
-          }}
-        >
-          <ShieldCheck size={48} color={FIGMA_MEDS.brand} strokeWidth={2} />
-          <Text style={{ marginTop: 16, fontSize: 20, fontWeight: '900', color: FIGMA_MEDS.textPrimary, textAlign: 'center' }}>
-            {ka.meds.interactionScreenTitle}
-          </Text>
-          <Text style={{ marginTop: 8, color: FIGMA_MEDS.textSecondary, textAlign: 'center', lineHeight: 22 }}>
-            {ka.meds.interactionScreenBody}
-          </Text>
-          <View style={{ marginTop: 20, width: '100%' }}>
-            <Button label={ka.meds.reviewCta} icon={ShieldCheck} loading={busy} onPress={runReview} />
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.bg100 }}
+        contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingTop: 4, paddingBottom: insets.bottom + 32, gap: HUB.sectionGap - 6 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <MedsCard style={{ gap: 16 }}>
+          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
+            <MedsIconTile icon={ShieldCheck} ink="violet" size={48} iconSize={24} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={[hubText.cardTitle, { fontSize: 16, lineHeight: 23, color: c.text100 }]}>{ka.meds.interactionScreenTitle}</Text>
+              <Text style={[hubText.body, { color: c.text200 }]}>{ka.meds.interactionScreenBody}</Text>
+            </View>
           </View>
+          <MedsButton label={ka.meds.reviewCta} icon={ShieldCheck} loading={busy} disabled={activeMeds.length === 0} onPress={runReview} />
+        </MedsCard>
+
+        <View>
+          <HomeSectionHeading title={ka.meds.reviewChecks} />
+          <MedsCard style={{ gap: 12 }}>
+            {activeMeds.length === 0 ? (
+              <>
+                <Text style={[hubText.body, { color: c.text200 }]}>{ka.meds.reviewNoMeds}</Text>
+                <MedsButton label={ka.meds.addMedicationCta} icon={Plus} tone="tonal" onPress={() => router.push('/medications/add/search')} />
+              </>
+            ) : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {activeMeds.map((med) => (
+                  <MedsChip key={med.id} label={med.medName} />
+                ))}
+              </View>
+            )}
+          </MedsCard>
         </View>
 
         {review ? (
-          <View
-            style={{
-              marginTop: 20,
-              backgroundColor: FIGMA_MEDS.surface,
-              borderRadius: 24,
-              padding: 18,
-              borderWidth: 1,
-              borderColor: FIGMA_MEDS.border,
-            }}
-          >
-            <Text style={{ fontSize: 18, fontWeight: '800', color: FIGMA_MEDS.textPrimary, marginBottom: 12 }}>
-              {ka.meds.reviewTitle}
-            </Text>
-            <Markdown content={review} />
+          <View>
+            <HomeSectionHeading title={ka.meds.reviewResultTitle} />
+            <MedsCard>
+              <Markdown content={review} />
+            </MedsCard>
           </View>
         ) : null}
       </ScrollView>
 
-      <QuotaSheet
-        visible={quotaBlock !== undefined}
-        resetsInMs={quotaBlock}
-        onClose={() => setQuotaBlock(undefined)}
-      />
+      <QuotaSheet visible={quotaBlock !== undefined} resetsInMs={quotaBlock} onClose={() => setQuotaBlock(undefined)} />
     </>
   );
 }

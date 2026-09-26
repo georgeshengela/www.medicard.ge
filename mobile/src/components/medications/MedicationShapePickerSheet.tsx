@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
 import { MedicationSheetApplyButton, MedicationSheetModal } from '@/components/medications/MedicationSheetUI';
-import { FIGMA_SHAPE_PICKER_ROWS, pillShapeLabel } from '@/constants/medicationPillAssets';
-import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
+import { ALL_PILL_SHAPES } from '@/constants/figmaMedicationsLayout';
+import { pillShapeLabel } from '@/constants/medicationPillAssets';
 import { ka } from '@/i18n/ka';
+import { useIsDark, useThemeColors } from '@/theme/colors';
+import { hubInk, hubText, hubTint } from '@/theme/hub';
 import type { PillShape } from '@/types/medications';
 
 type Props = {
@@ -15,7 +17,9 @@ type Props = {
 };
 
 export function MedicationShapePickerSheet({ visible, value, onClose, onApply }: Props) {
-  const FIGMA_MEDS = useFigmaMeds();
+  const c = useThemeColors();
+  const dark = useIsDark();
+  const teal = hubInk('teal', dark);
   const [draft, setDraft] = useState<PillShape>(value);
 
   useEffect(() => {
@@ -27,6 +31,7 @@ export function MedicationShapePickerSheet({ visible, value, onClose, onApply }:
       visible={visible}
       title={ka.meds.shapePickerTitle}
       onClose={onClose}
+      scrollable
       footer={
         <MedicationSheetApplyButton
           onPress={() => {
@@ -36,33 +41,34 @@ export function MedicationShapePickerSheet({ visible, value, onClose, onApply }:
         />
       }
     >
-      <View style={{ gap: 20, paddingVertical: 16 }}>
-        {FIGMA_SHAPE_PICKER_ROWS.map((row, rowIndex) => (
-          <View key={`row-${rowIndex}`} style={{ flexDirection: 'row', gap: 8 }}>
-            {row.map((shape, colIndex) => (
-              <Pressable
-                key={`${shape}-${rowIndex}-${colIndex}`}
-                onPress={() => setDraft(shape)}
-                style={{ flex: 1, alignItems: 'center', gap: 8 }}
-              >
-                <View
-                  style={{
-                    borderRadius: 999,
-                    borderWidth: draft === shape ? 1.33 : 0,
-                    borderColor: FIGMA_MEDS.brand,
-                    backgroundColor: draft === shape ? FIGMA_MEDS.brandQuaternary : 'transparent',
-                    padding: draft === shape ? 2 : 0,
-                  }}
-                >
-                  <MedicationPillIcon shape={shape} size={64} variant="figma" />
-                </View>
-                <Text style={{ fontSize: 14, color: FIGMA_MEDS.textPrimary, textAlign: 'center' }}>
-                  {pillShapeLabel(shape, ka.meds.shapeLabels)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        ))}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingVertical: 8 }}>
+        {ALL_PILL_SHAPES.map((shape) => {
+          const active = draft === shape;
+          const label = pillShapeLabel(shape, ka.meds.shapeLabels);
+          return (
+            <Pressable
+              key={shape}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={label}
+              onPress={() => setDraft(shape)}
+              style={{
+                flexBasis: '22%',
+                flexGrow: 1,
+                alignItems: 'center',
+                gap: 8,
+                paddingVertical: 12,
+                borderRadius: 18,
+                backgroundColor: active ? hubTint(teal, dark) : c.bg200,
+              }}
+            >
+              <MedicationPillIcon shape={shape} size={52} />
+              <Text numberOfLines={1} style={[hubText.small, { color: active ? teal : c.text200, fontFamily: active ? 'NotoSansGeorgian_600SemiBold' : 'NotoSansGeorgian_400Regular' }]}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
     </MedicationSheetModal>
   );

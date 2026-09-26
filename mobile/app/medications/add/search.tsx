@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronRight, Crown, Search, X } from 'lucide-react-native';
+import { ChevronRight, Crown, PackageOpen, Plus, Search, X } from 'lucide-react-native';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
+import { MedsButton, MedsChip, MedsEmptyState } from '@/components/medications/MedsHubUI';
 import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
 import { api, type CatalogProductSummary, type DrugCategoryInfo } from '@/lib/api';
@@ -62,7 +63,6 @@ export default function MedicationSearchScreen() {
     router.push(`/pharmacy/product/${product.id}` as never);
   };
 
-  const primaryInk = hubInk('teal', dark);
   const priceInk = hubInk('green', dark);
 
   return (
@@ -95,22 +95,9 @@ export default function MedicationSearchScreen() {
               keyExtractor={(item) => item.slug ?? 'all'}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ gap: 8, marginBottom: 16 }}
-              renderItem={({ item }) => {
-                const active = categorySlug === item.slug;
-                return (
-                  <Pressable
-                    onPress={() => setCategorySlug(item.slug)}
-                    style={[
-                      s.chip,
-                      { backgroundColor: active ? `${primaryInk}${dark ? '26' : '14'}` : c.surface },
-                    ]}
-                  >
-                    <Text style={active ? [hubText.link, { color: primaryInk }] : [hubText.caption, { color: c.text100 }]}>
-                      {item.nameKa}
-                    </Text>
-                  </Pressable>
-                );
-              }}
+              renderItem={({ item }) => (
+                <MedsChip label={item.nameKa} active={categorySlug === item.slug} onPress={() => setCategorySlug(item.slug)} style={{ backgroundColor: categorySlug === item.slug ? undefined : c.surface }} />
+              )}
             />
           ) : null}
         </View>
@@ -120,17 +107,16 @@ export default function MedicationSearchScreen() {
             <ListRowsSkeleton rows={6} />
           </View>
         ) : products.length === 0 ? (
-          <View style={{ alignItems: 'center', paddingTop: 56, paddingHorizontal: HUB.gutter }}>
-            <Text style={[hubText.cardTitle, { fontSize: 18, color: c.text100 }]}>{ka.meds.searchNotFound}</Text>
-            <Text style={[hubText.body, { color: c.text200, marginTop: 8, textAlign: 'center' }]}>
-              {ka.meds.searchNotFoundHint}
-            </Text>
-            <Pressable
-              onPress={() => router.push({ pathname: '/medications/add/setup', params: { name: query.trim() } })}
-              style={{ marginTop: 24, width: '100%', minHeight: 50, borderRadius: HUB.tileRadius, backgroundColor: c.primary200, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Text style={{ color: c.onPrimary, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16 }}>{ka.meds.addCustom}</Text>
-            </Pressable>
+          <View style={{ paddingTop: 24 }}>
+            <MedsEmptyState icon={PackageOpen} ink="sky" title={ka.meds.searchNotFound} body={ka.meds.searchNotFoundHint}>
+              {query.trim().length >= 2 ? (
+                <MedsButton
+                  label={`${ka.meds.addCustom}: ${query.trim()}`}
+                  icon={Plus}
+                  onPress={() => router.push({ pathname: '/medications/add/setup', params: { name: query.trim() } })}
+                />
+              ) : null}
+            </MedsEmptyState>
           </View>
         ) : (
           <View style={{ paddingHorizontal: HUB.gutter, flex: 1 }}>
@@ -194,10 +180,5 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     gap: 10,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
   },
 });

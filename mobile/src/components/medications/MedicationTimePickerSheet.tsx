@@ -1,9 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { Minus, Plus } from 'lucide-react-native';
+import { MedsChip, MedsRoundAction } from '@/components/medications/MedsHubUI';
 import { MedicationSheetApplyButton, MedicationSheetModal } from '@/components/medications/MedicationSheetUI';
-import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
 import { ka } from '@/i18n/ka';
-import { formatTime12h } from '@/lib/medications.shared';
+import { formatTime24h } from '@/lib/medications.shared';
+import { useIsDark, useThemeColors } from '@/theme/colors';
+import { hubInk, hubText, hubTint } from '@/theme/hub';
 
 type FocusField = 'hour' | 'minute';
 
@@ -14,110 +17,92 @@ type Props = {
   onApply: (time24: string) => void;
 };
 
+const QUICK_TIMES = ['07:00', '08:00', '12:00', '14:00', '18:00', '20:00', '22:00'];
+const MINUTE_STEP = 5;
+
 function parseTime24(value: string) {
   const [h, m] = value.split(':').map(Number);
-  const hour24 = Number.isFinite(h) ? h : 8;
-  const minute = Number.isFinite(m) ? m : 0;
-  const period: 'AM' | 'PM' = hour24 >= 12 ? 'PM' : 'AM';
-  const hour12 = hour24 % 12 || 12;
-  return { hour12, minute, period };
+  const hour = Number.isFinite(h) ? Math.max(0, Math.min(23, h)) : 8;
+  const minute = Number.isFinite(m) ? Math.max(0, Math.min(59, m)) : 0;
+  return { hour, minute };
 }
 
-function toTime24(hour12: number, minute: number, period: 'AM' | 'PM') {
-  let h = hour12 % 12;
-  if (period === 'PM') h += 12;
-  return `${String(h).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-}
-
-function TimeBox({
-  label,
-  value,
-  active,
-  onPress,
-}: {
-  label: string;
-  value: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  const FIGMA_MEDS = useFigmaMeds();
+function TimeBox({ label, value, active, onPress }: { label: string; value: string; active: boolean; onPress: () => void }) {
+  const c = useThemeColors();
+  const dark = useIsDark();
+  const teal = hubInk('teal', dark);
   return (
-    <Pressable onPress={onPress} style={{ flex: 1, gap: 7 }}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={`${label} ${value}`}
+      onPress={onPress}
+      style={{ flex: 1, gap: 8, alignItems: 'center' }}
+    >
       <View
         style={{
-          minHeight: 80,
-          borderRadius: 16,
-          borderWidth: active ? 2 : 1,
-          borderColor: active ? FIGMA_MEDS.brand : FIGMA_MEDS.border,
-          backgroundColor: active ? FIGMA_MEDS.brandQuaternary : FIGMA_MEDS.cardBg,
+          alignSelf: 'stretch',
+          minHeight: 88,
+          borderRadius: 20,
+          backgroundColor: active ? hubTint(teal, dark) : c.bg200,
           alignItems: 'center',
           justifyContent: 'center',
-          flexDirection: 'row',
-          paddingHorizontal: 16,
         }}
       >
         <Text
           style={{
-            fontSize: 48,
-            lineHeight: 56,
-            fontWeight: '600',
-            letterSpacing: -0.75,
-            color: active ? FIGMA_MEDS.brand : FIGMA_MEDS.textPrimary,
+            fontFamily: 'NotoSansGeorgian_700Bold',
+            fontSize: 46,
+            lineHeight: 54,
+            letterSpacing: -1,
+            color: active ? teal : c.text100,
           }}
         >
           {value}
         </Text>
-        {active ? (
-          <View style={{ width: 2, height: 42, backgroundColor: FIGMA_MEDS.brand, marginLeft: 2 }} />
-        ) : null}
       </View>
-      <Text style={{ textAlign: 'center', fontSize: 14, fontWeight: '500', color: FIGMA_MEDS.textPrimary }}>{label}</Text>
+      <Text style={[hubText.caption, { color: active ? teal : c.text200 }]}>{label}</Text>
     </Pressable>
   );
 }
 
+/** 24-hour picker: tap a box, nudge it with the round buttons, or grab a common time. */
 export function MedicationTimePickerSheet({ visible, value, onClose, onApply }: Props) {
-  const FIGMA_MEDS = useFigmaMeds();
-  const parsed = useMemo(() => parseTime24(value), [value]);
-  const [hour12, setHour12] = useState(parsed.hour12);
-  const [minute, setMinute] = useState(parsed.minute);
-  const [period, setPeriod] = useState<'AM' | 'PM'>(parsed.period);
+  const c = useThemeColors();
+  const initial = parseTime24(value);
+  const [hour, setHour] = useState(initial.hour);
+  const [minute, setMinute] = useState(initial.minute);
   const [focus, setFocus] = useState<FocusField>('hour');
 
   useEffect(() => {
     if (!visible) return;
     const next = parseTime24(value);
-    setHour12(next.hour12);
+    setHour(next.hour);
     setMinute(next.minute);
-    setPeriod(next.period);
     setFocus('hour');
   }, [visible, value]);
 
-  const time24 = toTime24(hour12, minute, period);
-  const preview = ka.meds.remindMeAt(formatTime12h(time24));
+  const time24 = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
-  const stepHour = (delta: number) => {
-    setHour12((h) => {
-      let next = h + delta;
-      if (next > 12) next = 1;
-      if (next < 1) next = 12;
-      return next;
-    });
-  };
-
-  const stepMinute = (delta: number) => {
+  const stepHour = (delta: number) => setHour((h) => (h + delta + 24) % 24);
+  const stepMinute = (delta: number) =>
     setMinute((m) => {
-      let next = m + delta;
-      if (next >= 60) next = 0;
-      if (next < 0) next = 45;
-      return next;
+      const snapped = Math.round(m / MINUTE_STEP) * MINUTE_STEP;
+      return (snapped + delta + 60) % 60;
     });
+  const nudge = (dir: 1 | -1) => (focus === 'hour' ? stepHour(dir) : stepMinute(dir * MINUTE_STEP));
+
+  const pick = (time: string) => {
+    const next = parseTime24(time);
+    setHour(next.hour);
+    setMinute(next.minute);
   };
 
   return (
     <MedicationSheetModal
       visible={visible}
       title={ka.meds.timeSheetTitle}
+      subtitle={ka.meds.remindMeAt(formatTime24h(time24))}
       onClose={onClose}
       footer={
         <MedicationSheetApplyButton
@@ -128,64 +113,23 @@ export function MedicationTimePickerSheet({ visible, value, onClose, onApply }: 
         />
       }
     >
-      <View style={{ paddingVertical: 24, gap: 24 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            backgroundColor: FIGMA_MEDS.cardBgTertiary,
-            borderRadius: 16,
-            padding: 4,
-          }}
-        >
-          {(['AM', 'PM'] as const).map((p) => {
-            const active = period === p;
-            return (
-              <Pressable
-                key={p}
-                onPress={() => setPeriod(p)}
-                style={{
-                  flex: 1,
-                  minHeight: 36,
-                  borderRadius: 12,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: active ? FIGMA_MEDS.white : 'transparent',
-                  ...(active ? FIGMA_MEDS.shadowInput : {}),
-                }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: '600', color: active ? FIGMA_MEDS.textPrimary : FIGMA_MEDS.textSecondary }}>
-                  {p}
-                </Text>
-              </Pressable>
-            );
-          })}
+      <View style={{ paddingVertical: 12, gap: 20 }}>
+        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+          <TimeBox label={ka.meds.hourLabel} value={String(hour).padStart(2, '0')} active={focus === 'hour'} onPress={() => setFocus('hour')} />
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 40, lineHeight: 88, color: c.text300 }}>:</Text>
+          <TimeBox label={ka.meds.minuteLabel} value={String(minute).padStart(2, '0')} active={focus === 'minute'} onPress={() => setFocus('minute')} />
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <TimeBox
-            label={ka.meds.hourLabel}
-            value={String(hour12).padStart(2, '0')}
-            active={focus === 'hour'}
-            onPress={() => setFocus('hour')}
-          />
-          <TimeBox
-            label={ka.meds.minuteLabel}
-            value={String(minute).padStart(2, '0')}
-            active={focus === 'minute'}
-            onPress={() => setFocus('minute')}
-          />
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 18 }}>
+          <MedsRoundAction icon={Minus} onPress={() => nudge(-1)} accessibilityLabel="−" tone="quiet" size={52} />
+          <MedsRoundAction icon={Plus} onPress={() => nudge(1)} accessibilityLabel="+" tone="tonal" size={52} />
         </View>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 24 }}>
-          <Pressable onPress={() => (focus === 'hour' ? stepHour(-1) : stepMinute(-15))}>
-            <Text style={{ fontSize: 28, color: FIGMA_MEDS.brand, fontWeight: '600' }}>−</Text>
-          </Pressable>
-          <Pressable onPress={() => (focus === 'hour' ? stepHour(1) : stepMinute(15))}>
-            <Text style={{ fontSize: 28, color: FIGMA_MEDS.brand, fontWeight: '600' }}>+</Text>
-          </Pressable>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+          {QUICK_TIMES.map((t) => (
+            <MedsChip key={t} label={t} active={t === time24} onPress={() => pick(t)} />
+          ))}
         </View>
-
-        <Text style={{ textAlign: 'center', fontSize: 14, color: FIGMA_MEDS.textSecondary }}>{preview}</Text>
       </View>
     </MedicationSheetModal>
   );

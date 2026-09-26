@@ -1,49 +1,54 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
-import { ChevronRight, Pill, ScanLine, Search } from 'lucide-react-native';
+import { ChevronLeft, Pill, ScanLine, Search } from 'lucide-react-native';
+import { HubLinkRow } from '@/components/home/HubTiles';
+import { MedsIconTile } from '@/components/medications/MedsHubUI';
 import { ka } from '@/i18n/ka';
-import { useIsDark, useThemeColors } from '@/theme/colors';
-import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
+import { useThemeColors } from '@/theme/colors';
+import { HUB, hubText } from '@/theme/hub';
 
+/** First step of adding a medication: pick how to find it. */
 export default function AddMedicationIntroScreen() {
   const c = useThemeColors();
-  const dark = useIsDark();
   const router = useRouter();
-  const ink = hubInk('teal', dark);
+  const insets = useSafeAreaInsets();
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={{ flex: 1, backgroundColor: c.bg100 }}>
+      <View style={{ flex: 1, backgroundColor: c.bg100, paddingTop: insets.top + 8 }}>
+        <View style={{ paddingHorizontal: HUB.gutter - 4 }}>
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/medications'))}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={ka.common.back}
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <ChevronLeft size={22} color={c.text100} strokeWidth={2.2} />
+          </Pressable>
+        </View>
+
         <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: HUB.gutter, gap: 28 }}>
           <View style={{ alignItems: 'center', gap: 20 }}>
-            <View
-              style={{
-                width: 76,
-                height: 76,
-                borderRadius: 24,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: hubTint(ink, dark),
-              }}
-            >
-              <Pill size={36} color={ink} strokeWidth={1.6} />
-            </View>
-            <View style={{ gap: 12, alignItems: 'center' }}>
+            <MedsIconTile icon={Pill} ink="teal" size={84} iconSize={40} style={{ borderRadius: 26 }} />
+            <View style={{ gap: 10, alignItems: 'center' }}>
               <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 26, lineHeight: 33, color: c.text100, textAlign: 'center' }}>
                 {ka.meds.addIntroTitle}
               </Text>
-              <Text style={[hubText.body, { fontSize: 16, lineHeight: 24, color: c.text200, textAlign: 'center' }]}>
-                {ka.meds.addIntroBody}
-              </Text>
+              <Text style={[hubText.body, { fontSize: 15, lineHeight: 23, color: c.text200, textAlign: 'center' }]}>{ka.meds.addIntroBody}</Text>
             </View>
           </View>
+
           <Pressable
+            accessibilityRole="search"
+            accessibilityLabel={ka.meds.addIntroSearchPlaceholder}
             onPress={() => router.push('/medications/add/search')}
             style={{
-              minHeight: 52,
-              borderRadius: HUB.tileRadius,
+              minHeight: 54,
+              borderRadius: HUB.tileRadius + 2,
               flexDirection: 'row',
               alignItems: 'center',
               paddingHorizontal: 16,
@@ -56,37 +61,11 @@ export default function AddMedicationIntroScreen() {
           </Pressable>
         </View>
 
-        <View style={{ padding: HUB.gutter, paddingBottom: 32 }}>
-          <Pressable
-            onPress={() => router.push('/medications/add/search')}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 14,
-              backgroundColor: c.surface,
-              borderRadius: HUB.cardRadius,
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-            }}
-          >
-            <View style={[styles.scanTile, { backgroundColor: hubTint(ink, dark) }]}>
-              <ScanLine size={21} color={ink} strokeWidth={1.8} />
-            </View>
-            <Text style={[hubText.cardTitle, { flex: 1, color: c.text100 }]}>{ka.meds.scanWithAi}</Text>
-            <ChevronRight size={20} color={c.text300} />
-          </Pressable>
+        <View style={{ paddingHorizontal: HUB.gutter, paddingBottom: Math.max(insets.bottom, 16) + 12, gap: 10 }}>
+          <HubLinkRow icon={Search} ink="teal" title={ka.meds.addOptionSearch} detail={ka.meds.addOptionSearchHint} href="/medications/add/search" />
+          <HubLinkRow icon={ScanLine} ink="sky" title={ka.meds.scanWithAi} detail={ka.meds.addOptionScanHint} href="/medications/add/search" />
         </View>
       </View>
     </>
   );
 }
-
-const styles = {
-  scanTile: {
-    width: HUB.tile,
-    height: HUB.tile,
-    borderRadius: HUB.tileRadius,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-};

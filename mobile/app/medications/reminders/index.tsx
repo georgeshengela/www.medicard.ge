@@ -1,28 +1,45 @@
-import { medicationCourseIncludesDate } from '@/lib/notificationPlan';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Calendar, CheckCircle2, Pill, Plus, ScanLine, Utensils, XCircle } from 'lucide-react-native';
-import { MedicationBottomSheet } from '@/components/medications/MedicationBottomSheet';
+import { Calendar, Check, ChevronLeft, ChevronRight, Clock, Pill, Plus, Search } from 'lucide-react-native';
+import { MedicationHeaderAction } from '@/components/medications/MedicationNavHeader';
 import { MedicationPillIcon } from '@/components/medications/MedicationPillIcon';
-import { useFigmaMeds } from '@/constants/figmaMedicationsLayout';
+import { MedicationRescheduleSheet } from '@/components/medications/MedicationRescheduleSheet';
+import {
+  MedsButton,
+  MedsCard,
+  MedsChip,
+  MedsEmptyState,
+  MedsProgressBar,
+  MedsRoundAction,
+  MedsStatusPill,
+  medsPrimaryFill,
+} from '@/components/medications/MedsHubUI';
+import { ListRowsSkeleton } from '@/components/ui/Skeleton';
+import { MONTHS_KA } from '@/constants/cycle';
 import { useMedications } from '@/hooks/useMedications';
 import { ka } from '@/i18n/ka';
 import {
+  DAY_LETTERS,
   findDoseLog,
+  formatTime24h,
   parseMedicationConfig,
   saveDoseLog,
 } from '@/lib/medications.shared';
+import { medicationCourseIncludesDate } from '@/lib/notificationPlan';
+import { useIsDark, useThemeColors } from '@/theme/colors';
+import { HUB, hubInk, hubText, hubTint } from '@/theme/hub';
+import type { DoseStatus, MedicationDoseLog } from '@/types/medications';
+import type { Medication, ScheduledDose } from '@/lib/api';
 
-const RESCHEDULE_OPTIONS = ['08:00', '09:00', '12:00', '15:00', '18:00', '21:00'];
-const DAY_LETTER_KA = ['ო', 'ს', 'ო', 'ხ', 'პ', 'შ', 'კ'] as const;
-const STRIP_LENGTH = 8;
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
 
 function startOfMonday(date: Date) {
-  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const dow = (start.getDay() + 6) % 7;
-  start.setDate(start.getDate() - dow);
+  const start = startOfDay(date);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
   return start;
 }
 
@@ -34,87 +51,103 @@ function weekdayIndex(date: Date) {
   return (date.getDay() + 6) % 7;
 }
 
-function hourLabel(time24: string) {
-  const [hStr, mStr] = time24.split(':');
-  const h = Number(hStr);
-  const m = mStr ?? '00';
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return m === '00' ? `${h12} ${ampm}` : `${h12}:${m} ${ampm}`;
-}
-
 function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+/** Doses that belong to one calendar day, sorted by time. */
+function dosesForDay(medications: Medication[], schedule: ScheduledDose[], date: Date): ScheduledDose[] {
+  const key = ymd(date);
+  const dow = weekdayIndex(date);
+  return schedule
+    .filter((dose) => {
+      const med = medications.find((item) => item.id === dose.medicationId);
+      if (!med?.active) return false;
+      const cfg = parseMedicationConfig(med.config);
+      if (!medicationCourseIncludesDate(cfg, key)) return false;
+      if (!cfg.daysOfWeek?.length) return true;
+      return cfg.daysOfWeek.includes(dow);
+    })
+    .sort((a, b) => a.time.localeCompare(b.time));
+}
+
+type DayTone = 'none' | 'planned' | DoseStatus;
+
+function dayTone(doses: ScheduledDose[], logs: MedicationDoseLog[], key: string): DayTone {
+  if (doses.length === 0) return 'none';
+  const statuses = doses
+    .map((dose) => findDoseLog(logs, dose.medicationId, key, dose.time)?.status)
+    .filter((status): status is DoseStatus => !!status);
+  if (statuses.length === 0) return 'planned';
+  if (statuses.some((status) => status === 'skipped')) return 'skipped';
+  if (statuses.length === doses.length && statuses.every((status) => status === 'taken')) return 'taken';
+  return 'pending';
+}
+
 export default function MedicationRemindersScreen() {
-  const FIGMA_MEDS = useFigmaMeds();
+  const c = useThemeColors();
+  const dark = useIsDark();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
-  const { schedule, medications, doseLogs, setDoseLogs } = useMedications();
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now;
-  });
+  const { schedule, medications, doseLogs, setDoseLogs, loading } = useMedications();
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [reschedule, setReschedule] = useState<{ medicationId: string; time: string } | null>(null);
 
   useEffect(() => {
     if (typeof dateParam !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) return;
     const [year, month, day] = dateParam.split('-').map(Number);
     setSelectedDate(new Date(year, month - 1, day));
   }, [dateParam]);
-  const [reschedule, setReschedule] = useState<{ medicationId: string; time: string } | null>(null);
 
-  const stripDays = useMemo(() => {
+  const weekDays = useMemo(() => {
     const start = startOfMonday(selectedDate);
-    return Array.from({ length: STRIP_LENGTH }, (_, i) => {
-      const day = new Date(start);
-      day.setDate(start.getDate() + i);
-      return day;
-    });
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }, [selectedDate]);
 
   const selectedYmd = ymd(selectedDate);
-  const selectedDow = weekdayIndex(selectedDate);
-  const logDate = selectedYmd;
+  const dayDoses = useMemo(() => dosesForDay(medications, schedule, selectedDate), [medications, schedule, selectedDate]);
+  const takenCount = dayDoses.filter((dose) => findDoseLog(doseLogs, dose.medicationId, selectedYmd, dose.time)?.status === 'taken').length;
+  const loggedCount = dayDoses.filter((dose) => findDoseLog(doseLogs, dose.medicationId, selectedYmd, dose.time)).length;
+  const remaining = dayDoses.length - loggedCount;
 
-  const dayDoses = useMemo(
-    () =>
-      schedule
-        .filter((dose) => {
-          const med = medications.find((item) => item.id === dose.medicationId);
-          if (!med?.active) return false;
-          const cfg = parseMedicationConfig(med.config);
-          if (!medicationCourseIncludesDate(cfg, selectedYmd)) return false;
-          if (!cfg.daysOfWeek?.length) return true;
-          return cfg.daysOfWeek.includes(selectedDow);
-        })
-        .sort((a, b) => a.time.localeCompare(b.time)),
-    [medications, schedule, selectedDow, selectedYmd],
-  );
-
-  const daysWithDoses = useMemo(() => new Set(stripDays.filter(day => medications.some(med => {
-    if (!med.active || !schedule.some(dose => dose.medicationId === med.id)) return false;
-    const config = parseMedicationConfig(med.config);
-    return medicationCourseIncludesDate(config, ymd(day)) && (!config.daysOfWeek?.length || config.daysOfWeek.includes(weekdayIndex(day)));
-  })).map(day => ymd(day))), [medications, schedule, stripDays]);
+  const groups = useMemo(() => {
+    const map = new Map<string, ScheduledDose[]>();
+    for (const dose of dayDoses) {
+      const list = map.get(dose.time) ?? [];
+      list.push(dose);
+      map.set(dose.time, list);
+    }
+    return [...map.entries()];
+  }, [dayDoses]);
 
   const markDose = async (medicationId: string, time: string, status: 'taken' | 'skipped', newTime?: string) => {
-    const entry = {
+    const entry: MedicationDoseLog = {
       medicationId,
-      date: logDate,
+      date: selectedYmd,
       time: newTime ?? time,
       status,
       updatedAt: new Date().toISOString(),
     };
     await saveDoseLog(entry);
     setDoseLogs((prev) => [
-      ...prev.filter((log) => !(log.medicationId === medicationId && log.date === logDate && log.time === time)),
+      ...prev.filter((log) => !(log.medicationId === medicationId && log.date === selectedYmd && log.time === time)),
       entry,
     ]);
     setReschedule(null);
   };
+
+  const isToday = sameDay(selectedDate, today);
+  const monthLabel = `${MONTHS_KA[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+  const teal = hubInk('teal', dark);
+  const primary = medsPrimaryFill(c, dark);
 
   return (
     <>
@@ -122,341 +155,193 @@ export default function MedicationRemindersScreen() {
         options={{
           title: ka.meds.remindersScreenTitle,
           headerRight: () => (
-            <Pressable onPress={() => router.push('/medications/reminders/calendar')} hitSlop={12} accessibilityLabel={ka.meds.calendarTitle}>
-              <Calendar size={24} color={FIGMA_MEDS.textPrimary} strokeWidth={2} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <MedicationHeaderAction icon={Calendar} onPress={() => router.push('/medications/reminders/calendar')} accessibilityLabel={ka.meds.calendarTitle} />
+              <MedicationHeaderAction icon={Plus} onPress={() => router.push('/medications/add/search')} accessibilityLabel={ka.meds.quickAdd} />
+            </View>
           ),
         }}
       />
-      <View style={{ flex: 1, backgroundColor: FIGMA_MEDS.pageBg }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ flexGrow: 0, backgroundColor: FIGMA_MEDS.headerBg }}
-          contentContainerStyle={{ gap: 12, paddingHorizontal: 16, paddingBottom: 16 }}
-        >
-          {stripDays.map((day) => {
-            const active = sameDay(day, selectedDate);
-            const hasDose = daysWithDoses.has(ymd(day));
-            return (
-              <Pressable
-                key={ymd(day)}
-                onPress={() => setSelectedDate(day)}
-                style={{
-                  minWidth: 36,
-                  paddingHorizontal: 8,
-                  paddingTop: 8,
-                  paddingBottom: 10,
-                  borderRadius: 999,
-                  alignItems: 'center',
-                  backgroundColor: active ? FIGMA_MEDS.brandQuaternary : FIGMA_MEDS.surface,
-                  borderWidth: 1,
-                  borderColor: active ? FIGMA_MEDS.brand : FIGMA_MEDS.borderTertiary,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: '500',
-                    lineHeight: 16,
-                    color: active ? FIGMA_MEDS.brand : FIGMA_MEDS.textSecondary,
-                    textAlign: 'center',
-                  }}
-                >
-                  {DAY_LETTER_KA[weekdayIndex(day)]}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: '600',
-                    lineHeight: 20,
-                    color: FIGMA_MEDS.textPrimary,
-                    textAlign: 'center',
-                  }}
-                >
-                  {day.getDate()}
-                </Text>
-                {hasDose ? (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      bottom: 6,
-                      width: 6,
-                      height: 6,
-                      borderRadius: 3,
-                      backgroundColor: FIGMA_MEDS.brand,
-                    }}
-                  />
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        {dayDoses.length === 0 ? (
-          <View style={{ flex: 1, justifyContent: 'center' }}>
-            <View style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 12 }}>
-              <Text
-                style={{
-                  fontSize: 24,
-                  fontWeight: '700',
-                  lineHeight: 32,
-                  letterSpacing: -0.25,
-                  color: FIGMA_MEDS.textPrimary,
-                  textAlign: 'center',
-                }}
-              >
-                {sameDay(selectedDate, new Date()) ? ka.meds.scheduleEmptyTitle : ka.meds.scheduleEmptyTitleOther}
+      <View style={{ flex: 1, backgroundColor: c.bg100 }}>
+        <View style={{ paddingHorizontal: HUB.gutter, paddingTop: 4, paddingBottom: 12, gap: 12 }}>
+          <View style={s.monthRow}>
+            <MedsRoundAction icon={ChevronLeft} tone="quiet" size={36} onPress={() => setSelectedDate(addDays(selectedDate, -7))} accessibilityLabel={ka.meds.weekPrev} />
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <Text accessibilityRole="header" style={[hubText.cardTitle, { color: c.text100 }]}>
+                {monthLabel}
               </Text>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: '400',
-                  lineHeight: 26,
-                  color: FIGMA_MEDS.textSecondary,
-                  textAlign: 'center',
-                }}
-              >
-                {ka.meds.scheduleEmptyBody}
-              </Text>
+              {!isToday ? <MedsChip label={ka.common.today} active onPress={() => setSelectedDate(today)} /> : null}
             </View>
-            <View style={{ paddingHorizontal: 16, paddingTop: 0, paddingBottom: 16, gap: 10 }}>
-              <Pressable
-                onPress={() => router.push('/medications/add/search')}
-                accessibilityRole="button"
-                accessibilityLabel={ka.meds.addMedicationCta}
-                style={{
-                  height: 48,
-                  minHeight: 48,
-                  borderRadius: 16,
-                  backgroundColor: FIGMA_MEDS.brand,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  paddingHorizontal: 20,
-                }}
-              >
-                <Text style={{ fontSize: 16, fontWeight: '600', lineHeight: 22, color: FIGMA_MEDS.textOnBrand }}>
-                  {ka.meds.addMedicationCta}
-                </Text>
-                <Plus size={20} color={FIGMA_MEDS.textOnBrand} strokeWidth={2.4} />
-              </Pressable>
-              <Pressable
-                onPress={() => router.push('/medications/add')}
-                accessibilityRole="button"
-                accessibilityLabel={ka.meds.scanMedicationCta}
-                style={{
-                  height: 48,
-                  minHeight: 48,
-                  borderRadius: 16,
-                  backgroundColor: FIGMA_MEDS.brandQuaternary,
-                  borderWidth: 1,
-                  borderColor: FIGMA_MEDS.brandTertiary,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  paddingHorizontal: 20,
-                }}
-              >
-                <Text style={{ fontSize: 16, fontWeight: '600', lineHeight: 22, color: FIGMA_MEDS.brand }}>
-                  {ka.meds.scanMedicationCta}
-                </Text>
-                <ScanLine size={20} color={FIGMA_MEDS.brand} strokeWidth={2.2} />
-              </Pressable>
-            </View>
+            <MedsRoundAction icon={ChevronRight} tone="quiet" size={36} onPress={() => setSelectedDate(addDays(selectedDate, 7))} accessibilityLabel={ka.meds.weekNext} />
           </View>
-        ) : (
-          <ScrollView
-            style={{ flex: 1, backgroundColor: FIGMA_MEDS.pageBg }}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 112 + insets.bottom }}
-            showsVerticalScrollIndicator={false}
-          >
-            {dayDoses.map((dose, index) => {
-            const med = medications.find((item) => item.id === dose.medicationId);
-            const cfg = parseMedicationConfig(med?.config);
-            const log = findDoseLog(doseLogs, dose.medicationId, logDate, dose.time);
-            const meal = cfg.mealTiming && cfg.mealTiming !== 'any' ? ka.meds.mealTiming[cfg.mealTiming] : null;
-            const subtitle = cfg.genericName
-              ? `${cfg.genericName}${cfg.form ? ` - ${ka.meds.formLabels[cfg.form]}` : ''}`
-              : dose.dosage;
-            const isFirst = index === 0;
-            const isLast = index === dayDoses.length - 1;
-            return (
-              <View
-                key={`${dose.medicationId}-${dose.time}`}
-                style={{ flexDirection: 'row', alignItems: 'stretch', gap: 12, minHeight: 64 }}
+
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {weekDays.map((day) => {
+              const key = ymd(day);
+              const active = sameDay(day, selectedDate);
+              const isTodayCell = sameDay(day, today);
+              const tone = dayTone(dosesForDay(medications, schedule, day), doseLogs, key);
+              const dot =
+                tone === 'none'
+                  ? 'transparent'
+                  : active
+                    ? 'rgba(255,255,255,0.9)'
+                    : tone === 'taken'
+                      ? c.success
+                      : tone === 'skipped'
+                        ? c.danger
+                        : tone === 'pending'
+                          ? c.warning
+                          : teal;
+              return (
+                <Pressable
+                  key={key}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={`${DAY_LETTERS[weekdayIndex(day)]} ${day.getDate()}`}
+                  onPress={() => setSelectedDate(day)}
+                  style={[s.dayPill, { backgroundColor: active ? primary : c.surface }]}
+                >
+                  <Text style={[hubText.small, { color: active ? 'rgba(255,255,255,0.82)' : c.text300 }]}>
+                    {DAY_LETTERS[weekdayIndex(day)]}
+                  </Text>
+                  <Text style={[hubText.value, { fontSize: 16, color: active ? '#FFFFFF' : isTodayCell ? teal : c.text100 }]}>
+                    {day.getDate()}
+                  </Text>
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: dot }} />
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingTop: 4, paddingBottom: insets.bottom + 32 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {loading && medications.length === 0 ? (
+            <ListRowsSkeleton rows={3} padded={false} />
+          ) : dayDoses.length === 0 ? (
+            <View style={{ paddingTop: 24 }}>
+              <MedsEmptyState
+                icon={Pill}
+                title={isToday ? ka.meds.scheduleEmptyTitle : ka.meds.scheduleEmptyTitleOther}
+                body={ka.meds.scheduleEmptyBody}
               >
-                <View style={{ width: 56, alignItems: 'center' }}>
-                  <View
-                    style={{
-                      width: 2,
-                      flex: 1,
-                      minHeight: 8,
-                      backgroundColor: isFirst ? 'transparent' : FIGMA_MEDS.border,
-                    }}
-                  />
-                  <View
-                    style={{
-                      width: '100%',
-                      paddingHorizontal: 4,
-                      paddingVertical: 6,
-                      borderRadius: 6,
-                      backgroundColor: FIGMA_MEDS.surface,
-                      borderWidth: 1,
-                      borderColor: FIGMA_MEDS.border,
-                      alignItems: 'center',
-                      ...FIGMA_MEDS.shadowInput,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: '500',
-                        lineHeight: 16,
-                        color: FIGMA_MEDS.textPrimary,
-                        textAlign: 'center',
-                      }}
-                    >
-                      {hourLabel(dose.time)}
+                <MedsButton label={ka.meds.addMedicationCta} icon={Plus} onPress={() => router.push('/medications/add/search')} />
+                <MedsButton label={ka.meds.quickSearch} icon={Search} tone="tonal" onPress={() => router.push('/medications/add/search')} />
+              </MedsEmptyState>
+            </View>
+          ) : (
+            <>
+              <MedsCard style={{ gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+                  <View style={{ gap: 2 }}>
+                    <Text style={[hubText.caption, { color: c.text200 }]}>{isToday ? ka.meds.todayLabel : ka.meds.dayDosesCount(dayDoses.length)}</Text>
+                    <Text style={[hubText.value, { fontSize: 22, lineHeight: 28, color: c.text100 }]}>
+                      {ka.meds.todayProgress(takenCount, dayDoses.length)}
                     </Text>
                   </View>
-                  <View
-                    style={{
-                      width: 2,
-                      flex: 1,
-                      minHeight: 8,
-                      backgroundColor: isLast ? 'transparent' : FIGMA_MEDS.border,
-                    }}
-                  />
+                  <Text style={[hubText.caption, { color: remaining === 0 ? c.success : c.text200 }]}>
+                    {remaining === 0 ? ka.meds.todayAllTaken : ka.meds.remainingDoses(remaining)}
+                  </Text>
                 </View>
+                <MedsProgressBar progress={dayDoses.length ? takenCount / dayDoses.length : 0} color={c.success} track={c.bg200} />
+              </MedsCard>
 
-                <Pressable
-                  onPress={() => router.push(`/medications/${dose.medicationId}?time=${dose.time}&date=${logDate}`)}
-                  style={{
-                    flex: 1,
-                    marginVertical: 8,
-                    padding: 12,
-                    borderRadius: 24,
-                    backgroundColor: FIGMA_MEDS.surface,
-                    borderWidth: 1,
-                    borderColor: FIGMA_MEDS.border,
-                    flexDirection: 'row',
-                    gap: 12,
-                    alignItems: 'center',
-                    ...FIGMA_MEDS.shadowInput,
-                  }}
-                >
-                  <MedicationPillIcon
-                    color={cfg.pillColor}
-                    shape={cfg.pillShape}
-                    size={48}
-                    border
-                    imageUrl={cfg.imageUrl}
-                  />
-                  <View style={{ flex: 1, gap: 8 }}>
-                    <View style={{ gap: 4 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '600', lineHeight: 16, color: FIGMA_MEDS.textPrimary }}>
-                        {dose.medName}
-                      </Text>
-                      <Text style={{ fontSize: 12, lineHeight: 16, color: FIGMA_MEDS.textSecondary }}>{subtitle}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Pill size={16} color={FIGMA_MEDS.textPrimary} strokeWidth={2} />
-                        <Text style={{ fontSize: 12, lineHeight: 16, color: FIGMA_MEDS.textPrimary }}>{dose.dosage}</Text>
+              <View style={{ marginTop: 24 }}>
+                {groups.map(([time, doses], groupIndex) => {
+                  const last = groupIndex === groups.length - 1;
+                  return (
+                    <View key={time} style={{ flexDirection: 'row', gap: 12 }}>
+                      <View style={{ width: 48, alignItems: 'center' }}>
+                        <View style={[s.timeBadge, { backgroundColor: hubTint(teal, dark) }]}>
+                          <Text style={[hubText.value, { fontSize: 12, lineHeight: 16, color: teal }]}>{formatTime24h(time)}</Text>
+                        </View>
+                        {last ? null : <View style={{ flex: 1, width: 2, borderRadius: 1, backgroundColor: c.bg300, marginVertical: 6 }} />}
                       </View>
-                      {log?.status === 'taken' ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <CheckCircle2 size={16} color={FIGMA_MEDS.textPrimary} strokeWidth={2} />
-                          <Text style={{ fontSize: 12, lineHeight: 16, color: FIGMA_MEDS.textPrimary }}>{ka.meds.statusTaken}</Text>
-                        </View>
-                      ) : log?.status === 'skipped' ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <XCircle size={16} color={FIGMA_MEDS.textPrimary} strokeWidth={2} />
-                          <Text style={{ fontSize: 12, lineHeight: 16, color: FIGMA_MEDS.textPrimary }}>{ka.meds.statusSkipped}</Text>
-                        </View>
-                      ) : meal ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <Utensils size={16} color={FIGMA_MEDS.textPrimary} strokeWidth={2} />
-                          <Text style={{ fontSize: 12, lineHeight: 16, color: FIGMA_MEDS.textPrimary }}>{meal}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    {!log ? (
-                      <View style={{ flexDirection: 'row', gap: 12 }}>
-                        <Pressable
-                          onPress={() => setReschedule({ medicationId: dose.medicationId, time: dose.time })}
-                          hitSlop={8}
-                        >
-                          <Text style={{ fontSize: 12, fontWeight: '600', lineHeight: 16, color: FIGMA_MEDS.textPrimary }}>
-                            {ka.meds.actionReschedule}
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={() => void markDose(dose.medicationId, dose.time, 'taken')}
-                          hitSlop={8}
-                        >
-                          <Text style={{ fontSize: 12, fontWeight: '600', lineHeight: 16, color: FIGMA_MEDS.brand }}>
-                            {ka.meds.actionTake}
-                          </Text>
-                        </Pressable>
+                      <View style={{ flex: 1, gap: 10, paddingBottom: last ? 0 : 18 }}>
+                        {doses.map((dose) => {
+                          const med = medications.find((item) => item.id === dose.medicationId);
+                          const cfg = parseMedicationConfig(med?.config);
+                          const log = findDoseLog(doseLogs, dose.medicationId, selectedYmd, dose.time);
+                          const meal = cfg.mealTiming && cfg.mealTiming !== 'any' ? ka.meds.mealTiming[cfg.mealTiming] : null;
+                          const meta = [dose.dosage, meal, cfg.genericName].filter(Boolean).join(' · ');
+                          return (
+                            <MedsCard key={`${dose.medicationId}-${dose.time}`} style={{ padding: 14, gap: 12 }}>
+                              <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel={`${dose.medName}, ${meta}`}
+                                onPress={() => router.push(`/medications/${dose.medicationId}?time=${dose.time}&date=${selectedYmd}` as never)}
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                              >
+                                <MedicationPillIcon color={cfg.pillColor} shape={cfg.pillShape} size={46} border imageUrl={cfg.imageUrl} />
+                                <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                                  <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>
+                                    {dose.medName}
+                                  </Text>
+                                  {meta ? (
+                                    <Text numberOfLines={1} style={[hubText.caption, { color: c.text200 }]}>
+                                      {meta}
+                                    </Text>
+                                  ) : null}
+                                </View>
+                                {log ? <MedsStatusPill status={log.status} small /> : <ChevronRight size={18} color={c.text300} strokeWidth={2} />}
+                              </Pressable>
+                              {!log ? (
+                                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                                  <MedsButton compact label={ka.meds.actionTake} icon={Check} onPress={() => void markDose(dose.medicationId, dose.time, 'taken')} style={{ flex: 1.3 }} />
+                                  <MedsButton compact tone="quiet" label={ka.meds.actionSkip} onPress={() => void markDose(dose.medicationId, dose.time, 'skipped')} style={{ flex: 1 }} />
+                                  <MedsRoundAction icon={Clock} tone="tonal" onPress={() => setReschedule({ medicationId: dose.medicationId, time: dose.time })} accessibilityLabel={ka.meds.actionReschedule} />
+                                </View>
+                              ) : null}
+                            </MedsCard>
+                          );
+                        })}
                       </View>
-                    ) : null}
-                  </View>
-                </Pressable>
+                    </View>
+                  );
+                })}
               </View>
-            );
-            })}
-          </ScrollView>
-        )}
-
-        {dayDoses.length > 0 ? (
-          <Pressable
-          onPress={() => router.push('/medications/add/search')}
-          accessibilityRole="button"
-          accessibilityLabel={ka.meds.quickAdd}
-          style={{
-            position: 'absolute',
-            right: 16,
-            bottom: 16 + insets.bottom,
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            backgroundColor: FIGMA_MEDS.brand,
-            alignItems: 'center',
-            justifyContent: 'center',
-            ...FIGMA_MEDS.shadowCard,
-          }}
-        >
-            <Plus size={32} color={FIGMA_MEDS.textOnBrand} strokeWidth={2.5} />
-          </Pressable>
-        ) : null}
+            </>
+          )}
+        </ScrollView>
       </View>
 
-      <MedicationBottomSheet
+      <MedicationRescheduleSheet
         visible={!!reschedule}
-        title={ka.meds.actionReschedule}
+        currentTime={reschedule?.time}
         onClose={() => setReschedule(null)}
-      >
-        {RESCHEDULE_OPTIONS.map((time) => (
-          <Pressable
-            key={time}
-            onPress={() => {
-              if (!reschedule) return;
-              void markDose(reschedule.medicationId, reschedule.time, 'taken', time);
-            }}
-            style={{
-              paddingVertical: 14,
-              borderBottomWidth: 1,
-              borderColor: FIGMA_MEDS.border,
-            }}
-          >
-            <Text style={{ fontWeight: '700', color: FIGMA_MEDS.textPrimary, fontSize: 16 }}>{time}</Text>
-          </Pressable>
-        ))}
-      </MedicationBottomSheet>
+        onPick={(time) => {
+          if (!reschedule) return;
+          void markDose(reschedule.medicationId, reschedule.time, 'taken', time);
+        }}
+      />
     </>
   );
 }
+
+const s = StyleSheet.create({
+  monthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dayPill: {
+    flex: 1,
+    minHeight: 64,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 3,
+  },
+  timeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+    borderRadius: 10,
+    minWidth: 48,
+    alignItems: 'center',
+  },
+});
