@@ -141,11 +141,19 @@ export function buildGeoLatinMap(names) {
     const latCanon = canonicalizePhrase(latPart);
     if (latCanon.length < 4) continue;
 
-    // Register every significant word of the Georgian phrase (not just the
-    // first) so e.g. "დიპ რილიფი" (kept short by canonicalBrand's own
-    // 4-char minimum, landing on "რილიფი" alone) still finds this entry.
+    // Register the second word too, but only when the first is short enough
+    // that canonicalBrand's own 4-char minimum would skip past it entirely
+    // (e.g. "დიპ რილიფი" landing on "რილიფი" alone). When the first word is
+    // already a real identifier on its own, do NOT also register the second —
+    // it is very often a generic manufacturer or chemical-class suffix shared
+    // across unrelated drugs ("... დენკი" / "...-Denk", "... სულფატი" /
+    // "...Sulfate"), and registering it standalone previously merged
+    // completely different drugs that happened to share that one word
+    // (e.g. "დოლო-დენკი" gel wrongly matched "სიმვა-დენკი" tablets; "ატროპინის
+    // სულფატი" wrongly matched "მაგნიუმის სულფატი").
     const geoWords = geoPart.replace(/®/g, '').trim().split(/\s+/).filter((w) => w.length >= 3);
-    for (const w of geoWords.slice(0, 2)) {
+    const wordsToRegister = geoWords[0] && geoWords[0].length < 5 ? geoWords.slice(0, 2) : geoWords.slice(0, 1);
+    for (const w of wordsToRegister) {
       const key = w.toLowerCase();
       if (key.length >= 3 && !map.has(key)) map.set(key, latCanon);
     }
