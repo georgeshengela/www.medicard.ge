@@ -63,8 +63,26 @@ const GENERIC_FORM_WORDS = new Set([
   'სანთელი', 'სუპოზიტორია',
 ]);
 
+/**
+ * Generic-drug manufacturer brand-lines — never a drug's identity either, but
+ * (unlike dosage-form words) this list can't be exhaustive, so it only holds
+ * words caught causing an actual false merge. "დენკი"/Denk alone has caused
+ * three: "დოლო-დენკი" (gel) with "სიმვა-დენკი" (tablets) and with
+ * "პარა-დენკი" (a different active), and — the case that forced this list —
+ * "კაპტოპრილი HCT დენკი - Captopril HCT Denk ...": the Latin qualifier "HCT"
+ * sits between the real drug name and "დენკი", so the Georgian-only capture
+ * in buildGeoLatinMap can only reach back to "დენკი" itself, registering the
+ * manufacturer name alone as the "brand" for that entry — which then matched
+ * five or six unrelated "X-Denk" drugs (Cipro-Denk, Glimepiride-Denk,
+ * Atenolol-Denk, Clopi-Denk, Furo-Denk, Deslora-Denk) under one signature.
+ */
+const MANUFACTURER_SUFFIX_WORDS = new Set(['დენკი', 'დენკ']);
+
 function stripGenericFormWords(words) {
-  return words.filter((w) => !GENERIC_FORM_WORDS.has(w.toLowerCase()));
+  return words.filter((w) => {
+    const lower = w.toLowerCase();
+    return !GENERIC_FORM_WORDS.has(lower) && !MANUFACTURER_SUFFIX_WORDS.has(lower);
+  });
 }
 
 /** Well-known Georgian trade names → Latin INN/brand for cross-pharmacy matching. */
@@ -203,8 +221,15 @@ export function buildGeoLatinMap(names) {
     // Also register the full phrase (letters + any trailing variant letter) as
     // its own exact key, so "Lorinden A" and "Lorinden N" don't collapse into
     // the same bare "lorinden" bucket once the variant letter is stripped.
-    const fullGeoKey = canonicalizePhrase(geoPart.replace(/®/g, '').trim());
-    if (fullGeoKey.length >= 3 && !map.has(fullGeoKey)) map.set(fullGeoKey, latCanon);
+    // Skip this when the phrase carried no real identifying word at all (e.g.
+    // a Latin qualifier like "HCT" breaking the capture down to just a
+    // manufacturer suffix) — `first` already excludes generic/manufacturer
+    // words, so if nothing survived that filter, the full phrase is exactly
+    // as unsafe to register as the bare word would have been.
+    if (first) {
+      const fullGeoKey = canonicalizePhrase(geoPart.replace(/®/g, '').trim());
+      if (fullGeoKey.length >= 3 && !map.has(fullGeoKey)) map.set(fullGeoKey, latCanon);
+    }
   }
   return map;
 }
