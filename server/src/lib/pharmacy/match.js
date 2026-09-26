@@ -102,9 +102,12 @@ async function findMatchCandidate(rawName, meta, geoLatinMap) {
   });
   if (legacy) return legacy;
 
+  // Only pre-filter by strength, not packSize: sources format pack counts very
+  // inconsistently (one writes "#1", another omits it entirely), so requiring an
+  // exact packSize match here can exclude the true candidate before the fuzzy
+  // (Jaccard) scoring below ever gets a chance to see it.
   const where = {};
   if (meta.strength) where.strength = meta.strength;
-  if (meta.packSize) where.packSize = meta.packSize;
 
   const candidates = await prisma.catalogProduct.findMany({
     where: Object.keys(where).length ? where : { offerCount: { gt: 0 } },

@@ -99,12 +99,19 @@ export function extractForm(raw) {
 export function buildGeoLatinMap(names) {
   const map = new Map();
   for (const name of names) {
-    const m = String(name || '').match(
+    const raw = String(name || '');
+    const m = raw.match(
       /([\u10a0-\u10ff][\u10a0-\u10ff\s®+-]{2,40}?)\s*-\s*([A-Za-z][A-Za-z0-9+-]{2,24})/,
     );
-    if (!m) continue;
-    const geo = m[1].replace(/®/g, '').trim().split(/\s+/)[0].toLowerCase();
-    const lat = m[2].toLowerCase().split(/\s+/)[0];
+    // Some sources write the pair the other way round, e.g. "Adora - ადორა …".
+    const rev = m
+      ? null
+      : raw.match(/([A-Za-z][A-Za-z0-9+-]{2,24})\s*-\s*([\u10a0-\u10ff][\u10a0-\u10ff\s®+-]{2,40}?)(?=\s|$)/);
+    const geoPart = m ? m[1] : rev ? rev[2] : null;
+    const latPart = m ? m[2] : rev ? rev[1] : null;
+    if (!geoPart || !latPart) continue;
+    const geo = geoPart.replace(/®/g, '').trim().split(/\s+/)[0].toLowerCase();
+    const lat = latPart.toLowerCase().split(/\s+/)[0];
     if (geo.length >= 4 && lat.length >= 4) map.set(geo, lat);
   }
   return map;
