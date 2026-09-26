@@ -62,7 +62,7 @@ Do not put the hub title in the card header. Card chrome can still show metric n
 
 ## Pressable styles (NativeWind gotcha)
 
-NativeWind v4 **silently drops function-form style callbacks on `Pressable`** — `style={({ pressed }) => ({...})}` is never invoked, so the button renders with NO styles (invisible white text, unstyled layout). Always use a static object/array: `style={{ ... }}`. For pressed feedback use NativeWind `active:` classes or skip it. New screens' routes also need `<Stack.Screen name="..." options={{ headerShown: false }} />` in `app/_layout.tsx`, or an ugly system header appears on top. ~30 older files (cycle, home sheets) still use the broken callback pattern — sweep pending.
+NativeWind v4 **silently drops function-form style callbacks on `Pressable`** — `style={({ pressed }) => ({...})}` is never invoked, so the button renders with NO styles (invisible white text, unstyled layout). Always use a static object/array: `style={{ ... }}`. For pressed feedback use NativeWind `active:` classes or skip it. New screens' routes also need `<Stack.Screen name="..." options={{ headerShown: false }} />` in `app/_layout.tsx`, or an ugly system header appears on top. The sweep is complete (verified 2026-09-27: 0 function-form Pressable styles; `CyclePressable` resolves function styles itself before building its array).
 
 ## Mobile modals
 

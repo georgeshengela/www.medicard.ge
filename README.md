@@ -54,9 +54,12 @@ Two engines, each doing only what it is good at.
 
 | Concern | Engine | Where |
 | --- | --- | --- |
-| Clinical reasoning, differentials, lab interpretation, guidelines, citations | **EvidenceMD** (`evidencemd-pro`) | `server/src/lib/evidencemd.js` |
-| Image description, OCR, visual triage of skin / X-ray / CT / MRI | **Claude 3.5 Sonnet**, falling back to **GPT-4o** | `server/src/lib/vision.js` |
+| Medi chat and module answers | **Gemini Flash via OpenRouter** (`google/gemini-3.8-flash`), chosen by the server. There is no user-facing model picker; ops can override with `AI_DEFAULT_ENGINE` (`gemini_flash` · `ling_free` · `evidencemd`). | `server/src/lib/aiEngine.js` |
+| Clinical last-resort path | **EvidenceMD** (`evidencemd-pro`) | `server/src/lib/evidencemd.js` |
+| Image description, OCR, visual triage of skin / X-ray / CT / MRI | **OpenRouter** vision models, using only the provider routing named in `mobile/src/config/aiDisclosure.json` | `server/src/lib/vision.js` |
 | Offline OCR fallback for lab sheets | Tesseract (`kat+eng+rus`) | `server/src/lib/ocr.js` |
+
+Every outbound AI request goes through `consentedAiFetch`. It allows only the OpenRouter and EvidenceMD origins, pins OpenRouter to the disclosed providers (`allow_fallbacks: false`, `zdr`), and checks the account's AI consent on every attempt. The direct Anthropic / OpenAI clients left in `vision.js` are therefore blocked (`AI_PROVIDER_NOT_APPROVED`). They are not a working fallback.
 
 Images never go to the clinical engine directly. The vision model turns pixels into structured
 English notes, those notes are wrapped in a Georgian hand-off instruction, and only then does
@@ -66,19 +69,20 @@ clinical model is explicitly required to answer in Georgian and cite its sources
 EvidenceMD is OpenAI-compatible, so it is driven with the official OpenAI SDK pointed at
 `https://evidencemd.ai/api/v1` and authenticated with an `x-api-key` header.
 
-### Free-tier metering
+### AI usage metering
 
-Three AI generations per user per day, resetting at local midnight in Tbilisi (not UTC).
+MEDICARD is entirely free for consumers. `FREE_CONSUMER_RELEASE` is always `true`
+(`mobile/src/lib/consumerAccess.js`), so there is **no daily quota and no upsell**. Package rows
+and `FREE_DAILY_AI_LIMIT` remain only for historical data and older API compatibility.
 
-`enforceAiQuota` checks the `DailyUsage` row before any engine is called and returns
-**HTTP 429** with `"დღიური 3 უფასო შეკითხვა ამოიწურა. გთხოვთ, სცადეთ ხვალ."` plus an upsell
-payload when the limit is reached. Otherwise it hands the route a `req.consumeAiCredit()`
-callback which is invoked *only after a generation succeeds* — a failed upstream call never
-costs the user a query. The counter is incremented with an atomic upsert, so concurrent
-requests cannot both slip through.
+`enforceAiQuota` still runs before every engine call, but only for abuse and concurrency control:
 
-Every AI response carries the refreshed quota, and the client folds it straight into the
-persistent counter banner.
+- a per-account burst limit of 30 AI starts per 10 minutes (`AI_START_MAX` / `AI_START_WINDOW_MS`
+  in `server/src/lib/usage.js`), which returns HTTP 429 `RATE_LIMITED`;
+- one in-flight reservation per operation, released on failure or cancel (`AI_BUSY`).
+
+`req.consumeAiCredit()` runs only after a generation succeeds, so a failed upstream call never
+counts.
 
 ### Patient demographics
 
@@ -139,20 +143,23 @@ full set on every read, which is the only way to stay consistent after an edit, 
 
 ## Design system
 
-| Token | Value | Use |
-| --- | --- | --- |
-| `bg-100` | `#fffefb` | page background |
-| `bg-200` | `#f5f4f1` | cards, containers |
-| `primary-200` | `#00668c` | brand, primary actions |
-| `accent-200` | `#71c4ef` | light sky accent |
-| `text-100` | `#1d1c1c` | body copy |
+| Token | Light | Dark | Use |
+| --- | --- | --- | --- |
+| `bg-100` | `#f5f7f7` | `#030712` | page background |
+| `bg-200` | `#eaeeef` | `#1f2937` | inputs, chips, sheets |
+| `primary-100` | `#0f766e` | `#99f6e4` | brand text |
+| `primary-200` | `#14b8a6` | `#14b8a6` | brand, links, icons |
+| `accent-100` | `#ccfbf1` | `#042f2e` | brand tint fill |
+| `text-100` | `#0f1a1c` | `#ffffff` | headings |
+
+Filled dark CTAs use `#0D9488`. See AGENTS.md "Dark theme" and `mobile/src/theme/hub.ts` for the Home hub design language.
 
 Defined once in `mobile/tailwind.config.js` and mirrored as plain values in
 `mobile/src/theme/colors.ts` for the places React Native cannot take a `className` — icon
 colours, shadows and navigator options. Cards are `rounded-2xl` with soft diffuse elevation.
 
-Dark mode is pinned to `class` rather than `media` in `tailwind.config.js`. This is a light-only
-clinical UI so the OS colour scheme must not recolour it — but it is also load-bearing. On web,
+Dark mode is pinned to `class` rather than `media` in `tailwind.config.js`. The app has light and dark
+themes chosen in-app (and synced to the OS on request), so the class toggle is how it switches — and it is also load-bearing. On web,
 `react-native-css-interop` installs a `MutationObserver` that waits for the stylesheet to be
 injected and then calls `colorScheme.set(...)`, which **throws** if the compiled `darkMode` flag
 says `media`. The result is a full-screen uncaught error:

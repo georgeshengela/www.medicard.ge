@@ -1,6 +1,6 @@
 # ქალების სივრცე
 
-Native route: `/community`. Entry: female account → Profile → ქალების სივრცე. No additional bottom tab. Admin: `#/community`.
+Native route: `/community`. Entry: female account → Home „ქალის ჯანმრთელობა“ section → ქალების სივრცე, or Explore → ქალების სივრცე → საზოგადოება. No additional bottom tab. Launch gate (2026-09-27): while admin keeps `CommunityConfig.open=false`, only existing members see the entry and can use the space; others see „ქალების სივრცე მალე გაიხსნება“. Admin: `#/community`.
 
 ## Access and anonymity
 
