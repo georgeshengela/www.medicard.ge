@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "535295295288",
+    "project_id": "medicard-d6ea0",
+    "storage_bucket": "medicard-d6ea0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:535295295288:android:e6c2a3dbb4b1483f92cbcd",
+        "android_client_info": {
+          "package_name": "ge.medicard.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDcILPGnJIjzPVNTqZpjFVAGDwYvqC3zmk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

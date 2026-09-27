@@ -171,7 +171,7 @@
   - ჩართვა კვების პარამეტრებიდან (`nutritionHealth.ts`, `/nutrition/settings`).
 - **ნატიური მოდულები app.json-შია:** `@kingstinct/react-native-healthkit`, `react-native-health-connect`.
 - **ვიჯეტები არ არის.**
-- **Android push (FCM) არ არის მომზადებული**: `google-services.json` აკლია.
+- **Android push (FCM)**: 2026-09-27 `google-services.json` დაემატა (Firebase `medicard-d6ea0`, აპი 1.0.0.14.0). დარჩა FCM V1 გასაღების ატვირთვა EAS-ში და ახალი Android build.
 
 **მონაცემთა მოდელი:** სერვერზე ცვლილება არ სჭირდება. ვიჯეტი მონაცემს აპის ლოკალური snapshot-იდან იღებს (App Group / SharedPreferences).
 

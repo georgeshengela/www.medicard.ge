@@ -31,3 +31,8 @@ test('user-facing copy never names the product RUN / MEDI RUN / Medi Run / MEDIP
   }
   assert.deepEqual(offenders, []);
 });
+
+test('store-facing permission texts in app.json use MEDIRUN', () => {
+  const appJson = fs.readFileSync(path.join(root, 'app.json'), 'utf8');
+  assert.doesNotMatch(appJson, /\b(MEDI RUN|Medi Run|MEDI PULSI|MEDIPULSI|MediPulsi)\b/);
+});
