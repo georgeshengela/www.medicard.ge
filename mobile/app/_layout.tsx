@@ -2,7 +2,7 @@ import '../global.css';
 import '@/lib/bootGuard';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { LogBox, Text, View } from 'react-native';
+import { LogBox, Pressable, Settings, Text, View, useColorScheme } from 'react-native';
 
 // Expo SDK 57 treats sound: 'default' as a missing custom file in the native client.
 // The repeating LogBox toast covers Home chrome; ignore only that known message.
@@ -15,7 +15,7 @@ LogBox.ignoreLogs([
   /PushNotificationIOS has been extracted from react-native core/,
 ]);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Stack, useGlobalSearchParams, useNavigationContainerRef, useRouter, useSegments } from 'expo-router';
+import { Stack, useGlobalSearchParams, useRouter, useSegments, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
@@ -41,6 +41,13 @@ import { QuestHost } from '@/components/quest/QuestHost';
 import { useThemeColors } from '@/theme/colors';
 import { AuthProvider, useAuth, needsHealthAssessment, needsProfileSetup } from '@/store/AuthContext';
 import { canOpenNotificationRoute, notificationResponseKey, routeFromNotificationData } from '@/lib/notificationPlan';
+import {
+  claimNotificationTap,
+  clearNotificationRoutePending,
+  noteNotificationRouteOpened,
+  noteNotificationRoutePending,
+} from '@/lib/notificationTaps';
+import { savePendingReferralCode } from '@/lib/referral';
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import { FontsProvider } from '@/store/FontsContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
@@ -122,6 +129,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       if (isCycleShareCode(shareCode)) {
         void savePendingCycleShare(shareCode);
       }
+      // The invite screen never mounts while signed out; keep its code for after sign-up.
+      if (parts[0] === 'invite') void savePendingReferralCode(parts[1]);
       router.replace('/(auth)');
       return;
     }
@@ -205,9 +214,7 @@ function AppShell() {
   const { user, ready: authReady, healthProfile, setHealthProfile } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const navigationRef = useNavigationContainerRef();
   const pendingNotificationRoute = useRef<{ route: string; at: number } | null>(null);
-  const handledNotificationTaps = useRef(new Set<string>());
   const [notificationTick, setNotificationTick] = useState(0);
   const stackMotion = useStackMotion();
   const peerMotion = useStackMotion('peer');
@@ -254,12 +261,11 @@ function AppShell() {
     const queueRoute = (route: string | null | undefined) => {
       if (!route) return;
       pendingNotificationRoute.current = { route, at: Date.now() };
+      noteNotificationRoutePending();
       setNotificationTick((tick) => tick + 1);
     };
     const handleTap = (response: NotificationResponse) => {
-      const key = notificationResponseKey(response);
-      if (handledNotificationTaps.current.has(key)) return;
-      handledNotificationTaps.current.add(key);
+      if (!claimNotificationTap(notificationResponseKey(response))) return;
       try {
         Notifications.clearLastNotificationResponse();
       } catch {
@@ -329,18 +335,19 @@ function AppShell() {
     if (!pending) return;
     if (Date.now() - pending.at > NOTIFICATION_ROUTE_TTL_MS) {
       pendingNotificationRoute.current = null;
+      clearNotificationRoutePending();
       return;
     }
     const canOpen = canOpenNotificationRoute({
-      navigationReady: navigationRef.isReady(),
       appReady: authReady && themeReady,
       signedIn: Boolean(user),
       segments: segments as string[],
     });
     if (!canOpen) return;
     pendingNotificationRoute.current = null;
+    noteNotificationRouteOpened();
     router.push(pending.route as never);
-  }, [notificationTick, navigationRef, authReady, themeReady, user, segments, router]);
+  }, [notificationTick, authReady, themeReady, user, segments, router]);
 
   return (
     <>
@@ -414,6 +421,42 @@ function AppShell() {
         </View>
       </AuthGate>
     </>
+  );
+}
+
+/**
+ * Last line of defence for render errors. The production boot guard keeps the process
+ * alive, so without this a crash leaves a frozen screen (or the splash) with no way out.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  const dark = useColorScheme() === 'dark';
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => undefined);
+    console.error('[Medicard] screen error:', error);
+    try {
+      Settings.set({ 'medicard.lastFatal': String(error?.message ?? error).slice(0, 1800) });
+    } catch {
+      /* diagnostics only */
+    }
+  }, [error]);
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', padding: 28, backgroundColor: dark ? '#030712' : '#FFFFFF' }}>
+      <View style={{ width: '100%', maxWidth: 400, alignSelf: 'center', gap: 14 }}>
+        <Text accessibilityRole="header" style={{ fontSize: 21, fontWeight: '700', color: dark ? '#FFFFFF' : '#111827' }}>
+          რაღაც ვერ ჩაიტვირთა
+        </Text>
+        <Text style={{ fontSize: 14, lineHeight: 22, color: dark ? '#D1D5DB' : '#4B5563' }}>
+          შენი მონაცემები უსაფრთხოდაა. სცადე თავიდან — თუ ისევ განმეორდა, დახურე და ხელახლა გახსენი აპი.
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void retry()}
+          style={{ marginTop: 6, height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0F766E' }}
+        >
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>თავიდან ცდა</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 

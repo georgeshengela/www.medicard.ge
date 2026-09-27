@@ -117,11 +117,26 @@ export function engageDestination(
   }
 }
 
+/**
+ * Top-level screens a notification may open (mirrors mobile/app; a test keeps them in sync).
+ * A mistyped route from an admin broadcast falls back instead of opening a "not found" page.
+ */
+export const NOTIFICATION_ROUTE_ROOTS = [
+  '(tabs)', 'assistant', 'chat', 'community', 'cycle', 'explore', 'health-metrics', 'invite', 'lab',
+  'medi-companion', 'medi-quest', 'medications', 'medipulsi', 'module', 'nutrition', 'package', 'pets',
+  'pharmacy', 'profile', 'record', 'run', 'share', 'symptoms', 'visits', 'weather', 'week',
+] as const;
+
+export function isNotificationRoute(route: unknown): route is string {
+  if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) return false;
+  const root = route.slice(1).split(/[/?#]/, 1)[0];
+  return (NOTIFICATION_ROUTE_ROOTS as readonly string[]).includes(root);
+}
+
 export function routeFromNotificationData(data: Record<string, unknown> | undefined | null): string | null {
   if (!data || typeof data !== 'object') return null;
 
-  const explicit = data.route;
-  if (typeof explicit === 'string' && explicit.startsWith('/')) return explicit;
+  if (isNotificationRoute(data.route)) return data.route;
 
   switch (data.type) {
     case 'medication':
@@ -142,19 +157,16 @@ export function routeFromNotificationData(data: Record<string, unknown> | undefi
     case 'cycle_tip':
       return '/cycle';
     case 'pregnancy_care_plan':
-      return typeof data.route === 'string' && data.route.startsWith('/')
-        ? data.route
-        : '/cycle/pregnancy/care-plan';
+      return '/cycle/pregnancy/care-plan';
     case 'pet_care':
-      return typeof data.route === 'string' && data.route.startsWith('/')
-        ? data.route
-        : typeof data.petId === 'string'
+      return typeof data.petId === 'string'
           ? `/pets/${data.petId}/care`
           : '/pets';
     case 'medi_engage':
       return engageDestination(typeof data.family === 'string' ? data.family : '');
     default:
-      return null;
+      // An unknown or mistyped route still opens the app on Home rather than nowhere.
+      return data.route !== undefined ? '/(tabs)/home' : null;
   }
 }
 
@@ -169,21 +181,21 @@ export function notificationResponseKey(response: {
 
 /**
  * A tapped notification may navigate only once the signed-in app shell is on screen.
- * On a cold start the tap arrives before the root Stack mounts; an expo-router push then
- * throws inside the navigation container's effect, the tree unmounts, the boot guard
- * swallows the fatal and the app sits on the splash. Hold the route until this is true.
+ * expo-router wraps app/_layout in its own internal root stack. Until our Stack mounts
+ * (AuthGate is still restoring the session), a push has no inner navigator to land in and
+ * pushes another copy of the whole root layout instead. The copy re-read the same launch
+ * response and pushed again: an endless remount loop on the splash with a flickering
+ * status bar. Hold the route until this is true, and handle each tap once.
  */
 export function canOpenNotificationRoute(state: {
-  navigationReady: boolean;
   appReady: boolean;
   signedIn: boolean;
   segments: readonly string[];
 }): boolean {
   return (
-    state.navigationReady &&
     state.appReady &&
     state.signedIn &&
-    // [] is the index route, which is still redirecting to the person's landing screen.
+    // [] means our Stack is not mounted yet or the index route is still redirecting.
     state.segments.length > 0 &&
     state.segments[0] !== '(auth)'
   );

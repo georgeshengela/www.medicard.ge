@@ -6,6 +6,7 @@ import {
   isDeviceAccessGateFinished,
   subscribeDeviceAccessGate,
 } from '@/lib/deviceAccess';
+import { notificationNavigationBusy } from '@/lib/notificationTaps';
 import { useAuth } from '@/store/AuthContext';
 
 /**
@@ -36,13 +37,24 @@ export function DailyCheckInHost() {
     if (shownThisAward.current) return;
     shownThisAward.current = true;
 
+    let fired = false;
     const timer = setTimeout(() => {
+      fired = true;
+      // A tapped notification opens its own target; the streak waits for the next screen change.
+      if (notificationNavigationBusy()) {
+        shownThisAward.current = false;
+        return;
+      }
       consumeDailyBonus();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       router.push('/profile/streak?bonus=1' as never);
     }, 700);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // Navigating away inside the delay must not lose today's streak screen.
+      if (!fired) shownThisAward.current = false;
+    };
   }, [user, pendingDailyBonus, root, consumeDailyBonus, router, gateReady]);
 
   useEffect(() => {

@@ -1,7 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
 import {
+  NOTIFICATION_ROUTE_ROOTS,
   canOpenNotificationRoute,
+  isNotificationRoute,
   medicationCourseIncludesDate,
   notificationResponseKey,
   expoWeekdayFromMonday,
@@ -97,9 +100,8 @@ it('home and calendar only show doses inside the inclusive course',()=>{
   assert.equal(medicationCourseIncludesDate(course,'2026-10-05'),false);
 
   it('holds a tapped notification until the signed-in shell has mounted', () => {
-    const ready = { navigationReady: true, appReady: true, signedIn: true, segments: ['(tabs)', 'home'] };
+    const ready = { appReady: true, signedIn: true, segments: ['(tabs)', 'home'] };
     assert.equal(canOpenNotificationRoute(ready), true);
-    assert.equal(canOpenNotificationRoute({ ...ready, navigationReady: false }), false);
     assert.equal(canOpenNotificationRoute({ ...ready, appReady: false }), false);
     assert.equal(canOpenNotificationRoute({ ...ready, signedIn: false }), false);
     assert.equal(canOpenNotificationRoute({ ...ready, segments: [] }), false);
@@ -111,5 +113,23 @@ it('home and calendar only show doses inside the inclusive course',()=>{
     assert.equal(notificationResponseKey(tap), notificationResponseKey({ ...tap }));
     assert.notEqual(notificationResponseKey(tap), notificationResponseKey({ ...tap, actionIdentifier: 'OK' }));
     assert.equal(routeFromNotificationData({ type: 'medi_engage', family: 'weekly' }), '/week');
+  });
+
+  it('knows every top-level screen in mobile/app', () => {
+    const screens = readdirSync(new URL('../../app/', import.meta.url))
+      .map((name) => name.replace(/\.tsx$/, ''))
+      .filter((name) => !['_layout', 'index', '(auth)'].includes(name));
+    assert.deepEqual([...new Set(screens)].sort(), [...NOTIFICATION_ROUTE_ROOTS].sort());
+  });
+
+  it('never follows a mistyped or foreign route from a notification', () => {
+    assert.equal(isNotificationRoute('/community?post=abc'), true);
+    assert.equal(isNotificationRoute('/(tabs)/profile?action=question'), true);
+    assert.equal(isNotificationRoute('/comunity'), false);
+    assert.equal(isNotificationRoute('//evil.example'), false);
+    assert.equal(isNotificationRoute('/(auth)/sign-in'), false);
+    assert.equal(routeFromNotificationData({ type: 'admin_broadcast', route: '/comunity' }), '/(tabs)/home');
+    assert.equal(routeFromNotificationData({ type: 'admin_broadcast' }), null);
+    assert.equal(routeFromNotificationData({ type: 'pet_care', petId: 'p1', route: '/typo' }), '/pets/p1/care');
   });
 });
