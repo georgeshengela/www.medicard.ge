@@ -238,3 +238,22 @@ html body table.s-table.is-edit td:first-child { padding-left: 14px; }
 .s-menu button[data-m="logout"] .icon { color: var(--s-bad); }
 html body .v3-sidebar .sidebar-avatar { cursor: pointer; transition: box-shadow .15s; }
 html body .v3-sidebar .sidebar-avatar:hover { box-shadow: 0 0 0 2px var(--s-surface), 0 0 0 4px var(--s-accent-ring); }
+
+/* Legacy .switch (settings etc.) → same look as .s-switch */
+html body .workspace .switch { position: relative; display: inline-block; width: 36px; height: 20px; flex: none; }
+html body .workspace .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+html body .workspace .switch i {
+  position: absolute; inset: 0; border-radius: 99px;
+  background: var(--s-line-strong) !important; border: 0 !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .08) !important;
+  transition: background .2s var(--s-ease);
+}
+html body .workspace .switch i::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 99px;
+  background: #fff !important; box-shadow: 0 1px 3px rgba(16, 24, 40, .25);
+  transition: transform .22s var(--s-spring);
+}
+html body .workspace .switch input:checked + i { background: var(--s-accent) !important; }
+html body .workspace .switch input:checked + i::after { transform: translateX(16px); }
+html body .workspace .switch input:focus-visible + i { box-shadow: 0 0 0 3px var(--s-accent-ring) !important; }
+html body .workspace .switch input:disabled + i { opacity: .5; }
