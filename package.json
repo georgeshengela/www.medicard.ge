@@ -23,7 +23,7 @@
     "test:ai": "node --experimental-default-type=module server/scripts/check-evidencemd.js",
     "typecheck": "npm --prefix mobile run typecheck",
     "build": "npm --prefix server ci --include=dev && npm --prefix server run prisma:generate && npx --prefix server playwright install chromium && node -e \"const fs=require('fs'); for (const p of ['server/admin/index.html','server/public/index.html']) { if(!fs.existsSync(p)) { console.error('Missing '+p); process.exit(1)} } console.log('admin + landing ok')\" && npm run build:medipulsi",
-    "release": "npm --prefix server run prisma:generate && node server/scripts/install-medipulsi.mjs && node server/scripts/install-ai-consent.mjs && node server/scripts/install-assistant.mjs && node server/scripts/install-community.mjs && node server/scripts/install-nutrition.mjs && node server/scripts/install-price-drop.mjs && node server/scripts/install-referral.mjs && node server/scripts/install-funnel.mjs && node server/scripts/install-email.mjs && node server/scripts/install-job-lease.mjs && npm --prefix server run seed",
+    "release": "npm --prefix server run prisma:generate && npm run db:install && npm --prefix server run seed",
     "start": "npm --prefix server start",
     "clean": "node scripts/clean.mjs",
     "figma:sync": "node scripts/figma/sync.mjs",
@@ -35,6 +35,7 @@
     "figma:assessment:svg": "node scripts/figma/import-assessment-svg.mjs",
     "figma:illustration:svg": "node scripts/figma/import-illustration-svg.mjs",
     "figma:body:svg": "node scripts/figma/import-body-svg.mjs",
-    "build:medipulsi": "npm --prefix medipulsi ci --include=dev && npm --prefix medipulsi run build"
+    "build:medipulsi": "npm --prefix medipulsi ci --include=dev && npm --prefix medipulsi run build",
+    "db:install": "node server/scripts/install-medipulsi.mjs && node server/scripts/install-ai-consent.mjs && node server/scripts/install-assistant.mjs && node server/scripts/install-community.mjs && node server/scripts/install-nutrition.mjs && node server/scripts/install-price-drop.mjs && node server/scripts/install-referral.mjs && node server/scripts/install-funnel.mjs && node server/scripts/install-email.mjs && node server/scripts/install-job-lease.mjs"
   }
 }
