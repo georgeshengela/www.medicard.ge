@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bookmark, BookmarkCheck, ChevronRight, Clock3, Copy, Search, Trash2, X } from "lucide-react-native";
-import { APP_MODAL_PROPS } from "@/components/ui/appModal";
+import { APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { api } from "@/lib/api";
 import { foodTotals, mealLabels, type FoodItem, type Meal, type SavedFood } from "@/lib/nutrition";
 import { nutritionDateLabel } from "@/lib/nutritionProgram";

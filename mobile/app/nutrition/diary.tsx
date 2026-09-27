@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   BackHandler,
   Image,
   Keyboard,
@@ -71,7 +70,7 @@ import {
 } from "@/lib/nutrition";
 import { useThemeColors } from "@/theme/colors";
 import { hubText } from "@/theme/hub";
-import { APP_MODAL_PROPS, APP_MODAL_OVERLAY } from "@/components/ui/appModal";
+import { APP_MODAL_PROPS, APP_MODAL_OVERLAY, Modal } from "@/components/ui/appModal";
 import { useAuth } from "@/store/AuthContext";
 
 type Photo = { uri: string; name: string; mimeType: string; size?: number };

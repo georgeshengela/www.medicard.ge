@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -13,7 +13,7 @@ import { QuestHubView } from '@/components/quest/QuestHubView';
 import { QuestRewardFloat } from '@/components/quest/QuestRewardFloat';
 import { QButton, QText } from '@/components/quest/QuestHubPrimitives';
 import { QuestDevLauncher } from '@/components/dev/QuestDevLauncher';
-import { APP_MODAL_PROPS, APP_MODAL_OVERLAY } from '@/components/ui/appModal';
+import { APP_MODAL_PROPS, APP_MODAL_OVERLAY, Modal } from '@/components/ui/appModal';
 import { questHubTab, type QuestHubTab } from '@/lib/quest/hubPresentation';
 import { movementContextLine, whyTargetCopy } from '@/lib/quest/copy';
 import { showWhyTarget } from '@/lib/quest/smartContext.js';

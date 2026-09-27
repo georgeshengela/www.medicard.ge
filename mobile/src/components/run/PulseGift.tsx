@@ -1,10 +1,10 @@
 import React,{useEffect,useState} from 'react';
-import {AppState,Modal,Pressable,View} from 'react-native';
+import {AppState,Pressable,View} from 'react-native';
 import {CameraView,useCameraPermissions} from 'expo-camera';
 import {Camera,Check,Gift,X} from 'lucide-react-native';
 import Svg,{Ellipse,Path} from 'react-native-svg';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {APP_MODAL_PROPS} from '@/components/ui/appModal';
+import {APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import {getRunState,resumeRun} from '@/lib/run/store';
 import {getPulseClient} from '@/lib/medipulsi/client';
 import type {Claim,GiftSignal} from '@/lib/medipulsi/types';

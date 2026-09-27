@@ -5,7 +5,6 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   Text,
@@ -18,7 +17,7 @@ import { CycleVisualChoice, CycleLogSectionHeading } from './CycleVisualChoice';
 import { CyclePrimaryButton } from './CycleUI';
 import { CycleObservationIcon } from './CycleObservationIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { CycleFlowPicker } from '@/components/cycle/CycleFlowPicker';
 import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
 import { CycleMoreTracking } from '@/components/cycle/CycleMoreTracking';

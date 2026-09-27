@@ -1,8 +1,8 @@
 import React from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { Button } from '@/components/ui/Button';
 import { QuestLevelHalo } from '@/components/quest/QuestLevelHalo';
 import { QuestReward } from '@/components/quest/QuestReward';

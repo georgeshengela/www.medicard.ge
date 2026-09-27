@@ -3,12 +3,14 @@ import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapPin, Settings2 } from 'lucide-react-native';
 import { ProfileSetupPrimaryButton } from '@/components/profile/ProfileSetupButtons';
+import { useHideTabChromeWhile } from '@/components/navigation/tabChrome';
 import { APP_MODAL_OVERLAY } from '@/components/ui/appModal';
 import { useThemeColors } from '@/theme/colors';
 
 type Props = { visible: boolean; busy?: boolean; error?: string | null; denied?: boolean; onEnable: () => void; onSkip: () => void };
 export function LocationAskModal({ visible, busy, error, denied, onEnable, onSkip }: Props) {
   const colors = useThemeColors(), insets = useSafeAreaInsets();
+  useHideTabChromeWhile(visible);
   if (!visible) return null;
   // Main-window overlay: the OS location prompt must originate from a direct tap.
   return <View accessibilityViewIsModal style={{ position: 'absolute', inset: 0, zIndex: 9000, elevation: 9000 }}>

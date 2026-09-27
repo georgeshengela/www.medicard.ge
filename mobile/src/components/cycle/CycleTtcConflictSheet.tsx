@@ -1,7 +1,7 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Modal, Text, View } from 'react-native';
-import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { Text, View } from 'react-native';
+import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
 

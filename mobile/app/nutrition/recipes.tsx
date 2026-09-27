@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ChefHat, ChevronRight, Plus, Trash2 } from "lucide-react-native";
@@ -9,7 +9,7 @@ import { syncMealsToHealth } from "@/lib/nutritionHealth";
 import { useAuth } from "@/store/AuthContext";
 import { useIsDark, useThemeColors } from "@/theme/colors";
 import { hubInk, hubText, hubTint } from "@/theme/hub";
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from "@/components/ui/appModal";
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { NButton, NError, NLoading, NScreen } from "@/components/nutrition/ProgramUI";
 import { HubCard, HubSection } from "@/components/nutrition/NutritionUi";
 import { PortionSheet } from "@/components/nutrition/PortionSheet";

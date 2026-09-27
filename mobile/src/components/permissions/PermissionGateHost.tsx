@@ -23,6 +23,7 @@ import {
   setPushOptedIn,
 } from '@/lib/notifications';
 import { isQuestVisualSession } from '@/lib/quest/devFixture';
+import { useHideTabChromeWhile } from '@/components/navigation/tabChrome';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
 
@@ -169,6 +170,8 @@ function PermissionGateForAccount() {
     }
     finish();
   };
+
+  useHideTabChromeWhile(Boolean(step));
 
   if (!step) return null;
 

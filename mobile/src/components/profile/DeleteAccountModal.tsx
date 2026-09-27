@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
 import { useThemeColors } from '@/theme/colors';
 
@@ -23,21 +23,23 @@ export function DeleteAccountModal({ visible, busy, onClose, onConfirm }: Props)
 
   return (
     <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={close}>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 20 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={ka.common.cancel}
           onPress={close}
-          style={{ flex: 1, backgroundColor: APP_MODAL_OVERLAY }}
+          style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: APP_MODAL_OVERLAY }}
         />
         <View
           style={{
+            width: '100%',
+            maxWidth: 420,
+            alignSelf: 'center',
             backgroundColor: colors.surface,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
+            borderRadius: 22,
             paddingHorizontal: 20,
             paddingTop: 20,
-            paddingBottom: 28,
+            paddingBottom: 16,
           }}
         >
           <Text

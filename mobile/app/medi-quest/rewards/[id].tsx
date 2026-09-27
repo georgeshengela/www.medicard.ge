@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { isPhoneRequiredError, offerPhoneVerification } from '@/lib/phoneGate';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Bone } from '@/components/ui/Skeleton';
 import { QuestAnimatedNumber } from '@/components/quest/QuestAnimatedNumber';
 import { QuestMediLine } from '@/components/quest/QuestMediLine';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { useOffline } from '@/hooks/useOffline';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { formatQuestNumber } from '@/lib/quest/logic.js';

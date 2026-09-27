@@ -1,8 +1,8 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React from 'react';
-import { Modal, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
 

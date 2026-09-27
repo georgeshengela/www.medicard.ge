@@ -3,7 +3,6 @@ import { ChatScreenShell, ChatFormScroll } from '@/components/chat/ChatScreenShe
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
-  Modal,
   ScrollView,
   Text,
   TextInput,
@@ -11,7 +10,7 @@ import {
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CycleAtmosphere, cycleNavHeader } from '@/components/cycle/CycleUI';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
 import {
   pregnancyCareCategoryLabel,

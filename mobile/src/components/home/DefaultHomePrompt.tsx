@@ -1,9 +1,9 @@
 import React from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { CalendarHeart, House } from 'lucide-react-native';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
 import { setCyclePromptSeen, setHomeLanding, type HomeLanding } from '@/lib/homeScreenPrefs';
 import { useThemeColors } from '@/theme/colors';
@@ -114,29 +114,24 @@ export function DefaultHomePrompt({ visible, onClose }: Props) {
         style={{
           flex: 1,
           backgroundColor: APP_MODAL_OVERLAY,
-          justifyContent: 'flex-end',
+          justifyContent: 'center',
+          paddingHorizontal: 20,
+          paddingTop: insets.top + 16,
+          paddingBottom: Math.max(insets.bottom, 16),
         }}
       >
         <View
           style={{
+            width: '100%',
+            maxWidth: 420,
+            alignSelf: 'center',
             backgroundColor: colors.surface,
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
-            paddingTop: 12,
+            borderRadius: 28,
+            paddingTop: 24,
             paddingHorizontal: 20,
-            paddingBottom: Math.max(insets.bottom, 16) + 12,
+            paddingBottom: 20,
           }}
         >
-          <View
-            style={{
-              alignSelf: 'center',
-              width: 36,
-              height: 4,
-              borderRadius: PILL,
-              backgroundColor: colors.bg300,
-              marginBottom: 18,
-            }}
-          />
 
           <View style={{ alignItems: 'center', marginBottom: 14 }}>
             <View

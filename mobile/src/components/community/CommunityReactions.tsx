@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Image, Modal, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { Heart, MessageCircle, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useThemeColors } from '@/theme/colors';
-import { APP_MODAL_PROPS, APP_MODAL_OVERLAY } from '@/components/ui/appModal';
+import { APP_MODAL_PROPS, APP_MODAL_OVERLAY, Modal } from '@/components/ui/appModal';
 
 const reactions = [
   { key: 'like', label: 'მომწონს', image: require('../../../assets/community/reactions/like.png'), motion: require('../../../assets/community/reactions/like.json') },

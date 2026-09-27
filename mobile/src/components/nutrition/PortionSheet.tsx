@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bookmark, BookmarkCheck, X } from "lucide-react-native";
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from "@/components/ui/appModal";
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { useThemeColors } from "@/theme/colors";
 import { hubText } from "@/theme/hub";
 import { healthScore, healthScoreLabel, portionFromFood, type FoodItem, type SavedFood } from "@/lib/nutrition";

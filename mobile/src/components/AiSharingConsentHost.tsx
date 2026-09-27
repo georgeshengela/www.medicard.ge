@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, BackHandler, Keyboard, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Keyboard, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal } from '@/components/ui/appModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';

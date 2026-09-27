@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { QuotaResetClock } from '@/components/QuotaResetClock';
 import { GoalCloseX } from '@/components/health/steps-goal/StepsGoalIcons';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { FIGMA_AUTH_SHADOW, useFigmaAuth } from '@/constants/figmaAuthLayout';
 import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
 import { ka } from '@/i18n/ka';

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { BackHandler, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Bookmark, ChefHat, Minus, PenLine, Plus, Search, Sparkles, X } from "lucide-react-native";
@@ -17,7 +17,7 @@ import {
 import { useAuth } from "@/store/AuthContext";
 import { useIsDark, useThemeColors } from "@/theme/colors";
 import { HUB, hubInk, hubText, hubTint } from "@/theme/hub";
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from "@/components/ui/appModal";
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { NButton, NError, NLoading, NScreen } from "@/components/nutrition/ProgramUI";
 import { HubCard, HubSection, MacroLine, ScoreBadge } from "@/components/nutrition/NutritionUi";
 import { FoodSearchModal, type FoodPick } from "@/components/nutrition/FoodSearchModal";

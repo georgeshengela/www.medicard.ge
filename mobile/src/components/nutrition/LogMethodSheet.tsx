@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Bookmark,
@@ -13,7 +13,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from "@/components/ui/appModal";
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { useIsDark, useThemeColors } from "@/theme/colors";
 import { HUB, hubInk, hubText, hubTint, type HubInk } from "@/theme/hub";
 

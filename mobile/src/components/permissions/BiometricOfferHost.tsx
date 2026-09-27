@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { useSegments } from 'expo-router';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Fingerprint, ScanFace } from 'lucide-react-native';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
 import { getBiometricCapability, type BiometricCapability } from '@/lib/biometricCapability';
 import { shouldOfferBiometric } from '@/lib/biometricOffer';
@@ -99,9 +99,9 @@ function BiometricOffer({ owner }: { owner: string }) {
   const body = face ? ka.profileSetup.faceIdBody : Platform.OS === 'ios' ? ka.profileSetup.touchIdBody : ka.profileSetup.fingerprintBody;
   return (
     <Modal visible {...APP_MODAL_PROPS} onRequestClose={() => void decline()}>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 20 }}>
         <Pressable accessibilityLabel={ka.common.close} onPress={() => void decline()} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: APP_MODAL_OVERLAY }} />
-        <View style={{ margin: 16, marginBottom: 32, padding: 22, gap: 14, borderRadius: 22, backgroundColor: c.surface, alignItems: 'center' }}>
+        <View style={{ width: '100%', maxWidth: 420, alignSelf: 'center', padding: 22, gap: 14, borderRadius: 22, backgroundColor: c.surface, alignItems: 'center' }}>
           <Icon size={40} color={c.primary200} strokeWidth={1.6} />
           <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 28, color: c.text100, textAlign: 'center' }}>{title}</Text>
           <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 22, color: c.text200, textAlign: 'center' }}>{body}</Text>

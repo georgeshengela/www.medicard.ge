@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
@@ -28,7 +28,7 @@ import { localAccountId } from "@/lib/localAccount";
 import { useAuth } from "@/store/AuthContext";
 import { useIsDark, useThemeColors } from "@/theme/colors";
 import { HUB, hubInk, hubText, hubTint } from "@/theme/hub";
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from "@/components/ui/appModal";
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { NButton, NError, NLoading, NScreen } from "@/components/nutrition/ProgramUI";
 import { HubCard, HubSection } from "@/components/nutrition/NutritionUi";
 

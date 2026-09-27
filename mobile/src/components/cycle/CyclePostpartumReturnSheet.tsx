@@ -1,8 +1,8 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
 import { api, ApiError } from '@/lib/api';
 import { useCycleColors } from '@/theme/cycle';

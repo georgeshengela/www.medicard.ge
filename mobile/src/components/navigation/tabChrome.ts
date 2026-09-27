@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 /**
  * AppChromeOverlay sits above native screens *and* RN Modals (iOS FullWindowOverlay /
@@ -37,4 +37,9 @@ function getSnapshot() {
 
 export function useTabChromeHidden() {
   return useSyncExternalStore(subscribe, getSnapshot, () => false);
+}
+
+/** Hide the floating chrome while an overlay (Modal, permission gate) is on screen. */
+export function useHideTabChromeWhile(active: boolean) {
+  useEffect(() => (active ? hideFloatingTabBar() : undefined), [active]);
 }

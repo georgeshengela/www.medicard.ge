@@ -1,8 +1,8 @@
 import React,{useEffect,useState} from 'react';
-import {ActivityIndicator,Keyboard,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,Text,View,type TextStyle,type ViewStyle} from 'react-native';
+import {ActivityIndicator,Keyboard,KeyboardAvoidingView,Platform,Pressable,ScrollView,Text,View,type TextStyle,type ViewStyle} from 'react-native';
 import {ChevronDown,X,type LucideIcon} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {APP_MODAL_PROPS,APP_MODAL_OVERLAY} from '@/components/ui/appModal';
+import {APP_MODAL_PROPS,APP_MODAL_OVERLAY, Modal } from '@/components/ui/appModal';
 import {HomeSectionHeading} from '@/components/home/HomeSectionHeading';
 import {useIsDark,useThemeColors} from '@/theme/colors';
 import {HUB,hubInk,hubTint,type HubInk} from '@/theme/hub';

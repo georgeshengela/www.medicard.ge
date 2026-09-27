@@ -1,9 +1,9 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useMemo } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
-import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { cycleLogFactGroups } from '@/lib/cycleLogFacts';
 import { cycleChipLabel } from '@/lib/cycleLabels';

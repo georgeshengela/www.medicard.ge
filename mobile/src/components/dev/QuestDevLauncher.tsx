@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Sparkles } from 'lucide-react-native';
-import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { presentAchievementUnlock, presentQuestLevelUp } from '@/lib/quest/cache';
 import {
   QUEST_DEV_LABELS,

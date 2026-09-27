@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, BackHandler, Modal, FlatList, Image, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, BackHandler, FlatList, Image, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Baby, Bell, Check, ChevronRight, CircleUserRound, Feather, Heart, ImagePlus, Leaf, LockKeyhole, MessageCircle, MessagesSquare, MoreHorizontal, Orbit, Send, Settings2, ShieldCheck, ThumbsDown, Users, X } from 'lucide-react-native';
@@ -9,7 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
 import { communityRequest as call } from '@/lib/api';
-import { APP_MODAL_PROPS, APP_MODAL_OVERLAY } from '@/components/ui/appModal';
+import { APP_MODAL_PROPS, APP_MODAL_OVERLAY, Modal } from '@/components/ui/appModal';
 import { communityThreads } from '@/lib/communityThreads';
 import { CommunityReactions } from '@/components/community/CommunityReactions';
 import { useCommunityRealtime } from '@/lib/useCommunityRealtime';

@@ -14,6 +14,7 @@ import { usePathname, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Footprints, Pause } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabChromeHidden } from '@/components/navigation/tabChrome';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ka } from '@/i18n/ka';
 import { formatClock, formatDistanceShort } from '@/lib/run/geo';
@@ -95,7 +96,9 @@ export function ActiveRunBadge() {
 
   const live = isActiveRunPhase(s.phase);
   const onActiveMap = pathname === '/run/active' || pathname?.endsWith('/run/active');
-  const show = live && !onActiveMap;
+  // A Modal or permission gate is open: nothing may sit on top of it.
+  const chromeHidden = useTabChromeHidden();
+  const show = live && !onActiveMap && !chromeHidden;
 
   // If the run finishes while the map is closed, open the summary.
   useEffect(() => {

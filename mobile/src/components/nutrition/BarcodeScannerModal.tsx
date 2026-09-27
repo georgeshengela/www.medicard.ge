@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, AppState, Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Flashlight, FlashlightOff, ScanBarcode, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { APP_MODAL_PROPS } from "@/components/ui/appModal";
+import { APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { useThemeColors } from "@/theme/colors";
 import { hubText } from "@/theme/hub";
 

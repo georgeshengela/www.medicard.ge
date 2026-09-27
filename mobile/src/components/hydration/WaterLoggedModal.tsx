@@ -1,7 +1,7 @@
 import React from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { X } from 'lucide-react-native';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { HydrationCheck, HydrationDrop } from '@/components/hydration/HydrationIcons';
 import { useFigmaHydration } from '@/constants/figmaHydrationLayout';
 import { ka } from '@/i18n/ka';

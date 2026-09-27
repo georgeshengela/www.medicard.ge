@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FlaskConical } from 'lucide-react-native';
-import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import {
   ONBOARDING_DEV_STEPS,
   ONBOARDING_QA_GROUP_LABELS,

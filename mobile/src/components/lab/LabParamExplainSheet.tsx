@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { LabFlaskTriangle } from '@/components/lab/LabIcons';
 import { useFigmaLab } from '@/constants/figmaLabLayout';
 import { ka } from '@/i18n/ka';

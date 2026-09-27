@@ -1,8 +1,8 @@
 import React from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { useFigmaSteps } from '@/constants/figmaStepsLayout';
 import { ka } from '@/i18n/ka';
 import { GoalCheck, GoalCloseX } from '@/components/health/steps-goal/StepsGoalIcons';

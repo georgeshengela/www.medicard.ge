@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Minus, Plus, X } from 'lucide-react-native';
 import { WeightRulerPicker } from '@/components/assessment/WeightRulerPicker';
 import { Button } from '@/components/ui/Button';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { useFigmaHomeDashboard } from '@/constants/figmaHomeDashboardLayout';
 import { ka } from '@/i18n/ka';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';

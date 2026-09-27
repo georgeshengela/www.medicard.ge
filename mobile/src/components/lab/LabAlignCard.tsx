@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Sparkles } from 'lucide-react-native';
 import { QuotaSheet } from '@/components/QuotaSheet';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { useFigmaLab } from '@/constants/figmaLabLayout';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';

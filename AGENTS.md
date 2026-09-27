@@ -84,7 +84,7 @@ import { APP_MODAL_PROPS } from '@/components/ui/appModal';
 <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
 ```
 
-Spread `APP_MODAL_PROPS` on every overlay Modal. Opaque full-screen takeovers (e.g. cycle onboarding) may stay `transparent={false}`. Dim color: `APP_MODAL_OVERLAY`. Keep the scrim as a **sibling** of the sheet, not a parent wrapping it.
+Import `Modal` from `@/components/ui/appModal`, never from `react-native` (test `tests/modal-chrome.test.cjs`): on iOS the tab pill and run badge live in a `FullWindowOverlay` window above every RN Modal, and the app Modal hides that chrome while open. In-window overlays (permission gate, location ask) call `useHideTabChromeWhile(visible)`. Prompts and confirmations (Face ID offer, delete account, default home) are centered cards; pickers and long forms may stay bottom sheets. Spread `APP_MODAL_PROPS` on every overlay Modal. Opaque full-screen takeovers (e.g. cycle onboarding) may stay `transparent={false}`. Dim color: `APP_MODAL_OVERLAY`. Keep the scrim as a **sibling** of the sheet, not a parent wrapping it.
 
 ## Dark theme
 

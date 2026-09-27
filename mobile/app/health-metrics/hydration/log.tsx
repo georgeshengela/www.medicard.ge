@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar, Minus, Plus } from 'lucide-react-native';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS } from '@/components/ui/appModal';
+import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { HydrationAppBar } from '@/components/hydration/HydrationChrome';
 import { DrinkTypeIcon, HydrationContainerIcon, HydrationDrop } from '@/components/hydration/HydrationIcons';
 import { WaterLoggedModal } from '@/components/hydration/WaterLoggedModal';
