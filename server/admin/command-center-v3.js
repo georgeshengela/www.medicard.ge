@@ -193,6 +193,11 @@
   }
 
   function lineChart(points, { label = 'ტრენდი', height = 220, tone = 'teal' } = {}) {
+    if (global.AdminCharts) {
+      return global.AdminCharts.line([{ points: points || [], tone, label }], {
+        label, height, empty: 'ამ პერიოდში აქტივობა არ არის',
+      });
+    }
     const rows = points || [];
     if (!rows.length || !rows.some((d) => d.count > 0)) {
       return emptyBox('ამ პერიოდში აქტივობა არ არის', 'წინა ცარიელი დღეები ნიშნავს გამოტოვებულ ტელემეტრიას, არა რეალურ ვარდნას ნულამდე.');
@@ -378,6 +383,7 @@
     const todayNew = overview.todayMetrics?.newUsersToday
       ?? overview.charts?.growth?.newUsers?.find((d) => d.day === overview.today)?.count;
     const aiErr = system.ai?.errors24h ?? 0;
+    const sp = (series, tone) => (global.AdminCharts && series?.length ? global.AdminCharts.spark(series, { tone }) : '');
     $('ops-live-hero').innerHTML = `
       <section class="v3-cc-hero" aria-label="ცოცხალი მდგომარეობა">
         <article class="v3-cc-online${Number(global.__opsLiveSnap?.onlineNow) > 0 ? '' : ' is-empty'}" data-ops-kpi="onlineNow" title="მომხმარებლები, რომელთა AppActivity lastAt ≤ 90 წამია. Socket.IO ops:live.">
@@ -390,10 +396,10 @@
           <em>რეალურ დროში · ბოლო 90 წმ · Socket.IO</em>
         </article>
         <div class="v3-cc-hero-grid">
-          ${metric({ kpi: 'activeToday', icon: 'users', label: 'აქტიური დღეს', value: fmt(k.activeToday?.value), period: 'დღეს · თბილისი', tip: k.activeToday?.definition || 'უნიკალური აქტიური მომხმარებლები თბილისის დღეს.', go: 'users' })}
-          ${metric({ kpi: 'newUsersToday', icon: 'user', label: 'ახალი დღეს', value: todayNew == null ? '—' : fmt(todayNew), period: 'დღეს · თბილისი', tip: 'რეგისტრაციები მხოლოდ დღეს.', go: 'users' })}
-          ${metric({ icon: 'globe', label: 'სულ მომხმარებელი', value: fmt(k.totalUsers?.value), period: 'ყველა დრო', tip: k.totalUsers?.definition || 'რეგისტრირებული ანგარიშები.', go: 'users' })}
-          ${metric({ icon: 'spark', label: 'AI შეცდომა', value: fmt(aiErr), period: 'ბოლო 24სთ', tip: 'Medi შეცდომები კედლის საათით.', go: 'ai', warn: aiErr > 0 })}
+          ${metric({ kpi: 'activeToday', icon: 'users', label: 'აქტიური დღეს', value: fmt(k.activeToday?.value), period: 'დღეს · თბილისი', tip: k.activeToday?.definition || 'უნიკალური აქტიური მომხმარებლები თბილისის დღეს.', go: 'users', hint: sp(overview.charts?.dau?.series, 'teal') })}
+          ${metric({ kpi: 'newUsersToday', icon: 'user', label: 'ახალი დღეს', value: todayNew == null ? '—' : fmt(todayNew), period: 'დღეს · თბილისი', tip: 'რეგისტრაციები მხოლოდ დღეს.', go: 'users', hint: sp(overview.charts?.growth?.newUsers, 'blue') })}
+          ${metric({ icon: 'globe', label: 'სულ მომხმარებელი', value: fmt(k.totalUsers?.value), period: 'ყველა დრო', tip: k.totalUsers?.definition || 'რეგისტრირებული ანგარიშები.', go: 'users', hint: sp(overview.charts?.growth?.cumulative, 'violet') })}
+          ${metric({ icon: 'spark', label: 'AI შეცდომა', value: fmt(aiErr), period: 'ბოლო 24სთ', tip: 'Medi შეცდომები კედლის საათით.', go: 'ai', warn: aiErr > 0, hint: sp(system.ai?.series, 'rose') })}
         </div>
       </section>`;
   }
@@ -634,7 +640,13 @@
       action: `<div class="ops-range" role="group" aria-label="აქტივობის მარცვალი">${['dau', 'wau', 'mau'].map((g) =>
         `<button type="button" class="ops-range-btn${grain === g ? ' active' : ''}" data-ops-grain="${g}">${g.toUpperCase()}</button>`).join('')}</div>`,
       content: `${users.error ? errBox('განახლება ვერ მოხერხდა — ბოლო წარმატებული სერია რჩება', users.error, 'ops-retry-grain') : ''}
-        ${lineChart(data.series, { label: grain.toUpperCase(), height: 240 })}
+        ${global.AdminCharts
+          ? global.AdminCharts.line(
+            [{ points: data.series || [], tone: 'teal', label: 'არჩეული პერიოდი' }]
+              .concat(data.previousSeries?.length ? [{ points: data.previousSeries, tone: 'ink', label: 'წინა პერიოდი' }] : []),
+            { label: grain.toUpperCase(), height: 260, empty: 'ამ პერიოდში აქტივობა არ არის' },
+          )
+          : lineChart(data.series, { label: grain.toUpperCase(), height: 240 })}
         <p class="v3-cc-plot-meta">${(() => {
           const series = data.series || [];
           const start = series.findIndex((d) => d.count > 0);
@@ -702,7 +714,7 @@
       title: 'ზრდა · ახალი მომხმარებლები',
       helpKey: 'overview.growth',
       description: 'არჩეული პერიოდი · ახალი რეგისტრაციები თბილისის დღეებზე.',
-      content: `${lineChart(growthSeries, { label: 'ახალი', height: 200, tone: 'amber' })}`,
+      content: `${lineChart(growthSeries, { label: 'ახალი მომხმარებელი', height: 200, tone: 'blue' })}`,
     });
     const tip = $('ops-growth')?.querySelector('.v3-cc-chart-tip');
     $('ops-growth')?.querySelectorAll('.ops-hit').forEach((hit) => {

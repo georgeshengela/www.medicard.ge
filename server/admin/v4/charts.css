@@ -1,0 +1,183 @@
+/**
+ * MediCard Admin V4 — chart styling (pairs with v4/charts.js) and the
+ * HTML-built data marks: bar rows, funnels, heatmap, meters, sparklines.
+ * Series slots are validated for light + dark and colour-vision deficiency.
+ */
+:root,
+html[data-theme="light"] {
+  --c-s1: #0d9488;
+  --c-s2: #2a78d6;
+  --c-s3: #eb6834;
+  --c-s4: #4a3aa7;
+  --c-bad: #e34948;
+  --c-prev: #a3abb8;
+  --c-grid: #edf0f4;
+  --c-base: #d7dde5;
+  --c-axis: #8792a2;
+  --c-wash: 0.20;
+  --c-heat-0: #f2f4f7;
+  --c-heat-1: #c7ece7;
+  --c-heat-2: #5fc4b8;
+  --c-heat-3: #0d9488;
+}
+html[data-theme="dark"] {
+  --c-s1: #0f9e8f;
+  --c-s2: #3987e5;
+  --c-s3: #d95926;
+  --c-s4: #9085e9;
+  --c-bad: #e66767;
+  --c-prev: #566072;
+  --c-grid: #1b2130;
+  --c-base: #2a3242;
+  --c-axis: #717b8c;
+  --c-wash: 0.28;
+  --c-heat-0: #161b25;
+  --c-heat-1: #0f3b39;
+  --c-heat-2: #0f7a70;
+  --c-heat-3: #2dd4bf;
+}
+
+/* ───────── Line / area ───────── */
+.s-chart { position: relative; margin: 0; min-width: 0; }
+.s-chart-cap { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
+.s-chart-cap > b { font-size: 13px; font-weight: 600; color: var(--s-ink); }
+.s-chart-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.s-chart-key { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--s-text-2); }
+.s-chart-key i { width: 12px; height: 3px; border-radius: 2px; background: var(--k); }
+.s-chart-key b { font-weight: 650; color: var(--s-ink); font-variant-numeric: tabular-nums; }
+.s-chart-plot { position: relative; width: 100%; outline: none; border-radius: 8px; }
+.s-chart-plot:focus-visible { box-shadow: 0 0 0 3px var(--s-accent-ring); }
+.s-chart-svg { display: block; overflow: visible; font-family: var(--s-font); }
+.s-grid { stroke: var(--c-grid); stroke-width: 1; shape-rendering: crispEdges; }
+.s-grid.is-base { stroke: var(--c-base); }
+.s-axis { fill: var(--c-axis); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.s-line { fill: none; stroke: var(--k); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.s-line.is-prev { stroke-width: 1.5; stroke-dasharray: 4 4; }
+.s-area { stroke: none; }
+.s-grad-top { stop-color: var(--k); stop-opacity: var(--c-wash); }
+.s-grad-bot { stop-color: var(--k); stop-opacity: 0; }
+.s-end { fill: var(--k); stroke: var(--s-surface); stroke-width: 2; }
+.s-hit { fill: transparent; cursor: crosshair; }
+.s-cross-line { stroke: var(--c-base); stroke-width: 1; shape-rendering: crispEdges; }
+.s-cross-dot { fill: var(--k); stroke: var(--s-surface); stroke-width: 2.5; pointer-events: none; }
+.s-cross { pointer-events: none; }
+:is(.s-line, .s-end, .s-cross-dot, .s-chart-key, .s-tip-row, .s-grad-top, .s-grad-bot).is-s1 { --k: var(--c-s1); }
+:is(.s-line, .s-end, .s-cross-dot, .s-chart-key, .s-tip-row, .s-grad-top, .s-grad-bot).is-s2 { --k: var(--c-s2); }
+:is(.s-line, .s-end, .s-cross-dot, .s-chart-key, .s-tip-row, .s-grad-top, .s-grad-bot).is-s3 { --k: var(--c-s3); }
+:is(.s-line, .s-end, .s-cross-dot, .s-chart-key, .s-tip-row, .s-grad-top, .s-grad-bot).is-s4 { --k: var(--c-s4); }
+:is(.s-line, .s-end, .s-cross-dot, .s-chart-key, .s-tip-row, .s-grad-top, .s-grad-bot).is-bad { --k: var(--c-bad); }
+:is(.s-line, .s-end, .s-cross-dot, .s-chart-key, .s-tip-row, .s-grad-top, .s-grad-bot).is-prev { --k: var(--c-prev); }
+
+.s-tip {
+  position: absolute; left: 0; top: 0; z-index: 5;
+  min-width: 150px; padding: 9px 11px;
+  border-radius: 10px;
+  background: var(--s-surface);
+  box-shadow: var(--s-shadow-lg);
+  pointer-events: none;
+  font-size: 12.5px;
+  transition: transform .08s linear;
+}
+.s-tip b { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 600; color: var(--s-muted); }
+.s-tip-row { display: flex; align-items: center; gap: 8px; color: var(--s-text-2); line-height: 1.7; }
+.s-tip-row i { width: 8px; height: 8px; border-radius: 99px; background: var(--k); flex: none; }
+.s-tip-row em { margin-left: auto; padding-left: 14px; font-style: normal; font-weight: 650; color: var(--s-ink); font-variant-numeric: tabular-nums; }
+
+.s-chart-plot.is-enter .s-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: s-draw 0.9s var(--s-ease) forwards; }
+.s-chart-plot.is-enter .s-line.is-prev { stroke-dasharray: 4 4; stroke-dashoffset: 0; animation: none; }
+.s-chart-plot.is-enter .s-area { opacity: 0; animation: s-fade-in .6s .25s var(--s-ease) forwards; }
+.s-chart-plot.is-enter .s-end { opacity: 0; animation: s-fade-in .3s .7s var(--s-ease) forwards; }
+@keyframes s-draw { to { stroke-dashoffset: 0; } }
+
+.s-chart-empty {
+  display: grid; justify-items: center; align-content: center; gap: 8px;
+  min-height: 160px; padding: 20px;
+  border-radius: 10px;
+  background: repeating-linear-gradient(to bottom, transparent 0 35px, var(--c-grid) 35px 36px);
+  color: var(--s-muted); font-size: 13px; text-align: center;
+}
+.s-chart-empty svg { width: 120px; height: 40px; }
+.s-chart-empty path { fill: none; stroke: var(--c-base); stroke-width: 2; stroke-dasharray: 3 5; stroke-linecap: round; }
+.s-chart-empty strong { font-weight: 550; color: var(--s-muted); }
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Legacy chart chrome no longer needed around the new figure */
+html body .workspace :is(.v3-cc-plot, .v3-chart) { border: 0 !important; background: transparent !important; padding: 0 !important; box-shadow: none !important; }
+html body .workspace .v3-cc-chart-tip { display: none !important; }
+html body .workspace .v3-cc-plot-meta,
+html body .workspace .ops-footnote { margin: 10px 0 0; font-size: 12.5px; color: var(--s-muted); }
+
+/* ───────── Sparklines ───────── */
+.s-spark { width: 96px; height: 28px; display: block; overflow: visible; }
+.s-spark .s-line { stroke-width: 1.6; }
+.s-spark .s-end { stroke-width: 1.5; }
+
+/* ───────── Horizontal bar rows (opsBarChart) ───────── */
+html body .workspace .ops-bars.v3-bars { display: grid; gap: 2px; }
+html body .workspace .v3-bar-row {
+  display: grid !important;
+  grid-template-columns: minmax(120px, 34%) minmax(0, 1fr) auto !important;
+  align-items: center; gap: 14px;
+  min-height: 38px; padding: 4px 8px !important; margin: 0 -8px;
+  border: 0 !important; border-radius: 8px !important;
+  background: transparent !important; box-shadow: none !important;
+  text-align: left;
+  transition: background .14s;
+}
+html body .workspace .v3-bar-row:hover { background: var(--s-hover) !important; }
+html body .workspace .v3-bar-label { font-size: 13px !important; font-weight: 500 !important; color: var(--s-text) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 8px; }
+html body .workspace .v3-bar-track { height: 8px !important; border-radius: 99px !important; background: var(--s-sunken) !important; overflow: hidden; }
+html body .workspace .v3-bar-track > span { display: block; height: 100%; border-radius: 99px !important; background: linear-gradient(90deg, color-mix(in srgb, var(--c-s1) 70%, transparent), var(--c-s1)) !important; transition: width .7s var(--s-ease); }
+html body .workspace .v3-bar-val { display: inline-flex; align-items: baseline; gap: 8px; min-width: 76px; justify-content: flex-end; font-size: 13px !important; font-weight: 650 !important; color: var(--s-ink) !important; font-variant-numeric: tabular-nums; }
+html body .workspace .v3-bar-val em { font-style: normal; font-size: 11.5px; font-weight: 500; color: var(--s-muted); min-width: 32px; text-align: right; }
+
+/* ───────── Funnel (Brain) ───────── */
+html body .workspace .v3-brain-funnel { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+html body .workspace .v3-brain-funnel > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; align-items: start; padding: 8px 0; border: 0 !important; background: transparent !important; }
+html body .workspace .v3-brain-funnel > li.is-branch { padding-left: 24px; opacity: .85; }
+html body .workspace .v3-funnel-idx { width: 24px; height: 24px; border-radius: 99px; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; background: var(--s-accent-soft) !important; color: var(--s-accent-ink) !important; border: 0 !important; }
+html body .workspace .ops-funnel-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 6px; }
+html body .workspace .ops-funnel-meta strong { font-weight: 650; color: var(--s-ink); font-variant-numeric: tabular-nums; display: inline-flex; gap: 8px; align-items: baseline; }
+html body .workspace .v3-funnel-conv { font-style: normal; font-size: 11.5px; font-weight: 600; color: var(--s-accent-ink); background: var(--s-accent-soft); padding: 1px 6px; border-radius: 6px; }
+html body .workspace .ops-funnel-track { height: 8px; border-radius: 99px; background: var(--s-sunken) !important; overflow: hidden; }
+html body .workspace .ops-funnel-track > span { display: block; height: 100%; border-radius: 99px; background: var(--c-s1) !important; transition: width .7s var(--s-ease); }
+html body .workspace .v3-brain-funnel > li.is-branch .ops-funnel-track > span { background: var(--c-s3) !important; }
+
+/* Overview Brain funnel strip */
+html body .workspace .v3-cc-funnel { display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 !important; border: 0 !important; background: transparent !important; }
+html body .workspace .v3-cc-funnel > div {
+  position: relative; display: grid; gap: 6px; align-content: start;
+  padding: 4px 18px 4px 0 !important; margin-right: 18px;
+  border: 0 !important; background: transparent !important; box-shadow: none !important;
+}
+html body .workspace .v3-cc-funnel > div:not(:last-child)::after {
+  content: ""; position: absolute; right: -10px; top: 24px; width: 8px; height: 8px;
+  border-top: 1.5px solid var(--s-line-strong); border-right: 1.5px solid var(--s-line-strong);
+  transform: rotate(45deg);
+}
+html body .workspace .v3-cc-funnel-lab { display: flex; align-items: center; gap: 6px; font-size: 12.5px !important; font-weight: 500 !important; color: var(--s-muted) !important; }
+html body .workspace .v3-cc-funnel-lab .icon { width: 14px; height: 14px; }
+html body .workspace .v3-cc-funnel strong { font-size: 22px !important; font-weight: 650 !important; color: var(--s-ink) !important; letter-spacing: -0.02em; }
+html body .workspace .v3-cc-funnel-bar { display: block; height: 6px; border-radius: 99px; background: var(--s-sunken) !important; overflow: hidden; }
+html body .workspace .v3-cc-funnel-bar > b { display: block; height: 100%; border-radius: 99px; background: var(--c-s1) !important; }
+html body .workspace .v3-cc-funnel > .is-thin .v3-cc-funnel-bar > b { background: var(--c-s3) !important; }
+html body .workspace .v3-cc-funnel-rates { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0 !important; padding: 0 !important; border: 0 !important; }
+html body .workspace .v3-cc-funnel-rates span { font-size: 12px; font-weight: 500; color: var(--s-text-2); background: var(--s-sunken); border-radius: 99px; padding: 4px 10px; }
+@media (max-width: 1100px) { html body .workspace .v3-cc-funnel { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 18px !important; } }
+
+/* ───────── Heatmap ───────── */
+html body .workspace .v3-heat { display: grid; gap: 3px; overflow-x: auto; }
+html body .workspace .v3-heat .ops-heat-hours,
+html body .workspace .v3-heat .ops-heat-row { display: grid; grid-template-columns: 36px repeat(24, minmax(14px, 1fr)); gap: 3px; align-items: center; }
+html body .workspace .v3-heat .ops-heat-hours span { font-size: 10.5px; color: var(--c-axis); text-align: center; }
+html body .workspace .v3-heat .ops-heat-row > span { font-size: 11.5px; color: var(--s-muted); font-weight: 500; }
+html body .workspace .v3-heat i { display: block; aspect-ratio: 1; min-height: 14px; border-radius: 4px; background: var(--c-heat-0) !important; transition: transform .12s; }
+html body .workspace .v3-heat i:hover { transform: scale(1.18); box-shadow: 0 0 0 2px var(--s-surface), 0 0 0 3px var(--c-s1); }
+html body .workspace .v3-heat i.lv-1 { background: var(--c-heat-1) !important; }
+html body .workspace .v3-heat i.lv-2 { background: var(--c-heat-2) !important; }
+html body .workspace .v3-heat i.lv-3 { background: var(--c-heat-3) !important; }
+html body .workspace .v3-heat-legend { display: flex; align-items: center; gap: 4px; justify-content: flex-end; margin-bottom: 6px; font-size: 11.5px; color: var(--s-muted); }
+html body .workspace .v3-heat-legend i { width: 14px; height: 14px; min-height: 0; aspect-ratio: auto; }
+html body .workspace .v3-heat-legend span { margin: 0 4px; }
+.s-spark.is-flat line { stroke: var(--c-base); stroke-width: 1.5; stroke-dasharray: 2 4; stroke-linecap: round; }
+html body .workspace .ops-spark.s-spark { background: none !important; border: 0 !important; }

@@ -441,7 +441,7 @@ kbd, .s-kbd {
 html body .workspace :is(
   .card, .ops-card, .v25-panel, .v3-section, .push-board, .push-panel,
   .v3-brain-panel, .v3-medi-panel, .v3-settings-panel, .v3-quality-panel, .v3-health-panel,
-  .v3-orders-panel, .v3-pharmacy-panel, .v3-rewards-panel, .v3-cc-infra-card, .push-history-card,
+  .v3-orders-panel, .v3-pharmacy-panel, .v3-rewards-panel, .push-history-card,
   .push-template-card, .v3-pharmacy-source, .qa-run
 ) {
   background: var(--s-surface) !important;
@@ -1183,3 +1183,5 @@ html body :is(.drawer, .v3-overlay) .dec-life-step { display: grid; gap: 2px; }
 html body :is(.drawer, .v3-overlay) .dec-life-step strong { font-size: 13px; color: var(--s-ink); }
 html body :is(.drawer, .v3-overlay) .dec-life-step em { font-style: normal; font-size: 12px; color: var(--s-muted); }
 html body .drawer .umodal-close { width: 30px; height: 30px; }
+html body .workspace .v3-brain-kpis:has(> :nth-child(7):last-child) { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+@media (min-width: 1600px) { html body .workspace .v3-brain-kpis:has(> :nth-child(7):last-child) { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; } }
