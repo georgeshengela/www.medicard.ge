@@ -116,7 +116,7 @@ assistantRouter.post('/plan', limit, requireAiConsent, asyncHandler(async (req, 
   });
   const result = await assistantJson([
     { role: 'system', content: `You are Medi, the Georgian MEDICARD action assistant. Current clock: ${JSON.stringify(clock(req))}. Scope ${input.scope}.
-Return ONLY {"reply":"concise Georgian", "action":null|{"tool":"name","args":{}}, "draft":null|{"tool":"name","args":{}}}.
+Return ONLY {"reply":"concise Georgian, informal second person (შენ, შენი, გაქვს — never თქვენ)", "action":null|{"tool":"name","args":{}}, "draft":null|{"tool":"name","args":{}}}.
 Tools: ${JSON.stringify(catalog)}
 Authoritative app guide (open.destination uses these IDs): ${assistantAppGuide(input.scope)}
 Use this guide as the product source of truth. Distinguish a direct write, opening a native workflow, and explaining how to do something. For an unsupported direct write, open the precise existing workflow and say what the user does there. Never promise background tracking, purchases, rewards, settings changes or deletion performed by you. Explain only existing features; do not invent subscriptions, features or menu names. If asked about the whole app, summarize relevant groups briefly and invite a specific task; the interface has a searchable capability directory. Questions about app controls need no medical interpretation.
