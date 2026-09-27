@@ -65,3 +65,15 @@ test('converted camera files report their actual size for the 12 MB upload check
   const file=await mod.toUploadableImage({uri:'file:///photo.heic',name:'photo.heic',mimeType:'image/heic'});
   assert.equal(file.size,13*1024*1024);assert.equal(file.mimeType,'image/jpeg');
 });
+
+test('photos are re-encoded as JPEG with the long side capped before upload; PDFs pass through',async()=>{
+  const calls=[];
+  const mod=loader({'expo-file-system/legacy':{cacheDirectory:null,getInfoAsync:async()=>({exists:true,size:420000})},'expo-image-picker':{UIImagePickerPreferredAssetRepresentationMode:{Compatible:'compatible'}},'expo-image-manipulator':{SaveFormat:{JPEG:'jpeg'},manipulateAsync:async(uri,actions,save)=>{calls.push({uri,actions,save});return {uri:'file:///small.jpg',width:1200,height:1600};}}})('src/lib/imageUpload.ts');
+  const photo=await mod.toUploadableImage({uri:'file:///pet.png',fileName:'pet.png',mimeType:'image/png',width:3024,height:4032});
+  assert.equal(photo.mimeType,'image/jpeg');assert.equal(photo.name,'pet.jpg');assert.equal(photo.size,420000);
+  assert.equal(JSON.stringify(calls[0].actions),JSON.stringify([{resize:{height:1600}}]));assert.equal(calls[0].save.compress,0.8);
+  await mod.prepareLabImage({uri:'file:///lab.jpg',fileName:'lab.jpg',mimeType:'image/jpeg',width:4032,height:3024});
+  assert.equal(JSON.stringify(calls[1].actions),JSON.stringify([{resize:{width:2400}}]));
+  const pdf=await mod.prepareLabImage({uri:'file:///lab.pdf',name:'lab.pdf',mimeType:'application/pdf'});
+  assert.equal(pdf.mimeType,'application/pdf');assert.equal(calls.length,2);
+});

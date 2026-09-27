@@ -124,7 +124,7 @@ export default function SymptomConditionScreen() {
         <SymptomCta
           label={ka.symptoms.talkDoctor}
           onPress={() =>
-            router.push(`/chat/doctor?prefill=${encodeURIComponent(`${condition.nameKa}: ${condition.overviewKa}`)}` as never)
+            router.push(`/assistant?mode=doctor&prefill=${encodeURIComponent(`${condition.nameKa}: ${condition.overviewKa}`)}` as never)
           }
         />
       </SymptomFooter>

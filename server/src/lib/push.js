@@ -99,12 +99,104 @@ function expoHeaders() {
   return headers;
 }
 
+const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Expo answers 429 when throttled and 5xx on its own trouble; both are worth another try. */
+export function isTransientPushStatus(status) {
+  const code = Number(status);
+  return code === 429 || (code >= 500 && code <= 599);
+}
+
+/** Exponential backoff (1 s, 2 s, 4 s …, max 30 s); a Retry-After header in seconds wins. */
+export function pushRetryDelayMs(attempt, retryAfter) {
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.min(30_000, Math.round(seconds * 1000));
+  return Math.min(30_000, 1000 * 2 ** Math.max(0, attempt));
+}
+
+function expoMessages(chunk, { title, body, data }) {
+  const payloadData = stringifyPushData(data ?? {});
+  return chunk.map((to) => ({
+    to,
+    title,
+    body,
+    sound: 'default',
+    priority: 'high',
+    channelId: 'medicard-push',
+    data: payloadData,
+  }));
+}
+
+/**
+ * One Expo request (≤100 tokens), retried on network errors, 429 and 5xx with backoff.
+ * Pure apart from `fetchImpl`/`sleep`: the caller deactivates `stale` tokens.
+ */
+export async function sendExpoChunk(chunk, message, { fetchImpl = fetch, sleep = defaultSleep, maxRetries = 3, timeoutMs = 20_000 } = {}) {
+  const messages = expoMessages(chunk, message);
+  let response = null;
+  let networkError = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    networkError = null;
+    try {
+      response = await fetchImpl(EXPO_PUSH_URL, {
+        method: 'POST',
+        headers: expoHeaders(),
+        body: JSON.stringify(messages),
+        ...(typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
+      });
+    } catch (error) {
+      networkError = error;
+      response = null;
+    }
+    const transient = networkError || isTransientPushStatus(response?.status);
+    if (!transient || attempt === maxRetries) break;
+    await sleep(pushRetryDelayMs(attempt, response?.headers?.get?.('retry-after')));
+  }
+
+  if (!response) {
+    const error = String(networkError?.message || 'Expo request failed').slice(0, 200);
+    return {
+      sent: 0,
+      failed: chunk.length,
+      tickets: [],
+      stale: [],
+      deliveries: chunk.map((token) => ({ tokenPreview: tokenPreview(token), status: 'error', ticketId: null, error })),
+      ticketTokens: [],
+      networkError: networkError || new Error(error),
+    };
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  const results = normalizePushTickets(payload);
+  const hasTopLevelError = Array.isArray(payload?.errors) && payload.errors.length > 0;
+  const tallied = tallyPushTickets(results, {
+    fallbackSent: response.ok && !hasTopLevelError ? chunk.length : 0,
+    fallbackFailed: !response.ok || hasTopLevelError ? chunk.length : 0,
+  });
+
+  const deliveries = [];
+  const ticketTokens = [];
+  for (let index = 0; index < chunk.length; index += 1) {
+    const ticket = results[index];
+    const ok = String(ticket?.status || '').toLowerCase() === 'ok' || (!ticket && response.ok && !hasTopLevelError);
+    deliveries.push({
+      tokenPreview: tokenPreview(chunk[index]),
+      status: ok ? 'ok' : 'error',
+      ticketId: ticket?.id || null,
+      error: ticket?.message || payload?.errors?.[0]?.message || null,
+    });
+    if (ok && ticket?.id) ticketTokens.push([ticket.id, chunk[index]]);
+  }
+  const stale = chunk.filter((_, index) => results[index]?.details?.error === 'DeviceNotRegistered');
+  return { sent: tallied.sent, failed: tallied.failed, tickets: results, deliveries, stale, ticketTokens };
+}
+
 /**
  * @param {string[]} tokens Expo push tokens
  * @param {{ title: string, body: string, data?: Record<string, unknown> }} message
- * @param {{ fetchImpl?: typeof fetch, receiptWaitMs?: number }} [opts]
+ * @param {{ fetchImpl?: typeof fetch, receiptWaitMs?: number, sleep?: (ms: number) => Promise<void> }} [opts]
  */
-export async function sendExpoPush(tokens, { title, body, data }, { fetchImpl = fetch, receiptWaitMs = 0 } = {}) {
+export async function sendExpoPush(tokens, { title, body, data }, { fetchImpl = fetch, receiptWaitMs = 0, sleep = defaultSleep } = {}) {
   const unique = [...new Set(tokens.filter((token) => isExpoPushToken(token)))];
   if (!unique.length) return { sent: 0, failed: 0, tickets: [], deliveries: [] };
 
@@ -112,53 +204,19 @@ export async function sendExpoPush(tokens, { title, body, data }, { fetchImpl = 
   let failed = 0;
   const tickets = [];
   const deliveries = [];
-  const payloadData = stringifyPushData(data ?? {});
 
   for (let i = 0; i < unique.length; i += CHUNK_SIZE) {
     const chunk = unique.slice(i, i + CHUNK_SIZE);
-    const messages = chunk.map((to) => ({
-      to,
-      title,
-      body,
-      sound: 'default',
-      priority: 'high',
-      channelId: 'medicard-push',
-      data: payloadData,
-    }));
-
-    const response = await fetchImpl(EXPO_PUSH_URL, {
-      method: 'POST',
-      headers: expoHeaders(),
-      body: JSON.stringify(messages),
-    });
-
-    const payload = await response.json().catch(() => ({}));
-    const results = normalizePushTickets(payload);
-    const hasTopLevelError = Array.isArray(payload?.errors) && payload.errors.length > 0;
-    const tallied = tallyPushTickets(results, {
-      fallbackSent: response.ok && !hasTopLevelError ? chunk.length : 0,
-      fallbackFailed: !response.ok || hasTopLevelError ? chunk.length : 0,
-    });
-
-    sent += tallied.sent;
-    failed += tallied.failed;
-    tickets.push(...results);
-
-    for (let index = 0; index < chunk.length; index += 1) {
-      const ticket = results[index];
-      const ok = String(ticket?.status || '').toLowerCase() === 'ok' || (!ticket && response.ok && !hasTopLevelError);
-      deliveries.push({
-        tokenPreview: tokenPreview(chunk[index]),
-        status: ok ? 'ok' : 'error',
-        ticketId: ticket?.id || null,
-        error: ticket?.message || payload?.errors?.[0]?.message || null,
-      });
-    }
-
-    const stale = chunk.filter((_, index) => results[index]?.details?.error === 'DeviceNotRegistered');
-    if (stale.length) {
+    const result = await sendExpoChunk(chunk, { title, body, data }, { fetchImpl, sleep });
+    // Callers (price drop, community outbox) retry on a throw, as before the chunk helper existed.
+    if (result.networkError) throw result.networkError;
+    sent += result.sent;
+    failed += result.failed;
+    tickets.push(...result.tickets);
+    deliveries.push(...result.deliveries);
+    if (result.stale.length) {
       await prisma.pushToken.updateMany({
-        where: { token: { in: stale } },
+        where: { token: { in: result.stale } },
         data: { active: false },
       });
     }
@@ -166,7 +224,7 @@ export async function sendExpoPush(tokens, { title, body, data }, { fetchImpl = 
 
   const ticketIds = deliveries.map((row) => row.ticketId).filter(Boolean);
   if (ticketIds.length && receiptWaitMs > 0) {
-    await new Promise((resolve) => setTimeout(resolve, receiptWaitMs));
+    await sleep(receiptWaitMs);
     try {
       const receipts = await fetchExpoPushReceipts(ticketIds, { fetchImpl });
       const withReceipts = applyPushReceipts(deliveries, receipts);
@@ -190,41 +248,6 @@ export async function sendExpoPush(tokens, { title, body, data }, { fetchImpl = 
   }
 
   return { sent, failed, tickets, deliveries };
-}
-
-export async function resolveSegmentTokens(segment) {
-  const now = new Date();
-
-  if (segment === 'ALL') {
-    const tokens = await prisma.pushToken.findMany({
-      where: { active: true },
-      select: { token: true },
-    });
-    return tokens.map((row) => row.token);
-  }
-
-  const users = await prisma.user.findMany({
-    where: {
-      pushTokens: { some: { active: true } },
-      ...(segment === 'ACTIVE' ? { status: 'ACTIVE' } : {}),
-    },
-    include: {
-      package: true,
-      pushTokens: { where: { active: true }, select: { token: true } },
-    },
-  });
-
-  const filtered = users.filter((user) => {
-    const expired = Boolean(user.packageExpiresAt && user.packageExpiresAt.getTime() < now.getTime());
-    const code = expired || !user.package?.code || user.package.code === 'FREE' ? 'FREE' : user.package.code;
-    if (segment === 'FREE') return code === 'FREE';
-    if (segment === 'STANDARD') return code === 'STANDARD';
-    if (segment === 'ULTIMATE') return code === 'ULTIMATE';
-    if (segment === 'ACTIVE') return user.status === 'ACTIVE';
-    return true;
-  });
-
-  return filtered.flatMap((user) => user.pushTokens.map((row) => row.token));
 }
 
 export async function getPushStats() {

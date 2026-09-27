@@ -29,7 +29,7 @@ export function CycleAlertsBanner({ bundle, excludeLate }: Props) {
     <Pressable
       onPress={() => {
         if (top.action === 'chat') {
-          router.push(`/chat/doctor?prefill=${encodeURIComponent(top.messageKa)}` as never);
+          router.push(`/assistant?mode=doctor&prefill=${encodeURIComponent(top.messageKa)}` as never);
         }
       }}
       style={{

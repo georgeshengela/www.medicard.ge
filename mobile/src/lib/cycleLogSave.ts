@@ -121,5 +121,6 @@ export async function persistCycleLog(
   }
   // Optional notification refresh must never turn a saved observation into an unhandled rejection.
   void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh()).catch(() => undefined);
+  void import('@/lib/funnel').then(({ trackFirstHealthAction }) => trackFirstHealthAction('cycle')).catch(() => undefined);
   return result;
 }

@@ -827,43 +827,6 @@
   vertical-align: middle;
 }
 .v25-pkg-table th { font-size: 11px; color: var(--muted); }
-#tab-packages .pkg-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-#tab-packages .pkg {
-  display: grid;
-  grid-template-columns: 200px minmax(0, 1.2fr) 120px 140px auto;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  padding: 12px 16px;
-  border: 0;
-  border-bottom: 1px solid var(--divider);
-  border-radius: 0;
-  box-shadow: none;
-}
-#tab-packages .pkg:last-child { border-bottom: 0; }
-#tab-packages .pkg .feat,
-#tab-packages .pkg p.muted,
-#tab-packages .pkg > .mono { display: none; }
-#tab-packages .pkg .card-head { margin: 0; }
-#tab-packages .pkg h3 { margin: 0; font-size: 15px; }
-#tab-packages .pkg p.muted {
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-#tab-packages .pkg .price { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: 0; }
-#tab-packages .pkg .price span { font-size: 12px; }
-#tab-packages .pkg .mono { margin: 0; font-size: 12px; }
-#tab-packages .pkg:hover { transform: none; box-shadow: none; }
 
 /* ——— Settings groups ——— */
 .v25-settings { display: grid; gap: 16px; width: 100%; max-width: none; }
@@ -1484,7 +1447,6 @@
 .v25-missing .btn { justify-self: start; margin-top: 8px; }
 @media (max-width: 1366px) {
   .v25-policy { grid-template-columns: 1fr 1fr; }
-  #tab-packages .pkg { grid-template-columns: 1fr 1fr; }
 }
 
 /* ——— V2.5 polish: icons, density, order ——— */
@@ -1604,13 +1566,6 @@
 
 .v25-quality .ops-issue.warning { color: var(--warn); }
 
-#tab-packages .pkg {
-  grid-template-columns: 48px minmax(0, 1.4fr) 120px auto;
-  padding: 10px 16px;
-  min-height: 56px;
-}
-#tab-packages .pkg .card-head { gap: 8px; }
-#tab-packages .pkg .actions { justify-self: end; }
 
 .v25-sms .sms-hero { padding: 14px 16px; }
 .login-card { box-shadow: 0 12px 40px rgba(15, 23, 42, 0.06); }
@@ -1631,35 +1586,6 @@
   border-radius: 0;
   overflow: hidden;
 }
-#tab-packages .pkg {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1.5fr) 120px 88px 72px auto;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  padding: 14px 16px;
-  min-height: 64px;
-  border: 0;
-  border-bottom: 1px solid var(--divider);
-  border-radius: 0;
-  box-shadow: none;
-  background: transparent;
-}
-#tab-packages .pkg:last-child { border-bottom: 0; }
-#tab-packages .pkg:hover { background: var(--bg-raise); transform: none; box-shadow: none; }
-#tab-packages .pkg > .mono { display: block; margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
-#tab-packages .pkg-copy { display: grid; gap: 4px; min-width: 0; }
-#tab-packages .pkg-copy h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 650;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-#tab-packages .pkg .price { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.02em; }
-#tab-packages .pkg .price span { font-size: 12px; color: var(--muted); }
-#tab-packages .pkg .actions { justify-self: end; }
 .v25-pkg-table th,
 .v25-pkg-table td { padding: 11px 16px; }
 .v25-pkg .v25-panel .table-wrap { border: 0; border-radius: 0; }
@@ -1805,7 +1731,6 @@
   .v25-pharm .pharm-source { border-right: 0; border-bottom: 1px solid var(--divider); }
   .v25-pharm .pharm-source:last-child { border-bottom: 0; }
   .v25-policy { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  #tab-packages .pkg { grid-template-columns: 40px minmax(0, 1fr) 100px auto; }
 }
 
 @media (max-width: 1100px) {

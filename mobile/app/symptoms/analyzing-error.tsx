@@ -34,7 +34,7 @@ export default function SymptomAnalyzingErrorScreen() {
           }}
         />
         <Pressable
-          onPress={() => router.push('/chat/doctor' as never)}
+          onPress={() => router.push('/assistant?mode=doctor' as never)}
           style={{ alignItems: 'center', marginTop: 12 }}
         >
           <Text style={{ fontSize: 14, fontWeight: '600', color: T.brand }}>{ka.symptoms.talkDoctor}</Text>

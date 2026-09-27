@@ -8,6 +8,7 @@ import {
 } from '@/lib/assessmentForm';
 import type { User } from '@/lib/api';
 import { getPreference, setPreference } from '@/lib/storage';
+import { trackOnboardingCompleted } from '@/lib/funnel';
 
 export const BIOMETRIC_PREF_KEY = 'medicard.biometric.enabled';
 
@@ -58,5 +59,6 @@ export async function finishOnboarding(healthProfile: HealthProfile, user: User)
     },
   });
   const result = await api.healthProfile.complete(completePayload(form));
+  trackOnboardingCompleted(form.primaryGoal);
   return result;
 }

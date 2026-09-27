@@ -129,6 +129,7 @@ model User {
   referralCode      ReferralCode?
   referralsSent     Referral[] @relation("ReferralInviter")
   referralReceived  Referral?  @relation("ReferralInvitee")
+  funnelEvents      FunnelEvent[]
 }
 
 /// Execution receipt only: no dictated text, health context or audio.
@@ -650,7 +651,7 @@ model AppSettings {
   id                 String   @id @default("default")
   /// When true, mobile/API refuse non-admin traffic with maintenance message
   maintenanceMode    Boolean  @default(false)
-  maintenanceMessage String   @default("აპლიკაცია დროებით განახლების რეჟიმშია. გთხოვთ, სცადოთ მოგვიანებით.")
+  maintenanceMessage String   @default("აპი ახლა ახლდება. სცადე ცოტა ხანში.")
   /// Soft gate: clients below this see an update prompt
   minAppVersion      String   @default("1.0.0")
   /// Hard gate: clients below minAppVersion cannot use the API
@@ -804,9 +805,11 @@ model PushCampaign {
   title       String
   body        String
   data        Json?
-  /// ALL | FREE | STANDARD | ULTIMATE | ACTIVE
+  /// ALL | ACTIVE_7D | ACTIVE_30D | PLATFORM_IOS | PLATFORM_ANDROID | GOAL_MEDICATIONS | GOAL_NUTRITION | GOAL_CYCLE | GOAL_GENERAL
+  /// (history rows may still say FREE | STANDARD | ULTIMATE | ACTIVE). See src/lib/pushCampaigns.js.
   segment     String    @default("ALL")
-  status      String    @default("DRAFT") // DRAFT | SENDING | SENT | FAILED
+  /// QUEUED → SENDING → SENT | FAILED (DRAFT unused). `data` = { payload, deliveries (sample), progress }.
+  status      String    @default("DRAFT")
   targetCount Int       @default(0)
   sentCount   Int       @default(0)
   failedCount Int       @default(0)
@@ -2547,4 +2550,24 @@ model JobLease {
   name      String   @id
   holder    String
   expiresAt DateTime
+}
+
+/// Product funnel events (prisma/20260928-funnel.sql, src/lib/funnel.js). Event names and small
+/// enums only — never health values or free text. userId is null until the install signs in.
+/// Partial unique indexes (once per install / once per account) live only in SQL.
+model FunnelEvent {
+  id          String   @id
+  userId      String?
+  installHash String?
+  name        String
+  props       Json     @default("{}")
+  platform    String?
+  appVersion  String?
+  createdAt   DateTime @default(now())
+  receivedAt  DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([name, createdAt], map: "FunnelEvent_name_time")
+  @@index([userId, name], map: "FunnelEvent_user_name")
+  @@index([installHash], map: "FunnelEvent_install")
 }

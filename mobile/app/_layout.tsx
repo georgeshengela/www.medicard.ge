@@ -47,6 +47,7 @@ import {
   noteNotificationRoutePending,
 } from '@/lib/notificationTaps';
 import { savePendingReferralCode } from '@/lib/referral';
+import { startFunnel, trackFunnel } from '@/lib/funnel';
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import { FontsProvider } from '@/store/FontsContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
@@ -226,6 +227,10 @@ function AppShell() {
   const chromeInteractive = Boolean(user) || activeRunChrome;
 
   useEffect(() => {
+    startFunnel();
+  }, []);
+
+  useEffect(() => {
     if (!user) {
       void import('@/lib/run/store').then(({ resetRunMemory }) => {
         resetRunMemory();
@@ -271,6 +276,7 @@ function AppShell() {
         /* older native module */
       }
       const raw = response.notification.request.content.data;
+      if (raw && typeof raw === 'object' && (raw as Record<string, unknown>).type === 'price_drop') trackFunnel('price_alert_opened');
       const fallback = () => routeFromNotificationData(raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null);
       void import('@/lib/mediNotificationActions')
         .then(({ handleNotificationAction }) => handleNotificationAction(response))

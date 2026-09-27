@@ -154,7 +154,8 @@ function AnalysisModuleContent({
       for (const asset of assets.slice(0, slots)) {
         if (!operation.current()) return;
         try {
-          const file = isLab ? await prepareLabImage(asset) : await toUploadableImage(asset);
+          // Lab sheets and imaging reports are read by the AI (2400 px); skin photos cap at 1600 px.
+          const file = isLab || kind === 'IMAGING' ? await prepareLabImage(asset) : await toUploadableImage(asset);
           if (!operation.current()) return;
           if (file.size != null && file.size > MAX_BYTES) { issues.push(ka.upload.fileTooLarge); continue; }
           if (file.mimeType === 'application/pdf' && !allowPdf) { issues.push('ამ სექციაში ატვირთე ფოტო. PDF გამოიყენე ანალიზების სექციაში.'); continue; }
@@ -176,7 +177,7 @@ function AnalysisModuleContent({
       if (operation.current()) setPreparing(false);
       operation.finish();
     }
-  }, [allowPdf, busy, explaining, files.length, isLab, savingDate, task]);
+  }, [allowPdf, busy, explaining, files.length, isLab, kind, savingDate, task]);
   const pickFromCamera = () => { void pick('camera'); };
   const pickFromGallery = () => { void pick('gallery'); };
   const pickPdf = () => { void pick('pdf'); };

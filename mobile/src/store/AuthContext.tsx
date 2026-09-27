@@ -284,6 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp: async (input) => {
         try {
           await adopt(await api.auth.register(input));
+          void import('@/lib/funnel').then(({ trackSignupCompleted }) => trackSignupCompleted('email')).catch(() => undefined);
         } catch (error) {
           if (
             error instanceof ApiError &&
@@ -296,7 +297,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw error;
         }
       },
-      signInWithPhone: async (phone, code, fullName) => adopt(await api.auth.phoneVerify({ phone, code, fullName })),
+      signInWithPhone: async (phone, code, fullName) => {
+        const result = await api.auth.phoneVerify({ phone, code, fullName });
+        await adopt(result);
+        // Phone sign-in also creates accounts: count it as a signup only for a just-created one.
+        if (Date.now() - new Date(result.user?.createdAt ?? 0).getTime() < 10 * 60_000) {
+          void import('@/lib/funnel').then(({ trackSignupCompleted }) => trackSignupCompleted('phone')).catch(() => undefined);
+        }
+      },
       signOut: async () => {
         const userId = user?.id;
         setQuestVisualSession(false);

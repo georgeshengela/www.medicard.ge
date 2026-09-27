@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Baby, Bell, Check, ChevronRight, CircleUserRound, Feather, Heart, ImagePlus, Leaf, LockKeyhole, MessageCircle, MessagesSquare, MoreHorizontal, Orbit, Send, Settings2, ShieldCheck, ThumbsDown, Users, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { PHOTO_MAX_EDGE, UPLOAD_JPEG_QUALITY, resizeActionFor } from '@/lib/imageCompress';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
@@ -84,8 +85,8 @@ function Space({eligible}:{eligible:boolean}){
  });
  const choosePhoto=()=>void run(async()=>{
   const picked=await ImagePicker.launchImageLibraryAsync({mediaTypes:['images'],quality:0.85});if(picked.canceled)return;
-  const asset=picked.assets[0],width=Math.min(asset.width||1200,1200);
-  const out=await ImageManipulator.manipulateAsync(asset.uri,[{resize:{width}}],{compress:0.78,format:ImageManipulator.SaveFormat.JPEG,base64:true});
+  const asset=picked.assets[0],resize=resizeActionFor(asset.width,asset.height,PHOTO_MAX_EDGE);
+  const out=await ImageManipulator.manipulateAsync(asset.uri,resize?[{resize}]:[],{compress:UPLOAD_JPEG_QUALITY,format:ImageManipulator.SaveFormat.JPEG,base64:true});
   if(!out.base64||out.base64.length>1500000)throw new Error('ფოტო ძალიან დიდია. აირჩიე უფრო პატარა ფოტო.');setPhoto({uri:out.uri,base64:out.base64});
  });
  const compose=()=>{setReply(null);setEditing(null);setBody('');setPhoto(null);setIdentityMode(member?.defaultIdentity||'nickname');draftId.current=uuid();setPage('compose');setMessage('');};

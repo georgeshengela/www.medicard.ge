@@ -244,7 +244,7 @@ export function fallbackNotificationRoute(route: string | null | undefined, exis
   if (!exists) {
     if (route?.startsWith('/medications/')) return '/medications';
     if (route?.startsWith('/visits/')) return '/visits';
-    if (route?.startsWith('/chat/')) return '/chat/DOCTOR';
+    if (route?.startsWith('/chat/') || route?.startsWith('/assistant')) return '/assistant?mode=doctor';
   }
   return route && route.startsWith('/') ? route : '/(tabs)/home';
 }

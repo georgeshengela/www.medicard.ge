@@ -237,10 +237,10 @@ describe('mediNotificationBrain', () => {
     assert.equal(engageDestination('hydration'), '/health-metrics/hydration');
     assert.equal(engageDestination('stepsQuiet'), '/health-metrics/steps');
     assert.equal(engageDestination('question'), '/(tabs)/profile?action=question');
-    assert.equal(engageDestination('chat', { chatId: 'c1', chatMode: 'DOCTOR' }), '/chat/DOCTOR?sessionId=c1');
+    assert.equal(engageDestination('chat', { chatId: 'c1', chatMode: 'DOCTOR' }), '/assistant?mode=doctor&sessionId=c1');
     assert.equal(routeFromNotificationData({ type: 'visit_reminder', visitId: 'v1' }), '/visits/editor?id=v1');
     assert.equal(routeFromNotificationData({ type: 'medi_engage', family: 'hydration' }), '/health-metrics/hydration');
-    assert.equal(routeFromNotificationData({ type: 'medi_engage', family: 'checkin' }), '/chat/DOCTOR');
+    assert.equal(routeFromNotificationData({ type: 'medi_engage', family: 'checkin' }), '/assistant?mode=doctor');
     assert.equal(routeFromNotificationData({ type: 'medi_engage', family: 'weatherWellness' }), '/weather?from=push');
   });
 
@@ -467,6 +467,8 @@ describe('mediNotificationBrain', () => {
     assert.equal(fallbackNotificationRoute('/medications/abc', false), '/medications');
     assert.equal(fallbackNotificationRoute('/visits/editor?id=x', false), '/visits');
     assert.equal(fallbackNotificationRoute('/health-metrics/hydration', true), '/health-metrics/hydration');
+    assert.equal(fallbackNotificationRoute('/assistant?mode=deep&sessionId=gone', false), '/assistant?mode=doctor');
+    assert.equal(fallbackNotificationRoute('/chat/DOCTOR?sessionId=gone', false), '/assistant?mode=doctor');
   });
 
   it('Phase 6: schedules at most one questSmart candidate and deep-links to Medi Quest', () => {

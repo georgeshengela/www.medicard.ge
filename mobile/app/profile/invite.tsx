@@ -7,6 +7,7 @@ import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
+import { trackFunnel } from '@/lib/funnel';
 import { localAccountId } from '@/lib/localAccount';
 import { referralShareMessage, type ReferralSummary } from '@/lib/referral';
 import { HUB, hubText } from '@/theme/hub';
@@ -42,7 +43,11 @@ export default function InviteScreen() {
 
   const share = () => {
     if (!data?.code || !data.link) return;
-    void Share.share({ message: referralShareMessage(data.code, data.link, data.coinsPerSide) }).catch(() => undefined);
+    void Share.share({ message: referralShareMessage(data.code, data.link, data.coinsPerSide) })
+      .then((result) => {
+        if (result.action === Share.sharedAction) trackFunnel('referral_shared');
+      })
+      .catch(() => undefined);
   };
 
   const stat = (value: number, label: string) => (

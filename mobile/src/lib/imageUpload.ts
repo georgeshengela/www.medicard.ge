@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { ka } from '@/i18n/ka';
+import { DOCUMENT_MAX_EDGE, PHOTO_MAX_EDGE, compressImage, isCompressibleImage } from '@/lib/imageCompress';
 
 /** iPhone Camera Roll defaults to HEIC — the API and vision models want JPEG. */
 const HEIC = /heic|heif/i;
@@ -67,66 +67,48 @@ async function mustCache(uri: string, destName: string): Promise<string> {
   }
 }
 
-export async function toUploadableImage(asset: {
+type PickedAsset = {
   uri: string;
   name?: string | null;
   fileName?: string | null;
   mimeType?: string | null;
   size?: number | null;
   fileSize?: number | null;
-}): Promise<{ uri: string; name: string; mimeType: string; size?: number }> {
+  width?: number | null;
+  height?: number | null;
+};
+
+export type UploadableImage = { uri: string; name: string; mimeType: string; size?: number };
+
+/**
+ * Picked photo/PDF → a cached file the API accepts. Photos are re-encoded as JPEG with the long
+ * side capped (`maxEdge`, default 1600 px); PDFs pass through. When the encoder is unavailable or
+ * fails, the original goes up unchanged — except HEIC, which the API cannot read, so it is refused.
+ */
+export async function toUploadableImage(asset: PickedAsset, { maxEdge = PHOTO_MAX_EDGE }: { maxEdge?: number } = {}): Promise<UploadableImage> {
   const name = asset.fileName ?? asset.name ?? `medicard-${Date.now()}.jpg`;
   const mime = normalizeUploadMime(asset.mimeType, name);
   const size = asset.size ?? asset.fileSize ?? undefined;
-  if (mime === 'application/pdf') {
+  if (!isCompressibleImage(mime)) {
     const uri = await mustCache(asset.uri, name);
     return { uri, name, mimeType: mime, size: await preparedSize(uri, size) };
   }
 
-  if (needsJpegTranscode(mime, name)) {
-    try {
-      const out = await ImageManipulator.manipulateAsync(asset.uri, [], {
-        compress: 0.85,
-        format: ImageManipulator.SaveFormat.JPEG,
-      });
-      return { uri: out.uri, name: jpegName(name), mimeType: 'image/jpeg', size: await preparedSize(out.uri) };
-    } catch {
-      // Relabelling HEIC bytes as JPEG doesn't convert the image.
-      throw new Error(ka.upload.prepareFailed);
-    }
+  const options = { width: asset.width, height: asset.height, maxEdge };
+  let out = await compressImage(asset.uri, options);
+  if (!out && !asset.uri.startsWith('file://')) {
+    // ph:// / content:// sources sometimes only decode from a cached copy.
+    try { out = await compressImage(await asCachedFile(asset.uri, name), options); } catch { out = null; }
   }
+  if (out) return { uri: out.uri, name: jpegName(name), mimeType: 'image/jpeg', size: await preparedSize(out.uri) };
 
+  // Relabelling HEIC (or other unsupported) bytes as JPEG doesn't convert the image.
+  if (needsJpegTranscode(mime, name)) throw new Error(ka.upload.prepareFailed);
   const uri = await mustCache(asset.uri, name);
   return { uri, name, mimeType: mime, size: await preparedSize(uri, size) };
 }
 
-/** Shrink lab sheets so OpenRouter can read the printed range without a huge upload. */
-export async function prepareLabImage(asset: {
-  uri: string;
-  name?: string | null;
-  fileName?: string | null;
-  mimeType?: string | null;
-  size?: number | null;
-  fileSize?: number | null;
-}): Promise<{ uri: string; name: string; mimeType: string; size?: number }> {
-  const file = await toUploadableImage(asset);
-  if (file.mimeType === 'application/pdf') return file;
-  try {
-    const out = await ImageManipulator.manipulateAsync(file.uri, [{ resize: { width: 1600 } }], {
-      compress: 0.72,
-      format: ImageManipulator.SaveFormat.JPEG,
-    });
-    return { uri: out.uri, name: jpegName(file.name), mimeType: 'image/jpeg', size: await preparedSize(out.uri) };
-  } catch {
-    try {
-      const copied = await asCachedFile(file.uri, jpegName(file.name));
-      const out = await ImageManipulator.manipulateAsync(copied, [{ resize: { width: 1600 } }], {
-        compress: 0.72,
-        format: ImageManipulator.SaveFormat.JPEG,
-      });
-      return { uri: out.uri, name: jpegName(file.name), mimeType: 'image/jpeg', size: await preparedSize(out.uri) };
-    } catch {
-      return file;
-    }
-  }
+/** Lab sheets are read by the AI: keep printed ranges legible (long side up to 2400 px). */
+export async function prepareLabImage(asset: PickedAsset): Promise<UploadableImage> {
+  return toUploadableImage(asset, { maxEdge: DOCUMENT_MAX_EDGE });
 }

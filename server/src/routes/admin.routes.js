@@ -10,11 +10,11 @@ import { renewSubscriptionDates } from '../lib/billing.js';
 import { getAppSettings, publicAppSettings } from '../lib/settings.js';
 import { getMobileAppVersion } from '../lib/mobileAppVersion.js';
 import { getUsage, peekListUsage, resetUsage, ROLLING_DAILY_KEY } from '../lib/usage.js';
-import { getPushStats, resolveSegmentTokens, sendExpoPush } from '../lib/push.js';
+import { getPushStats } from '../lib/push.js';
+import { ACCEPTED_PUSH_SEGMENTS, queuePushCampaign, segmentRecipientCounts } from '../lib/pushCampaigns.js';
 import {
   listPushEvents,
   listPushTemplates,
-  logPushEvent,
   resetPushTemplate,
   savePushTemplate,
 } from '../lib/pushTemplates.js';
@@ -649,21 +649,6 @@ adminRouter.delete(
   }),
 );
 
-adminRouter.get(
-  '/packages',
-  requireAdmin,
-  asyncHandler(async (_req, res) => {
-    const packages = await prisma.package.findMany({ orderBy: { sortOrder: 'asc' } });
-    const withCounts = await Promise.all(
-      packages.map(async (pkg) => ({
-        ...publicPackage(pkg),
-        userCount: await prisma.user.count({ where: { packageId: pkg.id } }),
-      })),
-    );
-    res.json({ packages: withCounts });
-  }),
-);
-
 adminRouter.post(
   '/users/:id/renew',
   requireAdmin,
@@ -705,33 +690,6 @@ adminRouter.post(
     if (!user) return res.status(404).json({ error: 'მომხმარებელი ვერ მოიძებნა.' });
     const usage = await resetUsage(user.id);
     res.json({ user: adminUserRow(user, usage) });
-  }),
-);
-
-adminRouter.patch(
-  '/packages/:code',
-  requireAdmin,
-  asyncHandler(async (req, res) => {
-    const code = String(req.params.code).toUpperCase();
-    const body = z
-      .object({
-        nameKa: z.string().min(1).max(80).optional(),
-        nameEn: z.string().min(1).max(80).optional(),
-        descriptionKa: z.string().min(1).max(500).optional(),
-        monthlyAiLimit: z.number().int().min(-1).max(1_000_000).optional(),
-        dailyAiLimit: z.number().int().min(-1).max(100_000).optional(),
-        priceGel: z.number().min(0).max(10_000).optional(),
-        features: z.record(z.string(), z.boolean()).optional(),
-        active: z.boolean().optional(),
-        sortOrder: z.number().int().optional(),
-      })
-      .parse(req.body);
-
-    const pkg = await prisma.package.update({
-      where: { code },
-      data: body,
-    });
-    res.json({ package: publicPackage(pkg) });
   }),
 );
 
@@ -813,6 +771,28 @@ adminRouter.get(
   }),
 );
 
+adminRouter.get(
+  '/push/segments',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json({ counts: await segmentRecipientCounts() });
+  }),
+);
+
+adminRouter.get(
+  '/push/campaigns/:id',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const campaign = await prisma.pushCampaign.findUnique({
+      where: { id: req.params.id },
+      include: { createdBy: { select: { email: true, fullName: true } } },
+    });
+    if (!campaign) return res.status(404).json({ error: 'კამპანია ვერ მოიძებნა.' });
+    res.json({ campaign });
+  }),
+);
+
+/** Queues the broadcast; the push-campaigns worker (lib/pushCampaigns.js) sends it in the background. */
 adminRouter.post(
   '/push/campaigns',
   requireAdmin,
@@ -821,74 +801,27 @@ adminRouter.post(
       .object({
         title: z.string().trim().min(1).max(120),
         body: z.string().trim().min(1).max(500),
-        segment: z.enum(['ALL', 'ACTIVE', 'FREE', 'STANDARD', 'ULTIMATE']).default('ALL'),
+        // FREE/STANDARD/ULTIMATE/ACTIVE are retired and map to ALL (API compatibility).
+        segment: z.enum(ACCEPTED_PUSH_SEGMENTS).default('ALL'),
         data: z.record(z.string(), z.string()).optional(),
       })
       .parse(req.body);
 
-    const tokens = await resolveSegmentTokens(body.segment);
-    const campaign = await prisma.pushCampaign.create({
-      data: {
-        title: body.title,
-        body: body.body,
-        data: body.data ?? {},
-        segment: body.segment,
-        status: 'SENDING',
-        targetCount: tokens.length,
-        createdById: req.admin.id,
-      },
+    const campaign = await queuePushCampaign({
+      title: body.title,
+      body: body.body,
+      segment: body.segment,
+      data: body.data,
+      adminId: req.admin.id,
     });
 
-    if (!tokens.length) {
-      const failed = await prisma.pushCampaign.update({
-        where: { id: campaign.id },
-        data: { status: 'FAILED', failedCount: 0, sentAt: new Date() },
-      });
+    if (campaign.status === 'FAILED') {
       return res.status(422).json({
         error: 'ამ სეგმენტში აქტიური push მოწყობილობა არ მოიძებნა.',
-        campaign: failed,
+        campaign,
       });
     }
-
-    const result = await sendExpoPush(
-      tokens,
-      {
-        title: body.title,
-        body: body.body,
-        data: {
-          ...(body.data ?? {}),
-          campaignId: campaign.id,
-          type: 'admin_broadcast',
-          source: 'broadcast',
-          family: 'adminBroadcast',
-        },
-      },
-      { receiptWaitMs: 3500 },
-    );
-
-    const saved = await prisma.pushCampaign.update({
-      where: { id: campaign.id },
-      data: {
-        status: result.failed && !result.sent ? 'FAILED' : 'SENT',
-        sentCount: result.sent,
-        failedCount: result.failed,
-        sentAt: new Date(),
-        data: {
-          ...(body.data ?? {}),
-          tickets: result.tickets,
-          deliveries: result.deliveries,
-        },
-      },
-    });
-
-    void logPushEvent({
-      source: 'broadcast',
-      key: 'admin-push',
-      title: saved.title,
-      body: saved.body,
-    });
-
-    res.status(201).json({ campaign: saved, delivery: result });
+    res.status(202).json({ campaign });
   }),
 );
 

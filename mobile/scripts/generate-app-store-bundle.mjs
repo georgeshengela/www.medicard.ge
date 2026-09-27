@@ -102,7 +102,7 @@ const FRAMES = [
   {
     id: '07-medi',
     auth: true,
-    path: '/chat/doctor',
+    path: '/assistant?mode=doctor',
     kicker: 'Medi',
     title: 'ჰკითხე\nMedi-ს.',
     sub: 'ქართულად · შენს პროფილზე დაყრდნობით',

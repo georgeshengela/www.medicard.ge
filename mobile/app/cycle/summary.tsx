@@ -551,8 +551,8 @@ export default function CycleSummary() {
                 label={ka.cycle.openChat}
                 onPress={() =>
                   router.push({
-                    pathname: '/chat/doctor',
-                    params: { prefill: chatContext },
+                    pathname: '/assistant',
+                    params: { mode: 'doctor', prefill: chatContext },
                   } as never)
                 }
                 icon={MessageSquareText}

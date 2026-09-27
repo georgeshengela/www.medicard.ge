@@ -67,8 +67,8 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
       onClose();
       setTimeout(() => {
         router.push({
-          pathname: '/chat/doctor',
-          params: { prefill: plan.chatPrefill! },
+          pathname: '/assistant',
+          params: { mode: 'doctor', prefill: plan.chatPrefill! },
         } as never);
       }, 220);
     }
@@ -102,8 +102,8 @@ export function CycleInsightDetailSheet({ visible, card, headline, onClose }: Pr
         onClose();
         setTimeout(() => {
           router.push({
-            pathname: '/chat/doctor',
-            params: { prefill: plan.chatPrefill! },
+            pathname: '/assistant',
+            params: { mode: 'doctor', prefill: plan.chatPrefill! },
           } as never);
         }, 220);
       }

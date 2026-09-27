@@ -871,13 +871,6 @@ tr.selected td { background: var(--teal-soft); }
 .push-recent-item:hover { border-color: color-mix(in srgb, var(--teal) 36%, var(--line)); background: var(--teal-soft); }
 [data-theme="dark"] .push-recent-item { background: var(--bg-raise); }
 
-/* ——— 18. Packages ——— */
-#tab-packages .pkg-copy { justify-items: start; }
-#tab-packages .pkg { transition: background 0.14s ease; }
-#tab-packages .pkg:hover { background: var(--bg-raise); }
-#tab-packages .pkg-copy h3 { font-size: 14px; font-weight: 650; }
-#tab-packages .pkg .price { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
-
 /* ——— 19. Settings ——— */
 .v25-set { padding: 18px 20px 16px; }
 .v25-set h3 { font-size: 14px; font-weight: 650; }

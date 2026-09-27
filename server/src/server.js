@@ -28,8 +28,10 @@ import { communityRouter, adminCommunityRouter } from './routes/community.routes
 import { startCommunityPush } from './lib/communityPush.js';
 import { startPriceDropAlerts } from './lib/priceDrop.js';
 import { startReferralRewards } from './lib/referral.js';
+import { startPushCampaignWorker } from './lib/pushCampaigns.js';
 import { objectStorageConfigured, objectStoragePublicHint } from './lib/objectStorage.js';
 import { adminReferralRouter, referralRouter } from './routes/referral.routes.js';
+import { adminFunnelRouter, funnelRouter } from './routes/funnel.routes.js';
 import { healthProfileRouter } from './routes/health-profile.routes.js';
 import { healthMetricsRouter } from './routes/health-metrics.routes.js';
 import { aiRouter } from './routes/ai.routes.js';
@@ -177,6 +179,13 @@ app.get('/terms', (_req, res) => {
   res.type('html').send(TERMS_HTML);
 });
 
+// Google Play account-deletion page (bilingual ka/en). Public, no auth.
+app.get(['/delete-account', '/delete-account/', '/en/delete-account'], (_req, res, next) => {
+  if (!PUBLIC_DIST) return next();
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.sendFile(path.join(PUBLIC_DIST, 'delete-account.html'));
+});
+
 app.get(['/calculators', '/calculators/'], (req, res, next) => {
   if (!PUBLIC_DIST) return next();
   res.set('Cache-Control', 'public, max-age=3600');
@@ -236,6 +245,7 @@ app.use('/api/admin/community', adminCommunityRouter);
 startCommunityPush();
 startPriceDropAlerts();
 startReferralRewards();
+startPushCampaignWorker();
 app.use('/api/medipulsi', medipulsiRouter);
 app.use('/api/cycle', cycleRouter);
 app.get('/api/cycle/share/:code', partnerShareClosedHandler);
@@ -249,6 +259,8 @@ app.use('/api/achievements', achievementsRouter);
 app.use('/api/rewards', requireFeature('rewardsStore', { match: (req) => /\/redeem$/.test(req.path) }), rewardsRouter);
 app.use('/api/referrals', referralRouter);
 app.use('/api/admin/referrals', adminReferralRouter);
+app.use('/api/funnel', funnelRouter);
+app.use('/api/admin/funnel', adminFunnelRouter);
 app.use('/api/medi-companion', mediCompanionRouter);
 app.use('/api/app', appRouter);
 app.use('/api/ai-consent', aiConsentRouter);
@@ -319,6 +331,7 @@ if (serveLanding) {
       p === '/health' ||
       p === '/privacy' ||
       p === '/terms' ||
+      p === '/delete-account' ||
       p === '/calculators' ||
       p.startsWith('/calculators/')
     ) {

@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -662,6 +662,7 @@ async function switchTab(tab, opts = {}) {
     settings: ['Production', 'აპის რეჟიმი', 'რა წარმოების ქცევაა ჩართული?', 'settings.page'],
     features: ['Production', 'მოდულები', 'რომელი მოდული მუშაობს და რომელი შეჩერებულია?', ''],
     quests: ['Engagement', 'Medi Quest', 'მისიები, სამიზნეები და Medi Coins ჯილდოები.', ''],
+    funnel: ['Growth', 'ფუნელი', 'ინსტალაციიდან რეგისტრაციამდე, პირველ ქმედებამდე და დაბრუნებამდე.', ''],
   };
   setPageHeader(tab, copy);
 
@@ -690,6 +691,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'settings') await renderSettings();
     if (tab === 'features' && typeof renderFeatures === 'function') await renderFeatures();
     if (tab === 'quests' && typeof renderQuests === 'function') await renderQuests();
+    if (tab === 'funnel' && typeof renderFunnel === 'function') await renderFunnel();
   }
   startAdminLive();
 }
@@ -1480,6 +1482,93 @@ let pushStudioTab = 'brain';
 window.setPushStudioTab = (tab) => { pushStudioTab = tab; };
 let pushCopyGroup = 'all';
 let pushHistoryView = 'campaigns';
+let pushProgressTimer = null;
+
+// Broadcast audiences (server/src/lib/pushCampaigns.js). MEDICARD is free: package tiers are history-only labels.
+const PUSH_SEGMENT_CHOICES = {
+  ALL: 'ყველა',
+  ACTIVE_7D: 'აქტიური 7 დღეში',
+  ACTIVE_30D: 'აქტიური 30 დღეში',
+  PLATFORM_IOS: 'iOS',
+  PLATFORM_ANDROID: 'Android',
+  GOAL_MEDICATIONS: 'მიზანი: მედიკამენტები',
+  GOAL_NUTRITION: 'მიზანი: კვება და წონა',
+  GOAL_CYCLE: 'მიზანი: ციკლი',
+  GOAL_GENERAL: 'მიზანი: ზოგადი',
+};
+const PUSH_SEGMENT_LABELS = {
+  ...PUSH_SEGMENT_CHOICES,
+  ACTIVE: 'აქტიური მომხმარებლები (ძველი სეგმენტი)',
+  FREE: 'უფასო პაკეტი (ძველი სეგმენტი)',
+  STANDARD: 'STANDARD (ძველი სეგმენტი)',
+  ULTIMATE: 'ULTIMATE (ძველი სეგმენტი)',
+};
+const PUSH_CAMPAIGN_LIVE = new Set(['QUEUED', 'SENDING']);
+
+function pushCampaignStatusText(c) {
+  if (c.status === 'SENT') return 'გაგზავნილი';
+  if (c.status === 'FAILED' && !(c.targetCount > 0)) return 'მოწყობილობა არ იყო';
+  if (c.status === 'FAILED') return 'შეცდომა';
+  if (c.status === 'QUEUED') return 'რიგში';
+  if (c.status === 'SENDING') {
+    const done = (c.sentCount || 0) + (c.failedCount || 0);
+    return c.targetCount ? `იგზავნება · ${Math.min(100, Math.round((done / c.targetCount) * 100))}%` : 'იგზავნება';
+  }
+  return c.status || '—';
+}
+
+function pushCampaignBadge(c) {
+  const tone = c.status === 'SENT'
+    ? 'ok'
+    : c.status === 'FAILED' && c.targetCount > 0
+      ? 'bad'
+      : c.status === 'FAILED' || PUSH_CAMPAIGN_LIVE.has(c.status) ? 'std' : 'neutral';
+  return `<span class="badge ${tone}" data-campaign-status>${escapeHtml(pushCampaignStatusText(c))}</span>`;
+}
+
+function pushDeliveryBarHtml(sent, target, failed = 0) {
+  const pct = target ? Math.min(100, Math.round(((sent + failed) / target) * 100)) : 0;
+  return `
+      <div class="push-delivery">
+        <div class="bar"><span style="width:${pct}%"></span></div>
+        <span class="mono push-delivery-val">${sent} ✓ · ${failed} ✗ / ${target}</span>
+      </div>
+    `;
+}
+
+/** Polls queued/sending campaigns and patches their cards in place; re-renders once one finishes. */
+function watchPushCampaigns(ids, onFinished) {
+  if (pushProgressTimer) clearTimeout(pushProgressTimer);
+  pushProgressTimer = null;
+  let pending = [...new Set(ids)];
+  if (!pending.length) return;
+  const tick = async () => {
+    pushProgressTimer = null;
+    if (!document.getElementById('push-compose-form')) return; // left the push page
+    const finished = [];
+    await Promise.all(pending.map(async (id) => {
+      try {
+        const { campaign } = await api(`/push/campaigns/${encodeURIComponent(id)}`);
+        document.querySelectorAll(`[data-campaign="${CSS.escape(id)}"]`).forEach((card) => {
+          const badge = card.querySelector('[data-campaign-status]');
+          if (badge) badge.outerHTML = pushCampaignBadge(campaign);
+          const bar = card.querySelector('.push-delivery');
+          if (bar) bar.outerHTML = pushDeliveryBarHtml(campaign.sentCount || 0, campaign.targetCount || 0, campaign.failedCount || 0);
+        });
+        if (!PUSH_CAMPAIGN_LIVE.has(campaign.status)) finished.push(id);
+      } catch {
+        /* keep polling; one failed admin API call should not freeze the view */
+      }
+    }));
+    pending = pending.filter((id) => !finished.includes(id));
+    if (finished.length && typeof onFinished === 'function') {
+      onFinished();
+      return;
+    }
+    if (pending.length) pushProgressTimer = setTimeout(tick, 3000);
+  };
+  pushProgressTimer = setTimeout(tick, 2000);
+}
 
 function pushPreviewCopy(text, vars = {}) {
   return String(text || '')
@@ -1522,12 +1611,14 @@ function pushPhoneHtml({ title, body, segmentLabel, reachHint }) {
 }
 
 async function renderPush() {
-  const [stats, { campaigns }, templatesRes, eventsRes] = await Promise.all([
+  const [stats, { campaigns }, templatesRes, eventsRes, segmentsRes] = await Promise.all([
     api('/push/stats'),
     api('/push/campaigns'),
     api('/push/templates').catch(() => ({ templates: [] })),
     api('/push/events').catch(() => ({ events: [] })),
+    api('/push/segments').catch(() => ({ counts: null })),
   ]);
+  const segmentCounts = segmentsRes.counts || null;
   const templates = templatesRes.templates || [];
   const events = eventsRes.events || [];
   const GROUP_LABELS = {
@@ -1560,17 +1651,8 @@ async function renderPush() {
     platforms = {},
   } = stats;
 
-  // Selectable audiences. MEDICARD is free, so tier segments are history-only labels.
-  const SEGMENTS = {
-    ALL: 'ყველა მოწყობილობა',
-    ACTIVE: 'აქტიური მომხმარებლები',
-  };
-  const SEGMENT_LABELS = {
-    ...SEGMENTS,
-    FREE: 'უფასო პაკეტი (ძველი სეგმენტი)',
-    STANDARD: 'STANDARD (ძველი სეგმენტი)',
-    ULTIMATE: 'ULTIMATE (ძველი სეგმენტი)',
-  };
+  const SEGMENTS = PUSH_SEGMENT_CHOICES;
+  const SEGMENT_LABELS = PUSH_SEGMENT_LABELS;
 
   const totalSent = statsSent ?? campaigns.reduce((sum, c) => sum + (c.sentCount || 0), 0);
   const totalFailed = statsFailed ?? campaigns.reduce((sum, c) => sum + (c.failedCount || 0), 0);
@@ -1586,6 +1668,10 @@ async function renderPush() {
   const defaultTitle = adminTpl?.title || 'მე ვარ, Medi 💚';
   const defaultBody = adminTpl?.body || 'შენთვის პატარა ამბავი მაქვს.';
   const fmtN = (n) => Number(n || 0).toLocaleString('ka-GE');
+  const segmentReach = (segment) => {
+    const n = segmentCounts ? segmentCounts[segment] : segment === 'ALL' ? activeDevices : null;
+    return n == null ? 'რაოდენობა უცნობია' : `${fmtN(n)} მოწყობილობა`;
+  };
   const platformLabel = (platform) => {
     if (platform === 'ios') return 'iOS';
     if (platform === 'android') return 'Android';
@@ -1600,25 +1686,8 @@ async function renderPush() {
     return source || '—';
   };
 
-  function campaignStatus(c) {
-    if (c.status === 'SENT') return '<span class="badge ok">გაგზავნილი</span>';
-    if (c.status === 'FAILED' && !(c.targetCount > 0)) {
-      return '<span class="badge std">მოწყობილობა არ იყო</span>';
-    }
-    if (c.status === 'FAILED') return '<span class="badge bad">შეცდომა</span>';
-    if (c.status === 'SENDING') return '<span class="badge std">იგზავნება</span>';
-    return `<span class="badge neutral">${escapeHtml(c.status)}</span>`;
-  }
-
-  function deliveryBar(sent, target, failed = 0) {
-    const pct = target ? Math.round((sent / target) * 100) : 0;
-    return `
-      <div class="push-delivery">
-        <div class="bar"><span style="width:${pct}%"></span></div>
-        <span class="mono push-delivery-val">${sent} ✓ · ${failed} ✗ / ${target}</span>
-      </div>
-    `;
-  }
+  const campaignStatus = pushCampaignBadge;
+  const deliveryBar = pushDeliveryBarHtml;
 
   const groupCounts = Object.fromEntries(
     ['med', 'cycle', 'visit', 'activity', 'admin'].map((group) => [
@@ -1665,7 +1734,7 @@ async function renderPush() {
               <div class="push-compose-head">
                 <p class="kicker">გაგზავნა</p>
                 <h3>ახალი შეტყობინება</h3>
-                <p class="muted">მყისიერი Expo Push არჩეულ სეგმენტში. ლოკალური შეხსენებები აქ არ იგზავნება — მათი ტექსტი „Medi ტექსტებშია“.</p>
+                <p class="muted">Expo Push არჩეულ სეგმენტში. კამპანია რიგში დგება და ფონურად იგზავნება; პროგრესი ქვემოთ ახლდება. ლოკალური შეხსენებები აქ არ იგზავნება — მათი ტექსტი „Medi ტექსტებშია“.</p>
               </div>
               <label class="field">
                 <span>სათაური <em id="push-title-count">0 / 120</em></span>
@@ -1681,7 +1750,7 @@ async function renderPush() {
                   ${Object.entries(SEGMENTS).map(([value, label]) => `
                     <button type="button" class="push-seg${value === 'ALL' ? ' active' : ''}" data-seg="${value}" aria-pressed="${value === 'ALL'}">
                       <strong>${label}</strong>
-                      <span>${value === 'ALL' ? `${fmtN(activeDevices)} მოწყობილობა` : `${fmtN(subscribedUsers)} ანგარიში`}</span>
+                      <span>${segmentReach(value)}</span>
                     </button>
                   `).join('')}
                 </div>
@@ -1704,10 +1773,10 @@ async function renderPush() {
             </form>
             <aside class="push-phone-col v3-push-preview-col">
               <p class="push-preview-label">გადახედვა</p>
-              ${pushPhoneHtml({ title: defaultTitle, body: defaultBody, segmentLabel: SEGMENTS.ALL, reachHint: `${fmtN(activeDevices)} მოწყობილობა` })}
+              ${pushPhoneHtml({ title: defaultTitle, body: defaultBody, segmentLabel: SEGMENTS.ALL, reachHint: segmentReach('ALL') })}
               <dl class="v3-send-summary" id="push-send-summary">
                 <dt>სეგმენტი</dt><dd id="push-summary-seg">${escapeHtml(SEGMENTS.ALL)}</dd>
-                <dt>მოწყობილობები</dt><dd id="push-summary-reach">${fmtN(activeDevices)}</dd>
+                <dt>მოწყობილობები</dt><dd id="push-summary-reach">${segmentReach('ALL')}</dd>
                 <dt>სათაური</dt><dd id="push-summary-title-len">0 / 120</dd>
                 <dt>ტექსტი</dt><dd id="push-summary-body-len">0 / 500</dd>
               </dl>
@@ -1952,9 +2021,7 @@ async function renderPush() {
     if (bodyCount) bodyCount.textContent = `${$('push-body').value.length} / 500`;
     $('push-preview-title').textContent = title;
     $('push-preview-body').textContent = body;
-    const reach = segment === 'ALL'
-      ? `${fmtN(activeDevices)} მოწყობილობა`
-      : `${fmtN(subscribedUsers)} ანგარიში`;
+    const reach = segmentReach(segment);
     $('push-preview-seg').textContent = `${SEGMENT_LABELS[segment] || segment} · ${reach}`;
     const clock = $('push-phone-time');
     const dateEl = $('push-phone-date');
@@ -1997,7 +2064,7 @@ async function renderPush() {
       return;
     }
     const copy = $('push-confirm-copy');
-    if (copy) copy.textContent = `„${title}“ წავა სეგმენტზე: ${SEGMENT_LABELS[segment] || segment}.`;
+    if (copy) copy.textContent = `„${title}“ წავა სეგმენტზე: ${SEGMENT_LABELS[segment] || segment} (${segmentReach(segment)}).`;
     confirmBox?.classList.remove('hidden');
     $('push-confirm-yes')?.focus();
   };
@@ -2014,15 +2081,8 @@ async function renderPush() {
         method: 'POST',
         body: { title, body, segment },
       });
-      const sent = result.delivery?.sent ?? result.campaign?.sentCount ?? 0;
-      const failed = result.delivery?.failed ?? result.campaign?.failedCount ?? 0;
-      const firstError = (result.delivery?.deliveries || []).find((d) => d.error)?.error;
-      toast(
-        failed
-          ? `გაგზავნა: ${sent} OK, ${failed} ვერ მივიდა${firstError ? ` · ${firstError}` : ''}`
-          : `გაგზავნილია ${sent} მოწყობილობაზე`,
-        failed ? 'bad' : 'ok',
-      );
+      const target = result.campaign?.targetCount ?? 0;
+      toast(`რიგში ჩადგა: ${fmtN(target)} მოწყობილობა. იგზავნება ფონურად.`, 'ok');
       pushStudioTab = 'compose';
       await renderPush();
     } catch (err) {
@@ -2171,6 +2231,11 @@ async function renderPush() {
       });
     };
   }
+
+  watchPushCampaigns(
+    campaigns.filter((c) => PUSH_CAMPAIGN_LIVE.has(c.status)).map((c) => c.id),
+    () => { if (document.getElementById('push-compose-form')) void renderPush(); },
+  );
 }
 
 function pushDeliveryTone(pct) {
@@ -2207,17 +2272,7 @@ async function viewPushCampaign(id) {
     return;
   }
 
-  // Selectable audiences. MEDICARD is free, so tier segments are history-only labels.
-  const SEGMENTS = {
-    ALL: 'ყველა მოწყობილობა',
-    ACTIVE: 'აქტიური მომხმარებლები',
-  };
-  const SEGMENT_LABELS = {
-    ...SEGMENTS,
-    FREE: 'უფასო პაკეტი (ძველი სეგმენტი)',
-    STANDARD: 'STANDARD (ძველი სეგმენტი)',
-    ULTIMATE: 'ULTIMATE (ძველი სეგმენტი)',
-  };
+  const SEGMENT_LABELS = PUSH_SEGMENT_LABELS;
 
   openDrawer(`
     <p class="kicker">Push კამპანია</p>
@@ -2226,7 +2281,7 @@ async function viewPushCampaign(id) {
     <p class="muted mono" style="font-size:11px">${escapeHtml(campaign.id)}</p>
     <div class="drawer-stats">
       <div class="drawer-stat"><div class="label">სეგმენტი</div><strong>${SEGMENT_LABELS[campaign.segment] || campaign.segment}</strong></div>
-      <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${campaign.status === 'SENT' ? 'გაგზავნილი' : campaign.status === 'FAILED' && !(campaign.targetCount > 0) ? 'მოწყობილობა არ იყო' : campaign.status === 'FAILED' ? 'შეცდომა' : campaign.status === 'SENDING' ? 'იგზავნება' : escapeHtml(campaign.status)}</strong></div>
+      <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${escapeHtml(pushCampaignStatusText(campaign))}</strong></div>
       <div class="drawer-stat"><div class="label">მიწოდება</div><strong>${campaign.sentCount}/${campaign.targetCount}</strong></div>
       <div class="drawer-stat"><div class="label">შეცდომა</div><strong>${campaign.failedCount}</strong></div>
     </div>
@@ -2234,7 +2289,7 @@ async function viewPushCampaign(id) {
     <div class="field"><span>ტექსტი</span><div class="ai-drawer-block"><pre>${escapeHtml(campaign.body)}</pre></div></div>
     <div class="field"><span>ადმინი</span><div class="ai-drawer-block"><pre>${escapeHtml(campaign.createdBy?.fullName || '—')}${campaign.createdBy?.email ? `\n${campaign.createdBy.email}` : ''}</pre></div></div>
     ${Array.isArray(campaign.data?.deliveries) && campaign.data.deliveries.length ? `
-      <div class="field"><span>მიწოდება მოწყობილობებზე</span>
+      <div class="field"><span>მიწოდება მოწყობილობებზე${campaign.data?.progress ? ' (პირველი 50)' : ''}</span>
         <div class="push-device-list">
           ${campaign.data.deliveries.map((d) => `
             <div class="push-device-row">

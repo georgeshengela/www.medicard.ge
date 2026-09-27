@@ -47,7 +47,7 @@ describe('notificationPlan', () => {
     assert.equal(routeFromNotificationData({ type: 'steps-goal' }), '/health-metrics/steps');
     assert.equal(routeFromNotificationData({ type: 'visit_reminder' }), '/visits');
     assert.equal(routeFromNotificationData({ type: 'visit_reminder', visitId: 'v9' }), '/visits/editor?id=v9');
-    assert.equal(routeFromNotificationData({ type: 'quota_reset' }), '/chat/DOCTOR');
+    assert.equal(routeFromNotificationData({ type: 'quota_reset' }), '/assistant?mode=doctor');
     assert.equal(routeFromNotificationData({ type: 'cycle_tip' }), '/cycle');
     assert.equal(routeFromNotificationData({ type: 'cycle_reminder', route: '/cycle/log' }), '/cycle/log');
     assert.equal(routeFromNotificationData({ type: 'admin_push', route: '/(tabs)/home' }), '/(tabs)/home');

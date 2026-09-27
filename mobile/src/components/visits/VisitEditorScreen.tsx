@@ -214,6 +214,7 @@ export function VisitEditorScreen({ visitId }: Props) {
         await api.visits.update(visitId, body);
       } else {
         await api.visits.create(body);
+        void import('@/lib/funnel').then(({ trackFirstHealthAction }) => trackFirstHealthAction('visit')).catch(() => undefined);
       }
       await import('@/lib/mediEngagePrefs').then(({ clearUnfinishedDraft }) => clearUnfinishedDraft('visit_draft'));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);

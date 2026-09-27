@@ -739,7 +739,6 @@
       overview: 'layout',
       users: 'users',
       orders: 'wallet',
-      packages: 'layers',
       push: 'bell',
       sms: 'message',
       pharmacy: 'pill',

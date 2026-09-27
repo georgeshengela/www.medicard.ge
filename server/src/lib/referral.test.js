@@ -49,6 +49,14 @@ describe('claim decision', () => {
     assert.equal(claimDecision({ invitee, inviter, now, networkClaims: NETWORK_CLAIMS_PER_INVITER }), 'NETWORK_USED');
     assert.equal(claimDecision({ invitee, inviter, now, networkClaims: NETWORK_CLAIMS_PER_INVITER - 1 }), null);
   });
+
+  it('allows three claims per inviter per network (carrier CGNAT shares one IP)', () => {
+    const invitee = { id: 'b', createdAt: daysAgo(1) };
+    const inviter = { id: 'a', status: 'ACTIVE' };
+    assert.equal(NETWORK_CLAIMS_PER_INVITER, 3);
+    assert.equal(claimDecision({ invitee, inviter, now, networkClaims: 2 }), null);
+    assert.equal(claimDecision({ invitee, inviter, now, networkClaims: 3 }), 'NETWORK_USED');
+  });
   it('hashes the server-observed network, never stores it raw', () => {
     assert.equal(networkHashOf(''), null);
     assert.equal(networkHashOf('unknown'), null);

@@ -12,6 +12,7 @@ import type { PassportLocale } from '@/i18n/healthPassport';
 import { api } from '@/lib/api';
 import { buildCycleReportHtmlFromSummary } from '@/lib/cycleReport';
 import { buildHealthPassportHtml, type PassportData } from '@/lib/healthPassport';
+import { resolveLabTitle } from '@/lib/labNames';
 import { localAccountId } from '@/lib/localAccount';
 import { useAuth } from '@/store/AuthContext';
 import { HUB, hubText } from '@/theme/hub';
@@ -47,7 +48,7 @@ export default function HealthPassportScreen() {
     const latestDate = panels.reduce<string | null>((acc, p) => (!acc || p.date > acc ? p.date : acc), null);
     const labRows = latestDate
       ? panels.filter((p) => p.date === latestDate).flatMap((p) => p.parameters).map((r) => ({
-          name: r.nameKa || r.nameEn, value: r.display, unit: r.unit, refLow: r.refLow, refHigh: r.refHigh, flag: r.flag,
+          name: r.nameKa || r.nameEn, nameEn: resolveLabTitle(r).nameEn, value: r.display, unit: r.unit, refLow: r.refLow, refHigh: r.refHigh, flag: r.flag,
         }))
       : [];
     const today = todayYmd();
@@ -72,11 +73,16 @@ export default function HealthPassportScreen() {
       visits: visits.visits
         .filter((v) => v.visitDate <= today)
         .sort((a, b) => b.visitDate.localeCompare(a.visitDate))
-        .map((v) => ({
-          date: v.visitDate,
-          doctor: [doctorTypeLabel(v.doctorType), [v.doctorFirstName, v.doctorLastName].filter(Boolean).join(' ')].filter(Boolean).join(' · '),
-          notes: v.notes,
-        })),
+        .map((v) => {
+          const doctorName = [v.doctorFirstName, v.doctorLastName].filter(Boolean).join(' ');
+          return {
+            date: v.visitDate,
+            doctor: [doctorTypeLabel(v.doctorType), doctorName].filter(Boolean).join(' · '),
+            doctorType: v.doctorType,
+            doctorName,
+            notes: v.notes,
+          };
+        }),
       cycleHtml,
       generatedOn: today,
     };
@@ -90,6 +96,7 @@ export default function HealthPassportScreen() {
     try {
       const html = buildHealthPassportHtml(await collect(), locale);
       if (owner !== localAccountId()) return;
+      void import('@/lib/funnel').then(({ trackFunnel }) => trackFunnel('health_passport_created')).catch(() => undefined);
       if (Platform.OS === 'web') {
         const win = typeof window !== 'undefined' ? window.open('', '_blank') : null;
         if (win) { win.document.write(html); win.document.close(); } else await Share.share({ message: html.replace(/<[^>]+>/g, ' ').slice(0, 4000) });

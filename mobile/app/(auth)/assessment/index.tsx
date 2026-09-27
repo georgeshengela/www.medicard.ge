@@ -49,6 +49,11 @@ import {
 } from '@/lib/onboardingDevPreview';
 import { needsProfileSetup, useAuth } from '@/store/AuthContext';
 
+/** Product funnel: onboarding step keys only (no answers). Lazy so tests and startup never depend on it. */
+function trackOnboardingStep(kind: 'viewed' | 'completed', key: string | undefined) {
+  void import('@/lib/funnel').then((funnel) => funnel.trackOnboardingStep(kind, key)).catch(() => undefined);
+}
+
 /** Next/previous visible step in whichever list the flow runs (onboarding or full profile). */
 function resolveNextIndex(from: number, visible: number[]): number {
   return visible.find((i) => i > from) ?? visible[visible.length - 1] ?? from;
@@ -184,6 +189,12 @@ export default function AssessmentScreen() {
   }, [preview, params.step, profileMode]);
 
   const step = STEPS[stepIndex];
+  // Funnel: onboarding step keys only (no answers). Not in profile mode or dev preview.
+  const funnelOnboarding = !profileMode && !preview;
+  const viewedStepKey = form ? step?.key : undefined;
+  useEffect(() => {
+    if (funnelOnboarding) trackOnboardingStep('viewed', viewedStepKey);
+  }, [funnelOnboarding, viewedStepKey]);
   const visibleIndices = useMemo(
     () => visibleFor(form ?? {}),
     [visibleFor, form?.takesMedications, form?.hasConditions, form?.primaryGoal, form?.gender],
@@ -274,6 +285,7 @@ export default function AssessmentScreen() {
       });
       setHealthProfile(result.profile);
       if (result.user) setUser(result.user);
+      trackOnboardingStep('completed', STEPS[stepIndex]?.key);
       router.replace(nextProfileSetupHref(result.profile, result.user ?? user) as never);
     },
     [preview, router, setHealthProfile, setUser, stepIndex, profileMode, user],
@@ -299,6 +311,7 @@ export default function AssessmentScreen() {
     setBusy(true);
     try {
       await persistStep(nextIndex, nextForm);
+      if (funnelOnboarding) trackOnboardingStep('completed', step.key);
     } catch (e) {
       markSessionDead(e);
       setStepIndex(prevIndex);
@@ -349,6 +362,7 @@ export default function AssessmentScreen() {
     setBusy(true);
     try {
       await persistStep(nextIndex, confirmedForm);
+      if (funnelOnboarding) trackOnboardingStep('completed', step.key);
     } catch (e) {
       markSessionDead(e);
       setStepIndex(prevIndex);

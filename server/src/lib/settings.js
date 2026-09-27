@@ -6,7 +6,7 @@ import { consumerPurchasesEnabled } from './consumerPurchases.js';
 const DEFAULTS = {
   id: 'default',
   maintenanceMode: false,
-  maintenanceMessage: 'აპლიკაცია დროებით განახლების რეჟიმშია. სცადე მოგვიანებით.',
+  maintenanceMessage: 'აპი ახლა ახლდება. სცადე ცოტა ხანში.',
   minAppVersion: '1.0.0',
   forceUpdate: false,
   allowRegistrations: true,

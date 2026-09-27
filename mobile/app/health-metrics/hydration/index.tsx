@@ -231,7 +231,7 @@ function HubCards({
         ) : null}
       </Section>
 
-      <Section title={ka.hydration.aiTitle} onSeeAll={() => router.push('/chat/doctor' as never)} T={T} sparkle>
+      <Section title={ka.hydration.aiTitle} onSeeAll={() => router.push('/assistant?mode=doctor' as never)} T={T} sparkle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
           {ka.hydration.aiTips.map((tip) => (
             <View

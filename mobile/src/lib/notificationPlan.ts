@@ -99,8 +99,8 @@ export function engageDestination(
     case 'sleep':
     case 'reengage':
     case 'morning': {
-      const mode = extra?.chatMode === 'CONSILIUM' ? 'CONSILIUM' : 'DOCTOR';
-      return extra?.chatId ? `/chat/${mode}?sessionId=${encodeURIComponent(extra.chatId)}` : `/chat/${mode}`;
+      const mode = extra?.chatMode === 'CONSILIUM' ? 'deep' : 'doctor';
+      return extra?.chatId ? `/assistant?mode=${mode}&sessionId=${encodeURIComponent(extra.chatId)}` : `/assistant?mode=${mode}`;
     }
     case 'unfinished':
       return '/medications/add';
@@ -152,7 +152,7 @@ export function routeFromNotificationData(data: Record<string, unknown> | undefi
         ? `/visits/editor?id=${encodeURIComponent(data.visitId)}`
         : '/visits';
     case 'quota_reset':
-      return '/chat/DOCTOR';
+      return '/assistant?mode=doctor';
     case 'cycle_reminder':
     case 'cycle_tip':
       return '/cycle';

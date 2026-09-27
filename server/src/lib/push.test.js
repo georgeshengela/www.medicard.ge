@@ -8,6 +8,9 @@ import {
   stringifyPushData,
   applyPushReceipts,
   sendExpoPush,
+  sendExpoChunk,
+  isTransientPushStatus,
+  pushRetryDelayMs,
 } from './push.js';
 
 describe('isExpoPushToken', () => {
@@ -101,6 +104,36 @@ describe('sendExpoPush', () => {
     assert.equal(result.failed, 0);
   });
 
+  it('retries a 429 once, then counts the chunk as sent', async () => {
+    const statuses = [429, 200];
+    const waits = [];
+    const result = await sendExpoPush(
+      ['ExponentPushToken[a]'],
+      { title: 'Hi', body: 'Test' },
+      {
+        sleep: async (ms) => { waits.push(ms); },
+        fetchImpl: async () => {
+          const status = statuses.shift();
+          return { ok: status === 200, status, headers: { get: () => '2' }, json: async () => (status === 200 ? { data: { status: 'ok', id: 't' } } : {}) };
+        },
+      },
+    );
+    assert.deepEqual(waits, [2000]);
+    assert.equal(result.sent, 1);
+  });
+
+  it('still throws after retries on network failure so outbox callers retry later', async () => {
+    let calls = 0;
+    await assert.rejects(
+      sendExpoPush(['ExponentPushToken[a]'], { title: 'Hi', body: 'Test' }, {
+        sleep: async () => {},
+        fetchImpl: async () => { calls += 1; throw new Error('socket hang up'); },
+      }),
+      /socket hang up/,
+    );
+    assert.equal(calls, 4);
+  });
+
   it('ignores junk tokens', async () => {
     const result = await sendExpoPush(['nope', ''], { title: 'Hi', body: 'Test' });
     assert.deepEqual(result, { sent: 0, failed: 0, tickets: [], deliveries: [] });
@@ -126,5 +159,34 @@ describe('applyPushReceipts', () => {
     assert.equal(result.sent, 0);
     assert.equal(result.failed, 1);
     assert.equal(result.deliveries[0].error, 'DeviceNotRegistered');
+  });
+});
+
+describe('push retry policy', () => {
+  it('treats only 429 and 5xx as transient', () => {
+    assert.equal(isTransientPushStatus(429), true);
+    assert.equal(isTransientPushStatus(503), true);
+    assert.equal(isTransientPushStatus(400), false);
+    assert.equal(isTransientPushStatus(undefined), false);
+  });
+
+  it('backs off exponentially, honours Retry-After, caps at 30 s', () => {
+    assert.deepEqual([0, 1, 2].map((a) => pushRetryDelayMs(a)), [1000, 2000, 4000]);
+    assert.equal(pushRetryDelayMs(0, '5'), 5000);
+    assert.equal(pushRetryDelayMs(10), 30000);
+  });
+
+  it('reports DeviceNotRegistered tokens and ticket ids per chunk', async () => {
+    const result = await sendExpoChunk(['ExponentPushToken[a]', 'ExponentPushToken[b]'], { title: 'Hi', body: 'x' }, {
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: [{ status: 'ok', id: 't1' }, { status: 'error', details: { error: 'DeviceNotRegistered' } }] }),
+      }),
+    });
+    assert.deepEqual(result.stale, ['ExponentPushToken[b]']);
+    assert.deepEqual(result.ticketTokens, [['t1', 'ExponentPushToken[a]']]);
+    assert.equal(result.sent, 1);
+    assert.equal(result.failed, 1);
   });
 });

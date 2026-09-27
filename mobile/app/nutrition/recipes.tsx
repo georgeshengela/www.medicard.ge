@@ -55,6 +55,7 @@ function Recipes() {
     try {
       const type = mealTypeForHour(new Date().getHours());
       const { meal } = await api.nutrition.save({ id: newUuid(), date: localDay(), type, items: [{ ...item, name: food.name }], note: "", title: food.name, source: "saved" });
+      void import('@/lib/funnel').then(({ trackFirstHealthAction }) => trackFirstHealthAction('meal')).catch(() => undefined);
       void api.nutrition.foods.used([food.id]).catch(() => {});
       void syncMealsToHealth([meal]);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});

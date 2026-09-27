@@ -166,6 +166,7 @@ export function MedicationSetupForm({
         },
       });
       await import('@/lib/mediEngagePrefs').then(({ clearUnfinishedDraft }) => clearUnfinishedDraft('medication_add'));
+      void import('@/lib/funnel').then(({ trackFirstHealthAction }) => trackFirstHealthAction('medication')).catch(() => undefined);
       onSaved();
     } catch (err) {
       Alert.alert(ka.common.error, err instanceof ApiError ? err.message : ka.common.error);

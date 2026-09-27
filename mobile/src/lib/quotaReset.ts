@@ -1,7 +1,7 @@
 import type { Usage } from '@/lib/api';
 
 export const QUOTA_RESET_PREF = 'medicard.quota.resetShown.v1';
-export const QUOTA_RESET_ROUTE = '/chat/DOCTOR';
+export const QUOTA_RESET_ROUTE = '/assistant?mode=doctor';
 
 export function tbilisiYmd(now = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tbilisi' }).format(now);

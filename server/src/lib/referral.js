@@ -34,9 +34,16 @@ export const REFERRAL_ERRORS = {
   NETWORK_USED: 'ამ ქსელიდან ამ კოდით მოწვევა უკვე დაფიქსირდა.',
 };
 
-/** Same inviter, same client network, within this window: at most two claims (households share Wi-Fi). installId alone is client-supplied. */
+/**
+ * Same inviter, same client network, within this window: at most three claims. installId alone is
+ * client-supplied, so the request IP is the only server-observed signal against one person farming
+ * codes from one place. The cap is deliberately loose: Georgian mobile carriers put many unrelated
+ * subscribers behind one CGNAT address, and households share Wi-Fi, so two was hitting real friends.
+ * We cannot tell a carrier NAT from a home router without an IP-intelligence lookup, so the rule
+ * stays uniform and relies on the per-device, verified-phone and monthly caps for the rest.
+ */
 export const NETWORK_WINDOW_DAYS = 30;
-export const NETWORK_CLAIMS_PER_INVITER = 2;
+export const NETWORK_CLAIMS_PER_INVITER = 3;
 
 export function generateCode(pick = (n) => randomInt(n)) {
   let out = '';

@@ -187,7 +187,7 @@ export default function SymptomResultsScreen() {
         <SymptomCta
           label={ka.symptoms.talkDoctor}
           onPress={() =>
-            router.push(`/chat/doctor?prefill=${encodeURIComponent(state.symptoms.join(', '))}` as never)
+            router.push(`/assistant?mode=doctor&prefill=${encodeURIComponent(state.symptoms.join(', '))}` as never)
           }
         />
         <Pressable onPress={() => router.replace('/symptoms/history' as never)} style={{ alignItems: 'center', marginTop: 12 }}>

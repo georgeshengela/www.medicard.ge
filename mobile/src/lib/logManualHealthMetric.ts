@@ -100,6 +100,7 @@ export async function logManualHealthMetric(
   } catch (error) {
     console.warn('[health-metric] sync failed', error);
   }
+  void import('@/lib/funnel').then(({ trackFirstHealthAction }) => trackFirstHealthAction(key === 'weight' ? 'weight' : 'checkin_manual')).catch(() => undefined);
 
   try {
     await api.healthProfile.update(profilePatchForKey(key, value, valueSecondary, profile));

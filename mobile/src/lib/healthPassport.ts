@@ -1,3 +1,5 @@
+import { allergyEnglishLabel } from '../constants/allergyCatalog.ts';
+import { conditionEnglishLabel } from '../constants/conditionCatalog.ts';
 import { PASSPORT_COPY, type PassportLocale } from '../i18n/healthPassport.ts';
 
 /**
@@ -10,8 +12,10 @@ export type PassportData = {
   allergies: string[];
   conditions: string[];
   medications: Array<{ name: string; dose?: string | null; schedule?: string | null }>;
-  labs: { date: string; rows: Array<{ name: string; value: string; unit?: string | null; refLow?: number | null; refHigh?: number | null; flag?: string | null }> } | null;
-  visits: Array<{ date: string; doctor: string; notes?: string | null }>;
+  /** `name` is the Georgian/stored name; `nameEn` (canonical English title) is used in the English PDF. */
+  labs: { date: string; rows: Array<{ name: string; nameEn?: string | null; value: string; unit?: string | null; refLow?: number | null; refHigh?: number | null; flag?: string | null }> } | null;
+  /** `doctor` is the Georgian line; `doctorType` (visit code) + `doctorName` rebuild it in English. */
+  visits: Array<{ date: string; doctor: string; doctorType?: string | null; doctorName?: string | null; notes?: string | null }>;
   /** Optional, only when the person chose to include it: inner HTML of the cycle report. */
   cycleHtml?: string | null;
   generatedOn: string; // YYYY-MM-DD
@@ -29,6 +33,29 @@ export function ageOn(birthDate: string | null | undefined, onYmd: string): numb
   let age = y - by;
   if (m < bm || (m === bm && d < bd)) age -= 1;
   return age >= 0 && age < 130 ? age : null;
+}
+
+const hasGeorgian = (value: string) => /[Ⴀ-ჿ]/.test(value);
+
+/** English PDF: catalog labels become English; anything the person typed stays as they wrote it. */
+export function passportLabName(row: { name: string; nameEn?: string | null }, locale: PassportLocale): string {
+  if (locale === 'en' && row.nameEn && row.nameEn.trim() && !hasGeorgian(row.nameEn)) return row.nameEn.trim();
+  return row.name;
+}
+
+export function passportDoctor(visit: { doctor: string; doctorType?: string | null; doctorName?: string | null }, locale: PassportLocale): string {
+  if (locale !== 'en' || !visit.doctorType) return visit.doctor;
+  const type = PASSPORT_COPY.en.doctorType[visit.doctorType];
+  if (!type) return visit.doctor;
+  return [type, visit.doctorName?.trim()].filter(Boolean).join(' · ');
+}
+
+export function passportAllergy(value: string, locale: PassportLocale): string {
+  return locale === 'en' ? allergyEnglishLabel(value) : value;
+}
+
+export function passportCondition(value: string, locale: PassportLocale): string {
+  return locale === 'en' ? conditionEnglishLabel(value) : value;
 }
 
 function range(low?: number | null, high?: number | null) {
@@ -73,16 +100,16 @@ export function buildHealthPassportHtml(data: PassportData, locale: PassportLoca
 </style></head><body>
 <h1>${esc(t.title)}</h1><p class="muted">${esc(t.generated(data.generatedOn))}</p>
 <h2>${esc(t.person)}</h2><table class="facts">${facts.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>
-<h2>${esc(t.allergies)}</h2>${list(data.allergies, t.noAllergies)}
-<h2>${esc(t.conditions)}</h2>${list(data.conditions, t.noConditions)}
+<h2>${esc(t.allergies)}</h2>${list(data.allergies.map((a) => passportAllergy(a, locale)), t.noAllergies)}
+<h2>${esc(t.conditions)}</h2>${list(data.conditions.map((c) => passportCondition(c, locale)), t.noConditions)}
 <h2>${esc(t.medications)}</h2>${meds.length
     ? `<table><tr><th>${esc(t.medName)}</th><th>${esc(t.dose)}</th><th>${esc(t.schedule)}</th></tr>${meds.map((m) => `<tr><td>${esc(m.name)}</td><td>${esc(m.dose || '—')}</td><td>${esc(m.schedule || '—')}</td></tr>`).join('')}</table>`
     : `<p class="muted">${esc(t.noMedications)}</p>`}
 <h2>${esc(t.labs)}</h2>${labRows.length
-    ? `<p class="muted">${esc(t.labDate(data.labs!.date))}</p><table><tr><th>${esc(t.parameter)}</th><th>${esc(t.result)}</th><th>${esc(t.reference)}</th><th></th></tr>${labRows.map((r) => `<tr><td>${esc(r.name)}</td><td>${esc(r.value)}${r.unit ? ' ' + esc(r.unit) : ''}</td><td>${esc(range(r.refLow, r.refHigh))}</td><td class="flag-${esc(r.flag || 'U')}">${esc(t.flag[r.flag || 'U'] ?? '')}</td></tr>`).join('')}</table>`
+    ? `<p class="muted">${esc(t.labDate(data.labs!.date))}</p><table><tr><th>${esc(t.parameter)}</th><th>${esc(t.result)}</th><th>${esc(t.reference)}</th><th></th></tr>${labRows.map((r) => `<tr><td>${esc(passportLabName(r, locale))}</td><td>${esc(r.value)}${r.unit ? ' ' + esc(r.unit) : ''}</td><td>${esc(range(r.refLow, r.refHigh))}</td><td class="flag-${esc(r.flag || 'U')}">${esc(t.flag[r.flag || 'U'] ?? '')}</td></tr>`).join('')}</table>`
     : `<p class="muted">${esc(t.noLabs)}</p>`}
 <h2>${esc(t.visits)}</h2>${visits.length
-    ? `<table><tr><th>${esc(t.visitDate)}</th><th>${esc(t.doctor)}</th><th>${esc(t.notes)}</th></tr>${visits.map((v) => `<tr><td>${esc(v.date)}</td><td>${esc(v.doctor)}</td><td>${esc(v.notes || '—')}</td></tr>`).join('')}</table>`
+    ? `<table><tr><th>${esc(t.visitDate)}</th><th>${esc(t.doctor)}</th><th>${esc(t.notes)}</th></tr>${visits.map((v) => `<tr><td>${esc(v.date)}</td><td>${esc(passportDoctor(v, locale))}</td><td>${esc(v.notes || '—')}</td></tr>`).join('')}</table>`
     : `<p class="muted">${esc(t.noVisits)}</p>`}
 ${data.cycleHtml ? `<div class="pagebreak"></div><h2>${esc(t.cycle)}</h2>${bodyOf(data.cycleHtml)}` : ''}
 <p class="footer">${esc(t.footer)}</p>

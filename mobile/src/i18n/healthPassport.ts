@@ -74,6 +74,20 @@ export const PASSPORT_COPY = {
     doctor: 'Doctor',
     notes: 'Notes',
     sexLabel: { MALE: 'Male', FEMALE: 'Female', OTHER: 'Other' } as Record<string, string>,
+    /** Visit doctor types (codes from constants/visits) — the Georgian labels live in ka.visits.types. */
+    doctorType: {
+      GP: 'Family doctor (GP)',
+      DENTIST: 'Dentist',
+      CARDIO: 'Cardiologist',
+      GYN: 'Gynecologist',
+      NEURO: 'Neurologist',
+      ORTHO: 'Orthopedist',
+      THERAPIST: 'Internist',
+      OPHTHALMO: 'Ophthalmologist',
+      DERM: 'Dermatologist',
+      PED: 'Pediatrician',
+      OTHER: 'Other specialist',
+    } as Record<string, string>,
     cycle: 'Cycle summary',
     footer:
       'Generated in MEDICARD from data the person entered and saved. It is not a medical report or a diagnosis — please confirm with a clinician.',

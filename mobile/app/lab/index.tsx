@@ -84,7 +84,7 @@ export default function LabHubScreen() {
             accessibilityLabel={ka.lab.askMediChat}
             onPress={() => {
               const prefill = labMediPrompt(panels);
-              router.push({ pathname: '/chat/doctor', params: prefill ? { prefill } : {} } as never);
+              router.push({ pathname: '/assistant', params: prefill ? { mode: 'doctor', prefill } : { mode: 'doctor' } } as never);
             }}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 16, backgroundColor: T.brandSoft }}
           >

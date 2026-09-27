@@ -183,7 +183,7 @@ export async function handleNotificationAction(
   }
 
   if (action === NOTIF_ACTION.chat) {
-    return { navigate: true, route: '/chat/DOCTOR' };
+    return { navigate: true, route: '/assistant?mode=doctor' };
   }
 
   if (action === NOTIF_ACTION.open) {

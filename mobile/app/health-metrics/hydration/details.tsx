@@ -87,7 +87,7 @@ export default function HydrationDetailsScreen() {
           <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: '#FFFFFF' }}>{ka.hydration.seeImprovements}</Text>
         </Pressable>
         <Pressable
-          onPress={() => router.push('/chat/doctor' as never)}
+          onPress={() => router.push('/assistant?mode=doctor' as never)}
           style={{ minHeight: 48, borderRadius: 16, borderWidth: 1, borderColor: T.brand, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}
         >
           <MessageCircle size={18} color={T.brand} />

@@ -419,6 +419,7 @@ function NutritionScreen({ owner }: { owner: string }) {
     run(async () => {
       if (!draft || !draft.items.length) return;
       const { meal: saved } = await api.nutrition.save(draft);
+      void import('@/lib/funnel').then(({ trackFirstHealthAction }) => trackFirstHealthAction('meal')).catch(() => undefined);
       void syncMealsToHealth([saved]);
       if (!alive.current) return;
       setDraft(null);

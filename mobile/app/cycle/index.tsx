@@ -927,7 +927,7 @@ export default function CycleHome() {
               {modeCaps.showPregnancyOverview ? (
                 <View style={{ paddingHorizontal: 16 }}>
                   <Pressable
-                    onPress={() => router.push('/chat/doctor' as never)}
+                    onPress={() => router.push('/assistant?mode=doctor' as never)}
                     accessibilityRole="button"
                     accessibilityLabel={ka.cycle.askMedi}
                     style={{
@@ -1029,7 +1029,7 @@ export default function CycleHome() {
 
                 {/* Quiet Medi entry (§17) — a row, never a card wall. */}
                 <Pressable
-                  onPress={() => router.push('/chat/doctor' as never)}
+                  onPress={() => router.push('/assistant?mode=doctor' as never)}
                   accessibilityRole="button"
                   accessibilityLabel={ka.cycle.askMedi}
                   style={{
