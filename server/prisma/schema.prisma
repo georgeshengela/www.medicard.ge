@@ -123,6 +123,12 @@ model User {
   @@index([lastCheckInDate])
   passwordResets    PasswordReset[]
   assistantOperations AssistantOperation[]
+  /// Raw-SQL tables brought under Prisma 2026-09-27 (see the models at the end of this file)
+  location          UserLocation?
+  priceDropAlerts   PriceDropAlert[]
+  referralCode      ReferralCode?
+  referralsSent     Referral[] @relation("ReferralInviter")
+  referralReceived  Referral?  @relation("ReferralInvitee")
 }
 
 /// Execution receipt only: no dictated text, health context or audio.
@@ -955,6 +961,8 @@ model CatalogProduct {
   offerCount     Int             @default(0)
   lastSyncedAt   DateTime?
   offers         PharmacyOffer[]
+  priceHistory   CatalogPriceHistory[]
+  priceAlerts    PriceDropAlert[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -2339,4 +2347,204 @@ model NutritionPlannedMeal {
  updatedAt DateTime @default(now()) @db.Timestamptz(6)
  @@unique([userId,date,type])
  @@index([userId,date])
+}
+
+// ---------------------------------------------------------------------------
+// Tables created by additive raw-SQL installers (prisma/*.sql, lazy CREATE TABLE).
+// Introspected from the main database 2026-09-27 so the schema matches reality.
+// Code still reads/writes them with raw SQL. CHECK constraints (Referral.status,
+// PriceDropAlert.state) live only in SQL. Never run `prisma db push`
+// (scripts/no-db-push.mjs); ship DDL as additive SQL like the installers do.
+// Hunt* tables are unused (retired Medi Hunt) and kept only so nothing drops them.
+// CommunityConfig is created by prisma/community.sql when the launch flag is first used.
+// ---------------------------------------------------------------------------
+
+model CatalogPriceHistory {
+  id             String         @id
+  productId      String
+  bestPriceGel   Float
+  sourceId       String?
+  recordedAt     DateTime       @default(now())
+  product        CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([productId, recordedAt(sort: Desc)], map: "CatalogPriceHistory_product_time")
+}
+
+model PriceDropAlert {
+  id             String         @id
+  userId         String
+  productId      String
+  medName        String
+  fromGel        Float
+  toGel          Float
+  sourceId       String?
+  state          String         @default("PENDING")
+  attempts       Int            @default(0)
+  createdAt      DateTime       @default(now())
+  sentAt         DateTime?
+  product        CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, productId, toGel], map: "PriceDropAlert_user_product_price")
+  @@index([state, createdAt], map: "PriceDropAlert_state")
+  @@index([userId, sentAt], map: "PriceDropAlert_user_sent")
+}
+
+model Referral {
+  id                            String    @id
+  inviterId                     String
+  inviteeId                     String    @unique(map: "Referral_invitee")
+  code                          String
+  deviceHash                    String?   @unique(map: "Referral_device")
+  status                        String    @default("PENDING")
+  reason                        String?
+  inviterRewarded               Boolean   @default(false)
+  createdAt                     DateTime  @default(now())
+  rewardedAt                    DateTime?
+  networkHash                   String?
+  invitee                       User      @relation("ReferralInvitee", fields: [inviteeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  inviter                       User      @relation("ReferralInviter", fields: [inviterId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([inviterId, createdAt(sort: Desc)], map: "Referral_inviter_time")
+  @@index([inviterId, networkHash, createdAt], map: "Referral_inviter_network")
+  @@index([status, createdAt], map: "Referral_status_time")
+}
+
+model ReferralCode {
+  userId    String   @id
+  code      String   @unique(map: "ReferralCode_code")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model FeatureFlag {
+  key       String   @id
+  enabled   Boolean  @default(true)
+  message   String?
+  updatedAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedBy String?
+}
+
+model UserLocation {
+  userId         String    @id
+  lat            Float?
+  lng            Float?
+  accuracy       Float?
+  countryCode    String?
+  countryKa      String?
+  cityKa         String?
+  enabled        Boolean   @default(true)
+  updatedAt      DateTime
+  placeUpdatedAt DateTime?
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([countryCode])
+  @@index([updatedAt])
+}
+
+model HuntSession {
+  id           String        @id
+  userId       String
+  status       String
+  mode         String
+  simulation   Boolean       @default(false)
+  seq          Int           @default(0)
+  config       Json
+  bounds       Json
+  graph        Json
+  entities     Json
+  origin       Json
+  lastFix      Json?
+  recentFixes  Json?
+  shields      Int           @default(3)
+  huntUntil    DateTime?
+  immuneUntil  DateTime?
+  encounter    Json?
+  distanceM    Float         @default(0)
+  activeMs     Int           @default(0)
+  pausedAt     DateTime?
+  lastSimAt    DateTime
+  lastPingAt   DateTime
+  startedAt    DateTime
+  expiresAt    DateTime
+  endedAt      DateTime?
+  coinsAwarded Int           @default(0)
+  captures     Int           @default(0)
+  capsules     Int           @default(0)
+  hunts        Int           @default(0)
+  combo        Int           @default(0)
+  mission      Json?
+  gpsHint      String?
+  endReason    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now())
+  HuntCapture  HuntCapture[]
+
+  @@index([createdAt])
+  @@index([simulation, createdAt])
+  @@index([userId, status])
+}
+
+model HuntCapture {
+  id          String      @id
+  sessionId   String
+  userId      String
+  enemyId     String
+  createdAt   DateTime    @default(now())
+  HuntSession HuntSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, enemyId])
+  @@index([userId, createdAt])
+}
+
+model HuntConfig {
+  id        String   @id
+  rules     Json
+  updatedAt DateTime @default(now())
+}
+
+model HuntGraphCache {
+  cellKey   String   @id
+  payload   Json
+  fetchedAt DateTime
+}
+
+model HuntProgress {
+  userId    String   @id
+  viruses   Int      @default(0)
+  titles    Json?
+  updatedAt DateTime @default(now())
+}
+
+model HuntQaGrant {
+  userId    String   @id
+  grantedBy String
+  createdAt DateTime @default(now())
+}
+
+model HuntSuspicious {
+  id        String   @id
+  userId    String
+  sessionId String?
+  reason    String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+/// Women's-space launch flag (prisma/community.sql). One row, id = 'main'; missing row or table = closed.
+model CommunityConfig {
+  id        String   @id
+  open      Boolean  @default(false)
+  updatedAt DateTime @default(now())
+  updatedBy String?
+}
+
+/// Background-job leader lease (prisma/20260927-job-lease.sql, src/lib/jobLease.js).
+model JobLease {
+  name      String   @id
+  holder    String
+  expiresAt DateTime
 }

@@ -1,4 +1,5 @@
 import { prisma } from '../prisma.js';
+import { acquireJobLease } from '../jobLease.js';
 import { syncAllPharmacySources, isSyncRunning, cleanupStaleRuns } from './sync.js';
 
 const DEFAULT_INTERVAL_HOURS = 6;
@@ -24,6 +25,8 @@ async function tick() {
   if (ticking) return;
   ticking = true;
   try {
+    // One scheduler across instances (the separate Render cron still guards itself via isSyncRunning).
+    if (!(await acquireJobLease('pharmacy-sync-scheduler', CHECK_MS * 2))) return;
     await cleanupStaleRuns();
     if (await isSyncRunning()) return;
     const last = await lastFinishedAllRun();

@@ -1,6 +1,8 @@
 import { existsSync } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
+import { Readable } from 'node:stream';
+import { deleteObject, getObject, objectStorageConfigured } from './objectStorage.js';
 import { UPLOAD_DIR } from './storage.js';
 import { prisma } from './prisma.js';
 import { applyPrivateCache } from './cycleShare.js';
@@ -121,6 +123,7 @@ export async function authorizePrivateUpload({
   filename,
   findOwner = findOwnedPrivateUpload,
   uploadDir = UPLOAD_DIR,
+  remote = objectStorageConfigured(),
 }) {
   const parsed = parseUploadFilename(filename);
   if (!parsed) {
@@ -137,10 +140,11 @@ export async function authorizePrivateUpload({
   if (!owner) {
     return { ok: false, status: 404, error: 'ფაილი ვერ მოიძებნა.' };
   }
-  if (!existsSync(abs)) {
+  // With object storage the bytes live in the bucket (older files may still sit on local disk).
+  if (!remote && !existsSync(abs)) {
     return { ok: false, status: 404, error: 'ფაილი ვერ მოიძებნა.' };
   }
-  return { ok: true, status: 200, abs, filename: parsed, mime: mimeForFilename(parsed) };
+  return { ok: true, status: 200, abs, filename: parsed, mime: mimeForFilename(parsed), remote };
 }
 
 export async function servePrivateUpload(req, res, options = {}) {
@@ -149,6 +153,7 @@ export async function servePrivateUpload(req, res, options = {}) {
     filename: req.params?.filename,
     findOwner: options.findOwner,
     uploadDir: options.uploadDir,
+    ...(options.remote !== undefined ? { remote: options.remote } : {}),
   });
   if (!result.ok) {
     applyPrivateCache(res);
@@ -158,6 +163,26 @@ export async function servePrivateUpload(req, res, options = {}) {
       return res.status(result.status).json({ error: 'ფაილი ვერ მოიძებნა.' });
     }
     return res.status(result.status).json(body);
+  }
+  if (result.remote) {
+    let object = null;
+    try {
+      object = await (options.getObject ?? getObject)(`/uploads/${result.filename}`);
+    } catch {
+      console.error('[uploads] object storage read failed');
+    }
+    if (object?.body) {
+      applyPrivateFileHeaders(res, { filename: result.filename, mime: result.mime });
+      const length = object.headers?.get?.('content-length');
+      if (length) res.setHeader('Content-Length', length);
+      Readable.fromWeb(object.body).on('error', () => res.destroy()).pipe(res);
+      return undefined;
+    }
+    if (!existsSync(result.abs)) {
+      applyPrivateCache(res);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      return res.status(404).json({ error: 'ფაილი ვერ მოიძებნა.' });
+    }
   }
   applyPrivateFileHeaders(res, { filename: result.filename, mime: result.mime });
   return res.sendFile(result.abs, (err) => {
@@ -174,6 +199,13 @@ export async function unlinkStoredUpload(imageUrl, uploadDir = UPLOAD_DIR) {
   if (!filename) return false;
   const abs = resolveUploadPath(filename, uploadDir);
   if (!abs) return false;
+  if (objectStorageConfigured()) {
+    try {
+      await deleteObject(`/uploads/${filename}`);
+    } catch {
+      console.error('[uploads] object storage delete failed');
+    }
+  }
   try {
     await unlink(abs);
     return true;

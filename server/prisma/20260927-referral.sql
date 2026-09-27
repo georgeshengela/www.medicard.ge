@@ -26,3 +26,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS "Referral_invitee" ON "Referral"("inviteeId");
 CREATE UNIQUE INDEX IF NOT EXISTS "Referral_device" ON "Referral"("deviceHash");
 CREATE INDEX IF NOT EXISTS "Referral_inviter_time" ON "Referral"("inviterId", "createdAt" DESC);
 CREATE INDEX IF NOT EXISTS "Referral_status_time" ON "Referral"(status, "createdAt");
+
+-- 2026-09-27 audit: installId is client-supplied, so claims also record a hash of the server-observed
+-- request IP. One claim per inviter per network per 30 days. Additive nullable column.
+ALTER TABLE "Referral" ADD COLUMN IF NOT EXISTS "networkHash" TEXT;
+CREATE INDEX IF NOT EXISTS "Referral_inviter_network" ON "Referral"("inviterId", "networkHash", "createdAt");

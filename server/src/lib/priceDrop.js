@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { withJobLease } from './jobLease.js';
 import { prisma } from './prisma.js';
 import { sendExpoPush } from './push.js';
 
@@ -122,7 +123,11 @@ export async function dispatchPriceDropAlerts({ now = new Date(), db = prisma, s
 
 export function startPriceDropAlerts() {
   if (process.env.PRICE_DROP_ALERTS === 'false') return undefined;
-  const timer = setInterval(() => void dispatchPriceDropAlerts().catch(() => console.warn('[price-drop] outbox unavailable')), 10 * 60 * 1000);
+  const intervalMs = 10 * 60 * 1000;
+  // One sender across instances: a second instance would otherwise read the same PENDING rows and push twice.
+  const tick = () => withJobLease('price-drop-alerts', intervalMs * 1.5, () => dispatchPriceDropAlerts())
+    .catch(() => console.warn('[price-drop] outbox unavailable'));
+  const timer = setInterval(() => void tick(), intervalMs);
   timer.unref();
   return () => clearInterval(timer);
 }

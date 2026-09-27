@@ -15,6 +15,10 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     autoDeployTrigger: commit
+    # One instance: Socket.IO has no shared adapter (no Redis) and rooms live in memory.
+    # Background jobs are safe across instances (JobLease), realtime is not — add a Redis
+    # adapter before raising this.
+    numInstances: 1
     domains:
       - medicard.ge
     envVars:
@@ -68,6 +72,19 @@ services:
         value: MEDICARD
       - key: MAPBOX_PUBLIC_TOKEN
         sync: false
+      # Uploads (pet photos, medical records). Cloudflare R2: S3_ENDPOINT =
+      # https://<account-id>.r2.cloudflarestorage.com, S3_REGION auto. Without these the
+      # server writes Render's ephemeral disk and files are lost on every deploy.
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_REGION
+        value: auto
       # App Review sign-in number + fixed 4-digit code (no SMS). Values live only in Render.
       - key: APP_REVIEW_PHONE
         sync: false

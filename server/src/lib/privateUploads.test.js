@@ -267,3 +267,61 @@ describe('pet photo ownership finder', () => {
     assert.equal(other, null);
   });
 });
+
+describe('object storage (R2) serving, audit 2026-09-27', () => {
+  async function remoteApp(dir, userId, getObject) {
+    const app = express();
+    app.get('/api/files/:filename', fakeAuth(userId), (req, res, next) => {
+      servePrivateUpload(req, res, { uploadDir: dir, findOwner: ownerMap(dir), remote: true, getObject }).catch(next);
+    });
+    return listen(app);
+  }
+
+  it('streams the owner file from the bucket when it is not on local disk', async () => {
+    const empty = await mkdtemp(path.join(tmpdir(), 'r2-uploads-'));
+    const asked = [];
+    const getObject = async (key) => {
+      asked.push(key);
+      return new Response(FIXTURE, { headers: { 'content-length': String(FIXTURE.length) } });
+    };
+    const { port, close } = await remoteApp(empty, OWNER_ID, getObject);
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/api/files/${FILE}`);
+      const buf = Buffer.from(await res.arrayBuffer());
+      assert.equal(res.status, 200);
+      assert.equal(buf.equals(FIXTURE), true);
+      assert.match(res.headers.get('cache-control') || '', /no-store/);
+      assert.deepEqual(asked, [`/uploads/${FILE}`]);
+    } finally {
+      await close();
+      await rm(empty, { recursive: true, force: true });
+    }
+  });
+
+  it('never asks the bucket for another person\'s file', async () => {
+    const empty = await mkdtemp(path.join(tmpdir(), 'r2-uploads-'));
+    let asked = 0;
+    const { port, close } = await remoteApp(empty, OTHER_ID, async () => { asked += 1; return new Response(FIXTURE); });
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/api/files/${FILE}`);
+      assert.equal(res.status, 404);
+      assert.equal(asked, 0);
+    } finally {
+      await close();
+      await rm(empty, { recursive: true, force: true });
+    }
+  });
+
+  it('falls back to a legacy disk copy when the bucket has no object', async () => {
+    await withUploadDir(async (dir) => {
+      const { port, close } = await remoteApp(dir, OWNER_ID, async () => null);
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/api/files/${FILE}`);
+        assert.equal(res.status, 200);
+        assert.equal(Buffer.from(await res.arrayBuffer()).equals(FIXTURE), true);
+      } finally {
+        await close();
+      }
+    });
+  });
+});

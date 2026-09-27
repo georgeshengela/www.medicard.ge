@@ -7,7 +7,7 @@ const db = new PrismaClient();
 try {
   const sql = await readFile(new URL('../prisma/20260927-referral.sql', import.meta.url), 'utf8');
   const statements = sql.replace(/--[^\n]*/g, '').split(';').map((s) => s.trim()).filter(Boolean);
-  if (statements.some((s) => !/^CREATE (TABLE|INDEX|UNIQUE INDEX) IF NOT EXISTS "(ReferralCode|Referral)/.test(s))) {
+  if (statements.some((s) => !/^CREATE (TABLE|INDEX|UNIQUE INDEX) IF NOT EXISTS "(ReferralCode|Referral)|^ALTER TABLE "Referral" ADD COLUMN IF NOT EXISTS "[A-Za-z]+" TEXT$/.test(s))) {
     throw new Error('Unexpected non-additive statement');
   }
   await db.$transaction(async (tx) => {

@@ -1,5 +1,6 @@
 import { isFeatureEnabled } from './featureFlags.js';
 import { createHash, randomInt, randomUUID } from 'node:crypto';
+import { withJobLease } from './jobLease.js';
 import { prisma } from './prisma.js';
 import { sendExpoPush } from './push.js';
 import { hasVerifiedPhone } from './phoneGate.js';
@@ -30,7 +31,12 @@ export const REFERRAL_ERRORS = {
   DEVICE_USED: 'ამ მოწყობილობიდან მოწვევის კოდი უკვე გამოყენებულია.',
   DEVICE_REQUIRED: 'მოწვევის კოდი აპიდან შეიყვანე.',
   INVITER_INACTIVE: 'ეს კოდი ახლა არ მოქმედებს.',
+  NETWORK_USED: 'ამ ქსელიდან ამ კოდით მოწვევა უკვე დაფიქსირდა.',
 };
+
+/** Same inviter, same client network, within this window: at most two claims (households share Wi-Fi). installId alone is client-supplied. */
+export const NETWORK_WINDOW_DAYS = 30;
+export const NETWORK_CLAIMS_PER_INVITER = 2;
 
 export function generateCode(pick = (n) => randomInt(n)) {
   let out = '';
@@ -49,6 +55,13 @@ export function deviceHashOf(installId) {
   return createHash('sha256').update(`medicard-referral:${id}`).digest('hex');
 }
 
+/** Server-observed network (request IP), hashed; never stored raw. */
+export function networkHashOf(ip) {
+  const value = String(ip ?? '').trim().replace(/^::ffff:/, '');
+  if (!value || value === 'unknown') return null;
+  return createHash('sha256').update(`medicard-referral-net:${value}`).digest('hex');
+}
+
 export function inviteLink(code) {
   return `https://medicard.ge/i/${code}`;
 }
@@ -60,13 +73,14 @@ export function tbilisiMonthStart(now = new Date()) {
 }
 
 /** Pure claim decision. Returns an error code or null when the claim may be recorded. */
-export function claimDecision({ invitee, inviter, now = new Date(), alreadyReferred, inviterReferredByInvitee, deviceUsed }) {
+export function claimDecision({ invitee, inviter, now = new Date(), alreadyReferred, inviterReferredByInvitee, deviceUsed, networkClaims = 0 }) {
   if (!inviter) return 'CODE_NOT_FOUND';
   if (inviter.id === invitee.id) return 'OWN_CODE';
   if (alreadyReferred) return 'ALREADY_CLAIMED';
   if (now.getTime() - new Date(invitee.createdAt).getTime() > CLAIM_WINDOW_DAYS * DAY) return 'TOO_LATE';
   if (inviterReferredByInvitee) return 'CYCLE';
   if (deviceUsed) return 'DEVICE_USED';
+  if (networkClaims >= NETWORK_CLAIMS_PER_INVITER) return 'NETWORK_USED';
   if (inviter.status !== 'ACTIVE') return 'INVITER_INACTIVE';
   return null;
 }
@@ -94,7 +108,7 @@ export async function getOrCreateCode(userId, { db = prisma } = {}) {
   throw new Error('REFERRAL_CODE_UNAVAILABLE');
 }
 
-export async function claimReferral({ invitee, code: rawCode, installId }, { db = prisma, now = new Date() } = {}) {
+export async function claimReferral({ invitee, code: rawCode, installId, ip }, { db = prisma, now = new Date() } = {}) {
   const code = normalizeCode(rawCode);
   const fail = (key) => ({ ok: false, code: `REFERRAL_${key}`, error: REFERRAL_ERRORS[key] });
   if (!code) return fail('CODE_NOT_FOUND');
@@ -102,15 +116,24 @@ export async function claimReferral({ invitee, code: rawCode, installId }, { db 
   // One device per referral: a claim without a device id could dodge the unique index.
   const deviceHash = deviceHashOf(installId);
   if (!deviceHash) return fail('DEVICE_REQUIRED');
-  const [[referred], [cycle], [device]] = await Promise.all([
+  const networkHash = networkHashOf(ip);
+  const networkSince = new Date(now.getTime() - NETWORK_WINDOW_DAYS * DAY);
+  const [[referred], [cycle], [device], [network]] = await Promise.all([
     db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "inviteeId" = ${invitee.id}`,
     owner ? db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "inviterId" = ${invitee.id} AND "inviteeId" = ${owner.id}` : Promise.resolve([]),
     db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "deviceHash" = ${deviceHash}`,
+    owner && networkHash
+      ? db.$queryRaw`SELECT COUNT(*)::int AS n FROM "Referral" WHERE "inviterId" = ${owner.id} AND "networkHash" = ${networkHash} AND "createdAt" >= ${networkSince}`
+      : Promise.resolve([{ n: 0 }]),
   ]);
-  const reason = claimDecision({ invitee, inviter: owner, now, alreadyReferred: Boolean(referred), inviterReferredByInvitee: Boolean(cycle), deviceUsed: Boolean(device) });
+  const reason = claimDecision({
+    invitee, inviter: owner, now,
+    alreadyReferred: Boolean(referred), inviterReferredByInvitee: Boolean(cycle), deviceUsed: Boolean(device),
+    networkClaims: Number(network?.n ?? 0),
+  });
   if (reason) return fail(reason);
-  const inserted = await db.$queryRaw`INSERT INTO "Referral" (id, "inviterId", "inviteeId", code, "deviceHash")
-    VALUES (${randomUUID()}, ${owner.id}, ${invitee.id}, ${code}, ${deviceHash})
+  const inserted = await db.$queryRaw`INSERT INTO "Referral" (id, "inviterId", "inviteeId", code, "deviceHash", "networkHash")
+    VALUES (${randomUUID()}, ${owner.id}, ${invitee.id}, ${code}, ${deviceHash}, ${networkHash})
     ON CONFLICT DO NOTHING RETURNING id`;
   if (!inserted.length) return fail('DEVICE_USED');
   return { ok: true, status: 'PENDING' };
@@ -119,7 +142,6 @@ export async function claimReferral({ invitee, code: rawCode, installId }, { db 
 async function hasHealthAction(db, userId) {
   const [row] = await db.$queryRaw`SELECT (
       EXISTS (SELECT 1 FROM "MedicationSchedule" WHERE "userId" = ${userId})
-      OR EXISTS (SELECT 1 FROM "DailyCheckIn" WHERE "userId" = ${userId})
       OR EXISTS (SELECT 1 FROM "DoctorVisit" WHERE "userId" = ${userId})
       OR EXISTS (SELECT 1 FROM "MedicalRecord" WHERE "userId" = ${userId})
       OR EXISTS (SELECT 1 FROM "NutritionMeal" WHERE "userId" = ${userId})
@@ -168,7 +190,6 @@ export async function processPendingReferrals({ db = prisma, now = new Date(), s
       JOIN "User" u ON u.id = r."inviteeId"
       WHERE r.status = 'PENDING' AND u.phone IS NOT NULL AND (
         EXISTS (SELECT 1 FROM "MedicationSchedule" x WHERE x."userId" = r."inviteeId")
-        OR EXISTS (SELECT 1 FROM "DailyCheckIn" x WHERE x."userId" = r."inviteeId")
         OR EXISTS (SELECT 1 FROM "DoctorVisit" x WHERE x."userId" = r."inviteeId")
         OR EXISTS (SELECT 1 FROM "MedicalRecord" x WHERE x."userId" = r."inviteeId")
         OR EXISTS (SELECT 1 FROM "NutritionMeal" x WHERE x."userId" = r."inviteeId")
@@ -255,7 +276,8 @@ export async function referralAdminOverview({ db = prisma, now = new Date() } = 
 
 export function startReferralRewards({ intervalMs = 10 * 60 * 1000 } = {}) {
   if (process.env.NODE_ENV === 'test' || process.env.REFERRAL_REWARDS_DISABLED === 'true') return null;
-  const tick = () => processPendingReferrals().catch((error) => console.warn('[referral] reward pass failed', error?.message));
+  // The per-row PENDING claim already makes payouts single; the lease also keeps pushes to one instance.
+  const tick = () => withJobLease('referral-rewards', intervalMs * 1.5, () => processPendingReferrals()).catch((error) => console.warn('[referral] reward pass failed', error?.message));
   const timer = setInterval(tick, intervalMs);
   timer.unref?.();
   setTimeout(tick, 60 * 1000).unref?.();

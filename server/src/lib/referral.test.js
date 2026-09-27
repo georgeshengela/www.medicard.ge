@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
-  CLAIM_WINDOW_DAYS, CODE_LENGTH, INVITER_MONTHLY_CAP, REWARD_WINDOW_DAYS,
-  claimDecision, deviceHashOf, generateCode, inviteLink, normalizeCode, rewardDecision, tbilisiMonthStart,
+  CLAIM_WINDOW_DAYS, CODE_LENGTH, INVITER_MONTHLY_CAP, NETWORK_CLAIMS_PER_INVITER, REWARD_WINDOW_DAYS,
+  claimDecision, deviceHashOf, networkHashOf, generateCode, inviteLink, normalizeCode, rewardDecision, tbilisiMonthStart,
 } from './referral.js';
 
 const now = new Date('2026-09-27T10:00:00Z');
@@ -46,6 +46,22 @@ describe('claim decision', () => {
     assert.equal(claimDecision({ invitee, inviter, now, inviterReferredByInvitee: true }), 'CYCLE');
     assert.equal(claimDecision({ invitee, inviter, now, deviceUsed: true }), 'DEVICE_USED');
     assert.equal(claimDecision({ invitee, inviter: { id: 'a', status: 'SUSPENDED' }, now }), 'INVITER_INACTIVE');
+    assert.equal(claimDecision({ invitee, inviter, now, networkClaims: NETWORK_CLAIMS_PER_INVITER }), 'NETWORK_USED');
+    assert.equal(claimDecision({ invitee, inviter, now, networkClaims: NETWORK_CLAIMS_PER_INVITER - 1 }), null);
+  });
+  it('hashes the server-observed network, never stores it raw', () => {
+    assert.equal(networkHashOf(''), null);
+    assert.equal(networkHashOf('unknown'), null);
+    assert.equal(networkHashOf('::ffff:1.2.3.4'), networkHashOf('1.2.3.4'));
+    assert.equal(networkHashOf('1.2.3.4').includes('1.2.3.4'), false);
+  });
+});
+
+describe('referral health action (audit 2026-09-27)', () => {
+  it('does not count the automatic daily check-in created by GET /api/auth/me', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('./referral.js', import.meta.url), 'utf8');
+    assert.equal(src.includes('"DailyCheckIn"'), false);
   });
 });
 

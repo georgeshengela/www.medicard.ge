@@ -21,7 +21,8 @@ npm run install:all
 # 2. Configure the backend
 cp server/.env.example server/.env      # fill in DATABASE_URL, JWT_SECRET, API keys
 
-# 3. Create the schema in Neon
+# 3. Create the schema — only on a local, empty Postgres (the guard refuses any other host).
+#    Never on the main database: it would drop the raw-SQL tables. See server/scripts/no-db-push.mjs.
 npm run db:push
 
 # 4. Run the API (port 4000)
@@ -238,7 +239,7 @@ Also set (or rely on Blueprint defaults):
 
 `JWT_SECRET` is generated. `PORT` is set by Render. Frankfurt is the closest region to Georgia.
 
-First deploy runs `prisma db push`, then starts `node server/src/server.js`. The public site is
+Each deploy runs `npm run release` (prisma generate + additive SQL installers + seed; never `db push`), then starts `node server/src/server.js`. The public site is
 `server/public/` (not an Expo web export).
 
 ### 3. DNS for medicard.ge
@@ -275,7 +276,7 @@ in the dashboard if you want to try the deploy before paying.
 - **Payments** — the Premium upsell is a placeholder. There is no billing integration yet.
 - **PHI** — confirm HIPAA/GDPR scope, data-retention terms and a BAA with EvidenceMD before
   sending identifiable patient data.
-- **Migrations** — Production still uses `prisma db push` in `npm run release`. Live Neon
+- **Migrations** — Production never runs `prisma db push` (blocked by `server/scripts/no-db-push.mjs`, guarded by `schemaSafety.test.js`); schema changes ship as additive SQL installers. Historical note: Live Neon
   inspection (2026-08-30, read-only): there is **no** `_prisma_migrations` table, but
   `CycleProfile` / `CycleLog` / `CycleCustomTag` / `CyclePartnerShare` already include the
   Phase 7–9 columns (TTC tests, contraception, pain/lifestyle/tags). The three repo

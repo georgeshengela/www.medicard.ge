@@ -7,6 +7,7 @@ import { requireAdminCapability } from '../lib/adminCapabilities.js';
 import { asyncHandler } from '../middleware/error.js';
 import { applyPrivateCache } from '../lib/cycleShare.js';
 import { hasVerifiedPhone } from '../lib/phoneGate.js';
+import { clientIp } from '../lib/rateLimitKey.js';
 import { claimReferral, referralAdminOverview, referralSummary } from '../lib/referral.js';
 
 /** Referral with Medi coins (Phase 3.4). Coins have no monetary value. */
@@ -46,7 +47,7 @@ referralRouter.post(
   claimLimiter,
   asyncHandler(async (req, res) => {
     const body = claimSchema.parse(req.body ?? {});
-    const result = await claimReferral({ invitee: req.user, code: body.code, installId: body.installId });
+    const result = await claimReferral({ invitee: req.user, code: body.code, installId: body.installId, ip: clientIp(req) });
     if (!result.ok) return res.status(409).json({ error: result.error, code: result.code });
     return res.status(201).json(result);
   }),

@@ -28,6 +28,7 @@ import { communityRouter, adminCommunityRouter } from './routes/community.routes
 import { startCommunityPush } from './lib/communityPush.js';
 import { startPriceDropAlerts } from './lib/priceDrop.js';
 import { startReferralRewards } from './lib/referral.js';
+import { objectStorageConfigured, objectStoragePublicHint } from './lib/objectStorage.js';
 import { adminReferralRouter, referralRouter } from './routes/referral.routes.js';
 import { healthProfileRouter } from './routes/health-profile.routes.js';
 import { healthMetricsRouter } from './routes/health-metrics.routes.js';
@@ -339,6 +340,8 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
   else console.warn('  landing          →  MISSING (server/public/index.html not found)');
   console.log(`  environment      →  ${env.NODE_ENV}`);
   console.log('  consumer access   →  free, no paid tiers or commercial quotas');
+  if (objectStorageConfigured()) console.log(`  uploads          →  object storage (${objectStoragePublicHint().provider})`);
+  else if (env.NODE_ENV === 'production') console.warn('  ⚠️  uploads → local disk (ephemeral on Render: pet/record photos are lost on deploy). Set S3_BUCKET, S3_ENDPOINT, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY.');
   if (!hasVisionProvider) {
     console.warn('  ⚠️  no OPENROUTER_API_KEY — image modules fall back to local OCR\n');
   } else {
