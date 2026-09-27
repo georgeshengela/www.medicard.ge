@@ -2,6 +2,7 @@
 // and /fonts to the main MEDICARD API (https://medicard.ge). No local server,
 // no schedulers — only the static admin changes locally.
 //   node scripts/admin-dev-proxy.mjs   →  http://localhost:4380/admin/
+//   ADMIN_UPSTREAM=http://localhost:4390 … → against scripts/admin-local-server.mjs
 import http from 'node:http';
 import https from 'node:https';
 import tls from 'node:tls';
@@ -10,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.PORT || 4380);
-const UPSTREAM = new URL(process.env.ADMIN_UPSTREAM || 'https://medicard.ge');
+const UPSTREAM = new URL(process.env.ADMIN_UPSTREAM || process.argv[2] || 'https://medicard.ge');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../server/admin');
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -21,7 +22,9 @@ function forward(req, res) {
   const headers = { ...req.headers, host: UPSTREAM.host };
   delete headers.origin;
   delete headers.referer;
-  const up = https.request({ hostname: UPSTREAM.hostname, port: 443, path: req.url, method: req.method, headers }, (r) => {
+  const lib = UPSTREAM.protocol === 'http:' ? http : https;
+  const port = UPSTREAM.port || (UPSTREAM.protocol === 'http:' ? 80 : 443);
+  const up = lib.request({ hostname: UPSTREAM.hostname, port, path: req.url, method: req.method, headers }, (r) => {
     res.writeHead(r.statusCode || 502, r.headers);
     r.pipe(res);
   });

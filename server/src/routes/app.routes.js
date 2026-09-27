@@ -6,6 +6,7 @@ import { publicPackage } from '../lib/packages.js';
 import { FREE_CONSUMER_RELEASE, freeConsumerPackage } from '../lib/consumerAccess.js';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/error.js';
+import { publicFeatureFlags } from '../lib/featureFlags.js';
 
 export const appRouter = Router();
 
@@ -24,6 +25,7 @@ appRouter.get(
 
     res.json({
       settings: publicAppSettings(settings),
+      features: await publicFeatureFlags(),
       packages: FREE_CONSUMER_RELEASE ? [freeConsumerPackage()] : packages.map(publicPackage),
       accessMode: FREE_CONSUMER_RELEASE ? 'free' : 'paid',
       mapboxToken: mapboxPublicToken(),

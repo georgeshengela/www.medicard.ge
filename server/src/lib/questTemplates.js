@@ -81,6 +81,12 @@ export async function ensureQuestTemplates(db) {
   let upserted = 0;
   for (const template of INITIAL_QUEST_TEMPLATES) {
     assertTemplateEconomy(template);
+    // Once an admin edits a template (config.adminManaged), its target, rewards and
+    // priority belong to the admin console — the seed only keeps structure in sync.
+    const existing = typeof db.questTemplate.findUnique === 'function'
+      ? await db.questTemplate.findUnique({ where: { key: template.key } })
+      : null;
+    const adminManaged = existing?.config?.adminManaged === true;
     await db.questTemplate.upsert({
       where: { key: template.key },
       create: template,
@@ -90,11 +96,15 @@ export async function ensureQuestTemplates(db) {
         titleKey: template.titleKey,
         descriptionKey: template.descriptionKey,
         progressType: template.progressType,
-        defaultTarget: template.defaultTarget,
-        rewardCoins: template.rewardCoins,
-        rewardXp: template.rewardXp,
-        priority: template.priority,
-        config: template.config,
+        ...(adminManaged
+          ? { config: { ...template.config, ...existing.config, adminManaged: true } }
+          : {
+            defaultTarget: template.defaultTarget,
+            rewardCoins: template.rewardCoins,
+            rewardXp: template.rewardXp,
+            priority: template.priority,
+            config: template.config,
+          }),
       },
     });
     upserted += 1;

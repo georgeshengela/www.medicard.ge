@@ -10,6 +10,8 @@ import rateLimit from 'express-rate-limit';
 
 import { env, hasVisionProvider } from './config/env.js';
 import { prisma } from './lib/prisma.js';
+import { requireFeature } from './lib/featureFlags.js';
+import { adminManageRouter } from './routes/adminManage.routes.js';
 import {
   attachRateLimitHandler,
   authWriteKey,
@@ -218,15 +220,15 @@ app.use('/api/auth', authWriteLimiter, authRouter);
 app.use('/api/health-profile', healthProfileRouter);
 app.use('/api/account', accountRouter);
 app.use('/api/health-metrics', healthMetricsRouter);
-app.use('/api/ai', aiRouter);
-app.use('/api/assistant', assistantRouter);
+app.use('/api/ai', requireFeature('medi', { match: (req) => req.path !== '/feedback' }), aiRouter);
+app.use('/api/assistant', requireFeature('medi'), assistantRouter);
 app.use('/api/chats', chatsRouter);
 app.use('/api/records', recordsRouter);
 app.use('/api/files', filesRouter);
 app.use('/api/medications', medicationsRouter);
 app.use('/api/visits', visitsRouter);
-app.use('/api/pets', petsRouter);
-app.use('/api/nutrition', nutritionRouter);
+app.use('/api/pets', requireFeature('mediVet', { match: (req) => /\/chat\/query$/.test(req.path) }), petsRouter);
+app.use('/api/nutrition', requireFeature('nutritionAi', { match: (req) => req.path === '/estimate' || req.path === '/quick-log' }), nutritionRouter);
 app.use('/api/admin/nutrition', adminNutritionRouter);
 app.use('/api/community', communityRouter);
 app.use('/api/admin/community', adminCommunityRouter);
@@ -243,12 +245,13 @@ app.use('/api/check-in', checkInRouter);
 app.use('/api/location', locationRouter);
 app.use('/api/quests', questsRouter);
 app.use('/api/achievements', achievementsRouter);
-app.use('/api/rewards', rewardsRouter);
+app.use('/api/rewards', requireFeature('rewardsStore', { match: (req) => /\/redeem$/.test(req.path) }), rewardsRouter);
 app.use('/api/referrals', referralRouter);
 app.use('/api/admin/referrals', adminReferralRouter);
 app.use('/api/medi-companion', mediCompanionRouter);
 app.use('/api/app', appRouter);
 app.use('/api/ai-consent', aiConsentRouter);
+app.use('/api/admin/manage', adminManageRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/rewards', adminRewardsRouter);
 app.use('/api/admin/medipulsi', adminMedipulsiRouter);

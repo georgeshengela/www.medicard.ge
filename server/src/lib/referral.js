@@ -1,3 +1,4 @@
+import { isFeatureEnabled } from './featureFlags.js';
 import { createHash, randomInt, randomUUID } from 'node:crypto';
 import { prisma } from './prisma.js';
 import { sendExpoPush } from './push.js';
@@ -155,6 +156,7 @@ async function notify(db, send, userId, body) {
 let busy = false;
 
 export async function processPendingReferrals({ db = prisma, now = new Date(), send = sendExpoPush } = {}) {
+  if (db === prisma && !(await isFeatureEnabled('referralRewards'))) return { rewarded: 0, paused: true };
   if (busy) return { rewarded: 0 };
   busy = true;
   let rewarded = 0;

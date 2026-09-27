@@ -257,3 +257,68 @@ html body .workspace .switch input:checked + i { background: var(--s-accent) !im
 html body .workspace .switch input:checked + i::after { transform: translateX(16px); }
 html body .workspace .switch input:focus-visible + i { box-shadow: 0 0 0 3px var(--s-accent-ring) !important; }
 html body .workspace .switch input:disabled + i { opacity: .5; }
+
+/* ───────── Header guide button ───────── */
+.s-guide-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 12px 0 10px; border-radius: var(--s-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--s-accent) 30%, var(--s-line)); background: var(--s-accent-soft);
+  color: var(--s-accent-ink); font: 600 12.5px var(--s-font);
+  transition: background .15s, border-color .15s;
+}
+.s-guide-btn:hover { background: color-mix(in srgb, var(--s-accent) 16%, var(--s-surface)); border-color: var(--s-accent); }
+.s-guide-btn .icon { width: 15px; height: 15px; }
+@media (max-width: 1180px) { .s-guide-btn span { display: none; } .s-guide-btn { padding: 0; width: 32px; justify-content: center; } }
+
+/* ───────── Guide sheet content ───────── */
+.s-guide { display: grid; gap: 4px; padding-top: 6px; }
+.s-guide-purpose { margin: 0 0 8px; padding: 12px 14px; border-radius: var(--s-radius); background: var(--s-accent-soft); color: var(--s-ink); font-size: 13.5px; line-height: 1.6; }
+.s-guide h4 { margin: 16px 0 6px; font-size: 12px; font-weight: 600; color: var(--s-faint); letter-spacing: .02em; }
+.s-guide-task { border: 1px solid var(--s-line); border-radius: var(--s-radius); margin-bottom: 6px; background: var(--s-surface); }
+.s-guide-task summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-size: 13.5px; font-weight: 600; color: var(--s-ink); }
+.s-guide-task summary::-webkit-details-marker { display: none; }
+.s-guide-task summary::after { content: "\203A"; margin-left: auto; color: var(--s-faint); font-size: 18px; transition: transform .2s var(--s-ease); }
+.s-guide-task[open] summary::after { transform: rotate(90deg); }
+.s-guide-task ol { margin: 0; padding: 0 14px 12px 32px; display: grid; gap: 6px; font-size: 13px; line-height: 1.6; color: var(--s-text); }
+.s-guide-task p { margin: 0; padding: 0 12px 10px; font-size: 13px; line-height: 1.6; color: var(--s-text); }
+.s-guide-terms { margin: 0; display: grid; gap: 0; border: 1px solid var(--s-line); border-radius: var(--s-radius); overflow: hidden; }
+.s-guide-terms > div { padding: 10px 12px; border-top: 1px solid var(--s-line-soft); }
+.s-guide-terms > div:first-child { border-top: 0; }
+.s-guide-terms dt { font-size: 13px; font-weight: 600; color: var(--s-ink); }
+.s-guide-terms dd { margin: 3px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--s-text-2); }
+.s-guide-foot { margin: 16px 0 0; font-size: 12px; color: var(--s-muted); }
+
+/* ───────── Feature flags ───────── */
+.s-flag { display: flex; align-items: flex-start; gap: 20px; padding: 18px 22px; border-top: 1px solid var(--s-line-soft); transition: background .2s; }
+.s-flag:first-child { border-top: 0; }
+.s-flag.is-off { background: color-mix(in srgb, var(--s-bad) 4%, var(--s-surface)); }
+.s-flag-main { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.s-flag-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.s-flag-title b { font-size: 14px; font-weight: 650; color: var(--s-ink); }
+.s-flag p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--s-text-2); }
+.s-flag small { font-size: 12px; color: var(--s-faint); }
+.s-flag-msg { margin-top: 6px; max-width: 640px; }
+.s-flag > .s-switch { margin-top: 4px; }
+
+/* ───────── User insights (profile side column) ───────── */
+.s-insights-host { display: grid; gap: 16px; margin-top: 16px; }
+html body .v3-user-page .s-insights { padding: 18px 20px !important; }
+html body .v3-user-page .s-insights h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 14.5px !important; font-weight: 650; color: var(--s-ink); }
+html body .v3-user-page .s-insights h3 .icon { width: 16px; height: 16px; color: var(--s-accent); }
+.s-insight-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid var(--s-line-soft); border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+.s-insight-stats > div { display: grid; gap: 4px; padding: 10px 12px; border-left: 1px solid var(--s-line-soft); }
+.s-insight-stats > div:first-child { border-left: 0; }
+.s-insight-stats span { font-size: 11.5px; font-weight: 500; color: var(--s-muted); }
+.s-insight-stats strong { font-size: 20px; font-weight: 650; color: var(--s-ink); line-height: 1.1; }
+.s-insight-stats small { font-size: 11.5px; color: var(--s-faint); }
+.s-insight-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+.s-insights .s-details { border-top: 1px solid var(--s-line-soft); margin: 0 -20px; }
+.s-insights .s-details summary { padding: 10px 20px; }
+.s-insights .s-details > div { padding: 0 20px 12px; }
+.s-ledger { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.s-ledger li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--s-line-soft); font-size: 12.5px; color: var(--s-text); }
+.s-ledger li:first-child { border-top: 0; }
+.s-ledger small { display: block; font-size: 11.5px; color: var(--s-faint); margin-top: 1px; }
+.s-ledger-amt { font-weight: 650; color: var(--s-ok); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.s-ledger-amt.is-neg { color: var(--s-bad); }
+.s-insight-consent { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; font-size: 12.5px; }

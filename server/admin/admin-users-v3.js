@@ -813,6 +813,7 @@
               <p class="v3-user-edit-lead">საკონტაქტო მონაცემები, ანგარიშის სტატუსი და შიდა შენიშვნა.</p>
               ${formHtml}
             </div>
+            <div id="user-insights-host" class="s-insights-host"></div>
           </aside>
         </div>
 
@@ -836,6 +837,7 @@
     });
     V.watchDirty?.(root.querySelector('#user-edit-form'));
     V.setDirty?.(false);
+    global.AdminV4Manage?.mountUserInsights(id);
 
     $('user-page-back')?.addEventListener('click', async (e) => {
       e.preventDefault();

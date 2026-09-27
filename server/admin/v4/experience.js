@@ -39,6 +39,7 @@
       corner: '<polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/>',
       rows: '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
       plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+      book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/>',
       server: '<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
     });
   }
@@ -46,7 +47,7 @@
   /* ─────────────── Registry (derived from the sidebar, the single source) ─────────────── */
   const NAV_KEYS = {
     overview: 'o', users: 'u', push: 'p', 'poster-studio': 'i', nutrition: 'n', community: 'c', medipulsi: 'm',
-    health: 'h', ai: 'd', rewards: 'r', orders: 'e', sms: 'x', pharmacy: 'f', quality: 'q', testing: 't', audit: 'a', settings: 's',
+    health: 'h', ai: 'd', rewards: 'r', orders: 'e', sms: 'x', pharmacy: 'f', quality: 'q', testing: 't', audit: 'a', settings: 's', quests: 'k', features: 'l',
   };
   const SUBPAGES = [
     ['push', 'brain', 'გადაწყვეტილებები', 'Brain decisions'],
@@ -169,6 +170,17 @@
     global.switchTab = wrapped;
   }
 
+  /** Same-page hash changes (#/push?tab=copy) must switch the module's sub-tab too. */
+  function syncSubTab() {
+    const tab = currentTab();
+    const want = new URLSearchParams(location.hash.split('?')[1] || '').get('tab');
+    if (!want) return;
+    const attr = { push: 'data-v3-sub', rewards: 'data-rewards-sub' }[tab];
+    if (!attr) return;
+    const btn = doc.querySelector(`#tab-${tab} [${attr}="${CSS.escape(want)}"]`);
+    if (btn && !btn.classList.contains('is-active') && btn.getAttribute('aria-selected') !== 'true') btn.click();
+  }
+
   /* ─────────────── Header chrome: breadcrumb, icon, tools ─────────────── */
   function currentTab() {
     return adminState()?.tab || 'overview';
@@ -210,11 +222,13 @@
         <button type="button" class="s-top-search" data-s="palette" aria-label="ძებნა და ბრძანებები (${MOD}+K)">
           ${ico('search')}<span>ძებნა ან ბრძანება…</span><kbd class="s-kbd">${MOD} K</kbd>
         </button>
+        <button type="button" class="s-guide-btn" data-s="guide" aria-label="ამ გვერდის გზამკვლევი" title="გზამკვლევი — როგორ მუშაობს ეს გვერდი">${ico('book')}<span>გზამკვლევი</span></button>
         <button type="button" class="s-icon-btn" data-s="activity" aria-label="აქტივობა და სისტემა" title="აქტივობა და სისტემა (⇧A)">${ico('bell')}</button>
         <button type="button" class="s-icon-btn" data-s="keys" aria-label="კლავიატურის მალსახმობები" title="მალსახმობები (?)">${ico('keyboard')}</button>
       </div>`);
     status.querySelector('[data-s="palette"]').addEventListener('click', () => openPalette());
     status.querySelector('[data-s="activity"]').addEventListener('click', () => openActivity());
+    status.querySelector('[data-s="guide"]').addEventListener('click', () => openGuide());
     status.querySelector('[data-s="keys"]').addEventListener('click', () => openKeys());
     $('live-pill')?.addEventListener('click', () => openActivity());
     if ($('live-pill')) { $('live-pill').style.cursor = 'pointer'; $('live-pill').title = 'სისტემის მდგომარეობა'; }
@@ -280,6 +294,7 @@
       { id: 'export-users', label: 'მომხმარებლების ექსპორტი (CSV)', icon: 'download', kw: 'export csv users download', run: () => call('opsDownload', '/export/users', 'users.csv') },
       { id: 'export-audit', label: 'აუდიტის ექსპორტი (CSV)', icon: 'download', kw: 'export csv audit', run: () => call('opsDownload', '/export/audit', 'audit.csv') },
       { id: 'copy-link', label: 'გვერდის ბმულის კოპირება', icon: 'copy', kw: 'copy link url share', run: copyLink },
+      { id: 'guide', label: 'ამ გვერდის გზამკვლევი', icon: 'book', keys: ['⇧', 'G'], kw: 'guide help how გზამკვლევი დახმარება', run: () => openGuide() },
       { id: 'keys', label: 'კლავიატურის მალსახმობები', icon: 'keyboard', keys: ['?'], kw: 'shortcuts keyboard help', run: openKeys },
       { id: 'help', label: 'როგორ მუშაობს ადმინი', icon: 'info', kw: 'help guide', run: () => global.AdminV3?.openHelp?.('global.howAdminWorks', $('admin-help-global')) },
       { id: 'logout', label: 'გასვლა', icon: 'logout', kw: 'logout sign out', run: confirmLogout },
@@ -574,6 +589,12 @@
     return true;
   }
 
+  function openGuide(tab = currentTab()) {
+    const page = pageOf(tab);
+    const body = global.AdminGuides ? global.AdminGuides.render(tab) : '<p class="s-muted">გზამკვლევი ვერ ჩაიტვირთა.</p>';
+    openSheet({ key: `guide:${tab}`, title: `გზამკვლევი · ${page?.label || tab}`, sub: 'რისთვისაა გვერდი, როგორ შეასრულო ამოცანები და რას ნიშნავს ტერმინები.', body });
+  }
+
   const SHORTCUTS = () => [
     ['ზოგადი', [
       ['ძებნა და ბრძანებები', [MOD, 'K']],
@@ -586,6 +607,7 @@
       ['თემის შეცვლა', ['⇧', 'D']],
       ['მენიუს შეკუმშვა', ['[']],
       ['აქტივობა და სისტემა', ['⇧', 'A']],
+      ['გვერდის გზამკვლევი', ['⇧', 'G']],
       ['გვერდის განახლება', ['⇧', 'R']],
     ]],
   ];
@@ -787,11 +809,12 @@
     const slash = e.code === 'Slash' || e.key === '/' || e.key === '?';
     if (slash && (e.shiftKey || e.key === '?')) { e.preventDefault(); openKeys(); }
     else if (slash) { e.preventDefault(); openPalette(); }
-    else if (letter === 'g' && !e.shiftKey) { chord = 'g'; showChord(); setTimeout(() => { if (chord === 'g') endChord(); }, 1400); }
+    else if (letter === 'g' && !e.shiftKey && !e.metaKey) { chord = 'g'; showChord(); setTimeout(() => { if (chord === 'g') endChord(); }, 1400); }
     else if (e.code === 'BracketLeft' || e.key === '[') { e.preventDefault(); toggleSidebar(); }
     else if (e.shiftKey && letter === 'd') { e.preventDefault(); toggleTheme(); }
     else if (e.shiftKey && letter === 'a') { e.preventDefault(); openActivity(); }
     else if (e.shiftKey && letter === 'r') { e.preventDefault(); reloadPage(); }
+    else if (e.shiftKey && letter === 'g') { e.preventDefault(); openGuide(); }
   }
 
   /* ─────────────── Boot ─────────────── */
@@ -815,7 +838,7 @@
     mountTools();
     syncChrome();
     doc.addEventListener('keydown', onKey, true);
-    global.addEventListener('hashchange', () => { syncChrome(); setTimeout(rememberPage, 60); });
+    global.addEventListener('hashchange', () => { syncSubTab(); syncChrome(); setTimeout(rememberPage, 60); });
     const onScroll = () => {
       const y = (doc.scrollingElement?.scrollTop || 0) + (doc.querySelector('.workspace')?.scrollTop || 0);
       doc.body.classList.toggle('s-scrolled', y > 4);
@@ -823,7 +846,7 @@
     global.addEventListener('scroll', onScroll, { passive: true, capture: true });
     setTimeout(checkUnread, 2500);
     setInterval(checkUnread, 60000);
-    global.AdminV4 = { openPalette, closePalette, openActivity, openKeys, toggleTheme, toggleDensity, reloadPage };
+    global.AdminV4 = { openPalette, closePalette, openActivity, openKeys, openGuide, toggleTheme, toggleDensity, reloadPage };
   }
 
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot);

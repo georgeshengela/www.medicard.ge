@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -660,6 +660,8 @@ async function switchTab(tab, opts = {}) {
     rewards: ['Commerce', 'ჯილდოები', 'მუშაობს თუ არა ჯილდოების სისტემა ნორმალურად?', 'rewards.page'],
     ai: ['Health & Medi', 'Medi', 'მუშაობს თუ არა Medi საიმედოდ და უსაფრთხოდ?', 'medi.page'],
     settings: ['Production', 'აპის რეჟიმი', 'რა წარმოების ქცევაა ჩართული?', 'settings.page'],
+    features: ['Production', 'მოდულები', 'რომელი მოდული მუშაობს და რომელი შეჩერებულია?', ''],
+    quests: ['Engagement', 'Medi Quest', 'მისიები, სამიზნეები და Medi Coins ჯილდოები.', ''],
   };
   setPageHeader(tab, copy);
 
@@ -686,6 +688,8 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'medipulsi' && typeof renderMedipulsi === 'function') await renderMedipulsi();
     if (tab === 'poster-studio') await window.renderPosterStudio();
     if (tab === 'settings') await renderSettings();
+    if (tab === 'features' && typeof renderFeatures === 'function') await renderFeatures();
+    if (tab === 'quests' && typeof renderQuests === 'function') await renderQuests();
   }
   startAdminLive();
 }

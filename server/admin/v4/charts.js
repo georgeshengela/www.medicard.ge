@@ -281,7 +281,7 @@
   }
 
   global.AdminCharts = { line, spark, hydrate, dayLabel };
-  global.opsLineChart = (seriesList, opts = {}) => line(seriesList, { ...opts, showTitle: false });
+  global.opsLineChart = (seriesList, opts = {}) => line(seriesList, { ...opts, showTitle: Boolean(opts.label), legend: true });
   global.opsSpark = (points) => spark(points);
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot); else boot();
 })(window);
