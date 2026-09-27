@@ -298,6 +298,9 @@ export default function Profile() {
             onCancel={() => setEditingMedical(false)}
           />
         )}
+        <View style={[s.card, { backgroundColor: colors.surface, marginTop: 12 }]}>
+          <ProfileMenuRow icon={FileText} ink="teal" label={ka.passport.profileRow} value={ka.passport.profileRowHint} onPress={() => router.push('/profile/health-passport' as never)} isLast />
+        </View>
       </View>
 
       {/* Settings */}
