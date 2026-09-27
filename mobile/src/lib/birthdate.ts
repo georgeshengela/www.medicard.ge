@@ -9,6 +9,9 @@ import { ka } from '@/i18n/ka';
  */
 
 const MAX_AGE = 120;
+/** Same rule as the server (server/src/lib/patient.js MIN_USER_AGE): accounts are 18+. */
+export const MIN_USER_AGE = 18;
+export const MIN_USER_AGE_MESSAGE = `MEDICARD-ით სარგებლობა ${MIN_USER_AGE} წლიდან შეიძლება.`;
 
 export function toDigits(value: string): string {
   return value.replace(/\D/g, '').slice(0, 8);
@@ -140,11 +143,12 @@ export function isSelectableBirthDate(year: number, month: number, day: number, 
   const date = new Date(year, month - 1, day);
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
   if (startOfDay(date) > startOfDay(now)) return false;
-  return ageFromBirthDate(new Date(Date.UTC(year, month - 1, day)), now) <= MIN_AGE_YEAR_SPAN;
+  const age = ageFromBirthDate(new Date(Date.UTC(year, month - 1, day)), now);
+  return age <= MIN_AGE_YEAR_SPAN && age >= MIN_USER_AGE;
 }
 
 export function birthYearBounds(now = new Date()): { minYear: number; maxYear: number } {
-  return { minYear: now.getFullYear() - MIN_AGE_YEAR_SPAN, maxYear: now.getFullYear() };
+  return { minYear: now.getFullYear() - MIN_AGE_YEAR_SPAN, maxYear: now.getFullYear() - MIN_USER_AGE };
 }
 
 /** Monday-first 6×7 grid, including the spill from the neighbouring months. */

@@ -114,6 +114,7 @@
     if (f.activity === 'today') chips.push(['activity', 'აპში დღეს']);
     if (f.activity === 'inactive7') chips.push(['activity', '7+ დღე უქმე']);
     if (f.activity === 'inactive30') chips.push(['activity', '30+ დღე უქმე']);
+    if (f.activity === 'under18') chips.push(['activity', '18 წლამდე — გადასახედი']);
     if (f.activity && !['today', 'inactive7', 'inactive30'].includes(f.activity)) {
       chips.push(['activity', f.activity]);
     }
@@ -221,6 +222,7 @@
       ['android', 'Android'],
       ['notif_disabled', 'ნოტიფი გამორთული'],
       ['outdated', 'ძველი ვერსია'],
+      ['under18', '18 წლამდე'],
     ];
 
     root.innerHTML = `

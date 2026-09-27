@@ -114,6 +114,10 @@ Owner decision after the 2026-09-26 strategic audit: fewer features, one clear p
 - **Cycle:** no new phases until iOS QA is complete.
 - **Women's space (community):** no open launch until there are 300+ active women and named human moderators assigned to the queue. Access sits behind the admin launch flag (`CommunityConfig.open`, admin ქალების სივრცე → launch card, audited, `COMMUNITY_MANAGE`). Missing row/table = closed. While closed, existing `CommunityMember`s keep full access, new members cannot join (`POST /api/community/membership` 403), and Home/Explore hide the entry for non-members (`useCommunityEntry`). Do not remove or bypass it.
 
+## Minimum age 18+ (2026-09-27, app 1.0.0.13.15)
+
+Owner asked for the legal minimum. Health data is a special category under Law 3144 and a minor's special-category data needs parental consent, which we cannot verify, so accounts are **18+**: `MIN_USER_AGE` in `server/src/lib/patient.js` (`birthDateSchema` refuses younger dates on every route) and `mobile/src/lib/birthdate.ts` (pickers and the onboarding birth-date step). Accounts created before the rule are not blocked or deleted automatically; admin users → „18 წლამდე“ lists them for the owner to review. Lower the limit only after legal review and with a parental-consent flow.
+
 ## Phone verification gate (2026-09-27, app 1.0.0.13.14)
 
 Owner-approved: a verified phone is required only where abuse or real value is at stake. Server middleware `requireVerifiedPhone` (`server/src/lib/phoneGate.js`) answers 403 `PHONE_VERIFICATION_REQUIRED` on women's-space join / post / comment and `POST /api/rewards/:id/redeem` (partner vouchers included); apply it to referral rewards and family members when those ship. `User.phone` is only written after an OTP check (or by an admin), so a stored Georgian mobile counts as verified. The app catches the code (`mobile/src/lib/phoneGate.ts`) and offers `/profile/verify-phone` (number → SMS code, keyboard-safe shell) instead of an error. Never gate everyday health features (Medi, meds, nutrition, lab, cycle, pets).

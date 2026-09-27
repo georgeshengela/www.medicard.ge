@@ -38,6 +38,14 @@ function isRealCalendarDate(value) {
   );
 }
 
+/**
+ * Minimum age to use MEDICARD (2026-09-27). Health data is a special category under Law 3144;
+ * a minor's special-category data needs a parent's consent, and there is no verified parental
+ * consent flow, so accounts are 18+. Lower only after legal review (and a parental-consent flow).
+ */
+export const MIN_USER_AGE = 18;
+export const MIN_USER_AGE_MESSAGE = `MEDICARD-ით სარგებლობა ${MIN_USER_AGE} წლიდან შეიძლება.`;
+
 /** Accepts `YYYY-MM-DD` from the client and hands Prisma a UTC-midnight Date for a `@db.Date` column. */
 export const birthDateSchema = z
   .string({ error: 'შეიყვანე დაბადების თარიღი' })
@@ -46,6 +54,7 @@ export const birthDateSchema = z
   .refine(isRealCalendarDate, 'ასეთი თარიღი არ არსებობს')
   .refine((value) => new Date(`${value}T00:00:00.000Z`) <= new Date(), 'დაბადების თარიღი მომავალში ვერ იქნება')
   .refine((value) => (calculateAge(`${value}T00:00:00.000Z`) ?? 0) <= 120, 'შეამოწმე დაბადების თარიღი')
+  .refine((value) => (calculateAge(`${value}T00:00:00.000Z`) ?? 0) >= MIN_USER_AGE, MIN_USER_AGE_MESSAGE)
   .transform((value) => new Date(`${value}T00:00:00.000Z`));
 
 /**

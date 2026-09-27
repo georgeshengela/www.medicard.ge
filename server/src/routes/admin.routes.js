@@ -18,7 +18,7 @@ import {
   resetPushTemplate,
   savePushTemplate,
 } from '../lib/pushTemplates.js';
-import { toDateOnly, calculateAge, genderSchema } from '../lib/patient.js';
+import { toDateOnly, calculateAge, genderSchema, MIN_USER_AGE } from '../lib/patient.js';
 import { asyncHandler } from '../middleware/error.js';
 import { requireAdmin } from '../middleware/adminAuth.js';
 import { getProviderBalances } from '../lib/providerBalances.js';
@@ -112,6 +112,8 @@ async function buildAdminUsersWhere(query = {}) {
       activity === 'medi' ? { chats: { some: {} } } : {},
       activity === 'meds' ? { medications: { some: {} } } : {},
       activity === 'cycle' ? { cycleProfile: { is: {} } } : {},
+      // Accounts below the minimum age (18+, Law 3144) registered before the rule existed — for review, not auto-action.
+      activity === 'under18' ? { birthDate: { gt: new Date(Date.UTC(new Date().getUTCFullYear() - MIN_USER_AGE, new Date().getUTCMonth(), new Date().getUTCDate())) } } : {},
       activity === 'ios' || activity === 'android'
         ? { pushTokens: { some: { active: true, platform: activity } } }
         : {},

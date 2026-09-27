@@ -45,6 +45,7 @@ import {
 } from '@/constants/illustrationAssets';
 import { ka } from '@/i18n/ka';
 import { ageFromForm, type AssessmentFormState } from '@/lib/assessmentForm';
+import { MIN_USER_AGE, MIN_USER_AGE_MESSAGE } from '@/lib/birthdate';
 
 type Props = {
   step: AssessmentStep;
@@ -275,6 +276,7 @@ export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: P
             month={form.birthMonth}
             day={form.birthDay}
             year={form.birthYear}
+            maxYear={new Date().getFullYear() - MIN_USER_AGE}
             onChange={(patch) =>
               onChange({
                 ...(patch.month !== undefined ? { birthMonth: patch.month } : {}),
@@ -306,6 +308,11 @@ export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: P
               {ka.assessment.ageBadge(age)}
             </Text>
           </View>
+          {age < MIN_USER_AGE ? (
+            <Text accessibilityRole="alert" style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 20, color: ASSESSMENT.textSecondary, textAlign: 'center', paddingHorizontal: 16 }}>
+              {MIN_USER_AGE_MESSAGE}
+            </Text>
+          ) : null}
         </View>
       );
     }
@@ -499,6 +506,8 @@ export function AssessmentStepContent({ step, form, onChange, onAutoAdvance }: P
       return (
         <View style={{ width: '100%', alignItems: 'center' }}>
           <DateWheelPicker
+            minYear={new Date().getFullYear() - 1}
+            maxYear={new Date().getFullYear()}
             month={form.lastPeriodMonth}
             day={form.lastPeriodDay}
             year={form.lastPeriodYear}
@@ -650,7 +659,7 @@ export function stepCanContinue(step: AssessmentStep, form: AssessmentFormState)
     case 'health-goals':
       return form.healthGoals.length > 0;
     case 'birthdate':
-      return true;
+      return ageFromForm(form) >= MIN_USER_AGE;
     case 'gender':
       return form.gender !== null && (form.gender !== 'OTHER' || form.genderOther.trim().length > 0);
     case 'body-type':
