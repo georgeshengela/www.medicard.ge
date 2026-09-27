@@ -16,6 +16,10 @@ Beta execution 2026-09-15: owner-tested EAS preview `1.0.0.8.41` is AdHoc IPA / 
 
 Never call `requestPermissionsAsync` / HealthKit `requestAuthorization` / location request from `useEffect`, `InteractionManager`, or post-login background work. iOS 26 does not show the sheet (and can mark denied with no UI). Show `PermissionGateHost` after login and request only from the enable button. Setup **ნებართვის მიცემა** must call `requestNotificationPermission` on press. Background reminder code may only read `getNotificationPermissionGranted`. HealthKit step reads must not re-request authorization. `Linking.openSettings` has no Notifications row until the app has requested once.
 
+## Navigation before the shell mounts (2026-09-27, app 1.0.0.13.21)
+
+expo-router wraps `app/_layout` in its own root stack, and AuthGate renders no `Stack` until auth/theme are ready. A `router.push` in that window does not fail: it pushes a second copy of the whole root layout (new providers, new AppShell). That is how a notification tap on a cold start looped on the splash with a flickering status bar. Never navigate from AppShell-level code, listeners or timers until `canOpenNotificationRoute` (segments non-empty, not `(auth)`) is true; `navigationRef.isReady()` is always true and proves nothing. Notification taps are claimed once per process (`notificationTaps.ts`) and routes must pass `isNotificationRoute`. Keep the root `ErrorBoundary`: the production boot guard swallows fatals, so without it a render crash is a frozen screen.
+
 ## Product naming
 
 The in-app AI is **Medi**. Never write Nightingale in user-facing copy (chat titles, CTAs, bubbles, share toggles). Nightingale is only the Figma UI kit name.
