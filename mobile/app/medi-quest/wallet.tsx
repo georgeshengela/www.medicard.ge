@@ -76,6 +76,7 @@ export default function QuestWalletScreen() {
       ledgerUnknown: copy.ledgerUnknown,
       ledgerRedeem: rewards.ledgerRedeem || copy.ledgerRedeem,
       ledgerHunt: copy.ledgerHunt,
+      ledgerReferral: copy.ledgerReferral,
     });
   const coinInk = dark ? QUEST.pill.coinInkDark : QUEST.pill.coinInkLight;
   const coinBg = dark ? QUEST.pill.coinDark : QUEST.pill.coinLight;

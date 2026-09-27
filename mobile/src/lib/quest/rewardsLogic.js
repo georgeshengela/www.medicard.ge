@@ -10,6 +10,7 @@ export const WALLET_LEDGER_SOURCE_TYPES = Object.freeze([
   'SYSTEM',
   'ADMIN_ADJUSTMENT',
   'HUNT',
+  'REFERRAL',
 ]);
 
 export function coinsShortfall(cost, balance) {
@@ -43,6 +44,8 @@ export function walletSourceLabel(sourceType, copy = {}) {
       return copy.ledgerAdmin || copy.ledgerSystem || 'System adjustment';
     case 'HUNT':
       return copy.ledgerHunt || copy.ledgerUnknown || 'Medi Hunt';
+    case 'REFERRAL':
+      return copy.ledgerReferral || copy.ledgerUnknown || 'Invite bonus';
     default:
       return copy.ledgerUnknown || 'Balance adjustment';
   }

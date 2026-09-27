@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ka" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>მოწვევა MEDICARD-ში</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="/favicon.png" />
+  <link rel="stylesheet" href="/landing.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <main class="hero" style="min-height:70vh;display:flex;align-items:center">
+    <div class="wrap" style="max-width:560px">
+      <p class="kicker">Medicard.GE</p>
+      <h1 style="max-width:none;font-size:32px">მოგიწვიეს MEDICARD-ში</h1>
+      <p class="lead">
+        დააყენე MEDICARD, დარეგისტრირდი და პროფილში → „მოიწვიე მეგობარი“ შეიყვანე კოდი.
+        პირველი ჯანმრთელობის ჩანაწერის შემდეგ ორივე მიიღებთ Medi მონეტებს.
+      </p>
+      <p id="code" style="font-size:34px;font-weight:700;letter-spacing:6px;margin:18px 0"></p>
+      <div class="hero-actions">
+        <a class="btn btn-cta" id="open-app" href="#">გახსენი MEDICARD-ში</a>
+        <a class="btn btn-ghost" href="/">საიტზე გადასვლა</a>
+      </div>
+      <p class="lead" style="margin-top:18px;font-size:13px">Medi მონეტებს ფულადი ღირებულება არ აქვს.</p>
+    </div>
+  </main>
+  <script src="/landing.js"></script>
+  <script>
+    (function () {
+      var match = location.pathname.match(/\/i\/([A-Za-z0-9]{6})\/?$/);
+      var code = match ? match[1].toUpperCase() : '';
+      var btn = document.getElementById('open-app');
+      if (!code) {
+        btn.href = '/';
+        btn.textContent = 'საიტზე გადასვლა';
+        return;
+      }
+      document.getElementById('code').textContent = code;
+      var android = /android/i.test(navigator.userAgent);
+      btn.href = android
+        ? 'intent://invite/' + code + '#Intent;scheme=medicard;package=ge.medicard.app;end'
+        : 'medicard://invite/' + code;
+    })();
+  </script>
+</body>
+</html>

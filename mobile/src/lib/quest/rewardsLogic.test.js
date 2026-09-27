@@ -14,6 +14,7 @@ const COPY = {
   ledgerAchievement: 'მიღწევა',
   ledgerRedeem: 'Medi ჯილდო',
   ledgerHunt: 'Medi Hunt',
+  ledgerReferral: 'Invite bonus',
   ledgerSystem: 'სისტემური კორექტირება',
   ledgerAdmin: 'ადმინისტრაციული კორექტირება',
   ledgerUnknown: 'ბალანსის კორექტირება',

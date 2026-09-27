@@ -3300,6 +3300,12 @@ export const api = {
       }),
   },
 
+  referrals: {
+    me: () => request<import('@/lib/referral').ReferralSummary>('/api/referrals/me'),
+    claim: (code: string, installId?: string) =>
+      request<{ ok: true; status: string }>('/api/referrals/claim', { method: 'POST', body: { code, installId } }),
+  },
+
   rewards: {
     catalog: () => request<import('@/lib/quest/rewardsApi').StoreCatalog>('/api/rewards'),
     get: (id: string) => request<import('@/lib/quest/rewardsApi').StoreReward>(`/api/rewards/${id}`),

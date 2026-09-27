@@ -25,6 +25,8 @@ import { authRouter } from './routes/auth.routes.js';
 import { communityRouter, adminCommunityRouter } from './routes/community.routes.js';
 import { startCommunityPush } from './lib/communityPush.js';
 import { startPriceDropAlerts } from './lib/priceDrop.js';
+import { startReferralRewards } from './lib/referral.js';
+import { adminReferralRouter, referralRouter } from './routes/referral.routes.js';
 import { healthProfileRouter } from './routes/health-profile.routes.js';
 import { healthMetricsRouter } from './routes/health-metrics.routes.js';
 import { aiRouter } from './routes/ai.routes.js';
@@ -230,6 +232,7 @@ app.use('/api/community', communityRouter);
 app.use('/api/admin/community', adminCommunityRouter);
 startCommunityPush();
 startPriceDropAlerts();
+startReferralRewards();
 app.use('/api/medipulsi', medipulsiRouter);
 app.use('/api/cycle', cycleRouter);
 app.get('/api/cycle/share/:code', partnerShareClosedHandler);
@@ -241,6 +244,8 @@ app.use('/api/location', locationRouter);
 app.use('/api/quests', questsRouter);
 app.use('/api/achievements', achievementsRouter);
 app.use('/api/rewards', rewardsRouter);
+app.use('/api/referrals', referralRouter);
+app.use('/api/admin/referrals', adminReferralRouter);
 app.use('/api/medi-companion', mediCompanionRouter);
 app.use('/api/app', appRouter);
 app.use('/api/ai-consent', aiConsentRouter);
@@ -291,6 +296,10 @@ if (serveLanding) {
       },
     }),
   );
+  app.get('/i/:code', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(PUBLIC_DIST, 'invite.html'));
+  });
   app.use('/share', (_req, res) => {
     res.set('Cache-Control', 'no-store');
     res.sendFile(path.join(PUBLIC_DIST, 'open-app.html'));

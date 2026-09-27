@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import {
   BellRing,
   FileText,
+  Gift,
   Link2,
   Lock,
   LogOut,
@@ -335,6 +336,7 @@ export default function Profile() {
       <View style={s.section}>
         <HomeSectionHeading title="აპლიკაცია" />
         <View style={[s.list, { backgroundColor: colors.surface }]}>
+          <ProfileMenuRow icon={Gift} ink="amber" label={ka.referral.profileRow} onPress={() => router.push('/profile/invite' as never)} />
           <ProfileMenuRow icon={Lock} ink="neutral" label={ka.profile.privacyPolicy} onPress={() => router.push('/profile/privacy')} />
           <ProfileMenuRow icon={FileText} ink="neutral" label={ka.profile.terms} onPress={() => router.push('/profile/terms')} />
           <ProfileMenuRow icon={Mail} ink="neutral" label={ka.profile.support} value={ka.profile.supportEmail} onPress={() => void Linking.openURL(SUPPORT_MAILTO)} />

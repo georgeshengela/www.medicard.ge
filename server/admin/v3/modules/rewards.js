@@ -14,6 +14,7 @@
     ['partners', 'პარტნიორები'],
     ['redemptions', 'გაცვლები'],
     ['codes', 'კოდების მარაგი'],
+    ['referrals', 'მოწვევები'],
   ];
   const TAB_KEYS = new Set(TABS.map(([k]) => k));
 
@@ -280,6 +281,73 @@
       return;
     }
     open(opts);
+  }
+
+  /* ── Referrals (Phase 3.4) ────────────────────────────── */
+
+  const REFERRAL_STATUS_KA = { PENDING: 'ელოდება', REWARDED: 'დარიცხულია', EXPIRED: 'ვადაგასული', REJECTED: 'უარყოფილი' };
+  const REFERRAL_REASON_KA = { NO_ACTION: 'მოწვეულმა 30 დღეში ჩანაწერი არ გააკეთა', INVITER_NOT_ELIGIBLE: 'მომწვევს ლიმიტი ამოეწურა ან ტელეფონი არ აქვს დადასტურებული' };
+
+  async function renderReferrals(root) {
+    const data = await api('/referrals');
+    const t = data.totals || {};
+    const r = data.rules || {};
+    const userLink = (id, label) => `<a href="#/users/${encodeURIComponent(id)}" class="mono">${esc(label)}</a>`;
+    root.innerHTML = shellHtml(
+      'referrals',
+      `
+      <div class="v3-rewards-body" data-v3-rewards="referrals">
+        <div class="v3-rewards-toolbar">
+          <div class="v3-rewards-head-copy">
+            <div class="v3-title-row"><h3>მოწვევები</h3></div>
+            <p class="muted">${fmt(r.coinsPerSide)} Medi Coin ორივე მხარეს — მხოლოდ მოწვეულის პირველი ჯანმრთელობის ჩანაწერის შემდეგ. ორივეს ტელეფონი დადასტურებული, ერთი მოწყობილობა ერთ მოწვევაზე, მომწვევს თვეში მაქს. ${fmt(r.monthlyCap)} ბონუსი, კოდის შეყვანა რეგისტრაციიდან ${fmt(r.claimWindowDays)} დღეში. ფულადი ღირებულება არ აქვს.</p>
+          </div>
+          <div class="v3-rewards-toolbar-actions">
+            <button type="button" class="btn ghost compact" id="rw-refresh">${ico('refresh')} განახლება</button>
+          </div>
+        </div>
+        <div class="v3-rewards-kpis" role="group" aria-label="მოწვევები">
+          ${kpiCell('layers', 'სულ მოწვევა', fmt(t.total), `${fmt(t.thisMonth)} ამ თვეში`, 'soft')}
+          ${kpiCell('activity', 'ელოდება', fmt(t.pending), 'პირველ ჩანაწერს ან ტელეფონს')}
+          ${kpiCell('spark', 'დარიცხული', fmt(t.rewarded), 'მომწვევს — თვიური ლიმიტით')}
+          ${kpiCell('alert', 'ვადაგასული', fmt(t.expired), `${fmt(r.rewardWindowDays)} დღე ჩანაწერის გარეშე`)}
+        </div>
+        <section class="v3-rewards-panel">
+          <div class="v3-rewards-head"><div class="v3-rewards-head-copy"><div class="v3-title-row"><h3>ბოლო მოწვევები</h3></div></div></div>
+          ${
+            !(data.recent || []).length
+              ? emptyState('ჯერ მოწვევა არ არის', 'პირველი მოწვევა აქ გამოჩნდება, როცა ახალი ანგარიში მეგობრის კოდს შეიყვანს.')
+              : `<div class="v3-rewards-table-wrap"><table class="v3-rewards-table">
+                <thead><tr><th>მომწვევი</th><th>მოწვეული</th><th>სტატუსი</th><th>მომწვევს დაერიცხა</th><th>შეყვანა</th><th>დარიცხვა</th></tr></thead>
+                <tbody>${data.recent
+                  .map(
+                    (row) => `<tr>
+                    <td>${userLink(row.inviterId, row.inviter)}</td>
+                    <td>${userLink(row.inviteeId, row.invitee)}</td>
+                    <td title="${esc(REFERRAL_REASON_KA[row.reason] || '')}">${esc(REFERRAL_STATUS_KA[row.status] || row.status)}</td>
+                    <td>${row.status === 'REWARDED' ? (row.inviterRewarded ? 'კი' : 'არა') : '—'}</td>
+                    <td class="muted">${esc(whenKa(row.createdAt))}</td>
+                    <td class="muted">${esc(row.rewardedAt ? whenKa(row.rewardedAt) : '—')}</td>
+                  </tr>`,
+                  )
+                  .join('')}</tbody></table></div>`
+          }
+        </section>
+        ${
+          (data.top || []).length
+            ? `<section class="v3-rewards-panel">
+          <div class="v3-rewards-head"><div class="v3-rewards-head-copy"><div class="v3-title-row"><h3>ყველაზე აქტიური მომწვევები</h3></div><p class="muted">უჩვეულოდ ბევრი მოწვევა შეიძლება ბოროტად გამოყენების ნიშანი იყოს.</p></div></div>
+          <div class="v3-rewards-table-wrap"><table class="v3-rewards-table">
+            <thead><tr><th>მომწვევი</th><th>მოწვეული</th><th>დარიცხული</th></tr></thead>
+            <tbody>${data.top.map((row) => `<tr><td>${userLink(row.inviterId, row.inviter)}</td><td class="num">${fmt(row.invited)}</td><td class="num">${fmt(row.rewarded)}</td></tr>`).join('')}</tbody>
+          </table></div>
+        </section>`
+            : ''
+        }
+      </div>`,
+    );
+    bindSubnav(root);
+    root.querySelector('#rw-refresh')?.addEventListener('click', () => void renderRewards());
   }
 
   /* ── Overview ─────────────────────────────────────────── */
@@ -1249,6 +1317,7 @@
       else if (tab === 'campaigns') await renderCampaigns(root);
       else if (tab === 'redemptions') await renderRedemptions(root);
       else if (tab === 'codes') await renderCodes(root);
+      else if (tab === 'referrals') await renderReferrals(root);
       else await renderOverview(root);
     } catch (e) {
       root.innerHTML = shellHtml(

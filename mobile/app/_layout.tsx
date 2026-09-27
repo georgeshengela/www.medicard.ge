@@ -330,6 +330,7 @@ function AppShell() {
               <Stack.Screen name="medi-quest" options={{ headerShown: false }} />
               <Stack.Screen name="medi-companion" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
+              <Stack.Screen name="invite/[code]" options={{ headerShown: false }} />
               <Stack.Screen name="chat" options={{ headerShown: false }} />
               <Stack.Screen name="nutrition" options={{ headerShown: false }} />
           <Stack.Screen name="nutrition/diary" options={{ headerShown: false }} />

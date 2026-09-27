@@ -83,6 +83,7 @@ export function QuestHubView(p: QuestHubViewProps) {
           {weekly.length ? <View style={{ gap: 12 }}><QHeading title="კვირის გამოწვევა" meta="ორშაბათი — კვირა" />{weekly.map(q => card(q, true))}</View> : null}
           {setupSteps ? <QLink title="ნაბიჯები დაუკავშირე" body="შეამოწმე ჯანმრთელობის აპის წვდომა მოძრაობის მისიებისთვის." icon={<Footprints size={21} color={ink} />} onPress={() => open('/profile/permissions')} /> : null}
           {setupWater ? <QLink title="წყლის მიზანი დააყენე" body="შენი დღიური მიზანი ჰიდრატაციის მისიას გახსნის." icon={<Droplets size={21} color={ink} />} onPress={() => open('/health-metrics/hydration')} /> : null}
+          <QLink title="მოიწვიე ოჯახის წევრი" body="პირველი ჩანაწერის შემდეგ ორივე მიიღებთ 100 Medi მონეტას." icon={<Gift size={21} color={ink} />} onPress={() => open('/profile/invite')} />
           <QLink title="ნახე, როგორ ვითარდები" body="ეტაპები და კოლექცია — შენი შესრულებული მისიებიდან." icon={<Trophy size={21} color={ink} />} onPress={() => { p.onTab('progress'); scroll.current?.scrollTo({ y: 0, animated: false }); }} />
         </> : p.tab === 'progress' ? <>
           <View><QText size={25} bold>ყოველი მისია წინ გწევს.</QText><QText size={13} muted>შენი ეტაპები, სერია და მიღწევები ერთ გზაზე.</QText></View>
