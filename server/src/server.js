@@ -24,6 +24,7 @@ import { nutritionRouter, adminNutritionRouter } from './routes/nutrition.routes
 import { authRouter } from './routes/auth.routes.js';
 import { communityRouter, adminCommunityRouter } from './routes/community.routes.js';
 import { startCommunityPush } from './lib/communityPush.js';
+import { startPriceDropAlerts } from './lib/priceDrop.js';
 import { healthProfileRouter } from './routes/health-profile.routes.js';
 import { healthMetricsRouter } from './routes/health-metrics.routes.js';
 import { aiRouter } from './routes/ai.routes.js';
@@ -228,6 +229,7 @@ app.use('/api/admin/nutrition', adminNutritionRouter);
 app.use('/api/community', communityRouter);
 app.use('/api/admin/community', adminCommunityRouter);
 startCommunityPush();
+startPriceDropAlerts();
 app.use('/api/medipulsi', medipulsiRouter);
 app.use('/api/cycle', cycleRouter);
 app.get('/api/cycle/share/:code', partnerShareClosedHandler);

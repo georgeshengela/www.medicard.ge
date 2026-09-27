@@ -340,6 +340,7 @@ export async function recomputeProductPricing(productId) {
   }
 
   const best = offers[0];
+  const before = await prisma.catalogProduct.findUnique({ where: { id: productId }, select: { bestPriceGel: true } });
   await prisma.catalogProduct.update({
     where: { id: productId },
     data: {
@@ -349,6 +350,13 @@ export async function recomputeProductPricing(productId) {
       lastSyncedAt: new Date(),
     },
   });
+  // Price history + price-drop alerts. Never let alerting break a pharmacy sync.
+  try {
+    const { recordPriceChange } = await import('../priceDrop.js');
+    await recordPriceChange(productId, before?.bestPriceGel ?? null, { bestPriceGel: best.priceGel, bestSourceId: best.sourceId });
+  } catch (error) {
+    console.warn('[price-drop] record failed', error?.code || error?.message);
+  }
 }
 
 export async function recomputeAllPricing() {

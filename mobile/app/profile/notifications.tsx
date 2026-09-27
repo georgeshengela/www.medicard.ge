@@ -16,6 +16,7 @@ import {
   Sparkles,
   CloudSun,
   Sun,
+  Tag,
 } from 'lucide-react-native';
 import {
   PermissionGroup,
@@ -33,6 +34,7 @@ import {
   type MediEngagePrefs,
 } from '@/lib/mediEngagePrefs';
 import { runMediNotificationBrain } from '@/lib/mediNotificationBrain';
+import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
 
@@ -100,7 +102,14 @@ export default function NotificationSettingsScreen() {
   const router = useRouter();
   const FIGMA = useFigmaHealthMetrics();
   const colors = useThemeColors();
-  const { user, healthProfile } = useAuth();
+  const { user, healthProfile, setHealthProfile } = useAuth();
+  // Server-side price-drop pushes (on by default) — stored where the server reads it.
+  const priceDropOn = (healthProfile?.extraAnswers as Record<string, unknown> | undefined)?.priceDropAlerts !== false;
+  const setPriceDrop = async (next: boolean) => {
+    if (!healthProfile || !user) return;
+    const updated = await patchProfileExtra(healthProfile, user, { priceDropAlerts: next });
+    setHealthProfile(updated);
+  };
   const [prefs, setPrefs] = useState<MediEngagePrefs>(DEFAULT_ENGAGE_PREFS);
 
   useFocusEffect(
@@ -183,6 +192,19 @@ export default function NotificationSettingsScreen() {
                 onValueChange={(next) => setTopic(row.topic, next)}
               />
             ))}
+          </PermissionGroup>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <PermissionSectionLabel title={ka.notifSettings.pharmacy} />
+          <PermissionGroup>
+            <PermissionToggleRow
+              icon={Tag}
+              label={ka.notifSettings.priceDrop}
+              value={priceDropOn}
+              isLast
+              onValueChange={(next) => void setPriceDrop(next)}
+            />
           </PermissionGroup>
         </View>
 
