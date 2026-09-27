@@ -10,7 +10,7 @@ Owner explicitly replaced the Profile robot and separate Companion pages with on
 
 ## Release readiness (2026-09-15)
 
-Beta execution 2026-09-15: owner-tested EAS preview `1.0.0.8.41` is AdHoc IPA / internal APK — not TestFlight/Play. `eas submit --profile beta` did not upload. Store-distribution EAS production builds were not started (paid). Do not treat Expo Go as store proof. Do not silently disable Pets on production — scope claims instead. Do not remount a global `/api` request-count limiter. Auth writes are IP-limited; GET `/api/auth/me` is skipped. Seed must not rotate an existing admin `passwordHash` (Render runs seed on every deploy). Consumer purchase CTAs stay off unless `CONSUMER_PURCHASES_ENABLED=true`.
+Beta execution 2026-09-15: owner-tested EAS preview `1.0.0.8.41` is AdHoc IPA / internal APK — not TestFlight/Play. `eas submit --profile beta` did not upload. Store-distribution EAS production builds were not started (paid). Do not treat Expo Go as store proof. Do not silently disable Pets on production — scope claims instead. Do not remount a global `/api` request-count limiter. Auth writes are IP-limited; GET `/api/auth/me` is skipped. Seed must not rotate an existing admin `passwordHash` (Render runs seed on every deploy). Consumer purchases are permanently off (App Review correction 2026-09-22); the old `CONSUMER_PURCHASES_ENABLED` flag has no effect.
 
 ## OS permissions (iOS 26)
 
