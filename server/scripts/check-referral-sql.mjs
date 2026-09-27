@@ -10,6 +10,7 @@ try {
   await db.$queryRaw`EXPLAIN SELECT (EXISTS (SELECT 1 FROM "MedicationSchedule" WHERE "userId" = ${id}) OR EXISTS (SELECT 1 FROM "DailyCheckIn" WHERE "userId" = ${id})
     OR EXISTS (SELECT 1 FROM "DoctorVisit" WHERE "userId" = ${id}) OR EXISTS (SELECT 1 FROM "MedicalRecord" WHERE "userId" = ${id})
     OR EXISTS (SELECT 1 FROM "NutritionMeal" WHERE "userId" = ${id}) OR EXISTS (SELECT 1 FROM "CycleLog" WHERE "userId" = ${id})) AS ok`;
+  await db.$queryRaw`EXPLAIN SELECT r.id FROM "Referral" r JOIN "User" u ON u.id = r."inviteeId" WHERE r.status = 'PENDING' AND u.phone IS NOT NULL AND (EXISTS (SELECT 1 FROM "MedicationSchedule" x WHERE x."userId" = r."inviteeId") OR EXISTS (SELECT 1 FROM "CycleLog" x WHERE x."userId" = r."inviteeId")) ORDER BY r."createdAt" LIMIT 200`;
   const { referralAdminOverview } = await import('../src/lib/referral.js');
   const overview = await referralAdminOverview({ db });
   console.log('referral SQL ok · totals', overview.totals);

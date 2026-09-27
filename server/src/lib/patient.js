@@ -46,16 +46,36 @@ function isRealCalendarDate(value) {
 export const MIN_USER_AGE = 18;
 export const MIN_USER_AGE_MESSAGE = `MEDICARD-ით სარგებლობა ${MIN_USER_AGE} წლიდან შეიძლება.`;
 
-/** Accepts `YYYY-MM-DD` from the client and hands Prisma a UTC-midnight Date for a `@db.Date` column. */
-export const birthDateSchema = z
+/**
+ * Accepts `YYYY-MM-DD` from the client and hands Prisma a UTC-midnight Date for a `@db.Date` column.
+ * Format and sanity only — profile edits re-send the stored date, so the age rule is checked
+ * with {@link birthDateAgeError} only when the date is new or changed.
+ */
+export const birthDateInputSchema = z
   .string({ error: 'შეიყვანე დაბადების თარიღი' })
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'დაბადების თარიღი უნდა იყოს ფორმატში წწწწ-თთ-დდ')
   .refine(isRealCalendarDate, 'ასეთი თარიღი არ არსებობს')
   .refine((value) => new Date(`${value}T00:00:00.000Z`) <= new Date(), 'დაბადების თარიღი მომავალში ვერ იქნება')
   .refine((value) => (calculateAge(`${value}T00:00:00.000Z`) ?? 0) <= 120, 'შეამოწმე დაბადების თარიღი')
-  .refine((value) => (calculateAge(`${value}T00:00:00.000Z`) ?? 0) >= MIN_USER_AGE, MIN_USER_AGE_MESSAGE)
   .transform((value) => new Date(`${value}T00:00:00.000Z`));
+
+/** Account creation: a new birth date must be 18+. */
+export const birthDateSchema = birthDateInputSchema.refine(
+  (date) => (calculateAge(date) ?? 0) >= MIN_USER_AGE,
+  MIN_USER_AGE_MESSAGE,
+);
+
+/**
+ * Age rule for edits: only a new or changed date must be 18+. Accounts created before the rule
+ * keep saving unrelated fields (they re-send their stored date). Returns the message or null.
+ */
+export function birthDateAgeError(nextDate, storedDate) {
+  if (!(nextDate instanceof Date)) return null;
+  const stored = storedDate ? new Date(storedDate) : null;
+  if (stored && stored.toISOString().slice(0, 10) === nextDate.toISOString().slice(0, 10)) return null;
+  return (calculateAge(nextDate) ?? 0) >= MIN_USER_AGE ? null : MIN_USER_AGE_MESSAGE;
+}
 
 /**
  * Birth dates live in a `DATE` column, so they come back as UTC midnight. Reading the

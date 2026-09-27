@@ -27,6 +27,7 @@ export const REFERRAL_ERRORS = {
   TOO_LATE: `მოწვევის კოდის შეყვანა შესაძლებელია რეგისტრაციიდან ${CLAIM_WINDOW_DAYS} დღის განმავლობაში.`,
   CYCLE: 'ამ ადამიანს შენ მოიწვიე — ერთმანეთის კოდს ვერ შეიყვანთ.',
   DEVICE_USED: 'ამ მოწყობილობიდან მოწვევის კოდი უკვე გამოყენებულია.',
+  DEVICE_REQUIRED: 'მოწვევის კოდი აპიდან შეიყვანე.',
   INVITER_INACTIVE: 'ეს კოდი ახლა არ მოქმედებს.',
 };
 
@@ -97,18 +98,20 @@ export async function claimReferral({ invitee, code: rawCode, installId }, { db 
   const fail = (key) => ({ ok: false, code: `REFERRAL_${key}`, error: REFERRAL_ERRORS[key] });
   if (!code) return fail('CODE_NOT_FOUND');
   const [owner] = await db.$queryRaw`SELECT u.id, u.status FROM "ReferralCode" c JOIN "User" u ON u.id = c."userId" WHERE c.code = ${code}`;
+  // One device per referral: a claim without a device id could dodge the unique index.
   const deviceHash = deviceHashOf(installId);
+  if (!deviceHash) return fail('DEVICE_REQUIRED');
   const [[referred], [cycle], [device]] = await Promise.all([
     db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "inviteeId" = ${invitee.id}`,
     owner ? db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "inviterId" = ${invitee.id} AND "inviteeId" = ${owner.id}` : Promise.resolve([]),
-    deviceHash ? db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "deviceHash" = ${deviceHash}` : Promise.resolve([]),
+    db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "deviceHash" = ${deviceHash}`,
   ]);
   const reason = claimDecision({ invitee, inviter: owner, now, alreadyReferred: Boolean(referred), inviterReferredByInvitee: Boolean(cycle), deviceUsed: Boolean(device) });
   if (reason) return fail(reason);
   const inserted = await db.$queryRaw`INSERT INTO "Referral" (id, "inviterId", "inviteeId", code, "deviceHash")
     VALUES (${randomUUID()}, ${owner.id}, ${invitee.id}, ${code}, ${deviceHash})
     ON CONFLICT DO NOTHING RETURNING id`;
-  if (!inserted.length) return fail(deviceHash ? 'DEVICE_USED' : 'ALREADY_CLAIMED');
+  if (!inserted.length) return fail('DEVICE_USED');
   return { ok: true, status: 'PENDING' };
 }
 
@@ -146,7 +149,7 @@ async function earn(tx, userId, side, referralId, now) {
 
 async function notify(db, send, userId, body) {
   const tokens = (await db.pushToken.findMany({ where: { userId, active: true }, select: { token: true } })).map((t) => t.token);
-  if (tokens.length) await send(tokens, { title: `+${REFERRAL_COINS} Medi მონეტა`, body, data: { url: '/profile/invite' } }).catch(() => null);
+  if (tokens.length) await send(tokens, { title: `+${REFERRAL_COINS} Medi მონეტა`, body, data: { route: '/profile/invite' } }).catch(() => null);
 }
 
 let busy = false;
@@ -157,7 +160,18 @@ export async function processPendingReferrals({ db = prisma, now = new Date(), s
   let rewarded = 0;
   try {
     await db.$executeRaw`UPDATE "Referral" SET status = 'EXPIRED', reason = 'NO_ACTION' WHERE status = 'PENDING' AND "createdAt" < ${new Date(now.getTime() - REWARD_WINDOW_DAYS * DAY)}`;
-    const pending = await db.$queryRaw`SELECT id, "inviterId", "inviteeId", "createdAt" FROM "Referral" WHERE status = 'PENDING' ORDER BY "createdAt" LIMIT 200`;
+    // Only referrals that are ready (invitee has a phone and a first health action), so a pile
+    // of inactive invitees can never hold back newer ones.
+    const pending = await db.$queryRaw`SELECT r.id, r."inviterId", r."inviteeId", r."createdAt" FROM "Referral" r
+      JOIN "User" u ON u.id = r."inviteeId"
+      WHERE r.status = 'PENDING' AND u.phone IS NOT NULL AND (
+        EXISTS (SELECT 1 FROM "MedicationSchedule" x WHERE x."userId" = r."inviteeId")
+        OR EXISTS (SELECT 1 FROM "DailyCheckIn" x WHERE x."userId" = r."inviteeId")
+        OR EXISTS (SELECT 1 FROM "DoctorVisit" x WHERE x."userId" = r."inviteeId")
+        OR EXISTS (SELECT 1 FROM "MedicalRecord" x WHERE x."userId" = r."inviteeId")
+        OR EXISTS (SELECT 1 FROM "NutritionMeal" x WHERE x."userId" = r."inviteeId")
+        OR EXISTS (SELECT 1 FROM "CycleLog" x WHERE x."userId" = r."inviteeId"))
+      ORDER BY r."createdAt" LIMIT 200`;
     const monthStart = tbilisiMonthStart(now);
     for (const referral of pending) {
       const people = await db.user.findMany({ where: { id: { in: [referral.inviterId, referral.inviteeId] } }, select: { id: true, status: true, phone: true } });

@@ -87,6 +87,10 @@ export async function dispatchPriceDropAlerts({ now = new Date(), db = prisma, s
   busy = true;
   try {
     await db.$executeRaw`UPDATE "PriceDropAlert" SET state = 'SKIPPED' WHERE state = 'PENDING' AND "createdAt" < ${new Date(now.getTime() - STALE_AFTER_DAYS * 86400000)}`;
+    // Queued before the person turned alerts off or stopped the medicine: no longer wanted.
+    await db.$executeRaw`UPDATE "PriceDropAlert" a SET state = 'SKIPPED' WHERE a.state = 'PENDING' AND (
+        EXISTS (SELECT 1 FROM "HealthProfile" h WHERE h."userId" = a."userId" AND h."extraAnswers"->>'priceDropAlerts' = 'false')
+        OR NOT EXISTS (SELECT 1 FROM "MedicationSchedule" m WHERE m."userId" = a."userId" AND m.active = TRUE AND m.config->>'catalogProductId' = a."productId"))`;
     const pending = await db.$queryRaw`SELECT id, "userId", "productId", "medName", "fromGel", "toGel" FROM "PriceDropAlert" WHERE state = 'PENDING' ORDER BY "createdAt" LIMIT 300`;
     if (!pending.length) return { sent: 0 };
     const dayStartUtc = new Date(`${tbilisiParts(now).day}T00:00:00.000+04:00`);

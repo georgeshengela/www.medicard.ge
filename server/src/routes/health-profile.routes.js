@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { generateOnboardingAnalysis } from '../lib/onboardingAnalysis.js';
 import { resolveOpenRouterModel } from '../lib/aiEngine.js';
-import { birthDateSchema, genderSchema, publicHealthProfile, publicUser } from '../lib/patient.js';
+import { birthDateAgeError, birthDateInputSchema, genderSchema, publicHealthProfile, publicUser } from '../lib/patient.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 
@@ -40,13 +40,13 @@ const patchHealthProfileSchema = z
     currentStepIndex: z.number().int().min(0).max(100).optional(),
     /** Demographics can be finalized during assessment */
     gender: genderSchema.optional(),
-    birthDate: birthDateSchema.optional(),
+    birthDate: birthDateInputSchema.optional(),
   })
   .refine((data) => Object.keys(data).length > 0, 'განსაახლებელი ველი არ არის მითითებული');
 
 const completeSchema = z.object({
   gender: genderSchema,
-  birthDate: birthDateSchema,
+  birthDate: birthDateInputSchema,
   heightCm: z.number().min(80).max(250).optional(),
   weightKg: z.number().min(20).max(300).optional(),
 });
@@ -68,6 +68,8 @@ healthProfileRouter.put(
   asyncHandler(async (req, res) => {
     const data = patchHealthProfileSchema.parse(req.body);
     const { gender, birthDate, ...profileFields } = data;
+    const ageError = birthDateAgeError(birthDate, req.user.birthDate);
+    if (ageError) return res.status(400).json({ error: ageError, code: 'MIN_AGE' });
 
     if (gender !== undefined || birthDate !== undefined) {
       await prisma.user.update({
@@ -171,6 +173,8 @@ healthProfileRouter.post(
   '/complete',
   asyncHandler(async (req, res) => {
     const data = completeSchema.parse(req.body);
+    const ageError = birthDateAgeError(data.birthDate, req.user.birthDate);
+    if (ageError) return res.status(400).json({ error: ageError, code: 'MIN_AGE' });
 
     await prisma.user.update({
       where: { id: req.user.id },

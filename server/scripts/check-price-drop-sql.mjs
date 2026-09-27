@@ -14,6 +14,9 @@ try {
       AND COALESCE(h."extraAnswers"->>'priceDropAlerts', 'true') <> 'false'
     ON CONFLICT ("userId", "productId", "toGel") DO NOTHING`;
   await db.$queryRaw`EXPLAIN SELECT id FROM "PriceDropAlert" WHERE state = 'PENDING' ORDER BY "createdAt" LIMIT 300`;
+  await db.$queryRaw`EXPLAIN UPDATE "PriceDropAlert" a SET state = 'SKIPPED' WHERE a.state = 'PENDING' AND (
+      EXISTS (SELECT 1 FROM "HealthProfile" h WHERE h."userId" = a."userId" AND h."extraAnswers"->>'priceDropAlerts' = 'false')
+      OR NOT EXISTS (SELECT 1 FROM "MedicationSchedule" m WHERE m."userId" = a."userId" AND m.active = TRUE AND m.config->>'catalogProductId' = a."productId"))`;
   const [{ n }] = await db.$queryRaw`SELECT count(*)::int AS n FROM "MedicationSchedule" WHERE active = TRUE AND config ? 'catalogProductId'`;
   console.log(`price-drop SQL ok · active medicines linked to the catalog: ${n}`);
 } finally {

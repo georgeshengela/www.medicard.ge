@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -56,6 +56,7 @@ import { useCommunityEntry } from '@/lib/communityAccess';
 import { useThemeColors } from '@/theme/colors';
 import { HUB, hubText } from '@/theme/hub';
 import { ka } from '@/i18n/ka';
+import { clearPendingReferralCode, readPendingReferralCode } from '@/lib/referral';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
 
 /** Four AI check-ups, one per question a person actually has. */
@@ -84,6 +85,23 @@ export default function Home() {
   const { user, healthProfile, refresh } = useAuth();
   const router = useRouter();
   const c = useThemeColors();
+
+  // An invite link opened before sign-up: offer the code once, while the account is new.
+  const userId = user?.id;
+  const userCreatedAt = user?.createdAt;
+  useEffect(() => {
+    if (!userId) return;
+    let live = true;
+    void readPendingReferralCode().then(async (code) => {
+      if (!code || !live) return;
+      await clearPendingReferralCode();
+      const ageDays = userCreatedAt ? (Date.now() - new Date(userCreatedAt).getTime()) / 86400000 : Infinity;
+      if (live && ageDays <= 14) router.push(`/profile/invite-code?code=${code}` as never);
+    });
+    return () => {
+      live = false;
+    };
+  }, [router, userId, userCreatedAt]);
   const insets = useSafeAreaInsets();
   const tabInset = useTabBarInset(20);
   const hydration = useHydration();

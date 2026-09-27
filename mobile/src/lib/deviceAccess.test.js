@@ -136,7 +136,10 @@ describe('device access bootstrap', () => {
 
   it('HealthKit step reads do not silently re-request authorization', () => {
     const text = readFileSync(join(here, 'healthSyncPlatform.ios.ts'), 'utf8');
-    const fn = text.slice(text.indexOf('export async function fetchStepsNative'), text.length);
+    const start = text.indexOf('export async function fetchStepsNative');
+    const next = text.indexOf('\nexport ', start + 1);
+    // Only the read path: nutrition write-back asks for access from its own switch press.
+    const fn = text.slice(start, next === -1 ? text.length : next);
     assert.doesNotMatch(fn, /requestAuthorization/);
     assert.doesNotMatch(fn, /ensureHealthReadAccess/);
     assert.match(fn, /queryStatisticsCollectionForQuantity/);

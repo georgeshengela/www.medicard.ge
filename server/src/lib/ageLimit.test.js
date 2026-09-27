@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { birthDateSchema, MIN_USER_AGE, MIN_USER_AGE_MESSAGE } from './patient.js';
+import { birthDateAgeError, birthDateInputSchema, birthDateSchema, MIN_USER_AGE, MIN_USER_AGE_MESSAGE } from './patient.js';
 
 const ymd = (d) => d.toISOString().slice(0, 10);
 const yearsAgo = (n, extraDays = 0) => {
@@ -23,4 +23,16 @@ test('accounts are 18+: an adult passes, a 17-year-old is refused with a clear m
 test('the other birth-date rules still apply', () => {
   assert.equal(birthDateSchema.safeParse(yearsAgo(130)).success, false);
   assert.equal(birthDateSchema.safeParse('2001-02-30').success, false);
+});
+
+test('edits: a stored under-18 date does not block unrelated saves, a new one is refused', () => {
+  const minor = birthDateInputSchema.parse(yearsAgo(15));
+  const adult = birthDateInputSchema.parse(yearsAgo(40));
+  // Account created before the rule re-sends its stored date with an unrelated change.
+  assert.equal(birthDateAgeError(minor, new Date(`${yearsAgo(15)}T00:00:00.000Z`)), null);
+  assert.equal(birthDateAgeError(undefined, null), null);
+  // Setting or changing to an under-18 date is refused; an adult date is fine.
+  assert.equal(birthDateAgeError(minor, null), MIN_USER_AGE_MESSAGE);
+  assert.equal(birthDateAgeError(minor, new Date(`${yearsAgo(40)}T00:00:00.000Z`)), MIN_USER_AGE_MESSAGE);
+  assert.equal(birthDateAgeError(adult, null), null);
 });

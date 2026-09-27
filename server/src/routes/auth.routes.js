@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { getUsageSafe } from '../lib/usage.js';
 import { ensureFreePackageId } from '../lib/packages.js';
 import { getAppSettings } from '../lib/settings.js';
-import { birthDateSchema, genderSchema, publicHealthProfile, publicUser } from '../lib/patient.js';
+import { birthDateAgeError, birthDateInputSchema, birthDateSchema, genderSchema, publicHealthProfile, publicUser } from '../lib/patient.js';
 import { requestPasswordReset, resetPasswordWithCode } from '../lib/passwordReset.js';
 import { requestPhoneOtp, verifyPhoneOtp } from '../lib/phoneOtp.js';
 import { findUserByPhone, phoneTakenPayload } from '../lib/phoneUsers.js';
@@ -29,7 +29,7 @@ const registerSchema = z.object({
   fullName: z.string().trim().min(2, 'სახელი და გვარი სავალდებულოა').max(120),
   email: z.string().trim().toLowerCase().email('ელ-ფოსტის ფორმატი არასწორია'),
   password: z.string().min(8, 'პაროლი უნდა შეიცავდეს მინიმუმ 8 სიმბოლოს').max(128),
-  phone: georgianPhone.optional(),
+  // No phone here: User.phone is written only after an SMS code check (phone gate, 2026-09-27).
   gender: genderSchema.optional(),
   birthDate: birthDateSchema.optional(),
 });
@@ -80,13 +80,6 @@ authRouter.post(
       return res.status(409).json({ error: 'ამ ელ-ფოსტით მომხმარებელი უკვე რეგისტრირებულია.' });
     }
 
-    if (data.phone) {
-      const taken = await findUserByPhone(data.phone);
-      if (taken) {
-        return res.status(409).json(phoneTakenPayload());
-      }
-    }
-
     const packageId = await ensureFreePackageId();
     const passwordHash = await bcrypt.hash(data.password, 12);
     let user;
@@ -96,7 +89,6 @@ authRouter.post(
           data: {
             email: data.email,
             fullName: data.fullName,
-            phone: data.phone ?? null,
             gender: data.gender ?? null,
             birthDate: data.birthDate ?? null,
             passwordHash,
@@ -414,7 +406,7 @@ const updateProfileSchema = z
   .object({
     fullName: z.string().trim().min(2, 'შეიყვანე სახელი და გვარი').max(120).optional(),
     gender: genderSchema.optional(),
-    birthDate: birthDateSchema.optional(),
+    birthDate: birthDateInputSchema.optional(),
     aiEngine: z.enum(['gemini_flash', 'ling_free', 'evidencemd']).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, 'განსაახლებელი ველი არ არის მითითებული');
@@ -424,6 +416,8 @@ authRouter.patch(
   requireAuth,
   asyncHandler(async (req, res) => {
     const data = updateProfileSchema.parse(req.body);
+    const ageError = birthDateAgeError(data.birthDate, req.user.birthDate);
+    if (ageError) return res.status(400).json({ error: ageError, code: 'MIN_AGE' });
 
     const user = await prisma.user.update({
       where: { id: req.user.id },
