@@ -155,6 +155,13 @@ export type HealthProfile = {
   bmi: number | null;
 };
 
+export type EmailPreferences = {
+  marketingOptIn: boolean;
+  optInAt: string | null;
+  /** false for phone-only accounts (no real mailbox). */
+  canReceive: boolean;
+};
+
 export type AccountAppState = {
   labPanels: import('@/types/lab').LabPanel[];
   weightGoal: import('@/types/weightGoal').WeightGoal | null;
@@ -2363,6 +2370,10 @@ export const api = {
     getAppState: () => request<{ state: AccountAppState }>('/api/account/app-state', { timeoutMs: 30_000 }),
     putAppState: (body: Partial<AccountAppState>) =>
       request<{ state: AccountAppState }>('/api/account/app-state', { method: 'PUT', body, timeoutMs: 30_000 }),
+    /** Marketing email consent (off by default). Transactional mail is not affected. */
+    emailPreferences: () => request<EmailPreferences>('/api/account/email-preferences'),
+    setEmailMarketing: (marketingOptIn: boolean) =>
+      request<EmailPreferences>('/api/account/email-preferences', { method: 'PATCH', body: { marketingOptIn } }),
   },
 
   healthMetrics: {

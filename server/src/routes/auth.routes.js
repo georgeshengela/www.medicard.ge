@@ -15,6 +15,7 @@ import { asyncHandler } from '../middleware/error.js';
 import { claimDailyCheckIn } from '../lib/checkIn.js';
 import { recordAppActivityFromRequest } from '../lib/appActivity.js';
 import { deleteUserAccount } from '../lib/deleteUser.js';
+import { queueAccountDeletedEmail, queueWelcomeEmail } from '../lib/email.js';
 
 export const authRouter = Router();
 
@@ -137,6 +138,9 @@ authRouter.post(
         code: 'REGISTER_UNCONFIRMED',
       });
     }
+
+    // Fire-and-forget (setImmediate): never delays or fails the sign-up; once per user ever.
+    queueWelcomeEmail(confirmed);
 
     return res.status(201).json({
       token: signToken(confirmed),
@@ -268,6 +272,9 @@ authRouter.post(
           },
         });
         user = await loadUserBundle(created.id);
+        // Phone sign-ups carry a synthetic @phone.medicard.ge login, so this is a no-op today;
+        // it starts working if phone sign-up ever collects a real address.
+        queueWelcomeEmail(user);
       } catch (err) {
         if (err?.code === 'P2002') {
           const existing = await findUserByPhone(phone);
@@ -433,10 +440,13 @@ authRouter.delete(
   '/me',
   requireAuth,
   asyncHandler(async (req, res) => {
+    // Captured before deletion; the confirmation goes out only after the deletion committed.
+    const recipient = { userId: req.user.id, email: req.user.email, fullName: req.user.fullName };
     const result = await deleteUserAccount(req.user.id);
     if (!result.ok) {
       return res.status(result.status).json({ error: result.error });
     }
+    queueAccountDeletedEmail(recipient);
     return res.json({ ok: true });
   }),
 );

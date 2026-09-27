@@ -39,6 +39,13 @@ const schema = z.object({
 
   RESEND_API_KEY: z.string().default(''),
   RESEND_FROM: z.string().default('Medicard <noreply@medicard.ge>'),
+  /** Svix signing secret (whsec_…) of the Resend webhook → POST /api/email/webhook. Empty = webhook refused (503). */
+  RESEND_WEBHOOK_SECRET: z.string().default(''),
+  /** Replies to any Medicard email go here. */
+  EMAIL_REPLY_TO: z.string().default('support@medicard.ge'),
+  /** Store links for the welcome email; empty = https://medicard.ge/#download. */
+  APP_STORE_URL: z.string().default(''),
+  PLAY_STORE_URL: z.string().default(''),
 
   SMS_OFFICE_API_KEY: z.string().default(''),
   SMS_OFFICE_SENDER: z.string().default('MEDICARD'),

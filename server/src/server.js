@@ -32,6 +32,8 @@ import { startPushCampaignWorker } from './lib/pushCampaigns.js';
 import { objectStorageConfigured, objectStoragePublicHint } from './lib/objectStorage.js';
 import { adminReferralRouter, referralRouter } from './routes/referral.routes.js';
 import { adminFunnelRouter, funnelRouter } from './routes/funnel.routes.js';
+import { adminEmailRouter, emailWebhookRouter, unsubscribeRouter } from './routes/email.routes.js';
+import { startEmailWorkers } from './lib/email/campaigns.js';
 import { healthProfileRouter } from './routes/health-profile.routes.js';
 import { healthMetricsRouter } from './routes/health-metrics.routes.js';
 import { aiRouter } from './routes/ai.routes.js';
@@ -124,6 +126,8 @@ app.use(
   }),
 );
 app.use(cors({ origin: true, credentials: true }));
+// Resend webhook needs the raw body for its Svix signature, so it is mounted before express.json.
+app.use('/api/email', emailWebhookRouter);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(
@@ -132,7 +136,7 @@ app.use(
     if (url.startsWith('/api/cycle/share')) url = '/api/cycle/share/[redacted]';
     if (url.startsWith('/api/files/')) url = '/api/files/[redacted]';
     if (url.startsWith('/uploads/')) url = '/uploads/[redacted]';
-    url = url.replace(/([?&])(lat|lng|latitude|longitude|accuracy|coords|continuationToken|token)=[^&]*/gi, '$1$2=[redacted]');
+    url = url.replace(/([?&])(lat|lng|latitude|longitude|accuracy|coords|continuationToken|token|t)=[^&]*/gi, '$1$2=[redacted]');
     return [
       tokens.method(req, res),
       url,
@@ -185,6 +189,9 @@ app.get(['/delete-account', '/delete-account/', '/en/delete-account'], (_req, re
   res.set('Cache-Control', 'public, max-age=3600');
   res.sendFile(path.join(PUBLIC_DIST, 'delete-account.html'));
 });
+
+// One-click marketing unsubscribe (email links + RFC 8058 POST). Public, no auth.
+app.use(unsubscribeRouter);
 
 app.get(['/calculators', '/calculators/'], (req, res, next) => {
   if (!PUBLIC_DIST) return next();
@@ -246,6 +253,7 @@ startCommunityPush();
 startPriceDropAlerts();
 startReferralRewards();
 startPushCampaignWorker();
+startEmailWorkers();
 app.use('/api/medipulsi', medipulsiRouter);
 app.use('/api/cycle', cycleRouter);
 app.get('/api/cycle/share/:code', partnerShareClosedHandler);
@@ -261,6 +269,7 @@ app.use('/api/referrals', referralRouter);
 app.use('/api/admin/referrals', adminReferralRouter);
 app.use('/api/funnel', funnelRouter);
 app.use('/api/admin/funnel', adminFunnelRouter);
+app.use('/api/admin/email', adminEmailRouter);
 app.use('/api/medi-companion', mediCompanionRouter);
 app.use('/api/app', appRouter);
 app.use('/api/ai-consent', aiConsentRouter);
@@ -332,6 +341,7 @@ if (serveLanding) {
       p === '/privacy' ||
       p === '/terms' ||
       p === '/delete-account' ||
+      p === '/unsubscribe' ||
       p === '/calculators' ||
       p.startsWith('/calculators/')
     ) {

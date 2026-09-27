@@ -31,7 +31,7 @@ export const LEGACY_PUSH_SEGMENTS = { FREE: 'ALL', STANDARD: 'ALL', ULTIMATE: 'A
 export const ACCEPTED_PUSH_SEGMENTS = [...PUSH_SEGMENTS, ...Object.keys(LEGACY_PUSH_SEGMENTS)];
 
 /** HealthProfile.extraAnswers.primaryGoal values written by onboarding (mobile PrimaryGoal). */
-const GOAL_BY_SEGMENT = {
+export const GOAL_BY_SEGMENT = {
   GOAL_MEDICATIONS: 'medications',
   GOAL_NUTRITION: 'nutrition',
   GOAL_CYCLE: 'cycle',

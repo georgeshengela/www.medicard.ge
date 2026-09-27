@@ -10,6 +10,7 @@ import {
   Droplets,
   Footprints,
   HeartHandshake,
+  Mail,
   MessageCircle,
   Moon,
   Scale,
@@ -25,6 +26,7 @@ import {
 } from '@/components/profile/PermissionToggleRow';
 import { useFigmaHealthMetrics } from '@/constants/figmaHealthMetricsLayout';
 import { ka } from '@/i18n/ka';
+import { api, type EmailPreferences } from '@/lib/api';
 import {
   DEFAULT_ENGAGE_PREFS,
   loadEngagePrefs,
@@ -111,12 +113,42 @@ export default function NotificationSettingsScreen() {
     setHealthProfile(updated);
   };
   const [prefs, setPrefs] = useState<MediEngagePrefs>(DEFAULT_ENGAGE_PREFS);
+  // Marketing email consent lives on the server (Law 3144: explicit, off by default).
+  const [emailPrefs, setEmailPrefs] = useState<EmailPreferences | null>(null);
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       void loadEngagePrefs().then(setPrefs);
+      let alive = true;
+      api.account
+        .emailPreferences()
+        .then((next) => {
+          if (alive) setEmailPrefs(next);
+        })
+        .catch(() => undefined);
+      return () => {
+        alive = false;
+      };
     }, []),
   );
+
+  const setEmailMarketing = async (next: boolean) => {
+    if (!emailPrefs || emailSaving) return;
+    const previous = emailPrefs;
+    setEmailError(null);
+    setEmailSaving(true);
+    setEmailPrefs({ ...emailPrefs, marketingOptIn: next });
+    try {
+      setEmailPrefs(await api.account.setEmailMarketing(next));
+    } catch {
+      setEmailPrefs(previous);
+      setEmailError(ka.notifSettings.emailMarketingError);
+    } finally {
+      setEmailSaving(false);
+    }
+  };
 
   const persist = async (next: MediEngagePrefs) => {
     setPrefs(next);
@@ -207,6 +239,29 @@ export default function NotificationSettingsScreen() {
             />
           </PermissionGroup>
         </View>
+
+        {emailPrefs ? (
+          <View style={{ gap: 8 }}>
+            <PermissionSectionLabel title={ka.notifSettings.email} />
+            <PermissionGroup>
+              <PermissionToggleRow
+                icon={Mail}
+                label={ka.notifSettings.emailMarketing}
+                value={emailPrefs.marketingOptIn}
+                disabled={!emailPrefs.canReceive && !emailPrefs.marketingOptIn}
+                loading={emailSaving}
+                isLast
+                onValueChange={(next) => void setEmailMarketing(next)}
+              />
+            </PermissionGroup>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: colors.text300 }}>
+              {emailPrefs.canReceive ? ka.notifSettings.emailMarketingHint : ka.notifSettings.emailMarketingNoEmail}
+            </Text>
+            {emailError ? (
+              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, color: '#DC2626' }}>{emailError}</Text>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={{ gap: 8 }}>
           <PermissionSectionLabel title={ka.notifSettings.medi} />

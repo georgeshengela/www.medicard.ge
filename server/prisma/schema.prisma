@@ -57,6 +57,12 @@ model User {
   aiEngine         String               @default("gemini_flash")
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
+  /// Direct-marketing email consent (prisma/20260928-email.sql, Law 3144). Off by default.
+  /// @ignore: read/written only with raw SQL (src/lib/email/preferences.js), so the generated
+  /// client never selects these columns and User queries keep working before the release installs them.
+  emailMarketingOptIn   Boolean   @default(false) @ignore
+  emailMarketingOptInAt DateTime? @ignore
+  emailLogs        EmailLog[]
   records          MedicalRecord[]
   checkIns         DailyCheckIn[]
   pointAwards      PointAward[]
@@ -2570,4 +2576,79 @@ model FunnelEvent {
   @@index([name, createdAt], map: "FunnelEvent_name_time")
   @@index([userId, name], map: "FunnelEvent_user_name")
   @@index([installHash], map: "FunnelEvent_install")
+}
+
+/// Email templates: admin overrides of the code defaults (prisma/20260928-email.sql, src/lib/email/templates.js).
+/// A NULL field falls back to the code default.
+model EmailTemplate {
+  key       String   @id
+  name      String
+  category  String   @default("transactional")
+  enabled   Boolean  @default(true)
+  subject   String?
+  preheader String?
+  heading   String?
+  body      String?
+  ctaLabel  String?
+  ctaUrl    String?
+  updatedAt DateTime @default(now())
+  updatedBy String?
+}
+
+/// One row per attempted email. No full address (hash + masked form), no body, no codes.
+/// Rows older than 180 days are purged daily (src/lib/email/campaigns.js).
+model EmailLog {
+  id             String   @id @default(uuid())
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  toHash         String
+  toMasked       String
+  templateKey    String
+  category       String   @default("transactional")
+  subject        String   @default("")
+  /// queued | sent | failed | suppressed | delayed | delivered | opened | clicked | bounced | complained
+  status         String   @default("queued")
+  providerId     String?
+  error          String?
+  campaignId     String?
+  idempotencyKey String?  @unique(map: "EmailLog_idempotencyKey_key")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now())
+
+  @@index([providerId], map: "EmailLog_providerId_idx")
+  @@index([createdAt], map: "EmailLog_createdAt_idx")
+  @@index([templateKey, createdAt], map: "EmailLog_template_time_idx")
+  @@index([userId], map: "EmailLog_userId_idx")
+  @@index([campaignId], map: "EmailLog_campaignId_idx")
+}
+
+/// Addresses that hard-bounced or complained (Resend webhook). Never mailed again, transactional included.
+model EmailSuppression {
+  toHash    String   @id
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+/// Marketing campaigns (admin #/email → კამპანიები), sent by the email-campaigns worker.
+model EmailCampaign {
+  id          String    @id
+  subject     String
+  preheader   String?
+  heading     String?
+  body        String    @default("")
+  ctaLabel    String?
+  ctaUrl      String?
+  segment     String    @default("ALL_OPTED_IN")
+  /// draft | queued | sending | sent | failed | cancelled
+  status      String    @default("draft")
+  targetCount Int       @default(0)
+  sentCount   Int       @default(0)
+  failedCount Int       @default(0)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  sentAt      DateTime?
+  data        Json      @default("{}")
+
+  @@index([status, createdAt], map: "EmailCampaign_status_idx")
 }

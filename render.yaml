@@ -66,6 +66,12 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      - key: RESEND_WEBHOOK_SECRET
+        sync: false
+      - key: APP_STORE_URL
+        sync: false
+      - key: PLAY_STORE_URL
+        sync: false
       - key: SMS_OFFICE_API_KEY
         sync: false
       - key: SMS_OFFICE_SENDER
