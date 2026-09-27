@@ -10,6 +10,7 @@ import { ka } from '@/i18n/ka';
 import { useCycleColors } from '@/theme/cycle';
 import { useThemeColors } from '@/theme/colors';
 import { MetricCardSkeleton } from '@/components/ui/Skeleton';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import type { CycleBundle, CycleDayMark } from '@/lib/api';
 import { loadCycleView } from '@/lib/cycleOffline';
 import { isCyclePrivacyLockEnabled } from '@/lib/cycleReminderPrefs';
@@ -546,6 +547,9 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
 
         </View>
       </TouchableOpacity>
+      {bundle && !privacyLocked && !setupNeeded ? (
+        <MedicalSourcesLink sourceIds={pregnancy ? ['pregnancyDueDate', 'pregnancyWeeks'] : ['menstrualCycle']} />
+      ) : null}
     </View>
   );
 }

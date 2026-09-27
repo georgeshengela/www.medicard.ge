@@ -20,6 +20,7 @@ import { HUB, hubInk, hubText, hubTint } from "@/theme/hub";
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { NButton, NError, NLoading, NScreen } from "@/components/nutrition/ProgramUI";
 import { HubCard, HubSection, MacroLine, ScoreBadge } from "@/components/nutrition/NutritionUi";
+import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { FoodSearchModal, type FoodPick } from "@/components/nutrition/FoodSearchModal";
 import { DescribeMealModal } from "@/components/nutrition/DescribeMealModal";
 
@@ -197,6 +198,7 @@ function RecipeEditor({ owner, recipeId }: { owner: string; recipeId: string }) 
                   მთლიანი: {total.calories} კკალ · {Math.round(grams)} გ · {items.length} ინგრედიენტი
                 </Text>
               </HubCard>
+              {score != null && <MedicalSourcesLink sourceIds={["mealQuality"]} />}
             </HubSection>
           )}
 

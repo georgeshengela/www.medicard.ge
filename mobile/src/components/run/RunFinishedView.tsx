@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Share, View } from 'react-native';
 import { Award, Flag, Flame, Footprints, Gauge, MapPin, Share2, Timer, Zap } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { RunMap, type RunMapHandle } from './RunMap';
 import { MediRunLogo } from './PulseIdentity';
 import { Bar, Card, Copy, RUN_TEAL, Section, Tile } from './PulseUi';
@@ -97,7 +98,10 @@ export function RunFinishedView({ summary, title, headerLeft, footer }: Props) {
     {summary.targetMeters > 0 ? <Card style={{ gap: 12 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Tile icon={Flag} ink={summary.completedTarget ? 'green' : 'teal'} /><View style={{ flex: 1 }}><Copy bold size={14}>{summary.completedTarget ? 'მიზანი შესრულებულია' : 'ყოველი ნაბიჯი წინსვლაა'}</Copy><Copy muted size={12}>{targetLabel(summary.target)}</Copy></View><Copy bold size={22} style={{ color: c.primary100 }}>{pct}%</Copy></View><Bar value={pct} color={summary.completedTarget ? c.success : RUN_TEAL} label="ვარჯიშის მიზანი" /></Card> : null}
 
     {summary.pin ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><MapPin size={17} color={c.primary100} /><Copy muted size={12} style={{ flex: 1 }}>{summary.reachedPin ? 'დანიშნულების ადგილს მიაღწიე' : 'დანიშნულების ადგილამდე ამ სესიაში ვერ მიხვედი'}</Copy></View> : null}
-    <Copy muted size={11} style={{ marginTop: -8 }}>ნაბიჯები და კალორია შეფასებითია. შეინარჩუნე შენთვის კომფორტული ტემპი.</Copy>
+    <View style={{ marginTop: -8 }}>
+      <Copy muted size={11}>ნაბიჯები და კალორია შეფასებითია. შეინარჩუნე შენთვის კომფორტული ტემპი.</Copy>
+      <MedicalSourcesLink sourceIds={['activityMet']} />
+    </View>
     {footer}
   </ScrollView>;
 }

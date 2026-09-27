@@ -3,6 +3,7 @@ import { Alert, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { Plus, ShieldCheck } from 'lucide-react-native';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { MedsButton, MedsCard, MedsChip, MedsIconTile } from '@/components/medications/MedsHubUI';
 import { Markdown } from '@/components/ui/Markdown';
@@ -86,6 +87,10 @@ export default function MedicationInteractionScreen() {
             <MedsCard>
               <Markdown content={review} />
             </MedsCard>
+            <Text style={[hubText.small, { color: c.text300, marginTop: 10 }]}>
+              მიმოხილვა AI-ით (Medi) არის შექმნილი შენი წამლების სიიდან — შეიძლება რამე გამოტოვოს და ეს დიაგნოზი ან დანიშნულება არ არის. წამლის შეცვლამდე ჰკითხე ექიმს ან ფარმაცევტს.
+            </Text>
+            <MedicalSourcesLink sourceIds={['medicationInteractions']} />
           </View>
         ) : null}
       </ScrollView>

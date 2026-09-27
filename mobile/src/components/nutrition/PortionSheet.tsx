@@ -3,6 +3,7 @@ import { Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bookmark, BookmarkCheck, X } from "lucide-react-native";
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
+import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { useThemeColors } from "@/theme/colors";
 import { hubText } from "@/theme/hub";
 import { healthScore, healthScoreLabel, portionFromFood, type FoodItem, type SavedFood } from "@/lib/nutrition";
@@ -108,6 +109,7 @@ export function PortionSheet({
                 {score != null && <Text style={[hubText.small, { color: c.primary100 }]}>{score}/10 · {healthScoreLabel(score)}</Text>}
               </View>
             )}
+            {score != null && <MedicalSourcesLink sourceIds={["mealQuality"]} />}
             <Pressable
               accessibilityRole="button"
               disabled={!item}

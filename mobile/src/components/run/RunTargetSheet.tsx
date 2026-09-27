@@ -11,6 +11,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { Footprints, MapPin, Route, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { hideFloatingTabBar } from '@/components/navigation/tabChrome';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { ka } from '@/i18n/ka';
@@ -321,6 +322,7 @@ export function RunTargetSheet({ visible, onClose, onConfirm, heightCm, weightKg
                 : ka.run.chooseTarget}
             </Text>
           </View>
+          {target ? <MedicalSourcesLink sourceIds={['activityMet']} /> : null}
 
           <Pressable
             accessibilityRole="button"

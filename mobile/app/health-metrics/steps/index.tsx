@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react-native';
 import { StepsBarChart } from '@/components/health/StepsBarChart';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { ChartCardSkeleton } from '@/components/ui/Skeleton';
 import { StepsGoalCard, StepsReachedGoalsList, StepsSection } from '@/components/health/StepsGoalCard';
 import { StepsHistoryRow } from '@/components/health/StepsHistoryRow';
@@ -195,6 +196,7 @@ export default function StepsDetailScreen() {
               </Text>
             </View>
           </View>
+          <MedicalSourcesLink sourceIds={['dailySteps', 'physicalActivity']} />
         </View>
 
         <View style={{ paddingHorizontal: 16, paddingBottom: 8, gap: 12 }}>

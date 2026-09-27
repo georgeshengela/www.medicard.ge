@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { WeightInfoRow } from '@/components/weight/WeightGoalRows';
 import { WeightPrimaryButton, WeightWizardBar } from '@/components/weight/WeightChrome';
 import { useFigmaWeight } from '@/constants/figmaWeightLayout';
@@ -84,6 +85,7 @@ export default function WeightConfirmScreen() {
           value={reminderDaysLabel(draft.reminderDays ?? [])}
           onPress={() => router.push('/health-metrics/weight/goal/reminder' as never)}
         />
+        <MedicalSourcesLink sourceIds={['weightPace']} />
       </View>
       <View style={{ flex: 1 }} />
       <View style={{ padding: 16, paddingBottom: Math.max(insets.bottom, 16) }}>

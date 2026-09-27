@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Sparkles } from 'lucide-react-native';
 import { Meteocon, airMeteoconSlug, meteoconSlugFor, type MeteoconSlug } from '@/components/weather/Meteocon';
 import { airBandColor, weatherMood } from '@/components/weather/weatherMood';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { useWeather } from '@/hooks/useWeather';
 import { ka } from '@/i18n/ka';
 import {
@@ -362,6 +363,7 @@ function AirQualityBlock({ air }: { air: AirQualitySnapshot }) {
           </View>
         ))}
       </View>
+      <MedicalSourcesLink sourceIds={['airQualityIndex']} />
     </View>
   );
 }
@@ -416,6 +418,7 @@ function StatsGrid({ snapshot }: { snapshot: NonNullable<ReturnType<typeof useWe
           </View>
         ))}
       </View>
+      {snapshot.today.uvMax != null ? <MedicalSourcesLink sourceIds={['uvIndex']} /> : null}
     </View>
   );
 }

@@ -31,6 +31,7 @@ import { HUB, hubInk, hubText, hubTint } from "@/theme/hub";
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from "@/components/ui/appModal";
 import { NButton, NError, NLoading, NScreen } from "@/components/nutrition/ProgramUI";
 import { HubCard, HubSection } from "@/components/nutrition/NutritionUi";
+import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 
 export default function FastingScreen() {
   const { user } = useAuth();
@@ -292,6 +293,7 @@ function Fasting() {
               {!!message && !active && (
                 <NButton secondary label="პირველი კვების ჩაწერა" onPress={() => router.push("/nutrition/diary")} />
               )}
+              <MedicalSourcesLink sourceIds={["intermittentFasting"]} />
             </HubCard>
           </HubSection>
 

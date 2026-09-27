@@ -53,11 +53,12 @@ export async function inspectDeviceAccessNeeds() {
   }
 
   const expoGo = Constants.appOwnership === 'expo';
-  const [{ getPushOptedInStored, getRememberedOsNotificationGrant, isNotificationsNativeAvailable }, health, { getLocationPermissionState }] =
+  const [{ getPushOptedInStored, getRememberedOsNotificationGrant, isNotificationsNativeAvailable }, health, { getLocationPermissionState }, { wasPrimerAsked }] =
     await Promise.all([
       import('@/lib/notifications'),
       import('@/lib/healthSync'),
       import('@/lib/userLocation'),
+      import('@/lib/permissionPrimer'),
     ]);
 
   const stored = await getPushOptedInStored();
@@ -69,9 +70,16 @@ export async function inspectDeviceAccessNeeds() {
       ? isNotificationsNativeAvailable()
       : true;
 
+  // Once the OS sheet has been shown (answered either way) the primer never returns:
+  // the gate has no "Not now", so re-showing it would push the person at a denied sheet.
+  const [notificationsAsked, healthAsked] = await Promise.all([
+    wasPrimerAsked('notifications'),
+    wasPrimerAsked('health'),
+  ]);
+
   return {
-    notifications: nativeNotifications && stored !== '1' && !remembered,
-    health: !expoGo && health.isHealthPlatformSupported() && !healthOn,
+    notifications: nativeNotifications && stored !== '1' && !remembered && !notificationsAsked,
+    health: !expoGo && health.isHealthPlatformSupported() && !healthOn && !healthAsked,
     location: !expoGo && loc === 'undetermined',
   };
 }

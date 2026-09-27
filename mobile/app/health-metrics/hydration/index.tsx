@@ -10,6 +10,7 @@ import {
   HydrationDrop,
   MiniSpark,
 } from '@/components/hydration/HydrationIcons';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { HydrationGlass } from '@/components/hydration/HydrationGlass';
 import { HydrationMonthCalendar } from '@/components/hydration/HydrationMonthCalendar';
 import { HydrationWeekChart } from '@/components/hydration/HydrationWeekChart';
@@ -181,6 +182,7 @@ function HubCards({
         <Text style={{ marginTop: 8, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, color: T.textTertiary }}>
           {ka.hydration.dropLegend}
         </Text>
+        <MedicalSourcesLink sourceIds={['waterIntake']} />
       </Section>
 
       <Section title={ka.hydration.highlight} onSeeAll={() => router.push('/health-metrics/hydration/details' as never)} T={T}>

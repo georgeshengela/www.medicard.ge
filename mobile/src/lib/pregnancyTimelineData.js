@@ -58,10 +58,6 @@ export const PREGNANCY_TIMELINE_SOURCES = Object.freeze({
     citation: 'WHO, WHO recommendations on antenatal care for a positive pregnancy experience (2016)',
     url: 'https://www.who.int/publications/i/item/9789241549912',
   }),
-  src_williams: Object.freeze({
-    citation: 'Williams Obstetrics, 26th ed. — embryonic period and gestational calendar',
-    url: null,
-  }),
 });
 
 export const PREGNANCY_TIMELINE_MILESTONES = Object.freeze([
@@ -87,7 +83,7 @@ export const PREGNANCY_TIMELINE_MILESTONES = Object.freeze([
     category: 'GENERAL_DEVELOPMENT',
     titleKey: 'ms_embryo_title',
     bodyKey: 'ms_embryo_body',
-    sourceKey: 'src_williams',
+    sourceKey: 'src_acog_fetus',
   }),
   Object.freeze({
     id: 't1_end',

@@ -8,6 +8,7 @@ import { nutritionDateLabel, type NutritionActivity } from "@/lib/nutritionProgr
 import { useAuth } from "@/store/AuthContext";
 import { useThemeColors } from "@/theme/colors";
 import { NScreen, NText, NCard, NButton, NError, NLoading } from "@/components/nutrition/ProgramUI";
+import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 
 const KINDS: { key: string; label: string }[] = [
   { key: "walk", label: "სიარული" },
@@ -124,6 +125,7 @@ function Activity() {
           <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 18 }}>{todayKcal} კკალ</NText>
         </View>
         <NText style={{ fontSize: 12, color: c.text200 }}>ნაბიჯების ენერგია ავტომატურად ითვლება ჯანმრთელობის სინქრონიდან. ბიუჯეტში დამატება პარამეტრებში ირთვება.</NText>
+        <MedicalSourcesLink sourceIds={["activityMet"]} />
       </NCard>
       <NCard>
         <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold" }}>რა გააკეთე?</NText>

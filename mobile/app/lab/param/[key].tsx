@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LabBackChevron, LabInfoCircle } from '@/components/lab/LabIcons';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { LabLogRow } from '@/components/lab/LabLogRow';
 import { LabParamChart } from '@/components/lab/LabParamChart';
 import { LabParamExplainSheet } from '@/components/lab/LabParamExplainSheet';
@@ -143,6 +144,12 @@ export default function LabParamScreen() {
                     {ka.lab.vsPrevious(delta, latest.param.unit)}
                   </Text>
                 ) : null}
+                {badge ? (
+                  <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: T.textMuted }}>
+                    ნიშანი ლაბორატორიის ფურცელზე დაბეჭდილ ნიშანს ან საცნობარო დიაპაზონს ეფუძნება, არა აპის საკუთარ ნორმებს.
+                  </Text>
+                ) : null}
+                <MedicalSourcesLink sourceIds={['labResults']} />
               </View>
             </View>
           </View>

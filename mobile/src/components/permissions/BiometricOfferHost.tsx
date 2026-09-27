@@ -1,3 +1,7 @@
+/**
+ * Not mounted since 2026-09-27 (App Review 5.1.1(iv): no message with "Not now" before a
+ * permission sheet). Face ID is turned on from Profile → permissions instead.
+ */
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { useSegments } from 'expo-router';

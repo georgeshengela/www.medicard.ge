@@ -74,9 +74,10 @@ function weightStatusKg(value: number, heightCm: number | null | undefined): str
   return ka.healthMetrics.weightHigh;
 }
 
+/** AHA bands: normal <120 and <80; elevated 120–129 and <80; stage 1/2 (≥130 or ≥80) = high. */
 function bpStatus(sys: number, dia: number): string {
   if (sys < 120 && dia < 80) return ka.healthMetrics.bpOptimal;
-  if (sys < 130 && dia < 85) return ka.healthMetrics.bpElevated;
+  if (sys < 130 && dia < 80) return ka.healthMetrics.bpElevated;
   return ka.healthMetrics.bpHigh;
 }
 
@@ -87,15 +88,10 @@ function hrStatus(value: number): string {
 }
 
 function sleepStatus(hours: number): string {
-  if (hours >= 7 && hours <= 9) return ka.healthMetrics.sleepGood;
+  // CDC: adults 18–60 need 7 or more hours; long sleep is not labelled "too little".
+  if (hours >= 7) return ka.healthMetrics.sleepGood;
   if (hours >= 5) return ka.healthMetrics.sleepLow;
   return ka.healthMetrics.sleepPoor;
-}
-
-function nutritionStatus(kcal: number): string {
-  if (kcal >= 1200 && kcal <= 2500) return ka.healthMetrics.nutritionOnTrack;
-  if (kcal < 1200) return ka.healthMetrics.nutritionLow;
-  return ka.healthMetrics.nutritionHigh;
 }
 
 function hydrationStatus(ml: number): string {
@@ -179,7 +175,8 @@ export function buildMetricSnapshot(
       key,
       value,
       unit: 'kcal',
-      statusKa: value != null ? nutritionStatus(value) : ka.healthMetrics.noData,
+      // No population calorie band: needs differ per person, so only the logged total is shown.
+      statusKa: value != null ? ka.healthMetrics.nutritionLogged : ka.healthMetrics.noData,
       updatedLabel: updatedLabelFromDate(latest?.date ?? null),
       weekValues,
       source: latest ? source : 'none',

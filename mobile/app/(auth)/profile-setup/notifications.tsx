@@ -3,13 +3,11 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { Info } from 'lucide-react-native';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
-import {
-  ProfileSetupLinkButton,
-  ProfileSetupPrimaryButton,
-} from '@/components/profile/ProfileSetupButtons';
+import { ProfileSetupPrimaryButton } from '@/components/profile/ProfileSetupButtons';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { ka } from '@/i18n/ka';
 import { requestNotificationPermission, registerPushTokenWithServer, setPushOptedIn } from '@/lib/notifications';
+import { markPrimerAsked, primerCopy } from '@/lib/permissionPrimer';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
@@ -38,19 +36,18 @@ export default function ProfileSetupNotificationsScreen() {
 
   const goLocation = () => router.replace(onboardingStepHref('/(auth)/profile-setup/analyzing', preview) as never);
 
-  const continueFlow = (granted: boolean) => {
+  // App Review 5.1.1(iv): one "Continue" button that always opens the OS sheet; the
+  // person answers there. No skip before the request.
+  const continueFlow = () => {
+    if (busy) return;
+    setBusy(true);
     void (async () => {
-      let osGranted = false;
-      if (granted) {
-        osGranted = await requestNotificationPermission();
-      }
-      setBusy(true);
       try {
-        if (granted) {
+        const osGranted = await requestNotificationPermission().catch(() => false);
+        await markPrimerAsked('notifications');
+        if (osGranted) {
           await setPushOptedIn(true);
-          if (osGranted) await registerPushTokenWithServer({ skipPermissionProbe: true }).catch(() => undefined);
-        } else {
-          await setPushOptedIn(false);
+          await registerPushTokenWithServer({ skipPermissionProbe: true }).catch(() => undefined);
         }
         const updated = await patchProfileExtra(healthProfile, user, {
           notificationsEnabled: osGranted,
@@ -63,10 +60,12 @@ export default function ProfileSetupNotificationsScreen() {
     })();
   };
 
+  const copy = primerCopy('notifications');
+
   return (
     <ProfileSetupShell
-      title={ka.profileSetup.notificationsTitle}
-      body={ka.profileSetup.notificationsBody}
+      title={copy.title}
+      body={copy.body}
       primaryLabel=""
       onPrimary={() => {}}
       showStepper={false}
@@ -80,12 +79,11 @@ export default function ProfileSetupNotificationsScreen() {
             </Text>
           </View>
           <ProfileSetupPrimaryButton
-            label={ka.profileSetup.notificationsEnable}
-            onPress={() => void continueFlow(true)}
+            label={copy.cta}
+            onPress={continueFlow}
             loading={busy}
             icon="arrow"
           />
-          <ProfileSetupLinkButton label={ka.profileSetup.notificationsSkip} onPress={() => void continueFlow(false)} />
         </View>
       }
     >

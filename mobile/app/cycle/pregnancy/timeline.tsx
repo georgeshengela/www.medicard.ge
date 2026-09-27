@@ -8,7 +8,7 @@ import { CycleAtmosphere, cycleNavHeader, formatCycleDateKa } from '@/components
 import {
   CyclePregnancyCalendarRail,
 } from '@/components/cycle/CyclePregnancyTimelinePeek';
-import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ka } from '@/i18n/ka';
 import {
@@ -106,7 +106,6 @@ export default function CyclePregnancyTimelineScreen() {
   const { user } = useAuth();
   const [payload, setPayload] = useState<CyclePregnancyPayload | null>(null);
   const [offlineTimeline, setOfflineTimeline] = useState<CyclePregnancyPayload['timeline']>(null);
-  const [sourcesOpen, setSourcesOpen] = useState(false);
   const copy = ka.cycle.timeline;
 
   useLayoutEffect(() => {
@@ -371,60 +370,14 @@ export default function CyclePregnancyTimelineScreen() {
             </View>
 
             <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginTop: 20 }}>{copy.honesty}</Text>
-            <Pressable
-              onPress={() => setSourcesOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel={copy.sources}
-              style={{ minHeight: 44, justifyContent: 'center', marginTop: 4 }}
-            >
-              <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold' }}>{copy.sources}</Text>
-            </Pressable>
+            <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginTop: 8 }}>{copy.sourcesBody}</Text>
+            <MedicalSourcesLink sourceIds={['pregnancyWeeks', 'fetalDevelopment', 'pregnancyDueDate']} />
           </Frame>
         ) : (
           <Text style={{ color: c.muted, fontSize: 14, lineHeight: 22 }}>{ka.common.loading}</Text>
         )}
       </ScrollView>
 
-      <Modal visible={sourcesOpen} {...APP_MODAL_PROPS} onRequestClose={() => setSourcesOpen(false)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={ka.common.close}
-            onPress={() => setSourcesOpen(false)}
-            style={{ flex: 1, backgroundColor: APP_MODAL_OVERLAY }}
-          />
-          <View
-            style={{
-              backgroundColor: c.card,
-              paddingHorizontal: 20,
-              paddingTop: 20,
-              paddingBottom: insets.bottom + 20,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-            }}
-          >
-            <Text
-              style={{
-                color: c.ink,
-                fontFamily: 'NotoSansGeorgian_700Bold',
-                fontSize: 18,
-                lineHeight: 24,
-              }}
-            >
-              {copy.sources}
-            </Text>
-            <Text style={{ color: c.muted, fontSize: 13, lineHeight: 20, marginTop: 10 }}>{copy.sourcesBody}</Text>
-            <Pressable
-              onPress={() => setSourcesOpen(false)}
-              accessibilityRole="button"
-              accessibilityLabel={ka.common.close}
-              style={{ minHeight: 44, justifyContent: 'center', marginTop: 12 }}
-            >
-              <Text style={{ color: c.brand, fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.common.close}</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </CycleAtmosphere>
   );
 }

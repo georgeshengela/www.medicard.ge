@@ -13,6 +13,7 @@ import {
 } from "@/lib/nutritionHealth";
 import { getNotificationPermissionGranted, requestNotificationPermission, syncNutritionReminders } from "@/lib/notifications";
 import { localAccountId } from "@/lib/localAccount";
+import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { useAuth } from "@/store/AuthContext";
 import { useThemeColors } from "@/theme/colors";
 import { NScreen, NText, NCard, NButton, NError, NLoading } from "@/components/nutrition/ProgramUI";
@@ -221,8 +222,9 @@ function Settings() {
               );
             })}
             <NText style={{ fontSize: 11, color: c.text300, lineHeight: 17 }}>
-              {custom ? "საკუთარი განაწილება · ცხიმი ავტომატურად ავსებს 100%-ს." : "ნაგულისხმევი: 20 / 50 / 30."} ზღვრები: ცილა 10–40%, ნახშირწყლები 15–65%, ცხიმი 15–50%. თირკმლის დაავადებისას ცილის რაოდენობა ექიმთან შეათანხმე.
+              {custom ? "საკუთარი განაწილება · ცხიმი ავტომატურად ავსებს 100%-ს." : "ნაგულისხმევი: 20 / 50 / 30."} რეკომენდებული დიაპაზონი (AMDR): ცილა 10–35%, ნახშირწყლები 45–65%, ცხიმი 20–35%. აპის ზღვრები უფრო ფართოა: ცილა 10–40%, ნახშირწყლები 15–65%, ცხიმი 15–50%. თირკმლის დაავადებისას ცილის რაოდენობა ექიმთან შეათანხმე.
             </NText>
+            <MedicalSourcesLink sourceIds={["macroRanges", "energyTarget"]} />
           </NCard>
           {healthName && (
             <NCard>

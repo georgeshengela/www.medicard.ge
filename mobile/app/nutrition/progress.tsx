@@ -2,6 +2,7 @@ import React from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { CalendarCheck2, Ruler, TrendingDown, TrendingUp } from "lucide-react-native";
+import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { useAuth } from "@/store/AuthContext";
 import { useThemeColors } from "@/theme/colors";
 import { nutritionDateLabel } from "@/lib/nutritionProgram";
@@ -59,8 +60,9 @@ function Progress() {
               {stat(`${d.streak.current}`, "დღე ზედიზედ")}
             </View>
             <NText style={{ fontSize: 11, color: c.text200 }}>
-              „ბიუჯეტში“ ნიშნავს დღის სამიზნის 60–105%-ს. მხოლოდ ჩაწერილი დღეები ითვლება.
+              „ბიუჯეტში“ ნიშნავს დღის სამიზნის 60–105%-ს — ეს MEDICARD-ის საკუთარი ორიენტირია. მხოლოდ ჩაწერილი დღეები ითვლება.
             </NText>
+            <MedicalSourcesLink sourceIds={["energyTarget"]} />
           </NCard>
           <NCard>
             <NText
@@ -119,6 +121,7 @@ function Progress() {
                         : ""}
                 </NText>
                 <NText style={{ fontSize: 11, color: c.text300 }}>პროგნოზი ორიენტირია, არა დაპირება. წონა კვირის განმავლობაშიც მერყეობს.</NText>
+                <MedicalSourcesLink sourceIds={["bodyWeightPlanner", "weightPace"]} />
               </View>
             )}
             <NText style={{ fontSize: 12, color: c.text200 }}>

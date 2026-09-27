@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HydrationAppBar } from '@/components/hydration/HydrationChrome';
 import { HydrationDrop } from '@/components/hydration/HydrationIcons';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { useFigmaHydration } from '@/constants/figmaHydrationLayout';
 import { useHydration } from '@/hooks/useHydration';
 import { ka } from '@/i18n/ka';
@@ -84,6 +85,7 @@ export default function HydrationLevelScreen() {
               </Pressable>
             ))}
           </View>
+          <MedicalSourcesLink sourceIds={['waterIntake']} />
         </View>
 
         <View>

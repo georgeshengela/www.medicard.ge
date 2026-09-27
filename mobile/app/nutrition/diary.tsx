@@ -47,6 +47,7 @@ import { FoodSearchModal, type FoodPick } from "@/components/nutrition/FoodSearc
 import { DescribeMealModal } from "@/components/nutrition/DescribeMealModal";
 import { PortionSheet } from "@/components/nutrition/PortionSheet";
 import { MacroLine, QuickLogTiles, ScoreBadge } from "@/components/nutrition/NutritionUi";
+import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { CopyMealsSheet } from "@/components/nutrition/CopyMealsSheet";
 import { removeMealFromHealth, syncMealsToHealth } from "@/lib/nutritionHealth";
 import {
@@ -597,6 +598,12 @@ function NutritionScreen({ owner }: { owner: string }) {
                 </View>
               ))}
             </View>
+            {score != null && (
+              <>
+                <Text style={[txt, { fontSize: 11, lineHeight: 17, color: c.text300, marginTop: 4 }]}>ქულა 1–10 MEDICARD-ის საკუთარი მიახლოებითი შეფასებაა, არა სამედიცინო დასკვნა.</Text>
+                <MedicalSourcesLink sourceIds={["mealQuality"]} />
+              </>
+            )}
           </View>
         )}
         {loading && !draft ? <ActivityIndicator color={c.primary200} /> : null}
@@ -668,6 +675,12 @@ function NutritionScreen({ owner }: { owner: string }) {
                     })}
                 </View>
               ))}
+            {meals.length > 0 && (
+              <View style={{ paddingHorizontal: 4 }}>
+                <Text style={[txt, { fontSize: 11, lineHeight: 17, color: c.text300 }]}>ქულა 1–10 MEDICARD-ის საკუთარი მიახლოებითი შეფასებაა, არა სამედიცინო დასკვნა.</Text>
+                <MedicalSourcesLink sourceIds={["mealQuality"]} />
+              </View>
+            )}
           </>
         )}
         {draft && editing === null && (

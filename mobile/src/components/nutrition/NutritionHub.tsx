@@ -26,6 +26,7 @@ import { fastProgress, hoursLabel, timeLabel } from "@/lib/fasting";
 import { useIsDark, useThemeColors } from "@/theme/colors";
 import { HUB, hubInk, hubText, hubTint, type HubInk } from "@/theme/hub";
 import { HubFeatureCard } from "@/components/home/HubFeatureCard";
+import { MedicalSourcesLink } from "@/components/health/MedicalSourcesLink";
 import { NScreen, NText, NLoading, NError, EnergyRing, MacroRails, useNutritionDashboard } from "./ProgramUI";
 import { HubCard, HubSection, MacroLine, PRIMARY_LOG_TILES, QuickLogTiles, SECONDARY_LOG_TILES } from "./NutritionUi";
 
@@ -105,6 +106,7 @@ function Hub() {
                 {dayTile(Footprints, "green", d.steps.toLocaleString("en-US").replace(/,/g, " "), "ნაბიჯი", "/health-metrics/steps")}
                 {dayTile(Flame, "amber", `${d.burned.total} კკალ`, "დამწვარი", "/nutrition/activity")}
               </View>
+              <MedicalSourcesLink sourceIds={d.targets ? ["energyTarget", "macroRanges", "waterIntake", "activityMet"] : ["waterIntake", "activityMet"]} />
             </HubCard>
           </HubSection>
 
@@ -198,6 +200,7 @@ function Hub() {
                       ? `გეგმის ტემპით ორიენტირი: ${nutritionDateLabel(d.projection.planEta)}.`
                       : "დღის სამიზნე გეგმიდანაა. წონას როცა ჩაწერ, პროგნოზიც გამოჩნდება."}
                 </Text>
+                <MedicalSourcesLink sourceIds={["bodyWeightPlanner", "weightPace"]} />
                 <Pressable accessibilityRole="button" onPress={() => router.push("/health-metrics/weight")} style={[s.secondary, { backgroundColor: c.bg200 }]}>
                   <Text style={[hubText.link, { color: c.text100 }]}>წონის ჩაწერა</Text>
                 </Pressable>

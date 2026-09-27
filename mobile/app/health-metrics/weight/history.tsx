@@ -3,6 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar, ChevronDown, ChevronRight, Scale } from 'lucide-react-native';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { WeightAppBar, WeightSwipeDelete } from '@/components/weight/WeightChrome';
 import { useFigmaWeight } from '@/constants/figmaWeightLayout';
 import { useAuth } from '@/store/AuthContext';
@@ -46,6 +47,11 @@ export default function WeightHistoryScreen() {
         </View>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24, gap: 16 }}>
+        {logs.length && healthProfile?.heightCm ? (
+          <View style={{ marginVertical: -8 }}>
+            <MedicalSourcesLink sourceIds={['bmi']} />
+          </View>
+        ) : null}
         {groups.map((group) => (
           <View key={group.label} style={{ gap: 8 }}>
             <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: T.textSecondary }}>{group.label}</Text>

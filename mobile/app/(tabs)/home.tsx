@@ -31,6 +31,7 @@ import { DefaultHomePrompt } from '@/components/home/DefaultHomePrompt';
 import { HomeAskMedi } from '@/components/home/HomeAskMedi';
 import { HomeCyclePreviewCard } from '@/components/home/HomeCyclePreviewCard';
 import { HomeDayRings, type DayRing } from '@/components/home/HomeDayRings';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { HomeNutritionCard } from '@/components/home/HomeNutritionCard';
 import { HubFeatureCard } from '@/components/home/HubFeatureCard';
 import { HubLinkRow, HubTileGrid, type HubTile } from '@/components/home/HubTiles';
@@ -222,6 +223,7 @@ export default function Home() {
       <View style={[s.section, { marginTop: 22 }]}>
         {heading('შენი დღე', '/health-metrics', 'ყველა მაჩვენებელი')}
         <HomeDayRings rings={rings} />
+        <MedicalSourcesLink sourceIds={['dailySteps', 'waterIntake']} />
       </View>
     ),
     ask: (

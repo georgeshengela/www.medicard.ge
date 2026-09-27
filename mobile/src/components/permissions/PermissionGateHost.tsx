@@ -1,13 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, Footprints } from 'lucide-react-native';
-import {
-  ProfileSetupLinkButton,
-  ProfileSetupPrimaryButton,
-} from '@/components/profile/ProfileSetupButtons';
-import { ka } from '@/i18n/ka';
+import { ProfileSetupPrimaryButton } from '@/components/profile/ProfileSetupButtons';
 import {
   inspectDeviceAccessNeeds,
   isDeviceAccessGateFinished,
@@ -22,6 +18,7 @@ import {
   requestNotificationPermission,
   setPushOptedIn,
 } from '@/lib/notifications';
+import { markPrimerAsked, primerCopy } from '@/lib/permissionPrimer';
 import { isQuestVisualSession } from '@/lib/quest/devFixture';
 import { useHideTabChromeWhile } from '@/components/navigation/tabChrome';
 import { useAuth } from '@/store/AuthContext';
@@ -46,7 +43,6 @@ function PermissionGateForAccount() {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<GateStep | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const busyRef = useRef(false), alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
@@ -115,60 +111,45 @@ function PermissionGateForAccount() {
     if (step === 'health') void preloadHealthNative();
   }, [step]);
 
-  const enableNotifications = () => {
+  // App Review 5.1.1(iv): the only button is "Continue" and it always opens the OS sheet.
+  // Whatever the person answers there, the gate moves on; it never asks twice.
+  const continueNotifications = () => {
     if (busyRef.current) return;
-    busyRef.current = true; setBusy(true); setError(null);
+    busyRef.current = true; setBusy(true);
     void (async () => {
       try {
-        const granted = await requestNotificationPermission();
-        if (!alive.current) return;
+        const granted = await requestNotificationPermission().catch(() => false);
+        await markPrimerAsked('notifications');
         if (granted) {
           await setPushOptedIn(true);
-          if (!alive.current) return;
           await registerPushTokenWithServer({ skipPermissionProbe: true }).catch(() => undefined);
-          await advanceFromNotifications();
-        } else setError('ნებართვა არ ჩაირთო. შეგიძლია მოგვიანებით გაააქტიურო ტელეფონის პარამეტრებიდან.');
-      } catch {
-        if (alive.current) setError('ნებართვა ვერ ჩაირთო. სცადე ხელახლა ან გააგრძელე მოგვიანებით.');
+        }
       } finally {
         busyRef.current = false;
         if (alive.current) setBusy(false);
       }
+      if (alive.current) await advanceFromNotifications().catch(finish);
     })();
   };
 
-  const enableHealth = () => {
+  const continueHealth = () => {
     if (busyRef.current) return;
-    busyRef.current = true; setBusy(true); setError(null);
+    busyRef.current = true; setBusy(true);
     void (async () => {
       try {
-        const result = await connectHealthApp();
-        if (!alive.current) return;
-        if (result.ok) {
-          if (user?.id) {
-            void import('@/lib/stepsMetrics').then(({ fetchStepsMetrics }) =>
-              fetchStepsMetrics('1d', { force: true }).catch(() => undefined),
-            );
-          }
-          finish();
-        } else setError('ჯანმრთელობის მონაცემებზე წვდომა ვერ ჩაირთო. შეგიძლია მოგვიანებით დაუბრუნდე.');
-      } catch {
-        if (alive.current) setError('დაკავშირება ვერ მოხერხდა. სცადე ხელახლა ან გააგრძელე მოგვიანებით.');
+        const result = await connectHealthApp().catch(() => null);
+        await markPrimerAsked('health');
+        if (result?.ok && user?.id) {
+          void import('@/lib/stepsMetrics').then(({ fetchStepsMetrics }) =>
+            fetchStepsMetrics('1d', { force: true }).catch(() => undefined),
+          );
+        }
       } finally {
         busyRef.current = false;
         if (alive.current) setBusy(false);
       }
+      finish();
     })();
-  };
-
-  const skip = () => {
-    if (busyRef.current) return;
-    if (step === 'notifications') {
-      busyRef.current = true; setBusy(true); setError(null);
-      void advanceFromNotifications().catch(finish).finally(() => { busyRef.current = false; if (alive.current) setBusy(false); });
-      return;
-    }
-    finish();
   };
 
   useHideTabChromeWhile(Boolean(step));
@@ -176,8 +157,7 @@ function PermissionGateForAccount() {
   if (!step) return null;
 
   const isNotifications = step === 'notifications';
-  const title = isNotifications ? ka.permissions.gateNotificationsTitle : ka.permissions.gateHealthTitle;
-  const body = isNotifications ? ka.permissions.gateNotificationsBody : ka.permissions.gateHealthBody;
+  const copy = primerCopy(isNotifications ? 'notifications' : 'health');
   const Icon = isNotifications ? Bell : Footprints;
 
   return (
@@ -204,9 +184,6 @@ function PermissionGateForAccount() {
           paddingBottom: Math.max(insets.bottom, 20),
         }}
       >
-        <Pressable accessibilityRole="button" accessibilityLabel={ka.permissions.gateSkip} onPress={skip}>
-          <View />
-        </Pressable>
         <View
           style={{
             backgroundColor: colors.surface,
@@ -241,7 +218,7 @@ function PermissionGateForAccount() {
                 textAlign: 'center',
               }}
             >
-              {title}
+              {copy.title}
             </Text>
             <Text
               style={{
@@ -252,18 +229,16 @@ function PermissionGateForAccount() {
                 textAlign: 'center',
               }}
             >
-              {body}
+              {copy.body}
             </Text>
           </View>
 
-          {error ? <Text accessibilityRole="alert" style={{ color: colors.text200, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 22 }}>{error}</Text> : null}
           <ProfileSetupPrimaryButton
-            label={ka.permissions.gateEnable}
-            onPress={isNotifications ? enableNotifications : enableHealth}
+            label={copy.cta}
+            onPress={isNotifications ? continueNotifications : continueHealth}
             loading={busy}
-            icon="check"
+            icon="arrow"
           />
-          <ProfileSetupLinkButton label={ka.permissions.gateSkip} onPress={skip} />
         </View>
       </ScrollView>
     </View>

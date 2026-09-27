@@ -23,7 +23,7 @@ export const PREGNANCY_TIMELINE_COPY_KA = Object.freeze({
   review: 'საცნობი თარიღი გადასახედია — გზის პოზიცია არ გამოჩნდება.',
   sources: 'წყაროები',
   sourcesBody:
-    'ეტაპები დაფუძნებულია NHS, ACOG, WHO და Williams Obstetrics მასალებზე. ეს ზოგადი სასწავლო გზაა — არა პირადი სამედიცინო გეგმა.',
+    'ეტაპები დაფუძნებულია NHS-ის, ACOG-ისა და WHO-ს მასალებზე. ეს ზოგადი სასწავლო გზაა — არა პირადი სამედიცინო გეგმა.',
   estimatedDueEnd: 'სავარაუდო მშობიარობის თარიღი',
   honesty: 'ეს არის ზოგადი სასწავლო გზა — არა პირადი სამედიცინო გეგმა და არა დიაგნოზი.',
   hiddenEnded: 'აქტიური ორსულობის გზა ამ ეპიზოდზე არ ჩანს.',
@@ -67,7 +67,6 @@ export const PREGNANCY_TIMELINE_COPY_KA = Object.freeze({
   src_acog_gdm: 'ACOG, გესტაციური დიაბეტი',
   src_acog_gbs: 'ACOG, B ჯგუფის სტრეპტოკოკი',
   src_who_anc: 'WHO, ანტენატალური ზრუნვის რეკომენდაციები',
-  src_williams: 'Williams Obstetrics',
 });
 
 export function timelineCopy(key) {

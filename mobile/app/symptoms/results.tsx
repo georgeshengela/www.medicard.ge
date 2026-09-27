@@ -4,6 +4,7 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { List, Phone, Plus } from 'lucide-react-native';
 import { Disclaimer } from '@/components/Disclaimer';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { SymptomCta, SymptomFooter } from '@/components/symptoms/SymptomCta';
 import { SymptomGradientHeader } from '@/components/symptoms/SymptomGradientHeader';
 import { SymptomResultSummaryCard } from '@/components/symptoms/SymptomResultSummaryCard';
@@ -173,8 +174,12 @@ export default function SymptomResultsScreen() {
           ))}
         </View>
 
-        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 8 }}>
           <Disclaimer />
+          <Text style={{ fontSize: 12, lineHeight: 18, color: T.textSecondary }}>
+            შესაძლო მდგომარეობები და ალბათობის პროცენტები AI-ით (Medi) არის შექმნილი შენი პასუხებიდან — ეს დიაგნოზი არ არის.
+          </Text>
+          <MedicalSourcesLink sourceIds={['symptomsGeneral']} />
         </View>
       </ScrollView>
 

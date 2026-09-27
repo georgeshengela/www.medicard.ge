@@ -14,9 +14,9 @@ import {
   AssessmentResultCheckCircle,
   AssessmentResultChevronDown,
   AssessmentResultShare,
-  HealthScoreConfidenceBadge,
   HealthScoreGauge,
 } from '@/components/profile/HealthScoreGauge';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { ProfileSetupLinkButton, ProfileSetupPrimaryButton } from '@/components/profile/ProfileSetupButtons';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { FIGMA_SHADOW_COLLAPSED } from '@/constants/assessmentResultAssets';
@@ -29,7 +29,7 @@ import {
 import { ka } from '@/i18n/ka';
 import { api } from '@/lib/api';
 import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
-import { HEALTH_SCORE_BANDS, displayConfidencePercent, healthScoreLabelKa } from '@/lib/healthScore';
+import { HEALTH_SCORE_BANDS, healthScoreLabelKa } from '@/lib/healthScore';
 import { finishOnboarding } from '@/lib/profileSetupFlow';
 import { useAuth } from '@/store/AuthContext';
 import { analysisFromProfile, type OnboardingScoreRange } from '@/types/onboardingAnalysis';
@@ -234,11 +234,8 @@ export default function ProfileSetupResultsScreen() {
 
         <HealthScoreGauge score={analysis.score} labelKa={healthScoreLabelKa(analysis.score)} />
 
-        {/* Confidence badge + summary — Figma 8845:313570 */}
+        {/* Summary — Figma 8845:313570. No confidence badge: the score is a summary, not a model with a measured accuracy. */}
         <View style={{ padding: 16, gap: 16, alignItems: 'center' }}>
-          {displayConfidencePercent(analysis.confidence) != null ? (
-            <HealthScoreConfidenceBadge confidence={displayConfidencePercent(analysis.confidence)!} />
-          ) : null}
           {deltaLabel ? (
             <Text
               style={{
@@ -343,6 +340,10 @@ export default function ProfileSetupResultsScreen() {
                 />
               );
             })}
+            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: FIGMA_ASSESSMENT_RESULT.labelColor }}>
+              ქულა MEDICARD-ის საკუთარი შეჯამებაა შენი პასუხებიდან (BMI, ძილი, აქტივობა, წნევა, ჩვევები) — ეს კლინიკური დიაგნოზი არ არის.
+            </Text>
+            <MedicalSourcesLink sourceIds={['bmi', 'sleepAdults', 'bloodPressure', 'physicalActivity']} />
           </View>
         </View>
 
@@ -443,9 +444,10 @@ export default function ProfileSetupResultsScreen() {
                 ))}
               </View>
               <Text style={{ paddingHorizontal: 16, paddingBottom: 14, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 18, color: FIGMA_ASSESSMENT_RESULT.labelColor }}>
-                ცხიმისა და კუნთის პროცენტი აპის შინაგანი შეფასებაა, არა გაზომილი სხეულის შემადგენლობა.
+                ცხიმის პროცენტი BMI-დან, ასაკიდან და სქესიდან Deurenberg-ის ფორმულით არის შეფასებული; ცხიმისგან თავისუფალი მასა დანარჩენი წილია. ეს შეფასებაა, არა გაზომილი სხეულის შემადგენლობა.
               </Text>
             </View>
+            <MedicalSourcesLink sourceIds={['bodyFatDeurenberg', 'bmi']} />
           </View>
         </View>
       </ScrollView>

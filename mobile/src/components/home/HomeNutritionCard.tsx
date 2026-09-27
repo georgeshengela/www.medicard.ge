@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import Animated, { Easing, useAnimatedProps, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import { Beef, BookOpen, Camera, Droplet, Salad, Wheat, type LucideIcon } from 'lucide-react-native';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { useNutritionDashboard } from '@/components/nutrition/ProgramUI';
 import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -148,6 +149,11 @@ export function HomeNutritionCard() {
           {macros.map((macro) => (
             <MacroChip key={macro.key} macro={macro} />
           ))}
+        </View>
+      ) : null}
+      {target ? (
+        <View style={{ marginVertical: -8 }}>
+          <MedicalSourcesLink sourceIds={['energyTarget', 'macroRanges']} />
         </View>
       ) : null}
 

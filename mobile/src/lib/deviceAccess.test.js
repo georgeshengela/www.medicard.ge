@@ -23,7 +23,7 @@ describe('device access bootstrap', () => {
     const host = readFileSync(join(here, '../components/permissions/PermissionGateHost.tsx'), 'utf8');
     assert.match(host, /requestNotificationPermission/);
     assert.match(host, /connectHealthApp/);
-    assert.match(host, /ka\.permissions\.gateEnable/);
+    assert.match(host, /copy\.cta/);
     assert.doesNotMatch(host, /from 'react-native'.*Modal/);
     assert.doesNotMatch(host, /<Modal/);
     assert.doesNotMatch(host, /Linking\.openSettings/);
@@ -45,7 +45,33 @@ describe('device access bootstrap', () => {
   it('profile-setup continue requests the OS notification sheet', () => {
     const text = readFileSync(join(here, '../../app/(auth)/profile-setup/notifications.tsx'), 'utf8');
     assert.match(text, /requestNotificationPermission/);
-    assert.match(text, /notificationsEnable/);
+    assert.match(text, /primerCopy\('notifications'\)/);
+  });
+
+  // App Review 5.1.1(iv), 2026-09-27: a message before an OS permission sheet has one
+  // "Continue" button that always opens the sheet. No Allow wording, no Not now/Later/Skip.
+  it('permission primers only continue to the OS sheet', () => {
+    const primer = readFileSync(join(here, 'permissionPrimer.ts'), 'utf8');
+    assert.equal((primer.match(/cta: 'Continue'/g) || []).length, 3);
+    assert.equal((primer.match(/cta: 'გაგრძელება'/g) || []).length, 3);
+    assert.doesNotMatch(primer, /cta: '(Allow|ნებართვის მიცემა)/);
+    const screens = [
+      '../components/permissions/PermissionGateHost.tsx',
+      '../../app/(auth)/profile-setup/notifications.tsx',
+      '../../app/(auth)/profile-setup/location.tsx',
+    ];
+    for (const file of screens) {
+      const text = readFileSync(join(here, file), 'utf8');
+      assert.match(text, /primerCopy\(/, file);
+      assert.doesNotMatch(text, /ProfileSetupLinkButton|gateSkip|notificationsSkip|locationSkip|ახლა არა|მოგვიანებით/, file);
+    }
+    const modal = readFileSync(join(here, '../components/location/LocationAskModal.tsx'), 'utf8');
+    assert.match(modal, /disabled=\{busy \|\| !answered\}/);
+    assert.match(modal, /answered \? <>/);
+    assert.doesNotMatch(modal, /მოგვიანებით/);
+    const inspect = readFileSync(join(here, 'deviceAccess.js'), 'utf8');
+    assert.match(inspect, /!notificationsAsked/);
+    assert.match(inspect, /!healthAsked/);
   });
 
   it('reads iOS authorized/provisional as granted and does not re-ask when already allowed', () => {

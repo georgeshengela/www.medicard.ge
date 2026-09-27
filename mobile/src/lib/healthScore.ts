@@ -39,7 +39,7 @@ export const HEALTH_SCORE_BANDS: HealthScoreBand[] = [
     label: 'Normal',
     labelKa: 'ნორმალური',
     color: '#14B8A6',
-    detailKa: 'ძირითადი მაჩვენებლები ნორმალურ დიაპაზონშია — გააგრძელეთ ჯანსაღი ჩვევები.',
+    detailKa: 'ძირითადი მაჩვენებლები ნორმალურ დიაპაზონშია — გააგრძელე ჯანსაღი ჩვევები.',
   },
 ];
 

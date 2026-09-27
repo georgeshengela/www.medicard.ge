@@ -7,6 +7,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Asset } from 'expo-asset';
 import { CycleAtmosphere, cycleNavHeader } from '@/components/cycle/CycleUI';
 import { CyclePregnancyWeekSelector } from '@/components/cycle/CyclePregnancyWeekSelector';
+import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { PregnancySizeIllustration, PregnancyWeekMetrics } from '@/components/cycle/CyclePregnancyWeekVisual';
 import { ka } from '@/i18n/ka';
 import { api, ApiError } from '@/lib/api';
@@ -215,11 +216,9 @@ export default function CyclePregnancyWeekScreen() {
       </View>
 
       <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 18, marginTop: 22 }}>
-        {ka.cycle.pregnancySourcesTitle}
-      </Text>
-      <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 18, marginTop: 4 }}>
         {ka.cycle.pregnancySourcesBody}
       </Text>
+      <MedicalSourcesLink sourceIds={['fetalLength', 'fetalGrowth', 'pregnancyWeeks']} />
     </>
   );
 
