@@ -347,6 +347,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 function canAttemptRemotePush(): boolean {
   if (Platform.OS === 'web') return false;
   if (Device.isDevice) return true;
+  // Android emulators with Google Play services receive FCM like a phone, so QA can test
+  // push there; an image without Play services makes the token call throw, which is caught.
+  if (Platform.OS === 'android') return true;
   // Some Expo Go iOS builds report isDevice=false on a real phone.
   return Platform.OS === 'ios' && isRunningInExpoGo();
 }
