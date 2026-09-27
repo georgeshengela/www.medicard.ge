@@ -1,7 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  canOpenNotificationRoute,
   medicationCourseIncludesDate,
+  notificationResponseKey,
   expoWeekdayFromMonday,
   isEveryWeekday,
   planMedicationReminderSlots,
@@ -93,4 +95,21 @@ it('home and calendar only show doses inside the inclusive course',()=>{
   assert.equal(medicationCourseIncludesDate(course,'2026-09-21'),true);
   assert.equal(medicationCourseIncludesDate(course,'2026-10-04'),true);
   assert.equal(medicationCourseIncludesDate(course,'2026-10-05'),false);
+
+  it('holds a tapped notification until the signed-in shell has mounted', () => {
+    const ready = { navigationReady: true, appReady: true, signedIn: true, segments: ['(tabs)', 'home'] };
+    assert.equal(canOpenNotificationRoute(ready), true);
+    assert.equal(canOpenNotificationRoute({ ...ready, navigationReady: false }), false);
+    assert.equal(canOpenNotificationRoute({ ...ready, appReady: false }), false);
+    assert.equal(canOpenNotificationRoute({ ...ready, signedIn: false }), false);
+    assert.equal(canOpenNotificationRoute({ ...ready, segments: [] }), false);
+    assert.equal(canOpenNotificationRoute({ ...ready, segments: ['(auth)', 'assessment'] }), false);
+  });
+
+  it('keys the launch response and the listener callback for one tap the same way', () => {
+    const tap = { actionIdentifier: 'expo.modules.notifications.actions.DEFAULT', notification: { date: 1700000000, request: { identifier: 'engage:weekly' } } };
+    assert.equal(notificationResponseKey(tap), notificationResponseKey({ ...tap }));
+    assert.notEqual(notificationResponseKey(tap), notificationResponseKey({ ...tap, actionIdentifier: 'OK' }));
+    assert.equal(routeFromNotificationData({ type: 'medi_engage', family: 'weekly' }), '/week');
+  });
 });

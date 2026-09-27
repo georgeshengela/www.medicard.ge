@@ -18,6 +18,7 @@ function expoGoStub() {
   return {
     setNotificationHandler: () => undefined,
     getLastNotificationResponseAsync: async () => null,
+    clearLastNotificationResponse: () => undefined,
     addNotificationReceivedListener: () => emptySub,
     addNotificationResponseReceivedListener: () => emptySub,
     getPermissionsAsync: async () => denied,

@@ -158,6 +158,37 @@ export function routeFromNotificationData(data: Record<string, unknown> | undefi
   }
 }
 
+/** One tap, one key: on a cold start the launch response and the listener both report the same tap. */
+export function notificationResponseKey(response: {
+  actionIdentifier?: string;
+  notification: { date?: number; request: { identifier?: string } };
+}): string {
+  const { notification } = response;
+  return `${notification.request.identifier ?? ''}|${notification.date ?? ''}|${response.actionIdentifier ?? ''}`;
+}
+
+/**
+ * A tapped notification may navigate only once the signed-in app shell is on screen.
+ * On a cold start the tap arrives before the root Stack mounts; an expo-router push then
+ * throws inside the navigation container's effect, the tree unmounts, the boot guard
+ * swallows the fatal and the app sits on the splash. Hold the route until this is true.
+ */
+export function canOpenNotificationRoute(state: {
+  navigationReady: boolean;
+  appReady: boolean;
+  signedIn: boolean;
+  segments: readonly string[];
+}): boolean {
+  return (
+    state.navigationReady &&
+    state.appReady &&
+    state.signedIn &&
+    // [] is the index route, which is still redirecting to the person's landing screen.
+    state.segments.length > 0 &&
+    state.segments[0] !== '(auth)'
+  );
+}
+
 export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' | 'steps' | 'weight' | 'engage' | 'quota' | 'qa' | 'pets' | 'nutrition' | 'other' {
   if (id.startsWith('med:')) return 'med';
   if (id.startsWith('cycle:')) return 'cycle';

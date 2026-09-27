@@ -15,10 +15,11 @@ LogBox.ignoreLogs([
   /PushNotificationIOS has been extracted from react-native core/,
 ]);
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Stack, useGlobalSearchParams, useRouter, useSegments } from 'expo-router';
+import { Stack, useGlobalSearchParams, useNavigationContainerRef, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
+import type { NotificationResponse } from 'expo-notifications';
 import { Notifications } from '@/lib/expoNotifications';
 import { enableFreeze, enableScreens } from 'react-native-screens';
 import { AppChromeOverlay } from '@/components/navigation/AppChromeOverlay';
@@ -39,7 +40,7 @@ import { PermissionGateHost } from '@/components/permissions/PermissionGateHost'
 import { QuestHost } from '@/components/quest/QuestHost';
 import { useThemeColors } from '@/theme/colors';
 import { AuthProvider, useAuth, needsHealthAssessment, needsProfileSetup } from '@/store/AuthContext';
-import { routeFromNotificationData } from '@/lib/notificationPlan';
+import { canOpenNotificationRoute, notificationResponseKey, routeFromNotificationData } from '@/lib/notificationPlan';
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import { FontsProvider } from '@/store/FontsContext';
 import { ThemeProvider, useTheme } from '@/store/ThemeContext';
@@ -57,6 +58,9 @@ enableScreens(true);
 enableFreeze(true);
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+/** A tap waiting for sign-in longer than this is stale; open Home as usual instead. */
+const NOTIFICATION_ROUTE_TTL_MS = 10 * 60 * 1000;
 
 /** Redirects between the auth stack and the app shell as the session changes. */
 function AuthGate({ children }: { children: React.ReactNode }) {
@@ -197,10 +201,14 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 function AppShell() {
   const colors = useThemeColors();
-  const { scheme } = useTheme();
-  const { user, healthProfile, setHealthProfile } = useAuth();
+  const { scheme, ready: themeReady } = useTheme();
+  const { user, ready: authReady, healthProfile, setHealthProfile } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const navigationRef = useNavigationContainerRef();
+  const pendingNotificationRoute = useRef<{ route: string; at: number } | null>(null);
+  const handledNotificationTaps = useRef(new Set<string>());
+  const [notificationTick, setNotificationTick] = useState(0);
   const stackMotion = useStackMotion();
   const peerMotion = useStackMotion('peer');
   const tabChromeHidden = useTabChromeHidden();
@@ -242,15 +250,34 @@ function AppShell() {
   }, [user?.id, healthProfile, setHealthProfile]);
 
   useEffect(() => {
-    const openFromData = (raw: unknown) => {
-      const data = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
-      const route = routeFromNotificationData(data);
-      if (route) router.push(route as never);
+    // Taps only queue a route; the effect below opens it once the shell can navigate.
+    const queueRoute = (route: string | null | undefined) => {
+      if (!route) return;
+      pendingNotificationRoute.current = { route, at: Date.now() };
+      setNotificationTick((tick) => tick + 1);
+    };
+    const handleTap = (response: NotificationResponse) => {
+      const key = notificationResponseKey(response);
+      if (handledNotificationTaps.current.has(key)) return;
+      handledNotificationTaps.current.add(key);
+      try {
+        Notifications.clearLastNotificationResponse();
+      } catch {
+        /* older native module */
+      }
+      const raw = response.notification.request.content.data;
+      const fallback = () => routeFromNotificationData(raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null);
+      void import('@/lib/mediNotificationActions')
+        .then(({ handleNotificationAction }) => handleNotificationAction(response))
+        .then((result) => {
+          if (result.navigate) queueRoute(result.route ?? fallback());
+        })
+        .catch(() => queueRoute(fallback()));
     };
 
     Notifications.getLastNotificationResponseAsync()
       .then((last) => {
-        openFromData(last?.notification.request.content.data);
+        if (last) handleTap(last);
       })
       .catch(() => undefined);
 
@@ -289,21 +316,31 @@ function AppShell() {
       }
     });
 
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      void import('@/lib/mediNotificationActions').then(({ handleNotificationAction }) =>
-        handleNotificationAction(response).then((result) => {
-          if (!result.navigate) return;
-          if (result.route) router.push(result.route as never);
-          else openFromData(response.notification.request.content.data);
-        }),
-      );
-    });
+    const sub = Notifications.addNotificationResponseReceivedListener(handleTap);
 
     return () => {
       received.remove();
       sub.remove();
     };
-  }, [router]);
+  }, []);
+
+  useEffect(() => {
+    const pending = pendingNotificationRoute.current;
+    if (!pending) return;
+    if (Date.now() - pending.at > NOTIFICATION_ROUTE_TTL_MS) {
+      pendingNotificationRoute.current = null;
+      return;
+    }
+    const canOpen = canOpenNotificationRoute({
+      navigationReady: navigationRef.isReady(),
+      appReady: authReady && themeReady,
+      signedIn: Boolean(user),
+      segments: segments as string[],
+    });
+    if (!canOpen) return;
+    pendingNotificationRoute.current = null;
+    router.push(pending.route as never);
+  }, [notificationTick, navigationRef, authReady, themeReady, user, segments, router]);
 
   return (
     <>
@@ -327,6 +364,7 @@ function AppShell() {
               <Stack.Screen name="package" options={{ headerShown: false }} />
               <Stack.Screen name="health-metrics" options={{ headerShown: false }} />
               <Stack.Screen name="weather" options={{ headerShown: false }} />
+              <Stack.Screen name="week" options={{ headerShown: false }} />
               <Stack.Screen name="medi-quest" options={{ headerShown: false }} />
               <Stack.Screen name="medi-companion" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
