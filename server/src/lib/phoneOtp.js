@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { env } from '../config/env.js';
 import { prisma } from './prisma.js';
 import { isQaOtpEnabled, matchesQaPhoneOtp } from './qaOtp.js';
+import { isAppReviewPhone, matchesAppReviewOtp } from './appReviewPhone.js';
 import { evaluateOtpRow, unusedUnexpiredOtpWhere } from './otpContract.js';
 import { buildOtpMessage, normalizeSmsDestination, sendSms } from './sms.js';
 
@@ -32,6 +33,18 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null }
   const normalized = normalizeSmsDestination(phone);
   if (!/^9955\d{8}$/.test(normalized)) {
     return { ok: false, status: 400, error: 'მობილური ნომერი უნდა იყოს ფორმატში +995 5XX XXX XXX.' };
+  }
+
+  // App Review cannot receive Georgian SMS; its number takes the fixed review code instead.
+  if (isAppReviewPhone(normalized)) {
+    return {
+      ok: true,
+      sent: true,
+      phone: `+${normalized}`,
+      masked: displayPhone(normalized),
+      message: `დამადასტურებელი კოდი გამოგზავნილია ნომერზე +${normalized}.`,
+      reference: 'app-review',
+    };
   }
 
   const recent = await prisma.phoneVerification.findFirst({
@@ -126,6 +139,11 @@ export async function verifyPhoneOtp({ phone, code, purpose = 'AUTH' }) {
 
   if (!/^\d{4}$/.test(trimmed)) {
     return { ok: false, status: 400, error: 'კოდი უნდა შედგებოდეს 4 ციფრისგან.' };
+  }
+
+  if (matchesAppReviewOtp(normalized, trimmed)) {
+    console.warn('[app-review-otp] accepted review code for', displayPhone(normalized));
+    return { ok: true, phone: `+${normalized}`, userId: null, reference: 'app-review' };
   }
 
   if (await matchesQaPhoneOtp(trimmed)) {

@@ -46,6 +46,14 @@ const schema = z.object({
   /** QA master OTP. Set to 0000 while testers work; leave empty to turn off. */
   QA_OTP_CODE: z.string().default(''),
 
+  /**
+   * App Review sign-in (Guideline 2.1): one Georgian number whose SMS is never sent and
+   * which accepts this fixed 4-digit code, production included. Both empty = off.
+   * Set only in the host's env and App Store Connect review notes, never in the repo.
+   */
+  APP_REVIEW_PHONE: z.string().default(''),
+  APP_REVIEW_OTP: z.union([z.literal(''), z.string().regex(/^\d{4}$/)]).default(''),
+
   // Optional. Required only if the Expo project has Enhanced Push Security on.
   EXPO_ACCESS_TOKEN: z.string().default(''),
 

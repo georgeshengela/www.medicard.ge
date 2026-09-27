@@ -152,22 +152,29 @@ export function computeHeuristicScore(profile, user, extras = {}, metrics = []) 
   return Math.max(8, Math.min(96, Math.round(score * 10) / 10));
 }
 
-function estimateBodyComposition(profile) {
+/**
+ * Body fat from BMI, age and sex: Deurenberg, Weststrate & Seidell 1991, Br J Nutr 65:105-114
+ * (PubMed 2043597): BF% = 1.2 x BMI + 0.23 x age - 10.8 x sex (1 = male) - 5.4.
+ * "musclePct" is the rest, i.e. fat-free mass, not measured muscle. The weight label uses the
+ * WHO adult BMI cut-offs (18.5 / 25). Estimates only; the app says so next to the numbers.
+ */
+export function estimateBodyComposition(profile, age = null) {
   const weight = profile.weightKg ?? 70;
   const bmi =
     profile.heightCm && profile.weightKg
       ? profile.weightKg / (profile.heightCm / 100) ** 2
       : 22;
+  const years = Number.isFinite(age) && age >= 18 ? age : 35;
+  const male = profile._gender === 'MALE' ? 1 : 0;
 
-  let fatPct = 18 + (bmi - 22) * 1.2;
-  if (profile._gender === 'MALE') fatPct -= 4;
-  fatPct = Math.max(8, Math.min(38, Math.round(fatPct * 10) / 10));
+  let fatPct = 1.2 * bmi + 0.23 * years - 10.8 * male - 5.4;
+  fatPct = Math.max(3, Math.min(60, Math.round(fatPct * 10) / 10));
 
-  const musclePct = Math.max(55, Math.min(88, Math.round((100 - fatPct - 12) * 10) / 10));
+  const musclePct = Math.round((100 - fatPct) * 10) / 10;
 
-  let physiqueLabelKa = 'კარგი ფიზიკური ფორმა';
-  if (bmi > 28) physiqueLabelKa = 'ზედმეტი წონის რისკი';
-  else if (bmi < 19) physiqueLabelKa = 'დაბალი წონის რისკი';
+  let physiqueLabelKa = 'ჯანსაღი წონის დიაპაზონი';
+  if (bmi >= 25) physiqueLabelKa = 'ჭარბი წონის დიაპაზონი';
+  else if (bmi < 18.5) physiqueLabelKa = 'დაბალი წონის დიაპაზონი';
 
   return { fatPct, weightKg: Math.round(weight), musclePct, physiqueLabelKa };
 }
@@ -243,103 +250,11 @@ function buildPatientContext(profile, user, extras = {}, extrasContext = {}) {
 const ANALYSIS_SCHEMA = `{
   "score": number,
   "labelKa": string,
-  "confidence": number,
   "summaryTitleKa": string,
   "summaryBodyKa": string,
-  "scoreRanges": [{ "min": number, "max": number, "labelKa": string, "detailKa": string }],
-  "bodyComposition": { "fatPct": number, "weightKg": number, "musclePct": number, "physiqueLabelKa": string },
-  "recommendations": {
-    "specialists": [{ "nameKa": string, "specialtyKa": string, "distanceKm": number, "rating": number, "reviewCount": number, "remote": boolean }],
-    "medications": [{ "nameKa": string, "typeKa": string, "scheduleKa": string, "tagsKa": string[] }],
-    "bloodPressure": { "systolic": number, "diastolic": number, "summaryKa": string },
-    "sleep": { "personaKa": string, "adviceKa": string, "currentHours": number[], "optimalHours": number[] },
-    "pharmacies": [{ "nameKa": string, "addressKa": string, "rating": number, "freeDelivery": boolean, "tagKa": string }],
-    "products": [{ "nameKa": string, "priceGel": number, "originalPriceGel": number, "discountPct": number, "rating": number, "rxNeeded": boolean, "inStock": number }],
-    "articles": [{ "titleKa": string, "readMinutes": number }]
-  }
+  "scoreRanges": [{ "min": number, "max": number, "labelKa": string, "detailKa": string }]
 }`;
 
-function buildFallbackRecommendations(profile) {
-  const sys = profile.bloodPressureSystolic ?? 120;
-  const dia = profile.bloodPressureDiastolic ?? 80;
-  const sleepHours = profile.sleepHours ?? 6.5;
-  const currentHours = [0, 1, 2, 3, 4, 5, 6].map((i) =>
-    Math.round((sleepHours + (i % 3) * 0.3 - 0.5) * 10) / 10,
-  );
-
-  const specialists = [
-    {
-      nameKa: 'დრ. ნინო ბერიძე',
-      specialtyKa: 'თერაპევტი',
-      distanceKm: 0.8,
-      rating: 4.7,
-      reviewCount: 128,
-      remote: true,
-    },
-    {
-      nameKa: 'დრ. მარიამ ჩიხლაძე',
-      specialtyKa: 'ნევროლოგი',
-      distanceKm: 1.8,
-      rating: 4.5,
-      reviewCount: 221,
-      remote: false,
-    },
-  ];
-
-  const medications = asList(profile.medications).slice(0, 2).map((med) => ({
-    nameKa: med,
-    typeKa: 'ტაბლეტი',
-    scheduleKa: '1 ტაბლეტი დღეში — ექიმის დანიშნულების მიხედვით',
-    tagsKa: ['ყოველდღე'],
-  }));
-
-  return {
-    specialists,
-    medications,
-    bloodPressure: {
-      systolic: sys,
-      diastolic: dia,
-      summaryKa:
-        sys <= 130 && dia <= 85
-          ? 'შენი არტერიული წნევა ნორმის ფარგლებშია.'
-          : 'არტერიული წნევა საჭიროებს მონიტორინგს.',
-    },
-    sleep: {
-      personaKa: profile.sleepQuality === 'POOR' ? 'დაღლილი' : 'საშუალო',
-      adviceKa:
-        profile.sleepHours != null && profile.sleepHours < 7
-          ? `ძილი ${profile.sleepHours} საათია — რეკომენდებულია მინიმუმ 7 საათი.`
-          : 'ძილის რეჟიმის დაცვა აძლიერებს იმუნიტეტს.',
-      currentHours,
-      optimalHours: [7.5, 7.5, 8, 7.5, 8, 7.5, 8],
-    },
-    pharmacies: [
-      {
-        nameKa: 'PSP აფთიაქი',
-        addressKa: 'თბილისი, ვაკე',
-        rating: 4.4,
-        freeDelivery: true,
-        tagKa: 'personal care',
-      },
-    ],
-    products: [
-      {
-        nameKa: 'Vitamin D3 2000 IU',
-        priceGel: 24.9,
-        originalPriceGel: 32,
-        discountPct: 22,
-        rating: 4.6,
-        rxNeeded: false,
-        inStock: 46,
-      },
-    ],
-    articles: [
-      { titleKa: 'როგორ გავაუმჯობესოთ ჯანმრთელობა ყოველდღიური ჩვევებით', readMinutes: 3 },
-      { titleKa: 'კეტო დიეტა — რა უნდა იცოდე', readMinutes: 5 },
-      { titleKa: 'ენერგეტიკული სასმელები და გული', readMinutes: 3 },
-    ],
-  };
-}
 
 function clampToHeuristic(aiScore, heuristicScore) {
   if (typeof aiScore !== 'number' || Number.isNaN(aiScore)) return heuristicScore;
@@ -360,7 +275,10 @@ export async function generateOnboardingAnalysis({
 }) {
   const extra = extras && typeof extras === 'object' ? extras : {};
   const heuristicScore = computeHeuristicScore(profile, user, extra, metrics);
-  const bodyComposition = estimateBodyComposition({ ...profile, _gender: user?.gender });
+  const bodyComposition = estimateBodyComposition(
+    { ...profile, _gender: user?.gender },
+    user?.birthDate ? calculateAge(user.birthDate) : null,
+  );
   const band = bandForScore(heuristicScore);
   const extrasContext = { metrics, scheduledMeds, cycleMode: cycleModeForPatientAiContext(cycleMode) };
 
@@ -368,11 +286,10 @@ export async function generateOnboardingAnalysis({
     score: heuristicScore,
     label: band.label,
     labelKa: band.labelKa,
-    confidence: 94.5,
-    summaryTitleKa:
-      band.labelKa === 'მსუბუქი რისკი'
-        ? 'მსუბუქი ვიტამინის დეფიციტი ან ქოლესტერინის მცირე მომატება'
-        : `${band.labelKa} — პრევენციული ზომები რეკომენდებულია`,
+    // No invented confidence and no guessed conditions: the score is a wellness summary of
+    // the answers, not a diagnosis (App Review 1.4.1).
+    confidence: null,
+    summaryTitleKa: `${band.labelKa} — პრევენციული ზომები რეკომენდებულია`,
     summaryBodyKa:
       'ანალიზი ეყრდნობა შენს პროფილს, ჩვევებს და შენახულ მაჩვენებლებს. რეკომენდებულია ცხოვრების წესის კორექცია და რეგულარული კონტროლი.',
     scoreRanges: SCORE_BANDS.map((b) => ({
@@ -384,7 +301,6 @@ export async function generateOnboardingAnalysis({
       detailKa: b.detailKa,
     })),
     bodyComposition,
-    recommendations: buildFallbackRecommendations(profile),
     engine: 'heuristic',
     model: null,
     previousScore,
@@ -403,7 +319,7 @@ export async function generateOnboardingAnalysis({
         messages: [
           {
             role: 'system',
-            content: `Clinical wellness analyst for Medicard.GE. Output ONLY valid JSON:\n${ANALYSIS_SCHEMA}\nAll user strings in Georgian.`,
+            content: `Wellness summary writer for Medicard.GE. Output ONLY valid JSON:\n${ANALYSIS_SCHEMA}\nAll user strings in Georgian. This is a lifestyle summary of the answers, not a diagnosis: never name or guess a disease, deficiency, lab value or medication, and never invent doctors, clinics, pharmacies, products or prices.`,
           },
           {
             role: 'user',
@@ -424,7 +340,7 @@ export async function generateOnboardingAnalysis({
         score,
         label: resolvedBand.label,
         labelKa: resolvedBand.labelKa,
-        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 96.2,
+        confidence: null,
         summaryTitleKa: parsed.summaryTitleKa ?? fallback.summaryTitleKa,
         summaryBodyKa: parsed.summaryBodyKa ?? fallback.summaryBodyKa,
         scoreRanges: SCORE_BANDS.map((b, i) => ({
@@ -435,8 +351,8 @@ export async function generateOnboardingAnalysis({
           color: b.color,
           detailKa: parsed.scoreRanges?.[i]?.detailKa ?? b.detailKa,
         })),
-        bodyComposition: { ...bodyComposition, ...parsed.bodyComposition },
-        recommendations: { ...fallback.recommendations, ...parsed.recommendations },
+        // Cited formula only; the model may not invent body-composition numbers.
+        bodyComposition,
         engine: 'openrouter',
         model: completion.model ?? candidate,
         previousScore,

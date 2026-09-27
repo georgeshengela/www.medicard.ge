@@ -70,3 +70,22 @@ describe('computeHeuristicScore', () => {
     assert.ok(worse < baseline, `expected ${worse} < ${baseline}`);
   });
 });
+
+describe('onboarding body composition (App Review 1.4.1)', async () => {
+  const { estimateBodyComposition } = await import('./onboardingAnalysis.js');
+
+  it('uses the cited Deurenberg 1991 formula', () => {
+    // BMI 24.2 (70 kg, 170 cm), 30 y, woman: 1.2*24.22 + 0.23*30 - 5.4 = 30.6
+    const woman = estimateBodyComposition({ heightCm: 170, weightKg: 70, _gender: 'FEMALE' }, 30);
+    assert.equal(woman.fatPct, 30.6);
+    assert.equal(woman.musclePct, 69.4);
+    const man = estimateBodyComposition({ heightCm: 170, weightKg: 70, _gender: 'MALE' }, 30);
+    assert.equal(man.fatPct, 19.8);
+  });
+
+  it('labels weight with the WHO BMI cut-offs', () => {
+    assert.match(estimateBodyComposition({ heightCm: 170, weightKg: 73 }, 30).physiqueLabelKa, /ჭარბი/); // BMI 25.3
+    assert.match(estimateBodyComposition({ heightCm: 170, weightKg: 52 }, 30).physiqueLabelKa, /დაბალი/); // BMI 18.0
+    assert.match(estimateBodyComposition({ heightCm: 170, weightKg: 62 }, 30).physiqueLabelKa, /ჯანსაღი/);
+  });
+});

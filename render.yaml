@@ -68,6 +68,11 @@ services:
         value: MEDICARD
       - key: MAPBOX_PUBLIC_TOKEN
         sync: false
+      # App Review sign-in number + fixed 4-digit code (no SMS). Values live only in Render.
+      - key: APP_REVIEW_PHONE
+        sync: false
+      - key: APP_REVIEW_OTP
+        sync: false
 
   - type: cron
     name: medicard-pharmacy-sync
