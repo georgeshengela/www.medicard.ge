@@ -64,7 +64,6 @@
     return {
       q: hs.get('q') || '',
       status: hs.get('status') || '',
-      package: hs.get('package') || '',
       activity: hs.get('activity') || '',
       appVersion: hs.get('appVersion') || '',
       page: Math.max(1, Number(hs.get('page') || 1) || 1),
@@ -77,7 +76,6 @@
     const params = new URLSearchParams();
     if (filters.q) params.set('q', filters.q);
     if (filters.status) params.set('status', filters.status);
-    if (filters.package) params.set('package', filters.package);
     if (filters.activity) params.set('activity', filters.activity);
     if (filters.appVersion) params.set('appVersion', filters.appVersion);
     if (filters.page && filters.page > 1) params.set('page', String(filters.page));
@@ -102,7 +100,6 @@
     return {
       q: ($('user-q')?.value || '').trim(),
       status: $('user-status')?.value || '',
-      package: $('user-package')?.value || '',
       activity: $('user-activity')?.value || '',
       appVersion: hashSearch().get('appVersion') || '',
       page: Math.floor((state.offset || 0) / PAGE) + 1,
@@ -114,7 +111,6 @@
     if (f.q) chips.push(['q', `ძებნა: ${f.q}`]);
     if (f.status === 'ACTIVE') chips.push(['status', 'შესვლა დაშვებულია']);
     if (f.status === 'BLOCKED') chips.push(['status', 'დაბლოკილი']);
-    if (f.package) chips.push(['package', f.package]);
     if (f.activity === 'today') chips.push(['activity', 'აპში დღეს']);
     if (f.activity === 'inactive7') chips.push(['activity', '7+ დღე უქმე']);
     if (f.activity === 'inactive30') chips.push(['activity', '30+ დღე უქმე']);
@@ -230,7 +226,7 @@
     root.innerHTML = `
       <div class="v3-users v3-workspace-wide">
         <div class="v3-users-kpis" id="users-kpis" aria-label="რეესტრის მაჩვენებლები">
-          <button type="button" class="v3-users-kpi" data-kpi-status="" aria-pressed="${!initial.status && !initial.package ? 'true' : 'false'}">
+          <button type="button" class="v3-users-kpi" data-kpi-status="" aria-pressed="${!initial.status ? 'true' : 'false'}">
             <span class="v3-users-kpi-ico">${ico('users')}</span>
             <span class="v3-users-kpi-copy"><span>სულ</span><strong id="users-kpi-total">—</strong><em>რეესტრში</em></span>
           </button>
@@ -241,10 +237,6 @@
           <button type="button" class="v3-users-kpi is-danger" data-kpi-status="BLOCKED" aria-pressed="${initial.status === 'BLOCKED' ? 'true' : 'false'}">
             <span class="v3-users-kpi-ico">${ico('lock')}</span>
             <span class="v3-users-kpi-copy"><span>დაბლოკილი</span><strong id="users-kpi-blocked">—</strong><em>წვდომა შეზღუდულია</em></span>
-          </button>
-          <button type="button" class="v3-users-kpi is-amber" data-kpi-package="ULTIMATE" aria-pressed="${initial.package === 'ULTIMATE' ? 'true' : 'false'}">
-            <span class="v3-users-kpi-ico">${ico('layers')}</span>
-            <span class="v3-users-kpi-copy"><span>ULTIMATE</span><strong id="users-kpi-ultimate">—</strong><em>აქტიური ტარიფი</em></span>
           </button>
           <article class="v3-users-kpi is-soft" aria-label="ახალი რეგისტრაციები">
             <span class="v3-users-kpi-ico">${ico('calendar')}</span>
@@ -260,17 +252,11 @@
               <input id="user-q" type="search" placeholder="სახელი, ელ-ფოსტა, ტელეფონი ან ID…" value="${escA(initial.q)}" autocomplete="off" />
               <button type="button" id="user-q-clear" class="v3-icon-btn v3-users-clear${initial.q ? '' : ' hidden'}" aria-label="ძებნის გასუფთავება">${ico('x')}</button>
             </label>
-            <div class="v3-users-filters" role="group" aria-label="ანგარიში და პაკეტი">
+            <div class="v3-users-filters" role="group" aria-label="ანგარიში">
               <div class="v3-users-chips" id="users-status-chips" role="tablist" aria-label="ანგარიში">
                 <button type="button" class="v3-users-chip${!initial.status ? ' is-active' : ''}" data-status-chip="" aria-pressed="${!initial.status}">ყველა</button>
                 <button type="button" class="v3-users-chip${initial.status === 'ACTIVE' ? ' is-active' : ''}" data-status-chip="ACTIVE" aria-pressed="${initial.status === 'ACTIVE'}">აქტიური</button>
                 <button type="button" class="v3-users-chip${initial.status === 'BLOCKED' ? ' is-active' : ''}" data-status-chip="BLOCKED" aria-pressed="${initial.status === 'BLOCKED'}">დაბლოკილი</button>
-              </div>
-              <div class="v3-users-chips" id="users-package-chips" role="group" aria-label="პაკეტი">
-                <button type="button" class="v3-users-chip${!initial.package ? ' is-active' : ''}" data-package-chip="" aria-pressed="${!initial.package}">ყველა ტარიფი</button>
-                <button type="button" class="v3-users-chip is-free${initial.package === 'FREE' ? ' is-active' : ''}" data-package-chip="FREE" aria-pressed="${initial.package === 'FREE'}">FREE</button>
-                <button type="button" class="v3-users-chip is-std${initial.package === 'STANDARD' ? ' is-active' : ''}" data-package-chip="STANDARD" aria-pressed="${initial.package === 'STANDARD'}">STANDARD</button>
-                <button type="button" class="v3-users-chip is-ult${initial.package === 'ULTIMATE' ? ' is-active' : ''}" data-package-chip="ULTIMATE" aria-pressed="${initial.package === 'ULTIMATE'}">ULTIMATE</button>
               </div>
               <button type="button" id="user-clear-filters" class="btn tiny ghost${activeFilterChips(initial).length ? '' : ' hidden'}">${ico('x')} გასუფთავება</button>
             </div>
@@ -285,9 +271,6 @@
 
           <select id="user-status" class="sr-only" aria-hidden="true" tabindex="-1">
             <option value=""></option><option value="ACTIVE"${initial.status === 'ACTIVE' ? ' selected' : ''}></option><option value="BLOCKED"${initial.status === 'BLOCKED' ? ' selected' : ''}></option>
-          </select>
-          <select id="user-package" class="sr-only" aria-hidden="true" tabindex="-1">
-            <option value=""></option><option value="FREE"${initial.package === 'FREE' ? ' selected' : ''}></option><option value="STANDARD"${initial.package === 'STANDARD' ? ' selected' : ''}></option><option value="ULTIMATE"${initial.package === 'ULTIMATE' ? ' selected' : ''}></option>
           </select>
           <select id="user-activity" class="sr-only" aria-hidden="true" tabindex="-1">
             ${activityChips.map(([val]) => `<option value="${escA(val)}"${(initial.activity || '') === val ? ' selected' : ''}></option>`).join('')}
@@ -311,7 +294,6 @@
                   ${sortHeader('fullName', 'პირი')}
                   ${sortHeader('status', 'ანგარიში')}
                   ${sortHeader('lastActiveAt', 'აქტივობა')}
-                  ${sortHeader('package', 'პაკეტი')}
                   ${sortHeader('platform', 'აპი')}
                   ${sortHeader('createdAt', 'რეგისტრაცია')}
                   <th class="col-go" aria-label="გახსნა"></th>
@@ -339,11 +321,6 @@
         btn.classList.toggle('is-active', on);
         btn.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
-      document.querySelectorAll('[data-package-chip]').forEach((btn) => {
-        const on = (btn.dataset.packageChip || '') === (f.package || '');
-        btn.classList.toggle('is-active', on);
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
       document.querySelectorAll('[data-activity-chip]').forEach((btn) => {
         const on = (btn.dataset.activityChip || '') === (f.activity || '');
         btn.classList.toggle('is-active', on);
@@ -352,13 +329,8 @@
       document.querySelectorAll('[data-kpi-status]').forEach((btn) => {
         const want = btn.dataset.kpiStatus || '';
         const on = want === ''
-          ? !f.status && !f.package
-          : f.status === want && !f.package;
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        btn.classList.toggle('is-pressed', on);
-      });
-      document.querySelectorAll('[data-kpi-package]').forEach((btn) => {
-        const on = f.package === (btn.dataset.kpiPackage || '');
+          ? !f.status
+          : f.status === want;
         btn.setAttribute('aria-pressed', on ? 'true' : 'false');
         btn.classList.toggle('is-pressed', on);
       });
@@ -416,7 +388,6 @@
       set('users-kpi-total', kpis.total);
       set('users-kpi-active', kpis.active);
       set('users-kpi-blocked', kpis.blocked);
-      set('users-kpi-ultimate', kpis.ultimate);
       set('users-kpi-week', kpis.newWeek);
       const hint = $('users-kpi-today-hint');
       if (hint) hint.textContent = `დღეს ${fmtKa(kpis.newToday)}`;
@@ -432,7 +403,6 @@
       const params = new URLSearchParams({ limit: String(PAGE), offset: String(state.offset) });
       if (f.q) params.set('q', f.q);
       if (f.status) params.set('status', f.status);
-      if (f.package) params.set('package', f.package);
       if (f.activity) params.set('activity', f.activity);
       if (f.appVersion) params.set('appVersion', f.appVersion);
       try {
@@ -517,12 +487,6 @@
             </div>
           </td>
           <td>
-            <div class="v3-users-pkg">
-              ${typeof pkgBadge === 'function' ? pkgBadge(u.package) : esc(u.package?.code || '—')}
-              ${typeof quotaCell === 'function' ? quotaCell(u.usage) : ''}
-            </div>
-          </td>
-          <td>
             <div class="v3-users-app">
               <strong>${ico(platformIco(u.platform))} ${typeof platformKa === 'function' ? (platformKa(u.platform) || '—') : (u.platform || '—')}</strong>
               <span class="sub">${u.appVersion ? esc(u.appVersion) : 'ვერსია უცნობია'}</span>
@@ -552,10 +516,9 @@
     const clearAll = () => {
       if ($('user-q')) $('user-q').value = '';
       if ($('user-status')) $('user-status').value = '';
-      if ($('user-package')) $('user-package').value = '';
       if ($('user-activity')) $('user-activity').value = '';
       state.offset = 0;
-      writeUsersHash({ q: '', status: '', package: '', activity: '', appVersion: '', page: 1 });
+      writeUsersHash({ q: '', status: '', activity: '', appVersion: '', page: 1 });
       load();
     };
 
@@ -581,22 +544,12 @@
     document.querySelectorAll('[data-status-chip]').forEach((btn) => {
       btn.addEventListener('click', () => setSelectAndLoad('user-status', btn.dataset.statusChip));
     });
-    document.querySelectorAll('[data-package-chip]').forEach((btn) => {
-      btn.addEventListener('click', () => setSelectAndLoad('user-package', btn.dataset.packageChip));
-    });
     document.querySelectorAll('[data-activity-chip]').forEach((btn) => {
       btn.addEventListener('click', () => setSelectAndLoad('user-activity', btn.dataset.activityChip));
     });
     document.querySelectorAll('[data-kpi-status]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        if ($('user-package')) $('user-package').value = '';
-        setSelectAndLoad('user-status', btn.dataset.kpiStatus);
-      });
-    });
-    document.querySelectorAll('[data-kpi-package]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if ($('user-status')) $('user-status').value = '';
-        setSelectAndLoad('user-package', btn.dataset.kpiPackage);
+          setSelectAndLoad('user-status', btn.dataset.kpiStatus);
       });
     });
 
@@ -631,7 +584,6 @@
       const params = new URLSearchParams();
       if (f.q) params.set('q', f.q);
       if (f.status) params.set('status', f.status);
-      if (f.package) params.set('package', f.package);
       if (f.activity) params.set('activity', f.activity);
       if (f.appVersion) params.set('appVersion', f.appVersion);
       if (typeof opsDownload === 'function') {
@@ -663,14 +615,12 @@
     root.innerHTML = `<div class="v3-user-page"><div class="user-page-loading">${typeof icon === 'function' ? icon('refresh') : ''}<span>პროფილი იტვირთება…</span></div></div>`;
 
     let user;
-    let packages;
     let profileExtra;
     try {
       const rangeQs = typeof opsQs === 'function' ? opsQs() : 'range=30d';
-      const data = await Promise.all([api(`/users/${id}?${rangeQs}`), api('/packages')]);
-      user = data[0].user;
-      packages = data[1].packages;
-      profileExtra = data[0];
+      const data = await api(`/users/${id}?${rangeQs}`);
+      user = data.user;
+      profileExtra = data;
     } catch (err) {
       toast(err.message, 'bad');
       location.hash = typeof usersListHref === 'function' ? usersListHref() : '#/users';
@@ -724,11 +674,9 @@
       ? `<span class="v3-user-place">${place.flag || ico('globe')} ${esc(place.line)}</span>`
       : `<span class="v3-user-place is-unknown">${ico('globe')} ქვეყანა უცნობია</span>`;
 
-    const pkgOptions = packages.map((p) => {
-      const limitLabel = p.unlimited ? 'შეუზღუდავი' : `${p.monthlyAiLimit} / თვე`;
-      return `<option value="${escA(p.code)}" ${user.package?.code === p.code ? 'selected' : ''}>${esc(p.code)} — ${esc(limitLabel)}</option>`;
-    }).join('');
-    const isPaid = user.package?.code && user.package.code !== 'FREE';
+    // MEDICARD is free: no package list, tariff badge or renewal controls.
+    const pkgOptions = '';
+    const isPaid = false;
     const aiLabel = user.usage?.unlimited
       ? '∞'
       : `${user.usage?.used ?? 0} / ${user.usage?.limit ?? '—'}`;
@@ -761,7 +709,6 @@
             <option value="BLOCKED" ${user.status === 'BLOCKED' ? 'selected' : ''}>დაბლოკილი</option>
           </select>`,
         }) : ''}
-        <p class="v3-user-edit-full muted">წვდომა უფასოა — ფასიანი პაკეტის მინიჭება საჭირო არ არის.</p>
         ${V.field ? `<div class="v3-user-edit-full">${V.field({
           id: 'edit-note',
           label: 'ადმინ შენიშვნა',
@@ -792,7 +739,6 @@
               <div class="v3-user-hero-title">
                 <h2>${esc(user.fullName || user.email || 'მომხმარებელი')}</h2>
                 ${accountStatusCell(user.status)}
-                ${typeof pkgBadge === 'function' ? pkgBadge(user.package) : `<span class="badge">${esc(user.package?.code || '—')}</span>`}
               </div>
               <p class="v3-user-hero-sub">${esc(subLine || 'კონტაქტი არ არის')}</p>
               <div class="v3-user-hero-meta">
@@ -900,51 +846,6 @@
     $('user-cancel-nav')?.addEventListener('click', () => $('user-page-back')?.click());
     $('user-header-reload')?.addEventListener('click', () => {
       renderUserPageV3(id, { profileTab: typeof currentUserProfileTab === 'function' ? currentUserProfileTab() : 'overview' });
-    });
-
-    $('edit-package')?.addEventListener('change', () => {
-      const paid = $('edit-package').value !== 'FREE';
-      if ($('edit-started')) $('edit-started').disabled = !paid;
-      if ($('edit-expires')) $('edit-expires').disabled = !paid;
-      if (!paid) {
-        if ($('edit-started')) $('edit-started').value = '';
-        if ($('edit-expires')) $('edit-expires').value = '';
-      }
-    });
-
-    $('user-reset-usage')?.addEventListener('click', () => {
-      V.openConfirm?.({
-        title: 'AI ლიმიტის განულება',
-        message: 'ამ პერიოდის გამოყენება გახდება 0.',
-        confirmLabel: 'განულება',
-        onConfirm: async () => {
-          await api(`/users/${id}/reset-usage`, { method: 'POST' });
-          toast('AI ლიმიტი განულდა');
-          await renderUserPageV3(id, { profileTab: typeof currentUserProfileTab === 'function' ? currentUserProfileTab() : 'overview' });
-        },
-      });
-    });
-
-    $('user-renew')?.addEventListener('click', () => {
-      const exp = toDateInputTbilisi(user.packageExpiresAt) || '—';
-      V.openConfirm?.({
-        title: 'გამოწერის განახლება (+30 დღე)',
-        message: `განახლდება გამოწერის პერიოდი და AI ლიმიტის ფანჯარა. მიმდინარე ვადა: ${exp}.`,
-        confirmLabel: '+30 დღე',
-        onConfirm: async () => {
-          if (V.runMutation) {
-            const out = await V.runMutation({
-              action: () => api(`/users/${id}/renew`, { method: 'POST' }),
-              successMessage: 'გამოწერა განახლდა',
-            });
-            if (!out?.ok) return;
-          } else {
-            await api(`/users/${id}/renew`, { method: 'POST' });
-            toast('გამოწერა განახლდა');
-          }
-          await renderUserPageV3(id, { profileTab: typeof currentUserProfileTab === 'function' ? currentUserProfileTab() : 'overview' });
-        },
-      });
     });
 
     $('user-save')?.addEventListener('click', async () => {

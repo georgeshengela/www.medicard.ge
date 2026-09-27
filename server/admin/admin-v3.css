@@ -1120,7 +1120,7 @@ body.v3-sidebar-compact .v3-sidebar .sidebar-foot { flex-direction: column; }
 }
 .v3-users-kpis {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 .v3-users-kpi {
@@ -1662,7 +1662,7 @@ article.v3-users-kpi { cursor: default; }
 }
 
 @media (max-width: 1280px) {
-  .v3-users-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .v3-users-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 900px) {
   .v3-users-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }

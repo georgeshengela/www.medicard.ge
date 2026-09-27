@@ -16,7 +16,6 @@
 
   const HUMAN = {
     status: { ACTIVE: 'შესვლა დაშვებულია', BLOCKED: 'დაბლოკილი' },
-    package: { FREE: 'უფასო', STANDARD: 'სტანდარტი', ULTIMATE: 'ალტიმეიტი' },
     rewardStatus: {
       DRAFT: 'მონახაზი', ACTIVE: 'აქტიური', PAUSED: 'შეჩერებული', ARCHIVED: 'დაარქივებული',
       SCHEDULED: 'დაგეგმილი', ENDED: 'დასრულებული', ISSUED: 'გაცემული', USED: 'გამოყენებული',

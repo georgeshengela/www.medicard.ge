@@ -295,12 +295,6 @@ function fmtDateShort(value) {
   return `${p.day} ${MONTHS_KA[p.month]}, ${p.year}`;
 }
 
-function fmtDateCompact(value) {
-  const p = adminDateParts(value);
-  if (!p) return '—';
-  return `${p.day} ${MONTHS_KA_SHORT[p.month]}`;
-}
-
 function timelineDayKa(value) {
   if (!value) return 'უცნობია';
   const date = new Date(value);
@@ -328,129 +322,6 @@ function initials(name) {
     .toUpperCase();
 }
 
-function timeGreetingKa() {
-  const h = new Date().getHours();
-  if (h < 12) return 'დილა მშვიდობისა';
-  if (h < 18) return 'გამარჯობა';
-  return 'საღამო მშვიდობისა';
-}
-
-function adminGreetingName() {
-  const email = state.admin?.email || localStorage.getItem(EMAIL_KEY) || '';
-  const raw = state.admin?.fullName || email.split('@')[0] || 'ადმინ';
-  return raw.split(' ')[0] || raw;
-}
-
-function ngSparkBars(tone) {
-  const heights = [38, 62, 48, 78, 52, 70, 44, 66];
-  return `<div class="ng-spark tone-${tone}" aria-hidden="true">${heights.map((h) => `<span style="--h:${h}%"></span>`).join('')}</div>`;
-}
-
-function ngSparkFromTrend(trend, tone) {
-  const rows = (trend || []).slice(-8);
-  if (!rows.length) return ngSparkBars(tone);
-  const max = Math.max(1, ...rows.map((d) => d.count));
-  return `<div class="ng-spark tone-${tone}" aria-hidden="true">${rows.map((d) => {
-    const h = Math.max(10, Math.round((d.count / max) * 100));
-    return `<span style="--h:${h}%"></span>`;
-  }).join('')}</div>`;
-}
-
-function ngMetricCard({ label, value, hint, iconName, tone, spark }) {
-  return `
-    <article class="ng-metric tone-${tone}">
-      <div class="ng-metric-icon">${icon(iconName)}</div>
-      <div class="ng-metric-body">
-        <span class="ng-metric-label">${label}</span>
-        <strong class="ng-metric-value">${value}</strong>
-        ${hint ? `<span class="ng-metric-hint">${hint}</span>` : ''}
-      </div>
-      ${spark ? ngSparkFromTrend(spark, tone) : ngSparkBars(tone)}
-    </article>
-  `;
-}
-
-function dashAreaChart(points, tone = 'teal') {
-  const rows = Array.isArray(points) ? points : [];
-  if (!rows.length) return '<p class="muted">მონაცემი არ არის.</p>';
-  const w = 360;
-  const h = 148;
-  const padX = 10;
-  const padY = 14;
-  const max = Math.max(1, ...rows.map((d) => d.count));
-  const step = rows.length > 1 ? (w - padX * 2) / (rows.length - 1) : 0;
-  const coords = rows.map((d, i) => {
-    const x = padX + i * step;
-    const y = h - padY - (d.count / max) * (h - padY * 2);
-    return { x: +x.toFixed(1), y: +y.toFixed(1), count: d.count, day: d.day };
-  });
-  const line = coords.map((c) => `${c.x},${c.y}`).join(' ');
-  const area = `${padX},${h - padY} ${line} ${coords[coords.length - 1].x},${h - padY}`;
-  const last = coords[coords.length - 1];
-  return `
-    <svg class="dash-area tone-${tone}" viewBox="0 0 ${w} ${h}" role="img" aria-label="14 დღის ტრენდი">
-      <defs>
-        <linearGradient id="dash-area-${tone}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="currentColor" stop-opacity="0.28"/>
-          <stop offset="100%" stop-color="currentColor" stop-opacity="0.02"/>
-        </linearGradient>
-      </defs>
-      <polygon points="${area}" fill="url(#dash-area-${tone})"/>
-      <polyline points="${line}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-      ${coords.filter((c) => c.count > 0).map((c) => `<circle cx="${c.x}" cy="${c.y}" r="2.4" fill="currentColor"/>`).join('')}
-      <circle cx="${last.x}" cy="${last.y}" r="4.2" fill="currentColor"/>
-    </svg>
-  `;
-}
-
-function dashLineChart(series) {
-  const lists = (series || []).filter((s) => s.points?.length);
-  if (!lists.length) return '<p class="muted">მონაცემი არ არის.</p>';
-  const w = 360;
-  const h = 148;
-  const padX = 10;
-  const padY = 14;
-  const max = Math.max(1, ...lists.flatMap((s) => s.points.map((d) => d.count)));
-  const n = Math.max(...lists.map((s) => s.points.length));
-  const step = n > 1 ? (w - padX * 2) / (n - 1) : 0;
-  const paths = lists.map((s) => {
-    const line = s.points.map((d, i) => {
-      const x = padX + i * step;
-      const y = h - padY - (d.count / max) * (h - padY * 2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-    return `<polyline class="tone-${s.tone || 'teal'}" points="${line}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
-  }).join('');
-  return `<svg class="dash-lines" viewBox="0 0 ${w} ${h}" role="img">${paths}</svg>`;
-}
-
-function dashDonut(slices) {
-  const list = (slices || []).filter((s) => s.count > 0);
-  const total = list.reduce((sum, s) => sum + s.count, 0);
-  if (!total) return '<p class="muted">მონაცემი არ არის.</p>';
-  let acc = 0;
-  const stops = list.map((s) => {
-    const start = acc;
-    acc += (s.count / total) * 100;
-    return `${s.color} ${start.toFixed(2)}% ${acc.toFixed(2)}%`;
-  }).join(', ');
-  return `
-    <div class="dash-donut-wrap">
-      <div class="dash-donut" style="background: conic-gradient(${stops})"></div>
-      <div class="dash-donut-legend">
-        ${list.map((s) => `
-          <div class="dash-donut-item">
-            <i style="background:${s.color}"></i>
-            <span>${s.label}</span>
-            <strong>${s.count}</strong>
-            <em>${Math.round((s.count / total) * 100)}%</em>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
 function setPageHeader(tab, copy) {
   if (window.AdminV3?.syncHeader) {
     window.AdminV3.syncHeader(tab, copy);
@@ -462,41 +333,10 @@ function setPageHeader(tab, copy) {
   if (subEl) subEl.textContent = copy[tab][2];
 }
 
-function pkgClass(code) {
-  const key = String(code || '').toLowerCase();
-  if (key === 'standard') return 'standard';
-  if (key === 'ultimate') return 'ultimate';
-  return 'free';
-}
-
-function pkgBadge(pkg) {
-  if (!pkg) return '<span class="badge neutral">—</span>';
-  return `<span class="badge ${pkgClass(pkg.code)}">${pkg.nameKa}</span>`;
-}
-
 function statusBadge(status) {
   return status === 'BLOCKED'
     ? '<span class="badge bad">დაბლოკილი</span>'
     : '<span class="badge ok">შესვლა დაშვებულია</span>';
-}
-
-function quotaCell(usage) {
-  if (!usage) return '—';
-  if (usage.unlimited) {
-    return `<div class="users-quota is-unlimited">
-      <div class="users-quota-head"><strong>∞</strong><span>შეუზღუდავი</span></div>
-      <div class="quota-track"><span style="width:100%"></span></div>
-    </div>`;
-  }
-  const used = usage.used ?? 0;
-  const limit = usage.limit ?? 0;
-  const remaining = usage.remaining ?? Math.max(0, limit - used);
-  const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
-  const tone = pct >= 100 ? 'full' : pct >= 70 ? 'warn' : '';
-  return `<div class="users-quota${tone ? ` is-${tone}` : ''}" title="დარჩა ${remaining}">
-    <strong>${used}<span class="muted"> / ${limit}</span></strong>
-    <div class="quota-track ${tone}"><span style="width:${pct}%"></span></div>
-  </div>`;
 }
 
 function fmtRelative(value) {
@@ -517,112 +357,9 @@ function fmtRelative(value) {
   return fmtDateShort(value);
 }
 
-function searchHotkeyLabel() {
-  return /Mac|iPhone|iPad/i.test(`${navigator.platform} ${navigator.userAgent}`) ? '⌘K' : 'Ctrl+K';
-}
-
 function usersStatusCell(status) {
   const blocked = status === 'BLOCKED';
   return `<span class="users-live ${blocked ? 'is-blocked' : 'is-active'}"><i></i>${blocked ? 'დაბლოკილი' : 'შესვლა დაშვებულია'}</span>`;
-}
-
-function usersActivityCell(user) {
-  const counts = user.counts || {};
-  const bits = [];
-  if (counts.chats > 0) bits.push('<span title="Medi">Medi</span>');
-  if (counts.medications > 0) bits.push('<span title="მედიკამენტები">მედ.</span>');
-  if (user.hasCycle) bits.push('<span title="ციკლი">ციკლი</span>');
-  if (user.notificationPermission === 'denied' || user.notificationPermission === 'disabled') {
-    bits.push('<span class="is-off" title="შეტყობინება გამორთულია">ნოტიფი</span>');
-  }
-  return bits.length ? `<div class="users-feats">${bits.join('')}</div>` : '<span class="muted">—</span>';
-}
-
-function usersFilterMetric({ label, value, hint, iconName, tone, statusFilter, packageFilter, valueId }) {
-  const status = statusFilter === undefined ? '' : ` data-status-filter="${statusFilter}"`;
-  const pkg = packageFilter === undefined ? '' : ` data-package-filter="${packageFilter}"`;
-  const pressable = statusFilter !== undefined || packageFilter !== undefined;
-  const tag = pressable ? 'button type="button"' : 'article';
-  const close = pressable ? 'button' : 'article';
-  const valueAttr = valueId ? ` id="${valueId}"` : '';
-  return `
-    <${tag} class="orders-kpi users-os-kpi tone-${tone}${pressable ? ' users-metric-btn' : ''}"${status}${pkg}${pressable ? ' aria-pressed="false"' : ''}>
-      <div class="users-os-kpi-top">
-        <span class="users-os-kpi-ico tone-${tone}">${icon(iconName || 'users')}</span>
-        <span>${label}</span>
-      </div>
-      <strong${valueAttr}>${value}</strong>
-      ${hint ? `<em ${valueId ? `id="${valueId}-hint"` : ''}>${hint}</em>` : ''}
-    </${close}>
-  `;
-}
-
-function usersTrendHtml(trend) {
-  const rows = Array.isArray(trend) ? trend : [];
-  if (!rows.length) return '<p class="muted">რეგისტრაციები ჯერ არ არის.</p>';
-  const max = Math.max(1, ...rows.map((d) => d.count));
-  return `<div class="users-trend">${rows.map((d) => {
-    const date = new Date(`${d.day}T00:00:00.000Z`);
-    const short = fmtDateCompact(date);
-    const h = Math.max(8, Math.round((d.count / max) * 100));
-    return `<div class="users-trend-col" title="${escapeAttr(short)}: ${d.count}">
-      <span class="users-trend-val">${d.count || ''}</span>
-      <span class="users-trend-track"><span class="users-trend-bar" style="height:${h}%"></span></span>
-      <span class="users-trend-lbl">${escapeHtml(short)}</span>
-    </div>`;
-  }).join('')}</div>`;
-}
-
-function usersMixHtml(items) {
-  const list = (items || []).filter(Boolean);
-  if (!list.length) return '<p class="muted">მონაცემი არ არის.</p>';
-  const total = list.reduce((sum, i) => sum + (i.count || 0), 0) || 1;
-  const max = Math.max(1, ...list.map((i) => i.count || 0));
-  return list.map((i) => {
-    const share = Math.round(((i.count || 0) / total) * 100);
-    const barW = Math.round(((i.count || 0) / max) * 100);
-    return `
-      <div class="dash-pkg-row">
-        <div class="dash-pkg-head">
-          <span class="dash-pkg-label">${i.label}</span>
-          <span class="badge ${i.tone || 'neutral'}">${i.count}</span>
-        </div>
-        <div class="bar ${i.bar || ''}"><span style="width:${barW}%"></span></div>
-        <div class="dash-pkg-foot">
-          <span class="mono">${i.count} მომხმარებელი</span>
-          <span class="mono muted">${share}%</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function usersTrendSpark(trend) {
-  const rows = (trend || []).slice(-8);
-  if (!rows.length) return ngSparkBars('teal');
-  const max = Math.max(1, ...rows.map((d) => d.count));
-  return `<div class="ng-spark tone-teal" aria-hidden="true">${rows.map((d) => {
-    const h = Math.max(12, Math.round((d.count / max) * 100));
-    return `<span style="--h:${h}%"></span>`;
-  }).join('')}</div>`;
-}
-
-function usersSkeletonHtml() {
-  return Array.from({ length: 8 }, (_, i) => `
-    <tr class="users-skel-row" style="--i:${i}" aria-hidden="true">
-      <td class="col-user">
-        <div class="users-person">
-          <span class="sk av"></span>
-          <div class="users-person-copy"><span class="sk ln w160"></span><span class="sk ln w90"></span></div>
-        </div>
-      </td>
-      <td class="col-status"><span class="sk chip sm"></span></td>
-      <td class="col-pkg"><span class="sk chip"></span></td>
-      <td class="col-when"><span class="sk ln w90"></span></td>
-      <td class="col-plat"><span class="sk chip sm"></span></td>
-      <td class="col-stats"><span class="sk ln w100"></span></td>
-    </tr>
-  `).join('');
 }
 
 function escapeHtml(value) {
@@ -640,139 +377,9 @@ function onOffLabel(on) {
   return on ? 'ჩართ.' : 'გამორთ.';
 }
 
-function providerBadge(label) {
-  const map = {
-    LIVE: 'ონლაინ',
-    OFF: 'გამორთ.',
-    LOW: 'დაბალი',
-    ERR: 'შეცდომა',
-  };
-  return map[label] || label;
-}
-
 function formatUsd(value) {
   if (value == null || Number.isNaN(Number(value))) return '—';
   return `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
-}
-
-function dashHealthRing(active, total, caption) {
-  const pct = total ? Math.round((active / total) * 100) : null;
-  const tone = pct == null ? 'neutral' : pct >= 85 ? 'ok' : pct >= 60 ? 'std' : 'bad';
-  const display = pct == null ? '—' : pct;
-  const ringPct = pct == null ? 0 : Math.min(100, Math.max(0, pct));
-  return `
-    <div class="ai-hero-score">
-      <div class="ai-score-ring ${tone}" style="--pct:${ringPct}">
-        <div class="ai-score-inner">
-          <span class="ai-score-val">${display}</span>
-          <span class="ai-score-lbl">${pct == null ? '' : '%'}</span>
-        </div>
-      </div>
-      ${caption ? `<p class="ai-score-caption">${caption}</p>` : ''}
-    </div>
-  `;
-}
-
-function dashPkgBars(packages, maxPkg, assigned) {
-  if (!packages.length) return '<p class="muted">პაკეტები ჯერ არ არის.</p>';
-  return packages
-    .map((p) => {
-      const cls = pkgClass(p.code);
-      const share = assigned ? Math.round((p.users / assigned) * 100) : 0;
-      const barW = maxPkg ? Math.round((p.users / maxPkg) * 100) : 0;
-      return `
-        <div class="dash-pkg-row">
-          <div class="dash-pkg-head">
-            <span class="dash-pkg-label">${escapeHtml(p.nameKa)}</span>
-            <span class="badge ${cls}">${escapeHtml(p.code)}</span>
-          </div>
-          <div class="bar ${cls === 'standard' ? 'std' : cls === 'ultimate' ? 'ult' : ''}"><span style="width:${barW}%"></span></div>
-          <div class="dash-pkg-foot">
-            <span class="mono">${p.users} მომხმარებელი</span>
-            <span class="mono muted">${share}%</span>
-          </div>
-        </div>
-      `;
-    })
-    .join('');
-}
-
-function dashProvidersHtml(balances) {
-  const or = balances?.openrouter;
-  const emd = balances?.evidencemd;
-  const fetched = balances?.fetchedAt ? fmtDate(balances.fetchedAt) : '';
-  const orTone = or?.tone || (or?.ok ? 'ok' : 'bad');
-  const emdTone = emd?.tone || (emd?.ok ? 'ok' : 'bad');
-
-  function providerCard(name, iconName, tone, badge, balance, hint, stats, dashboardUrl, dashboardLabel, error) {
-    return `
-      <article class="dash-provider ${tone}">
-        <div class="dash-provider-top">
-          ${iconTile(iconName, tone === 'ok' ? 'ok' : tone === 'warn' ? 'std' : tone === 'bad' ? 'bad' : '')}
-          <div class="dash-provider-copy">
-            <strong>${name}</strong>
-            <span class="muted">${hint}</span>
-          </div>
-          <span class="badge ${tone === 'ok' ? 'ok' : tone === 'warn' ? 'neutral' : 'bad'}">${badge}</span>
-        </div>
-        <div class="dash-provider-balance">${balance}</div>
-        <div class="dash-provider-stats">
-          ${stats.map(([label, val]) => `<div class="dash-provider-stat"><span>${label}</span><strong>${val}</strong></div>`).join('')}
-        </div>
-        ${error ? `<p class="dash-provider-error">${escapeHtml(error)}</p>` : ''}
-        <a class="btn tiny ghost dash-provider-link" href="${escapeAttr(dashboardUrl)}" target="_blank" rel="noreferrer">${icon('link')} ${dashboardLabel}</a>
-      </article>
-    `;
-  }
-
-  return `
-    <div class="dash-providers-wrap">
-      <div class="dash-providers">
-        ${providerCard(
-          'OpenRouter',
-          'wallet',
-          orTone,
-          or?.configured ? providerBadge(orTone === 'bad' ? 'LOW' : or?.ok ? 'LIVE' : 'ERR') : providerBadge('OFF'),
-          formatUsd(or?.remaining),
-          escapeHtml(or?.model || 'X-ray / CT / კანი'),
-          [
-            ['შეძენილი', formatUsd(or?.total)],
-            ['დახარჯული', formatUsd(or?.used)],
-            ['დღეს', formatUsd(or?.usedDaily)],
-            ['თვე', formatUsd(or?.usedMonthly)],
-          ],
-          or?.dashboardUrl || 'https://openrouter.ai/settings/credits',
-          'შევსება',
-          or?.error,
-        )}
-        ${providerCard(
-          'EvidenceMD',
-          'message',
-          emdTone,
-          emd?.configured ? providerBadge(emd?.ok ? 'LIVE' : 'ERR') : providerBadge('OFF'),
-          emd?.remaining != null ? String(emd.remaining) : '—',
-          emd?.remaining != null ? 'დარჩენილი კრედიტი' : `${emd?.creditsPerCall || 4} კრ. / გამოძახება · ${escapeHtml(emd?.model || 'ჩატი')}`,
-          [
-            ['ამ თვეში', `${emd?.usedThisMonth ?? 0} გამ.`],
-            ['~ კრ.', String(emd?.estimatedCreditsThisMonth ?? 0)],
-            ['სულ', `${emd?.usedAll ?? 0} გამ.`],
-            ['API', emd?.ok ? 'ონლაინ' : 'გამორთული'],
-          ],
-          emd?.dashboardUrl || 'https://evidencemd.ai/developers',
-          'დეშბორდი',
-          emd?.error,
-        )}
-      </div>
-      <div class="dash-providers-meta">
-        <span class="muted mono">${fetched ? `განახლდა ${fetched}` : 'ბალანსი ჯერ არ არის განახლებული'}</span>
-        <button class="btn tiny ghost" id="balances-refresh">${icon('refresh')} განახლება</button>
-      </div>
-    </div>
-  `;
-}
-
-function providerCardsHtml(balances) {
-  return dashProvidersHtml(balances);
 }
 
 let lastLiveSettings = null;
@@ -1061,7 +668,7 @@ async function switchTab(tab, opts = {}) {
     if (painted) {
       if (typeof window.refreshCommandCenterLive === 'function') void window.refreshCommandCenterLive();
     } else if (typeof renderCommandCenter === 'function') await renderCommandCenter();
-    else await renderOverview();
+    else if ($('tab-overview')) $('tab-overview').innerHTML = '<p role="alert">Command Center ვერ ჩაიტვირთა. განაახლე გვერდი.</p>';
   } else if (!painted) {
     if (tab === 'orders') await renderOrders();
     if (tab === 'users') await renderUsers();
@@ -1252,10 +859,6 @@ function doctorName(v) {
   return name || doctorLabel(v.doctorType);
 }
 
-function visitWhen(v) {
-  return `${v.visitTime || '—'} · ${fmtDateShort(`${v.visitDate}T12:00:00`)}`;
-}
-
 function initialsOf(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '•';
@@ -1429,7 +1032,6 @@ function orderSignupRow(u) {
         <b>${escapeHtml(u.fullName)}</b>
         <span>${escapeHtml(u.email)}</span>
       </div>
-      ${pkgBadge(u.package)}
     </button>`;
 }
 
@@ -1442,354 +1044,12 @@ function bindOrderCards() {
   });
 }
 
-async function renderOverview(freshBalances = false) {
-  const [stats, recent, balances] = await Promise.all([
-    api('/stats'),
-    api('/users?limit=6&offset=0'),
-    api(freshBalances ? '/balances?fresh=1' : '/balances').catch(() => null),
-  ]);
-  setLivePill(stats.settings);
-  const maxPkg = Math.max(1, ...stats.packages.map((p) => p.users));
-  const assigned = stats.packages.reduce((sum, p) => sum + p.users, 0);
-  const s = stats.settings;
-  const modeOk = !s.maintenanceMode && !s.forceUpdate;
-  const modeTone = s.maintenanceMode ? 'bad' : s.forceUpdate ? 'warn' : 'ok';
-  const modeLabel = s.maintenanceMode ? 'ოფლაინი' : s.forceUpdate ? 'იძ. განახლება' : 'აქტიური';
-  const activePct = stats.users.total ? Math.round((stats.users.active / stats.users.total) * 100) : null;
-  const act = stats.activity || {};
-  const trends = stats.trends || {};
-  const signupTrend = trends.signups || stats.users.trend || [];
-  const aiTrend = trends.ai || [];
-  const chatTrend = trends.chats || [];
-  const recordTrend = trends.records || [];
-  const g = stats.users.gender || {};
-  const weekSignups = signupTrend.slice(-7).reduce((sum, d) => sum + d.count, 0);
-  const prevWeekSignups = signupTrend.slice(0, 7).reduce((sum, d) => sum + d.count, 0);
-  const weekDelta = weekSignups - prevWeekSignups;
-  const pkgColors = { FREE: 'var(--teal)', STANDARD: 'var(--std)', ULTIMATE: 'var(--ult)' };
-
-  $('tab-overview').innerHTML = `
-    <div class="ai-page dash-page ng-dash dash-enter">
-      <section class="dash-status card">
-        <div class="dash-status-live">
-          <span class="dash-status-dot ${modeTone}"></span>
-          <div>
-            <strong>${modeLabel === 'აქტიური' ? 'სისტემა აქტიურია' : modeLabel}</strong>
-            <span>${stats.users.active} აქტიური ანგარიში</span>
-          </div>
-        </div>
-        <div class="dash-status-stats">
-          <div><em>სულ</em><b>${stats.users.total}</b></div>
-          <div><em>დაბლოკილი</em><b>${stats.users.blocked}</b></div>
-          <div><em>დღეს</em><b>+${stats.users.newToday}</b></div>
-          <div><em>ჯანმრთელი</em><b>${activePct == null ? '—' : `${activePct}%`}</b></div>
-        </div>
-        <div class="dash-status-spark">${ngSparkFromTrend(signupTrend, 'teal')}</div>
-        <button class="btn tiny primary" data-go="ai">${icon('spark')} AI</button>
-      </section>
-
-      <div class="dash-glance">
-        <div class="dash-glance-item">
-          <span>ახალი · 7 დღე</span>
-          <strong>+${stats.users.newWeek}</strong>
-          <em class="${weekDelta >= 0 ? 'up' : 'down'}">${weekDelta >= 0 ? '+' : ''}${weekDelta} წინა კვირასთან</em>
-        </div>
-        <div class="dash-glance-item">
-          <span>AI · 24სთ</span>
-          <strong>${act.aiLast24h ?? 0}</strong>
-          <em>${act.aiErrors24h ? `${act.aiErrors24h} შეცდომა` : 'შეცდომა არ არის'}</em>
-        </div>
-        <div class="dash-glance-item">
-          <span>SMS · 24სთ</span>
-          <strong>${act.smsLast24h ?? 0}</strong>
-          <em>${act.smsFailed ? `${act.smsFailed} წარუმატებელი სულ` : 'სტაბილური'}</em>
-        </div>
-        <div class="dash-glance-item">
-          <span>Push გაგზავნილი</span>
-          <strong>${act.pushSent ?? 0}</strong>
-          <em>${act.pushLast24h ?? 0} ბოლო 24სთ · ${act.pushTokens ?? 0} მოწყობილობა</em>
-        </div>
-        <div class="dash-glance-item">
-          <span>ფარმაცია</span>
-          <strong>${act.catalogProducts ?? 0}</strong>
-          <em>პროდუქტი კატალოგში</em>
-        </div>
-      </div>
-
-      <div class="ng-metrics-row dash-metrics-6">
-        ${ngMetricCard({
-          label: 'მომხმარებლები',
-          value: stats.users.total,
-          hint: `+${stats.users.newToday} დღეს · ${stats.users.active} აქტიური`,
-          iconName: 'users',
-          tone: 'teal',
-          spark: signupTrend,
-        })}
-        ${ngMetricCard({
-          label: 'AI მოთხოვნა',
-          value: act.aiTotal ?? 0,
-          hint: `${act.aiLast24h ?? 0} დღეს · ${act.aiLast7d ?? 0} 7 დღეში`,
-          iconName: 'spark',
-          tone: 'cyan',
-          spark: aiTrend,
-        })}
-        ${ngMetricCard({
-          label: 'ჩანაწერები',
-          value: stats.records,
-          hint: 'სამედიცინო ფაილები',
-          iconName: 'file',
-          tone: 'rose',
-          spark: recordTrend,
-        })}
-        ${ngMetricCard({
-          label: 'AI ჩატები',
-          value: stats.chats,
-          hint: 'ექიმი · კონსილიუმი',
-          iconName: 'message',
-          tone: 'cyan',
-          spark: chatTrend,
-        })}
-        ${ngMetricCard({
-          label: 'მედიკამენტები',
-          value: stats.medications,
-          hint: `${act.visits ?? 0} ვიზიტი · ${act.cycleProfiles ?? 0} ციკლი`,
-          iconName: 'pill',
-          tone: 'amber',
-        })}
-        ${ngMetricCard({
-          label: 'SMS',
-          value: act.smsTotal ?? 0,
-          hint: `${act.smsLast24h ?? 0} ბოლო 24სთ`,
-          iconName: 'send',
-          tone: 'teal',
-        })}
-      </div>
-
-      <div class="dash-charts">
-        <div class="card dash-pkg-card dash-chart-wide">
-          <div class="card-head">
-            ${iconTile('activity')}
-            <div>
-              <h3>რეგისტრაციები · 14 დღე</h3>
-              <p class="muted" style="margin:2px 0 0;font-size:12px">${stats.users.newMonth} ახალი ამ თვეში · +${stats.users.newWeek} კვირაში</p>
-            </div>
-            <button class="btn tiny ghost grow" data-go="users">${icon('arrow')} რეესტრი</button>
-          </div>
-          ${dashAreaChart(signupTrend, 'teal')}
-        </div>
-        <div class="card dash-pkg-card">
-          <div class="card-head">
-            ${iconTile('layers', 'ult')}
-            <div>
-              <h3>პაკეტები</h3>
-              <p class="muted" style="margin:2px 0 0;font-size:12px">${assigned} აქტიური ტარიფზე</p>
-            </div>
-          </div>
-          ${dashDonut(stats.packages.map((p) => ({
-            label: p.nameKa,
-            count: p.users,
-            color: pkgColors[p.code] || 'var(--muted)',
-          })))}
-        </div>
-        <div class="card dash-pkg-card">
-          <div class="card-head">
-            ${iconTile('users')}
-            <div>
-              <h3>აუდიტორია</h3>
-              <p class="muted" style="margin:2px 0 0;font-size:12px">${stats.users.withPhone} ტელეფონით</p>
-            </div>
-          </div>
-          ${usersMixHtml([
-            { label: 'ქალი', count: g.female || 0, tone: 'standard', bar: 'std' },
-            { label: 'კაცი', count: g.male || 0, tone: 'ok', bar: '' },
-            { label: 'სხვა / უცნობი', count: (g.other || 0) + (g.unknown || 0), tone: 'neutral', bar: 'ult' },
-          ])}
-        </div>
-      </div>
-
-      <div class="dash-charts dash-charts-2">
-        <div class="card dash-pkg-card">
-          <div class="card-head">
-            ${iconTile('spark', 'ult')}
-            <div>
-              <h3>აქტივობა · 14 დღე</h3>
-              <p class="muted" style="margin:2px 0 0;font-size:12px">AI მოთხოვნები და ჩატები</p>
-            </div>
-            <div class="dash-legend">
-              <span class="dash-legend-item teal">AI</span>
-              <span class="dash-legend-item cyan">ჩატი</span>
-            </div>
-          </div>
-          ${dashLineChart([
-            { tone: 'teal', points: aiTrend },
-            { tone: 'cyan', points: chatTrend },
-          ])}
-        </div>
-        <div class="card dash-pkg-card">
-          <div class="card-head">
-            ${iconTile('file')}
-            <div>
-              <h3>პლატფორმის მოცულობა</h3>
-              <p class="muted" style="margin:2px 0 0;font-size:12px">რა ინახება სისტემაში</p>
-            </div>
-          </div>
-          ${usersMixHtml([
-            { label: 'AI მოთხოვნა', count: act.aiTotal || 0, tone: 'ok', bar: '' },
-            { label: 'ჩატები', count: stats.chats, tone: 'standard', bar: 'std' },
-            { label: 'ჩანაწერები', count: stats.records, tone: 'neutral', bar: 'ult' },
-            { label: 'მედიკამენტები', count: stats.medications, tone: 'ultimate', bar: 'ult' },
-            { label: 'ვიზიტები', count: act.visits || 0, tone: 'neutral', bar: '' },
-            { label: 'ციკლის პროფილი', count: act.cycleProfiles || 0, tone: 'standard', bar: 'std' },
-          ])}
-        </div>
-      </div>
-
-      <div class="ng-quick-row">
-        <button class="btn ghost" data-go="users">${icon('users')} მომხმარებლები</button>
-        <button class="btn ghost" data-go="sms">${icon('send')} SMS</button>
-        <button class="btn ghost" data-go="push">${icon('bell')} Push</button>
-        <button class="btn ghost" data-go="pharmacy">${icon('pill')} ფარმაცია</button>
-        <button class="btn ghost" data-go="ai">${icon('spark')} AI ხარისხი</button>
-      </div>
-
-      ${dashProvidersHtml(balances)}
-
-      <div class="ai-split" style="--i:5">
-        <div class="card dash-pkg-card">
-          <div class="card-head">
-            ${iconTile('layers', 'ult')}
-            <div>
-              <h3>პაკეტების განაწილება</h3>
-              <p class="muted" style="margin:2px 0 0;font-size:12px">${assigned} აქტიური მომხმარებელი ტარიფის მიხედვით</p>
-            </div>
-          </div>
-          ${dashPkgBars(stats.packages, maxPkg, assigned)}
-        </div>
-
-        <div class="card dash-mode-card">
-          <div class="card-head">
-            ${iconTile(modeOk ? 'shield' : 'alert', modeOk ? 'ok' : 'warn')}
-            <div>
-              <h3>აპის რეჟიმი</h3>
-              <p class="muted" style="margin:2px 0 0;font-size:12px">${modeOk ? 'ყველა სერვისი ღიაა' : 'საჭიროა ყურადღება'}</p>
-            </div>
-          </div>
-          <div class="dash-mode-grid">
-            <div class="dash-mode-item ${s.maintenanceMode ? 'on bad' : 'off'}">
-              ${icon('globe')}
-              <div>
-                <strong>ოფლაინი / განახლება</strong>
-                <span>${s.maintenanceMode ? 'ჩართ. — აპი გათიშულია' : 'გამორთ.'}</span>
-              </div>
-            </div>
-            <div class="dash-mode-item ${s.forceUpdate ? 'on warn' : 'off'}">
-              ${icon('zap')}
-              <div>
-                <strong>იძულებითი განახლება</strong>
-                <span>${s.forceUpdate ? 'ჩართ. — სავალდებულო განახლება' : 'გამორთ.'}</span>
-              </div>
-            </div>
-            <div class="dash-mode-item ${s.allowRegistrations ? 'on ok' : 'off'}">
-              ${icon('users')}
-              <div>
-                <strong>რეგისტრაცია</strong>
-                <span>${s.allowRegistrations ? 'ღიაა' : 'დახურულია'}</span>
-              </div>
-            </div>
-            <div class="dash-mode-item">
-              ${icon('activity')}
-              <div>
-                <strong>აპის ვერსია</strong>
-                <span class="mono">${escapeHtml(s.mobileAppVersion || s.minAppVersion)}</span>
-              </div>
-            </div>
-          </div>
-          <div class="dash-mode-foot">
-            <span class="muted mono">${escapeHtml(s.supportEmail || 'support@medicard.ge')}</span>
-            <button class="btn tiny primary" data-go="settings">${icon('settings')} რეჟიმის შეცვლა</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="table-card ai-log-card dash-users-card" style="--i:6">
-        <div class="card-head">
-          ${iconTile('users')}
-          <div>
-            <h3>ბოლო მომხმარებლები</h3>
-            <p class="muted" style="margin:2px 0 0;font-size:12px">${recent.total} ანგარიში სულ · ბოლო რეგისტრაციები</p>
-          </div>
-          <button class="btn tiny ghost grow" data-go="users">${icon('arrow')} რეესტრი</button>
-        </div>
-        <div class="table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>მომხმარებელი</th>
-                <th>კონტაქტი</th>
-                <th>პაკეტი</th>
-                <th>სტატუსი</th>
-                <th>რეგისტრაცია</th>
-                <th class="col-actions">მოქმედება</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${(recent.users || []).length ? recent.users.map((u) => `
-                <tr data-open="${u.id}">
-                  <td>
-                    <div class="ai-person">
-                      <div class="avatar">${escapeHtml(initials(u.fullName))}</div>
-                      <div class="stack">
-                        <strong>${escapeHtml(u.fullName)}</strong>
-                        <span class="sub muted mono">${escapeHtml(u.id.slice(0, 8))}…</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="stack">
-                      <strong>${escapeHtml(u.email || '—')}</strong>
-                      <span class="sub muted">${escapeHtml(u.phone || '')}</span>
-                    </div>
-                  </td>
-                  <td>${pkgBadge(u.package)}</td>
-                  <td>${statusBadge(u.status)}</td>
-                  <td class="mono col-date">${fmtDateShort(u.createdAt)}</td>
-                  ${tableActionCell(`<button class="btn tiny ghost" data-open-btn="${u.id}">${icon('file')} ნახვა</button>`)}
-                </tr>
-              `).join('') : '<tr><td colspan="6"><div class="empty"><strong>ჯერ არავინ დარეგისტრირებულა</strong>პირველი მომხმარებელი აქ გამოჩნდება.</div></td></tr>'}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  `;
-  document.querySelectorAll('[data-go]').forEach((btn) => {
-    btn.addEventListener('click', () => switchTab(btn.dataset.go));
-  });
-  document.querySelectorAll('[data-open], [data-open-btn]').forEach((el) => {
-    el.addEventListener('click', (e) => {
-      e.stopPropagation?.();
-      editUser(el.dataset.open || el.dataset.openBtn);
-    });
-  });
-  document.querySelectorAll('tr[data-open]').forEach((row) => {
-    row.addEventListener('click', (e) => {
-      if (e.target.closest('button')) return;
-      editUser(row.dataset.open);
-    });
-  });
-  $('balances-refresh')?.addEventListener('click', async () => {
-    $('balances-refresh').disabled = true;
-    try { await renderOverview(true); toast('ბალანსი განახლდა'); }
-    catch (err) { toast(err.message, 'bad'); }
-  });
-}
-
 function sortUsers(list) {
   const dir = state.sortDir === 'asc' ? 1 : -1;
   const key = state.sortKey;
   return [...list].sort((a, b) => {
-    const va = key === 'package' ? a.package?.code : key === 'used' ? a.usage?.used : a[key];
-    const vb = key === 'package' ? b.package?.code : key === 'used' ? b.usage?.used : b[key];
+    const va = key === 'used' ? a.usage?.used : a[key];
+    const vb = key === 'used' ? b.usage?.used : b[key];
     if (va == null && vb == null) return 0;
     if (va == null) return 1;
     if (vb == null) return -1;
@@ -1803,528 +1063,10 @@ function sortUsers(list) {
   });
 }
 
-function usersCurrentPage() {
-  return Math.floor(state.offset / USERS_PAGE_SIZE) + 1;
-}
-
-function usersTotalPages() {
-  return Math.max(1, Math.ceil(state.total / USERS_PAGE_SIZE));
-}
-
 function avatarTone(user) {
-  if (user.status === 'BLOCKED') return 'muted';
-  return pkgClass(user.package?.code);
+  return user.status === 'BLOCKED' ? 'muted' : 'free';
 }
 
-function paintUserPagination(onPage) {
-  const wrap = $('user-pager-pages');
-  if (!wrap) return;
-  const totalPages = usersTotalPages();
-  const current = usersCurrentPage();
-  if (state.total === 0) {
-    wrap.innerHTML = '';
-    return;
-  }
-
-  const pages = [];
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
-  } else {
-    pages.push(1);
-    if (current > 3) pages.push('…');
-    const start = Math.max(2, current - 1);
-    const end = Math.min(totalPages - 1, current + 1);
-    for (let i = start; i <= end; i++) pages.push(i);
-    if (current < totalPages - 2) pages.push('…');
-    pages.push(totalPages);
-  }
-
-  wrap.innerHTML = pages
-    .map((p) => (p === '…'
-      ? '<span class="pager-ellipsis">…</span>'
-      : `<button type="button" class="pager-page${p === current ? ' active' : ''}" data-page="${p}">${p}</button>`))
-    .join('');
-
-  wrap.querySelectorAll('[data-page]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.offset = (Number(btn.dataset.page) - 1) * USERS_PAGE_SIZE;
-      onPage();
-    });
-  });
-}
-
-async function renderUsers() {
-  const userId = userIdFromHash();
-  if (userId) {
-    await renderUserPage(userId, { profileTab: hashSearch().get('profileTab') });
-    return;
-  }
-  state.userPageId = null;
-  const root = $('tab-users');
-  const hotkey = searchHotkeyLabel();
-  root.innerHTML = `
-    <div class="users-page users-os v25-users dash-enter">
-      <div class="orders-kpis users-os-kpis" id="users-metrics" style="--i:0">
-        ${usersFilterMetric({ label: 'სულ', value: '—', hint: 'რეესტრში', iconName: 'users', tone: 'teal', statusFilter: '', valueId: 'users-stat-total' })}
-        ${usersFilterMetric({ label: 'აქტიური', value: '—', hint: 'შეუძლია შესვლა', iconName: 'check', tone: 'cyan', statusFilter: 'ACTIVE', valueId: 'users-stat-active' })}
-        ${usersFilterMetric({ label: 'დაბლოკილი', value: '—', hint: 'წვდომა შეზღუდულია', iconName: 'lock', tone: 'rose', statusFilter: 'BLOCKED', valueId: 'users-stat-blocked' })}
-        ${usersFilterMetric({ label: 'პრემიუმი', value: '—', hint: 'STANDARD · ULTIMATE', iconName: 'layers', tone: 'amber', valueId: 'users-stat-premium' })}
-      </div>
-
-      <div class="users-os-insights" style="--i:1">
-        <article class="users-os-insight users-os-trend-card">
-          <header>
-            <div>
-              <h3>რეგისტრაციები</h3>
-              <p>ბოლო 14 დღე · ახალი ანგარიშები</p>
-            </div>
-            <div class="users-os-live">
-              <div id="users-pulse-ring" class="users-os-ring">${dashHealthRing(null, null, '')}</div>
-              <div>
-                <strong id="users-pulse-value">—</strong>
-                <span id="users-pulse-hint">აქტიური ანგარიშები · დაბლოკილი · სულ</span>
-              </div>
-              <div id="users-pulse-spark">${ngSparkBars('teal')}</div>
-            </div>
-          </header>
-          <div class="users-os-pills">
-            <span class="users-os-pill teal">${icon('calendar')} <strong id="users-pill-week">—</strong> ამ კვირაში</span>
-            <span class="users-os-pill amber">${icon('layers')} <strong id="users-pill-premium">—</strong> პრემიუმი</span>
-          </div>
-          <div id="users-trend-chart"><p class="muted">იტვირთება…</p></div>
-        </article>
-        <article class="users-os-insight">
-          <header>
-            <div>
-              <h3>პაკეტები</h3>
-              <p>აქტიური ტარიფები</p>
-            </div>
-          </header>
-          <div id="users-pkg-chart"><p class="muted">იტვირთება…</p></div>
-        </article>
-        <article class="users-os-insight">
-          <header>
-            <div>
-              <h3>პროფილი</h3>
-              <p>სქესი და ტელეფონი</p>
-            </div>
-          </header>
-          <div id="users-mix-chart"><p class="muted">იტვირთება…</p></div>
-        </article>
-      </div>
-
-      <section class="table-card users-console users-os-board" style="--i:2">
-        <div class="users-os-toolbar">
-          <div class="users-os-toolbar-main">
-            <label class="orders-search users-os-search">
-              <span class="sr-only">ძებნა</span>
-              ${icon('search')}
-              <input id="user-q" type="search" placeholder="სახელი, ელ-ფოსტა ან ტელეფონი…" autocomplete="off" />
-              <button type="button" id="user-q-clear" class="users-search-clear hidden" aria-label="ძებნის გასუფთავება">${icon('x')}</button>
-              <kbd class="users-kbd">${hotkey}</kbd>
-            </label>
-            <span id="user-meta" class="users-meta-label">იტვირთება…</span>
-            <button type="button" id="user-clear-filters" class="btn tiny ghost hidden">${icon('x')} გასუფთავება</button>
-            <div class="users-toolbar-actions">
-              <button class="btn tiny ghost" id="user-reload" type="button">${icon('refresh')} განახლება</button>
-              <button class="btn tiny ghost" id="user-csv" type="button">${icon('download')} CSV</button>
-            </div>
-          </div>
-          <div class="users-os-toolbar-filters">
-          <div class="orders-filters users-os-filters" role="tablist" aria-label="სტატუსი">
-            <button type="button" class="active" data-status-chip="" aria-pressed="true">ყველა</button>
-            <button type="button" data-status-chip="ACTIVE" aria-pressed="false">აქტიური <b id="chip-active-n"></b></button>
-            <button type="button" data-status-chip="BLOCKED" aria-pressed="false">დაბლოკილი <b id="chip-blocked-n"></b></button>
-          </div>
-          <div class="orders-filters users-os-filters users-os-pkg-filters" role="group" aria-label="პაკეტი">
-            <button type="button" class="active" data-package-chip="" aria-pressed="true">ყველა ტარიფი</button>
-            <button type="button" class="chip-free" data-package-chip="FREE" aria-pressed="false">FREE</button>
-            <button type="button" class="chip-std" data-package-chip="STANDARD" aria-pressed="false">STANDARD</button>
-            <button type="button" class="chip-ult" data-package-chip="ULTIMATE" aria-pressed="false">ULTIMATE</button>
-          </div>
-          <div class="orders-filters users-os-filters users-os-activity-filters" role="group" aria-label="აქტივობა">
-            <button type="button" class="active" data-activity-chip="" aria-pressed="true">ყველა აქტივობა</button>
-            <button type="button" data-activity-chip="today">აქტიური დღეს</button>
-            <button type="button" data-activity-chip="inactive7">7+ დღე</button>
-            <button type="button" data-activity-chip="inactive30">30+ დღე</button>
-            <button type="button" data-activity-chip="medi">Medi</button>
-            <button type="button" data-activity-chip="meds">მედიკამენტები</button>
-            <button type="button" data-activity-chip="cycle">ციკლი</button>
-            <button type="button" data-activity-chip="ios">iOS</button>
-            <button type="button" data-activity-chip="android">Android</button>
-            <button type="button" data-activity-chip="notif_disabled">ნოტიფი გამორთული</button>
-            <button type="button" data-activity-chip="outdated">ძველი ვერსია</button>
-          </div>
-          </div>
-          <select id="user-activity" class="sr-only" aria-hidden="true" tabindex="-1">
-            <option value=""></option>
-            <option value="today"></option>
-            <option value="inactive7"></option>
-            <option value="inactive30"></option>
-            <option value="medi"></option>
-            <option value="meds"></option>
-            <option value="cycle"></option>
-            <option value="ios"></option>
-            <option value="android"></option>
-            <option value="notif_disabled"></option>
-            <option value="outdated"></option>
-          </select>
-          <select id="user-status" class="sr-only" aria-hidden="true" tabindex="-1">
-            <option value="">ყველა სტატუსი</option>
-            <option value="ACTIVE">აქტიური</option>
-            <option value="BLOCKED">დაბლოკილი</option>
-          </select>
-          <select id="user-package" class="sr-only" aria-hidden="true" tabindex="-1">
-            <option value="">ყველა პაკეტი</option>
-            <option value="FREE">FREE</option>
-            <option value="STANDARD">STANDARD</option>
-            <option value="ULTIMATE">ULTIMATE</option>
-          </select>
-        </div>
-
-        <div class="table-wrap users-table-wrap" id="users-table-wrap">
-          <table class="users-table admin-table" aria-label="მომხმარებლების რეესტრი">
-            <colgroup>
-              <col class="col-user" />
-              <col class="col-status" />
-              <col class="col-pkg" />
-              <col class="col-when" />
-              <col class="col-plat" />
-              <col class="col-stats" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th class="col-user" data-sort="fullName">პირი</th>
-                <th class="col-status" data-sort="status">სტატუსი</th>
-                <th class="col-pkg" data-sort="package">პაკეტი</th>
-                <th class="col-when" data-sort="lastCheckInDate">ბოლო აქტივობა</th>
-                <th class="col-plat">პლატფორმა</th>
-                <th class="col-stats">აქტივობა</th>
-              </tr>
-            </thead>
-            <tbody id="users-tbody">${usersSkeletonHtml()}</tbody>
-          </table>
-        </div>
-        <div class="table-pager users-pager">
-          <div class="pager-info">
-            <strong id="page-ind">0 / 0</strong>
-            <span class="muted" id="page-size-label">· ${USERS_PAGE_SIZE} / გვერდი</span>
-          </div>
-          <div class="pager-controls">
-            <button class="btn tiny ghost pager-nav" id="prev-page" type="button">${icon('arrow')} წინა</button>
-            <div class="pager-pages" id="user-pager-pages"></div>
-            <button class="btn tiny ghost pager-nav" id="next-page" type="button">შემდეგი ${icon('arrow')}</button>
-          </div>
-        </div>
-      </section>
-    </div>
-  `;
-
-  const syncFilters = () => {
-    const status = $('user-status').value;
-    const pkg = $('user-package').value;
-    const q = $('user-q').value.trim();
-    const activity = $('user-activity')?.value || '';
-    document.querySelectorAll('[data-activity-chip]').forEach((btn) => {
-      const on = btn.dataset.activityChip === activity;
-      btn.classList.toggle('active', on);
-      btn.setAttribute('aria-pressed', String(on));
-    });
-    document.querySelectorAll('[data-status-filter]').forEach((btn) => {
-      const on = Boolean(status) && btn.dataset.statusFilter === status;
-      btn.classList.toggle('active', on);
-      btn.setAttribute('aria-pressed', String(on));
-    });
-    document.querySelectorAll('[data-status-chip]').forEach((btn) => {
-      const on = btn.dataset.statusChip === status;
-      btn.classList.toggle('active', on);
-      btn.setAttribute('aria-pressed', String(on));
-    });
-    document.querySelectorAll('[data-package-chip]').forEach((btn) => {
-      const on = btn.dataset.packageChip === pkg;
-      btn.classList.toggle('active', on);
-      btn.setAttribute('aria-pressed', String(on));
-    });
-    $('user-q-clear')?.classList.toggle('hidden', !q);
-    $('user-clear-filters')?.classList.toggle('hidden', !(q || status || pkg || hashSearch().get('appVersion')));
-  };
-
-  const load = async () => {
-    const q = $('user-q').value.trim();
-    const status = $('user-status').value;
-    const pkg = $('user-package').value;
-    if (!$('user-activity')?.value && hashSearch().get('activity')) {
-      $('user-activity').value = hashSearch().get('activity');
-    }
-    const activity = $('user-activity')?.value || '';
-    const appVersion = hashSearch().get('appVersion') || '';
-    const wrap = $('users-table-wrap');
-    const body = $('users-tbody');
-    wrap?.classList.add('is-loading');
-    if (!state.users.length && body) body.innerHTML = usersSkeletonHtml();
-    syncFilters();
-    const params = new URLSearchParams({ limit: String(USERS_PAGE_SIZE), offset: String(state.offset) });
-    if (q) params.set('q', q);
-    if (status) params.set('status', status);
-    if (pkg) params.set('package', pkg);
-    if (activity) params.set('activity', activity);
-    if (appVersion) params.set('appVersion', appVersion);
-    try {
-      const [data, stats] = await Promise.all([
-        api(`/users?${params.toString()}`),
-        api('/stats').catch(() => null),
-      ]);
-      state.users = data.users;
-      state.total = data.total;
-      if (stats?.users) {
-        const u = stats.users;
-        const fmt = (n) => Number(n || 0).toLocaleString('ka-GE');
-        const premium = (stats.packages || [])
-          .filter((p) => String(p.code).toUpperCase() !== 'FREE')
-          .reduce((sum, p) => sum + (p.users || 0), 0);
-        const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
-        setText('users-stat-total', fmt(u.total));
-        setText('users-stat-active', fmt(u.active));
-        setText('users-stat-blocked', fmt(u.blocked));
-        setText('users-stat-premium', fmt(premium));
-        setText('users-pulse-value', fmt(u.active));
-        setText('users-pulse-hint', `${fmt(u.active)} აქტიური · ${fmt(u.blocked)} დაბლოკილი · ${fmt(u.total)} სულ`);
-        setText('users-pill-week', fmt(u.newWeek));
-        setText('users-pill-premium', fmt(premium));
-        const chipA = $('chip-active-n');
-        const chipB = $('chip-blocked-n');
-        if (chipA) chipA.textContent = u.active;
-        if (chipB) chipB.textContent = u.blocked;
-        const ring = $('users-pulse-ring');
-        if (ring) ring.innerHTML = dashHealthRing(u.active, u.total, 'აქტიური ანგარიშები');
-        const spark = $('users-pulse-spark');
-        if (spark) spark.innerHTML = usersTrendSpark(u.trend);
-        const trendEl = $('users-trend-chart');
-        if (trendEl) trendEl.innerHTML = usersTrendHtml(u.trend);
-        const pkgEl = $('users-pkg-chart');
-        if (pkgEl) {
-          const assigned = (stats.packages || []).reduce((sum, p) => sum + (p.users || 0), 0);
-          const maxPkg = Math.max(1, ...(stats.packages || []).map((p) => p.users || 0));
-          pkgEl.innerHTML = dashPkgBars(stats.packages || [], maxPkg, assigned);
-        }
-        const mixEl = $('users-mix-chart');
-        if (mixEl) {
-          const g = u.gender || {};
-          const phone = u.withPhone || 0;
-          mixEl.innerHTML = `
-            ${usersMixHtml([
-              { label: 'ქალი', count: g.female || 0, tone: 'ultimate', bar: 'ult' },
-              { label: 'კაცი', count: g.male || 0, tone: 'standard', bar: 'std' },
-              { label: 'სხვა / უცნობი', count: (g.other || 0) + (g.unknown || 0), tone: 'free' },
-            ])}
-            <div class="users-mix-sep"></div>
-            ${usersMixHtml([
-              { label: 'ტელეფონი აქვს', count: phone, tone: 'ok', bar: '' },
-              { label: 'ტელეფონი არ აქვს', count: Math.max(0, (u.total || 0) - phone), tone: 'neutral' },
-            ])}
-          `;
-        }
-        const hintWeek = $('users-stat-total-hint');
-        if (hintWeek && u.newWeek != null) hintWeek.textContent = `${fmt(u.newWeek)} ახალი ამ კვირაში`;
-      }
-      paintUsers();
-    } catch (err) {
-      toast(err.message, 'bad');
-      if (body) {
-        body.innerHTML = `<tr><td colspan="6"><div class="empty users-empty">${icon('alert', 'lg')}<strong>ჩატვირთვა ვერ მოხერხდა</strong><p>${escapeHtml(err.message)}</p></div></td></tr>`;
-      }
-    } finally {
-      wrap?.classList.remove('is-loading');
-    }
-  };
-
-  const paintUsers = () => {
-    const rows = sortUsers(state.users);
-    const from = state.total ? state.offset + 1 : 0;
-    const to = state.total ? Math.min(state.offset + USERS_PAGE_SIZE, state.total) : 0;
-    const filtered = Boolean($('user-q').value.trim() || $('user-status').value || $('user-package').value || hashSearch().get('appVersion'));
-    const versionHint = hashSearch().get('appVersion');
-    const metaEl = $('user-meta');
-    const pageEl = $('page-ind');
-    // Guard: list paint can finish after navigating to #/users/:id
-    if (!metaEl || !pageEl || !$('users-tbody')) return;
-    metaEl.textContent = state.total
-      ? `${from}–${to}  ·  ${state.total.toLocaleString('ka-GE')} ანგარიში${versionHint ? ` · აპი ${versionHint}` : ''}`
-      : (filtered ? 'ფილტრს არ ემთხვევა' : 'ჩანაწერი არ არის');
-    pageEl.textContent = state.total ? `${from}–${to} / ${state.total.toLocaleString('ka-GE')}` : '0 / 0';
-    const prev = $('prev-page');
-    const next = $('next-page');
-    if (prev) prev.disabled = state.offset === 0;
-    if (next) next.disabled = state.offset + USERS_PAGE_SIZE >= state.total;
-    paintUserPagination(load);
-    document.querySelectorAll('.users-table th[data-sort]').forEach((th) => {
-      th.classList.toggle('sort-asc', th.dataset.sort === state.sortKey && state.sortDir === 'asc');
-      th.classList.toggle('sort-desc', th.dataset.sort === state.sortKey && state.sortDir === 'desc');
-    });
-    const body = $('users-tbody');
-    if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="6"><div class="empty users-empty">${icon('users', 'lg')}<strong>მომხმარებლები ვერ მოიძებნა</strong><p>${filtered ? 'შეცვალე ძებნა ან გაასუფთავე ფილტრი' : 'პირველი ანგარიში აქ გამოჩნდება'}</p>${filtered ? `<button type="button" class="btn tiny ghost" id="users-empty-clear">${icon('x')} გასუფთავება</button>` : ''}</div></td></tr>`;
-      $('users-empty-clear')?.addEventListener('click', () => {
-        $('user-q').value = '';
-        $('user-status').value = '';
-        $('user-package').value = '';
-        state.offset = 0;
-        load();
-      });
-      return;
-    }
-    body.innerHTML = rows.map((u) => `
-      <tr data-id="${u.id}" class="users-row ${state.selectedId === u.id ? 'selected' : ''} ${u.status === 'BLOCKED' ? 'row-blocked' : ''}" tabindex="0">
-        <td class="col-user">
-          <div class="person users-person">
-            <div class="users-avatar-wrap ${u.status === 'BLOCKED' ? 'is-blocked' : 'is-active'}">
-              <div class="avatar avatar-${avatarTone(u)}">${escapeHtml(initials(u.fullName))}</div>
-            </div>
-            <div class="users-person-copy">
-              <strong>${escapeHtml(u.fullName)}</strong>
-              <span class="sub users-email-sub" title="${escapeAttr(u.email)}${u.phone ? ` · ${escapeAttr(u.phone)}` : ''}">${escapeHtml(u.email)}</span>
-            </div>
-          </div>
-        </td>
-        <td class="col-status">${usersStatusCell(u.status)}</td>
-        <td class="col-pkg">
-          <div class="stack users-pkg-stack">
-            <div class="users-pkg-badge">${pkgBadge(u.package)}</div>
-          </div>
-        </td>
-        <td class="col-when">
-          <div class="users-when">
-            <strong>${u.lastActiveAt ? fmtRelative(u.lastActiveAt) : '—'}</strong>
-            <span>${u.lastActiveAt ? fmtDateShort(u.lastActiveAt) : ''}</span>
-          </div>
-        </td>
-        <td class="col-plat">
-          <div class="users-client">
-            <strong>${platformKa(u.platform) || '—'}</strong>
-            <span>${u.appVersion ? escapeHtml(u.appVersion) : ''}</span>
-          </div>
-        </td>
-        <td class="col-stats">${usersActivityCell(u)}</td>
-      </tr>
-    `).join('');
-
-    body.querySelectorAll('tr[data-id]').forEach((tr) => {
-      tr.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return;
-        editUser(tr.dataset.id);
-      });
-      tr.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          editUser(tr.dataset.id);
-        }
-      });
-    });
-  };
-
-  document.querySelectorAll('.users-table th[data-sort]').forEach((th) => {
-    th.addEventListener('click', () => {
-      if (state.sortKey === th.dataset.sort) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-      else { state.sortKey = th.dataset.sort; state.sortDir = 'asc'; }
-      paintUsers();
-    });
-  });
-  const applyStatus = (value) => {
-    $('user-status').value = value;
-    state.offset = 0;
-    load();
-  };
-  const applyPackage = (value) => {
-    $('user-package').value = value;
-    state.offset = 0;
-    load();
-  };
-  document.querySelectorAll('[data-status-filter]').forEach((btn) => {
-    btn.addEventListener('click', () => applyStatus(btn.dataset.statusFilter));
-  });
-  document.querySelectorAll('[data-status-chip]').forEach((btn) => {
-    btn.addEventListener('click', () => applyStatus(btn.dataset.statusChip));
-  });
-  document.querySelectorAll('[data-package-chip]').forEach((btn) => {
-    btn.addEventListener('click', () => applyPackage(btn.dataset.packageChip));
-  });
-  document.querySelectorAll('[data-activity-chip]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      if ($('user-activity')) $('user-activity').value = btn.dataset.activityChip;
-      state.offset = 0;
-      load();
-    });
-  });
-  $('user-reload').onclick = load;
-  window.__reloadUsers = load;
-  let searchTimer;
-  $('user-q').oninput = () => {
-    $('user-q-clear').classList.toggle('hidden', !$('user-q').value);
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => { state.offset = 0; load(); }, 280);
-  };
-  $('user-q').onkeydown = (e) => { if (e.key === 'Enter') { clearTimeout(searchTimer); state.offset = 0; load(); } };
-  $('user-q-clear').onclick = () => {
-    $('user-q').value = '';
-    state.offset = 0;
-    load();
-    $('user-q').focus();
-  };
-  $('user-clear-filters').onclick = () => {
-    $('user-q').value = '';
-    $('user-status').value = '';
-    $('user-package').value = '';
-    if ($('user-activity')) $('user-activity').value = '';
-    writeTabHash('users');
-    state.offset = 0;
-    load();
-  };
-  $('prev-page').onclick = () => { state.offset = Math.max(0, state.offset - USERS_PAGE_SIZE); load(); };
-  $('next-page').onclick = () => {
-    if (state.offset + USERS_PAGE_SIZE < state.total) { state.offset += USERS_PAGE_SIZE; load(); }
-  };
-  $('user-csv').onclick = () => {
-    const params = new URLSearchParams();
-    const q = $('user-q').value.trim();
-    const appVersion = hashSearch().get('appVersion') || '';
-    if (q) params.set('q', q);
-    if (appVersion) params.set('appVersion', appVersion);
-    if (typeof opsDownload === 'function') {
-      opsDownload(`/export/users?${params.toString()}`, 'users.csv');
-      return;
-    }
-    const header = ['id', 'fullName', 'email', 'phone', 'status', 'package', 'used', 'limit', 'createdAt'];
-    const lines = [header.join(',')].concat(state.users.map((u) => [
-      u.id, `"${u.fullName}"`, u.email, u.phone || '', u.status, u.package?.code || '',
-      u.usage?.used ?? '', u.usage?.unlimited ? 'unlimited' : (u.usage?.limit ?? ''), u.createdAt,
-    ].join(',')));
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'medicard-users.csv';
-    a.click();
-    toast('CSV გადმოწერილია');
-  };
-  await load();
-}
-
-async function confirmDeleteUser(id, name, email) {
-  const label = name || email || id;
-  const ok = confirm(
-    `სამუდამოდ წავშალოთ „${label}"?\n\n` +
-      'წაიშლება პროფილი, ჯანმრთელობის მონაცემები, ჩანაწერები, ჩატები და მედიკამენტები.\n' +
-      'ეს ქმედება შეუქცევადია.',
-  );
-  if (!ok) return false;
-  await api(`/users/${id}`, { method: 'DELETE' });
-  toast('მომხმარებელი სამუდამოდ წაიშალა', 'bad');
-  if (state.selectedId === id) state.selectedId = null;
-  return true;
-}
-
-function invUnknown(value) {
-  return value ? escapeHtml(String(value)) : '<span class="unknown">უცნობია</span>';
-}
 function freqKa(value) {
   return ({ often: 'ხშირად', balanced: 'დაბალანსებული', rare: 'იშვიათად' }[value] || value || 'უცნობია');
 }
@@ -2450,16 +1192,6 @@ function renderUserInvestigationTabs(user, extra, pkgOptions, isPaid, activeTab)
           <option value="ACTIVE" ${user.status === 'ACTIVE' ? 'selected' : ''}>აქტიური — შეუძლია შესვლა</option>
           <option value="BLOCKED" ${user.status === 'BLOCKED' ? 'selected' : ''}>დაბლოკილი — შესვლა აკრძალულია</option>
         </select>
-      </label>
-      <label class="field"><span>თვიური პაკეტი</span>
-        <select id="edit-package">${pkgOptions}</select>
-      </label>
-      <p class="muted umodal-hint">გადახდილი პაკეტის მინიჭება იწყებს ახალ 30-დღიან პერიოდს.</p>
-      <label class="field"><span>პაკეტის დაწყება</span>
-        <input id="edit-started" type="date" value="${toDateInput(user.packageStartedAt)}" ${isPaid ? '' : 'disabled'} />
-      </label>
-      <label class="field"><span>პაკეტის ვადა</span>
-        <input id="edit-expires" type="date" value="${toDateInput(user.packageExpiresAt)}" ${isPaid ? '' : 'disabled'} />
       </label>
       <label class="field span-2"><span>ადმინ შენიშვნა</span>
         <textarea id="edit-note" rows="3">${escapeHtml(user.adminNote || '')}</textarea>
@@ -2736,178 +1468,6 @@ function editUser(id, opts = {}) {
   location.hash = nextHash;
 }
 
-async function renderUserPage(id, opts = {}) {
-  const root = $('tab-users');
-  if (!root) return;
-  state.selectedId = id;
-  state.userPageId = id;
-  state.tab = 'users';
-  sessionStorage.setItem(TAB_KEY, 'users');
-  document.querySelectorAll('.nav').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.tab === 'users');
-  });
-  document.querySelectorAll('.panel').forEach((panel) => panel.classList.add('hidden'));
-  root.classList.remove('hidden');
-  if (hashSearch().get('user') && !hashPath().includes('/')) {
-    history.replaceState({ tab: 'users' }, '', userPageHref(id, opts.profileTab));
-  }
-
-  root.innerHTML = `
-    <div class="user-page">
-      <div class="user-page-loading">${icon('refresh')}<span>პროფილი იტვირთება…</span></div>
-    </div>`;
-  setPageHeader('users', {
-    users: ["რეესტრი", "პროფილი იტვირთება…", ""],
-  });
-
-  let user;
-  let packages;
-  let profileExtra;
-  try {
-    const rangeQs = typeof opsQs === 'function' ? opsQs() : 'range=30d';
-    const data = await Promise.all([
-      api(`/users/${id}?${rangeQs}`),
-      api('/packages'),
-    ]);
-    user = data[0].user;
-    packages = data[1].packages;
-    profileExtra = data[0];
-  } catch (err) {
-    toast(err.message, 'bad');
-    location.hash = usersListHref();
-    return;
-  }
-
-  const pkgOptions = packages.map((p) => {
-    const limitLabel = p.unlimited ? "შეუზღუდავი" : `${p.monthlyAiLimit} / თვე`;
-    return `<option value="${p.code}" ${user.package?.code === p.code ? 'selected' : ''}>${p.code} — ${limitLabel}</option>`;
-  }).join('');
-  const isPaid = user.package?.code && user.package.code !== 'FREE';
-  const aiLabel = user.usage?.unlimited
-    ? "∞ შეუზღუდავი"
-    : `${user.usage?.used ?? 0} / ${user.usage?.limit ?? '—'} · დარჩა ${user.usage?.remaining ?? '—'}`;
-  const lastActive = profileExtra.activity?.lastActiveAt
-    ? fmtDateShort(profileExtra.activity.lastActiveAt)
-    : "უცნობია";
-
-  setPageHeader('users', {
-    users: ["რეესტრი", user.fullName, user.email],
-  });
-
-  root.innerHTML = `
-    <div class="user-page">
-      <a class="user-back" id="user-page-back" href="${usersListHref()}">${icon('chevronLeft')}<span>რეესტრი</span></a>
-
-      <header class="user-hero">
-        <div class="user-hero-top">
-          <div class="users-avatar-wrap ${user.status === 'BLOCKED' ? 'is-blocked' : 'is-active'} user-avatar-wrap">
-            <div class="avatar avatar-${avatarTone(user)} user-avatar">${escapeHtml(initials(user.fullName))}</div>
-          </div>
-          <div class="user-hero-copy">
-            <h3>${escapeHtml(user.fullName)}</h3>
-            <p class="user-hero-meta">
-              <button type="button" class="users-copy-link" id="user-copy-email" title="კოპირება">${icon('copy')}<span>${escapeHtml(user.email)}</span></button>
-              ${user.phone ? `<span class="user-hero-phone">${escapeHtml(user.phone)}</span>` : ''}
-            </p>
-            <button type="button" class="user-hero-id inv-copy" data-copy="${escapeAttr(user.id)}" data-copy-label="User ID">${escapeHtml(user.id)}</button>
-          </div>
-          <div class="user-hero-pills">
-            ${pkgBadge(user.package)}
-            ${usersStatusCell(user.status)}
-          </div>
-        </div>
-        <div class="user-stats">
-          <div class="user-stat"><span>რეგისტრაცია</span><strong>${fmtDateShort(user.createdAt)}</strong></div>
-          <div class="user-stat"><span>ბოლო აქტივობა</span><strong>${lastActive}</strong></div>
-          <div class="user-stat"><span>პლატფორმა</span><strong>${platformKa(profileExtra.activity?.platform || user.platform) || "უცნობია"}</strong></div>
-          <div class="user-stat"><span>აპი</span><strong>${escapeHtml(profileExtra.activity?.appVersion || "უცნობია")}</strong></div>
-          <div class="user-stat"><span>AI თვე</span><strong>${aiLabel}</strong></div>
-        </div>
-      </header>
-
-      <div class="user-workspace">
-        ${renderUserInvestigationTabs(user, profileExtra, pkgOptions, isPaid, opts.profileTab || 'overview')}
-      </div>
-
-      <footer class="user-actions">
-        <button class="btn danger" id="user-del" type="button">${icon('trash')} წაშლა</button>
-        <div class="user-actions-right">
-          <button class="btn ghost" id="user-reset-usage" type="button">${icon('refresh')} ლიმიტის განულება</button>
-          ${isPaid ? `<button class="btn ghost" id="user-renew" type="button">${icon('calendar')} +30 დღე</button>` : ''}
-          <button class="btn primary" id="user-save" type="button">${icon('check')} შენახვა</button>
-        </div>
-      </footer>
-    </div>
-  `;
-
-  bindUserInvestigation(id);
-  $('user-page-back')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    location.hash = usersListHref();
-  });
-  $('user-copy-email')?.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(user.email);
-    toast("ელ-ფოსტა დაკოპირდა");
-  });
-  $('edit-package').onchange = () => {
-    const paid = $('edit-package').value !== 'FREE';
-    $('edit-started').disabled = !paid;
-    $('edit-expires').disabled = !paid;
-    if (!paid) {
-      $('edit-started').value = '';
-      $('edit-expires').value = '';
-    }
-  };
-  $('user-reset-usage').onclick = async () => {
-    if (!confirm("განულდეს ამ მომხმარებლის AI ლიმიტი? ამ პერიოდის გამოყენება გახდება 0.")) return;
-    try {
-      await api(`/users/${id}/reset-usage`, { method: 'POST' });
-      toast("AI ლიმიტი განულდა");
-      await renderUserPage(id, { profileTab: currentUserProfileTab() });
-    } catch (err) {
-      toast(err.message, 'bad');
-    }
-  };
-  const renewBtn = $('user-renew');
-  if (renewBtn) {
-    renewBtn.onclick = async () => {
-      if (!confirm("განახლდეს გამოწერა? AI ლიმიტის 30-დღიანი პერიოდი დაიწყება თავიდან.")) return;
-      await api(`/users/${id}/renew`, { method: 'POST' });
-      toast("გამოწერა განახლდა — ახალი 30-დღიანი პერიოდი");
-      await renderUserPage(id, { profileTab: currentUserProfileTab() });
-    };
-  }
-  $('user-save').onclick = async () => {
-    const expiresRaw = $('edit-expires').value.trim();
-    const startedRaw = $('edit-started').value.trim();
-    const packageCode = $('edit-package').value;
-    try {
-      await api(`/users/${id}`, {
-        method: 'PATCH',
-        body: {
-          fullName: $('edit-name').value.trim(),
-          email: $('edit-email').value.trim(),
-          phone: $('edit-phone').value.trim() || null,
-          gender: $('edit-gender')?.value || null,
-          status: $('edit-status').value,
-          packageCode,
-          packageStartedAt: startedRaw ? new Date(`${startedRaw}T00:00:00.000Z`).toISOString() : undefined,
-          packageExpiresAt: expiresRaw ? new Date(`${expiresRaw}T23:59:59.000Z`).toISOString() : null,
-          adminNote: $('edit-note').value.trim() || null,
-        },
-      });
-      toast("პროფილი განახლდა");
-      await renderUserPage(id, { profileTab: currentUserProfileTab() });
-    } catch (err) {
-      toast(err.message, 'bad');
-    }
-  };
-  $('user-del').onclick = async () => {
-    const deleted = await confirmDeleteUser(id, user.fullName, user.email);
-    if (deleted) location.hash = usersListHref();
-  };
-}
-
 window.editUser = editUser;
 
 
@@ -2996,12 +1556,16 @@ async function renderPush() {
     platforms = {},
   } = stats;
 
+  // Selectable audiences. MEDICARD is free, so tier segments are history-only labels.
   const SEGMENTS = {
     ALL: 'ყველა მოწყობილობა',
     ACTIVE: 'აქტიური მომხმარებლები',
-    FREE: 'უფასო პაკეტი',
-    STANDARD: 'STANDARD',
-    ULTIMATE: 'ULTIMATE',
+  };
+  const SEGMENT_LABELS = {
+    ...SEGMENTS,
+    FREE: 'უფასო პაკეტი (ძველი სეგმენტი)',
+    STANDARD: 'STANDARD (ძველი სეგმენტი)',
+    ULTIMATE: 'ULTIMATE (ძველი სეგმენტი)',
   };
 
   const totalSent = statsSent ?? campaigns.reduce((sum, c) => sum + (c.sentCount || 0), 0);
@@ -3113,7 +1677,7 @@ async function renderPush() {
                   ${Object.entries(SEGMENTS).map(([value, label]) => `
                     <button type="button" class="push-seg${value === 'ALL' ? ' active' : ''}" data-seg="${value}" aria-pressed="${value === 'ALL'}">
                       <strong>${label}</strong>
-                      <span>${value === 'ALL' ? `${fmtN(activeDevices)} მოწყობილობა` : value === 'ACTIVE' ? `${fmtN(subscribedUsers)} ანგარიში` : 'პაკეტის მიხედვით'}</span>
+                      <span>${value === 'ALL' ? `${fmtN(activeDevices)} მოწყობილობა` : `${fmtN(subscribedUsers)} ანგარიში`}</span>
                     </button>
                   `).join('')}
                 </div>
@@ -3132,7 +1696,7 @@ async function renderPush() {
                 </div>
               </div>
               <button type="button" class="btn primary wide ng-cta" id="push-send">${icon('send')} გაგზავნა</button>
-              <p class="push-compose-note">ვადაგასული STANDARD / ULTIMATE თავისუფალ პაკეტში ითვლება. Expo Go (SDK 53+) Android-ზე remote push-ს აღარ იძლევა.</p>
+              <p class="push-compose-note">Expo Go (SDK 53+) Android-ზე remote push-ს აღარ იძლევა.</p>
             </form>
             <aside class="push-phone-col v3-push-preview-col">
               <p class="push-preview-label">გადახედვა</p>
@@ -3158,7 +1722,7 @@ async function renderPush() {
                       <strong>${escapeHtml(c.title)}</strong>
                       ${campaignStatus(c)}
                     </div>
-                    <div class="push-recent-meta">${SEGMENTS[c.segment] || c.segment} · ${fmtDateShort(c.sentAt || c.createdAt)}</div>
+                    <div class="push-recent-meta">${SEGMENT_LABELS[c.segment] || c.segment} · ${fmtDateShort(c.sentAt || c.createdAt)}</div>
                     ${deliveryBar(c.sentCount || 0, c.targetCount || 0, c.failedCount || 0)}
                   </button>
                 `).join('')}
@@ -3302,7 +1866,7 @@ async function renderPush() {
                       ${campaignStatus(c)}
                     </div>
                     <p class="push-history-body">${escapeHtml((c.body || '').slice(0, 140))}${(c.body || '').length > 140 ? '…' : ''}</p>
-                    <div class="push-recent-meta">${SEGMENTS[c.segment] || c.segment} · ${fmtDateShort(c.sentAt || c.createdAt)} · ${escapeHtml(c.createdBy?.fullName || '—')}</div>
+                    <div class="push-recent-meta">${SEGMENT_LABELS[c.segment] || c.segment} · ${fmtDateShort(c.sentAt || c.createdAt)} · ${escapeHtml(c.createdBy?.fullName || '—')}</div>
                     ${deliveryBar(c.sentCount || 0, c.targetCount || 0, c.failedCount || 0)}
                   </button>
                 `).join('')}
@@ -3386,10 +1950,8 @@ async function renderPush() {
     $('push-preview-body').textContent = body;
     const reach = segment === 'ALL'
       ? `${fmtN(activeDevices)} მოწყობილობა`
-      : segment === 'ACTIVE'
-        ? `${fmtN(subscribedUsers)} ანგარიში`
-        : 'პაკეტის სეგმენტი';
-    $('push-preview-seg').textContent = `${SEGMENTS[segment] || segment} · ${reach}`;
+      : `${fmtN(subscribedUsers)} ანგარიში`;
+    $('push-preview-seg').textContent = `${SEGMENT_LABELS[segment] || segment} · ${reach}`;
     const clock = $('push-phone-time');
     const dateEl = $('push-phone-date');
     if (clock) {
@@ -3431,7 +1993,7 @@ async function renderPush() {
       return;
     }
     const copy = $('push-confirm-copy');
-    if (copy) copy.textContent = `„${title}“ წავა სეგმენტზე: ${SEGMENTS[segment] || segment}.`;
+    if (copy) copy.textContent = `„${title}“ წავა სეგმენტზე: ${SEGMENT_LABELS[segment] || segment}.`;
     confirmBox?.classList.remove('hidden');
     $('push-confirm-yes')?.focus();
   };
@@ -3641,12 +2203,16 @@ async function viewPushCampaign(id) {
     return;
   }
 
+  // Selectable audiences. MEDICARD is free, so tier segments are history-only labels.
   const SEGMENTS = {
     ALL: 'ყველა მოწყობილობა',
     ACTIVE: 'აქტიური მომხმარებლები',
-    FREE: 'უფასო პაკეტი',
-    STANDARD: 'STANDARD',
-    ULTIMATE: 'ULTIMATE',
+  };
+  const SEGMENT_LABELS = {
+    ...SEGMENTS,
+    FREE: 'უფასო პაკეტი (ძველი სეგმენტი)',
+    STANDARD: 'STANDARD (ძველი სეგმენტი)',
+    ULTIMATE: 'ULTIMATE (ძველი სეგმენტი)',
   };
 
   openDrawer(`
@@ -3655,7 +2221,7 @@ async function viewPushCampaign(id) {
     <p class="muted" style="font-size:13px;margin:6px 0 0">${escapeHtml((campaign.body || '').slice(0, 180))}${(campaign.body || '').length > 180 ? '…' : ''}</p>
     <p class="muted mono" style="font-size:11px">${escapeHtml(campaign.id)}</p>
     <div class="drawer-stats">
-      <div class="drawer-stat"><div class="label">სეგმენტი</div><strong>${SEGMENTS[campaign.segment] || campaign.segment}</strong></div>
+      <div class="drawer-stat"><div class="label">სეგმენტი</div><strong>${SEGMENT_LABELS[campaign.segment] || campaign.segment}</strong></div>
       <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${campaign.status === 'SENT' ? 'გაგზავნილი' : campaign.status === 'FAILED' && !(campaign.targetCount > 0) ? 'მოწყობილობა არ იყო' : campaign.status === 'FAILED' ? 'შეცდომა' : campaign.status === 'SENDING' ? 'იგზავნება' : escapeHtml(campaign.status)}</strong></div>
       <div class="drawer-stat"><div class="label">მიწოდება</div><strong>${campaign.sentCount}/${campaign.targetCount}</strong></div>
       <div class="drawer-stat"><div class="label">შეცდომა</div><strong>${campaign.failedCount}</strong></div>

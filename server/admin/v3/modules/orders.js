@@ -63,11 +63,6 @@
     if (typeof fmtDateShort === 'function') return fmtDateShort(iso);
     return iso || '—';
   }
-  function packageBadge(pkg) {
-    if (typeof pkgBadge === 'function') return pkgBadge(pkg);
-    if (!pkg) return '<span class="badge neutral">—</span>';
-    return `<span class="badge">${esc(pkg.nameKa || pkg.code || '—')}</span>`;
-  }
   function openUser(id) {
     if (!id) return;
     if (typeof editUser === 'function') editUser(id);
@@ -150,7 +145,6 @@
           <span>${esc(u.email)}</span>
         </div>
       </div>
-      ${packageBadge(u.package)}
     </button>`;
   }
 
