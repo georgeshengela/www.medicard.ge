@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { isPhoneRequiredError, offerPhoneVerification } from '@/lib/phoneGate';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Gift } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
@@ -144,6 +145,12 @@ export default function RewardDetailScreen() {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       void trackQuestEvent('reward_redeemed', `${reward.key}:${coinCostBucket(reward.coinCost)}`);
     } catch (err: unknown) {
+      if (isPhoneRequiredError(err)) {
+        setConfirm(false);
+        idemRef.current = newIdempotencyKey();
+        offerPhoneVerification(router);
+        return;
+      }
       const code = err instanceof ApiError && err.code ? err.code : 'REWARD_REDEMPTION_CONFLICT';
       setError(rewardErrorMessage(code, 'ka'));
       void trackQuestEvent('reward_redeem_failed', `${reward.key}:${code}`);

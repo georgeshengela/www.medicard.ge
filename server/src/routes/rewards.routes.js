@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 import { applyPrivateCache } from '../lib/cycleShare.js';
+import { requireVerifiedPhone } from '../lib/phoneGate.js';
 import {
   getActiveRewardEntitlements,
   getMyRedemption,
@@ -77,6 +78,7 @@ rewardsRouter.get(
 rewardsRouter.post(
   '/:id/redeem',
   redeemLimiter,
+  requireVerifiedPhone,
   asyncHandler(async (req, res) => {
     const { id } = idParam.parse(req.params);
     const body = redeemBody.parse(req.body || {});

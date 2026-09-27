@@ -24,6 +24,7 @@ import type { CommunityMention } from '@/lib/communityMentions';
 import { CommunityNotice } from '@/components/community/CommunityNotice';
 import { AnonymousAvatar } from '@/components/community/AnonymousAvatar';
 import { requestNotificationPermission, registerPushTokenWithServer } from '@/lib/notifications';
+import { isPhoneRequiredError, offerPhoneVerification } from '@/lib/phoneGate';
 
 type Content={identityMode?:CommunityIdentityMode;avatarId?:string|null;mentions?:CommunityMention[];id:string;revision:number;body:string;author:string;anonymous:boolean;mine:boolean;status:string;createdAt:string;topic?:string;hasImage:boolean;likes:number;dislikes:number;comments:number;reaction:number;reactions:Record<string,number>;myReaction:string|null;parentId:string|null;replyTo:string|null;liked:boolean};
 type Notice={id:string;postId:string;kind:string;readAt:string|null;createdAt:string};
@@ -60,7 +61,7 @@ function Space({eligible}:{eligible:boolean}){
  const showDialog=(title:string,message:string,actions:{text:string;style?:string;onPress?:()=>void}[])=>setDialog({title,message,actions});
  const text=(value:string,size=14,color=c.text100)=> <Text style={{fontFamily:size>=17?'NotoSansGeorgian_600SemiBold':'NotoSansGeorgian_400Regular',fontSize:size,lineHeight:size*1.55,color}}>{value}</Text>;
  const button=(label:string,action:()=>void,Icon?:any,primary=false,disabled=false)=> <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled||busy} onPress={action} style={{minHeight:46,paddingHorizontal:14,paddingVertical:10,borderRadius:16,flexDirection:'row',gap:8,alignItems:'center',justifyContent:'center',backgroundColor:primary?'#0F766E':c.bg200,opacity:disabled||busy?0.5:1}}>{Icon&&<Icon size={19} color={primary?'white':c.primary100}/>}<Text style={{fontFamily:'NotoSansGeorgian_600SemiBold',fontSize:13,color:primary?'white':c.text100}}>{label}</Text></Pressable>;
- const run=async(fn:()=>Promise<void>)=>{if(lock.current)return;lock.current=true;setBusy(true);setError('');try{await fn();}catch(e){if(live.current)setError(e instanceof Error?e.message:'ვერ შესრულდა. სცადე ხელახლა.');}finally{lock.current=false;if(live.current)setBusy(false);}};
+ const run=async(fn:()=>Promise<void>)=>{if(lock.current)return;lock.current=true;setBusy(true);setError('');try{await fn();}catch(e){if(live.current){if(isPhoneRequiredError(e))offerPhoneVerification(router);else setError(e instanceof Error?e.message:'ვერ შესრულდა. სცადე ხელახლა.');}}finally{lock.current=false;if(live.current)setBusy(false);}};
  feedCount.current=Math.max(20,posts.length);
  const loadFeed=useCallback(async(more=false,silent=false)=>{
   const gen=++feedGen.current;if(!silent)setLoading(true);

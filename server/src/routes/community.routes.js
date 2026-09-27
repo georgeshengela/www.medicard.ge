@@ -9,6 +9,7 @@ import { requireAdmin } from '../middleware/adminAuth.js';
 import { requireAdminCapability } from '../lib/adminCapabilities.js';
 import { asyncHandler as wrap } from '../middleware/error.js';
 import { communityChanged } from '../lib/communityRealtime.js';
+import { requireVerifiedPhone } from '../lib/phoneGate.js';
 import { readCommunityLaunch, writeCommunityLaunch, canJoinCommunity, communityLaunchStats, launchReadiness } from '../lib/communityLaunch.js';
 import { COMMUNITY_RULES_VERSION, id, postInput, commentInput, eligible, resolveIdentity, identityModeInput, publicContent, assignAnonymousNames, validMentionRanges, cleanImage, fail } from '../lib/community.js';
 export const communityRouter=Router(), adminCommunityRouter=Router();
@@ -57,7 +58,7 @@ r.get('/membership',wrap(async(req,res)=>{
  const [profile,launch]=await Promise.all([originalProfile(req.user,prisma),readCommunityLaunch()]);
  res.json({open:launch.open,canJoin:canJoinCommunity({open:launch.open,member:req.community}),member:req.community?{alias:req.community.alias,pushEnabled:req.community.pushEnabled,defaultIdentity:req.community.defaultIdentity||'nickname',profile}:null,rulesVersion:COMMUNITY_RULES_VERSION});
 }));
-r.post('/membership',write,wrap(async(req,res)=>{
+r.post('/membership',write,requireVerifiedPhone,wrap(async(req,res)=>{
  if(!canJoinCommunity({open:(await readCommunityLaunch()).open,member:req.community}))fail(403,'ქალების სივრცე ჯერ არ გახსნილა. გახსნის შემდეგ აქედანვე შეძლებ შემოსვლას.');
  const input=z.object({alias:z.string().trim().min(2).max(40),defaultIdentity:identityModeInput.optional(),rulesVersion:z.literal(COMMUNITY_RULES_VERSION)}).strict().parse(req.body);
  await prisma.$executeRaw`INSERT INTO "CommunityMember" ("userId",alias,"rulesVersion","defaultIdentity") VALUES (${req.user.id},${input.alias},${input.rulesVersion},${input.defaultIdentity||'nickname'}) ON CONFLICT ("userId") DO UPDATE SET alias=EXCLUDED.alias,"rulesVersion"=EXCLUDED."rulesVersion","defaultIdentity"=COALESCE(${input.defaultIdentity??null},"CommunityMember"."defaultIdentity")`;
@@ -82,7 +83,7 @@ r.get('/posts',wrap(async(req,res)=>{
  ORDER BY p."createdAt" DESC,p.id DESC LIMIT ${limit+1}`);
  await assignAnonymousNames(rows.slice(0,limit),prisma); res.json({posts:rows.slice(0,limit).map(p=>publicContent(p,req.user.id)),next:rows.length>limit?cursor(rows[limit-1]):null});
 }));
-r.post('/posts',write,wrap(async(req,res)=>{
+r.post('/posts',write,requireVerifiedPhone,wrap(async(req,res)=>{
  const input=postInput.parse(req.body), image=await cleanImage(input.image), postId=randomUUID();
  const identity=await identitySnapshot(req,input,prisma);
  const rows=await prisma.$queryRaw`INSERT INTO "CommunityPost" (id,"authorId",body,topic,anonymous,image,"requestId",status,"identityMode","publicName","publicAvatarId") VALUES (${postId},${req.user.id},${input.body},${input.topic},${identity.anonymous},${image},${input.requestId},'PUBLISHED',${identity.mode},${identity.name},${identity.avatarId}) ON CONFLICT ("authorId","requestId") DO UPDATE SET "requestId"=EXCLUDED."requestId" RETURNING id,status`;
@@ -137,7 +138,7 @@ r.get('/posts/:id/participants',wrap(async(req,res)=>{
  const seen=new Set();
  res.json(candidates.filter(row=>{const key=row.authorId+':'+(row.anonymous?'anonymous':row.identityMode||'nickname');if(seen.has(key))return false;seen.add(key);return true;}).map(row=>({targetId:row.id,kind:row.kind,label:publicContent(row,req.user.id).author,avatarId:publicContent(row,req.user.id).avatarId,identityMode:publicContent(row,req.user.id).identityMode,anonymous:row.anonymous})).filter(row=>row.label.toLocaleLowerCase().includes(query)).slice(0,20));
 }));
-r.post('/posts/:id/comments',write,wrap(async(req,res)=>{
+r.post('/posts/:id/comments',write,requireVerifiedPhone,wrap(async(req,res)=>{
  const postId=id.parse(req.params.id),input=commentInput.parse(req.body);
  const result=await prisma.$transaction(async db=>{
   const p=await visiblePost(postId,req.user.id,db,true);if(p.status!=='PUBLISHED')fail(409,'პოსტი არ არის გამოქვეყნებული.');
