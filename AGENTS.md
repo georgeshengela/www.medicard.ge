@@ -28,6 +28,10 @@ Hub copy is **ჩემი ცხოველები**. The pet assistant is *
 
 Routes live in `mobile/app/`. **Never create `mobile/src/app`** (even empty). Expo Router prefers `src/app` if that folder exists and shows the stock “Welcome to Expo” screen instead of Medicard.
 
+## Admin V4 (Stripe-style layer, 2026-09-27)
+
+`server/admin/v4/stripe.css` loads last and owns the look: it re-tokens light/dark (`--s-*`, mapped onto the legacy `--v3-*`/`--teal` families) and restyles the shared primitives. `v4/components.css` holds the `s-*` components (s-card, s-metrics, s-badge, s-switch, s-table, s-segment, s-feed-item, s-field) — build new or rebuilt modules from those, not inline styles, and never add another `admin-vNN.css` layer. `v4/experience.js` adds the ⌘K/Ctrl+K palette (pages, sub-pages, actions, live user search, recents), `g`+letter navigation on physical keys (works on the Georgian layout), `?` cheat sheet, ⇧A activity + system health sheet, account menu, breadcrumbs, exit animations for dialogs/drawers/toasts and table density. Use `AdminV3.openDialog` for forms/decisions — never `alert()` or native `<dialog>`. Local preview: `node scripts/admin-dev-proxy.mjs` → http://localhost:4380/admin/ (local files, main API); the owner signs in themselves.
+
 ## Admin tab shell width (mandatory)
 
 Tab selector and active tab content must share the **same left/right edges** — identical width. Never add horizontal padding only on the pane/body while the tablist stays full-bleed (and never max-width the content narrower than the tabs).
