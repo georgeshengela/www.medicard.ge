@@ -72,10 +72,15 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
             </Pressable>
           ) : null}
         </View>
-        <Text accessibilityRole="header" numberOfLines={2} style={[s.title, narrow && s.titleNarrow, { color: c.text100 }]}>
-          {greeting()}
-          {firstName ? `,
-${firstName}` : ''}
+        {/* One line: long greetings and names shrink to fit instead of wrapping. */}
+        <Text
+          accessibilityRole="header"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+          style={[s.title, narrow && s.titleNarrow, { color: c.text100 }]}
+        >
+          {firstName ? `${greeting()}, ${firstName}` : greeting()}
         </Text>
       </View>
 
@@ -136,11 +141,11 @@ const s = StyleSheet.create({
   },
   title: {
     fontFamily: 'NotoSansGeorgian_700Bold',
-    fontSize: 24,
-    lineHeight: 32,
+    fontSize: 20,
+    lineHeight: 28,
     letterSpacing: -0.3,
   },
-  titleNarrow: { fontSize: 20, lineHeight: 28 },
+  titleNarrow: { fontSize: 18, lineHeight: 26 },
   avatar: {
     width: 48,
     height: 48,
