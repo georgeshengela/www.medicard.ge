@@ -217,8 +217,7 @@ brain.post('/proposals/:id/complete', asyncHandler(async (req, res) => {
 }));
 
 brain.put('/memory/:key', asyncHandler(async (req, res) => {
-  const value = req.body?.value == null ? null : String(req.body.value);
-  await store.writeMemory(req.params.key, value);
+  await store.writeMemory(req.params.key, store.memoryValue(req.body?.value));
   res.json({ ok: true });
 }));
 

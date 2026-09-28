@@ -221,6 +221,12 @@ export async function readMemory(db = prisma) {
   return db.$queryRaw`SELECT "key", "value", "updatedAt" FROM "DirectorMemory" ORDER BY "key" ASC`;
 }
 
+/** Memory values are text; objects/arrays/numbers are stored as JSON (never "[object Object]"). */
+export function memoryValue(value) {
+  if (value == null || value === '') return null;
+  return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
 export async function writeMemory(key, value, db = prisma) {
   const k = String(key || '').trim();
   if (!/^[a-z0-9][a-z0-9_.-]{0,63}$/i.test(k)) throw Object.assign(new Error('invalid memory key'), { status: 400 });

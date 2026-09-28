@@ -2,7 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chunkText, isValidWebhookSecret, webhookSecret } from './director/telegram.js';
 import { wakeBrain } from './director/trigger.js';
-import { writeMemory } from './director/store.js';
+import { memoryValue, writeMemory } from './director/store.js';
+
+test('memory keeps objects as JSON, not "[object Object]"', () => {
+  assert.equal(memoryValue({ users: 5, funnel: [0, 1] }), '{"users":5,"funnel":[0,1]}');
+  assert.equal(memoryValue('plain text'), 'plain text');
+  assert.equal(memoryValue(42), '42');
+  assert.equal(memoryValue(null), null);
+  assert.equal(memoryValue(''), null);
+});
 import { isWorkingHours } from './director/hours.js';
 import { faqText } from './director/knowledge.js';
 import { canAutoSend, linksAreSafe, AUTO_REPLIES_PER_THREAD } from './director/supportAgent.js';
