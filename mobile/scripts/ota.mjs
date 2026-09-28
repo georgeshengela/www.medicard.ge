@@ -80,7 +80,8 @@ console.log(`✔ OTA allowed: ${version} → runtime ${runtime}, channel ${chann
 if (mode === 'check') process.exit(0);
 
 if (!message) fail('write what changed: npm run ota -- "კვების ეკრანის ტექსტი გასწორდა"');
-const easArgs = ['eas-cli@latest', 'update', '--channel', channel, '--message', `${version} · ${message}`, '--non-interactive'];
+const easArgs = ['eas-cli@latest', 'update', '--channel', channel, '--environment', channel, '--message', `${version} · ${message}`, '--non-interactive'];
+// EAS env vars for this environment are empty on purpose; EXPO_PUBLIC_API_URL is pinned above.
 // Windows runs npx through cmd.exe, which splits unquoted arguments on spaces — quote each one.
 const quote = (arg) => (/^[\w@.:/=-]+$/.test(arg) ? arg : `"${arg.replace(/["%^&|<>]/g, '')}"`);
 if (process.env.OTA_DRY_RUN === '1') {
