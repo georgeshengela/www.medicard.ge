@@ -172,13 +172,17 @@ function pickNewer(a, b) {
   return at(a) >= at(b) ? a : b;
 }
 
-/** Legacy goal source: a nutrition plan saved before `appState.weightGoal` was written. */
+/**
+ * Legacy goal source: a nutrition plan saved before `appState.weightGoal` was written.
+ * Columns must match prisma/20260924-nutrition-program.sql — the table has no "createdAt"
+ * (selecting it 500'd every GET/PUT /api/account/app-state from 2026-09-27 to 2026-09-28).
+ */
 async function readProgramGoalSource(userId, db) {
   if (typeof db.$queryRaw !== 'function') return null;
   // Probe first: a failing statement would abort saveAppState's surrounding transaction.
   const [probe] = await db.$queryRaw`SELECT to_regclass('"NutritionProgram"') IS NOT NULL AS ok`;
   if (!probe?.ok) return null;
-  const [row] = await db.$queryRaw`SELECT config,"startedOn","updatedAt","createdAt",active FROM "NutritionProgram" WHERE "userId"=${userId}`;
+  const [row] = await db.$queryRaw`SELECT config,"startedOn","updatedAt",active FROM "NutritionProgram" WHERE "userId"=${userId}`;
   return row ?? null;
 }
 

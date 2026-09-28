@@ -69,3 +69,30 @@ describe('appState', () => {
     assert.equal(extra.appState, undefined);
   });
 });
+
+describe('appState legacy goal query', () => {
+  it('selects only columns that exist in the NutritionProgram install SQL', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { loadAppState } = await import('./appState.js');
+    const ddl = readFileSync(new URL('../../prisma/20260924-nutrition-program.sql', import.meta.url), 'utf8');
+    const table = /CREATE TABLE IF NOT EXISTS "NutritionProgram" \(([\s\S]*?)\);/.exec(ddl)[1];
+    const columns = new Set([...table.matchAll(/"([A-Za-z]+)"\s+(?:TEXT|BOOLEAN|JSONB|TIMESTAMPTZ|INTEGER)/g)].map((m) => m[1]));
+    const selects = [];
+    const db = {
+      healthProfile: { findUnique: async () => null },
+      medicalRecord: { findMany: async () => [] },
+      $queryRaw: async (strings) => {
+        const sql = strings.join('?');
+        if (sql.includes('to_regclass')) return [{ ok: true }];
+        selects.push(sql);
+        return [];
+      },
+    };
+    await loadAppState('u1', db);
+    const select = selects.find((s) => s.includes('"NutritionProgram"'));
+    assert.ok(select, 'legacy goal query ran');
+    const picked = /SELECT (.*?) FROM/.exec(select)[1].split(',').map((c) => c.trim().replace(/"/g, ''));
+    assert.ok(columns.size >= 5, `parsed ${[...columns]}`);
+    for (const col of picked) assert.ok(columns.has(col), `NutritionProgram has no column ${col}`);
+  });
+});
