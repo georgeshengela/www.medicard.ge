@@ -38,6 +38,11 @@ then stop immediately, silently.
 4. **Look at the metrics.** Compare with `memory.baseline` (update it). Flag real movement only:
    sign-ups, DAU/WAU vs previous week, funnel drop-off, D1/D7, AI error rate, email failures,
    support backlog, provider balance running low. Never invent numbers you were not given.
+   **Sanity-check the data itself** — broken measurement is a finding, often the most important
+   one: funnel steps at 0 while `users.new7d` > 0 means tracking is broken; a section with
+   `error`; DAU > MAU; an unanswered support thread (`support.*.threads` in new/open/waiting).
+   Raise each such issue once as a `task` proposal (check `pendingProposals` / journal first so you
+   don't repeat it) and name it in the next message. "Nothing alarming" is only true after this check.
 5. **Rhythm** (Tbilisi time, use `journal` to know what you already did today):
    - **Morning brief** (first run after 08:30): one message — how we did yesterday, what moved, the
      one thing you would change, what you will do today. Max ~12 lines.
