@@ -33,6 +33,7 @@ import { objectStorageConfigured, objectStoragePublicHint } from './lib/objectSt
 import { adminReferralRouter, referralRouter } from './routes/referral.routes.js';
 import { adminFunnelRouter, funnelRouter } from './routes/funnel.routes.js';
 import { adminDirectorRouter, directorRouter } from './routes/director.routes.js';
+import { startDirectorWorkers } from './lib/director/supportAgent.js';
 import { adminEmailRouter, emailWebhookRouter, unsubscribeRouter } from './routes/email.routes.js';
 import { startEmailWorkers } from './lib/email/campaigns.js';
 import { adminSupportRouter } from './routes/support.routes.js';
@@ -258,6 +259,7 @@ startReferralRewards();
 startPushCampaignWorker();
 startEmailWorkers();
 startSupportWorkers();
+startDirectorWorkers();
 app.use('/api/medipulsi', medipulsiRouter);
 app.use('/api/cycle', cycleRouter);
 app.get('/api/cycle/share/:code', partnerShareClosedHandler);

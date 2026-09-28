@@ -4,7 +4,6 @@
  *   consent history, AI-consent rollout, and a per-user data export.
  * Every write is audited (AdminAuditLog).
  */
-import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
@@ -14,6 +13,7 @@ import { writeAdminAudit } from '../lib/adminAudit.js';
 import { listFeatureFlags, setFeatureFlag } from '../lib/featureFlags.js';
 import { validateQuestRewardAmounts } from '../lib/questEconomy.js';
 import { getLevelForXp } from '../lib/questLevels.js';
+import { adjustCoins, ledgerBalance } from '../lib/adminCoins.js';
 
 export const adminManageRouter = Router();
 adminManageRouter.use(requireAdmin);
@@ -105,11 +105,6 @@ adminManageRouter.patch('/quests/templates/:key', asyncHandler(async (req, res) 
 }));
 
 /* ───────── Per-user economy, quests and consent ───────── */
-async function ledgerBalance(db, userId) {
-  const rows = await db.rewardLedger.groupBy({ by: ['currency'], where: { userId }, _sum: { amount: true } });
-  const sum = (c) => rows.find((r) => r.currency === c)?._sum.amount ?? 0;
-  return { coins: sum('COIN'), xp: sum('XP') };
-}
 
 adminManageRouter.get('/users/:id/insights', asyncHandler(async (req, res) => {
   const userId = req.params.id;
@@ -157,26 +152,7 @@ const coinsBody = z.object({
 adminManageRouter.post('/users/:id/coins', asyncHandler(async (req, res) => {
   const { amount, reason } = coinsBody.parse(req.body);
   const userId = req.params.id;
-  const result = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true } });
-    if (!user) throw httpError('მომხმარებელი ვერ მოიძებნა.', 404);
-    const before = await ledgerBalance(tx, userId);
-    if (before.coins + amount < 0) throw httpError(`ბალანსი ${before.coins} coin-ია — ამდენის ჩამოჭრა შეუძლებელია.`, 409, 'COINS_NEGATIVE');
-    await tx.rewardLedger.create({
-      data: {
-        userId, currency: 'COIN', amount, transactionType: 'ADJUST', sourceType: 'SYSTEM',
-        sourceId: `admin:${randomUUID()}`, metadata: { reason, adminEmail: req.admin?.email || null },
-      },
-    });
-    const after = await ledgerBalance(tx, userId);
-    const level = getLevelForXp(after.xp).level;
-    await tx.userQuestProfile.upsert({
-      where: { userId },
-      update: { cachedCoinBalance: after.coins, totalXp: after.xp, currentLevel: level },
-      create: { userId, cachedCoinBalance: after.coins, totalXp: after.xp, currentLevel: level },
-    });
-    return { before: before.coins, after: after.coins };
-  });
+  const result = await adjustCoins({ userId, amount, reason, adminEmail: req.admin?.email });
   await writeAdminAudit({
     admin: req.admin, action: amount > 0 ? 'coins.grant' : 'coins.revoke', targetType: 'user', targetId: userId,
     previousValue: { coins: result.before }, newValue: { coins: result.after, amount, reason },

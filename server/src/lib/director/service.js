@@ -1,17 +1,21 @@
 /**
  * Director ↔ owner over Telegram. Only the paired private chat is ever answered; everything else
- * is ignored silently. Approve/reject buttons are handled here deterministically (no AI involved),
- * then the brain is woken to act on the decision.
+ * is ignored silently. Approve/reject buttons are handled here deterministically (no AI involved);
+ * approved system actions run immediately. On shift, owner messages go to the live Director.
  */
 import * as store from './store.js';
 import * as tg from './telegram.js';
 import { wakeBrain } from './trigger.js';
+import { executeProposal } from './actions.js';
+import { llmConfigured } from './llm.js';
+import { respondToOwner } from './live.js';
 
 const KIND_LABELS = { decision: 'გადაწყვეტილება', post: 'სოც. მედიის პოსტი', email: 'მეილის პასუხი', task: 'დავალება', team: 'გუნდის წევრი', change: 'ცვლილება' };
 export const kindLabel = (kind) => KIND_LABELS[kind] || kind;
 
 const HELP = [
-  'მე ვარ MEDICARD-ის დირექტორი. აქ მომწერე ნებისმიერ დროს — ცვლაზე ყოფნისას ვპასუხობ.',
+  'მე ვარ MEDICARD-ის დირექტორი. ცვლაზე ყოფნისას წამებში გპასუხობ: ციფრები, „ეს ნომერი გვყავს?“, support-ის წერილები, Medi Coins, MEDIRUN-ის საჩუქარი მისამართზე.',
+  'სამუშაო დროს (ორშ–პარ 10–19) support-ის მარტივ კითხვებს თავად ვპასუხობ, დანარჩენს შენ გკითხავ. სამუშაო დროის გარეთ „მივიღეთ“-ს ვუგზავნი.',
   '',
   '/status — ცვლა, რიგში მყოფი შეთავაზებები',
   '/on — ცვლის ჩაბარება (მე ვმართავ)',
@@ -54,11 +58,32 @@ async function statusText() {
   return lines.join('\n');
 }
 
+/**
+ * Records the owner's decision; an approved proposal with a system action (email reply, coins,
+ * MEDIRUN gift) is executed right away and reported. Others are left for the Director to act on.
+ */
 async function decide(proposalId, approve, via, { note } = {}) {
   const p = await store.decideProposal(proposalId, { approve, via, note });
   if (!p) return null;
   await store.addJournal({ kind: 'note', summary: `${approve ? 'დადასტურდა' : 'უარყოფილია'}: ${p.title}`, data: { proposalId: p.id, via } });
-  await wakeBrain(`owner ${approve ? 'approved' : 'rejected'} proposal ${p.id}`);
+  if (!approve) {
+    await notifyOwner(`❌ გასაგებია, „${p.title}“ არ კეთდება.`, { direction: 'system' });
+    return p;
+  }
+  try {
+    const result = await executeProposal(p);
+    if (result) {
+      await store.completeProposal(p.id, { result });
+      await store.addJournal({ kind: 'note', summary: `შესრულდა: ${p.title} — ${result}` });
+      await notifyOwner(`✅ შესრულდა: „${p.title}“. ${result}`, { direction: 'system' });
+    } else {
+      await notifyOwner(`✅ მივიღე: „${p.title}“. შევასრულებ და მოგახსენებ.`, { direction: 'system' });
+      await wakeBrain(`owner approved proposal ${p.id}`);
+    }
+  } catch (error) {
+    console.warn('[director] execute failed', p.id, error?.message);
+    await notifyOwner(`⚠️ „${p.title}“ ვერ შესრულდა: ${String(error?.message || error).slice(0, 200)}`, { direction: 'system' });
+  }
   return p;
 }
 
@@ -77,11 +102,10 @@ async function handleCallback(cb, state) {
   if (!state.ownerChatId || chatId !== state.ownerChatId) return;
   const m = /^p:([0-9a-f-]{36}):(a|r)$/.exec(cb.data || '');
   if (!m) return tg.answerCallback(cb.id, 'უცნობი ღილაკი');
-  const p = await decide(m[1], m[2] === 'a', 'telegram');
   await tg.clearButtons(chatId, cb.message.message_id).catch(() => {});
-  if (!p) return tg.answerCallback(cb.id, 'ეს უკვე გადაწყვეტილია.');
-  await tg.answerCallback(cb.id, m[2] === 'a' ? 'დადასტურდა ✅' : 'უარყოფილია ❌');
-  await notifyOwner(m[2] === 'a' ? `✅ მივიღე: „${p.title}“. შევასრულებ და მოგახსენებ.` : `❌ გასაგებია, „${p.title}“ არ კეთდება.`, { direction: 'system' });
+  await tg.answerCallback(cb.id, m[2] === 'a' ? 'დადასტურდა ✅' : 'უარყოფილია ❌').catch(() => {});
+  const p = await decide(m[1], m[2] === 'a', 'telegram');
+  if (!p) await notifyOwner('ეს უკვე გადაწყვეტილია.', { direction: 'system' });
 }
 
 async function handleMessage(msg, state) {
@@ -128,7 +152,10 @@ async function handleMessage(msg, state) {
   if (msg.voice) await notifyOwner('ხმოვანს ჯერ ვერ ვისმენ — ტექსტად მომწერე, გთხოვ.', { direction: 'system' });
 
   const current = await store.getState();
-  if (current.active) {
+  if (current.active && llmConfigured()) {
+    await tg.sendChatAction(chatId).catch(() => {});
+    await respondToOwner();
+  } else if (current.active) {
     const woke = await wakeBrain('owner sent a message');
     if (woke.ok) {
       await tg.sendChatAction(chatId).catch(() => {});
@@ -140,6 +167,14 @@ async function handleMessage(msg, state) {
   } else {
     await notifyOwner('ჩავიწერე. ცვლაზე არ ვარ — /on-ით ჩამაბარე და გიპასუხებ.', { direction: 'system' });
   }
+}
+
+/** The owner wrote from the admin page: same path as a Telegram message. */
+export async function ownerWroteFromAdmin(text) {
+  await store.addMessage({ direction: 'owner', text });
+  const state = await store.getState();
+  if (state.active && llmConfigured()) return respondToOwner();
+  return wakeBrain('owner wrote from admin');
 }
 
 export async function handleTelegramUpdate(update) {

@@ -3,6 +3,49 @@ import assert from 'node:assert/strict';
 import { chunkText, isValidWebhookSecret, webhookSecret } from './director/telegram.js';
 import { wakeBrain } from './director/trigger.js';
 import { writeMemory } from './director/store.js';
+import { isWorkingHours } from './director/hours.js';
+import { faqText } from './director/knowledge.js';
+import { canAutoSend, linksAreSafe, AUTO_REPLIES_PER_THREAD } from './director/supportAgent.js';
+import { giftFromPayload } from './director/actions.js';
+
+test('working hours are Mon–Fri 10:00–19:00 Tbilisi (UTC+4)', () => {
+  assert.equal(isWorkingHours(new Date('2026-09-28T06:00:00Z')), true, 'Mon 10:00');
+  assert.equal(isWorkingHours(new Date('2026-09-28T05:59:00Z')), false, 'Mon 09:59');
+  assert.equal(isWorkingHours(new Date('2026-09-28T14:59:00Z')), true, 'Mon 18:59');
+  assert.equal(isWorkingHours(new Date('2026-09-28T15:00:00Z')), false, 'Mon 19:00');
+  assert.equal(isWorkingHours(new Date('2026-10-03T08:00:00Z')), false, 'Saturday');
+  assert.equal(isWorkingHours(new Date('2026-10-04T08:00:00Z')), false, 'Sunday');
+});
+
+test('automatic support replies only for answerable help questions with safe links', () => {
+  const ok = { category: 'help', answerable: true, reply: 'გამარჯობა! ანგარიშის წაშლა: https://medicard.ge/delete-account' };
+  assert.equal(canAutoSend(ok, 0), true);
+  assert.equal(canAutoSend({ ...ok, category: 'account' }, 0), false, 'account questions go to the owner');
+  assert.equal(canAutoSend({ ...ok, category: 'business' }, 0), false);
+  assert.equal(canAutoSend({ ...ok, answerable: false }, 0), false);
+  assert.equal(canAutoSend({ ...ok, reply: 'კი' }, 0), false, 'too short');
+  assert.equal(canAutoSend({ ...ok, reply: `${ok.reply} https://evil.example/x` }, 0), false, 'foreign link');
+  assert.equal(canAutoSend(ok, AUTO_REPLIES_PER_THREAD), false, 'long threads go to the owner');
+  assert.equal(linksAreSafe('see https://www.medicard.ge/privacy and https://medicard.ge'), true);
+  assert.equal(linksAreSafe('https://medicard.ge.evil.com'), false);
+});
+
+test('MEDIRUN gift payload is bounded and must be in Georgia', () => {
+  const now = new Date('2026-09-28T10:00:00Z');
+  const g = giftFromPayload({ latitude: 41.7151, longitude: 44.8271, title: 'ტესტი', stock: 999, days: 500 }, now);
+  assert.equal(g.stock, 100);
+  assert.equal(g.endsAt.getTime() - now.getTime(), 60 * 86400000);
+  assert.equal(g.published, true);
+  assert.equal(g.rewardKind, 'DIGITAL');
+  assert.match(g.id, /^[a-zA-Z0-9_-]+$/);
+  assert.throws(() => giftFromPayload({ latitude: 48.85, longitude: 2.35, title: 'Paris' }, now), /inside Georgia/);
+});
+
+test('FAQ is read from the landing page section', () => {
+  const html = '<section class="x" id="faq"><details><summary>რა არის Medi?</summary><p>AI ასისტენტი &amp; მეგზური.</p></details></section><section id="other">x</section>';
+  assert.equal(faqText(html), 'რა არის Medi?\nAI ასისტენტი & მეგზური.');
+  assert.equal(faqText('<p>no faq</p>'), '');
+});
 
 test('chunkText keeps every chunk under the limit and loses no words', () => {
   const para = 'სიტყვა '.repeat(300).trim();

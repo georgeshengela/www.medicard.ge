@@ -99,10 +99,9 @@
           : (botOk && c.webhook?.set ? '<button type="button" class="btn" data-pair>დაკავშირება</button>' : ''),
       },
       {
-        done: c.routine,
-        optional: true,
-        title: 'მყისიერი პასუხი',
-        hint: c.routine ? 'შენს მესიჯზე 1–2 წუთში პასუხობს.' : '<code>DIRECTOR_ROUTINE_URL</code> + <code>DIRECTOR_ROUTINE_TOKEN</code>. მის გარეშე დირექტორი საათში ერთხელ მუშაობს.',
+        done: Boolean(c.live),
+        title: '24/7 დირექტორი',
+        hint: c.live ? `${esc(c.live.model)} · დღეს ${c.live.calls ?? 0}/${c.live.cap ?? '—'} AI მოთხოვნა. ცვლაზე წამებში პასუხობს და support-ს მართავს.` : 'Render-ში <code>OPENROUTER_API_KEY</code> არ არის.',
       },
     ];
   }

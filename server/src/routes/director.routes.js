@@ -15,7 +15,8 @@ import * as store from '../lib/director/store.js';
 import * as tg from '../lib/director/telegram.js';
 import { buildDirectorSnapshot } from '../lib/director/snapshot.js';
 import { routineConfigured, wakeBrain } from '../lib/director/trigger.js';
-import { decideFromAdmin, handleTelegramUpdate, notifyOwner, sendProposal } from '../lib/director/service.js';
+import { decideFromAdmin, handleTelegramUpdate, notifyOwner, ownerWroteFromAdmin, sendProposal } from '../lib/director/service.js';
+import { DIRECTOR_MODEL, llmConfigured, usageToday } from '../lib/director/llm.js';
 
 const noStore = (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); };
 
@@ -59,6 +60,7 @@ async function overview() {
       webhook,
       brainToken: Boolean(process.env.DIRECTOR_API_TOKEN),
       routine: routineConfigured(),
+      live: llmConfigured() ? { model: DIRECTOR_MODEL(), ...(await usageToday().catch(() => ({}))) } : null,
     },
     messages, proposals, journal, memory,
   };
@@ -118,8 +120,7 @@ adminDirectorRouter.post('/proposals/:id/decide', asyncHandler(async (req, res) 
 adminDirectorRouter.post('/message', asyncHandler(async (req, res) => {
   const text = String(req.body?.text || '').trim().slice(0, 4000);
   if (!text) return res.status(400).json({ error: 'ტექსტი ცარიელია.' });
-  await store.addMessage({ direction: 'owner', text });
-  await wakeBrain('owner wrote from admin');
+  await ownerWroteFromAdmin(text);
   res.json(await overview());
 }));
 
