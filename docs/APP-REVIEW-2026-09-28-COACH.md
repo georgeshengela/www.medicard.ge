@@ -5,7 +5,15 @@ trainers) and product analytics. Code-side readiness: commit 7e455fc.
 
 ## 1. Before submitting (owner)
 
-1. **Demo trainer for the reviewer.** Recommended: a dedicated account (e.g. an email account
+1. **Demo accounts (set up 2026-09-28).**
+   - Trainer: `demo.woman@medicard.ge` — VERIFIED trainer „ნინო მაისურაძე · დემო“, coach code **QSPW7W**,
+     gym Aspria Vake, 3 open sessions. (This account is also still a *client* of another trainer —
+     end that link in its „ჩემი ტრენერი“ if it confuses the review.)
+   - Client: create one more account in the app (e.g. `demo.client@medicard.ge`), finish onboarding,
+     log a weight and one meal, then Profile → „ფიტნესი · MEDI COACH“ → „ტრენერთან დაკავშირება“ →
+     code **QSPW7W** → switch on workouts/nutrition/weight → „თანხმობა და დაკავშირება“ → book one open session.
+   - Passwords go only into App Store Connect, never into this repo.
+   Original note: **Demo trainer for the reviewer.** Recommended: a dedicated account (e.g. an email account
    „review.trainer@…“ created in the app) → Profile → „ფიტნესი · MEDI COACH“ → become a trainer →
    finish the 3 steps → admin ტრენერები → approve. Add one open session. Put its email/password and
    its 6-character coach code into the review notes below.
@@ -41,7 +49,7 @@ verified by our team before the trainer appears in the app. There are no payment
 purchases in the app; any training arrangement happens in person, outside the app.
 
 To test the client side:
-Profile → "ფიტნესი · MEDI COACH" → "ტრენერთან დაკავშირება" → enter code F6RNBA.
+Profile → "ფიტნესი · MEDI COACH" → "ტრენერთან დაკავშირება" → enter code QSPW7W.
 The consent screen lists exactly what the trainer can see. Only name, photo, age, sex, height
 and the shared session schedule are always visible; activity/workouts (including Apple Health),
 nutrition, weight and progress photos are OFF by default and shared only if the user switches
@@ -55,7 +63,11 @@ Safety: both sides can report the other ("შეტყობინება დ�
 trainer; the connection ends immediately and the trainer cannot invite again. Reports are
 reviewed by our team. Trainer applications stay "under review" until our team approves them.
 
-Trainer side (optional): [demo trainer login] — coach code [XXXXXX].
+Demo accounts:
+- Trainer: demo.woman@medicard.ge / [password] — verified trainer, coach code QSPW7W.
+  Trainer mode: Profile → "ფიტნესი · MEDI COACH" → trainer workspace (clients, sessions, QR).
+- Client: demo.client@medicard.ge / [password] — already connected to the trainer above and
+  sharing workouts, nutrition and weight; can change or end sharing in "გაზიარება ტრენერთან".
 
 Privacy policy (updated 28 Sep 2026, section 14): https://medicard.ge/privacy
 ```
