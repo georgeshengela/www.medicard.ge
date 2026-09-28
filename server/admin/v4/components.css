@@ -381,7 +381,7 @@ html body .v3-user-page .s-insights h3 .icon { width: 16px; height: 16px; color:
 .s-mail.is-out { background: var(--s-accent-soft); }
 .s-mail.is-note { background: var(--s-warn-soft); }
 .s-mail .s-callout { margin: 0; }
-.s-mail-frame { width: 100%; height: 420px; min-height: 160px; resize: vertical; border: 1px solid var(--s-line); border-radius: var(--s-radius-sm); background: #fff; }
+.s-mail-frame { width: 100%; height: 240px; min-height: 120px; resize: vertical; border: 1px solid var(--s-line); border-radius: var(--s-radius-sm); background: #fff; }
 .s-att-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .s-composer { border-top: 1px solid var(--s-line-soft); }
 .s-composer textarea { min-height: 160px; resize: vertical; }

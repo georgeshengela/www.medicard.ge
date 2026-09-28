@@ -290,7 +290,15 @@
     box.querySelectorAll('[data-message]').forEach((el) => {
       const m = byId[el.dataset.message];
       const frame = el.querySelector('[data-frame]');
-      if (frame && m?.htmlBody) frame.srcdoc = frameDoc(m.htmlBody);
+      if (frame && m?.htmlBody) {
+        frame.srcdoc = frameDoc(m.htmlBody);
+        // The sandbox (no same-origin) hides the frame's real height, so size it from the text:
+        // short notes stay compact, long mails get room and remain resizable.
+        const text = String(m.textBody || m.htmlBody.replace(/<[^>]+>/g, ' '));
+        const lines = text.split('\n').reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 110)), 0);
+        const media = /<(img|table)\b/i.test(m.htmlBody) ? 220 : 0;
+        frame.style.height = `${Math.min(560, Math.max(120, 40 + lines * 22 + media))}px`;
+      }
       el.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
         el.querySelectorAll('[data-view]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
         const html = b.dataset.view === 'html';
