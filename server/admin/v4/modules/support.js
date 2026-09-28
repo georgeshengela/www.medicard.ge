@@ -198,7 +198,7 @@
       <aside class="sx-list" aria-label="საუბრები">
         <div class="sx-list-head">
           <label class="sx-search">${ico('search')}<span class="sr-only">ძებნა</span><input type="search" data-filter-q placeholder="ძებნა: სახელი, მისამართი, სათაური" value="${esc(st.filter.q)}"></label>
-          <div class="sx-filters" role="tablist" aria-label="სტატუსი" id="support-filters"></div>
+          <div class="sx-statuses" role="tablist" aria-label="სტატუსი" id="support-filters"></div>
           <div class="sx-toggles">
             <button type="button" class="sx-toggle" data-toggle="mine" aria-pressed="${st.filter.mine}">${ico('user')}ჩემი</button>
             <button type="button" class="sx-toggle" data-toggle="unread" aria-pressed="${st.filter.unread}"><i class="sx-dot is-accent"></i>წაუკითხავი</button>
@@ -313,10 +313,12 @@
     const name = out ? (m.author || 'ადმინი') : (m.fromName || m.fromEmail || nameOf(t));
     const hasHtml = Boolean(m.htmlBody);
     const pending = ['pending', 'restricted', 'failed'].includes(m.bodyStatus);
+    // Plain mails read best as text (natural height); rich ones (images, tables) open as HTML.
+    const startText = hasHtml && Boolean(String(m.textBody || '').trim()) && !/<(img|table)/i.test(m.htmlBody);
     const body = pending
       ? `<div class="sx-body-note${m.bodyStatus === 'pending' ? '' : ' is-warn'}">${ico(m.bodyStatus === 'pending' ? 'refresh' : 'alert')}<span>${esc(BODY_NOTE[m.bodyStatus])}</span>${m.bodyStatus !== 'pending' ? `<button type="button" class="btn compact ghost" data-refetch="${esc(m.id)}">ხელახლა ცდა</button>` : ''}</div>`
-      : `${hasHtml ? `<iframe class="sx-frame" title="წერილის ტექსტი" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" data-frame></iframe>` : ''}
-         <pre class="sx-text" data-text ${hasHtml ? 'hidden' : ''}>${esc(m.textBody || '(ცარიელი)')}</pre>`;
+      : `${hasHtml ? `<iframe class="sx-frame" title="წერილის ტექსტი" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" data-frame ${startText ? 'hidden' : ''}></iframe>` : ''}
+         <pre class="sx-text" data-text ${hasHtml && !startText ? 'hidden' : ''}>${esc(m.textBody || '(ცარიელი)')}</pre>`;
     const atts = (m.attachments || []).length
       ? `<div class="sx-atts">${m.attachments.map((a) => `<button type="button" class="sx-att" data-att="${esc(a.id)}" data-msg="${esc(m.id)}" data-name="${esc(a.filename)}">${ico('paperclip')}<span>${esc(a.filename)}</span>${a.size ? `<small>${fmt(Math.ceil(a.size / 1024))} KB</small>` : ''}</button>`).join('')}</div>`
       : '';
@@ -329,7 +331,7 @@
           ${out ? `<span class="sx-muted">→ ${esc((m.toEmails || []).join(', ') || t.counterpartEmail)}</span>` : m.fromName ? `<span class="sx-muted">${esc(m.fromEmail)}</span>` : ''}
           ${m.isAuto ? '<span class="sx-tag">ავტომატური</span>' : ''}${failed}
           <span class="sx-bubble-tools">
-            ${hasHtml && !pending ? `<button type="button" class="sx-mini" data-view-toggle aria-pressed="false" title="ჩვეულებრივი ტექსტი">${ico('eye')}<span>ტექსტი</span></button>` : ''}
+            ${hasHtml && !pending ? `<button type="button" class="sx-mini" data-view-toggle aria-pressed="${startText}" title="ხედის შეცვლა">${ico('eye')}<span>${startText ? 'HTML' : 'ტექსტი'}</span></button>` : ''}
             <time title="${esc(fullWhen(m.createdAt))}">${esc(clock(m.createdAt))}</time>
           </span>
         </header>
