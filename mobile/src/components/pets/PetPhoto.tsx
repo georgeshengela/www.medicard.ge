@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, Platform, Text, View } from 'react-native';
 import { PawPrint } from 'lucide-react-native';
 import { API_BASE_URL } from '@/lib/api';
+import { cachedAuthImage } from '@/lib/authImageCache';
 import { privateFileImageSource } from '@/lib/privateFile';
 import { getToken } from '@/lib/storage';
 import { localAccountId } from '@/lib/localAccount';
@@ -29,9 +30,11 @@ export function PetPhoto({
     setSource(null);
     void (async () => {
       const token = await getToken();
-      const next = privateFileImageSource(photoUrl, token, API_BASE_URL);
+      let next = privateFileImageSource(photoUrl, token, API_BASE_URL);
+      // Android's <Image> drops the Authorization header (401): show a cached, authorised download instead.
+      if (next && token && Platform.OS !== 'web') next = { uri: await cachedAuthImage(next.uri, token, owner ?? ''), headers: { Authorization: '' } };
       if (!cancelled && localAccountId() === owner) { setSource(next); setLoadedKey(sourceKey); }
-    })().catch(() => { if (!cancelled) setSource(null); });
+    })().catch(() => { if (!cancelled) setFailed(true); });
     return () => {
       cancelled = true;
     };

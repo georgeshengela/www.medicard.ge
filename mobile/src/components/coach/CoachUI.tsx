@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, BadgeCheck, type LucideIcon } from 'lucide-react-native';
 import { AVATAR_SOURCES, isAvatarId } from '@/constants/avatarAssets';
+import { AuthImageError, cachedAuthImage } from '@/lib/authImageCache';
 import { API_BASE_URL } from '@/lib/api';
 import { getToken } from '@/lib/storage';
 import { localAccountId } from '@/lib/localAccount';
@@ -245,14 +246,26 @@ export function PrivateImage({ path, style, label, onFail }: { path: string; sty
     void getToken().then(async (token) => {
       if (!alive || !token || localAccountId() !== owner) return;
       if (Platform.OS !== 'web') {
-        setSource({ uri: url, headers: { Authorization: `Bearer ${token}` } });
+        // Downloaded with the header into the cache: Android's <Image> drops request headers (401).
+        try {
+          const file = await cachedAuthImage(url, token, owner ?? '');
+          if (alive) setSource({ uri: file, headers: { Authorization: '' } });
+        } catch (error) {
+          if (!alive) return;
+          if (__DEV__) console.warn('[PrivateImage]', error instanceof AuthImageError ? error.status : String(error), path);
+          if (error instanceof AuthImageError && (error.status === 404 || error.status === 403)) onFail?.();
+          else failed();
+        }
         return;
       }
       // react-native-web's <Image> cannot send headers: fetch with auth and show a blob URL.
       try {
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         if (!alive) return;
-        if (!res.ok) return void (res.status === 404 ? onFail?.() : failed());
+        if (!res.ok) {
+          if (__DEV__) console.warn('[PrivateImage]', res.status, path);
+          return void (res.status === 404 ? onFail?.() : failed());
+        }
         objectUrl = URL.createObjectURL(await res.blob());
         if (alive) setSource({ uri: objectUrl, headers: { Authorization: '' } });
       } catch {
@@ -265,7 +278,8 @@ export function PrivateImage({ path, style, label, onFail }: { path: string; sty
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, owner, attempt]);
-  function failed() {
+  function failed(event?: { nativeEvent?: { error?: unknown } }) {
+    if (__DEV__) console.warn('[PrivateImage] load failed', path, String(event?.nativeEvent?.error ?? ''));
     if (attempt < 1) setTimeout(() => setAttempt((n) => n + 1), 1200);
     else onFail?.();
   }

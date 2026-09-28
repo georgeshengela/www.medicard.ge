@@ -10,6 +10,8 @@ import { ka } from '@/i18n/ka';
 import { ApiError, API_BASE_URL, api, type MedicalRecord } from '@/lib/api';
 import { getToken } from '@/lib/storage';
 import { privateFileImageSource } from '@/lib/privateFile';
+import { useAuthImageSource } from '@/lib/authImageCache';
+import { localAccountId } from '@/lib/localAccount';
 import { formatDateTime } from '@/lib/format';
 
 export default function RecordDetail() {
@@ -31,7 +33,8 @@ export default function RecordDetail() {
       .catch((err) => setError(err instanceof ApiError ? err.message : ka.common.error));
   }, [id]);
 
-  const imageSource = privateFileImageSource(record?.imageUrl ?? null, token, API_BASE_URL);
+  // Android's <Image> drops the Authorization header — show an authorised cached download instead.
+  const imageSource = useAuthImageSource(privateFileImageSource(record?.imageUrl ?? null, token, API_BASE_URL), localAccountId());
   const isPdf = record?.imageUrl?.toLowerCase().endsWith('.pdf');
 
   return (
