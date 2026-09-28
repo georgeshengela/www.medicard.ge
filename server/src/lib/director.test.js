@@ -2,7 +2,19 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chunkText, isValidWebhookSecret, webhookSecret } from './director/telegram.js';
 import { wakeBrain } from './director/trigger.js';
-import { memoryValue, writeMemory } from './director/store.js';
+import { initiativeTransitionAllowed, memoryValue, writeMemory } from './director/store.js';
+
+test('only the owner approves initiatives; the Director moves its own work', () => {
+  assert.equal(initiativeTransitionAllowed('idea', 'proposed', false), true);
+  assert.equal(initiativeTransitionAllowed('proposed', 'approved', false), false, 'approval is the owner\'s');
+  assert.equal(initiativeTransitionAllowed('proposed', 'approved', true), true);
+  assert.equal(initiativeTransitionAllowed('idea', 'active', false), false, 'no work before approval');
+  assert.equal(initiativeTransitionAllowed('approved', 'active', false), true);
+  assert.equal(initiativeTransitionAllowed('active', 'done', false), true);
+  assert.equal(initiativeTransitionAllowed('idea', 'done', false), false);
+  assert.equal(initiativeTransitionAllowed('active', 'dropped', false), true);
+  assert.equal(initiativeTransitionAllowed('idea', 'bogus', true), false);
+});
 
 test('memory keeps objects as JSON, not "[object Object]"', () => {
   assert.equal(memoryValue({ users: 5, funnel: [0, 1] }), '{"users":5,"funnel":[0,1]}');

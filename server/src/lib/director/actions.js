@@ -11,6 +11,7 @@ import { adjustCoins, ledgerBalance } from '../adminCoins.js';
 import { findUserByPhone } from '../phoneUsers.js';
 import { maskEmail, normalizeEmail, SYNTHETIC_EMAIL_DOMAIN } from '../email/address.js';
 import { sendSupportReply } from '../support/reply.js';
+import { updateInitiative } from './store.js';
 
 export const DIRECTOR_ADMIN = Object.freeze({ id: null, email: 'director@medicard.ge', fullName: 'დირექტორი' });
 
@@ -146,6 +147,11 @@ export async function executeProposal(proposal, { db = prisma } = {}) {
         await tx.medipulsiAudit.create({ data: { id: randomUUID(), actorId: 'director', action: 'GIFT_SAVE', entityId: gift.id, details: { after: gift, approvedByOwner: true, place: p.placeLabel || null } } });
       });
       return `საჩუქარი რუკაზეა (${gift.id}), მოქმედებს ${gift.endsAt.toISOString().slice(0, 10)}-მდე.`;
+    }
+    case 'initiative': {
+      const i = await updateInitiative(p.initiativeId, { status: 'approved' }, { byOwner: true }, db);
+      if (!i) throw new Error('ინიციატივა ვერ მოიძებნა');
+      return 'ინიციატივა დამტკიცდა — დირექტორი მუშაობას იწყებს და პროგრესს გეგმის დაფაზე აჩვენებს.';
     }
     default:
       return null; // decisions/tasks without a system action — the Director reports on them itself

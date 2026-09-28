@@ -7,6 +7,7 @@
 import * as store from './store.js';
 import * as actions from './actions.js';
 import { buildDirectorSnapshot } from './snapshot.js';
+import { buildDeepAnalytics } from './analytics.js';
 import { BudgetError, llmConfigured, runAgent, usageToday } from './llm.js';
 import { isWorkingHours, tbilisiLabel } from './hours.js';
 import { notifyOwner, sendProposal } from './service.js';
@@ -84,6 +85,43 @@ export const LIVE_TOOLS = {
     parameters: obj({ kind: { type: 'string', enum: ['decision', 'post', 'task', 'team', 'change'] }, title: str('short'), body: str('what and why') }, ['kind', 'title', 'body']),
     run: ({ kind, title, body }) => propose(kind, title, body, null),
   },
+  get_analytics: {
+    description: 'Deep analytics: 30-day daily signups/DAU/AI, feature usage this week vs last, AI modes, app versions, weekly cohorts.',
+    parameters: obj({}),
+    run: () => buildDeepAnalytics(),
+  },
+  list_initiatives: {
+    description: 'The growth plan: initiatives with status (idea/proposed/approved/active/done/dropped), metric, target, progress.',
+    parameters: obj({}),
+    run: async () => (await store.listInitiatives()).map((i) => ({ id: i.id, title: i.title, area: i.area, status: i.status, metric: i.metric, target: i.target, impact: i.impact, effort: i.effort, progress: i.progress, result: i.result })),
+  },
+  add_idea: {
+    description: 'Put a new growth/marketing/product idea on the plan board (status idea). Free — no approval needed to record ideas.',
+    parameters: obj({
+      title: str('short'), area: { type: 'string', enum: ['growth', 'marketing', 'content', 'product', 'retention', 'partnerships', 'analytics', 'ops'] },
+      hypothesis: str('what we believe and why'), plan: str('concrete steps'), metric: str('how we measure'), target: str('target value'),
+      impact: num('1-5'), effort: num('1-5'),
+    }, ['title', 'area']),
+    run: async (a) => { const i = await store.createInitiative(a); await store.addJournal({ kind: 'note', summary: `ახალი იდეა: ${i.title}` }); return { ok: true, id: i.id }; },
+  },
+  propose_initiative: {
+    description: 'Ask the owner to approve an initiative from the board (✅ → approved, the Director then executes it).',
+    parameters: obj({ initiativeId: str('id from list_initiatives') }, ['initiativeId']),
+    run: async ({ initiativeId }) => {
+      const i = await store.getInitiative(initiativeId);
+      if (!i) return { error: 'unknown initiative' };
+      if (!['idea', 'proposed'].includes(i.status)) return { error: `already ${i.status}` };
+      const body = [i.hypothesis && `ჰიპოთეზა: ${i.hypothesis}`, i.plan && `გეგმა: ${i.plan}`, (i.metric || i.target) && `საზომი: ${i.metric}${i.target ? ` → ${i.target}` : ''}`, `ეფექტი ${i.impact}/5 · ძალისხმევა ${i.effort}/5`].filter(Boolean).join('\n\n');
+      const res = await propose('decision', `ინიციატივა: ${i.title}`, body, { action: 'initiative', initiativeId: i.id });
+      await store.updateInitiative(i.id, { status: 'proposed', proposalId: res.proposalId });
+      return res;
+    },
+  },
+  recent_reports: {
+    description: 'The Director\'s latest plans, reports and research (titles; pass id to read one).',
+    parameters: obj({ id: str('optional report id to read in full') }),
+    run: async ({ id }) => (id ? store.getReport(id) : store.listReports({ limit: 15, withBody: false })),
+  },
   pending_proposals: {
     description: 'Proposals still waiting for the owner.',
     parameters: obj({}),
@@ -110,6 +148,7 @@ How you work:
 - Privacy: you see masked data only. Never ask for or reveal health data. Share user details with the owner only as the tools return them.
 - Never: move money, enable paid features (the app is free), give medical advice, contact anyone except via approved proposals.
 - Product freeze notes: MEDIRUN gifts only on the owner's explicit request.
+- You own growth, not just answers. When the owner asks what is happening or what to do, lead with a view and a recommendation backed by numbers (get_analytics), name the plan's current priorities (list_initiatives), and record every new idea you raise with add_idea. Ask for approval with propose_initiative when an idea is ready.
 - Save lasting preferences/decisions with remember.
 - AI calls today: ${usage.calls}/${usage.cap}.
 

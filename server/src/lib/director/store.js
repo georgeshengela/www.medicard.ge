@@ -68,8 +68,116 @@ export async function ensureDirectorTables(db = prisma) {
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
   await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "DirectorJournal_createdAt_idx" ON "DirectorJournal"("createdAt")`);
+  await db.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "DirectorInitiative" (
+    "id" TEXT PRIMARY KEY,
+    "title" TEXT NOT NULL,
+    "area" TEXT NOT NULL,
+    "hypothesis" TEXT NOT NULL DEFAULT '',
+    "plan" TEXT NOT NULL DEFAULT '',
+    "metric" TEXT NOT NULL DEFAULT '',
+    "target" TEXT NOT NULL DEFAULT '',
+    "impact" INTEGER NOT NULL DEFAULT 3,
+    "effort" INTEGER NOT NULL DEFAULT 3,
+    "status" TEXT NOT NULL DEFAULT 'idea',
+    "progress" TEXT NOT NULL DEFAULT '',
+    "result" TEXT NOT NULL DEFAULT '',
+    "proposalId" TEXT,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+  await db.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "DirectorReport" (
+    "id" TEXT PRIMARY KEY,
+    "kind" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "DirectorReport_createdAt_idx" ON "DirectorReport"("createdAt")`);
   await db.$executeRawUnsafe(`INSERT INTO "DirectorState" ("id") VALUES (1) ON CONFLICT ("id") DO NOTHING`);
   ensured = true;
+}
+
+// ── initiatives (the plan) & reports (visible work) ──────────────────────────
+
+export const INITIATIVE_AREAS = Object.freeze(['growth', 'marketing', 'content', 'product', 'retention', 'partnerships', 'analytics', 'ops']);
+export const INITIATIVE_STATUSES = Object.freeze(['idea', 'proposed', 'approved', 'active', 'done', 'dropped']);
+export const REPORT_KINDS = Object.freeze(['plan', 'daily', 'evening', 'weekly', 'analysis', 'research', 'content']);
+
+const clampScore = (n) => Math.min(5, Math.max(1, Math.round(Number(n) || 3)));
+
+export async function createInitiative(input, db = prisma) {
+  await ensureDirectorTables(db);
+  const id = randomUUID();
+  const area = INITIATIVE_AREAS.includes(input.area) ? input.area : 'growth';
+  const status = ['idea', 'proposed'].includes(input.status) ? input.status : 'idea';
+  await db.$executeRaw`INSERT INTO "DirectorInitiative" ("id", "title", "area", "hypothesis", "plan", "metric", "target", "impact", "effort", "status")
+    VALUES (${id}, ${clip(input.title, 200)}, ${area}, ${clip(input.hypothesis, 2000)}, ${clip(input.plan, 4000)}, ${clip(input.metric, 300)},
+      ${clip(input.target, 300)}, ${clampScore(input.impact)}, ${clampScore(input.effort)}, ${status})`;
+  return getInitiative(id, db);
+}
+
+export async function getInitiative(id, db = prisma) {
+  await ensureDirectorTables(db);
+  const [row] = await db.$queryRaw`SELECT * FROM "DirectorInitiative" WHERE "id" = ${String(id)}`;
+  return row || null;
+}
+
+/** Only the owner moves an initiative to approved (via a proposal); starting work needs approval first. */
+export function initiativeTransitionAllowed(from, to, byOwner) {
+  if (!INITIATIVE_STATUSES.includes(to)) return false;
+  if (from === to || byOwner) return true;
+  if (to === 'approved') return false;
+  if (to === 'active') return ['approved', 'active'].includes(from);
+  if (to === 'done') return from === 'active';
+  return true; // idea ↔ proposed, anything → dropped
+}
+
+export async function updateInitiative(id, patch, { byOwner = false } = {}, db = prisma) {
+  const current = await getInitiative(id, db);
+  if (!current) return null;
+  const status = patch.status || current.status;
+  if (!initiativeTransitionAllowed(current.status, status, byOwner)) {
+    throw Object.assign(new Error(`status ${current.status} → ${status} needs the owner's approval (propose it)`), { status: 409 });
+  }
+  const pick = (k, n) => (patch[k] != null ? clip(patch[k], n) : current[k]);
+  const next = {
+    title: pick('title', 200), hypothesis: pick('hypothesis', 2000), plan: pick('plan', 4000), metric: pick('metric', 300),
+    target: pick('target', 300), progress: pick('progress', 4000), result: pick('result', 4000),
+    impact: patch.impact != null ? clampScore(patch.impact) : current.impact,
+    effort: patch.effort != null ? clampScore(patch.effort) : current.effort,
+    proposalId: patch.proposalId !== undefined ? patch.proposalId : current.proposalId,
+  };
+  await db.$executeRaw`UPDATE "DirectorInitiative" SET "title" = ${next.title}, "hypothesis" = ${next.hypothesis}, "plan" = ${next.plan},
+    "metric" = ${next.metric}, "target" = ${next.target}, "impact" = ${next.impact}, "effort" = ${next.effort}, "status" = ${status},
+    "progress" = ${next.progress}, "result" = ${next.result}, "proposalId" = ${next.proposalId}, "updatedAt" = NOW() WHERE "id" = ${String(id)}`;
+  return getInitiative(id, db);
+}
+
+export async function listInitiatives({ includeClosed = true } = {}, db = prisma) {
+  await ensureDirectorTables(db);
+  if (includeClosed) return db.$queryRaw`SELECT * FROM "DirectorInitiative" ORDER BY "updatedAt" DESC LIMIT 100`;
+  return db.$queryRaw`SELECT * FROM "DirectorInitiative" WHERE "status" NOT IN ('done', 'dropped') ORDER BY "updatedAt" DESC LIMIT 100`;
+}
+
+export async function addReport({ kind, title, body }, db = prisma) {
+  await ensureDirectorTables(db);
+  const id = randomUUID();
+  await db.$executeRaw`INSERT INTO "DirectorReport" ("id", "kind", "title", "body")
+    VALUES (${id}, ${REPORT_KINDS.includes(kind) ? kind : 'analysis'}, ${clip(title, 200)}, ${clip(body, 20000)})`;
+  return id;
+}
+
+export async function listReports({ limit = 20, withBody = true } = {}, db = prisma) {
+  await ensureDirectorTables(db);
+  const lim = Math.min(100, Number(limit) || 20);
+  if (withBody) return db.$queryRaw`SELECT * FROM "DirectorReport" ORDER BY "createdAt" DESC LIMIT ${lim}`;
+  return db.$queryRaw`SELECT "id", "kind", "title", "createdAt" FROM "DirectorReport" ORDER BY "createdAt" DESC LIMIT ${lim}`;
+}
+
+export async function getReport(id, db = prisma) {
+  await ensureDirectorTables(db);
+  const [row] = await db.$queryRaw`SELECT * FROM "DirectorReport" WHERE "id" = ${String(id)}`;
+  return row || null;
 }
 
 // ── state ────────────────────────────────────────────────────────────────────

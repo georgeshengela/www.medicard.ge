@@ -14,6 +14,7 @@ import { writeAdminAudit } from '../lib/adminAudit.js';
 import * as store from '../lib/director/store.js';
 import * as tg from '../lib/director/telegram.js';
 import { buildDirectorSnapshot } from '../lib/director/snapshot.js';
+import { buildDeepAnalytics } from '../lib/director/analytics.js';
 import { routineConfigured, wakeBrain } from '../lib/director/trigger.js';
 import { decideFromAdmin, handleTelegramUpdate, notifyOwner, ownerWroteFromAdmin, sendProposal } from '../lib/director/service.js';
 import { DIRECTOR_MODEL, llmConfigured, usageToday } from '../lib/director/llm.js';
@@ -30,12 +31,14 @@ adminDirectorRouter.use(requireAdmin, noStore, (req, res, next) => {
 });
 
 async function overview() {
-  const [state, messages, proposals, journal, memory] = await Promise.all([
+  const [state, messages, proposals, journal, memory, initiatives, reports] = await Promise.all([
     store.getState(),
     store.listMessages({ limit: 60 }),
     store.listProposals({ limit: 60 }),
     store.listJournal({ limit: 40 }),
     store.readMemory(),
+    store.listInitiatives(),
+    store.listReports({ limit: 20 }),
   ]);
   let bot = null;
   let webhook = null;
@@ -62,7 +65,7 @@ async function overview() {
       routine: routineConfigured(),
       live: llmConfigured() ? { model: DIRECTOR_MODEL(), ...(await usageToday().catch(() => ({}))) } : null,
     },
-    messages, proposals, journal, memory,
+    messages, proposals, journal, memory, initiatives, reports,
   };
 }
 
@@ -157,7 +160,7 @@ directorRouter.use('/brain', requireBrain, brain);
 /** Everything the brain needs for one run, in one call. */
 brain.get('/context', asyncHandler(async (_req, res) => {
   await store.touchState('lastBrainAt');
-  const [state, inbox, decisions, pending, memory, journal, recent, snapshot] = await Promise.all([
+  const [state, inbox, decisions, pending, memory, journal, recent, snapshot, initiatives, reports] = await Promise.all([
     store.getState(),
     store.unhandledOwnerMessages(),
     store.openDecisions(),
@@ -166,6 +169,8 @@ brain.get('/context', asyncHandler(async (_req, res) => {
     store.listJournal({ limit: 30 }),
     store.listMessages({ limit: 30 }),
     buildDirectorSnapshot(),
+    store.listInitiatives({ includeClosed: false }),
+    store.listReports({ limit: 10, withBody: false }),
   ]);
   res.json({
     now: new Date().toISOString(),
@@ -177,8 +182,65 @@ brain.get('/context', asyncHandler(async (_req, res) => {
     journal: journal.map((j) => ({ kind: j.kind, summary: j.summary, at: j.createdAt })),
     conversation: recent.map((m) => ({ from: m.direction, text: m.text.slice(0, 1500), at: m.createdAt })),
     metrics: snapshot,
+    initiatives: initiatives.map((i) => ({ id: i.id, title: i.title, area: i.area, status: i.status, metric: i.metric, target: i.target, impact: i.impact, effort: i.effort, progress: i.progress, updatedAt: i.updatedAt })),
+    recentReports: reports.map((r) => ({ id: r.id, kind: r.kind, title: r.title, at: r.createdAt })),
   });
 }));
+
+/** 30-day series, feature usage week over week, AI modes, app versions, weekly cohorts. Counts only. */
+brain.get('/analytics', asyncHandler(async (_req, res) => res.json(await buildDeepAnalytics())));
+
+const initiativeBody = z.object({
+  title: z.string().trim().min(3).max(200),
+  area: z.enum(store.INITIATIVE_AREAS),
+  hypothesis: z.string().trim().max(2000).default(''),
+  plan: z.string().trim().max(4000).default(''),
+  metric: z.string().trim().max(300).default(''),
+  target: z.string().trim().max(300).default(''),
+  impact: z.number().int().min(1).max(5).default(3),
+  effort: z.number().int().min(1).max(5).default(3),
+});
+brain.get('/initiatives', asyncHandler(async (_req, res) => res.json(await store.listInitiatives())));
+brain.post('/initiatives', requireOnShift, asyncHandler(async (req, res) => {
+  const i = await store.createInitiative(initiativeBody.parse(req.body));
+  await store.addJournal({ kind: 'note', summary: `ახალი იდეა: ${i.title}` });
+  res.status(201).json(i);
+}));
+const initiativePatch = initiativeBody.partial().extend({
+  status: z.enum(store.INITIATIVE_STATUSES).optional(),
+  progress: z.string().trim().max(4000).optional(),
+  result: z.string().trim().max(4000).optional(),
+});
+brain.patch('/initiatives/:id', requireOnShift, asyncHandler(async (req, res) => {
+  const i = await store.updateInitiative(req.params.id, initiativePatch.parse(req.body));
+  if (!i) return res.status(404).json({ error: 'unknown initiative' });
+  res.json(i);
+}));
+/** Asks the owner to approve an initiative (✅ moves it to approved). */
+brain.post('/initiatives/:id/propose', requireOnShift, asyncHandler(async (req, res) => {
+  const i = await store.getInitiative(req.params.id);
+  if (!i) return res.status(404).json({ error: 'unknown initiative' });
+  if (!['idea', 'proposed'].includes(i.status)) return res.status(409).json({ error: `already ${i.status}` });
+  const body = [
+    i.hypothesis && `ჰიპოთეზა: ${i.hypothesis}`,
+    i.plan && `გეგმა: ${i.plan}`,
+    (i.metric || i.target) && `საზომი: ${i.metric}${i.target ? ` → ${i.target}` : ''}`,
+    `ეფექტი ${i.impact}/5 · ძალისხმევა ${i.effort}/5`,
+  ].filter(Boolean).join('\n\n');
+  const p = await store.createProposal({ kind: 'decision', title: `ინიციატივა: ${i.title}`, body, payload: { action: 'initiative', initiativeId: i.id } });
+  await store.updateInitiative(i.id, { status: 'proposed', proposalId: p.id });
+  const sent = await sendProposal(p);
+  res.status(201).json({ ok: true, proposalId: p.id, delivered: sent.delivered });
+}));
+
+const reportBody = z.object({ kind: z.enum(store.REPORT_KINDS), title: z.string().trim().min(3).max(200), body: z.string().trim().min(10).max(20000) });
+brain.post('/reports', requireOnShift, asyncHandler(async (req, res) => {
+  const r = reportBody.parse(req.body);
+  const id = await store.addReport(r);
+  await store.addJournal({ kind: r.kind === 'weekly' ? 'brief' : 'note', summary: `ანგარიში: ${r.title}` });
+  res.status(201).json({ ok: true, id });
+}));
+brain.get('/reports', asyncHandler(async (_req, res) => res.json(await store.listReports({ limit: 20 }))));
 
 const sayBody = z.object({ text: z.string().trim().min(1).max(8000), handled: z.array(z.string()).max(100).optional() });
 brain.post('/say', requireOnShift, asyncHandler(async (req, res) => {

@@ -67,6 +67,9 @@ async function decide(proposalId, approve, via, { note } = {}) {
   if (!p) return null;
   await store.addJournal({ kind: 'note', summary: `${approve ? 'დადასტურდა' : 'უარყოფილია'}: ${p.title}`, data: { proposalId: p.id, via } });
   if (!approve) {
+    if (p.payload?.action === 'initiative') {
+      await store.updateInitiative(p.payload.initiativeId, { status: 'dropped', result: note ? `შენი შენიშვნა: ${note}` : 'უარყო მფლობელმა' }, { byOwner: true }).catch(() => {});
+    }
     await notifyOwner(`❌ გასაგებია, „${p.title}“ არ კეთდება.`, { direction: 'system' });
     return p;
   }

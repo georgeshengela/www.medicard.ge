@@ -174,6 +174,58 @@
     </section>`;
   }
 
+  const AREA = { growth: 'ზრდა', marketing: 'მარკეტინგი', content: 'კონტენტი', product: 'პროდუქტი', retention: 'შენარჩუნება', partnerships: 'პარტნიორობა', analytics: 'ანალიტიკა', ops: 'ოპერაციები' };
+  const COLUMNS = [
+    ['იდეები', ['idea']],
+    ['შენს თანხმობას ელოდება', ['proposed']],
+    ['მიმდინარე', ['approved', 'active']],
+    ['შედეგი', ['done', 'dropped']],
+  ];
+  const REPORT_KIND = { plan: 'დღის გეგმა', daily: 'ბრიფი', evening: 'საღამოს ანგარიში', weekly: 'კვირის ანგარიში', analysis: 'ანალიზი', research: 'კვლევა', content: 'კონტენტი' };
+
+  function initiativeCard(i) {
+    const lines = [
+      i.hypothesis && `<strong>ჰიპოთეზა:</strong> ${esc(i.hypothesis)}`,
+      i.plan && `<strong>გეგმა:</strong> ${esc(i.plan)}`,
+      (i.metric || i.target) && `<strong>საზომი:</strong> ${esc(i.metric)}${i.target ? ` → ${esc(i.target)}` : ''}`,
+      i.progress && `<strong>პროგრესი:</strong> ${esc(i.progress)}`,
+      i.result && `<strong>შედეგი:</strong> ${esc(i.result)}`,
+    ].filter(Boolean).join('\n');
+    const statusBadge = i.status === 'dropped' ? '<span class="s-badge is-bad is-plain">შეწყდა</span>'
+      : i.status === 'done' ? '<span class="s-badge is-ok is-plain">დასრულდა</span>'
+        : i.status === 'approved' ? '<span class="s-badge is-info is-plain">დამტკიცდა</span>' : '';
+    return `<details class="dr-init"><summary><b>${esc(i.title)}</b>
+        <div class="dr-init-meta"><span class="s-badge is-plain">${esc(AREA[i.area] || i.area)}</span><span class="s-badge is-plain" title="ეფექტი / ძალისხმევა">${i.impact}/${i.effort}</span>${statusBadge}</div></summary>
+        ${lines ? `<div class="dr-init-body">${lines}</div>` : ''}</details>`;
+  }
+
+  function planCard(d) {
+    const list = d.initiatives || [];
+    const goals = (d.memory || []).find((m) => m.key === 'goals' || m.key === 'strategy');
+    const cols = COLUMNS.map(([label, statuses]) => {
+      const items = list.filter((i) => statuses.includes(i.status));
+      return `<div class="dr-col"><header><span>${esc(label)}</span><i>${items.length}</i></header>
+        ${items.length ? items.map(initiativeCard).join('') : '<div class="dr-col-empty">—</div>'}</div>`;
+    }).join('');
+    return `<section class="s-card">
+      <header class="s-card-head"><div><h3>გეგმა</h3><p>დირექტორის ინიციატივები: იდეა → შენი ✅ → მუშაობა → შედეგი. ბარათს დააჭირე დეტალებისთვის.</p></div></header>
+      ${goals ? `<div class="s-callout dr-goals">${ico('zap')}<p><b>მიზნები:</b>\n${esc(goals.value)}</p></div>` : ''}
+      ${list.length ? `<div class="dr-board">${cols}</div>` : `<div class="s-empty">${ico('spark')}<strong>გეგმა ჯერ ცარიელია</strong><span>დირექტორი პირველ იდეებს დილის სესიაზე ჩაწერს.</span></div>`}
+    </section>`;
+  }
+
+  function reportsCard(d) {
+    const list = d.reports || [];
+    return `<section class="s-card">
+      <header class="s-card-head"><div><h3>ანგარიშები</h3><p>დღის გეგმები, საღამოს ანგარიშები, ანალიზი და კვლევა — რას აკეთებს და რას ფიქრობს დირექტორი.</p></div></header>
+      <div class="s-card-body is-flush">
+        ${list.length ? list.map((r, n) => `<details class="dr-report"${n === 0 ? ' open' : ''}><summary><span class="s-badge is-plain">${esc(REPORT_KIND[r.kind] || r.kind)}</span><b>${esc(r.title)}</b><time>${esc(when(r.createdAt))}</time></summary>
+          <div class="dr-report-body">${esc(r.body)}</div></details>`).join('')
+          : `<div class="s-empty">${ico('file')}<strong>ანგარიშები ჯერ არ არის</strong><span>პირველი დილის სესიის შემდეგ გამოჩნდება.</span></div>`}
+      </div>
+    </section>`;
+  }
+
   function journalCard(d) {
     const mem = d.memory || [];
     return `<section class="s-card">
@@ -193,6 +245,8 @@
       ${heroCard(data)}
       ${left ? setupCard(data, left) : ''}
       <div class="dr-grid">${proposalsCard(data)}${chatCard(data)}</div>
+      ${planCard(data)}
+      ${reportsCard(data)}
       ${journalCard(data)}
       ${left ? '' : setupCard(data, 0)}
     </div>`;
