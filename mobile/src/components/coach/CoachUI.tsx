@@ -131,12 +131,14 @@ export function Badge({ label, tone = 'neutral' }: { label: string; tone?: 'ok' 
   );
 }
 
-export function Avatar({ avatarId, name, size = 44, verified }: { avatarId?: string | null; name: string; size?: number; verified?: boolean }) {
+export function Avatar({ avatarId, photoUrl, name, size = 44, verified }: { avatarId?: string | null; photoUrl?: string | null; name: string; size?: number; verified?: boolean }) {
   const c = useThemeColors();
   const letter = (name || '?').trim().slice(0, 1).toUpperCase();
   return (
     <View style={{ width: size, height: size }}>
-      {avatarId && isAvatarId(avatarId) ? (
+      {photoUrl ? (
+        <PrivateImage path={photoUrl} label={name} style={{ width: size, height: size, borderRadius: size / 2 }} />
+      ) : avatarId && isAvatarId(avatarId) ? (
         <Image source={AVATAR_SOURCES[avatarId]} style={{ width: size, height: size, borderRadius: size / 2 }} accessibilityIgnoresInvertColors />
       ) : (
         <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c.accent100, alignItems: 'center', justifyContent: 'center' }}>

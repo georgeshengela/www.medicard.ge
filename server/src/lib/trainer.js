@@ -382,6 +382,7 @@ export function sessionPublic(s, { gyms = new Map(), people = new Map() } = {}) 
     clientId: s.clientId ?? null,
     clientName: person?.name ?? null,
     clientAvatarId: person?.avatarId ?? null,
+    clientAvatarUrl: person?.avatarUrl ?? null,
     startsAt: new Date(s.startsAt).toISOString(),
     durationMin: s.durationMin,
     kind: s.kind,

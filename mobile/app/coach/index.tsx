@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, Share, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { AlertTriangle, CalendarPlus, Check, CheckCircle2, ChevronRight, Info, Sparkles, UserPlus, X } from 'lucide-react-native';
+import { AlertTriangle, CalendarPlus, ScanLine, Check, CheckCircle2, ChevronRight, Info, Sparkles, UserPlus, X } from 'lucide-react-native';
 import { api, ApiError } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
 import { SESSION_STATUS_LABEL, clockOf, coachLink, type CoachToday } from '@/lib/coach';
@@ -63,9 +63,14 @@ export default function CoachTodayScreen() {
         setRefreshing(false);
       }}
       right={
-        <Pressable accessibilityRole="button" accessibilityLabel="ვარჯიშის დანიშვნა" onPress={() => router.push('/coach/session-new' as never)} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#14B8A6', alignItems: 'center', justifyContent: 'center' }}>
-          <CalendarPlus size={22} color="#FFFFFF" />
-        </Pressable>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="კლიენტის QR-ის სკანირება" onPress={() => router.push('/coach/scan' as never)} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+            <ScanLine size={21} color="#FFFFFF" />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="ვარჯიშის დანიშვნა" onPress={() => router.push('/coach/session-new' as never)} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#14B8A6', alignItems: 'center', justifyContent: 'center' }}>
+            <CalendarPlus size={22} color="#FFFFFF" />
+          </Pressable>
+        </View>
       }
     >
       <CoachGate error={error} />
@@ -84,7 +89,7 @@ export default function CoachTodayScreen() {
               {data.requests.map((r) => (
                 <Card key={r.linkId} style={{ gap: 10, marginBottom: 10 }}>
                   <View style={coachStyles.row}>
-                    <Avatar avatarId={r.avatarId} name={r.name} />
+                    <Avatar avatarId={r.avatarId} photoUrl={r.avatarUrl} name={r.name} />
                     <View style={{ flex: 1 }}>
                       <Text style={[hubText.cardTitle, { color: c.text100 }]}>{r.name}</Text>
                       <Text style={[hubText.caption, { color: c.text300 }]}>{[r.age ? `${r.age} წ.` : null, r.gender === 'FEMALE' ? 'ქალი' : r.gender === 'MALE' ? 'კაცი' : null].filter(Boolean).join(' · ') || 'ახალი კლიენტი'}</Text>
@@ -119,7 +124,7 @@ export default function CoachTodayScreen() {
                         <Text style={[hubText.small, { color: c.text300 }]}>{s.durationMin} წთ</Text>
                       </View>
                       <View style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, backgroundColor: isNext ? '#14B8A6' : c.bg300 }} />
-                      {s.clientId ? <Avatar avatarId={s.clientAvatarId} name={s.clientName ?? '?'} size={36} /> : null}
+                      {s.clientId ? <Avatar avatarId={s.clientAvatarId} photoUrl={s.clientAvatarUrl} name={s.clientName ?? '?'} size={36} /> : null}
                       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                         <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>{s.clientName ?? 'თავისუფალი სლოტი'}</Text>
                         <Text numberOfLines={1} style={[hubText.caption, { color: c.text300 }]}>
@@ -176,10 +181,11 @@ export default function CoachTodayScreen() {
                   <IconTile icon={UserPlus} ink="teal" />
                   <View style={{ flex: 1 }}>
                     <Text style={[hubText.cardTitle, { color: c.text100 }]}>შენი კოდი: {code}</Text>
-                    <Text style={[hubText.caption, { color: c.text300 }]}>კლიენტი კოდს შეიყვანს „ჩემი ტრენერი“-ში და თანხმობას მოგცემს.</Text>
+                    <Text style={[hubText.caption, { color: c.text300 }]}>ან დაასკანერე კლიენტის QR — მოწვევა მაშინვე მიუვა და თანხმობას თავად მოგცემს.</Text>
                   </View>
                 </View>
-                <Button label="მოწვევის გაზიარება" onPress={invite} />
+                <Button label="კლიენტის QR-ის სკანირება" icon={ScanLine} onPress={() => router.push('/coach/scan' as never)} />
+                <Button label="კოდის გაზიარება" kind="secondary" onPress={invite} />
               </Card>
             </Section>
           ) : null}

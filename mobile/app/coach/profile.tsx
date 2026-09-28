@@ -6,8 +6,10 @@ import { api } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
 import { coachLink, type CoachCatalog, type OwnTrainerProfile } from '@/lib/coach';
 import { CoachGate, CoachShell } from '@/components/coach/CoachShell';
+import { StyledQr } from '@/components/coach/StyledQr';
 import { Avatar, Badge, Button, Card, Chip, Loading, Section, coachStyles } from '@/components/coach/CoachUI';
 import { useAuth } from '@/store/AuthContext';
+import { useMyAvatarUrl } from '@/lib/myAvatar';
 import { HUB, hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
 
@@ -32,6 +34,7 @@ export default function CoachProfileScreen() {
   }, []);
   useFocusEffect(useCallback(() => void load(), [load]));
 
+  const myPhoto = useMyAvatarUrl();
   const avatarId = (healthProfile?.extraAnswers as { avatarId?: string } | undefined)?.avatarId ?? null;
   const share = () => p?.code && void Share.share({ message: `ვარჯიშები, კვების გეგმა და პროგრესი ერთად — MEDICARD-ში. შემომიერთდი ჩემი კოდით ${p.code}: ${coachLink(p.code)}` });
   const label = (k: string) => cat?.specialties.find((s) => s.key === k)?.label ?? k;
@@ -44,7 +47,7 @@ export default function CoachProfileScreen() {
         <>
           <Card style={{ marginTop: 16, gap: 12 }}>
             <View style={coachStyles.row}>
-              <Avatar avatarId={avatarId} name={p.displayName} size={64} verified={p.status === 'VERIFIED'} />
+              <Avatar avatarId={avatarId} photoUrl={myPhoto} name={p.displayName} size={64} verified={p.status === 'VERIFIED'} />
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 19 }]}>{p.displayName}</Text>
                 <View style={[coachStyles.row, { gap: 6, flexWrap: 'wrap' }]}>
@@ -79,11 +82,16 @@ export default function CoachProfileScreen() {
           </Card>
 
           {p.code ? (
-            <Section title="მოწვევის კოდი">
+            <Section title="ჩემი QR და კოდი">
               <View style={{ backgroundColor: HUB.spotlightBg, borderRadius: HUB.cardRadius, padding: 20, gap: 12, alignItems: 'center' }}>
-                <Text selectable style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 38, letterSpacing: 10, color: '#FFFFFF' }}>{p.code}</Text>
+                {p.link ? (
+                  <View style={{ padding: 10, backgroundColor: '#FFFFFF', borderRadius: 24 }}>
+                    <StyledQr value={p.link} size={210} />
+                  </View>
+                ) : null}
+                <Text selectable style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 34, letterSpacing: 10, color: '#FFFFFF' }}>{p.code}</Text>
                 <Text selectable style={[hubText.caption, { color: '#C5DADA' }]}>{p.link}</Text>
-                <Text style={[hubText.body, { color: '#C5DADA', textAlign: 'center' }]}>კლიენტი კოდს შეიყვანს „ჩემი ტრენერი“-ში, ან ბმულიდან პირდაპირ გაიხსნება აპი. თანხმობას თავად აირჩევს.</Text>
+                <Text style={[hubText.body, { color: '#C5DADA', textAlign: 'center' }]}>კლიენტი QR-ს დაასკანერებს „ჩემი ტრენერი“-დან (ან ტელეფონის კამერით), ან კოდს შეიყვანს. რას გაგიზიაროს, თავად აირჩევს.</Text>
                 <Button label="გაზიარება" icon={Share2} onPress={share} style={{ alignSelf: 'stretch' }} />
               </View>
             </Section>

@@ -32,6 +32,7 @@ import { startPushCampaignWorker } from './lib/pushCampaigns.js';
 import { objectStorageConfigured, objectStoragePublicHint } from './lib/objectStorage.js';
 import { adminReferralRouter, referralRouter } from './routes/referral.routes.js';
 import { adminTrainerRouter, trainerRouter } from './routes/trainer.routes.js';
+import { identityRouter } from './routes/identity.routes.js';
 import { startTrainerReminders } from './lib/trainerPush.js';
 import { adminFunnelRouter, funnelRouter } from './routes/funnel.routes.js';
 import { adminDirectorRouter, directorRouter } from './routes/director.routes.js';
@@ -277,6 +278,7 @@ app.use('/api/rewards', requireFeature('rewardsStore', { match: (req) => /\/rede
 app.use('/api/referrals', referralRouter);
 app.use('/api/trainer', requireFeature('coach'), trainerRouter);
 app.use('/api/admin/trainers', adminTrainerRouter);
+app.use('/api/identity', identityRouter);
 app.use('/api/admin/referrals', adminReferralRouter);
 app.use('/api/funnel', funnelRouter);
 app.use('/api/admin/funnel', adminFunnelRouter);
@@ -338,6 +340,10 @@ if (serveLanding) {
   app.get('/i/:code', (_req, res) => {
     res.set('Cache-Control', 'no-store');
     res.sendFile(path.join(PUBLIC_DIST, 'invite.html'));
+  });
+  app.get('/u/:token', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(PUBLIC_DIST, 'personal-qr.html'));
   });
   app.get('/c/:code', (_req, res) => {
     res.set('Cache-Control', 'no-store');

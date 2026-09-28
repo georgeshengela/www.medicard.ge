@@ -109,7 +109,7 @@ export default function TrainerSearchScreen() {
           renderItem={({ item: t }) => (
             <Card onPress={() => router.push(`/trainer/connect?trainerId=${encodeURIComponent(t.id)}` as never)} accessibilityLabel={`${t.displayName}, ტრენერი`} style={{ gap: 10 }}>
               <View style={coachStyles.row}>
-                <Avatar avatarId={t.avatarId} name={t.displayName} size={52} verified={t.verified} />
+                <Avatar avatarId={t.avatarId} photoUrl={t.avatarUrl} name={t.displayName} size={52} verified={t.verified} />
                 <View style={{ flex: 1, gap: 3 }}>
                   <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 16 }]}>{t.displayName}</Text>
                   <Text numberOfLines={1} style={[hubText.caption, { color: c.text300 }]}>{t.gyms.map((g) => `${g.brand} ${g.name}`).join(' · ')}</Text>

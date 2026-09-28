@@ -3311,6 +3311,20 @@ export const api = {
       }),
   },
 
+  /** Own photo avatar and personal QR (server /api/identity). */
+  identity: {
+    avatar: () => request<{ avatarUrl: string | null }>('/api/identity/avatar/me'),
+    uploadAvatar: async (file: UploadFile) => {
+      if (Platform.OS !== 'web') return uploadNativeMultipart<{ avatarUrl: string }>('/api/identity/avatar', file, 'file');
+      const fd = new FormData();
+      await appendUploadFile(fd, 'file', file);
+      return request<{ avatarUrl: string }>('/api/identity/avatar', { method: 'POST', formData: fd });
+    },
+    removeAvatar: () => request<{ avatarUrl: null }>('/api/identity/avatar', { method: 'DELETE' }),
+    qr: () => request<{ token: string; link: string }>('/api/identity/qr/me'),
+    rotateQr: () => request<{ token: string; link: string }>('/api/identity/qr/rotate', { method: 'POST' }),
+  },
+
   /** MEDI COACH — trainers, gyms, consented links, sessions, meal plans, progress photos (docs/TRAINER.md). */
   coach: {
     catalog: () => request<import('@/lib/coach').CoachCatalog>('/api/trainer/catalog'),
@@ -3362,8 +3376,13 @@ export const api = {
     },
     deletePhoto: (id: string) => request<{ ok: true }>(`/api/trainer/photos/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     syncWorkouts: (workouts: unknown[]) => request<{ saved: number; skipped?: string }>('/api/trainer/workouts/sync', { method: 'POST', body: { workouts } }),
+    acceptInvite: (scopes: import('@/lib/coach').CoachScopes, consentVersion: string) =>
+      request<import('@/lib/coach').ClientOverview>('/api/trainer/link/accept', { method: 'POST', body: { scopes, consentVersion } }),
+    scan: (token: string) => request<import('@/lib/coach').ScanPreview>('/api/trainer/coach/scan', { method: 'POST', body: { token } }),
+    invite: (token: string, note = '') => request<{ status: 'REQUESTED' | 'ACTIVE'; userId: string }>('/api/trainer/coach/invite', { method: 'POST', body: { token, note } }),
+    cancelInvite: (clientId: string) => request<{ ok: true }>(`/api/trainer/coach/invites/${encodeURIComponent(clientId)}`, { method: 'DELETE' }),
     today: () => request<import('@/lib/coach').CoachToday>('/api/trainer/coach/today'),
-    clients: () => request<{ clients: import('@/lib/coach').RosterClient[]; requests: import('@/lib/coach').RosterRequest[] }>('/api/trainer/coach/clients'),
+    clients: () => request<{ clients: import('@/lib/coach').RosterClient[]; requests: import('@/lib/coach').RosterRequest[]; invited: import('@/lib/coach').RosterInvite[] }>('/api/trainer/coach/clients'),
     answerRequest: (linkId: string, accept: boolean) =>
       request<{ link: { id: string; status: string } }>(`/api/trainer/coach/requests/${encodeURIComponent(linkId)}`, { method: 'POST', body: { accept } }),
     client: (clientId: string) => request<import('@/lib/coach').ClientDashboard>(`/api/trainer/coach/clients/${encodeURIComponent(clientId)}`),

@@ -133,7 +133,7 @@ export default function CoachSessionScreen() {
         <>
           <Card style={{ marginTop: 8, gap: 10 }} onPress={s.clientId ? () => router.push(`/coach/client/${s.clientId}` as never) : undefined}>
             <View style={coachStyles.row}>
-              {s.clientId ? <Avatar avatarId={s.clientAvatarId} name={s.clientName ?? '?'} size={48} /> : null}
+              {s.clientId ? <Avatar avatarId={s.clientAvatarId} photoUrl={s.clientAvatarUrl} name={s.clientName ?? '?'} size={48} /> : null}
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={[hubText.cardTitle, { color: c.text100 }]}>
                   {s.kindLabel}

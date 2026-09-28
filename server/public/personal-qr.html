@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ka" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEDICARD პროფილის QR</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="/favicon.png" />
+  <link rel="stylesheet" href="/landing.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <main class="hero" style="min-height:70vh;display:flex;align-items:center">
+    <div class="wrap" style="max-width:560px">
+      <p class="kicker">MEDICARD</p>
+      <h1 style="max-width:none;font-size:30px">ეს MEDICARD-ის პირადი QR კოდია</h1>
+      <p class="lead">
+        ფიტნეს ტრენერი ამ კოდს MEDICARD-ის აპიდან ასკანერებს და კლიენტად მოგიწვევს. რას გაუზიარებ, აპში შენ თავად ირჩევ.
+        ბრაუზერში ამ კოდით არაფერი ჩანს.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-cta" id="open-app" href="#">გახსენი MEDICARD-ში</a>
+        <a class="btn btn-ghost" href="/">საიტზე გადასვლა</a>
+      </div>
+    </div>
+  </main>
+  <script src="/landing.js"></script>
+  <script>
+    (function () {
+      var match = location.pathname.match(/\/u\/([A-Za-z0-9_-]{16,40})\/?$/);
+      var token = match ? match[1] : '';
+      var btn = document.getElementById('open-app');
+      if (!token) { btn.href = '/'; return; }
+      var android = /android/i.test(navigator.userAgent);
+      btn.href = android ? 'intent://u/' + token + '#Intent;scheme=medicard;package=ge.medicard.app;end' : 'medicard://u/' + token;
+    })();
+  </script>
+</body>
+</html>

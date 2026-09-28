@@ -78,3 +78,13 @@ test('trainer notifications may open coach and trainer screens', () => {
   assert.equal(isNotificationRoute('/coach'), true);
   assert.equal(isNotificationRoute('//evil.example/coach'), false);
 });
+
+import { classifyScan } from './coach.ts';
+
+test('scanned QR: person code vs trainer code vs anything else', () => {
+  assert.deepEqual(classifyScan('https://medicard.ge/u/AbCdEf0123456789_-xy'), { kind: 'person', token: 'AbCdEf0123456789_-xy' });
+  assert.deepEqual(classifyScan('medicard://u/AbCdEf0123456789_-xy'), { kind: 'person', token: 'AbCdEf0123456789_-xy' });
+  assert.deepEqual(classifyScan('https://medicard.ge/c/k7m2qx'), { kind: 'trainer', code: 'K7M2QX' });
+  assert.equal(classifyScan('https://evil.example/login'), null);
+  assert.equal(classifyScan(''), null);
+});

@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { CloudSun, Flame } from 'lucide-react-native';
 import { Meteocon, meteoconSlugFor } from '@/components/weather/Meteocon';
 import { AVATAR_SOURCES, isAvatarId } from '@/constants/avatarAssets';
+import { PrivateImage } from '@/components/coach/CoachUI';
+import { useMyAvatarUrl } from '@/lib/myAvatar';
 import { useWeather } from '@/hooks/useWeather';
 import { greeting } from '@/lib/format';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -21,6 +23,7 @@ type Props = {
  * (weather, streak) now lives as a small pill beside the date.
  */
 export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: Props) {
+  const myPhoto = useMyAvatarUrl();
   const narrow = useWindowDimensions().width < 360;
   const c = useThemeColors();
   const dark = useIsDark();
@@ -90,7 +93,9 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
         onPress={() => router.push('/(tabs)/profile' as never)}
         style={[s.avatar, { backgroundColor: c.accent100 }]}
       >
-        {isAvatarId(avatarId) ? (
+        {myPhoto ? (
+          <PrivateImage path={myPhoto} label="ჩემი პროფილი" style={{ width: 48, height: 48, borderRadius: 24 }} />
+        ) : isAvatarId(avatarId) ? (
           <Image source={AVATAR_SOURCES[avatarId]} style={{ width: 48, height: 48, borderRadius: 24 }} />
         ) : (
           <Text style={[s.avatarText, { color: c.primary100 }]}>{initial}</Text>

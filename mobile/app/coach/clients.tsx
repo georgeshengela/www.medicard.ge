@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, Share, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { AlertTriangle, Check, ChevronRight, Search, Share2, X } from 'lucide-react-native';
+import { AlertTriangle, Check, ChevronRight, ScanLine, Search, Share2, X } from 'lucide-react-native';
 import { api, ApiError } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
-import { coachLink, relativeStart, type RosterClient, type RosterRequest } from '@/lib/coach';
+import { coachLink, relativeStart, type RosterClient, type RosterInvite, type RosterRequest } from '@/lib/coach';
 import { CoachGate, CoachShell } from '@/components/coach/CoachShell';
 import { Avatar, Button, Card, DayStrip, EmptyNote, Input, Loading, Section, coachStyles } from '@/components/coach/CoachUI';
 import { hubText } from '@/theme/hub';
@@ -15,6 +15,7 @@ export default function CoachClientsScreen() {
   const c = useThemeColors();
   const [clients, setClients] = useState<RosterClient[] | null>(null);
   const [requests, setRequests] = useState<RosterRequest[]>([]);
+  const [invited, setInvited] = useState<RosterInvite[]>([]);
   const [code, setCode] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [error, setError] = useState<Error | null>(null);
@@ -27,6 +28,7 @@ export default function CoachClientsScreen() {
       if (localAccountId() !== owner) return;
       setClients(r.clients);
       setRequests(r.requests);
+      setInvited(r.invited ?? []);
       setCode(me.trainerProfile?.code ?? null);
       setError(null);
     } catch (e) {
@@ -57,11 +59,16 @@ export default function CoachClientsScreen() {
         setRefreshing(false);
       }}
       right={
-        code ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="კლიენტის მოწვევა" onPress={invite} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#14B8A6', alignItems: 'center', justifyContent: 'center' }}>
-            <Share2 size={20} color="#FFFFFF" />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {code ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="კოდის გაზიარება" onPress={invite} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+              <Share2 size={20} color="#FFFFFF" />
+            </Pressable>
+          ) : null}
+          <Pressable accessibilityRole="button" accessibilityLabel="კლიენტის QR-ის სკანირება" onPress={() => router.push('/coach/scan' as never)} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#14B8A6', alignItems: 'center', justifyContent: 'center' }}>
+            <ScanLine size={22} color="#FFFFFF" />
           </Pressable>
-        ) : null
+        </View>
       }
     >
       <CoachGate error={error} />
@@ -71,7 +78,7 @@ export default function CoachClientsScreen() {
           {requests.map((r) => (
             <Card key={r.linkId} style={{ marginBottom: 10, gap: 10 }}>
               <View style={coachStyles.row}>
-                <Avatar avatarId={r.avatarId} name={r.name} />
+                <Avatar avatarId={r.avatarId} photoUrl={r.avatarUrl} name={r.name} />
                 <View style={{ flex: 1 }}>
                   <Text style={[hubText.cardTitle, { color: c.text100 }]}>{r.name}</Text>
                   {r.note ? <Text style={[hubText.caption, { color: c.text200 }]}>„{r.note}“</Text> : null}
@@ -81,6 +88,27 @@ export default function CoachClientsScreen() {
                 </Pressable>
                 <Pressable accessibilityRole="button" accessibilityLabel="უარი" onPress={() => void answer(r.linkId, false)} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.bg200, alignItems: 'center', justifyContent: 'center' }}>
                   <X size={20} color={c.text100} />
+                </Pressable>
+              </View>
+            </Card>
+          ))}
+        </Section>
+      ) : null}
+
+      {invited.length ? (
+        <Section title="მოწვეული · ელოდება დასტურს">
+          {invited.map((r) => (
+            <Card key={r.linkId} style={{ marginBottom: 10, paddingVertical: 12 }}>
+              <View style={coachStyles.row}>
+                <Avatar avatarId={r.avatarId} photoUrl={r.avatarUrl} name={r.name} size={40} />
+                <Text style={[hubText.cardTitle, { color: c.text100, flex: 1 }]} numberOfLines={1}>{r.name}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="მოწვევის გაუქმება"
+                  onPress={() => void api.coach.cancelInvite(r.id).then(load).catch((e) => Alert.alert('ვერ მოხერხდა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.'))}
+                  hitSlop={8}
+                >
+                  <X size={18} color={c.text300} />
                 </Pressable>
               </View>
             </Card>
@@ -103,7 +131,7 @@ export default function CoachClientsScreen() {
               return (
                 <Card key={x.id} onPress={() => router.push(`/coach/client/${x.id}` as never)} style={{ marginBottom: 10, gap: 12 }} accessibilityLabel={`${x.name}, კლიენტი`}>
                   <View style={coachStyles.row}>
-                    <Avatar avatarId={x.avatarId} name={x.name} size={48} />
+                    <Avatar avatarId={x.avatarId} photoUrl={x.avatarUrl} name={x.name} size={48} />
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 16 }]}>{x.name}</Text>
                       <Text style={[hubText.caption, { color: c.text300 }]}>
@@ -157,8 +185,9 @@ export default function CoachClientsScreen() {
             })
           ) : (
             <Card style={{ gap: 12 }}>
-              <EmptyNote title="კლიენტები ჯერ არ გყავს" body={code ? `გაუზიარე კოდი ${code} — კლიენტი შეიყვანს „ჩემი ტრენერი“-ში და თავად აირჩევს, რას გაგიზიაროს.` : 'კოდი დადასტურების შემდეგ გამოჩნდება.'} />
-              {code ? <Button label="მოწვევის გაზიარება" icon={Share2} onPress={invite} /> : null}
+              <EmptyNote title="კლიენტები ჯერ არ გყავს" body="დარბაზში დაასკანერე კლიენტის QR (მის აპში: პროფილი → ჩემი QR) — მოწვევა მაშინვე მიუვა. ან გაუზიარე შენი კოდი." />
+              <Button label="კლიენტის QR-ის სკანირება" icon={ScanLine} onPress={() => router.push('/coach/scan' as never)} />
+              {code ? <Button label={`კოდის გაზიარება · ${code}`} icon={Share2} kind="secondary" onPress={invite} /> : null}
             </Card>
           )}
         </Section>

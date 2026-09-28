@@ -8,6 +8,7 @@ import { prisma } from './prisma.js';
 import { totals } from './nutrition.js';
 import { generateCode, normalizeCode } from './referral.js';
 import { gymsByIds, gymPublic } from './gyms.js';
+import { avatarUrl, userByQr } from './identity.js';
 import {
   CONSENT_VERSION,
   DEFAULT_SCOPES,
@@ -42,9 +43,9 @@ export async function peopleByIds(ids, db = prisma) {
   const list = [...new Set((ids || []).filter(Boolean))];
   if (!list.length) return new Map();
   const rows = await db.$queryRaw`SELECT u.id, u."fullName" AS name, u."birthDate", u.gender, u.status,
-      hp."heightCm", hp."extraAnswers"->>'avatarId' AS "avatarId"
-    FROM "User" u LEFT JOIN "HealthProfile" hp ON hp."userId" = u.id WHERE u.id = ANY(${list})`;
-  return new Map(rows.map((r) => [r.id, { ...r, name: firstName(r.name), fullName: r.name, age: ageFrom(r.birthDate) }]));
+      hp."heightCm", hp."extraAnswers"->>'avatarId' AS "avatarId", ua."updatedAt" AS "avatarAt"
+    FROM "User" u LEFT JOIN "HealthProfile" hp ON hp."userId" = u.id LEFT JOIN "UserAvatar" ua ON ua."userId" = u.id WHERE u.id = ANY(${list})`;
+  return new Map(rows.map((r) => [r.id, { ...r, name: firstName(r.name), fullName: r.name, age: ageFrom(r.birthDate), avatarUrl: avatarUrl(r.id, r.avatarAt) }]));
 }
 
 function firstName(full) {
@@ -164,6 +165,7 @@ export async function trainerCards(profiles, db = prisma) {
     id: p.userId,
     displayName: p.displayName,
     avatarId: people.get(p.userId)?.avatarId ?? null,
+    avatarUrl: people.get(p.userId)?.avatarUrl ?? null,
     bio: p.bio || '',
     specialties: asArray(p.specialties).map((k) => ({ key: k, label: SPECIALTIES[k] || k })),
     experienceYears: p.experienceYears ?? null,
@@ -223,13 +225,17 @@ export async function createLink(client, body, db = prisma) {
   if (trainer.userId === client.id) throw coachError(400, 'საკუთარ თავს კლიენტად ვერ დაამატებ.', 'OWN_TRAINER');
   const open = await openLinkForClient(client.id, db);
   if (open) {
+    // The trainer already invited this person by QR: entering the trainer's code is the acceptance.
+    if (open.trainerId === trainer.userId && open.status === 'REQUESTED' && open.initiator === 'TRAINER') {
+      return { link: await acceptInvite(client, { scopes: body.scopes, consentVersion: body.consentVersion }, db), trainer, created: true };
+    }
     if (open.trainerId === trainer.userId) return { link: open, trainer, created: false };
     throw coachError(409, 'უკვე გყავს ტრენერი. ახალთან დასაკავშირებლად ჯერ დაასრულე მიმდინარე.', 'ALREADY_LINKED');
   }
   const status = body.code ? 'ACTIVE' : 'REQUESTED';
   const scopes = normalizeScopes(body.scopes, DEFAULT_SCOPES);
-  const [link] = await db.$queryRaw`INSERT INTO "TrainerLink" (id, "trainerId", "clientId", status, scopes, "consentVersion", "clientNote", "acceptedAt")
-    VALUES (${randomUUID()}, ${trainer.userId}, ${client.id}, ${status}, ${JSON.stringify(scopes)}::jsonb, ${CONSENT_VERSION}, ${body.note || null},
+  const [link] = await db.$queryRaw`INSERT INTO "TrainerLink" (id, "trainerId", "clientId", status, initiator, scopes, "consentVersion", "clientNote", "acceptedAt")
+    VALUES (${randomUUID()}, ${trainer.userId}, ${client.id}, ${status}, 'CLIENT', ${JSON.stringify(scopes)}::jsonb, ${CONSENT_VERSION}, ${body.note || null},
       ${status === 'ACTIVE' ? new Date() : null})
     RETURNING *`;
   const [who] = [...(await peopleByIds([client.id], db)).values()];
@@ -263,7 +269,7 @@ export async function endLink({ linkId, by, actorId }, db = prisma) {
 export async function answerRequest(trainerId, linkId, accept, db = prisma) {
   if (!accept) return endLink({ linkId, by: 'TRAINER', actorId: trainerId }, db);
   const [link] = await db.$queryRaw`UPDATE "TrainerLink" SET status = 'ACTIVE', "acceptedAt" = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP
-    WHERE id = ${linkId} AND "trainerId" = ${trainerId} AND status = 'REQUESTED' RETURNING *`;
+    WHERE id = ${linkId} AND "trainerId" = ${trainerId} AND status = 'REQUESTED' AND initiator = 'CLIENT' RETURNING *`;
   if (!link) throw coachError(404, 'მოთხოვნა ვერ მოიძებნა.');
   const trainer = await getTrainerProfile(trainerId, db);
   void notifyCoach(link.clientId, { title: 'ტრენერმა დაგიდასტურა', body: `${trainer?.displayName ?? 'ტრენერი'} ახლა შენი ტრენერია.`, route: '/trainer' }, db);
@@ -281,6 +287,61 @@ export async function proposeGoal(trainerId, clientId, goal, db = prisma) {
 
 export async function clearGoalProposal(clientId, db = prisma) {
   await db.$executeRaw`UPDATE "TrainerLink" SET "proposedGoal" = NULL, "updatedAt" = CURRENT_TIMESTAMP WHERE "clientId" = ${clientId} AND status = 'ACTIVE'`;
+}
+
+// ——— QR: trainer scans a person's personal code ———
+
+/** What a verified trainer sees after scanning: identity only (no health data) and the link state. */
+export async function scanPreview(trainerId, token, db = prisma) {
+  const userId = await userByQr(token, db);
+  if (!userId) throw coachError(404, 'QR კოდი ვერ მოიძებნა ან განახლებულია. სთხოვე ადამიანს, გახსნას თავისი QR ხელახლა.', 'QR_NOT_FOUND');
+  if (userId === trainerId) throw coachError(400, 'ეს შენი საკუთარი QR კოდია.', 'OWN_QR');
+  const person = (await peopleByIds([userId], db)).get(userId);
+  if (!person || person.status !== 'ACTIVE') throw coachError(404, 'ანგარიში არ არის აქტიური.', 'QR_NOT_FOUND');
+  const open = await openLinkForClient(userId, db);
+  const mine = open && open.trainerId === trainerId ? open : null;
+  return {
+    token,
+    user: {
+      id: userId,
+      name: person.fullName,
+      avatarId: person.avatarId ?? null,
+      avatarUrl: person.avatarUrl ? `${person.avatarUrl}&qr=${encodeURIComponent(token)}` : null,
+      age: person.age,
+      gender: person.gender,
+    },
+    link: mine ? { id: mine.id, status: mine.status, initiator: mine.initiator || 'CLIENT' } : null,
+    hasOtherTrainer: Boolean(open && !mine),
+  };
+}
+
+/** Trainer invites the scanned person; nothing is shared until they accept in their app. */
+export async function inviteByQr(trainerId, token, note = '', db = prisma) {
+  const preview = await scanPreview(trainerId, token, db);
+  if (preview.hasOtherTrainer) throw coachError(409, 'ამ ადამიანს უკვე ჰყავს სხვა ტრენერი.', 'ALREADY_LINKED');
+  if (preview.link?.status === 'ACTIVE') throw coachError(409, 'უკვე შენი კლიენტია.', 'ALREADY_CLIENT');
+  if (preview.link?.status === 'REQUESTED' && preview.link.initiator === 'CLIENT') {
+    await answerRequest(trainerId, preview.link.id, true, db);
+    return { status: 'ACTIVE', userId: preview.user.id };
+  }
+  if (preview.link) return { status: 'REQUESTED', userId: preview.user.id };
+  await db.$queryRaw`INSERT INTO "TrainerLink" (id, "trainerId", "clientId", status, initiator, scopes, "clientNote")
+    VALUES (${randomUUID()}, ${trainerId}, ${preview.user.id}, 'REQUESTED', 'TRAINER', ${JSON.stringify(DEFAULT_SCOPES)}::jsonb, ${note || null})`;
+  const trainer = await getTrainerProfile(trainerId, db);
+  void notifyCoach(preview.user.id, { title: 'ტრენერი გიწვევს', body: `${trainer?.displayName ?? 'ტრენერი'} გთავაზობს ერთად ვარჯიშს. ნახე და გადაწყვიტე, რას გაუზიარებ.`, route: '/trainer' }, db);
+  return { status: 'REQUESTED', userId: preview.user.id };
+}
+
+/** Client accepts a trainer's QR invitation with explicit scopes (consent). */
+export async function acceptInvite(client, { scopes, consentVersion }, db = prisma) {
+  if (consentVersion !== CONSENT_VERSION) throw coachError(409, 'თანხმობის ტექსტი განახლდა. გადახედე და დაადასტურე ხელახლა.', 'CONSENT_OUTDATED');
+  const open = await openLinkForClient(client.id, db);
+  if (!open || open.status !== 'REQUESTED' || open.initiator !== 'TRAINER') throw coachError(404, 'მოწვევა ვერ მოიძებნა.', 'INVITE_NOT_FOUND');
+  const [link] = await db.$queryRaw`UPDATE "TrainerLink" SET status = 'ACTIVE', scopes = ${JSON.stringify(normalizeScopes(scopes, DEFAULT_SCOPES))}::jsonb,
+      "consentVersion" = ${CONSENT_VERSION}, "acceptedAt" = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${open.id} RETURNING *`;
+  const [who] = [...(await peopleByIds([client.id], db)).values()];
+  void notifyCoach(link.trainerId, { title: 'მოწვევა მიიღეს ✅', body: `${who?.name ?? 'კლიენტი'} შემოგიერთდა.`, route: `/coach/client/${client.id}` }, db);
+  return link;
 }
 
 // ——— sessions ———
@@ -616,7 +677,7 @@ export async function coachClientDashboard(trainerId, clientId, db = prisma) {
   ]);
   const person = people.get(clientId);
   const out = {
-    client: { id: clientId, name: person?.fullName ?? 'კლიენტი', firstName: person?.name, avatarId: person?.avatarId ?? null, age: person?.age ?? null, gender: person?.gender ?? null, heightCm: person?.heightCm ?? null },
+    client: { id: clientId, name: person?.fullName ?? 'კლიენტი', firstName: person?.name, avatarId: person?.avatarId ?? null, avatarUrl: person?.avatarUrl ?? null, age: person?.age ?? null, gender: person?.gender ?? null, heightCm: person?.heightCm ?? null },
     link: { id: link.id, since: link.acceptedAt, scopes, proposedGoal: link.proposedGoal ?? null, note: link.clientNote || '' },
     plan: mealPlanPublic(plan),
     sessions: await decorateSessions(sessions, db),
@@ -653,11 +714,13 @@ export async function coachClients(trainerId, db = prisma) {
   const next = new Map(nextRows.map((r) => [r.clientId, r.startsAt]));
   const clients = [];
   const requests = [];
+  const invited = [];
   for (const l of links) {
     const p = people.get(l.clientId);
-    const base = { linkId: l.id, id: l.clientId, name: p?.fullName ?? 'კლიენტი', avatarId: p?.avatarId ?? null, age: p?.age ?? null, gender: p?.gender ?? null };
+    const base = { linkId: l.id, id: l.clientId, name: p?.fullName ?? 'კლიენტი', avatarId: p?.avatarId ?? null, avatarUrl: p?.avatarUrl ?? null, age: p?.age ?? null, gender: p?.gender ?? null };
     if (l.status === 'REQUESTED') {
-      requests.push({ ...base, note: l.clientNote || '', createdAt: l.createdAt, scopes: normalizeScopes(l.scopes, {}) });
+      if (l.initiator === 'TRAINER') invited.push({ ...base, createdAt: l.createdAt });
+      else requests.push({ ...base, note: l.clientNote || '', createdAt: l.createdAt, scopes: normalizeScopes(l.scopes, {}) });
       continue;
     }
     const scopes = normalizeScopes(l.scopes, {});
@@ -682,7 +745,7 @@ export async function coachClients(trainerId, db = prisma) {
     alerts.push(...clientAlerts({ name: p?.name ?? 'კლიენტი', lastSession: last, today }));
     clients.push({ ...base, since: l.acceptedAt, scopes, week, kcalToday, weight, nextSession: next.get(l.clientId) ?? null, alerts });
   }
-  return { clients, requests };
+  return { clients, requests, invited };
 }
 
 export async function coachToday(trainerId, db = prisma) {
@@ -698,7 +761,7 @@ export async function coachToday(trainerId, db = prisma) {
   const [weekCount] = await db.$queryRaw`SELECT count(*)::int AS n FROM "TrainerSession" WHERE "trainerId" = ${trainerId} AND status = 'SCHEDULED' AND "startsAt" >= ${from} AND "startsAt" < ${weekTo}`;
   const [done30] = await db.$queryRaw`SELECT count(*) FILTER (WHERE status = 'DONE')::int AS done, count(*) FILTER (WHERE status = 'NO_SHOW')::int AS "noShow"
     FROM "TrainerSession" WHERE "trainerId" = ${trainerId} AND "startsAt" >= ${new Date(Date.now() - 30 * DAY)} AND "startsAt" < now()`;
-  const alerts = roster.clients.flatMap((c) => c.alerts.map((a) => ({ ...a, clientId: c.id, clientName: c.name, avatarId: c.avatarId })));
+  const alerts = roster.clients.flatMap((c) => c.alerts.map((a) => ({ ...a, clientId: c.id, clientName: c.name, avatarId: c.avatarId, avatarUrl: c.avatarUrl })));
   const rank = { warn: 0, info: 1, good: 2 };
   alerts.sort((a, b) => rank[a.tone] - rank[b.tone]);
   return {
@@ -729,7 +792,7 @@ export async function clientOverview(client, db = prisma) {
   const [stats] = await db.$queryRaw`SELECT count(*) FILTER (WHERE status = 'DONE')::int AS done, count(*) FILTER (WHERE status = 'NO_SHOW')::int AS "noShow"
     FROM "TrainerSession" WHERE "clientId" = ${client.id} AND "trainerId" = ${link.trainerId}`;
   return {
-    link: { id: link.id, status: link.status, scopes: normalizeScopes(link.scopes, {}), since: link.acceptedAt, createdAt: link.createdAt, proposedGoal: link.proposedGoal ?? null, trainerViewedAt: link.trainerViewedAt },
+    link: { id: link.id, status: link.status, initiator: link.initiator || 'CLIENT', scopes: normalizeScopes(link.scopes, {}), since: link.acceptedAt, createdAt: link.createdAt, proposedGoal: link.proposedGoal ?? null, trainerViewedAt: link.trainerViewedAt },
     trainer: card,
     upcoming: await decorateSessions(upcoming.filter((s) => ['SCHEDULED', 'CANCELLED'].includes(s.status) && new Date(s.startsAt).getTime() > now.getTime() - 3 * 3600000).slice(0, 30), db),
     openSlots: await decorateSessions(openSlots.slice(0, 40), db),
@@ -829,5 +892,6 @@ export async function coachFilesOf(userId, db = prisma) {
   if (!probe?.ok) return [];
   const photos = await db.$queryRaw`SELECT "fileKey" FROM "ProgressPhoto" WHERE "userId" = ${userId}`;
   const [profile] = await db.$queryRaw`SELECT certificates FROM "TrainerProfile" WHERE "userId" = ${userId}`;
-  return [...photos.map((p) => p.fileKey), ...asArray(profile?.certificates).map((c) => c.fileKey)].filter(Boolean);
+  const [avatar] = await db.$queryRaw`SELECT "fileKey" FROM "UserAvatar" WHERE "userId" = ${userId}`.catch(() => []);
+  return [...photos.map((p) => p.fileKey), ...asArray(profile?.certificates).map((c) => c.fileKey), avatar?.fileKey].filter(Boolean);
 }

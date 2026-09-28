@@ -119,7 +119,7 @@ export default function CoachCalendarScreen() {
                 <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 17, color: c.text100 }}>{clockOf(s.startsAt)}</Text>
                 <Text style={[hubText.small, { color: c.text300 }]}>{s.durationMin} წთ</Text>
               </View>
-              {s.clientId ? <Avatar avatarId={s.clientAvatarId} name={s.clientName ?? '?'} size={38} /> : null}
+              {s.clientId ? <Avatar avatarId={s.clientAvatarId} photoUrl={s.clientAvatarUrl} name={s.clientName ?? '?'} size={38} /> : null}
               <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                 <Text numberOfLines={1} style={[hubText.cardTitle, { color: s.status === 'CANCELLED' ? c.text300 : c.text100, textDecorationLine: s.status === 'CANCELLED' ? 'line-through' : 'none' }]}>{s.clientName ?? 'თავისუფალი სლოტი'}</Text>
                 <Text numberOfLines={1} style={[hubText.caption, { color: c.text300 }]}>

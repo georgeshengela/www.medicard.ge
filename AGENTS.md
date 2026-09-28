@@ -159,6 +159,15 @@ Gyms: `server/src/data/gyms-ge.json` (install adds missing rows only; admin edit
 `TIMESTAMPTZ`. Health workouts: Android needs the READ_EXERCISE / READ_ACTIVE_CALORIES_BURNED native build.
 No payments, no chat (not built: needs moderation/retention policy). Flag `coach`. See docs/TRAINER.md.
 
+Photo avatars + personal QR (2026-09-28, app 1.0.0.15.1): `UserAvatar` / `UserQr` tables
+(`prisma/20260928-avatar-qr.sql`, `install-avatar-qr.mjs`), API `/api/identity`. A photo is visible only to the
+person, open trainer↔client links, everyone for VERIFIED trainers, and a verified trainer holding the person's
+current QR token (`canViewAvatar`); the women's space never shows it. The personal QR is a random renewable
+token (`https://medicard.ge/u/TOKEN`), never the user id; a trainer's scan returns identity only and an invite
+(`TrainerLink.initiator = 'TRAINER'`) shares nothing until the client accepts with scopes. `StyledQr` geometry
+was verified with a decoder (round dots failed) — keep modules ≥ 0.47 cell and logo ≤ 20 %. Codes stay as a
+fallback until the owner says otherwise.
+
 ## Retired district competition (2026-09-19)
 
 The owner removed the district walking competition completely. Do not recreate its screens, sync, admin module, or database tables. MEDIRUN / MEDIPULSI remains the worldwide exploration game, accessible from Home; its duplicate Profile block is removed. Shared health totals and Pets remain independent.

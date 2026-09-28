@@ -17,7 +17,7 @@ import { useThemeColors } from '@/theme/colors';
 export default function ConnectTrainerScreen() {
   const router = useRouter();
   const c = useThemeColors();
-  const params = useLocalSearchParams<{ code?: string; trainerId?: string }>();
+  const params = useLocalSearchParams<{ code?: string; trainerId?: string; invite?: string }>();
   const [code, setCode] = useState(normalizeCoachCode(params.code) ?? '');
   const [trainer, setTrainer] = useState<TrainerCard | null>(null);
   const [consentVersion, setConsentVersion] = useState('');
@@ -27,6 +27,7 @@ export default function ConnectTrainerScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const viaSearch = Boolean(params.trainerId);
+  const viaInvite = params.invite === '1';
 
   const lookup = async (raw: string) => {
     const normalized = normalizeCoachCode(raw);
@@ -51,7 +52,18 @@ export default function ConnectTrainerScreen() {
   };
 
   useEffect(() => {
-    if (params.trainerId) {
+    if (viaInvite) {
+      setLoading(true);
+      void api.coach
+        .overview()
+        .then((ov) => {
+          setTrainer(ov.trainer ?? null);
+          setConsentVersion(ov.consentVersion ?? '');
+          if (!ov.link || ov.link.initiator !== 'TRAINER' || ov.link.status !== 'REQUESTED') setError('მოწვევა ვერ მოიძებნა ან უკვე დადასტურებულია.');
+        })
+        .catch(() => setError('მოწვევა ვერ ჩაიტვირთა.'))
+        .finally(() => setLoading(false));
+    } else if (params.trainerId) {
       setLoading(true);
       void api.coach
         .card(String(params.trainerId))
@@ -65,13 +77,14 @@ export default function ConnectTrainerScreen() {
       void lookup(String(params.code));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.trainerId, params.code]);
+  }, [params.trainerId, params.code, params.invite]);
 
   const submit = async () => {
     if (!trainer) return;
     setBusy(true);
     try {
-      await api.coach.link({ ...(viaSearch ? { trainerId: trainer.id } : { code }), scopes, consentVersion, note: note.trim() });
+      if (viaInvite) await api.coach.acceptInvite(scopes, consentVersion);
+      else await api.coach.link({ ...(viaSearch ? { trainerId: trainer.id } : { code }), scopes, consentVersion, note: note.trim() });
       invalidateCoachEntry();
       router.replace('/trainer' as never);
     } catch (e) {
@@ -83,12 +96,12 @@ export default function ConnectTrainerScreen() {
 
   return (
     <CoachForm
-      title={viaSearch ? 'მოთხოვნა ტრენერთან' : 'ტრენერთან დაკავშირება'}
+      title={viaInvite ? 'ტრენერის მოწვევა' : viaSearch ? 'მოთხოვნა ტრენერთან' : 'ტრენერთან დაკავშირება'}
       fallback="/trainer"
       footer={
         trainer ? (
           <>
-            <Button label={viaSearch ? 'მოთხოვნის გაგზავნა' : 'თანხმობა და დაკავშირება'} busy={busy} onPress={() => void submit()} />
+            <Button label={viaSearch ? 'მოთხოვნის გაგზავნა' : viaInvite ? 'თანხმობა და მოწვევის მიღება' : 'თანხმობა და დაკავშირება'} busy={busy} onPress={() => void submit()} />
             <Text style={[hubText.small, { color: c.text300, textAlign: 'center' }]}>გაზიარებას ნებისმიერ დროს შეცვლი ან შეწყვეტ „ჩემი ტრენერი“-დან.</Text>
           </>
         ) : (
@@ -96,7 +109,7 @@ export default function ConnectTrainerScreen() {
         )
       }
     >
-      {!viaSearch && !trainer ? (
+      {!viaSearch && !viaInvite && !trainer ? (
         <Field label="ტრენერის კოდი" hint="კოდს ტრენერი გაგიზიარებს — ის ჩანს მის ტრენერის პროფილში.">
           <Input
             value={code}
@@ -119,7 +132,7 @@ export default function ConnectTrainerScreen() {
         <>
           <Card style={{ marginTop: 12, gap: 12 }}>
             <View style={coachStyles.row}>
-              <Avatar avatarId={trainer.avatarId} name={trainer.displayName} size={60} verified={trainer.verified} />
+              <Avatar avatarId={trainer.avatarId} photoUrl={trainer.avatarUrl} name={trainer.displayName} size={60} verified={trainer.verified} />
               <View style={{ flex: 1, gap: 3 }}>
                 <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 18 }]}>{trainer.displayName}</Text>
                 <View style={[coachStyles.row, { gap: 6, flexWrap: 'wrap' }]}>

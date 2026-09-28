@@ -2776,6 +2776,7 @@ model TrainerLink {
   trainerId       String
   clientId        String
   status          String
+  initiator       String    @default("CLIENT")
   scopes          Json      @default("{}") @db.JsonB
   consentVersion  String?
   proposedGoal    Json?     @db.JsonB
@@ -2863,4 +2864,19 @@ model WorkoutLog {
 
   @@unique([userId, externalId], map: "WorkoutLog_external")
   @@index([userId, startedAt(sort: Desc)], map: "WorkoutLog_user_time")
+}
+
+/// Photo avatars and personal QR codes (2026-09-28) — raw SQL in prisma/20260928-avatar-qr.sql.
+/// TrainerLink.initiator is added there too (raw-SQL access only).
+model UserAvatar {
+  userId    String   @id
+  fileKey   String
+  updatedAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model UserQr {
+  userId    String    @id
+  token     String    @unique(map: "UserQr_token")
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  rotatedAt DateTime? @db.Timestamptz(3)
 }

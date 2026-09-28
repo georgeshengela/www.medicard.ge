@@ -150,3 +150,28 @@ test('photos and workouts: private URLs only; workout matched to the session win
   assert.equal(matchWorkout(session, w)?.id, 'w1');
   assert.equal(matchWorkout(session, [w[1]]), null);
 });
+
+import { avatarVisible, newQrToken, parseQrToken, qrLink, QR_TOKEN_RE } from './identity.js';
+
+test('personal QR: random token, parsed from a scanned URL, never the user id', () => {
+  const a = newQrToken();
+  const b = newQrToken();
+  assert.notEqual(a, b);
+  assert.match(a, QR_TOKEN_RE);
+  assert.equal(parseQrToken(qrLink(a)), a);
+  assert.equal(parseQrToken(`${qrLink(a)}?utm=x`), a);
+  assert.equal(parseQrToken(a), a);
+  assert.equal(parseQrToken('https://medicard.ge/c/K7M2QX'), null, 'a trainer code is not a personal QR');
+  assert.equal(parseQrToken('hello'), null);
+});
+
+test('avatar photo visibility', () => {
+  const base = { viewerId: 'v', targetId: 't' };
+  assert.equal(avatarVisible({ ...base, viewerId: 't' }), true, 'self');
+  assert.equal(avatarVisible({ ...base, targetIsVerifiedTrainer: true }), true, 'trainer card is public');
+  assert.equal(avatarVisible({ ...base, sharedOpenLink: true }), true, 'linked people');
+  assert.equal(avatarVisible({ ...base, viewerIsVerifiedTrainer: true, qrMatches: true }), true, 'scan preview');
+  assert.equal(avatarVisible({ ...base, viewerIsVerifiedTrainer: true, qrMatches: false }), false, 'trainer without the QR');
+  assert.equal(avatarVisible({ ...base, qrMatches: true }), false, 'non-trainer with a QR');
+  assert.equal(avatarVisible(base), false, 'stranger');
+});

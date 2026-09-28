@@ -14,6 +14,7 @@ export type TrainerCard = {
   id: string;
   displayName: string;
   avatarId: string | null;
+  avatarUrl?: string | null;
   bio: string;
   specialties: { key: string; label: string }[];
   experienceYears: number | null;
@@ -53,6 +54,7 @@ export type CoachSession = {
   clientId: string | null;
   clientName: string | null;
   clientAvatarId: string | null;
+  clientAvatarUrl?: string | null;
   startsAt: string;
   durationMin: number;
   kind: string;
@@ -88,7 +90,7 @@ export type NutritionDay = { date: string; meals: number; calories: number; prot
 export type GoalProposal = { type: 'lose' | 'gain' | 'recomp' | 'performance'; targetKg: number; deadlineYmd: string; note?: string; proposedAt: string };
 
 export type ClientOverview = {
-  link: null | { id: string; status: 'REQUESTED' | 'ACTIVE'; scopes: CoachScopes; since: string | null; createdAt: string; proposedGoal: GoalProposal | null; trainerViewedAt: string | null };
+  link: null | { id: string; status: 'REQUESTED' | 'ACTIVE'; initiator?: 'CLIENT' | 'TRAINER'; scopes: CoachScopes; since: string | null; createdAt: string; proposedGoal: GoalProposal | null; trainerViewedAt: string | null };
   trainer?: TrainerCard | null;
   upcoming?: CoachSession[];
   openSlots?: CoachSession[];
@@ -99,13 +101,14 @@ export type ClientOverview = {
   consentVersion?: string;
 };
 
-export type CoachAlert = { kind: string; tone: 'warn' | 'info' | 'good'; text: string; clientId?: string; clientName?: string; avatarId?: string | null };
+export type CoachAlert = { kind: string; tone: 'warn' | 'info' | 'good'; text: string; clientId?: string; clientName?: string; avatarId?: string | null; avatarUrl?: string | null };
 
 export type RosterClient = {
   linkId: string;
   id: string;
   name: string;
   avatarId: string | null;
+  avatarUrl?: string | null;
   age: number | null;
   gender: string | null;
   since?: string | null;
@@ -116,7 +119,26 @@ export type RosterClient = {
   nextSession: string | null;
   alerts: CoachAlert[];
 };
-export type RosterRequest = { linkId: string; id: string; name: string; avatarId: string | null; age: number | null; gender: string | null; note: string; createdAt: string; scopes: CoachScopes };
+export type RosterRequest = { linkId: string; id: string; name: string; avatarId: string | null; avatarUrl?: string | null; age: number | null; gender: string | null; note: string; createdAt: string; scopes: CoachScopes };
+
+export type RosterInvite = { linkId: string; id: string; name: string; avatarId: string | null; avatarUrl?: string | null; createdAt: string };
+
+export type ScanPreview = {
+  token: string;
+  user: { id: string; name: string; avatarId: string | null; avatarUrl: string | null; age: number | null; gender: string | null };
+  link: { id: string; status: 'REQUESTED' | 'ACTIVE'; initiator: 'CLIENT' | 'TRAINER' } | null;
+  hasOtherTrainer: boolean;
+};
+
+/** What a scanned QR is: a person's personal code (/u/TOKEN) or a trainer's invite (/c/CODE). */
+export function classifyScan(data: string): { kind: 'person'; token: string } | { kind: 'trainer'; code: string } | null {
+  const s = String(data ?? '').trim();
+  const person = s.match(/\/u\/([A-Za-z0-9_-]{16,40})(?:[/?#]|$)/);
+  if (person) return { kind: 'person', token: person[1] };
+  const trainer = s.match(/\/c\/([A-Za-z0-9]{6})(?:[/?#]|$)/);
+  const code = trainer ? normalizeCoachCode(trainer[1]) : null;
+  return code ? { kind: 'trainer', code } : null;
+}
 
 export type CoachToday = {
   today: string;
@@ -139,7 +161,7 @@ export type WeightData = {
 export type ProgressPhoto = { id: string; takenOn: string; pose: 'FRONT' | 'SIDE' | 'BACK' | 'OTHER'; weightKg: number | null; note: string; url: string };
 
 export type ClientDashboard = {
-  client: { id: string; name: string; firstName: string; avatarId: string | null; age: number | null; gender: string | null; heightCm: number | null };
+  client: { id: string; name: string; firstName: string; avatarId: string | null; avatarUrl?: string | null; age: number | null; gender: string | null; heightCm: number | null };
   link: { id: string; since: string | null; scopes: CoachScopes; proposedGoal: GoalProposal | null; note: string };
   plan: MealPlan | null;
   sessions: CoachSession[];

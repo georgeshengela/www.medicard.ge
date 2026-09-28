@@ -127,6 +127,13 @@ revocation, account deletion), `mobile/src/lib/coach.test.ts`; web build of ever
 the disposable DB (screens + admin). Not observed: OS push banners and native HealthKit/Health Connect reads
 on a device (needs the native build).
 
+**QR + photo avatars (app 1.0.0.15.1):** every person has a personal QR (Profile → QR icon → „ჩემი QR“, renewable).
+The trainer taps the scan button in the workspace (დღეს / კლიენტები), points the camera, sees name/photo/age/sex,
+taps „კლიენტად მოწვევა“; the client gets a push and an invitation card, reviews the consent screen and accepts.
+Trainers show their own QR (profile tab) for clients to scan from „ჩემი ტრენერი“. Codes remain as a fallback.
+Profile pictures: Profile → tap the avatar → camera/gallery (square crop, EXIF stripped server-side) or an
+illustrated avatar.
+
 Rules: never show a trainer data outside the ACTIVE link + scope (`requireClientAccess`); photos and certificates
 only through `servePrivateUpload` with an owner/scope check; no payments in the app; lock-screen push text never
 contains calories, weight or other health values; permission sheets only from a button.

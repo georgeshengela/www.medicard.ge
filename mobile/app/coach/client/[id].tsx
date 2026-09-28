@@ -115,7 +115,7 @@ export default function CoachClientScreen() {
           {d ? (
             <Card style={{ marginTop: 4, gap: 12 }}>
               <View style={coachStyles.row}>
-                <Avatar avatarId={d.client.avatarId} name={d.client.name} size={56} />
+                <Avatar avatarId={d.client.avatarId} photoUrl={d.client.avatarUrl} name={d.client.name} size={56} />
                 <View style={{ flex: 1, gap: 6 }}>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                     {(Object.keys(d.link.scopes) as CoachScope[]).map((k) => (

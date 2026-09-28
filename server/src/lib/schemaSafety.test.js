@@ -25,7 +25,7 @@ describe('schema safety', () => {
 
   it('raw-SQL tables are declared in the Prisma schema so nothing drops them', () => {
     const schema = read('../../prisma/schema.prisma');
-    for (const model of ['CommunityConfig', 'PriceDropAlert', 'CatalogPriceHistory', 'Referral', 'ReferralCode', 'FeatureFlag', 'UserLocation', 'EmailTemplate', 'EmailLog', 'EmailSuppression', 'EmailCampaign', 'SupportThread', 'SupportMessage', 'SupportSnippet', 'Gym', 'TrainerProfile', 'TrainerLink', 'TrainerSession', 'TrainerMealPlan', 'ProgressPhoto', 'WorkoutLog']) {
+    for (const model of ['CommunityConfig', 'PriceDropAlert', 'CatalogPriceHistory', 'Referral', 'ReferralCode', 'FeatureFlag', 'UserLocation', 'EmailTemplate', 'EmailLog', 'EmailSuppression', 'EmailCampaign', 'SupportThread', 'SupportMessage', 'SupportSnippet', 'Gym', 'TrainerProfile', 'TrainerLink', 'TrainerSession', 'TrainerMealPlan', 'ProgressPhoto', 'WorkoutLog', 'UserAvatar', 'UserQr']) {
       assert.match(schema, new RegExp(`^model ${model} \{`, 'm'), `${model} missing from schema.prisma`);
     }
   });

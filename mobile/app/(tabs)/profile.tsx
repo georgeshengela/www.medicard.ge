@@ -2,6 +2,8 @@ import React, { useCallback, useState } from 'react';
 import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
+  QrCode,
+  Camera,
   BellRing,
   FileText,
   Gift,
@@ -26,6 +28,8 @@ import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
 import { ProfileCoachSection } from '@/components/coach/CoachEntry';
+import { PrivateImage } from '@/components/coach/CoachUI';
+import { useMyAvatarUrl } from '@/lib/myAvatar';
 import { DeleteAccountModal } from '@/components/profile/DeleteAccountModal';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { ProfileVersionCard } from '@/components/profile/ProfileVersionCard';
@@ -157,6 +161,7 @@ export default function Profile() {
   const storedAvatar = typeof extra.avatarId === 'string' ? extra.avatarId : null;
   const avatarId = storedAvatar ? normalizeAvatarForGender(storedAvatar, user?.gender ?? null) : null;
   const avatarSource = avatarId && isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : null;
+  const myPhoto = useMyAvatarUrl();
 
   const bmi = healthProfile?.bmi ?? bmiFromWeight(healthProfile?.weightKg, healthProfile?.heightCm);
   const smoking = healthProfile?.smokingStatus != null ? optionLabel('smokingStatus', healthProfile.smokingStatus) : null;
@@ -202,8 +207,10 @@ export default function Profile() {
       <View style={[s.section, { marginTop: 8 }]}>
         <View style={[s.card, { backgroundColor: colors.surface, gap: 16 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <View
-              accessibilityLabel={profileAccent ? `${rewards.title} accent` : undefined}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="პროფილის სურათის შეცვლა"
+              onPress={() => router.push('/profile/avatar' as never)}
               style={{
                 width: 72,
                 height: 72,
@@ -213,13 +220,18 @@ export default function Profile() {
               }}
             >
               <View style={{ flex: 1, borderRadius: 33, overflow: 'hidden', backgroundColor: colors.accent100, alignItems: 'center', justifyContent: 'center' }}>
-                {avatarSource ? (
+                {myPhoto ? (
+                  <PrivateImage path={myPhoto} label="პროფილის ფოტო" style={{ width: 66, height: 66, borderRadius: 33 }} />
+                ) : avatarSource ? (
                   <Image source={avatarSource} resizeMode="contain" style={{ width: 66, height: 66, borderRadius: 33 }} />
                 ) : (
                   <Text style={[hubText.value, { fontSize: 20, color: colors.primary100 }]}>{initials || '·'}</Text>
                 )}
               </View>
-            </View>
+              <View style={{ position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12, backgroundColor: '#0D9488', borderWidth: 2, borderColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+                <Camera size={12} color="#FFFFFF" />
+              </View>
+            </Pressable>
             <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
               <Text numberOfLines={2} style={[s.name, { color: colors.text100 }]}>
                 {user?.fullName}
@@ -235,6 +247,14 @@ export default function Profile() {
                 </Text>
               ) : null}
             </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="ჩემი QR კოდი"
+              onPress={() => router.push('/profile/qr' as never)}
+              style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.accent100, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <QrCode size={22} color={colors.primary100} />
+            </Pressable>
           </View>
           {user?.email || user?.phone ? (
             <View style={{ gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.bg300, paddingTop: 12 }}>

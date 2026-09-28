@@ -97,7 +97,7 @@ export default function NewSessionScreen() {
             </ScrollView>
             {who ? (
               <View style={[coachStyles.row, { marginTop: 10 }]}>
-                <Avatar avatarId={who.avatarId} name={who.name} size={32} />
+                <Avatar avatarId={who.avatarId} photoUrl={who.avatarUrl} name={who.name} size={32} />
                 <Text style={[hubText.caption, { color: c.text200, flex: 1 }]}>{who.nextSession ? `შემდეგი ვარჯიში უკვე დაგეგმილია` : 'დაგეგმილი ვარჯიში არ აქვს'}</Text>
               </View>
             ) : null}

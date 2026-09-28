@@ -40,6 +40,7 @@ import {
 import * as store from '../lib/trainerStore.js';
 import { prisma } from '../lib/prisma.js';
 import { notifyCoach } from '../lib/trainerPush.js';
+import { parseQrToken } from '../lib/identity.js';
 
 /**
  * MEDI COACH (2026-09-28): gyms, trainer applications, consented client links, sessions, meal plans,
@@ -192,6 +193,13 @@ trainerRouter.post('/link', asyncHandler(async (req, res) => {
   res.status(created ? 201 : 200).json({ link: { id: link.id, status: link.status }, overview: await store.clientOverview(req.user) });
 }));
 
+// Client accepts a trainer's QR invitation, choosing what to share (consent).
+trainerRouter.post('/link/accept', asyncHandler(async (req, res) => {
+  const body = z.object({ scopes: z.record(z.string(), z.boolean()).optional(), consentVersion: z.literal(CONSENT_VERSION) }).parse(req.body ?? {});
+  await store.acceptInvite(req.user, body);
+  res.json(await store.clientOverview(req.user));
+}));
+
 trainerRouter.patch('/link', asyncHandler(async (req, res) => {
   const { scopes } = scopesSchema.parse(req.body ?? {});
   await store.updateScopes(req.user.id, scopes);
@@ -304,6 +312,31 @@ coach.get('/today', requireVerifiedTrainer, asyncHandler(async (req, res) => {
 
 coach.get('/clients', requireVerifiedTrainer, asyncHandler(async (req, res) => {
   res.json(await store.coachClients(req.user.id));
+}));
+
+const scanLimiter = rateLimit({ windowMs: 10 * 60_000, limit: 60, standardHeaders: true, legacyHeaders: false, validate: false, message: { error: 'ძალიან ბევრი სკანირება. სცადე ცოტა ხანში.', code: 'RATE_LIMITED' } });
+const tokenSchema = z.object({ token: z.string().trim().min(1).max(300), note: z.string().trim().max(300).optional().default('') });
+
+// Trainer scanned a person's personal QR: identity preview only (no health data).
+coach.post('/scan', scanLimiter, requireVerifiedTrainer, asyncHandler(async (req, res) => {
+  const { token: raw } = tokenSchema.parse(req.body ?? {});
+  const token = parseQrToken(raw);
+  if (!token) throw coachError(400, 'ეს MEDICARD-ის პროფილის QR კოდი არ არის.', 'QR_INVALID');
+  res.json(await store.scanPreview(req.user.id, token));
+}));
+
+coach.post('/invite', scanLimiter, requireVerifiedTrainer, asyncHandler(async (req, res) => {
+  const { token: raw, note } = tokenSchema.parse(req.body ?? {});
+  const token = parseQrToken(raw);
+  if (!token) throw coachError(400, 'ეს MEDICARD-ის პროფილის QR კოდი არ არის.', 'QR_INVALID');
+  res.status(201).json(await store.inviteByQr(req.user.id, token, note));
+}));
+
+coach.delete('/invites/:clientId', requireVerifiedTrainer, asyncHandler(async (req, res) => {
+  const [link] = await prisma.$queryRaw`SELECT id FROM "TrainerLink" WHERE "trainerId" = ${req.user.id} AND "clientId" = ${String(req.params.clientId)} AND status = 'REQUESTED' AND initiator = 'TRAINER'`;
+  if (!link) throw coachError(404, 'მოწვევა ვერ მოიძებნა.');
+  await store.endLink({ linkId: link.id, by: 'TRAINER', actorId: req.user.id });
+  res.json({ ok: true });
 }));
 
 coach.post('/requests/:linkId', requireVerifiedTrainer, asyncHandler(async (req, res) => {

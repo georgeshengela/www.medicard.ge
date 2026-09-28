@@ -8,6 +8,7 @@ import express from 'express';
 import sharp from 'sharp';
 import { prisma } from './prisma.js';
 import { trainerRouter } from '../routes/trainer.routes.js';
+import { identityRouter } from '../routes/identity.routes.js';
 import { errorHandler } from '../middleware/error.js';
 import { signToken } from '../middleware/auth.js';
 import { CONSENT_VERSION, addDaysYmd, tbilisiYmd } from './trainer.js';
@@ -43,6 +44,7 @@ describe('MEDI COACH HTTP flow', { timeout: 120_000 }, () => {
     const app = express();
     app.use(express.json({ limit: '2mb' }));
     app.use('/api/trainer', trainerRouter);
+    app.use('/api/identity', identityRouter);
     app.use(errorHandler);
     const http = await listen(app);
     const stamp = Date.now();
@@ -60,7 +62,7 @@ describe('MEDI COACH HTTP flow', { timeout: 120_000 }, () => {
         headers['Content-Type'] = 'application/json';
         payload = JSON.stringify(body);
       }
-      const res = await fetch(`${http.origin}/api/trainer${path}`, { method, headers, body: payload });
+      const res = await fetch(`${http.origin}${path.startsWith('/api/') ? path : `/api/trainer${path}`}`, { method, headers, body: payload });
       const type = res.headers.get('content-type') || '';
       return { status: res.status, type, body: type.includes('json') ? await res.json() : await res.arrayBuffer() };
     };
@@ -249,6 +251,48 @@ describe('MEDI COACH HTTP flow', { timeout: 120_000 }, () => {
       assert.equal((await call(trainer, 'GET', `/coach/photos/${pid}/file`)).status, 404);
       const [left] = await prisma.$queryRaw`SELECT count(*)::int AS n FROM "TrainerSession" WHERE "clientId" = ${client.id} AND status = 'SCHEDULED' AND "startsAt" > now()`;
       assert.equal(left.n, 0);
+
+      // Photo avatars: own upload; stranger cannot see it; linked trainer can
+      const up = await call(client2, 'POST', '/api/identity/avatar', undefined, { form: imageForm({}) });
+      assert.equal(up.status, 201, JSON.stringify(up.body));
+      assert.match(up.body.avatarUrl, /^\/api\/identity\/avatars\//);
+      assert.equal((await call(client2, 'GET', up.body.avatarUrl)).status, 200);
+      assert.equal((await call(outsider, 'GET', up.body.avatarUrl)).status, 404, 'strangers never see a photo');
+      assert.equal((await call(trainer, 'GET', up.body.avatarUrl)).status, 200, 'linked trainer sees it');
+      assert.equal((await call(trainer, 'GET', '/coach/clients')).body.clients.find((c) => c.id === client2.id).avatarUrl, up.body.avatarUrl);
+
+      // Personal QR: trainer scans, sees identity only, invites; client accepts with consent
+      const qr = await call(outsider, 'GET', '/api/identity/qr/me');
+      assert.match(qr.body.link, /^https:\/\/medicard\.ge\/u\//);
+      assert.equal((await call(outsider, 'GET', '/api/identity/qr/me')).body.token, qr.body.token, 'stable until rotated');
+      await call(outsider, 'POST', '/api/identity/avatar', undefined, { form: imageForm({}) });
+      assert.equal((await call(client, 'POST', '/coach/scan', { token: qr.body.link })).body.code, 'TRAINER_REQUIRED', 'only trainers scan');
+      const scanned = await call(trainer, 'POST', '/coach/scan', { token: qr.body.link });
+      assert.equal(scanned.status, 200, JSON.stringify(scanned.body));
+      assert.equal(scanned.body.user.name, 'გარე');
+      assert.equal(scanned.body.link, null);
+      assert.equal(JSON.stringify(scanned.body).includes('calories'), false, 'no health data in a scan');
+      assert.equal((await call(trainer, 'GET', scanned.body.user.avatarUrl)).status, 200, 'photo visible with the scanned QR');
+      assert.equal((await call(trainer, 'GET', scanned.body.user.avatarUrl.replace(/&qr=.*/, ''))).status, 404, 'but not without it');
+      assert.equal((await call(trainer, 'POST', '/coach/scan', { token: 'https://medicard.ge/c/K7M2QX' })).body.code, 'QR_INVALID');
+      const inv = await call(trainer, 'POST', '/coach/invite', { token: qr.body.token });
+      assert.equal(inv.body.status, 'REQUESTED');
+      const roster2 = await call(trainer, 'GET', '/coach/clients');
+      assert.equal(roster2.body.invited[0].id, outsider.id);
+      assert.equal(roster2.body.requests.some((r) => r.id === outsider.id), false, 'an invite is not a request the trainer can self-accept');
+      assert.equal((await call(trainer, 'POST', `/coach/requests/${(await prisma.$queryRaw`SELECT id FROM "TrainerLink" WHERE "clientId" = ${outsider.id}`)[0].id}`, { accept: true })).status, 404);
+      const pendingView = await call(outsider, 'GET', '/overview');
+      assert.equal(pendingView.body.link.status, 'REQUESTED');
+      assert.equal(pendingView.body.link.initiator, 'TRAINER');
+      assert.equal((await call(trainer, 'GET', `/coach/clients/${outsider.id}`)).body.code, 'LINK_NOT_ACTIVE', 'no data before consent');
+      assert.equal((await call(outsider, 'POST', '/link/accept', { scopes: { photos: false }, consentVersion: 'old' })).status, 400);
+      const accepted = await call(outsider, 'POST', '/link/accept', { scopes: { nutrition: false, photos: false }, consentVersion: CONSENT_VERSION });
+      assert.equal(accepted.body.link.status, 'ACTIVE');
+      assert.equal(accepted.body.link.scopes.nutrition, false);
+      assert.equal((await call(trainer, 'GET', `/coach/clients/${outsider.id}`)).body.nutrition, null, 'declined scope stays hidden');
+      const rotated = await call(outsider, 'POST', '/api/identity/qr/rotate');
+      assert.notEqual(rotated.body.token, qr.body.token);
+      assert.equal((await call(trainer, 'POST', '/coach/scan', { token: qr.body.token })).body.code, 'QR_NOT_FOUND', 'old code stops working');
 
       // Account deletion removes the person's coach rows
       const del = await deleteUserAccount(client.id);

@@ -8,6 +8,8 @@ import {
   ChevronRight,
   Dumbbell,
   KeyRound,
+  QrCode,
+  ScanLine,
   MapPin,
   Search,
   ShieldCheck,
@@ -30,6 +32,7 @@ import {
   type CoachSession,
 } from '@/lib/coach';
 import { syncCoachWorkouts } from '@/lib/coachWorkouts';
+import { confirmAction } from '@/lib/confirmAction';
 import { loadWeightLogs, saveWeightGoal } from '@/lib/weightGoal';
 import { Avatar, Badge, Button, CTA, Card, Chip, CoachHeader, DayStrip, ErrorBox, IconTile, Loading, Screen, Section, Stat, coachStyles } from '@/components/coach/CoachUI';
 import { HUB, hubText } from '@/theme/hub';
@@ -150,17 +153,45 @@ export default function MyTrainerScreen() {
                   </View>
                 );
               })}
-              <Button label="ტრენერის კოდის შეყვანა" icon={KeyRound} onPress={() => router.push('/trainer/connect' as never)} />
-              <Button label="ტრენერის მოძებნა დარბაზით" icon={Search} kind="secondary" onPress={() => router.push('/trainer/search' as never)} />
+              <Button label="აჩვენე შენი QR ტრენერს" icon={QrCode} onPress={() => router.push('/profile/qr' as never)} />
+              <Button label="ტრენერის QR-ის სკანირება" icon={ScanLine} kind="secondary" onPress={() => router.push('/trainer/scan' as never)} />
+              <View style={[coachStyles.row, { gap: 8 }]}>
+                <Button label="კოდით" icon={KeyRound} kind="ghost" style={{ flex: 1 }} onPress={() => router.push('/trainer/connect' as never)} />
+                <Button label="ძებნა" icon={Search} kind="ghost" style={{ flex: 1 }} onPress={() => router.push('/trainer/search' as never)} />
+              </View>
             </View>
           </>
         ) : null}
 
-        {link?.status === 'REQUESTED' && trainer ? (
+        {link?.status === 'REQUESTED' && link.initiator === 'TRAINER' && trainer ? (
+          <Section title="ტრენერი გიწვევს">
+            <View style={{ backgroundColor: HUB.spotlightBg, borderRadius: HUB.cardRadius, padding: HUB.cardPad, gap: 14 }}>
+              <View style={coachStyles.row}>
+                <Avatar avatarId={trainer.avatarId} photoUrl={trainer.avatarUrl} name={trainer.displayName} size={56} verified={trainer.verified} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[hubText.cardTitle, { color: '#FFFFFF', fontSize: 17 }]}>{trainer.displayName}</Text>
+                  <Text numberOfLines={2} style={[hubText.caption, { color: '#C5DADA' }]}>{trainer.gyms.map((g) => `${g.brand} ${g.name}`).join(' · ') || 'დადასტურებული ტრენერი'}</Text>
+                </View>
+              </View>
+              <Text style={[hubText.body, { color: '#FFFFFF' }]}>შენი QR დაასკანერა და გთავაზობს ერთად ვარჯიშს. სანამ არ მიიღებ, შენს მონაცემებს ვერ ხედავს.</Text>
+              <Button label="ნახვა და მიღება" onPress={() => router.push('/trainer/connect?invite=1' as never)} />
+              <Button
+                label="უარი"
+                kind="secondary"
+                busy={busy === 'unlink'}
+                onPress={async () => {
+                  if (await confirmAction('მოწვევაზე უარი', `${trainer.displayName} ვერ ნახავს შენს მონაცემებს. მოგვიანებით თავად შეგიძლია დაუკავშირდე.`, 'უარი', true)) void act('unlink', () => api.coach.unlink());
+                }}
+              />
+            </View>
+          </Section>
+        ) : null}
+
+        {link?.status === 'REQUESTED' && link.initiator !== 'TRAINER' && trainer ? (
           <Section title="მოთხოვნა გაგზავნილია">
             <Card style={{ gap: 12 }}>
               <View style={coachStyles.row}>
-                <Avatar avatarId={trainer.avatarId} name={trainer.displayName} verified />
+                <Avatar avatarId={trainer.avatarId} photoUrl={trainer.avatarUrl} name={trainer.displayName} verified />
                 <View style={{ flex: 1 }}>
                   <Text style={[hubText.cardTitle, { color: c.text100 }]}>{trainer.displayName}</Text>
                   <Text style={[hubText.caption, { color: c.text300 }]}>ტრენერი ნახავს შენს მოთხოვნას და დაგიდასტურებს.</Text>
@@ -175,7 +206,7 @@ export default function MyTrainerScreen() {
           <>
             <Card style={{ marginTop: 8, gap: 12 }} onPress={() => router.push('/trainer/sharing' as never)} accessibilityLabel={`${trainer.displayName}, ტრენერი. გაზიარების პარამეტრები`}>
               <View style={coachStyles.row}>
-                <Avatar avatarId={trainer.avatarId} name={trainer.displayName} size={56} verified={trainer.verified} />
+                <Avatar avatarId={trainer.avatarId} photoUrl={trainer.avatarUrl} name={trainer.displayName} size={56} verified={trainer.verified} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={[hubText.cardTitle, { color: c.text100, fontSize: 17 }]}>{trainer.displayName}</Text>
                   {trainer.gyms[0] ? (
