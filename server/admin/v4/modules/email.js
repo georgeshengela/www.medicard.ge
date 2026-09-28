@@ -61,6 +61,19 @@
     const next = `#/email?${params.toString()}`;
     if (location.hash !== next) history.replaceState({ tab: 'email' }, '', next);
   }
+  function hashParams() {
+    return typeof global.hashSearch === 'function' ? global.hashSearch() : new URLSearchParams(location.hash.split('?')[1] || '');
+  }
+  function daysFromHash() {
+    const r = hashParams().get('range');
+    return r === '7d' ? 7 : r === '30d' ? 30 : null;
+  }
+  function writeDays(days) {
+    const params = hashParams();
+    params.set('range', `${days}d`);
+    const next = `#/email?${params.toString()}`;
+    if (location.hash !== next) history.replaceState({ tab: 'email' }, '', next);
+  }
   function stopPoll() { if (st.poll) { clearTimeout(st.poll); st.poll = null; } }
 
   /* ═════════ Shell ═════════ */
@@ -112,6 +125,7 @@
 
   /* ═════════ მიმოხილვა ═════════ */
   async function paintOverview(pane) {
+    st.days = daysFromHash() || st.days;
     const d = await api(`/overview?days=${st.days}`);
     const t = d.totals || {};
     const rate = (n) => (t.sent ? pct((n / t.sent) * 100) : '—');
@@ -143,7 +157,7 @@
       </section>
       <section class="s-card">
         <header class="s-card-head"><div><h3>მდგომარეობა</h3><p>გასაღებები აქ არასდროს ჩანს — მხოლოდ ის, დაყენებულია თუ არა.</p></div></header>
-        <div class="s-card-body is-flush">
+        <div class="s-card-body s-status-rows">
           <div class="s-switch-row"><div><b>ელფოსტა ჩართულია</b><small>გამორთვა აჩერებს ყველა წერილს დაუყოვნებლივ (≤15 წამი), პაროლის აღდგენის ჩათვლით. იწერება აუდიტში.</small></div>
             <input class="s-switch" type="checkbox" role="switch" aria-label="ელფოსტა ჩართულია" ${d.enabled ? 'checked' : ''} data-kill></div>
           <div class="s-switch-row"><div><b>Resend API გასაღები</b><small>${yes(d.config?.resendConfigured, 'RESEND_API_KEY')}</small></div></div>
@@ -156,7 +170,7 @@
       </section>
       <div class="s-callout">${ico('shield')}<p>ჟურნალი ინახავს მხოლოდ დაშიფრულ (sha256) და დაფარულ მისამართს (მაგ. g***@gmail.com), არა წერილის ტექსტს ან კოდს. ${fmt(d.retentionDays)} დღეზე ძველი ჩანაწერები ავტომატურად იშლება. წერილებში ჯანმრთელობის მონაცემი არასდროს იგზავნება.</p></div>
     </div>`;
-    pane.querySelectorAll('[data-days]').forEach((b) => b.addEventListener('click', () => { st.days = Number(b.dataset.days) || 30; void paintSub(); }));
+    pane.querySelectorAll('[data-days]').forEach((b) => b.addEventListener('click', () => { st.days = Number(b.dataset.days) || 30; writeDays(st.days); void paintSub(); }));
     const kill = pane.querySelector('[data-kill]');
     kill.addEventListener('change', () => {
       const enabled = kill.checked;

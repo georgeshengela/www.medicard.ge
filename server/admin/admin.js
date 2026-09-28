@@ -627,6 +627,12 @@ async function onLogin(e) {
 }
 
 async function switchTab(tab, opts = {}) {
+  // boot() runs while later <script> tags (v4 modules such as email.js / support.js) may still be
+  // downloading; on a cold cache /me can win the race and the module's render function is not
+  // defined yet, leaving an empty panel. Wait until every classic script has executed.
+  if (document.readyState === 'loading') {
+    await new Promise((resolve) => document.addEventListener('DOMContentLoaded', resolve, { once: true }));
+  }
   if (!ADMIN_TABS.includes(tab) || !$(`tab-${tab}`)) tab = 'overview';
   $('tab-missing')?.classList.add('hidden');
   state.tab = tab;

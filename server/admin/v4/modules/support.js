@@ -235,14 +235,14 @@
     const hasHtml = Boolean(m.htmlBody);
     const body = m.bodyStatus === 'pending' || m.bodyStatus === 'restricted' || m.bodyStatus === 'failed'
       ? `<p class="s-callout${m.bodyStatus === 'pending' ? '' : ' is-warn'}">${esc(BODY_NOTE[m.bodyStatus])}${m.bodyStatus !== 'pending' ? ` <button type="button" class="btn compact ghost" data-refetch="${esc(m.id)}">ხელახლა ცდა</button>` : ''}</p>`
-      : `${hasHtml ? `<div class="s-segment" role="tablist" aria-label="ხედი"><button type="button" role="tab" aria-selected="true" data-view="html">HTML</button><button type="button" role="tab" aria-selected="false" data-view="text">ტექსტი</button></div>
+      : `${hasHtml ? `<div class="s-segment s-mail-view" role="tablist" aria-label="ხედი"><button type="button" role="tab" aria-selected="true" data-view="html">HTML</button><button type="button" role="tab" aria-selected="false" data-view="text">ტექსტი</button></div>
           <iframe class="s-mail-frame" title="წერილის ტექსტი" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" data-frame></iframe>` : ''}
         <pre class="s-feed-body" data-text ${hasHtml ? 'hidden' : ''}>${esc(m.textBody || '(ცარიელი)')}</pre>`;
     const atts = (m.attachments || []).length
       ? `<div class="s-att-list">${m.attachments.map((a) => `<button type="button" class="btn compact ghost" data-att="${esc(a.id)}" data-msg="${esc(m.id)}" data-name="${esc(a.filename)}">${ico('paperclip')} ${esc(a.filename)}${a.size ? ` <small class="s-muted">${fmt(Math.ceil(a.size / 1024))} KB</small>` : ''}</button>`).join('')}</div>`
       : '';
-    return `<article class="s-feed-item s-mail ${kind}" data-message="${esc(m.id)}">
-      <header>${who}${tag}${m.isAuto ? '<span class="s-badge is-plain">ავტომატური</span>' : ''}<span class="s-muted" style="margin-left:auto">${esc(when(m.createdAt))}</span></header>
+    return `<article class="s-mail ${kind}" data-message="${esc(m.id)}">
+      <header class="s-mail-head"><span class="s-mail-who">${who}${tag}${m.isAuto ? '<span class="s-badge is-plain">ავტომატური</span>' : ''}</span><time class="s-mail-time">${esc(when(m.createdAt))}</time></header>
       ${body}${atts}</article>`;
   }
 
