@@ -129,8 +129,14 @@ async function handleMessage(msg, state) {
 
   const current = await store.getState();
   if (current.active) {
-    await tg.sendChatAction(chatId).catch(() => {});
-    await wakeBrain('owner sent a message');
+    const woke = await wakeBrain('owner sent a message');
+    if (woke.ok) {
+      await tg.sendChatAction(chatId).catch(() => {});
+    } else if (!current.lastBrainAt) {
+      await notifyOwner('მივიღე ✍️ ჩემი „ტვინი“ ჯერ არ არის გაშვებული (Claude Code-ის routine). როგორც კი გაიმართება, ამ მესიჯს პირველს ვუპასუხებ.', { direction: 'system' });
+    } else {
+      await notifyOwner('მივიღე ✍️ გიპასუხებ შემდეგ სამუშაო სესიაზე (საათში ერთხელ ვმუშაობ).', { direction: 'system' });
+    }
   } else {
     await notifyOwner('ჩავიწერე. ცვლაზე არ ვარ — /on-ით ჩამაბარე და გიპასუხებ.', { direction: 'system' });
   }
