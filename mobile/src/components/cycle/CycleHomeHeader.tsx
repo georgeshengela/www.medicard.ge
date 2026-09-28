@@ -18,12 +18,10 @@ function IconBtn({
   onPress,
   children,
   label,
-  filled,
 }: {
   onPress: () => void;
   children: React.ReactNode;
   label: string;
-  filled?: boolean;
 }) {
   const c = useCycleColors();
   return (
@@ -32,7 +30,7 @@ function IconBtn({
         Haptics.selectionAsync().catch(() => undefined);
         onPress();
       }}
-      hitSlop={10}
+      hitSlop={8}
       accessibilityLabel={label}
       accessibilityRole="button"
       style={{
@@ -43,8 +41,6 @@ function IconBtn({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: c.card,
-        borderWidth: 1,
-        borderColor: c.border,
       }}
     >
       {children}
@@ -52,6 +48,10 @@ function IconBtn({
   );
 }
 
+/**
+ * Hub-style header: back, the module name with one quiet context line, settings.
+ * The month lives here (the strip and calendar below follow it); status lives in the hero, not twice.
+ */
 export function CycleHomeHeader({
   monthLabel,
   subtitle,
@@ -62,48 +62,29 @@ export function CycleHomeHeader({
   const c = useCycleColors();
 
   return (
-    <View
-      style={{
-        paddingTop: topInset + 8,
-        paddingHorizontal: 16,
-        paddingBottom: 12,
-        backgroundColor: 'transparent',
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+    <View style={{ paddingTop: topInset + 6, paddingHorizontal: 20, paddingBottom: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <IconBtn onPress={onBack} label={ka.common.back}>
-          <ChevronLeft size={20} color={c.ink} strokeWidth={2} />
+          <ChevronLeft size={21} color={c.ink} strokeWidth={2.1} />
         </IconBtn>
-
-        <View style={{ flex: 1, minWidth: 0, alignItems: 'center', paddingHorizontal: 8 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 27, letterSpacing: -0.3 }}
+          >
+            {ka.cycle.title}
+          </Text>
           <Text
             numberOfLines={1}
-            style={{
-              color: c.ink,
-              fontFamily: 'NotoSansGeorgian_600SemiBold',
-              fontSize: 16,
-              lineHeight: 22,
-            }}
+            accessibilityLabel={subtitle ? `${monthLabel}. ${subtitle}` : monthLabel}
+            style={{ color: c.mutedSoft, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 17 }}
           >
             {monthLabel}
           </Text>
-          <Text
-            numberOfLines={2}
-            style={{
-              color: c.mutedSoft,
-              fontFamily: 'NotoSansGeorgian_500Medium',
-              fontSize: 12,
-              lineHeight: 16,
-              marginTop: 2,
-              textAlign: 'center',
-            }}
-          >
-            {subtitle}
-          </Text>
         </View>
-
-        <IconBtn onPress={onSettings} label={ka.cycle.settings} filled>
-          <Settings2 size={18} color={c.brand} strokeWidth={2} />
+        <IconBtn onPress={onSettings} label={ka.cycle.settings}>
+          <Settings2 size={19} color={c.ink} strokeWidth={2} />
         </IconBtn>
       </View>
     </View>

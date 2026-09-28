@@ -31,10 +31,8 @@ export function CycleDaySummary({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        minHeight: 80,
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: c.border,
+        minHeight: 76,
+        borderRadius: 22,
         backgroundColor: c.card,
         paddingHorizontal: 16,
         paddingVertical: 16,
@@ -42,10 +40,10 @@ export function CycleDaySummary({
     >
       <View
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: 16,
-          backgroundColor: c.cardSoft,
+          width: 42,
+          height: 42,
+          borderRadius: 14,
+          backgroundColor: hasContent ? c.periodSoft : c.accentSoft,
           alignItems: 'center',
           justifyContent: 'center',
           marginRight: 12,

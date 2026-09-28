@@ -5,7 +5,6 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import type { CycleDayMark } from '@/lib/api';
 import { fertilityA11yBits } from '@/lib/cycleFertility';
-import { CycleOvulationSparkle } from '@/components/cycle/CycleOvulationSparkle';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import {
   PREDICTED_NUMERAL_PREFIX,
@@ -15,6 +14,7 @@ import {
 } from '@/lib/cyclePresentation.js';
 import { MONTHS_KA, WEEKDAYS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
+import { addDaysToKey } from '@/lib/cyclePhase';
 import { cycleHexAlpha, cycleShadow, useCycleColors } from '@/theme/cycle';
 
 function dateKey(y: number, m: number, d: number) {
@@ -76,10 +76,8 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
           ? { paddingTop: 4 }
           : {
               backgroundColor: c.card,
-              borderRadius: 28,
-              padding: 18,
-              borderWidth: 1,
-              borderColor: c.border,
+              borderRadius: 22,
+              padding: 16,
               ...cycleShadow.card,
             }
       }
@@ -140,6 +138,10 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
           const isToday = today === cell.key;
           const blocked = canSelect ? !canSelect(cell.key) : false;
           const layers = classifyCycleDay(mark, { showFertility, showPredicted });
+          const inBand = (l: ReturnType<typeof classifyCycleDay>) => l.fertile || l.ovulation;
+          const band = inBand(layers);
+          const prevBand = band && inBand(classifyCycleDay(marks[addDaysToKey(cell.key, -1)], { showFertility, showPredicted }));
+          const nextBand = band && inBand(classifyCycleDay(marks[addDaysToKey(cell.key, 1)], { showFertility, showPredicted }));
           const visual = getCycleCalendarDayVisualState({ layers, isSelected, isToday });
 
           const innerBg =
@@ -242,26 +244,32 @@ export function CycleCalendar({ year, month, marks, selected, onSelect, onPrev, 
                 </View>
               </Animated.View>
 
-              <View style={{ height: 8, marginTop: 1, alignItems: 'center', justifyContent: 'center' }}>
+              {/* Same grammar as the day strip: dot = logged, one continuous band = estimated fertile window. */}
+              <View style={{ height: 9, width: '100%', marginTop: 1, alignItems: 'center' }}>
                 {visual.semanticIndicator === 'spottingDot' ? (
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: c.period }} />
+                ) : layers.symptomDot ? (
+                  <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.mutedSoft }} />
+                ) : null}
+                {band ? (
                   <View
-                    style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: c.period }}
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: prevBand ? 0 : '22%',
+                      right: nextBand ? 0 : '22%',
+                      height: 4,
+                      borderTopLeftRadius: prevBand ? 0 : 2,
+                      borderBottomLeftRadius: prevBand ? 0 : 2,
+                      borderTopRightRadius: nextBand ? 0 : 2,
+                      borderBottomRightRadius: nextBand ? 0 : 2,
+                      backgroundColor: cycleHexAlpha(c.fertile, 0.45),
+                    }}
                   />
-                ) : visual.semanticIndicator === 'ovulationSparkle' ? (
-                  <CycleOvulationSparkle color={c.ovulation} size={8} />
-                ) : visual.semanticIndicator === 'fertileDots' ? (
-                  <View style={{ flexDirection: 'row', gap: 2 }}>
-                    {[0, 1, 2].map((i) => (
-                      <View
-                        key={i}
-                        style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: c.fertile }}
-                      />
-                    ))}
-                  </View>
-                ) : visual.semanticIndicator === 'symptomDot' ? (
-                  <View
-                    style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.mutedSoft }}
-                  />
+                ) : null}
+                {layers.ovulation ? (
+                  <View pointerEvents="none" style={{ position: 'absolute', bottom: -3, width: 10, height: 10, borderRadius: 5, backgroundColor: c.fertile, borderWidth: 2, borderColor: c.card }} />
                 ) : null}
               </View>
             </Pressable>

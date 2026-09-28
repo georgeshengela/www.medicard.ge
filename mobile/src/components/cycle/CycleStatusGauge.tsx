@@ -1,116 +1,27 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
-import Animated, {
-  Easing,
-  FadeIn,
-  type SharedValue,
-  useAnimatedProps,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
-import { Cloud, Droplets, Info } from 'lucide-react-native';
+import Svg, { Circle, G } from 'react-native-svg';
+import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import { Info } from 'lucide-react-native';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ka } from '@/i18n/ka';
-import { useCycleColors } from '@/theme/cycle';
+import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-
-/** Nightingale 9001:295435, closed to a circle. */
-const VB = 316;
-const CX = 158;
-const CY = 158;
+/**
+ * Cycle ring (2026-09-28 redesign): one bead per cycle day, read clockwise from the top.
+ * Grammar shared with the day strip and calendar — logged = solid, estimated = outline:
+ *  - logged bleeding: solid clay bead
+ *  - estimated fertile window: blue outline bead (tap → explanation)
+ *  - days already lived: quiet filled bead; days ahead: track bead
+ *  - today: a larger teal marker
+ * The centre carries one number and its words; the hero decides which (countdown or cycle day).
+ */
+const VB = 300;
+const C = VB / 2;
 const R = 128;
-const TRACK = 32;
-const INNER_R = 93;
-const SEGMENTS = 4;
-const GAP_DEG = 16.2;
-const SEG_SWEEP = (360 - SEGMENTS * GAP_DEG) / SEGMENTS;
-const SEG_LEN = R * ((SEG_SWEEP * Math.PI) / 180);
 
-function clamp01(t: number) {
-  return Math.min(1, Math.max(0, t));
-}
-
-function polar(deg: number, radius = R) {
-  const rad = (deg * Math.PI) / 180;
-  return { x: CX + radius * Math.cos(rad), y: CY + radius * Math.sin(rad) };
-}
-
-function segmentStartDeg(index: number) {
-  return -90 + index * 90 - SEG_SWEEP / 2;
-}
-
-function segmentPath(index: number, radius = R) {
-  const start = segmentStartDeg(index);
-  const p0 = polar(start, radius);
-  const p1 = polar(start + SEG_SWEEP, radius);
-  return `M ${p0.x} ${p0.y} A ${radius} ${radius} 0 0 1 ${p1.x} ${p1.y}`;
-}
-
-function fertileSegmentPaths(fromDay: number, toDay: number, length: number) {
-  const start = (Math.min(fromDay, toDay) - 1) / length;
-  const end = Math.max(fromDay, toDay) / length;
-  const out: string[] = [];
-  for (let i = 0; i < SEGMENTS; i += 1) {
-    const segA = i / SEGMENTS;
-    const segB = (i + 1) / SEGMENTS;
-    const a = Math.max(start, segA);
-    const b = Math.min(end, segB);
-    if (b - a < 0.002) continue;
-    const t0 = (a - segA) * SEGMENTS;
-    const t1 = (b - segA) * SEGMENTS;
-    const deg0 = segmentStartDeg(i) + t0 * SEG_SWEEP;
-    const deg1 = segmentStartDeg(i) + t1 * SEG_SWEEP;
-    const p0 = polar(deg0);
-    const p1 = polar(deg1);
-    out.push(`M ${p0.x} ${p0.y} A ${R} ${R} 0 0 1 ${p1.x} ${p1.y}`);
-  }
-  return out;
-}
-
-function knobOnTrack(t: number) {
-  const filledDeg = clamp01(t) * SEGMENTS * SEG_SWEEP;
-  let remaining = filledDeg;
-  for (let i = 0; i < SEGMENTS; i += 1) {
-    const start = segmentStartDeg(i);
-    if (remaining <= SEG_SWEEP + 0.0001) return polar(start + remaining);
-    remaining -= SEG_SWEEP;
-  }
-  return polar(segmentStartDeg(SEGMENTS - 1) + SEG_SWEEP);
-}
-
-function SegmentFill({
-  d,
-  index,
-  anim,
-  color,
-}: {
-  d: string;
-  index: number;
-  anim: SharedValue<number>;
-  color: string;
-}) {
-  const animatedProps = useAnimatedProps(() => {
-    const filled = Math.min(SEG_LEN, Math.max(0, anim.value * SEG_LEN * SEGMENTS - index * SEG_LEN));
-    return {
-      strokeDashoffset: SEG_LEN - filled,
-      opacity: filled > 0.35 ? 1 : 0,
-    };
-  });
-  return (
-    <AnimatedPath
-      d={d}
-      stroke={color}
-      strokeWidth={TRACK}
-      strokeLinecap="round"
-      fill="none"
-      strokeDasharray={`${SEG_LEN} ${SEG_LEN}`}
-      animatedProps={animatedProps}
-    />
-  );
-}
+export type GaugeCenter = { top?: string | null; value: string; bottom?: string | null; tone?: 'period' | 'ink' };
 
 type Props = {
   day: number | null;
@@ -122,9 +33,16 @@ type Props = {
   pmsPattern?: boolean;
   fertileDays?: { from: number; to: number } | null;
   a11yLabel?: string;
+  center?: GaugeCenter;
   onInfo?: () => void;
   onPressFertile?: () => void;
 };
+
+function beadPoint(index: number, count: number) {
+  const deg = -90 + (index / count) * 360;
+  const rad = (deg * Math.PI) / 180;
+  return { x: C + R * Math.cos(rad), y: C + R * Math.sin(rad) };
+}
 
 export function CycleStatusGauge({
   day,
@@ -136,173 +54,139 @@ export function CycleStatusGauge({
   pmsPattern = false,
   fertileDays,
   a11yLabel,
+  center,
   onInfo,
   onPressFertile,
 }: Props) {
   const c = useCycleColors();
   const reduceMotion = usePrefersReducedMotion();
   const { width: screenW, height: screenH, fontScale } = useWindowDimensions();
-  const largeText = fontScale >= 1.25;
-  const shortScreen = screenH < 720;
-  const width = Math.min(screenW - 48, largeText || shortScreen ? 204 : 240);
-  const height = width;
+  const compact = fontScale >= 1.25 || screenH < 720;
+  const size = Math.min(screenW - 72, compact ? 212 : 244);
   const length = hideLengthChrome ? 0 : Math.max(14, Math.round(cycleLength) || 28);
-  const progress = hideLengthChrome || !day || !length ? 0 : clamp01(day / length);
-  const anim = useSharedValue(reduceMotion ? progress : 0);
-  const knob = knobOnTrack(progress);
-  const segments = useMemo(() => Array.from({ length: SEGMENTS }, (_, i) => segmentPath(i)), []);
-  const track = c.gaugeTrack;
-  const fill = periodActive ? c.period : c.gaugeProgress;
-  const fertilePaths = useMemo(
+  // Late cycles run past the usual length: grow the ring instead of wrapping today onto day 1.
+  const count = length ? Math.max(length, day ?? 0) : 28;
+  const beadR = Math.min(6.4, ((2 * Math.PI * R) / count) * 0.26);
+  const recorded = useMemo(() => new Set(recordedPeriodDays), [recordedPeriodDays]);
+
+  const beads = useMemo(
     () =>
-      fertileDays && length
-        ? fertileSegmentPaths(fertileDays.from, fertileDays.to, length)
-        : [],
-    [fertileDays, length],
+      Array.from({ length: count }, (_, i) => {
+        const d = i + 1;
+        const p = beadPoint(i, count);
+        const isToday = !hideLengthChrome && day === d;
+        const logged = recorded.has(d);
+        const fertile = Boolean(fertileDays && d >= Math.min(fertileDays.from, fertileDays.to) && d <= Math.max(fertileDays.from, fertileDays.to));
+        const lived = !hideLengthChrome && day != null && d < day;
+        return { d, ...p, isToday, logged, fertile, lived };
+      }),
+    [count, day, hideLengthChrome, recorded, fertileDays],
   );
 
-  useEffect(() => {
-    if (reduceMotion) {
-      anim.value = progress;
-      return;
-    }
-    anim.value = withTiming(progress, { duration: 700, easing: Easing.out(Easing.cubic) });
-  }, [progress, anim, reduceMotion]);
+  const todayBead = beads.find((b) => b.isToday);
+  const valueSize = Math.round(size * 0.25);
+  const centerValue = center?.value ?? (hideLengthChrome ? '—' : day != null ? String(day) : '—');
+  const centerTop = center ? center.top : ka.cycle.cycleDay;
+  const centerBottom = center ? center.bottom : hideLengthChrome ? null : ka.cycle.outOf(length);
 
   return (
-    <Animated.View
-      entering={reduceMotion ? undefined : FadeIn.duration(500)}
-      style={{ alignItems: 'center', width: '100%' }}
-    >
-      <View style={{ width, height }}>
+    <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(420)} style={{ alignItems: 'center', width: '100%' }}>
+      <View accessible accessibilityRole="image" accessibilityLabel={a11yLabel} style={{ width: size, height: size }}>
+        <Svg width={size} height={size} viewBox={`0 0 ${VB} ${VB}`}>
+          <G>
+            {beads.map((b) => {
+              if (b.isToday) return null;
+              if (b.logged) return <Circle key={b.d} cx={b.x} cy={b.y} r={beadR} fill={c.period} />;
+              if (b.fertile) {
+                return (
+                  <Circle
+                    key={b.d}
+                    cx={b.x}
+                    cy={b.y}
+                    r={beadR - 0.9}
+                    fill={c.fertilitySoft}
+                    stroke={c.fertile}
+                    strokeWidth={1.8}
+                    opacity={b.lived ? 0.5 : 1}
+                    onPress={onPressFertile}
+                  />
+                );
+              }
+              return (
+                <Circle
+                  key={b.d}
+                  cx={b.x}
+                  cy={b.y}
+                  r={beadR * (b.lived ? 0.78 : 0.62)}
+                  fill={b.lived ? cycleHexAlpha(c.ink, 0.28) : c.gaugeTrack}
+                />
+              );
+            })}
+          </G>
+          {todayBead ? (
+            <G>
+              <Circle cx={todayBead.x} cy={todayBead.y} r={beadR * 2.25} fill={cycleHexAlpha(c.todayRing, 0.16)} />
+              <Circle cx={todayBead.x} cy={todayBead.y} r={beadR * 1.45} fill={todayBead.logged ? c.period : c.todayRing} stroke={c.card} strokeWidth={2.5} />
+            </G>
+          ) : null}
+        </Svg>
+
         <View
-          accessible
-          accessibilityRole="image"
-          accessibilityLabel={a11yLabel}
-          style={{ width, height }}
+          pointerEvents="none"
+          style={{ position: 'absolute', left: size * 0.18, right: size * 0.18, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Svg width={width} height={height} viewBox={`0 0 ${VB} ${VB}`}>
-            {segments.map((d, i) => (
-              <Path
-                key={`trk-${i}`}
-                d={d}
-                stroke={track}
-                strokeWidth={TRACK}
-                strokeLinecap="round"
-                fill="none"
-              />
-            ))}
-            {segments.map((d, i) => (
-              <SegmentFill key={`fill-${i}`} d={d} index={i} anim={anim} color={fill} />
-            ))}
-            {fertilePaths.map((d, i) => (
-              <Path
-                key={`fertile-${i}`}
-                d={d}
-                stroke={c.fertile}
-                strokeWidth={TRACK}
-                strokeLinecap="round"
-                fill="none"
-                opacity={0.94}
-                onPress={onPressFertile}
-              />
-            ))}
-            {fertilePaths.map((d,i) => <Path key={`estimate-pattern-${i}`} d={d} stroke={c.card}
-              strokeWidth={3} strokeLinecap="round" strokeDasharray="1 10" fill="none" pointerEvents="none"/>)}
-            {recordedPeriodDays.flatMap(d => fertileSegmentPaths(d, d, length)).map((d, i) => (
-              <Path key={`recorded-${i}`} d={d} stroke={c.period} strokeWidth={TRACK} strokeLinecap="round" fill="none"/>
-            ))}
-
-            {progress > 0.015 ? (
-              <>
-                <Circle cx={knob.x} cy={knob.y} r={13} fill={c.card} />
-                <Circle cx={knob.x} cy={knob.y} r={10} stroke={c.todayRing} strokeWidth={3} fill={c.card} />
-                <Circle cx={knob.x} cy={knob.y} r={4} fill={c.todayRing} />
-              </>
-            ) : null}
-
-            <Circle cx={CX} cy={CY} r={INNER_R} fill={c.card} stroke={c.gaugeProgress} strokeWidth={1} strokeOpacity={0.12} />
-          </Svg>
-
-          <View
-            pointerEvents="box-none"
+          {centerTop ? (
+            <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: c.muted, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 18, textAlign: 'center' }}>
+              {centerTop}
+            </Text>
+          ) : null}
+          <Animated.Text
+            key={centerValue}
+            entering={reduceMotion ? undefined : ZoomIn.duration(360)}
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={{
-              position: 'absolute',
-              left: ((CX - INNER_R) / VB) * width,
-              top: ((CY - INNER_R) / VB) * height,
-              width: ((INNER_R * 2) / VB) * width,
-              height: ((INNER_R * 2) / VB) * height,
-              alignItems: 'center',
-              justifyContent: 'center',
+              color: center?.tone === 'period' ? c.period : c.ink,
+              fontFamily: 'NotoSansGeorgian_700Bold',
+              fontSize: valueSize,
+              lineHeight: Math.round(valueSize * 1.18),
+              letterSpacing: -1.5,
+              textAlign: 'center',
+              fontVariant: ['tabular-nums'],
             }}
           >
-            <Text style={{color:c.mutedSoft,fontFamily:'NotoSansGeorgian_500Medium',fontSize:12,lineHeight:18,textAlign:'center'}}>{ka.cycle.cycleDay}</Text>
-            <Text
-              style={{
-                color: c.ink,
-                fontFamily: 'NotoSansGeorgian_700Bold',
-                fontSize: Math.round(66 * (width / VB)),
-                lineHeight: Math.round(76 * (width / VB)),
-                letterSpacing: -1,
-                textAlign: 'center',
-                fontVariant: ['tabular-nums'],
-              }}
-            >
-              {hideLengthChrome ? '—' : day ?? '—'}
+            {centerValue}
+          </Animated.Text>
+          {centerBottom ? (
+            <Text numberOfLines={2} style={{ color: c.mutedSoft, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 17, textAlign: 'center' }}>
+              {centerBottom}
             </Text>
-            {hideLengthChrome ? null : (
-            <Text
-              style={{
-                color: c.muted,
-                fontFamily: 'NotoSansGeorgian_500Medium',
-                fontSize: Math.round(16 * (width / VB)),
-                lineHeight: Math.round(22 * (width / VB)),
-                marginTop: 4,
-                textAlign: 'center',
-              }}
-            >
-              {ka.cycle.outOf(length)}
-            </Text>
-            )}
-
-          </View>
+          ) : null}
         </View>
       </View>
-      {periodActive || pmsPattern ? <View style={{flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:12,paddingVertical:6,borderRadius:16,backgroundColor:periodActive?c.periodSoft:c.cardSoft,marginTop:4}}>
-        {periodActive?<Droplets size={16} color={c.period}/>:<Cloud size={16} color={c.muted}/>}
-        <Text style={{color:periodActive?c.period:c.muted,fontSize:12,lineHeight:18,fontFamily:'NotoSansGeorgian_500Medium'}}>{periodActive?'სისხლდენა აღრიცხულია':'PMS · შენს წინა ჩანაწერებში'}</Text>
-      </View> : null}
-      {phaseHint ? (
+
+      {phaseHint || pmsPattern ? (
         <Pressable
           onPress={onInfo}
           disabled={!onInfo}
           accessibilityRole={onInfo ? 'button' : undefined}
-          accessibilityLabel={onInfo ? ka.cycle.howCalculated : undefined}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            marginTop: 4,
-            marginBottom: 4,
-            paddingHorizontal: 16,
-            minHeight: 44,
-          }}
+          accessibilityLabel={onInfo ? `${phaseHint ?? ''}. ${ka.cycle.howCalculated}` : undefined}
+          style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10, minHeight: 44, paddingHorizontal: 8 }}
         >
-          <Text
-            numberOfLines={3}
-            style={{
-              color: periodActive ? c.period : c.ink,
-              fontFamily: 'NotoSansGeorgian_600SemiBold',
-              fontSize: 13,
-              lineHeight: 19,
-              textAlign: 'center',
-              flexShrink: 1,
-            }}
-          >
-            {phaseHint}
-          </Text>
-          {onInfo ? <Info size={16} color={c.muted} strokeWidth={2} /> : null}
+          {phaseHint ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: periodActive ? c.periodSoft : c.cardSoft }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: periodActive ? c.period : c.luteal }} />
+              <Text numberOfLines={2} style={{ color: periodActive ? c.period : c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, lineHeight: 17, flexShrink: 1 }}>
+                {phaseHint}
+              </Text>
+              {onInfo ? <Info size={14} color={c.muted} strokeWidth={2} /> : null}
+            </View>
+          ) : null}
+          {pmsPattern ? (
+            <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: c.cardSoft }}>
+              <Text style={{ color: c.muted, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 17 }}>{ka.cycle.gaugePmsPattern}</Text>
+            </View>
+          ) : null}
         </Pressable>
       ) : null}
     </Animated.View>

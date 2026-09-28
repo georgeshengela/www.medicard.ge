@@ -1,7 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
-import { CycleOvulationSparkle } from '@/components/cycle/CycleOvulationSparkle';
 import { ka } from '@/i18n/ka';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
@@ -76,20 +75,13 @@ export function CycleCalendarLegend({
       {
         key: 'fertile',
         glyph: (
-          <View style={{ flexDirection: 'row', gap: 2, alignItems: 'center' }}>
-            {[0, 1, 2].map((i) => (
-              <View
-                key={i}
-                style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.fertile }}
-              />
-            ))}
-          </View>
+          <View style={{ width: 18, height: 4, borderRadius: 2, backgroundColor: cycleHexAlpha(c.fertile, 0.45) }} />
         ),
         label: ka.cycle.legendFertile,
       },
       {
         key: 'ovulation',
-        glyph: <CycleOvulationSparkle color={c.ovulation} size={10} />,
+        glyph: <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.fertile }} />,
         label: ka.cycle.legendOvulation,
       },
     );

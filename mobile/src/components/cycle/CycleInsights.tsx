@@ -251,37 +251,13 @@ export function CycleInsightsPanel({
                   borderTopRightRadius: cardRadius,
                   borderBottomLeftRadius: cardRadius,
                   borderBottomRightRadius: cardRadius,
-                  borderColor: hexAlpha(heroTone.accent, dark ? 0.4 : 0.28),
+                  borderWidth: 0,
                   backgroundColor: c.card,
                 },
               ]}
             >
 
             <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-              <View
-                style={{
-                  position: 'absolute',
-                  right: -34,
-                  top: -42,
-                  width: 176,
-                  height: 176,
-                  borderRadius: 88,
-                  borderWidth: 1,
-                  borderColor: hexAlpha(heroTone.accent, 0.22),
-                }}
-              />
-              <View
-                style={{
-                  position: 'absolute',
-                  right: -10,
-                  top: -18,
-                  width: 128,
-                  height: 128,
-                  borderRadius: 64,
-                  borderWidth: 1,
-                  borderColor: hexAlpha(heroTone.accent, 0.16),
-                }}
-              />
               <View
                 style={{
                   position: 'absolute',

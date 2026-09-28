@@ -119,13 +119,11 @@ function PaneSwitcher({
       accessibilityRole="tablist"
       style={{
         flexDirection: 'row',
-        marginHorizontal: 16,
-        marginBottom: 12,
-        backgroundColor: c.card,
-        borderRadius: 20,
-        padding: 4,
-        borderWidth: 1,
-        borderColor: c.border,
+        marginHorizontal: 20,
+        marginBottom: 10,
+        backgroundColor: c.creamDeep,
+        borderRadius: 16,
+        padding: 3,
       }}
     >
       {PANES.map((p) => {
@@ -142,21 +140,21 @@ function PaneSwitcher({
             accessibilityLabel={p.label}
             style={{
               flex: 1,
-              minHeight: 44,
-              paddingVertical: 8,
+              minHeight: 38,
+              paddingVertical: 6,
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: 16,
-              backgroundColor: active ? c.cardSoft : 'transparent',
+              borderRadius: 13,
+              backgroundColor: active ? c.card : 'transparent',
             }}
           >
             <Text
-              numberOfLines={2}
+              numberOfLines={1}
               style={{
-                color: active ? c.brand : c.muted,
-                fontFamily: active ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium',
+                color: active ? c.ink : c.muted,
+                fontFamily: active ? 'NotoSansGeorgian_600SemiBold' : 'NotoSansGeorgian_500Medium',
                 fontSize: 13,
-                lineHeight: 20,
+                lineHeight: 19,
                 textAlign: 'center',
                 paddingHorizontal: 2,
               }}
@@ -859,7 +857,7 @@ export default function CycleHome() {
 
               <Animated.View
                 entering={FadeInUp.duration(360)}
-                style={{ marginHorizontal: 16, marginBottom: 16, marginTop: 4 }}
+                style={{ marginHorizontal: 20, marginBottom: 28, marginTop: 6 }}
               >
                 {modeCaps.showPregnancyOverview ? (
                   <>
@@ -918,14 +916,14 @@ export default function CycleHome() {
               </Animated.View>
 
               <CycleJourneyGuide mode={bundle.profile.mode} />
-              <View style={{ paddingHorizontal: 16 }}>
+              <View style={{ paddingHorizontal: 20 }}>
                 <CycleSection title={ka.cycle.todaySection} delay={20}>
                   <CycleDaySummary log={todayLog} onPress={() => openQuickLog(today)} />
                 </CycleSection>
               </View>
 
               {modeCaps.showPregnancyOverview ? (
-                <View style={{ paddingHorizontal: 16 }}>
+                <View style={{ paddingHorizontal: 20 }}>
                   <Pressable
                     onPress={() => router.push('/assistant?mode=doctor' as never)}
                     accessibilityRole="button"
@@ -959,7 +957,7 @@ export default function CycleHome() {
               ) : null}
 
               {contextualBlock === 'late' && lateAlert ? (
-                <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+                <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
                   <View
                     style={{
                       borderRadius: 16,
@@ -986,13 +984,13 @@ export default function CycleHome() {
               ) : null}
 
               {contextualBlock === 'contraception' ? (
-                <View style={{ paddingHorizontal: 16 }}>
+                <View style={{ paddingHorizontal: 20 }}>
                   <CycleContraceptionCard bundle={bundle} />
                 </View>
               ) : null}
 
               {contextualBlock === 'ttc' ? (
-                <View style={{ paddingHorizontal: 16 }}>
+                <View style={{ paddingHorizontal: 20 }}>
                   <CycleTtcCard
                     bundle={bundle}
                     date={today}
@@ -1008,13 +1006,13 @@ export default function CycleHome() {
               ) : null}
 
               {contextualBlock === 'pms' ? (
-                <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+                <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
                   <CyclePmsHeatmap bundle={bundle} compact />
                 </View>
               ) : null}
 
               {modeCaps.showClassicCycleOverview ? (
-              <View style={{ paddingHorizontal: 16 }}>
+              <View style={{ paddingHorizontal: 20 }}>
                 {forecastPresentationAllowed(bundle) ? <CycleInsightsPanel
                   seed={(bundle.profile.aiInsights as never) || bundle.localInsights || null}
                   phase={suppressCycleLengthChrome(bundle) ? { ...todayPhase, day: null } : todayPhase}
@@ -1040,10 +1038,8 @@ export default function CycleHome() {
                     paddingVertical: 8,
                     marginTop: 8,
                     marginBottom: 8,
-                    borderRadius: 16,
+                    borderRadius: 18,
                     backgroundColor: c.accentSoft,
-                    borderWidth: 1,
-                    borderColor: c.border,
                   }}
                 >
                   <MessageSquareText size={17} color={c.brand} strokeWidth={2.1} />
@@ -1064,7 +1060,7 @@ export default function CycleHome() {
           ) : null}
 
           {pane === 'calendar' && bundle ? (
-            <View style={{ paddingHorizontal: 16 }}>
+            <View style={{ paddingHorizontal: 20 }}>
               {!(cursor.y === Number(today.slice(0, 4)) && cursor.m === Number(today.slice(5, 7)) - 1) ? (
                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
                   <Pressable

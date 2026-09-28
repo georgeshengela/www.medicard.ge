@@ -13,7 +13,6 @@ import { WEEKDAYS_KA } from '@/constants/cycle';
 import { ka } from '@/i18n/ka';
 import { addDaysToKey } from '@/lib/cyclePhase';
 import { todayKey } from '@/components/cycle/CycleCalendar';
-import { CycleOvulationSparkle } from '@/components/cycle/CycleOvulationSparkle';
 import { PREDICTED_NUMERAL_PREFIX, classifyCycleDay, getCycleCalendarDayVisualState } from '@/lib/cyclePresentation.js';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
@@ -164,6 +163,10 @@ export function CycleDayStrip({
           const weekday = weekdayLabel(item);
 
           const layers = classifyCycleDay(mark, { showFertility, showPredicted });
+          const inBand = (l: ReturnType<typeof classifyCycleDay>) => l.fertile || l.ovulation;
+          const band = inBand(layers);
+          const prevBand = band && inBand(classifyCycleDay(marks[addDaysToKey(item, -1)], { showFertility, showPredicted }));
+          const nextBand = band && inBand(classifyCycleDay(marks[addDaysToKey(item, 1)], { showFertility, showPredicted }));
           const visual = getCycleCalendarDayVisualState({
             layers,
             isSelected: active,
@@ -200,7 +203,7 @@ export function CycleDayStrip({
                 alignItems: 'center',
                 justifyContent: 'center',
                 paddingVertical: 2,
-                minHeight: 84,
+                minHeight: 86,
               }}
             >
               <Text
@@ -260,22 +263,35 @@ export function CycleDayStrip({
                   </Text>
                 </View>
               </View>
-              <View style={{ height: 10, marginTop: 4, alignItems: 'center', justifyContent: 'center' }}>
+              {/* Marks row: logged spotting / symptoms as a dot, the estimated fertile window as one continuous band. */}
+              <View style={{ height: 14, width: itemWidth, marginTop: 4, justifyContent: 'flex-start', alignItems: 'center' }}>
                 {visual.semanticIndicator === 'spottingDot' ? (
                   <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: c.period }} />
-                ) : visual.semanticIndicator === 'ovulationSparkle' ? (
-                  <CycleOvulationSparkle color={c.ovulation} size={8} />
-                ) : visual.semanticIndicator === 'fertileDots' ? (
-                  <View style={{ flexDirection: 'row', gap: 2 }}>
-                    {[0, 1, 2].map((i) => (
-                      <View
-                        key={i}
-                        style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: c.fertile }}
-                      />
-                    ))}
-                  </View>
-                ) : visual.semanticIndicator === 'symptomDot' ? (
+                ) : layers.symptomDot ? (
                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.mutedSoft }} />
+                ) : null}
+                {band ? (
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      bottom: 2,
+                      left: prevBand ? 0 : itemWidth * 0.22,
+                      right: nextBand ? 0 : itemWidth * 0.22,
+                      height: 4,
+                      borderTopLeftRadius: prevBand ? 0 : 2,
+                      borderBottomLeftRadius: prevBand ? 0 : 2,
+                      borderTopRightRadius: nextBand ? 0 : 2,
+                      borderBottomRightRadius: nextBand ? 0 : 2,
+                      backgroundColor: cycleHexAlpha(c.fertile, 0.45),
+                    }}
+                  />
+                ) : null}
+                {layers.ovulation ? (
+                  <View
+                    pointerEvents="none"
+                    style={{ position: 'absolute', bottom: -1, width: 10, height: 10, borderRadius: 5, backgroundColor: c.fertile, borderWidth: 2, borderColor: c.cream }}
+                  />
                 ) : null}
               </View>
             </Pressable>

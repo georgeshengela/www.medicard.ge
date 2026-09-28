@@ -54,11 +54,9 @@ export function CycleCard({
       style={[
         {
           backgroundColor: c.card,
-          borderRadius: 24,
-          padding: padded ? 16 : 0,
+          borderRadius: 22,
+          padding: padded ? 18 : 0,
           overflow: 'hidden',
-          borderWidth: 1,
-          borderColor: c.border,
           ...cycleShadow.card,
         },
         style,
