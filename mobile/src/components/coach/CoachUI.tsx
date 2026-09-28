@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type ViewStyle } from 'react-native';
 import { KeyboardFormShell } from '@/components/ui/KeyboardFormShell';
+import { SkeletonPage, haptic } from '@/components/coach/CoachKit';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, BadgeCheck, type LucideIcon } from 'lucide-react-native';
@@ -65,7 +66,7 @@ export function Card({ children, style, onPress, accessibilityLabel }: { childre
   const base = [s.card, { backgroundColor: c.surface }, style as ViewStyle];
   if (!onPress) return <View style={base}>{children}</View>;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={base}>
+    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} className="active:opacity-80" android_ripple={{ color: 'rgba(20,184,166,0.12)', borderless: false }} style={base}>
       {children}
     </Pressable>
   );
@@ -90,7 +91,11 @@ export function Button({ label, onPress, disabled, busy, kind = 'primary', icon:
       accessibilityRole="button"
       accessibilityState={{ disabled: Boolean(disabled || busy), busy: Boolean(busy) }}
       disabled={disabled || busy}
-      onPress={onPress}
+      onPress={() => {
+        if (kind === 'primary') haptic.press();
+        onPress();
+      }}
+      className="active:opacity-80"
       style={[s.button, { backgroundColor: bg, opacity: disabled ? 0.5 : 1 }, style]}
     >
       {busy ? <ActivityIndicator color={fg} /> : Icon ? <Icon size={18} color={fg} strokeWidth={2.1} /> : null}
@@ -106,7 +111,10 @@ export function Chip({ label, selected, onPress, tone }: { label: string; select
       accessibilityRole={onPress ? 'button' : 'text'}
       accessibilityState={{ selected: Boolean(selected) }}
       disabled={!onPress}
-      onPress={onPress}
+      onPress={() => {
+        haptic.tap();
+        onPress?.();
+      }}
       style={[s.chip, { backgroundColor: selected ? CTA : c.bg200 }]}
     >
       {tone ? <View style={[s.dot, { backgroundColor: tone }]} /> : null}
@@ -184,13 +192,9 @@ export function Stat({ label, value, hint }: { label: string; value: string; hin
   );
 }
 
-export function Loading() {
-  const c = useThemeColors();
-  return (
-    <View style={{ padding: 40, alignItems: 'center' }}>
-      <ActivityIndicator color={c.primary200} />
-    </View>
-  );
+/** Loading state: a skeleton shaped like a page, so content doesn't jump when it arrives. */
+export function Loading({ rows = 3 }: { rows?: number }) {
+  return <SkeletonPage rows={rows} />;
 }
 
 export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () => void }) {

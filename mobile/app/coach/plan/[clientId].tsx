@@ -96,7 +96,7 @@ export default function CoachPlanEditor() {
         note: note.trim(),
       };
       await api.coach.savePlan(String(clientId), body);
-      Alert.alert('გეგმა გაიგზავნა ✅', `${d?.client.firstName ?? 'კლიენტს'} შეტყობინება მიუვა. დაცვას „კვება“ ტაბზე ნახავ.`, [{ text: 'კარგი', onPress: () => router.back() }]);
+      Alert.alert('გეგმა გაიგზავნა', `${d?.client.firstName ?? 'კლიენტს'} შეტყობინება მიუვა. დაცვას „კვება“ ტაბზე ნახავ.`, [{ text: 'კარგი', onPress: () => router.back() }]);
     } catch (e) {
       Alert.alert('ვერ შეინახა', e instanceof ApiError ? e.message : 'სცადე ხელახლა.');
     } finally {
@@ -137,10 +137,33 @@ export default function CoachPlanEditor() {
               </View>
             ))}
           </View>
-          {macroKcal && n(kcal) ? (
-            <Text style={[hubText.small, { color: Math.abs(macroKcal - (n(kcal) ?? 0)) > 150 ? c.warning : c.text300, marginTop: 6 }]}>
-              მაკროებიდან: {Math.round(macroKcal)} კკალ{Math.abs(macroKcal - (n(kcal) ?? 0)) > 150 ? ' — კალორიას არ ემთხვევა' : ' ✓'}
-            </Text>
+          {macroKcal ? (
+            <View style={{ marginTop: 12, gap: 8 }}>
+              <View style={{ flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: c.bg200 }}>
+                {[
+                  [(n(protein) ?? 0) * 4, '#14B8A6'],
+                  [(n(carbs) ?? 0) * 4, '#F59E0B'],
+                  [(n(fat) ?? 0) * 9, '#8B5CF6'],
+                ].map(([v, color], i) => (v ? <View key={i} style={{ flex: v as number, backgroundColor: color as string }} /> : null))}
+              </View>
+              <View style={[coachStyles.row, { gap: 12, flexWrap: 'wrap' }]}>
+                {[
+                  ['ცილა', (n(protein) ?? 0) * 4, '#14B8A6'],
+                  ['ნახშირწყალი', (n(carbs) ?? 0) * 4, '#F59E0B'],
+                  ['ცხიმი', (n(fat) ?? 0) * 9, '#8B5CF6'],
+                ].map(([label, v, color]) => (
+                  <View key={label as string} style={[coachStyles.row, { gap: 5 }]}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color as string }} />
+                    <Text style={[hubText.small, { color: c.text200 }]}>{label} {Math.round(((v as number) / macroKcal) * 100)}%</Text>
+                  </View>
+                ))}
+              </View>
+              {n(kcal) ? (
+                <Text style={[hubText.small, { color: Math.abs(macroKcal - (n(kcal) ?? 0)) > 150 ? c.warning : c.success }]}>
+                  მაკროებიდან {Math.round(macroKcal)} კკალ{Math.abs(macroKcal - (n(kcal) ?? 0)) > 150 ? ' — დღიურ კალორიას არ ემთხვევა' : ' — ემთხვევა დღიურ კალორიას'}
+                </Text>
+              ) : null}
+            </View>
           ) : null}
 
           <Section title={planned ? `მენიუ · ${Math.round(planned)} კკალ` : 'მენიუ'} style={{ marginTop: 22 }}>
@@ -149,7 +172,7 @@ export default function CoachPlanEditor() {
                 <View style={coachStyles.row}>
                   <Text style={[hubText.cardTitle, { color: c.text100, flex: 1 }]}>{SLOTS.find((s) => s.key === m.slot)?.label ?? m.slot}</Text>
                   <Input inset style={{ width: 80, minHeight: 40, textAlign: 'center' }} value={m.time} onChangeText={(t) => setMeals((list) => list.map((x, i) => (i === mi ? { ...x, time: t.replace(/[^\d:]/g, '').slice(0, 5) } : x)))} placeholder="08:30" keyboardType="numbers-and-punctuation" />
-                  <Pressable accessibilityRole="button" accessibilityLabel="კვების წაშლა" hitSlop={10} onPress={() => setMeals((list) => list.filter((_, i) => i !== mi))}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="კვების წაშლა" hitSlop={10} onPress={() => setMeals((list) => list.filter((_, i) => i !== mi))} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
                     <X size={18} color={c.text300} />
                   </Pressable>
                 </View>

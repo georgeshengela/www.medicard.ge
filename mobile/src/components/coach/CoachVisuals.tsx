@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 import { CalendarDays, House, UserRound, UsersRound } from 'lucide-react-native';
 import { PrivateImage } from '@/components/coach/CoachUI';
+import { haptic } from '@/components/coach/CoachKit';
 import type { ProgressPhoto } from '@/lib/coach';
 import { daysBetween } from '@/lib/coach';
 import { hubText } from '@/theme/hub';
@@ -139,21 +140,28 @@ export function CoachTabBar() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const path = usePathname();
+  const dark = useIsDark();
   return (
     <View style={[st.tabBar, { paddingBottom: Math.max(insets.bottom, 10), backgroundColor: c.surface, borderTopColor: c.bg300 }]} accessibilityRole="tablist">
       {TABS.map(({ href, label, Icon, match }) => {
         const active = match(path);
-        const color = active ? c.primary100 : c.text300;
+        const color = active ? c.text100 : c.text300;
         return (
           <Pressable
             key={href}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             accessibilityLabel={label}
-            onPress={() => !active && router.replace(href as never)}
+            onPress={() => {
+              if (active) return;
+              haptic.tap();
+              router.replace(href as never);
+            }}
             style={st.tab}
           >
-            <Icon size={22} color={color} strokeWidth={active ? 2.4 : 1.9} />
+            <View style={[st.tabPill, active ? { backgroundColor: dark ? 'rgba(20,184,166,0.18)' : '#CCFBF1' } : null]}>
+              <Icon size={22} color={active ? (dark ? '#5EEAD4' : '#0F766E') : c.text300} strokeWidth={active ? 2.3 : 1.9} />
+            </View>
             <Text style={[hubText.small, { color, fontFamily: active ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium' }]}>{label}</Text>
           </Pressable>
         );
@@ -172,5 +180,6 @@ const st = StyleSheet.create({
   tag: { position: 'absolute', bottom: 10, backgroundColor: 'rgba(3,7,18,0.62)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   tagText: { color: '#FFFFFF', fontSize: 11, fontFamily: 'NotoSansGeorgian_600SemiBold' },
   tabBar: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 8 },
-  tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 48, justifyContent: 'center' },
+  tab: { flex: 1, alignItems: 'center', gap: 3, minHeight: 52, justifyContent: 'center' },
+  tabPill: { width: 60, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 });

@@ -41,7 +41,9 @@ export function cachedAuthImage(url: string, token: string, owner: string): Prom
     const info = await FileSystem.getInfoAsync(file);
     if (info.exists && (info.size ?? 0) > 0) return file;
     await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => undefined);
+    if (__DEV__) console.log('[authImage] download', url.replace(/^https?:\/\/[^/]+/, ''));
     const res = await FileSystem.downloadAsync(url, file, { headers: { Authorization: `Bearer ${token}` } });
+    if (__DEV__) console.log('[authImage] status', res.status, url.replace(/^https?:\/\/[^/]+/, ''));
     if (res.status !== 200) {
       await FileSystem.deleteAsync(file, { idempotent: true }).catch(() => undefined);
       throw new AuthImageError(res.status);

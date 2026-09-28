@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { CalendarPlus } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import { api, ApiError } from '@/lib/api';
-import { addDaysYmd, dayLabel, tbilisiToIso, tbilisiYmd, type CoachCatalog, type Gym, type RosterClient } from '@/lib/coach';
+import { MONTH_SHORT, WEEKDAY_SHORT, addDaysYmd, dayLabel, tbilisiToIso, tbilisiYmd, type CoachCatalog, type Gym, type RosterClient } from '@/lib/coach';
 import { Avatar, Button, Chip, CoachForm, Field, Input, Loading, coachStyles } from '@/components/coach/CoachUI';
+import { haptic } from '@/components/coach/CoachKit';
 import { hubText } from '@/theme/hub';
 import { useThemeColors } from '@/theme/colors';
 
@@ -66,9 +67,9 @@ export default function NewSessionScreen() {
     setBusy(true);
     try {
       const res = await api.coach.createSession({ clientId: openSlot ? null : clientId, startsAt: tbilisiToIso(day, time), durationMin: duration, gymId, kind, note: note.trim(), repeatWeeks: repeat });
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      haptic.success();
       Alert.alert(
-        'დაინიშნა ✅',
+        'დაინიშნა',
         openSlot ? `${res.sessions.length} თავისუფალი სლოტი გამოქვეყნდა — შენი კლიენტები დაჯავშნიან.` : `${who?.name ?? 'კლიენტს'} შეტყობინება მიუვა. შეხსენება — 24 და 1 საათით ადრე.`,
         [{ text: 'კარგი', onPress: () => router.back() }],
       );
@@ -83,41 +84,71 @@ export default function NewSessionScreen() {
     <CoachForm
       title="ვარჯიშის დანიშვნა"
       fallback="/coach/calendar"
-      footer={<Button label={repeat > 1 ? `დანიშვნა · ${repeat} კვირა` : 'დანიშვნა'} busy={busy} disabled={!time || (!openSlot && !clientId)} onPress={() => void submit()} />}
+      footer={<Button label={time ? `დანიშვნა · ${dayLabel(day, today)}, ${time}${repeat > 1 ? ` · ${repeat} კვ.` : ''}` : 'აირჩიე დრო'} busy={busy} disabled={!time || (!openSlot && !clientId)} onPress={() => void submit()} />}
     >
       {!clients ? <Loading /> : null}
       {clients ? (
         <>
           <Field label="ვისთვის">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              <Chip label="თავისუფალი სლოტი" selected={openSlot} onPress={() => { setOpenSlot(true); setClientId(null); }} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 8 }}>
+              <PersonTile label="თავისუფალი სლოტი" selected={openSlot} onPress={() => { setOpenSlot(true); setClientId(null); }}>
+                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.bg200, alignItems: 'center', justifyContent: 'center' }}>
+                  <CalendarPlus size={22} color={c.text200} />
+                </View>
+              </PersonTile>
               {clients.map((x) => (
-                <Chip key={x.id} label={x.name} selected={!openSlot && clientId === x.id} onPress={() => { setOpenSlot(false); setClientId(x.id); }} />
+                <PersonTile key={x.id} label={x.name.split(' ')[0]} selected={!openSlot && clientId === x.id} onPress={() => { setOpenSlot(false); setClientId(x.id); }}>
+                  <Avatar avatarId={x.avatarId} photoUrl={x.avatarUrl} name={x.name} size={52} />
+                </PersonTile>
               ))}
             </ScrollView>
-            {who ? (
-              <View style={[coachStyles.row, { marginTop: 10 }]}>
-                <Avatar avatarId={who.avatarId} photoUrl={who.avatarUrl} name={who.name} size={32} />
-                <Text style={[hubText.caption, { color: c.text200, flex: 1 }]}>{who.nextSession ? `შემდეგი ვარჯიში უკვე დაგეგმილია` : 'დაგეგმილი ვარჯიში არ აქვს'}</Text>
-              </View>
-            ) : null}
-            {openSlot ? <Text style={[hubText.small, { color: c.text300, marginTop: 6 }]}>სლოტს შენი ნებისმიერი კლიენტი დაჯავშნის „ჩემი ტრენერი“-დან — ერთხელ.</Text> : null}
+            {who ? <Text style={[hubText.caption, { color: c.text300, marginTop: 8 }]}>{who.name} · {who.nextSession ? 'შემდეგი ვარჯიში უკვე დაგეგმილია' : 'დაგეგმილი ვარჯიში არ აქვს'}</Text> : null}
+            {openSlot ? <Text style={[hubText.small, { color: c.text300, marginTop: 8 }]}>სლოტს შენი ნებისმიერი კლიენტი დაჯავშნის „ჩემი ტრენერი“-დან — ერთხელ.</Text> : null}
+            {!clients.length && !openSlot ? <Text style={[hubText.small, { color: c.text300, marginTop: 8 }]}>კლიენტები ჯერ არ გყავს — გახსენი თავისუფალი სლოტი.</Text> : null}
           </Field>
 
           <Field label="დღე">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {days.map((d) => (
-                <Chip key={d} label={dayLabel(d, today)} selected={day === d} onPress={() => { setDay(d); setTime(''); }} />
-              ))}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 8 }}>
+              {days.map((d) => {
+                const date = new Date(`${d}T12:00:00Z`);
+                const sel = day === d;
+                return (
+                  <Pressable
+                    key={d}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: sel }}
+                    accessibilityLabel={dayLabel(d, today)}
+                    onPress={() => { haptic.tap(); setDay(d); setTime(''); }}
+                    style={{ width: 58, minHeight: 70, borderRadius: 18, alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: sel ? '#0D9488' : c.surface }}
+                  >
+                    <Text style={[hubText.small, { color: sel ? '#CCFBF1' : c.text300 }]}>{d === today ? 'დღეს' : WEEKDAY_SHORT[date.getUTCDay()]}</Text>
+                    <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 19, lineHeight: 26, color: sel ? '#FFFFFF' : c.text100 }}>{date.getUTCDate()}</Text>
+                    <Text style={[hubText.small, { color: sel ? '#CCFBF1' : c.text300, fontSize: 10 }]}>{MONTH_SHORT[date.getUTCMonth()]}</Text>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
           </Field>
 
           <Field label="დაწყება">
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {times.map((t) => (
-                <Chip key={t} label={t} selected={time === t} onPress={() => setTime(t)} />
-              ))}
-            </View>
+            {times.length ? (
+              ([['დილა', (t: string) => t < '12:00'], ['დღე', (t: string) => t >= '12:00' && t < '17:00'], ['საღამო', (t: string) => t >= '17:00']] as const).map(([label, test]) => {
+                const group = times.filter(test);
+                if (!group.length) return null;
+                return (
+                  <View key={label} style={{ marginBottom: 10 }}>
+                    <Text style={[hubText.small, { color: c.text300, marginBottom: 6 }]}>{label}</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {group.map((t) => (
+                        <Chip key={t} label={t} selected={time === t} onPress={() => setTime(t)} />
+                      ))}
+                    </View>
+                  </View>
+                );
+              })
+            ) : (
+              <Text style={[hubText.body, { color: c.text300 }]}>დღევანდელი დრო ამოიწურა — აირჩიე სხვა დღე.</Text>
+            )}
           </Field>
 
           <Field label="ხანგრძლივობა">
@@ -162,5 +193,25 @@ export default function NewSessionScreen() {
         </>
       ) : null}
     </CoachForm>
+  );
+}
+
+/** Avatar + first name, selectable (who the session is for). */
+function PersonTile({ label, selected, onPress, children }: { label: string; selected: boolean; onPress: () => void; children: React.ReactNode }) {
+  const c = useThemeColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
+      onPress={() => {
+        haptic.tap();
+        onPress();
+      }}
+      style={{ width: 76, alignItems: 'center', gap: 6 }}
+    >
+      <View style={{ padding: 3, borderRadius: 32, borderWidth: 2, borderColor: selected ? '#14B8A6' : 'transparent' }}>{children}</View>
+      <Text numberOfLines={2} style={[hubText.small, { color: selected ? c.text100 : c.text200, textAlign: 'center', fontFamily: selected ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_400Regular' }]}>{label}</Text>
+    </Pressable>
   );
 }

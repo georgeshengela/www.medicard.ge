@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { CalendarPlus, EyeOff, Flame, Footprints, HeartPulse, Target, Timer, UserMinus, UtensilsCrossed } from 'lucide-react-native';
+import { CalendarPlus, Camera, Check, Dumbbell, EyeOff, Flame, Footprints, HeartPulse, Scale, Target, Timer, UserMinus, UtensilsCrossed } from 'lucide-react-native';
 import { api, ApiError } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
 import {
@@ -22,6 +22,7 @@ import {
   type ProgressPhoto,
 } from '@/lib/coach';
 import { BeforeAfter, WeightChart } from '@/components/coach/CoachVisuals';
+import { FadeIn, KpiTile, QuickAction, Ring, scoreColor } from '@/components/coach/CoachKit';
 import { Avatar, Badge, Button, Card, Chip, CoachHeader, DayStrip, ErrorBox, Loading, PrivateImage, Section, Stat, coachStyles } from '@/components/coach/CoachUI';
 import { HUB, hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -103,7 +104,7 @@ export default function CoachClientScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
-      <CoachHeader title={d?.client.name ?? 'კლიენტი'} subtitle={d ? [d.client.age ? `${d.client.age} წ.` : null, d.client.heightCm ? `${d.client.heightCm} სმ` : null, d.link.since ? `კლიენტი ${Number(tbilisiYmd(d.link.since).slice(8))} ${MONTH_SHORT[Number(tbilisiYmd(d.link.since).slice(5, 7)) - 1]}-დან` : null].filter(Boolean).join(' · ') : undefined} fallback="/coach/clients" />
+      <CoachHeader title="კლიენტის ბარათი" subtitle={d ? [d.client.age ? `${d.client.age} წ.` : null, d.client.heightCm ? `${d.client.heightCm} სმ` : null, d.link.since ? `კლიენტი ${Number(tbilisiYmd(d.link.since).slice(8))} ${MONTH_SHORT[Number(tbilisiYmd(d.link.since).slice(5, 7)) - 1]}-დან` : null].filter(Boolean).join(' · ') : undefined} fallback="/coach/clients" />
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} tintColor={c.primary200} />}
@@ -113,33 +114,49 @@ export default function CoachClientScreen() {
           {error ? <ErrorBox message={error} onRetry={load} /> : null}
           {!d && !error ? <Loading /> : null}
           {d ? (
-            <Card style={{ marginTop: 4, gap: 12 }}>
-              <View style={coachStyles.row}>
-                <Avatar avatarId={d.client.avatarId} photoUrl={d.client.avatarUrl} name={d.client.name} size={56} />
-                <View style={{ flex: 1, gap: 6 }}>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {(Object.keys(d.link.scopes) as CoachScope[]).map((k) => (
-                      <Badge key={k} label={`${d.link.scopes[k] ? '✓' : '✕'} ${SCOPE_COPY[k].title.split(' ')[0]}`} tone={d.link.scopes[k] ? 'brand' : 'neutral'} />
-                    ))}
+            <FadeIn>
+              <Card style={{ marginTop: 4, gap: 16 }}>
+                <View style={[coachStyles.row, { gap: 14 }]}>
+                  <Ring value={n?.score != null ? n.score / 100 : null} size={84} stroke={5} color={scoreColor(n?.score, dark)}>
+                    <Avatar avatarId={d.client.avatarId} photoUrl={d.client.avatarUrl} name={d.client.name} size={70} />
+                  </Ring>
+                  <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+                    <Text numberOfLines={1} style={[hubText.sectionTitle, { color: c.text100, fontSize: 19 }]}>{d.client.name}</Text>
+                    {n?.score != null ? (
+                      <Text style={[hubText.caption, { color: scoreColor(n.score, dark), fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>კვების დაცვა {n.score}% · 14 დღე</Text>
+                    ) : (
+                      <Text style={[hubText.caption, { color: c.text300 }]}>{d.link.scopes.nutrition ? 'კვების ჩანაწერები ჯერ არ არის' : 'კვება არ არის გაზიარებული'}</Text>
+                    )}
+                    {d.link.note ? <Text numberOfLines={2} style={[hubText.caption, { color: c.text200 }]}>„{d.link.note}“</Text> : null}
                   </View>
-                  {d.link.note ? <Text style={[hubText.caption, { color: c.text200 }]}>„{d.link.note}“</Text> : null}
                 </View>
-              </View>
-              <View style={[coachStyles.row, { gap: 8 }]}>
-                <Button label="დანიშვნა" icon={CalendarPlus} style={{ flex: 1, minHeight: 44, paddingHorizontal: 8 }} onPress={() => router.push(`/coach/session-new?clientId=${d.client.id}` as never)} />
-                <Button label="გეგმა" icon={UtensilsCrossed} kind="secondary" style={{ flex: 1, minHeight: 44, paddingHorizontal: 8 }} disabled={!d.link.scopes.nutrition} onPress={() => router.push(`/coach/plan/${d.client.id}` as never)} />
-                <Button label="მიზანი" icon={Target} kind="secondary" style={{ flex: 1, minHeight: 44, paddingHorizontal: 8 }} disabled={!d.link.scopes.weight} onPress={() => router.push(`/coach/goal/${d.client.id}` as never)} />
-              </View>
-            </Card>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {(Object.keys(d.link.scopes) as CoachScope[]).map((k) => (
+                    <View key={k} style={[coachStyles.row, { gap: 5, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: d.link.scopes[k] ? c.accent100 : c.bg200 }]}>
+                      {d.link.scopes[k] ? <Check size={12} color={c.primary100} strokeWidth={3} /> : <EyeOff size={12} color={c.text300} />}
+                      <Text style={[hubText.small, { color: d.link.scopes[k] ? c.primary100 : c.text300, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{SCOPE_COPY[k].title.split(' ')[0]}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={{ flexDirection: 'row' }}>
+                  <QuickAction icon={CalendarPlus} label="დანიშვნა" primary onPress={() => router.push(`/coach/session-new?clientId=${d.client.id}` as never)} />
+                  <QuickAction icon={UtensilsCrossed} label="კვების გეგმა" onPress={() => (d.link.scopes.nutrition ? router.push(`/coach/plan/${d.client.id}` as never) : setTab('food'))} />
+                  <QuickAction icon={Target} label="მიზანი" onPress={() => (d.link.scopes.weight ? router.push(`/coach/goal/${d.client.id}` as never) : setTab('weight'))} />
+                  <QuickAction icon={Camera} label="ფოტოები" onPress={() => setTab('photos')} />
+                </View>
+              </Card>
+            </FadeIn>
           ) : null}
         </View>
 
         {d ? (
           <View style={{ backgroundColor: c.bg100, paddingTop: 14, paddingBottom: 4 }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {TABS.map((t) => (
-                <Chip key={t.key} label={t.label} selected={tab === t.key} onPress={() => setTab(t.key)} />
-              ))}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} accessibilityRole="tablist">
+              {TABS.map((t) => {
+                const sc = TAB_SCOPE[t.key];
+                const locked = sc ? !d.link.scopes[sc] : false;
+                return <Chip key={t.key} label={locked ? `${t.label} · დახურულია` : t.label} selected={tab === t.key} onPress={() => setTab(t.key)} />;
+              })}
             </ScrollView>
           </View>
         ) : null}
@@ -151,11 +168,10 @@ export default function CoachClientScreen() {
             {tab === 'overview' ? (
               <>
                 <Section title="მოკლედ" style={{ marginTop: 14 }}>
-                  <Card style={{ flexDirection: 'row', gap: 6 }}>
-                    <Stat label="კვების დაცვა" value={n?.score != null ? `${n.score}%` : '—'} hint="14 დღე" />
-                    <Stat label="წონა" value={w?.currentKg ? `${w.currentKg}` : '—'} hint={w?.goal ? `მიზანი ${w.goal.targetKg}` : 'კგ'} />
-                    <Stat label="ჩატარდა" value={String(history.filter((s) => s.status === 'DONE').length)} hint={`გამოტოვა ${history.filter((s) => s.status === 'NO_SHOW').length}`} />
-                  </Card>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <KpiTile icon={Scale} ink="violet" value={w?.currentKg ? `${w.currentKg}` : '—'} label="წონა, კგ" hint={w?.goal ? `მიზანი ${w.goal.targetKg}${w.progress ? ` · ${w.progress.percent}%` : ''}` : 'მიზანი არ არის'} onPress={() => setTab('weight')} />
+                    <KpiTile icon={Dumbbell} ink="teal" value={String(history.filter((s) => s.status === 'DONE').length)} label="ვარჯიში ჩატარდა" hint={`გამოტოვა ${history.filter((s) => s.status === 'NO_SHOW').length}`} onPress={() => setTab('training')} />
+                  </View>
                 </Section>
                 {n ? (
                   <Section title="კვება · 14 დღე" link="დეტალები" onLink={() => setTab('food')}>
