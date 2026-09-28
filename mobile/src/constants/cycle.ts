@@ -84,14 +84,27 @@ export const MOOD_OPTIONS: CycleChip[] = [
 ];
 
 /** სექსი / ნაყოფიერება — დამატებითი ჩიპები (ლოგში ასევეა switch + libido) */
-export const SEXUAL_OPTIONS: CycleChip[] = [
-  { id: 'protected', label: 'დაცული' },
-  { id: 'unprotected', label: 'დაუცველი' },
-  { id: 'high_drive', label: 'მაღალი ლიბიდო' },
-  { id: 'low_drive', label: 'დაბალი ლიბიდო' },
+/** What happened (Flo's "Sex and sex drive" set). Any of these means sexual activity = yes. */
+export const SEX_ACTIVITY_OPTIONS: CycleChip[] = [
+  { id: 'protected', label: 'დაცული სექსი' },
+  { id: 'unprotected', label: 'დაუცველი სექსი' },
+  { id: 'oral_sex', label: 'ორალური' },
+  { id: 'anal_sex', label: 'ანალური' },
+  { id: 'sensual_touch', label: 'სენსუალური შეხება' },
+  { id: 'masturbation', label: 'მასტურბაცია' },
+  { id: 'sex_toys', label: 'სათამაშოები' },
   { id: 'orgasm', label: 'ორგაზმი' },
   { id: 'pain_sex', label: 'ტკივილი სექსისას' },
 ];
+
+/** Sex drive — one answer, independent of whether anything happened. */
+export const SEX_DRIVE_OPTIONS: CycleChip[] = [
+  { id: 'high_drive', label: 'მაღალი' },
+  { id: 'neutral_drive', label: 'ჩვეულებრივი' },
+  { id: 'low_drive', label: 'დაბალი' },
+];
+
+export const SEXUAL_OPTIONS: CycleChip[] = [...SEX_ACTIVITY_OPTIONS, ...SEX_DRIVE_OPTIONS];
 
 export const MUCUS_OPTIONS: CycleChip[] = [
   { id: 'dry', label: 'მშრალი' },

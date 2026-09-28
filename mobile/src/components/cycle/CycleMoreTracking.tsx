@@ -374,36 +374,7 @@ export function CycleMoreTracking({ form, onChange, compact, mode }: Props) {
                   <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginBottom: 10 }}>
                     {ka.cycle.privateGroupHint}
                   </Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                    {[
-                      { val: false, label: ka.cycle.logNo },
-                      { val: true, label: ka.cycle.logYes },
-                    ].map((opt) => (
-                      <Chip
-                        key={String(opt.val)}
-                        label={opt.label}
-                        selected={form.sexual === opt.val}
-                        onPress={() => {
-                          const next = form.sexual === opt.val ? null : opt.val;
-                          onChange({ sexual: next, sexTags: next ? form.sexTags : [] });
-                        }}
-                      />
-                    ))}
-                  </View>
-                  {form.sexual ? (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                      {filtered
-                        .filter((opt) => !['vaginal_dryness', 'itching_vulva'].includes(opt.id))
-                        .map((opt) => (
-                          <Chip
-                            key={opt.id}
-                            label={opt.label}
-                            selected={form.sexTags.includes(opt.id)}
-                            onPress={() => onChange({ sexTags: toggle(form.sexTags, opt.id) })}
-                          />
-                        ))}
-                    </View>
-                  ) : null}
+                  {/* Sex and sex drive live in their own section right after flow (CycleSexSection). */}
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {chipsForGroup('private')
                       .filter((opt) => ['vaginal_dryness', 'itching_vulva'].includes(opt.id))

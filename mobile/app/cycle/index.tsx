@@ -10,9 +10,11 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { CalendarHeart, MessageSquareText } from 'lucide-react-native';
+import { CalendarHeart, MessageSquareText, PencilLine } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleHero } from '@/components/cycle/CycleHero';
+import { CycleStatsCard } from '@/components/cycle/CycleStatsCard';
+import { CyclePeriodToast } from '@/components/cycle/CyclePeriodToast';
 import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
 import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
@@ -192,6 +194,9 @@ export default function CycleHome() {
   const [postpartumQuery, setPostpartumQuery] = useState(() => emptyPostpartumQueryState());
   const postpartumGen = useRef(0);
   const [quickOpen, setQuickOpen] = useState(false);
+  /** One-tap "period started" confirmation (with undo / add flow). */
+  const [periodToast, setPeriodToast] = useState<string | null>(null);
+  const [periodBusy, setPeriodBusy] = useState(false);
   const [daySheetOpen, setDaySheetOpen] = useState(false);
   const [startIntent, setStartIntent] = useState(false);
   const [selected, setSelected] = useState(todayKey());
@@ -591,6 +596,51 @@ export default function CycleHome() {
       .catch(() => undefined);
   };
 
+  /**
+   * Flo-style one tap: today becomes day 1 immediately (offline-safe queue); the server projects the
+   * rest of the period from the usual length. A toast offers "add flow" and "undo".
+   */
+  const startPeriodNow = async () => {
+    if (!user?.id || periodBusy) return;
+    setPeriodBusy(true);
+    try {
+      const result = await queueApplyPeriod(user.id, { action: 'start', date: today });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      if (result.view) {
+        setCycleView(result.view);
+        setBundle(result.view.display);
+        resyncReminders(result.view);
+      }
+      setPeriodToast(today);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : ka.common.error);
+    } finally {
+      setPeriodBusy(false);
+    }
+  };
+
+  const undoPeriodStart = async (date: string) => {
+    if (!user?.id) return;
+    setPeriodToast(null);
+    try {
+      // "end" on the first day clears that one-day period again (server planEndPeriod).
+      const result = await queueApplyPeriod(user.id, { action: 'end', date });
+      if (result.view) {
+        setCycleView(result.view);
+        setBundle(result.view.display);
+        resyncReminders(result.view);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : ka.common.error);
+    }
+  };
+
+  useEffect(() => {
+    if (!periodToast) return;
+    const t = setTimeout(() => setPeriodToast(null), 8000);
+    return () => clearTimeout(t);
+  }, [periodToast]);
+
   const endPeriod = () => {
     Alert.alert(ka.cycle.periodEndCta, ka.cycle.periodEndHint, [
       { text: ka.common.cancel, style: 'cancel' },
@@ -920,7 +970,7 @@ export default function CycleHome() {
                     phase={todayPhase.phase}
                     today={today}
                     onLog={() => openQuickLog(today)}
-                    onStart={() => openQuickLog(today, true)}
+                    onStart={() => void startPeriodNow()}
                     onEnd={endPeriod}
                     onInfo={() =>
                       Alert.alert(ka.cycle.howCalculated, ka.cycle.howCalculatedBody)
@@ -928,6 +978,30 @@ export default function CycleHome() {
                   />
                 )}
               </Animated.View>
+
+              {/* Flo order: ring → today's insights → my cycle → today's log. */}
+              {modeCaps.showClassicCycleOverview ? (
+              <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+                {forecastPresentationAllowed(bundle) ? <CycleInsightsPanel
+                  seed={(bundle.profile.aiInsights as never) || bundle.localInsights || null}
+                  phase={suppressCycleLengthChrome(bundle) ? { ...todayPhase, day: null } : todayPhase}
+                  mode={bundle.profile.mode}
+                  conditions={bundle.profile.conditions}
+                  log={todayLog}
+                  confidence={bundle.predictions?.confidence}
+                  isIrregular={bundle.profile.isIrregular}
+                  offline={Boolean(cycleView?.stale)}
+                  variant="stories"
+                  onLog={() => openQuickLog(today)}
+                  onAskMedi={() => router.push('/assistant?mode=doctor' as never)}
+                /> : null}
+
+              </View>
+              ) : null}
+
+              {modeCaps.showClassicCycleOverview && !suppressCycleLengthChrome(bundle) ? (
+                <CycleStatsCard bundle={bundle} onOpen={() => router.push('/cycle/trends' as never)} />
+              ) : null}
 
               <CycleJourneyGuide mode={bundle.profile.mode} />
               <View style={{ paddingHorizontal: 20 }}>
@@ -1025,58 +1099,22 @@ export default function CycleHome() {
                 </View>
               ) : null}
 
-              {modeCaps.showClassicCycleOverview ? (
-              <View style={{ paddingHorizontal: 20 }}>
-                {forecastPresentationAllowed(bundle) ? <CycleInsightsPanel
-                  seed={(bundle.profile.aiInsights as never) || bundle.localInsights || null}
-                  phase={suppressCycleLengthChrome(bundle) ? { ...todayPhase, day: null } : todayPhase}
-                  mode={bundle.profile.mode}
-                  conditions={bundle.profile.conditions}
-                  log={todayLog}
-                  confidence={bundle.predictions?.confidence}
-                  isIrregular={bundle.profile.isIrregular}
-                  offline={Boolean(cycleView?.stale)}
-                  maxCards={1}
-                /> : null}
-
-                {/* Quiet Medi entry (§17) — a row, never a card wall. */}
-                <Pressable
-                  onPress={() => router.push('/assistant?mode=doctor' as never)}
-                  accessibilityRole="button"
-                  accessibilityLabel={ka.cycle.askMedi}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    minHeight: 44,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    marginTop: 8,
-                    marginBottom: 8,
-                    borderRadius: 18,
-                    backgroundColor: c.accentSoft,
-                  }}
-                >
-                  <MessageSquareText size={17} color={c.brand} strokeWidth={2.1} />
-                  <Text
-                    style={{
-                      color: c.brand,
-                      fontFamily: 'NotoSansGeorgian_600SemiBold',
-                      fontSize: 13,
-                      marginLeft: 8,
-                    }}
-                  >
-                    {ka.cycle.askMedi}
-                  </Text>
-                </Pressable>
-              </View>
-              ) : null}
             </>
           ) : null}
 
           {pane === 'calendar' && bundle ? (
             <View style={{ paddingHorizontal: 20 }}>
-              {!(cursor.y === Number(today.slice(0, 4)) && cursor.m === Number(today.slice(5, 7)) - 1) ? (
-                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8 }}>
+                <Pressable
+                  onPress={() => router.push('/cycle/periods' as never)}
+                  accessibilityRole="button"
+                  accessibilityLabel={ka.cycle.periodDatesEdit}
+                  style={{ minHeight: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: c.card, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                >
+                  <PencilLine size={15} color={c.brand} strokeWidth={2.2} />
+                  <Text style={{ color: c.brand, fontSize: 13, fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.periodDatesEdit}</Text>
+                </Pressable>
+                {!(cursor.y === Number(today.slice(0, 4)) && cursor.m === Number(today.slice(5, 7)) - 1) ? (
                   <Pressable
                     onPress={() => {
                       const [y, m] = today.split('-').map(Number);
@@ -1102,8 +1140,8 @@ export default function CycleHome() {
                       {ka.cycle.jumpToday}
                     </Text>
                   </Pressable>
-                </View>
-              ) : null}
+                ) : null}
+              </View>
 
               <CycleCalendar
                 year={cursor.y}
@@ -1174,6 +1212,17 @@ export default function CycleHome() {
             onPress={() => openQuickLog(pane === 'calendar' ? selected : today)}
           />
         </View>
+      ) : null}
+
+      {periodToast ? (
+        <CyclePeriodToast
+          bottomInset={insets.bottom}
+          onAddFlow={() => {
+            setPeriodToast(null);
+            openQuickLog(periodToast);
+          }}
+          onUndo={() => void undoPeriodStart(periodToast)}
+        />
       ) : null}
 
       <CycleQuickLogSheet

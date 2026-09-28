@@ -1,10 +1,11 @@
-import { SEXUAL_OPTIONS } from '@/constants/cycle';
+import { SEXUAL_OPTIONS, SEX_ACTIVITY_OPTIONS } from '@/constants/cycle';
 import type { CycleLog } from '@/lib/api';
 import { syncCycleLogToHealth } from '@/lib/healthSync';
 import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { saveCycleObservation, type CycleView } from '@/lib/cycleOffline';
 
 const SEX_IDS = new Set(SEXUAL_OPTIONS.map((o) => o.id));
+const SEX_ACTIVITY_IDS = new Set(SEX_ACTIVITY_OPTIONS.map((o) => o.id));
 
 export const EMPTY_CYCLE_LOG: CycleLogForm = {
   flow: null,
@@ -46,7 +47,7 @@ export function formFromCycleLog(log: CycleLog | undefined): CycleLogForm {
     sexTags: all.filter((id) => SEX_IDS.has(id)),
     moods: log.moods || [],
     // Stored false cannot be told apart from the pre-2026-09-29 default "no" on every log → show as unanswered.
-    sexual: log.sexualActivity === true || all.some((id) => SEX_IDS.has(id)) ? true : null,
+    sexual: log.sexualActivity === true || all.some((id) => SEX_ACTIVITY_IDS.has(id)) ? true : null,
     libido: log.libido,
     bbt: log.bbt != null ? String(log.bbt) : '',
     mucus: log.cervicalMucus,
@@ -88,7 +89,8 @@ export async function persistCycleLog(
     date,
     {
       flow: form.flow,
-      symptoms: [...form.symptoms, ...(form.sexual ? form.sexTags : [])],
+      // Activity tags only when the answer is "yes"; sex drive is its own answer and is always kept.
+      symptoms: [...form.symptoms, ...form.sexTags.filter((id) => form.sexual === true || !SEX_ACTIVITY_IDS.has(id))],
       moods: form.moods,
       sexualActivity: form.sexual,
       libido: form.libido,

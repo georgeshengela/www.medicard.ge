@@ -42,6 +42,7 @@ import {
   toDateKey,
   addDays,
   daysBetween,
+  isPeriodFlow,
 } from '../lib/cycle.js';
 import { isCycleAiContextSupported } from '../lib/cycleModes.js';
 import { clientTimezoneFromReq, resolveCycleClock } from '../lib/cycleCivilDate.js';
@@ -1592,6 +1593,39 @@ cycleRouter.put(
     }
 
     await syncLastPeriodStart(req.user.id, today, touched);
+    return res.json(await bundleFor(req));
+  }),
+);
+
+/**
+ * Flo-style "edit period dates": tick/untick past days in a month calendar and save once.
+ * add → bleed day (keeps an already logged intensity), remove → bleed cleared (other observations kept).
+ * Future days are refused like everywhere else; the last period start is re-derived from what remains.
+ */
+cycleRouter.put(
+  '/period/days',
+  asyncHandler(async (req, res) => {
+    assertFemale(req.user);
+    const { today } = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
+    const body = z
+      .object({
+        add: z.array(z.string()).max(120).default([]),
+        remove: z.array(z.string()).max(120).default([]),
+      })
+      .parse(req.body ?? {});
+    const add = [...new Set(body.add.map((d) => assertCycleDateKey(d, today)))];
+    const remove = [...new Set(body.remove.map((d) => assertCycleDateKey(d, today)))].filter((d) => !add.includes(d));
+    const existing = add.length
+      ? await prisma.cycleLog.findMany({ where: { userId: req.user.id, date: { in: add } }, select: { date: true, flow: true } })
+      : [];
+    const bleeding = new Set(existing.filter((l) => isPeriodFlow(l.flow)).map((l) => toDateKey(l.date)));
+    for (const date of add) {
+      if (!bleeding.has(date)) await upsertBleedDay(req.user.id, date, DEFAULT_BLEED_FLOW);
+    }
+    for (const date of remove) {
+      await clearBleedDay(req.user.id, date);
+    }
+    await syncLastPeriodStart(req.user.id, today, [...add, ...remove]);
     return res.json(await bundleFor(req));
   }),
 );

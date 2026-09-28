@@ -23,7 +23,8 @@ const ICONS: Record<string, LucideIcon> = {
   vaginal_dryness: Droplet, discharge: Droplets, frequent_urination: Droplet,
   prenatal_vitamin: Pill, folic_acid: Pill, water_2l: Droplets, walk: Activity,
   doctor_appt: HeartPulse, ultrasound: Baby, blood_test: Droplet, rest: Moon,
-  protected: ShieldCheck, unprotected: Heart, high_drive: Heart, low_drive: Heart,
+  protected: ShieldCheck, unprotected: Heart, high_drive: Heart, low_drive: Heart, neutral_drive: Heart,
+  oral_sex: Heart, anal_sex: Heart, sensual_touch: Heart, masturbation: Heart, sex_toys: Heart, orgasm: Sparkles, pain_sex: HeartPulse,
   dry: Droplet, sticky: Droplet, creamy: Droplet, watery: Droplets, eggwhite: Droplets,
 };
 const BY_LABEL = new Map([...MOOD_OPTIONS, ...PHYSICAL_SYMPTOMS, ...PREGNANCY_CHECKLIST, ...SEXUAL_OPTIONS].map(item => [item.label, item.id]));

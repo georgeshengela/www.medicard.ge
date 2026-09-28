@@ -3208,6 +3208,9 @@ export const api = {
         body,
         timeoutMs: opts?.timeoutMs ?? 30_000,
       }),
+    /** Edit period dates in one save (month calendar with checkboxes). Online only. */
+    editPeriodDays: (body: { add: string[]; remove: string[] }) =>
+      request<CycleBundle>('/api/cycle/period/days', { method: 'PUT', body, timeoutMs: 30_000 }),
     upsertPregnancy: (
       date: string,
       body: Partial<{

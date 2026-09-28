@@ -27,6 +27,7 @@ import {
   CycleTagPicker,
 } from '@/components/cycle/CycleObservationFields';
 import { CycleCard, CycleScalePicker, formatCycleDateKa } from '@/components/cycle/CycleUI';
+import { CycleSexSection } from '@/components/cycle/CycleSexSection';
 import { CycleObservationAssessment } from '@/components/cycle/CycleObservationAssessment';
 import type { CycleCustomTag, CyclePainEntry } from '@/lib/api';
 import { PAIN_MANAGED_SYMPTOM_IDS } from '@/lib/cycleObservations';
@@ -429,60 +430,9 @@ export function CycleLogTabs({
               {ka.cycle.privateSectionHint}
             </Text>
 
-            <Block title={ka.cycle.sexual} hint={ka.cycle.logSexHint}>
-              <View style={{ flexDirection: 'row', marginHorizontal: -5, marginBottom: form.sexual ? 12 : 0 }}>
-                {[
-                  { val: false, label: ka.cycle.logNo },
-                  { val: true, label: ka.cycle.logYes },
-                ].map((opt) => {
-                  const active = form.sexual === opt.val;
-                  return (
-                    <View key={String(opt.val)} style={{ flex: 1, marginHorizontal: 5 }}>
-                      <Pressable
-                        accessibilityRole="radio"
-                        accessibilityLabel={opt.label}
-                        accessibilityState={{ checked: active }}
-                        onPress={() => {
-                          Haptics.selectionAsync().catch(() => undefined);
-                          // Tapping the chosen answer again clears it (back to "not answered").
-                          const next = active ? null : opt.val;
-                          onChange({ sexual: next, sexTags: next ? form.sexTags : [] });
-                        }}
-                        style={{
-                          minHeight: 52,
-                          borderRadius: 24,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: active ? c.cta : c.cardSoft,
-                          borderWidth: active ? 0 : 1.5,
-                          borderColor: c.border,
-                        }}
-                      >
-                        <Text style={{ color: active ? c.onPrimary : c.ink, fontWeight: '800' }}>
-                          {opt.label}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  );
-                })}
-              </View>
-              {form.sexual ? (
-                <ToggleList
-                  options={SEXUAL_OPTIONS}
-                  selected={form.sexTags}
-                  onToggle={(id) => onChange({ sexTags: toggle(form.sexTags, id) })}
-                  accent={c.blushDeep}
-                />
-              ) : null}
-            </Block>
-
-            <Block title={ka.cycle.libido} hint={ka.cycle.logLibidoHint}>
-              <CycleScalePicker
-                value={form.libido}
-                onChange={(n) => onChange({ libido: n })}
-                accent={c.rose}
-              />
-            </Block>
+            <View style={{ marginBottom: 18 }}>
+              <CycleSexSection form={form} onChange={onChange} />
+            </View>
 
             {showFertility ? (
               <>
