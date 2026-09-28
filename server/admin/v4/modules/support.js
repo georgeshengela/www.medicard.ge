@@ -81,6 +81,24 @@
     return label === 'გუშინ' ? 'გუშინ' : d.toLocaleDateString('ka-GE', { day: 'numeric', month: 'short' });
   }
   const fullWhen = (iso) => (iso ? `${dayLabel(iso)}, ${clock(iso)}` : '—');
+  /** New part vs quoted history of a text mail. Mirrors server/src/lib/support/quote.js. */
+  const WROTE = /(wrote|писал\(?а?\)?|დაწერა|schrieb|a écrit|escribió)\s*:\s*$/i;
+  const HEADER_START = /^(on|am|le|el|\d{1,2}[./]|[\p{L}]{2,4},)\s/iu;
+  function splitQuoted(text) {
+    const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n');
+    let cut = -1;
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i].trim();
+      if (WROTE.test(line)) {
+        cut = i > 0 && !WROTE.test(lines[i - 1].trim()) && HEADER_START.test(lines[i - 1].trim()) && !HEADER_START.test(line) ? i - 1 : i;
+        break;
+      }
+      if (/^-{2,}\s*(original message|forwarded message|пересылаемое|გადაგზავნილი)/i.test(line)) { cut = i; break; }
+      if (line.startsWith('>') && lines.slice(i).every((l) => !l.trim() || l.trim().startsWith('>'))) { cut = i; break; }
+    }
+    if (cut <= 0) return { main: String(text ?? '').trim(), quoted: '' };
+    return { main: lines.slice(0, cut).join('\n').trim(), quoted: lines.slice(cut).join('\n').trim() };
+  }
   function params() { return typeof global.hashSearch === 'function' ? global.hashSearch() : new URLSearchParams(location.hash.split('?')[1] || ''); }
   function writeHash() {
     const p = params();
@@ -313,12 +331,19 @@
     const name = out ? (m.author || 'ადმინი') : (m.fromName || m.fromEmail || nameOf(t));
     const hasHtml = Boolean(m.htmlBody);
     const pending = ['pending', 'restricted', 'failed'].includes(m.bodyStatus);
-    // Plain mails read best as text (natural height); rich ones (images, tables) open as HTML.
-    const startText = hasHtml && Boolean(String(m.textBody || '').trim()) && !/<(img|table)/i.test(m.htmlBody);
+    // Mails with a text part open as text (natural height, quoted history folded); HTML is one
+    // click away. HTML-only mails open as HTML.
+    const hasText = Boolean(String(m.textBody || '').trim());
+    const startText = hasHtml && hasText;
+    const { main, quoted } = splitQuoted(m.textBody || '');
+    const textBlock = `<div class="sx-textwrap" data-text ${hasHtml && !startText ? 'hidden' : ''}>
+        <pre class="sx-text">${esc(main || (quoted ? '' : '(ცარიელი)'))}</pre>
+        ${quoted ? `<button type="button" class="sx-quote-toggle" data-quote-toggle aria-expanded="false" title="წინა მიმოწერის ჩვენება">···</button><pre class="sx-text sx-quoted" hidden>${esc(quoted)}</pre>` : ''}
+      </div>`;
     const body = pending
       ? `<div class="sx-body-note${m.bodyStatus === 'pending' ? '' : ' is-warn'}">${ico(m.bodyStatus === 'pending' ? 'refresh' : 'alert')}<span>${esc(BODY_NOTE[m.bodyStatus])}</span>${m.bodyStatus !== 'pending' ? `<button type="button" class="btn compact ghost" data-refetch="${esc(m.id)}">ხელახლა ცდა</button>` : ''}</div>`
       : `${hasHtml ? `<iframe class="sx-frame" title="წერილის ტექსტი" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" data-frame ${startText ? 'hidden' : ''}></iframe>` : ''}
-         <pre class="sx-text" data-text ${hasHtml && !startText ? 'hidden' : ''}>${esc(m.textBody || '(ცარიელი)')}</pre>`;
+         ${textBlock}`;
     const atts = (m.attachments || []).length
       ? `<div class="sx-atts">${m.attachments.map((a) => `<button type="button" class="sx-att" data-att="${esc(a.id)}" data-msg="${esc(m.id)}" data-name="${esc(a.filename)}">${ico('paperclip')}<span>${esc(a.filename)}</span>${a.size ? `<small>${fmt(Math.ceil(a.size / 1024))} KB</small>` : ''}</button>`).join('')}</div>`
       : '';
@@ -414,6 +439,11 @@
         el.querySelector('[data-text]').hidden = !showText;
       });
     });
+    box.querySelectorAll('[data-quote-toggle]').forEach((b) => b.addEventListener('click', () => {
+      const open = b.getAttribute('aria-expanded') !== 'true';
+      b.setAttribute('aria-expanded', String(open));
+      b.nextElementSibling.hidden = !open;
+    }));
     box.querySelectorAll('[data-refetch]').forEach((b) => b.addEventListener('click', async () => {
       try { await api(`/messages/${encodeURIComponent(b.dataset.refetch)}/refetch`, { method: 'POST' }); toast('ხელახლა ვცდი — განაახლე წუთში', 'ok'); } catch (e) { toast(e.message, 'bad'); }
     }));

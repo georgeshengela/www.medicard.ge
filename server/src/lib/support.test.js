@@ -524,3 +524,15 @@ describe('support validation, retention and install', () => {
     }
   });
 });
+
+it('splitQuoted folds Gmail quoted history (English and Georgian) and keeps plain mails whole', async () => {
+  const { splitQuoted, previewText } = await import('./support/quote.js');
+  const en = splitQuoted('ანუ გამოდის რომ ესეა\n\nOn Mon, Sep 28, 2026 at 2:57 AM MEDICARD <support@medicard.ge>\nwrote:\n\n>\n> kai gavigeee\n');
+  assert.equal(en.main, 'ანუ გამოდის რომ ესეა');
+  assert.match(en.quoted, /^On Mon/);
+  const ka = splitQuoted('გამარჯობა\n\n2026 წლის 28 სექ., 02:57-ზე MEDICARD <support@medicard.ge> დაწერა:\n> ძველი');
+  assert.equal(ka.main, 'გამარჯობა');
+  assert.equal(splitQuoted('just text').quoted, '');
+  assert.equal(splitQuoted('> only quoted').main, '> only quoted');
+  assert.equal(previewText('new line\n> old one'), 'new line');
+});

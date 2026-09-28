@@ -18,6 +18,7 @@ import { isFeatureEnabled } from '../lib/featureFlags.js';
 import { EMAIL_FEATURE } from '../lib/email/mailer.js';
 import { hashEmail, isSuppressed } from '../lib/email/index.js';
 import { ATTACHMENT_MAX_BYTES, createInboundClient } from '../lib/support/resendInbound.js';
+import { previewText } from '../lib/support/quote.js';
 import { SUPPORT_STATUSES, inboundHealth, isMissingSupportTable, kickSupportInbound, supportConfig, SUPPORT_RETENTION_DAYS } from '../lib/support/inbound.js';
 import { addSupportNote, noteSchema, renderSupportReply, replySchema, sendSupportReply, snippetSchema, supportSender, threadPatchSchema } from '../lib/support/reply.js';
 
@@ -139,7 +140,7 @@ adminSupportRouter.get('/threads', view, guarded(async (req, res) => {
     : [];
   const previewOf = Object.fromEntries(latest.map((m) => [m.threadId, {
     direction: m.direction,
-    text: String(m.textBody || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+    text: previewText(m.textBody),
     pending: !m.textBody && m.bodyStatus !== 'ok',
   }]));
   res.json({ total, threads: rows.map((r) => ({ ...threadView(r), preview: previewOf[r.id] || null })), counts, admins, me: req.admin.id });
