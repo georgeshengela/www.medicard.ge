@@ -372,9 +372,9 @@ html body .v3-user-page .s-insights h3 .icon { width: 16px; height: 16px; color:
 .sx-search .icon { position: absolute; left: 11px; top: 50%; width: 15px; height: 15px; transform: translateY(-50%); color: var(--s-faint); pointer-events: none; }
 .sx-search input { width: 100%; height: 36px; padding: 0 12px 0 34px; border: 1px solid var(--s-line); border-radius: 10px; background: var(--s-surface); font: inherit; font-size: 13px; color: var(--s-ink); }
 .sx-search input:focus { outline: none; border-color: var(--s-accent); box-shadow: 0 0 0 3px var(--s-accent-ring); }
-.sx-filters { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; margin: 0 -2px; padding: 0 2px; }
+.sx-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 .sx-filters::-webkit-scrollbar { display: none; }
-.sx-filter { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 12.5px; font-weight: 550; color: var(--s-muted); cursor: pointer; }
+.sx-filter { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; height: 30px; padding: 0 8px 0 10px; white-space: nowrap; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 12.5px; font-weight: 550; color: var(--s-muted); cursor: pointer; }
 .sx-filter i { font-style: normal; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--s-sunken); font-size: 11px; line-height: 18px; text-align: center; color: var(--s-muted); font-variant-numeric: tabular-nums; }
 .sx-filter:hover { background: var(--s-hover); color: var(--s-ink); }
 .sx-filter[aria-selected="true"] { background: var(--s-accent-soft); color: var(--s-accent-ink); }
@@ -452,7 +452,7 @@ html body .v3-user-page .s-insights h3 .icon { width: 16px; height: 16px; color:
 .sx-mini { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; border: 1px solid var(--s-line); border-radius: 7px; background: var(--s-surface); font: inherit; font-size: 11.5px; font-weight: 600; color: var(--s-text-2); cursor: pointer; }
 .sx-mini:hover { border-color: var(--s-line-strong); color: var(--s-ink); }
 .sx-mini .icon { width: 13px; height: 13px; }
-.sx-frame { display: block; width: 100%; min-height: 64px; border: 0; background: transparent; color-scheme: light; }
+.sx-frame { display: block; width: 100%; min-height: 34px; border: 0; background: transparent; color-scheme: light; }
 :root[data-theme="dark"] .sx-frame { background: #fff; border-radius: 10px; padding: 8px; }
 .sx-text { margin: 0; font: 13.5px/1.65 var(--s-font); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--s-text); }
 .sx-body-note { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--s-sunken); font-size: 12.5px; color: var(--s-text-2); }
@@ -489,7 +489,7 @@ html body .v3-user-page .s-insights h3 .icon { width: 16px; height: 16px; color:
 .sx-input:focus { outline: none; border-color: var(--s-accent); box-shadow: 0 0 0 3px var(--s-accent-ring); }
 .sx-compose-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sx-compose-foot .sx-keys { margin-right: auto; }
-.sx-after { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--s-muted); }
+.sx-after { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--s-muted); white-space: nowrap; }
 .sx-after select { height: 30px; padding: 0 8px; border: 1px solid var(--s-line); border-radius: 8px; background: var(--s-surface); font: inherit; font-size: 12.5px; color: var(--s-ink); }
 
 /* empty conversation */
@@ -516,7 +516,7 @@ html body .v3-user-page .s-insights h3 .icon { width: 16px; height: 16px; color:
 .sx-account span { font-size: 11.5px; color: var(--s-muted); }
 .sx-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; margin: 0; font-size: 12.5px; }
 .sx-dl dt { color: var(--s-muted); }
-.sx-dl dd { margin: 0; text-align: right; color: var(--s-ink); overflow-wrap: anywhere; }
+.sx-dl dd { margin: 0; min-width: 0; text-align: right; color: var(--s-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sx-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .sx-history button { display: grid; gap: 4px; width: 100%; padding: 8px 10px; border: 1px solid transparent; border-radius: 10px; background: transparent; text-align: left; font: inherit; cursor: pointer; }
 .sx-history button:hover { border-color: var(--s-line); background: var(--s-surface); }

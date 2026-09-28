@@ -47,6 +47,7 @@
   const INKS = ['#0F766E', '#1D4ED8', '#7C3AED', '#BE185D', '#B45309', '#15803D', '#0369A1'];
   const badge = (key) => { const [label, tone] = STATUS[key] || [key, 'is-plain']; return `<span class="s-badge ${tone}">${esc(label)}</span>`; };
   const nameOf = (t) => t.counterpartName || t.counterpartEmail || '—';
+  const ACCOUNT_STATUS = { ACTIVE: 'აქტიური', BLOCKED: 'დაბლოკილი', DELETED: 'წაშლილი', PENDING: 'მოლოდინში' };
 
   const st = { sub: 'inbox', filter: { status: 'active', mine: false, unread: false, q: '', offset: 0 }, threadId: null, config: null, composeMode: 'reply', snippets: null, list: [], thread: null, sideOpen: false };
 
@@ -70,7 +71,7 @@
     if (dayKey(d) === dayKey(y)) return 'გუშინ';
     return d.toLocaleDateString('ka-GE', { day: 'numeric', month: 'long', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
   }
-  const clock = (iso) => new Date(iso).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' });
+  const clock = (iso) => new Date(iso).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit', hour12: false });
   function shortWhen(iso) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -400,7 +401,7 @@
         const text = String(m.textBody || m.htmlBody.replace(/<[^>]+>/g, ' '));
         const lines = text.split('\n').reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 90)), 0);
         const media = /<(img|table)\b/i.test(m.htmlBody) ? 240 : 0;
-        frame.style.height = `${Math.min(640, Math.max(64, 18 + lines * 23 + media))}px`;
+        frame.style.height = `${Math.min(640, Math.max(34, 12 + lines * 23 + media))}px`;
       }
       el.querySelector('[data-view-toggle]')?.addEventListener('click', (e) => {
         const b = e.currentTarget;
@@ -445,7 +446,7 @@
       <section class="sx-side-sec">
         <h4>ანგარიში</h4>
         ${u ? `<div class="sx-account">
-            <div><b>${esc(u.fullName || 'მომხმარებელი')}</b><span>${esc(u.status || '')} · რეგისტრაცია ${esc(dayLabel(u.createdAt))}</span></div>
+            <div><b>${esc(u.fullName || 'მომხმარებელი')}</b><span>${esc(ACCOUNT_STATUS[u.status] || u.status || '')} · რეგისტრაცია ${esc(dayLabel(u.createdAt))}</span></div>
             <a class="btn compact" href="#/users/${encodeURIComponent(u.id)}">პროფილი</a>
           </div>`
           : '<p class="sx-muted">ამ მისამართით მედიქარდის ანგარიში არ არის (ან სხვა ელფოსტით არის დარეგისტრირებული).</p>'}
@@ -453,7 +454,7 @@
       <section class="sx-side-sec">
         <h4>დეტალები</h4>
         <dl class="sx-dl">
-          <dt>მისამართზე</dt><dd>${esc(t.mailbox || 'support@medicard.ge')}</dd>
+          <dt>მისამართზე</dt><dd title="${esc(t.mailbox || 'support@medicard.ge')}">${esc(t.mailbox || 'support@medicard.ge')}</dd>
           <dt>დაიწყო</dt><dd>${esc(fullWhen(t.createdAt))}</dd>
           <dt>ბოლო შემოსული</dt><dd>${esc(fullWhen(t.lastInboundAt || t.lastMessageAt))}</dd>
           <dt>წერილები</dt><dd>${fmt(t.messageCount)}</dd>
