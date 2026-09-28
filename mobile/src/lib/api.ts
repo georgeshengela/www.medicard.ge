@@ -7,6 +7,7 @@ import { publicApiErrorMessage } from './rateLimitCopy.js';
 import { getToken } from './storage';
 import { UploadTimeoutError, uploadWithDeadline } from './uploadDeadline';
 import { withAuthConnectionRetry } from './authConnection';
+import { markReachable, markUnreachable } from './reachability';
 /**
  * Resolves the API base URL.
  *
@@ -1984,6 +1985,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
         body: formData ?? (body ? JSON.stringify(body) : undefined),
       });
 
+      markReachable();
       const text = await response.text();
       return parseJsonBody<T>(response.status, text, response.headers.get('Retry-After'));
     };
@@ -1994,8 +1996,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if ((error as Error)?.name === 'AbortError') {
+      // A short call that got nothing back is a reachability signal; a slow AI answer is not.
+      if (timeoutMs <= 20_000) markUnreachable();
       throw new ApiError(ka.common.requestTimeout, 408);
     }
+    markUnreachable();
     console.warn('[api]', method, path, (error as Error)?.message ?? error);
     throw new ApiError(ka.common.networkError, 0);
   } finally {

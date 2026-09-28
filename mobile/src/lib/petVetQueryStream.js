@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { API_BASE_URL, ApiError, ensureAiSharingConsentForRequest } from '@/lib/api';
+import { markReachable } from '@/lib/reachability';
 import { consumeSseBuffer } from '@/lib/sseParse';
 import { getToken } from '@/lib/storage';
 
@@ -69,6 +70,7 @@ export async function streamPetVetQuery(petId, body, { onDelta, signal } = {}) {
       signal,
     });
 
+    markReachable();
     const contentType = String(response.headers.get('content-type') || '');
     if (!response.ok || !contentType.includes('text/event-stream')) {
       const text = await response.text();
