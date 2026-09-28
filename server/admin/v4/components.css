@@ -559,3 +559,4 @@ html body .v3-user-page .s-insights h3 .icon { width: 16px; height: 16px; color:
 .sx-quote-toggle { display: inline-grid; place-items: center; height: 18px; padding: 0 8px; border: 1px solid var(--s-line); border-radius: 99px; background: var(--s-sunken); font: 700 12px/1 var(--s-font); letter-spacing: .1em; color: var(--s-muted); cursor: pointer; }
 .sx-quote-toggle:hover, .sx-quote-toggle[aria-expanded="true"] { border-color: var(--s-line-strong); color: var(--s-ink); }
 .sx-quoted { justify-self: stretch; padding-left: 12px; border-left: 3px solid var(--s-line); color: var(--s-muted); font-size: 12.5px; }
+.sx-frame[hidden], .sx-textwrap[hidden], .sx-quoted[hidden], .sx-snip-menu[hidden] { display: none !important; }
