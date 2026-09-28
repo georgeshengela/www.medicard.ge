@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'email', 'support'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -663,6 +663,7 @@ async function switchTab(tab, opts = {}) {
     features: ['Production', 'მოდულები', 'რომელი მოდული მუშაობს და რომელი შეჩერებულია?', ''],
     quests: ['Engagement', 'Medi Quest', 'მისიები, სამიზნეები და Medi Coins ჯილდოები.', ''],
     funnel: ['Growth', 'ფუნელი', 'ინსტალაციიდან რეგისტრაციამდე, პირველ ქმედებამდე და დაბრუნებამდე.', ''],
+    director: ['Overview', 'დირექტორი', 'ცვლის ჩაბარება: დირექტორი მართავს, შენ ტელეგრამში ადასტურებ.', ''],
     email: ['Engagement', 'ელფოსტა', 'სისტემური წერილები, კამპანიები და მიწოდება.', ''],
     support: ['Engagement', 'მხარდაჭერა', 'შემოსული წერილები support@medicard.ge-ზე — წაიკითხე და უპასუხე.', ''],
   };
@@ -694,6 +695,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'features' && typeof renderFeatures === 'function') await renderFeatures();
     if (tab === 'quests' && typeof renderQuests === 'function') await renderQuests();
     if (tab === 'funnel' && typeof renderFunnel === 'function') await renderFunnel();
+    if (tab === 'director' && typeof renderDirector === 'function') await renderDirector();
     if (tab === 'email' && typeof renderEmailAdmin === 'function') await renderEmailAdmin();
     if (tab === 'support' && typeof renderSupportAdmin === 'function') await renderSupportAdmin();
   }
