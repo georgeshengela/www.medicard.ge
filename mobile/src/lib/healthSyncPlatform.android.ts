@@ -445,3 +445,106 @@ export async function deleteMealNative(mealId: string): Promise<void> {
   }
   await HC.deleteRecordsByUuids('Nutrition', [], [clientId(mealId)]);
 }
+
+// ——— MEDI COACH: workouts (read-only summary) ———
+
+export type NativeWorkout = {
+  externalId: string;
+  source: 'health_connect';
+  kind: string;
+  startedAt: string;
+  endedAt: string;
+  kcal: number | null;
+  avgHeartRate: number | null;
+  distanceKm: number | null;
+};
+
+const WORKOUT_PERMISSIONS = [
+  { accessType: 'read' as const, recordType: 'ExerciseSession' as const },
+  { accessType: 'read' as const, recordType: 'ActiveCaloriesBurned' as const },
+  { accessType: 'read' as const, recordType: 'HeartRate' as const },
+];
+
+const HC_KIND: Record<string, string> = {
+  STRENGTH_TRAINING: 'traditionalStrengthTraining',
+  WEIGHTLIFTING: 'traditionalStrengthTraining',
+  HIGH_INTENSITY_INTERVAL_TRAINING: 'highIntensityIntervalTraining',
+  RUNNING: 'running',
+  RUNNING_TREADMILL: 'running',
+  WALKING: 'walking',
+  BIKING: 'cycling',
+  BIKING_STATIONARY: 'cycling',
+  SWIMMING_POOL: 'swimming',
+  SWIMMING_OPEN_WATER: 'swimming',
+  YOGA: 'yoga',
+  PILATES: 'pilates',
+  BOXING: 'boxing',
+  ELLIPTICAL: 'elliptical',
+  ROWING_MACHINE: 'rowing',
+  STAIR_CLIMBING_MACHINE: 'stairClimbing',
+  CALISTHENICS: 'functionalStrengthTraining',
+  STRETCHING: 'flexibility',
+};
+
+/** Must be called from a button press: it shows the system permission sheet. */
+export async function connectWorkoutsNative(): Promise<HealthConnectResult> {
+  try {
+    const ready = readyCache || (await ensureReady());
+    readyCache = ready;
+    if (!ready.ok) {
+      if (ready.reason === 'not_installed') await openHealthConnectStore();
+      return ready;
+    }
+    const HC = await loadHealthConnect();
+    await HC.requestPermission(WORKOUT_PERMISSIONS as never);
+    const granted = await HC.getGrantedPermissions().catch(() => []);
+    return granted.some((p: { accessType?: string; recordType?: string }) => p.accessType === 'read' && p.recordType === 'ExerciseSession')
+      ? { ok: true }
+      : { ok: false, reason: 'denied' };
+  } catch (err) {
+    return { ok: false, reason: 'error', message: err instanceof Error ? err.message : undefined };
+  }
+}
+
+export async function fetchWorkoutsNative(since: Date): Promise<NativeWorkout[]> {
+  const HC = await loadHealthConnect();
+  if (!readyCache?.ok) {
+    readyCache = await ensureReady();
+    if (!readyCache.ok) return [];
+  }
+  const filter = { operator: 'between' as const, startTime: since.toISOString(), endTime: new Date().toISOString() };
+  const { records } = await HC.readRecords('ExerciseSession', { timeRangeFilter: filter });
+  const names = Object.fromEntries(Object.entries(HC.ExerciseType as Record<string, number>).map(([k, v]) => [v, k]));
+  const out: NativeWorkout[] = [];
+  for (const r of records.slice(0, 100)) {
+    const range = { operator: 'between' as const, startTime: r.startTime, endTime: r.endTime };
+    let kcal: number | null = null;
+    let avgHeartRate: number | null = null;
+    try {
+      const cal = await HC.readRecords('ActiveCaloriesBurned', { timeRangeFilter: range });
+      const total = cal.records.reduce((s, c) => s + (c.energy?.inKilocalories ?? 0), 0);
+      kcal = total > 0 ? Math.round(total) : null;
+    } catch {
+      kcal = null;
+    }
+    try {
+      const hr = await HC.readRecords('HeartRate', { timeRangeFilter: range });
+      const beats = hr.records.flatMap((h) => h.samples.map((s) => s.beatsPerMinute));
+      avgHeartRate = beats.length ? Math.round(beats.reduce((a, b) => a + b, 0) / beats.length) : null;
+    } catch {
+      avgHeartRate = null;
+    }
+    const typeName = names[r.exerciseType] || 'OTHER_WORKOUT';
+    out.push({
+      externalId: `hc:${r.metadata?.id ?? `${r.startTime}`}`,
+      source: 'health_connect',
+      kind: HC_KIND[typeName] || 'other',
+      startedAt: new Date(r.startTime).toISOString(),
+      endedAt: new Date(r.endTime).toISOString(),
+      kcal,
+      avgHeartRate,
+      distanceKm: null,
+    });
+  }
+  return out;
+}

@@ -3311,6 +3311,80 @@ export const api = {
       }),
   },
 
+  /** MEDI COACH — trainers, gyms, consented links, sessions, meal plans, progress photos (docs/TRAINER.md). */
+  coach: {
+    catalog: () => request<import('@/lib/coach').CoachCatalog>('/api/trainer/catalog'),
+    gyms: (q = '', city = '') =>
+      request<{ brands: import('@/lib/coach').GymBrand[]; cities: string[]; total: number }>(`/api/trainer/gyms?q=${encodeURIComponent(q)}&city=${encodeURIComponent(city)}`),
+    proposeGym: (body: { brand: string; name?: string; city: string; address?: string }) =>
+      request<{ gym: import('@/lib/coach').Gym }>('/api/trainer/gyms', { method: 'POST', body }),
+    me: () => request<import('@/lib/coach').CoachMe>('/api/trainer/me'),
+    apply: (body: { displayName: string; bio: string; specialties: string[]; experienceYears: number | null; instagram: string; gymIds: string[] }) =>
+      request<{ trainerProfile: import('@/lib/coach').OwnTrainerProfile }>('/api/trainer/apply', { method: 'POST', body }),
+    addCertificate: async (file: UploadFile, fields: { title: string; issuer: string; year: string }) => {
+      if (Platform.OS !== 'web') return uploadNativeMultipart<{ trainerProfile: import('@/lib/coach').OwnTrainerProfile }>('/api/trainer/certificates', file, 'file', fields);
+      const fd = new FormData();
+      for (const [k, v] of Object.entries(fields)) fd.append(k, v);
+      await appendUploadFile(fd, 'file', file);
+      return request<{ trainerProfile: import('@/lib/coach').OwnTrainerProfile }>('/api/trainer/certificates', { method: 'POST', formData: fd });
+    },
+    removeCertificate: (id: string) =>
+      request<{ trainerProfile: import('@/lib/coach').OwnTrainerProfile }>(`/api/trainer/certificates/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    search: (q = '', gymId = '') =>
+      request<{ trainers: import('@/lib/coach').TrainerCard[] }>(`/api/trainer/search?q=${encodeURIComponent(q)}&gymId=${encodeURIComponent(gymId)}`),
+    card: (id: string) =>
+      request<{ trainer: import('@/lib/coach').TrainerCard; consentVersion: string }>(`/api/trainer/card/${encodeURIComponent(id)}`),
+    byCode: (code: string) =>
+      request<{ trainer: import('@/lib/coach').TrainerCard; consentVersion: string }>(`/api/trainer/code/${encodeURIComponent(code)}`),
+    link: (body: { code?: string; trainerId?: string; scopes: import('@/lib/coach').CoachScopes; consentVersion: string; note?: string }) =>
+      request<{ link: { id: string; status: string }; overview: import('@/lib/coach').ClientOverview }>('/api/trainer/link', { method: 'POST', body }),
+    setScopes: (scopes: Partial<import('@/lib/coach').CoachScopes>) =>
+      request<import('@/lib/coach').ClientOverview>('/api/trainer/link', { method: 'PATCH', body: { scopes } }),
+    unlink: () => request<{ ok: true }>('/api/trainer/link', { method: 'DELETE' }),
+    answerGoal: (decision: 'accepted' | 'dismissed') =>
+      request<{ ok: true; decision: string; trainerName: string | null }>('/api/trainer/link/goal', { method: 'POST', body: { decision } }),
+    overview: () => request<import('@/lib/coach').ClientOverview>('/api/trainer/overview'),
+    session: (id: string) => request<{ session: import('@/lib/coach').CoachSession }>(`/api/trainer/session/${encodeURIComponent(id)}`),
+    confirm: (id: string) => request<{ session: import('@/lib/coach').CoachSession }>(`/api/trainer/sessions/${encodeURIComponent(id)}/confirm`, { method: 'POST' }),
+    cancel: (id: string, reason = '') =>
+      request<{ session: import('@/lib/coach').CoachSession }>(`/api/trainer/sessions/${encodeURIComponent(id)}/cancel`, { method: 'POST', body: { reason } }),
+    book: (id: string) => request<{ session: import('@/lib/coach').CoachSession }>(`/api/trainer/sessions/${encodeURIComponent(id)}/book`, { method: 'POST' }),
+    rate: (id: string, rating: number) =>
+      request<{ session: import('@/lib/coach').CoachSession }>(`/api/trainer/sessions/${encodeURIComponent(id)}/rate`, { method: 'POST', body: { rating } }),
+    photos: () => request<{ photos: import('@/lib/coach').ProgressPhoto[] }>('/api/trainer/photos'),
+    addPhoto: async (file: UploadFile, fields: { pose: string; takenOn: string; weightKg?: string }) => {
+      const clean = Object.fromEntries(Object.entries(fields).filter(([, v]) => v != null && v !== '')) as Record<string, string>;
+      if (Platform.OS !== 'web') return uploadNativeMultipart<{ photo: import('@/lib/coach').ProgressPhoto }>('/api/trainer/photos', file, 'file', clean);
+      const fd = new FormData();
+      for (const [k, v] of Object.entries(clean)) fd.append(k, v);
+      await appendUploadFile(fd, 'file', file);
+      return request<{ photo: import('@/lib/coach').ProgressPhoto }>('/api/trainer/photos', { method: 'POST', formData: fd });
+    },
+    deletePhoto: (id: string) => request<{ ok: true }>(`/api/trainer/photos/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    syncWorkouts: (workouts: unknown[]) => request<{ saved: number; skipped?: string }>('/api/trainer/workouts/sync', { method: 'POST', body: { workouts } }),
+    today: () => request<import('@/lib/coach').CoachToday>('/api/trainer/coach/today'),
+    clients: () => request<{ clients: import('@/lib/coach').RosterClient[]; requests: import('@/lib/coach').RosterRequest[] }>('/api/trainer/coach/clients'),
+    answerRequest: (linkId: string, accept: boolean) =>
+      request<{ link: { id: string; status: string } }>(`/api/trainer/coach/requests/${encodeURIComponent(linkId)}`, { method: 'POST', body: { accept } }),
+    client: (clientId: string) => request<import('@/lib/coach').ClientDashboard>(`/api/trainer/coach/clients/${encodeURIComponent(clientId)}`),
+    endClient: (clientId: string) => request<{ ok: true }>(`/api/trainer/coach/clients/${encodeURIComponent(clientId)}`, { method: 'DELETE' }),
+    proposeGoal: (clientId: string, body: { type: string; targetKg: number; deadlineYmd: string; note?: string }) =>
+      request<{ proposedGoal: import('@/lib/coach').GoalProposal }>(`/api/trainer/coach/clients/${encodeURIComponent(clientId)}/goal`, { method: 'POST', body }),
+    savePlan: (clientId: string, body: { title: string; targets: import('@/lib/coach').MealPlan['targets']; meals: import('@/lib/coach').MealPlan['meals']; note: string }) =>
+      request<{ plan: import('@/lib/coach').MealPlan }>(`/api/trainer/coach/clients/${encodeURIComponent(clientId)}/plan`, { method: 'POST', body }),
+    sessions: (fromIso: string, toIso: string) =>
+      request<{ sessions: import('@/lib/coach').CoachSession[]; gyms: import('@/lib/coach').Gym[] }>(`/api/trainer/coach/sessions?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`),
+    coachSession: (id: string) => request<{ session: import('@/lib/coach').CoachSession }>(`/api/trainer/coach/sessions/${encodeURIComponent(id)}`),
+    createSession: (body: { clientId: string | null; startsAt: string; durationMin: number; gymId: string | null; kind: string; note: string; repeatWeeks: number }) =>
+      request<{ sessions: import('@/lib/coach').CoachSession[] }>('/api/trainer/coach/sessions', { method: 'POST', body }),
+    updateSession: (id: string, body: { startsAt?: string; durationMin?: number; gymId?: string | null; kind?: string; note?: string }) =>
+      request<{ session: import('@/lib/coach').CoachSession }>(`/api/trainer/coach/sessions/${encodeURIComponent(id)}`, { method: 'PATCH', body }),
+    cancelSession: (id: string, reason = '') =>
+      request<{ session: import('@/lib/coach').CoachSession }>(`/api/trainer/coach/sessions/${encodeURIComponent(id)}/cancel`, { method: 'POST', body: { reason } }),
+    completeSession: (id: string, body: { status: 'DONE' | 'NO_SHOW'; exercises: import('@/lib/coach').Exercise[]; trainerNote: string }) =>
+      request<{ session: import('@/lib/coach').CoachSession }>(`/api/trainer/coach/sessions/${encodeURIComponent(id)}/complete`, { method: 'POST', body }),
+  },
+
   referrals: {
     me: () => request<import('@/lib/referral').ReferralSummary>('/api/referrals/me'),
     claim: (code: string, installId?: string) =>

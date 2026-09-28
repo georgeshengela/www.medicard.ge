@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.14.3",
+    "version": "1.0.0.15.0",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -15,7 +15,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "ge.medicard.app",
       "version": "1.11.30",
-      "buildNumber": "86",
+      "buildNumber": "87",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD AI",
         "NSCameraUsageDescription": "კამერა საჭიროა კერძის, საკვების ეტიკეტისა და შტრიხკოდის სკანირებისთვის კვების დღიურში, ანალიზების, რენტგენის, კანის და ცხოველის ფოტოსთვის, ასევე MEDIRUN-ში ვირტუალური საჩუქრის აღმოსაჩენად.",
@@ -34,7 +34,7 @@
     "android": {
       "package": "ge.medicard.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 86,
+      "versionCode": 87,
       "adaptiveIcon": {
         "backgroundColor": "#14B8A6",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -70,7 +70,9 @@
         "android.permission.health.WRITE_BASAL_BODY_TEMPERATURE",
         "android.permission.health.READ_CERVICAL_MUCUS",
         "android.permission.health.WRITE_CERVICAL_MUCUS",
-        "android.permission.health.READ_HEALTH_DATA_HISTORY"
+        "android.permission.health.READ_HEALTH_DATA_HISTORY",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
       ]
     },
     "web": {

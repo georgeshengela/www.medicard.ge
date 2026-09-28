@@ -1,6 +1,7 @@
 import { prisma } from './prisma.js';
 import { revokeCycleShares } from './cycleLifecycle.js';
 import { unlinkStoredUpload } from './privateUploads.js';
+import { coachFilesOf } from './trainerStore.js';
 
 export const SMS_LOG_REDACTED_CONTENT = '[redacted]';
 
@@ -48,6 +49,9 @@ export async function deleteUserAccount(userId) {
     if (!(error?.code === 'P2021' || /does not exist/i.test(error?.message || ''))) throw error;
   }
 
+  // Progress photos and trainer certificates cascade with the user row; their files are removed after.
+  const coachFiles = await coachFilesOf(userId).catch(() => []);
+
   const locationTable = await prisma.$queryRaw`SELECT to_regclass('"UserLocation"')::text AS name`;
   await prisma.$transaction([
     ...(locationTable[0]?.name ? [prisma.$executeRaw`DELETE FROM "UserLocation" WHERE "userId" = ${userId}`] : []),
@@ -62,6 +66,7 @@ export async function deleteUserAccount(userId) {
   await Promise.all([
     ...uploadRows.map((row) => unlinkStoredUpload(row.imageUrl)),
     ...petPhotos.map((row) => unlinkStoredUpload(row.photoUrl)),
+    ...coachFiles.map((key) => unlinkStoredUpload(key)),
   ]);
 
   return {

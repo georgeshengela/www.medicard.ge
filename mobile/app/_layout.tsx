@@ -402,6 +402,9 @@ function AppShell() {
               <Stack.Screen name="visits" options={{ headerShown: false }} />
               <Stack.Screen name="community" options={{ headerShown: false }} />
               <Stack.Screen name="pets" options={{ headerShown: false }} />
+              <Stack.Screen name="trainer" options={{ headerShown: false }} />
+              <Stack.Screen name="coach" options={{ headerShown: false }} />
+              <Stack.Screen name="c/[code]" options={{ headerShown: false }} />
               <Stack.Screen name="medipulsi" options={{ headerShown: false }} />
               <Stack.Screen name="medications" options={{ headerShown: false }} />
               <Stack.Screen name="lab" options={{ headerShown: false }} />
@@ -412,7 +415,7 @@ function AppShell() {
             </Stack>
           </View>
           <AppChromeOverlay interactive={chromeInteractive}>
-            {user && !['(auth)', 'run', 'medi-quest', 'medi-companion', 'pets', 'assistant', 'community', 'nutrition'].includes(segments[0]) && !((segments as string[]).join('/') === 'profile/complete') ? <FloatingTabBar visible={showTabBar} /> : null}
+            {user && !['(auth)', 'run', 'medi-quest', 'medi-companion', 'pets', 'assistant', 'community', 'nutrition', 'trainer', 'coach', 'c'].includes(segments[0]) && !((segments as string[]).join('/') === 'profile/complete') ? <FloatingTabBar visible={showTabBar} /> : null}
             {user ? <ActiveRunBadge /> : null}
           </AppChromeOverlay>
           <DailyCheckInHost />

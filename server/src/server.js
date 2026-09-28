@@ -31,6 +31,8 @@ import { startReferralRewards } from './lib/referral.js';
 import { startPushCampaignWorker } from './lib/pushCampaigns.js';
 import { objectStorageConfigured, objectStoragePublicHint } from './lib/objectStorage.js';
 import { adminReferralRouter, referralRouter } from './routes/referral.routes.js';
+import { adminTrainerRouter, trainerRouter } from './routes/trainer.routes.js';
+import { startTrainerReminders } from './lib/trainerPush.js';
 import { adminFunnelRouter, funnelRouter } from './routes/funnel.routes.js';
 import { adminDirectorRouter, directorRouter } from './routes/director.routes.js';
 import { startDirectorWorkers } from './lib/director/supportAgent.js';
@@ -256,6 +258,7 @@ app.use('/api/admin/community', adminCommunityRouter);
 startCommunityPush();
 startPriceDropAlerts();
 startReferralRewards();
+startTrainerReminders();
 startPushCampaignWorker();
 startEmailWorkers();
 startSupportWorkers();
@@ -272,6 +275,8 @@ app.use('/api/quests', questsRouter);
 app.use('/api/achievements', achievementsRouter);
 app.use('/api/rewards', requireFeature('rewardsStore', { match: (req) => /\/redeem$/.test(req.path) }), rewardsRouter);
 app.use('/api/referrals', referralRouter);
+app.use('/api/trainer', requireFeature('coach'), trainerRouter);
+app.use('/api/admin/trainers', adminTrainerRouter);
 app.use('/api/admin/referrals', adminReferralRouter);
 app.use('/api/funnel', funnelRouter);
 app.use('/api/admin/funnel', adminFunnelRouter);
@@ -333,6 +338,10 @@ if (serveLanding) {
   app.get('/i/:code', (_req, res) => {
     res.set('Cache-Control', 'no-store');
     res.sendFile(path.join(PUBLIC_DIST, 'invite.html'));
+  });
+  app.get('/c/:code', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(PUBLIC_DIST, 'coach.html'));
   });
   app.use('/share', (_req, res) => {
     res.set('Cache-Control', 'no-store');

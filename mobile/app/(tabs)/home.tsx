@@ -38,6 +38,7 @@ import { HubLinkRow, HubTileGrid, type HubTile } from '@/components/home/HubTile
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HomeNextDoseSection } from '@/components/home/HomeNextDoseSection';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
+import { HomeCoachSection } from '@/components/coach/CoachEntry';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { normalizeAvatarForGender } from '@/constants/avatarAssets';
 import { useHydration } from '@/hooks/useHydration';
@@ -232,6 +233,7 @@ export default function Home() {
       </View>
     ),
     nextDose: <HomeNextDoseSection meds={meds} />,
+    coach: <HomeCoachSection />,
     cycle: (
       <View style={s.section}>
         {heading('ქალის ჯანმრთელობა', '/cycle', 'ციკლის ნახვა')}

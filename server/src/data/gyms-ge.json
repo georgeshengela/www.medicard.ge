@@ -1,0 +1,167 @@
+[
+{"brand":"Oktopus","brandKa":"ოქტოპუსი","website":"https://oktopus.ge","instagram":"https://www.instagram.com/oktopusfitness/","source":"https://oktopus.ge/en/clubs","confidence":"high","branches":[
+{"name":"Sandro Euli","city":"თბილისი","district":"საბურთალო","address":"7 Sandro Euli St"},
+{"name":"Vake · Ramishvili","city":"თბილისი","district":"ვაკე","address":"20 Nino Ramishvili St"},
+{"name":"City Mall","city":"თბილისი","district":"საბურთალო","address":"1 Petre Kavtaradze St, City Mall Saburtalo"},
+{"name":"Mziuri","city":"თბილისი","district":"მთაწმინდა","address":"2 Chabua Amirejibi Hwy"},
+{"name":"Lisi Pool","city":"თბილისი","district":"ლისი","address":"14 Nekerchkhali St (Lisi Veranda)"},
+{"name":"Batumi Grand Mall","city":"ბათუმი","address":"29 Sherif Khimshiashvili St, Grand Mall"}]},
+{"brand":"Aspria","brandKa":"ასპრია","website":"https://www.aspria.ge","instagram":"https://www.instagram.com/aspria_fitness/","source":"https://www.aspria.ge/","confidence":"high","branches":[
+{"name":"Vake","city":"თბილისი","district":"ვაკე","address":"4 Archil Mishveladze St"},
+{"name":"Saburtalo","city":"თბილისი","district":"საბურთალო","address":"74 Mikheil Burdzgla St"},
+{"name":"Dinamo","city":"თბილისი","district":"დიდუბე","address":"2 Akaki Tsereteli Ave (Dinamo Arena)"},
+{"name":"Batumi Mall","city":"ბათუმი","address":"88 Zurab Gorgiladze St (Batumi Mall)"}]},
+{"brand":"Snap Fitness","website":"https://www.snapfitness.com/ge","source":"https://kompas.ge/en/chain/snap-fitness","confidence":"high","branches":[
+{"name":"Tsintsadze 37","city":"თბილისი","district":"საბურთალო","address":"37 Sulkhan Tsintsadze St"},
+{"name":"King David","city":"თბილისი","district":"საბურთალო","address":"12 Merab Aleksidze St, King David BC"},
+{"name":"Chavchavadze 29","city":"თბილისი","district":"ვაკე","address":"29 Ilia Chavchavadze Ave"},
+{"name":"Axis Trade Center","city":"თბილისი","district":"საბურთალო","address":"24g Aleksandre Kazbegi Ave, Axis, fl. 2"},
+{"name":"Digomi City","city":"თბილისი","district":"დიდი დიღომი","address":"46 Mirian Mepe St, Digomi City","confidence":"low"}]},
+{"brand":"Reform Sport Club","brandKa":"რეფორმა","website":"https://myreform.ge","instagram":"https://www.instagram.com/reform_sport_club/","source":"https://myreform.ge/en/","confidence":"high","branches":[
+{"name":"Gldani","nameKa":"გლდანი","city":"თბილისი","district":"გლდანი","address":"14 Ilia Vekua St (Gldani Plaza)"},
+{"name":"Kikvidze","nameKa":"კიკვიძე","city":"თბილისი","district":"დიდუბე","address":"27 Tornike Eristavi St"},
+{"name":"Nutsubidze","nameKa":"ნუცუბიძე","city":"თბილისი","district":"საბურთალო","address":"16 Avto Varazi St"},
+{"name":"Ortachala","city":"თბილისი","district":"ისანი","address":"3 Gabriel Salosi Sq"}]},
+{"brand":"Vortex Fitness","brandKa":"ვორტექს ფიტნესი","website":"https://vortexfitness.ge","instagram":"https://www.instagram.com/vortexfitness.ge/","source":"https://vortexfitness.ge/gallery/","confidence":"high","branches":[
+{"name":"Arena","nameKa":"არენა","city":"თბილისი","district":"საბურთალო","address":"2 University St"},
+{"name":"Didi Dighomi","nameKa":"დიდი დიღომი","city":"თბილისი","district":"დიდი დიღომი","address":"64 Mirian Mepe St"},
+{"name":"Gldani","nameKa":"გლდანი","city":"თბილისი","district":"გლდანი","address":"7 Aleksi Gobronidze St"}]},
+{"brand":"Prime Fit","website":"https://primefit.ge","instagram":"https://www.instagram.com/prime_tbilisi/","source":"https://primefit.ge/vazha/en","confidence":"high","branches":[
+{"name":"Vazha-Pshavela","city":"თბილისი","district":"საბურთალო","address":"71 Vazha-Pshavela Ave"},
+{"name":"Hippodrome","city":"თბილისი","district":"საბურთალო","address":"13O M. Tamarashvili St"}]},
+{"brand":"World Class","website":"https://worldclass.ge","instagram":"https://www.instagram.com/worldclassgeorgia/","source":"https://worldclass.ge/","confidence":"high","branches":[
+{"name":"Concert Hall","city":"თბილისი","district":"ვერა","address":"1 Melikishvili Ave, fl. 4"}]},
+{"brand":"Power Max","website":"https://powermax.ge","instagram":"https://www.instagram.com/powermax_1/","source":"https://www.yell.ge/company.php?lan=eng&id=133051","confidence":"high","branches":[
+{"name":"Mtatsminda","nameKa":"მთაწმინდა","city":"თბილისი","district":"მთაწმინდა","address":"14 A. Griboedov St"},
+{"name":"Saburtalo","nameKa":"საბურთალო","city":"თბილისი","district":"საბურთალო","address":"41 Pekini Ave"}]},
+{"brand":"Champions Academy","website":"https://champ.ge","source":"https://expathub.ge/best-gyms-in-tbilisi-georgia/","confidence":"medium","branches":[
+{"name":"Aghmashenebeli","city":"თბილისი","district":"ჩუღურეთი","address":"148G Davit Aghmashenebeli Ave"}]},
+{"brand":"Urban Garden","website":"https://urbangarden.ge","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"high","branches":[
+{"name":"Marjanishvili","city":"თბილისი","district":"ჩუღურეთი","address":"73 Davit Aghmashenebeli Ave"}]},
+{"brand":"Fit Club Art House","instagram":"https://www.instagram.com/fitclub.arthouse/","source":"https://www.yell.ge/company.php?lan=eng&id=145366","confidence":"high","branches":[
+{"name":"Art House","city":"თბილისი","district":"მთაწმინდა","address":"18 Lado Gudiashvili St"}]},
+{"brand":"Neptune","brandKa":"ნეპტუნი","website":"https://neptune.ge","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"high","branches":[
+{"name":"Vake","city":"თბილისი","district":"ვაკე","address":"49a Ilia Chavchavadze Ave"}]},
+{"brand":"Gymnasia Sports","website":"https://gymnasia.ge","instagram":"https://www.instagram.com/gymnasia.sports/","source":"https://gymnasia.ge/","confidence":"high","branches":[
+{"name":"Lisi","city":"თბილისი","district":"ლისი","address":"14a Elguja Amashukeli St"}]},
+{"brand":"Old School Gym","brandKa":"ოლდ სქულ ჯიმ","source":"https://fitpass.ge/en/objects","confidence":"high","branches":[
+{"name":"Dighomi Massive","city":"თბილისი","district":"დიღმის მასივი","address":"G. Robakidze Ave, quarter 6, bldg 18"}]},
+{"brand":"Valhalla Echo Fitness","website":"https://valhalla-echo-fitness.com","source":"https://www.yell.ge/company.php?lan=eng&id=156021","confidence":"high","branches":[
+{"name":"Saburtalo","nameKa":"საბურთალო","city":"თბილისი","district":"საბურთალო","address":"2 V. Chabukiani St"},
+{"name":"Mukhiani","nameKa":"მუხიანი","city":"თბილისი","district":"გლდანი","address":"1 Mark Bronstein dead end"}]},
+{"brand":"Matrix Fitness","source":"https://www.yell.ge/company.php?lan=eng&id=156056","confidence":"medium","branches":[
+{"name":"Gldani","nameKa":"გლდანი","city":"თბილისი","district":"გლდანი","address":"63 D. Guramishvili Ave"},
+{"name":"Isani","nameKa":"ისანი","city":"თბილისი","district":"ისანი","address":"71 Queen Ketevan Ave"}]},
+{"brand":"Mata Fitness","brandKa":"მატა ფიტნესი","instagram":"https://www.instagram.com/matafitness/","source":"https://fitpass.ge/en/objects","confidence":"high","branches":[
+{"name":"Samgori","city":"თბილისი","district":"სამგორი","address":"29 Moscow Ave"},
+{"name":"Gldani","nameKa":"გლდანი","city":"თბილისი","district":"გლდანი","address":"4 Vekua St"}]},
+{"brand":"Sakemata","brandKa":"საკემატა","website":"https://www.sakematafitness.ge","source":"https://fitpass.ge/en/objects","confidence":"high","branches":[
+{"name":"East Point","nameKa":"ისთ ფოინთი","city":"თბილისი","district":"სამგორი","address":"2 A. Tvalchrelidze St (East Point)"},
+{"name":"Gldani","nameKa":"გლდანი","city":"თბილისი","district":"გლდანი","address":"1 A. Gobronidze St"}]},
+{"brand":"Royal Fitness","brandKa":"როიალ ფიტნესი","source":"https://www.yell.ge/company.php?lan=eng&id=152758","confidence":"high","branches":[
+{"name":"Varketili Premium","nameKa":"ვარკეთილი","city":"თბილისი","district":"ვარკეთილი","address":"5 Giorgi Melikishvili St"},
+{"name":"Nadzaladevi","nameKa":"ნაძალადევი","city":"თბილისი","district":"ნაძალადევი","address":"39 Anapis 414 Divizia St"}]},
+{"brand":"Pro Fitness","instagram":"https://www.instagram.com/pro_fitness_varketili/","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[
+{"name":"Varketili · Takaishvili","city":"თბილისი","district":"ვარკეთილი","address":"21 Sesilia Takaishvili St"},
+{"name":"Varketili · Lezhava","city":"თბილისი","district":"ვარკეთილი","address":"22 J. Lezhava St"},
+{"name":"Vazisubani","city":"თბილისი","district":"ისანი","address":"6 Osip Mandelstam St"},
+{"name":"Moscow Ave","city":"თბილისი","district":"სამგორი","address":"50 Moscow Ave"},
+{"name":"Kaloubani","nameKa":"კალოუბანი","city":"თბილისი","district":"ვარკეთილი","address":"40 Kaloubani St"},
+{"name":"Didi Dighomi","nameKa":"დიდი დიღომი","city":"თბილისი","district":"დიდი დიღომი","address":"20 Vepkhistkaosani St"}]},
+{"brand":"Mamber Fitness","brandKa":"მამბერ ფიტნესი","source":"https://fitpass.ge/en/objects","confidence":"high","branches":[
+{"name":"Didube","city":"თბილისი","district":"დიდუბე","address":"4 Tornike Eristavi dead end"},
+{"name":"Telavi","nameKa":"თელავი","city":"თელავი","address":"3 Aghmashenebeli Ave"}]},
+{"brand":"Club 407","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[
+{"name":"Didi Dighomi","city":"თბილისი","district":"დიდი დიღომი","address":"56 Vepkhistkaosani St"},
+{"name":"Batumi","city":"ბათუმი","district":"ძველი ბათუმი","address":"108 Parnavaz Mepe St"}]},
+{"brand":"Galileo Fitness","brandKa":"გალილეო ფიტნესი","source":"https://www.facebook.com/GalileoFitness/","confidence":"medium","branches":[
+{"name":"Kutaisi","city":"ქუთაისი","address":"5 Station Square"},
+{"name":"Gldani","city":"თბილისი","district":"გლდანი","address":"6d Kerchi St"}]},
+{"brand":"Justfit (EMS)","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[
+{"name":"Vake","city":"თბილისი","district":"ვაკე","address":"4 Archil Mishveladze St"},
+{"name":"Kutaisi","city":"ქუთაისი","address":"9 P. Iashvili St"}]},
+{"brand":"Black Sea 2","brandKa":"ბლექ სი 2","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[
+{"name":"Didi Dighomi","city":"თბილისი","district":"დიდი დიღომი","address":"93 Mirian Mepe St"},
+{"name":"Gldani","city":"თბილისი","district":"გლდანი","address":"5 T. Bochorishvili 1st dead end"}]},
+{"brand":"GYM 13","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Avlabari","city":"თბილისი","district":"ისანი","address":"21 A. Tsurtsumia St"}]},
+{"brand":"Rubicon Fitness Club","brandKa":"რუბიკონ ფიტნეს კლუბი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Gldani","city":"თბილისი","district":"გლდანი","address":"59 Omar Khizanishvili St"}]},
+{"brand":"Hard Way","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Gldani","city":"თბილისი","district":"გლდანი","address":"61a Khizanishvili St"}]},
+{"brand":"Fitness Time","brandKa":"ფიტნეს თაიმ","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Gldani","city":"თბილისი","district":"გლდანი","address":"11 Khizanishvili St"}]},
+{"brand":"Absolute Gym & Fitness","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Art Hall","city":"თბილისი","district":"ნაძალადევი","address":"26 Tsotne Dadiani St"}]},
+{"brand":"Move Club","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Nadzaladevi","city":"თბილისი","district":"ნაძალადევი","address":"4 Chkondideli St"}]},
+{"brand":"Urban Fitness","brandKa":"ურბან ფიტნესი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Saburtalo","city":"თბილისი","district":"საბურთალო","address":"41e Shartava St"}]},
+{"brand":"Tanadi Fitness","brandKa":"ტანადი ფიტნესი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Saburtalo","city":"თბილისი","district":"საბურთალო","address":"12/14 P. Ioseliani St"}]},
+{"brand":"Colloseum Gym","brandKa":"კოლიზეუმ ჯიმ","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Nutsubidze Plateau","city":"თბილისი","district":"საბურთალო","address":"Nutsubidze Plateau II m/d, Q.1, 3a"}]},
+{"brand":"Solo Fitness","brandKa":"სოლო ფიტნესი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Kapaneli","city":"თბილისი","district":"ვაკე","address":"4 Konstantine Kapaneli St"}]},
+{"brand":"Lion Fitness PRO","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Dighomi Massive","city":"თბილისი","district":"დიღმის მასივი","address":"43 A. Beliashvili St"}]},
+{"brand":"Sparta Fitness","brandKa":"სპარტა ფიტნესი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Dighomi Massive","city":"თბილისი","district":"დიღმის მასივი","address":"13 Ljubljana St"}]},
+{"brand":"Gold's Gym Georgia","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Dighomi","city":"თბილისი","district":"დიღომი","address":"117 Beliashvili St"}]},
+{"brand":"Go Fitness","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Sanzona","city":"თბილისი","district":"გლდანი","address":"15 D. Guramishvili Ave"}]},
+{"brand":"M Fitness","brandKa":"ემ ფიტნესი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Sanzona","city":"თბილისი","district":"გლდანი","address":"62b Guramishvili Ave"}]},
+{"brand":"World Fitness","brandKa":"ვორლდ ფიტნესი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Isani Mall","city":"თბილისი","district":"ისანი","address":"8a Navtlugi St, Isani Mall fl. 3"}]},
+{"brand":"Eco Fitness","brandKa":"ეკო ფიტნესი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Varketili","city":"თბილისი","district":"სამგორი","address":"4 Zurab Chachua St"}]},
+{"brand":"My Fitness","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Varketili","city":"თბილისი","district":"ვარკეთილი","address":"10 Shuamta St, 3rd massive"}]},
+{"brand":"GFS Fitness","brandKa":"ჯი ეფ ეს ფიტნესი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Varketili","city":"თბილისი","district":"ვარკეთილი","address":"23 Shandor Petefi St"}]},
+{"brand":"Fitness House","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Varketili","city":"თბილისი","district":"ვარკეთილი","address":"17 Nazi Shamanauri St, IV m/d"}]},
+{"brand":"Fit House","brandKa":"ფიტ ჰაუსი","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[
+{"name":"Afrika","city":"თბილისი","district":"სამგორი","address":"2d B. Chichinadze St"},
+{"name":"Telavi","city":"თელავი","address":"3b V. Sekhniashvili St"}]},
+{"brand":"Fitness Space","brandKa":"ფიტნეს სფეისი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Avchala","city":"თბილისი","district":"ავჭალა","address":"4 Libani St"}]},
+{"brand":"Fitness Lifestyle","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Nadzaladevi","city":"თბილისი","district":"ნაძალადევი","address":"95b Khudadovi St"}]},
+{"brand":"COSMOFiT","brandKa":"კოსმოფიტი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Gldani","city":"თბილისი","district":"გლდანი","address":"7 R. Shengelia St"}]},
+{"brand":"Club 7","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Gldani","city":"თბილისი","district":"გლდანი","address":"7 Sergo Kotrikadze St"}]},
+{"brand":"TNT Functional Fitness","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Kostava","city":"თბილისი","district":"საბურთალო","address":"67/85 M. Kostava St"}]},
+{"brand":"Fitness Zone","brandKa":"ფიტნეს ზონა","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[
+{"name":"Varketili","city":"თბილისი","district":"ვარკეთილი","address":"62 Javakheti St"},
+{"name":"Telavi","city":"თელავი","address":"60 Aghmashenebeli St"}]},
+{"brand":"Fitland","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Pekini","city":"თბილისი","district":"საბურთალო","address":"5 Pekini Ave"}]},
+{"brand":"Aversi Fitness","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Kazbegi","city":"თბილისი","district":"საბურთალო","address":"16 Kazbegi Ave"}]},
+{"brand":"Format Fit","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Digomi","city":"თბილისი","district":"დიღომი","address":"30a Bob Walsh St"}]},
+{"brand":"Gagua Gym","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Didi Dighomi","city":"თბილისი","district":"დიდი დიღომი","address":"6e Petre Iberi St"}]},
+{"brand":"Tonus Gym","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Didi Dighomi","city":"თბილისი","district":"დიდი დიღომი","address":"8 G. Brtskinvale St"}]},
+{"brand":"Start Fitness Club","brandKa":"სტარტ ფიტნეს კლუბი","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Mukhiani","city":"თბილისი","district":"გლდანი","address":"Mukhiani III m/d, near bldg 10"}]},
+{"brand":"Natalis Fitness","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Nadzaladevi","city":"თბილისი","district":"ნაძალადევი","address":"22/24 Ts. Dadiani St"}]},
+{"brand":"GNP Fitness","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Pekini","city":"თბილისი","district":"საბურთალო","address":"2 Pekini Ave"}]},
+{"brand":"Panorama Lisi Fitness","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Lisi","city":"თბილისი","district":"ლისი","address":"4 M. Machavariani St"}]},
+{"brand":"Axis Towers Wellness","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Axis Towers","city":"თბილისი","district":"ვაკე","address":"37m Chavchavadze Ave, Axis Towers fl. 6"}]},
+{"brand":"Vake Swimming Pool & Fitness","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Vake","city":"თბილისი","district":"ვაკე","address":"49b Chavchavadze Ave"}]},
+{"brand":"Fitness Plaza","brandKa":"ფიტნეს პლაზა","source":"https://www.yell.ge/companies.php?lan=eng&rub=467","confidence":"medium","branches":[{"name":"Ortachala","city":"თბილისი","district":"ორთაჭალა","address":"4a V. Gorgasali St"}]},
+{"brand":"Radisson Blu Iveria Fitness Club","website":"https://www.radissonhotels.com/en-us/hotels/radisson-blu-tbilisi/fitness-wellness","source":"https://silkhospitality.com/radisson-blu-tbilisi/spa-fitness/","confidence":"high","branches":[{"name":"Rose Revolution Sq","city":"თბილისი","district":"მთაწმინდა","address":"1 Rose Revolution Sq"}]},
+{"brand":"Sheraton Metechi Spa & Fitness","source":"https://www.travelmyth.com/Tbilisi/Hotels/gym","confidence":"medium","branches":[{"name":"Metechi Palace","city":"თბილისი","district":"ორთაჭალა"}]},
+{"brand":"The Biltmore Spa & Fitness","website":"https://www.thebiltmorehotels.com/en/home/destinations/biltmore-tbilisi/health-and-wellness/","source":"https://www.thebiltmorehotels.com/en/home/destinations/biltmore-tbilisi/health-and-wellness/","confidence":"high","branches":[{"name":"Rustaveli","city":"თბილისი","district":"მთაწმინდა","address":"29 Rustaveli Ave"}]},
+{"brand":"Tbilisi Balneological Spa Resort","brandKa":"თბილისის ბალნეოლოგიური კურორტი","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Ortachala","city":"თბილისი","district":"ორთაჭალა","address":"9 Gorgasali St"}]},
+{"brand":"Reformer Fitness & Spa","instagram":"https://www.instagram.com/reformerfitness/","source":"https://www.infobatumi.ge/en/places_category/fitnes-centrebi/?lang=en","confidence":"high","branches":[
+{"name":"Shartava","city":"ბათუმი","district":"ახალი ბულვარი","address":"32 Zhiuli Shartava St"},
+{"name":"Gorgiladze","city":"ბათუმი","address":"91 Zurab Gorgiladze St, fl. 2"}]},
+{"brand":"Olympia Fitness Club","source":"https://madloba.info/en/reviews/top-mest-v-gruzii-kotorye-stoit-posetit/zdorove-i-sport/fitness-clubs-batumi/","confidence":"medium","branches":[{"name":"Pirosmani","city":"ბათუმი","address":"18b Pirosmani St"}]},
+{"brand":"Sparta Fitness Club Batumi","source":"https://madloba.info/en/reviews/top-mest-v-gruzii-kotorye-stoit-posetit/zdorove-i-sport/fitness-clubs-batumi/","confidence":"medium","branches":[{"name":"Vazha-Pshavela","city":"ბათუმი","address":"16 Vazha-Pshavela St"}]},
+{"brand":"Fitness & More","source":"https://madloba.info/en/reviews/top-mest-v-gruzii-kotorye-stoit-posetit/zdorove-i-sport/fitness-clubs-batumi/","confidence":"medium","branches":[{"name":"DS Mall","city":"ბათუმი","address":"5 Tbel Abuseridze St"}]},
+{"brand":"Fitness Gladiator","brandKa":"ფიტნეს გლადიატორი","source":"https://madloba.info/en/reviews/top-mest-v-gruzii-kotorye-stoit-posetit/zdorove-i-sport/fitness-clubs-batumi/","confidence":"medium","branches":[{"name":"New Batumi","city":"ბათუმი","address":"10 Zhiuli Shartava St"}]},
+{"brand":"Champion Fitness Club","source":"https://madloba.info/en/reviews/top-mest-v-gruzii-kotorye-stoit-posetit/zdorove-i-sport/fitness-clubs-batumi/","confidence":"medium","branches":[{"name":"New Batumi","city":"ბათუმი","address":"57 Tbel Abuseridze St"}]},
+{"brand":"Radisson Blu Batumi Wellness","source":"https://www.radissonhotels.com/en-us/hotels/radisson-blu-batumi/fitness-wellness","confidence":"low","branches":[{"name":"Radisson Blu Batumi","city":"ბათუმი"}]},
+{"brand":"Sheraton Batumi Fitness","source":"https://madloba.info/en/reviews/top-mest-v-gruzii-kotorye-stoit-posetit/zdorove-i-sport/fitness-clubs-batumi/","confidence":"low","branches":[{"name":"Sheraton Batumi","city":"ბათუმი"}]},
+{"brand":"Hilton Batumi Health Club","source":"https://madloba.info/en/reviews/top-mest-v-gruzii-kotorye-stoit-posetit/zdorove-i-sport/fitness-clubs-batumi/","confidence":"low","branches":[{"name":"Hilton Batumi","city":"ბათუმი"}]},
+{"brand":"Fit Factory","brandKa":"ფიტ ფაქტორი","instagram":"https://www.instagram.com/fitfactory_official_georgia/","source":"https://www.yell.ge/company.php?lan=eng&id=156024","confidence":"high","branches":[{"name":"Kutaisi","city":"ქუთაისი","address":"4v Mikheil Bukhaidze St"}]},
+{"brand":"X AREA","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Kutaisi","city":"ქუთაისი","address":"10 Sulkhan-Saba St"}]},
+{"brand":"Flex Fitness","brandKa":"ფლექს ფიტნესი","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Kutaisi","city":"ქუთაისი","address":"37 K. Gamsakhurdia St"}]},
+{"brand":"NRG GYM","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Kutaisi","city":"ქუთაისი","address":"Z. Gamsakhurdia 1st lane 4"}]},
+{"brand":"Rustavi GYM","brandKa":"რუსთავი GYM","source":"https://fitpass.ge/en/objects/rustavi-gym","confidence":"medium","branches":[{"name":"Machabeli","city":"რუსთავი","address":"3 Machabeli St"}]},
+{"brand":"MG Fitness","brandKa":"MG ფიტნესი","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Aghmashenebeli","city":"რუსთავი","address":"89 Aghmashenebeli St"}]},
+{"brand":"RITM Fitness Club","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Shartava","city":"რუსთავი","address":"Shartava St"}]},
+{"brand":"Body Lab","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Megobroba","city":"რუსთავი","address":"32 Megobroba Ave"}]},
+{"brand":"Dileni Women's Fitness Club","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Shartava","city":"რუსთავი","address":"4a Shartava St"}]},
+{"brand":"Twins Fitness Club","source":"https://fitpass.ge/en/objects","confidence":"low","branches":[{"name":"Rustavi","city":"რუსთავი"}]},
+{"brand":"Razmadze Gym","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Pushkin","city":"რუსთავი","address":"Pushkin St"}]},
+{"brand":"Georgia Gold","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[
+{"name":"Gori","city":"გორი","address":"26a Stalin Ave"},
+{"name":"Tsereteli","city":"თბილისი","district":"დიდუბე","address":"1 A. Tsereteli Ave"}]},
+{"brand":"Didgori Fitness Club","brandKa":"ფიტნეს კლუბი დიდგორი","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Gori","city":"გორი","address":"63 I. Sukhishvili St"}]},
+{"brand":"Gracia Fitness Club","brandKa":"ფიტნეს კლუბი გრაცია","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Gori","city":"გორი","address":"8 Tskhinvali Hwy"}]},
+{"brand":"Fitness Angels","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Gori","city":"გორი","address":"36 Stalin St"}]},
+{"brand":"Aura Fit Hub","brandKa":"აურა ფიტ ჰაბი","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Gori","city":"გორი","address":"9 Tskhinvali Hwy"}]},
+{"brand":"Iron Viking","brandKa":"აირონ ვიკინგ","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Telavi","city":"თელავი","address":"40a Alazani Ave"}]},
+{"brand":"Fit Lab","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Zugdidi","city":"ზუგდიდი","address":"8 Ilia Chavchavadze St"}]},
+{"brand":"Lakeside Gym","brandKa":"ლეიქსაიდ ჯიმ","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Akhaltsikhe","city":"ახალციხე","address":"38 Beka Jakeli dead end"}]},
+{"brand":"Lady Fitness","brandKa":"ლედი ფიტნესი","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Marneuli","city":"მარნეული","address":"55/57 Rustaveli St"}]},
+{"brand":"Fitness Zone 15","brandKa":"ფიტნეს ზონა 15","source":"https://fitpass.ge/en/objects","confidence":"medium","branches":[{"name":"Terjola","city":"თერჯოლა","address":"2 Shotadze St"}]}
+]

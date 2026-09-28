@@ -2727,3 +2727,140 @@ model SupportSnippet {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now())
 }
+
+/// MEDI COACH (2026-09-28) — raw-SQL tables from prisma/20260928-trainer.sql, declared so nothing
+/// drops them. Data access is raw SQL in src/lib/trainerStore.js; foreign keys live in the SQL file.
+model Gym {
+  id         String   @id
+  brand      String
+  brandKa    String?
+  name       String
+  nameKa     String?
+  city       String
+  district   String?
+  address    String?
+  website    String?
+  instagram  String?
+  source     String?
+  status     String   @default("ACTIVE")
+  proposedBy String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([status, brand, city], map: "Gym_status_brand")
+}
+
+model TrainerProfile {
+  userId          String    @id
+  displayName     String
+  bio             String?
+  specialties     Json      @default("[]") @db.JsonB
+  experienceYears Int?
+  instagram       String?
+  certificates    Json      @default("[]") @db.JsonB
+  gymIds          Json      @default("[]") @db.JsonB
+  code            String    @unique(map: "TrainerProfile_code")
+  status          String    @default("PENDING")
+  reviewNote      String?
+  reviewedBy      String?
+  reviewedAt      DateTime? @db.Timestamptz(3)
+  submittedAt     DateTime  @default(now()) @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([status, submittedAt], map: "TrainerProfile_status")
+}
+
+model TrainerLink {
+  id              String    @id
+  trainerId       String
+  clientId        String
+  status          String
+  scopes          Json      @default("{}") @db.JsonB
+  consentVersion  String?
+  proposedGoal    Json?     @db.JsonB
+  clientNote      String?
+  endedBy         String?
+  trainerViewedAt DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  acceptedAt      DateTime? @db.Timestamptz(3)
+  endedAt         DateTime? @db.Timestamptz(3)
+  updatedAt       DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([trainerId, status], map: "TrainerLink_trainer")
+}
+
+model TrainerSession {
+  id                String    @id
+  trainerId         String
+  clientId          String?
+  gymId             String?
+  startsAt          DateTime @db.Timestamptz(3)
+  durationMin       Int       @default(60)
+  kind              String    @default("STRENGTH")
+  note              String?
+  status            String    @default("SCHEDULED")
+  seriesId          String?
+  clientConfirmedAt DateTime? @db.Timestamptz(3)
+  cancelledBy       String?
+  cancelReason      String?
+  lateCancel        Boolean   @default(false)
+  exercises         Json      @default("[]") @db.JsonB
+  trainerNote       String?
+  clientRating      Int?
+  reminded24        Boolean   @default(false)
+  reminded1         Boolean   @default(false)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([trainerId, startsAt], map: "TrainerSession_trainer_time")
+  @@index([clientId, startsAt], map: "TrainerSession_client_time")
+  @@index([status, startsAt], map: "TrainerSession_reminders")
+}
+
+model TrainerMealPlan {
+  id        String   @id
+  trainerId String
+  clientId  String
+  title     String
+  targets   Json     @db.JsonB
+  meals     Json     @default("[]") @db.JsonB
+  note      String?
+  active    Boolean  @default(true)
+  startsOn  String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([clientId, active, updatedAt(sort: Desc)], map: "TrainerMealPlan_client")
+}
+
+model ProgressPhoto {
+  id        String   @id
+  userId    String
+  takenOn   String
+  pose      String
+  fileKey   String
+  weightKg  Float?
+  note      String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, takenOn(sort: Desc)], map: "ProgressPhoto_user_time")
+}
+
+model WorkoutLog {
+  id           String   @id
+  userId       String
+  externalId   String
+  source       String
+  kind         String
+  startedAt    DateTime @db.Timestamptz(3)
+  endedAt      DateTime @db.Timestamptz(3)
+  durationMin  Int
+  kcal         Int?
+  avgHeartRate Int?
+  distanceKm   Float?
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([userId, externalId], map: "WorkoutLog_external")
+  @@index([userId, startedAt(sort: Desc)], map: "WorkoutLog_user_time")
+}

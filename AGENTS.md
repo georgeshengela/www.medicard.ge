@@ -148,6 +148,17 @@ New accounts answer 5 questions in `/(auth)/assessment` (`ONBOARDING_STEPS`): se
 
 `server/src/lib/email/` (`email.js` re-exports for `passwordReset.js`). Resend over plain fetch (Idempotency-Key, batch, 429 back-off), one branded layout, templates = code defaults (`templates.js`) + admin overrides (`EmailTemplate`), `{{var}}` allow-list per template, HTML-escaped, links https/mailto only. Triggers: `welcome` after email `/register` (setImmediate, once per user via `EmailLog.idempotencyKey`, never blocks sign-up; phone sign-ups have a synthetic `@phone.medicard.ge` login and get nothing), `password_reset`, `account_deleted` (after `DELETE /api/auth/me` commits, not linked to the deleted row). Kill switch = feature flag `email`; per-template `enabled`. `EmailLog` keeps sha256 + masked address only, purged after 180 days (`email-log-purge` lease). Resend webhook `POST /api/email/webhook` (Svix, `RESEND_WEBHOOK_SECRET`, 503 when unset) advances status and suppresses hard bounces / complaints (`EmailSuppression`, transactional included). Marketing needs `User.emailMarketingOptIn` (Law 3144; off by default; raw SQL only — the Prisma fields are `@ignore`), toggled in Profile → Notifications or `/unsubscribe?t=` (signed, RFC 8058 POST). Campaigns: admin `#/email`, worker lease `email-campaigns`, claims each recipient once. Never put health data in an email. Tables: `prisma/20260928-email.sql` via `install-email.mjs` in the release chain. Tests: `server/src/lib/email.test.js`.
 
+## MEDI COACH — fitness trainers (2026-09-28, app 1.0.0.15.0)
+
+Owner request 2026-09-28 (overrides the product freeze for this module). Verified trainers (phone + 18+ +
+admin approval in `#/trainers`) get a separate workspace `/coach` with its own tab bar; clients use `/trainer`.
+Linking is consent-first: named scopes (workouts, nutrition, weight, photos — photos off by default), revocable
+instantly; trainers read client data only through `requireClientAccess` in `server/src/lib/trainerStore.js`.
+A trainer's meal plan never overwrites the client's nutrition program — adherence is computed from the diary.
+Gyms: `server/src/data/gyms-ge.json` (install adds missing rows only; admin edits persist). Times are
+`TIMESTAMPTZ`. Health workouts: Android needs the READ_EXERCISE / READ_ACTIVE_CALORIES_BURNED native build.
+No payments, no chat (not built: needs moderation/retention policy). Flag `coach`. See docs/TRAINER.md.
+
 ## Retired district competition (2026-09-19)
 
 The owner removed the district walking competition completely. Do not recreate its screens, sync, admin module, or database tables. MEDIRUN / MEDIPULSI remains the worldwide exploration game, accessible from Home; its duplicate Profile block is removed. Shared health totals and Pets remain independent.

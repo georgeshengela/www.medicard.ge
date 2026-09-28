@@ -19,6 +19,8 @@ const HEALTH_PERMISSIONS = [
   'android.permission.health.READ_CERVICAL_MUCUS',
   'android.permission.health.WRITE_CERVICAL_MUCUS',
   'android.permission.health.READ_HEALTH_DATA_HISTORY',
+  'android.permission.health.READ_EXERCISE',
+  'android.permission.health.READ_ACTIVE_CALORIES_BURNED',
   'android.permission.ACTIVITY_RECOGNITION',
 ];
 

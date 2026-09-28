@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -672,6 +672,7 @@ async function switchTab(tab, opts = {}) {
     director: ['Overview', 'დირექტორი', 'ცვლის ჩაბარება: დირექტორი მართავს, შენ ტელეგრამში ადასტურებ.', ''],
     email: ['Engagement', 'ელფოსტა', 'სისტემური წერილები, კამპანიები და მიწოდება.', ''],
     support: ['Engagement', 'მხარდაჭერა', 'შემოსული წერილები support@medicard.ge-ზე — წაიკითხე და უპასუხე.', ''],
+    trainers: ['People', 'ტრენერები', 'MEDI COACH: ტრენერების დადასტურება და საქართველოს დარბაზების სია.', ''],
   };
   setPageHeader(tab, copy);
 
@@ -704,6 +705,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'director' && typeof renderDirector === 'function') await renderDirector();
     if (tab === 'email' && typeof renderEmailAdmin === 'function') await renderEmailAdmin();
     if (tab === 'support' && typeof renderSupportAdmin === 'function') await renderSupportAdmin();
+    if (tab === 'trainers' && typeof renderTrainersAdmin === 'function') await renderTrainersAdmin();
   }
   startAdminLive();
 }

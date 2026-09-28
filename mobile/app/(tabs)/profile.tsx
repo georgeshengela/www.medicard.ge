@@ -25,6 +25,7 @@ import { HomeLandingSelect } from '@/components/home/HomeLandingSelect';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
+import { ProfileCoachSection } from '@/components/coach/CoachEntry';
 import { DeleteAccountModal } from '@/components/profile/DeleteAccountModal';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { ProfileVersionCard } from '@/components/profile/ProfileVersionCard';
@@ -264,6 +265,11 @@ export default function Profile() {
       <View style={s.section}>
         <HomeSectionHeading title="ჩემი ცხოველები" linkLabel="ყველას ნახვა" onLink={() => router.push('/pets')} />
         <ProfilePetsSection hideTitle />
+      </View>
+
+      {/* MEDI COACH: trainer link, progress photos, trainer registration */}
+      <View style={{ paddingHorizontal: HUB.gutter }}>
+        <ProfileCoachSection />
       </View>
 
       {/* Medical profile */}

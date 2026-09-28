@@ -41,3 +41,9 @@ test('the onboarding goal moves its section right after ask Medi, nothing disapp
   // A man who somehow has the cycle goal does not get a cycle section.
   assert.ok(!buildHomeSectionOrder({ includeCycle: false, primaryGoal: 'cycle' }).includes('cycle'));
 });
+
+test('the trainer block sits with what is due today, before women’s health and nutrition', () => {
+  const order = buildHomeSectionOrder({ includeCycle: true });
+  assert.equal(order.indexOf('coach'), order.indexOf('nextDose') + 1);
+  assert.ok(order.indexOf('coach') < order.indexOf('cycle'));
+});

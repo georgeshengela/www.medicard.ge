@@ -469,3 +469,59 @@ export async function writeMealNative(meal: HealthMeal): Promise<void> {
     await HealthKit.saveQuantitySample(type, unit as never, Math.round(value * 10) / 10, start, end, metadata);
   }
 }
+
+// ——— MEDI COACH: workouts (read-only summary) ———
+
+export type NativeWorkout = {
+  externalId: string;
+  source: 'apple_health';
+  kind: string;
+  startedAt: string;
+  endedAt: string;
+  kcal: number | null;
+  avgHeartRate: number | null;
+  distanceKm: number | null;
+};
+
+const WORKOUT_READ_TYPES = ['HKWorkoutTypeIdentifier', 'HKQuantityTypeIdentifierActiveEnergyBurned', 'HKQuantityTypeIdentifierHeartRate'] as const;
+
+/** Must be called from a button press: it shows the system permission sheet (iOS 26 rule). */
+export async function connectWorkoutsNative(): Promise<HealthConnectResult> {
+  try {
+    const HealthKit = kitMod || (await loadHealthKit());
+    const granted = await HealthKit.requestAuthorization({ toRead: [...WORKOUT_READ_TYPES] as never });
+    return granted ? { ok: true } : { ok: false, reason: 'denied' };
+  } catch (err) {
+    return { ok: false, reason: 'error', message: err instanceof Error ? err.message : undefined };
+  }
+}
+
+/** Workouts since `since` (never re-requests authorization; unreadable data just returns []). */
+export async function fetchWorkoutsNative(since: Date): Promise<NativeWorkout[]> {
+  const HealthKit = kitMod || (await loadHealthKit());
+  const rows = await HealthKit.queryWorkoutSamples({ limit: 100, ascending: false, filter: { date: { startDate: since, endDate: new Date() } } });
+  const out: NativeWorkout[] = [];
+  for (const w of rows) {
+    const types = HealthKit.WorkoutActivityType as unknown as Record<number, string>;
+    let avgHeartRate: number | null = null;
+    try {
+      const hr = await w.getStatistic('HKQuantityTypeIdentifierHeartRate', 'count/min');
+      avgHeartRate = hr?.averageQuantity?.quantity ? Math.round(hr.averageQuantity.quantity) : null;
+    } catch {
+      avgHeartRate = null;
+    }
+    const energy = w.totalEnergyBurned;
+    const distance = w.totalDistance;
+    out.push({
+      externalId: `hk:${w.uuid}`,
+      source: 'apple_health',
+      kind: types[w.workoutActivityType as unknown as number] || 'other',
+      startedAt: new Date(w.startDate).toISOString(),
+      endedAt: new Date(w.endDate).toISOString(),
+      kcal: energy ? Math.round(energy.unit === 'kJ' ? energy.quantity / 4.184 : energy.quantity) : null,
+      avgHeartRate,
+      distanceKm: distance ? Math.round((distance.unit === 'km' ? distance.quantity : distance.quantity / 1000) * 100) / 100 : null,
+    });
+  }
+  return out;
+}
