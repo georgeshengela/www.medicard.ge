@@ -80,9 +80,14 @@ console.log(`✔ OTA allowed: ${version} → runtime ${runtime}, channel ${chann
 if (mode === 'check') process.exit(0);
 
 if (!message) fail('write what changed: npm run ota -- "კვების ეკრანის ტექსტი გასწორდა"');
-const run = spawnSync(
-  'npx',
-  ['eas-cli@latest', 'update', '--channel', channel, '--message', `${version} · ${message}`, '--non-interactive'],
-  { stdio: 'inherit', shell: process.platform === 'win32', env: process.env },
-);
+const easArgs = ['eas-cli@latest', 'update', '--channel', channel, '--message', `${version} · ${message}`, '--non-interactive'];
+// Windows runs npx through cmd.exe, which splits unquoted arguments on spaces — quote each one.
+const quote = (arg) => (/^[\w@.:/=-]+$/.test(arg) ? arg : `"${arg.replace(/["%^&|<>]/g, '')}"`);
+if (process.env.OTA_DRY_RUN === '1') {
+  console.log(process.platform === 'win32' ? ['npx', ...easArgs].map(quote).join(' ') : easArgs);
+  process.exit(0);
+}
+const run = process.platform === 'win32'
+  ? spawnSync(['npx', ...easArgs].map(quote).join(' '), { stdio: 'inherit', shell: true, env: process.env })
+  : spawnSync('npx', easArgs, { stdio: 'inherit', env: process.env });
 process.exit(run.status ?? 1);
