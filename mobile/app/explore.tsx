@@ -10,6 +10,7 @@ import {
 import { useThemeColors } from '@/theme/colors';
 import { useAuth } from '@/store/AuthContext';
 import { useCommunityEntry } from '@/lib/communityAccess';
+import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
 
 export default function Explore() {
   const c = useThemeColors(),
@@ -17,9 +18,10 @@ export default function Explore() {
     router = useRouter();
   const { user } = useAuth();
   const communityEntry = useCommunityEntry(user?.id, user?.gender === 'FEMALE');
+  const features = useFeatureState();
   const [category, setCategory] = useState<string | undefined>();
   const categories = HOME_FEATURE_GROUPS.filter((group) =>
-    group.items.some((item) => !item.female || user?.gender === 'FEMALE'),
+    group.items.some((item) => (!item.female || user?.gender === 'FEMALE') && isHrefAvailable(item.href, features)),
   );
   const selected = categories.some((group) => group.title === category)
     ? category

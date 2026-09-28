@@ -47,7 +47,7 @@
   /* ─────────────── Registry (derived from the sidebar, the single source) ─────────────── */
   const NAV_KEYS = {
     overview: 'o', users: 'u', push: 'p', 'poster-studio': 'i', nutrition: 'n', community: 'c', medipulsi: 'm',
-    health: 'h', ai: 'd', rewards: 'r', orders: 'e', sms: 'x', pharmacy: 'f', quality: 'q', testing: 't', audit: 'a', settings: 's', quests: 'k', features: 'l', funnel: 'v', email: 'j', support: 'b', trainers: 'w', capacity: 'z',
+    health: 'h', ai: 'd', rewards: 'r', orders: 'e', sms: 'x', pharmacy: 'f', quality: 'q', testing: 't', audit: 'a', settings: 's', quests: 'k', features: 'l', funnel: 'v', email: 'j', support: 'b', trainers: 'w', capacity: 'z', news: 'y',
   };
   const SUBPAGES = [
     ['push', 'brain', 'გადაწყვეტილებები', 'Brain decisions'],

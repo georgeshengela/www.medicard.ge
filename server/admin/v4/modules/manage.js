@@ -20,6 +20,12 @@
   };
 
   /* ═════════ მოდულები (kill switches) ═════════ */
+  const FEATURE_GROUPS = [
+    ['module', 'მოდულები', 'მთელი მიმართულება. აპის 1.0.0.16.2+ ვერსიაში გამორთული მოდული ქრება მთავარი გვერდიდან, მენიუებიდან და პროფილიდან; ძველ ვერსიებში იბლოკება ცვლილებები და ჩანს შენი შეტყობინება.'],
+    ['ai', 'AI და ცალკეული ფუნქციები', 'ერთი ფუნქცია მოდულის შიგნით. მშობელი მოდულის გამორთვა ამ ფუნქციასაც თიშავს.'],
+    ['system', 'ფონური სისტემები', 'ეკრანის გარეშე მომუშავე პროცესები.'],
+  ];
+
   async function renderFeatures() {
     const root = $('tab-features');
     if (!root) return;
@@ -27,26 +33,34 @@
     let data;
     try { data = await api('/features'); } catch (err) { fail(root, err, renderFeatures); return; }
     const list = data.features || [];
+    const labelOf = (key) => list.find((f) => f.key === key)?.label || key;
     const off = list.filter((f) => !f.enabled).length;
-    root.innerHTML = `<div class="s-stack v3-tab-shell">
-      <div class="s-callout ${off ? 'is-warn' : 'is-ok'}">${ico(off ? 'alert' : 'check')}<p>${off
-        ? `<b>${off} მოდული შეჩერებულია.</b> მომხმარებლები ხედავენ ქვემოთ მითითებულ შეტყობინებას; ისტორია და სხვა ფუნქციები მუშაობს.`
-        : '<b>ყველა მოდული ჩართულია.</b> გამორთვა გამოიყენე ავარიისას — მაგალითად, AI პროვაიდერის შეფერხების, ხარჯის ზრდის ან ბოროტად გამოყენების დროს.'}</p></div>
-      <section class="s-card">
-        <header class="s-card-head"><div><h3>მოდულების გადამრთველები</h3>
-          <p>გამორთვა მოქმედებს დაუყოვნებლივ (≤15 წამი), დეპლოის გარეშე. იბლოკება მხოლოდ ახალი მოქმედებები — წაკითხვა და ისტორია ხელმისაწვდომი რჩება. ყოველი ცვლილება იწერება აუდიტში.</p></div></header>
-        <div class="s-card-body is-flush">${list.map((f) => `
-          <div class="s-flag${f.enabled ? '' : ' is-off'}" data-flag="${esc(f.key)}">
+    const flagRow = (f) => `
+          <div class="s-flag${f.effective === false ? ' is-off' : ''}" data-flag="${esc(f.key)}">
             <div class="s-flag-main">
-              <div class="s-flag-title"><b>${esc(f.label)}</b>${f.enabled ? '<span class="s-badge is-ok">ჩართულია</span>' : '<span class="s-badge is-bad">შეჩერებულია</span>'}</div>
+              <div class="s-flag-title"><b>${esc(f.label)}</b>${!f.enabled
+                ? '<span class="s-badge is-bad">შეჩერებულია</span>'
+                : f.blockedBy ? `<span class="s-badge is-warn">შეჩერებულია „${esc(labelOf(f.blockedBy))}“-ით</span>` : '<span class="s-badge is-ok">ჩართულია</span>'}
+                ${f.parent ? `<span class="s-badge is-plain">${esc(labelOf(f.parent))}-ის ნაწილი</span>` : ''}</div>
               <p>${esc(f.description)}</p>
               ${f.updatedAt ? `<small>ბოლოს შეცვალა ${esc(f.updatedBy || 'ადმინი')} · ${esc(when(f.updatedAt))}</small>` : ''}
-              <label class="s-field s-flag-msg"><span>შეტყობინება მომხმარებლისთვის, როცა გამორთულია</span>
+              <label class="s-field s-flag-msg"><span>შეტყობინება ადამიანისთვის, როცა გამორთულია</span>
                 <input type="text" maxlength="240" value="${esc(f.message)}" data-msg></label>
             </div>
             <input class="s-switch" type="checkbox" role="switch" aria-label="${esc(f.label)}" ${f.enabled ? 'checked' : ''} data-toggle>
-          </div>`).join('')}</div>
-      </section>
+          </div>`;
+    root.innerHTML = `<div class="s-stack v3-tab-shell">
+      <div class="s-callout ${off ? 'is-warn' : 'is-ok'}">${ico(off ? 'alert' : 'check')}<p>${off
+        ? `<b>${off} გადამრთველი გამორთულია.</b> ადამიანები ხედავენ ქვემოთ მითითებულ შეტყობინებას; ისტორია და სხვა ფუნქციები მუშაობს.`
+        : '<b>ყველა მოდული ჩართულია.</b> გამორთვა გამოიყენე, როცა მოდულში ხარვეზია, AI პროვაიდერი შეფერხდა, ხარჯი მკვეთრად გაიზარდა ან ფუნქციას ბოროტად იყენებენ.'}</p></div>
+      ${FEATURE_GROUPS.map(([group, title, note]) => {
+        const items = list.filter((f) => (f.group || 'module') === group);
+        if (!items.length) return '';
+        return `<section class="s-card">
+        <header class="s-card-head"><div><h3>${esc(title)}</h3><p>${esc(note)} ცვლილება მოქმედებს ≤15 წამში, ბილდისა და დეპლოის გარეშე; ყოველი ცვლილება იწერება აუდიტში.</p></div></header>
+        <div class="s-card-body is-flush">${items.map(flagRow).join('')}</div>
+      </section>`;
+      }).join('')}
     </div>`;
     root.querySelectorAll('[data-flag]').forEach((row) => {
       const key = row.dataset.flag;
@@ -63,7 +77,10 @@
         if (enabled) { void save(true).catch((e) => global.toast?.(e.message, 'bad')); return; }
         V().openConfirm?.({
           title: `${row.querySelector('b').textContent} — შეჩერება?`,
-          message: `მომხმარებლები ნახავენ: „${msg.value}“. შეგიძლია ნებისმიერ დროს ხელახლა ჩართო.`,
+          message: `ადამიანები ნახავენ: „${msg.value}“.${(() => {
+            const kids = list.filter((f) => f.parent === key).map((f) => f.label);
+            return kids.length ? ` ასევე შეჩერდება: ${kids.join(', ')}.` : '';
+          })()} შეგიძლია ნებისმიერ დროს ხელახლა ჩართო.`,
           confirmLabel: 'შეჩერება',
           variant: 'danger',
           onConfirm: () => save(false),

@@ -28,6 +28,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { useThemeColors } from '@/theme/colors';
+import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
 
 type Feature = {
   title: string;
@@ -210,11 +211,12 @@ export function HomeFeatureDirectory({
 }) {
   const c = useThemeColors();
   const router = useRouter();
+  const features = useFeatureState();
   return (
     <View style={{ gap: 28 }}>
       {HOME_FEATURE_GROUPS.map((group) => {
         if (category && group.title !== category) return null;
-        const items = group.items.filter((item) => (!item.female || female) && (item.href !== '/community' || community));
+        const items = group.items.filter((item) => (!item.female || female) && (item.href !== '/community' || community) && isHrefAvailable(item.href, features));
         if (!items.length) return null;
         return (
           <View key={group.title}>

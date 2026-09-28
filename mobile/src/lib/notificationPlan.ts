@@ -123,7 +123,7 @@ export function engageDestination(
  */
 export const NOTIFICATION_ROUTE_ROOTS = [
   '(tabs)', 'assistant', 'chat', 'community', 'cycle', 'explore', 'health-metrics', 'invite', 'lab',
-  'medi-companion', 'medi-quest', 'medications', 'medipulsi', 'module', 'nutrition', 'package', 'pets',
+  'medi-companion', 'medi-quest', 'medications', 'medipulsi', 'module', 'news', 'nutrition', 'package', 'pets',
   'pharmacy', 'profile', 'record', 'run', 'share', 'symptoms', 'visits', 'weather', 'week', 'trainer', 'coach', 'c', 'u',
 ] as const;
 

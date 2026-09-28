@@ -33,6 +33,10 @@ import { HomeCyclePreviewCard } from '@/components/home/HomeCyclePreviewCard';
 import { HomeDayRings, type DayRing } from '@/components/home/HomeDayRings';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { HomeNutritionCard } from '@/components/home/HomeNutritionCard';
+import { HomeNewsSection } from '@/components/home/HomeNewsSection';
+import { useAnnouncements } from '@/hooks/useAnnouncements';
+import { isFeatureOn, isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
+import type { HomeSectionId } from '@/lib/home/homeSectionOrder';
 import { HubFeatureCard } from '@/components/home/HubFeatureCard';
 import { HubLinkRow, HubTileGrid, type HubTile } from '@/components/home/HubTiles';
 import { HomeHeader } from '@/components/home/HomeHeader';
@@ -114,7 +118,23 @@ export default function Home() {
   const [showCyclePrompt, setShowCyclePrompt] = useState(false);
   const female = user?.gender === 'FEMALE';
   const completion = profileCompletion(healthProfile, user);
-  const communityEntry = useCommunityEntry(user?.id, female);
+  const features = useFeatureState();
+  const communityEntry = useCommunityEntry(user?.id, female) && isFeatureOn('community', features);
+  const news = useAnnouncements();
+  // Sections of modules an admin paused (admin „მოდულები“) are left out entirely.
+  const hiddenSections = useMemo(() => {
+    const hidden = new Set<HomeSectionId>();
+    if (!isFeatureOn('cycle', features)) hidden.add('cycle');
+    if (!isFeatureOn('nutrition', features)) hidden.add('nutrition');
+    if (!isFeatureOn('coach', features)) hidden.add('coach');
+    if (!isFeatureOn('medi', features)) {
+      hidden.add('ask');
+      hidden.add('checkup');
+    }
+    if (!isFeatureOn('news', features)) hidden.add('news');
+    return hidden;
+  }, [features]);
+  const serviceTiles = SERVICE_TILES.filter((tile) => isHrefAvailable(tile.href, features));
 
   useFocusEffect(
     useCallback(() => {
@@ -142,6 +162,7 @@ export default function Home() {
         steps.refresh(),
         hydration.refresh(),
         meds.load(),
+        news.reload(),
       ]);
       setRefreshError(results.some((result) => result.status === 'rejected'));
       requestHealthRefresh();
@@ -248,6 +269,7 @@ export default function Home() {
         /> : null}
       </View>
     ),
+    news: <HomeNewsSection items={news.items} onDismiss={news.dismiss} />,
     nutrition: (
       <View style={s.section}>
         {heading('კვება', '/nutrition', 'ყველა')}
@@ -296,7 +318,7 @@ export default function Home() {
     services: (
       <View style={s.section}>
         {heading('სერვისები', '/explore', 'ყველა ფუნქცია')}
-        <HubTileGrid tiles={SERVICE_TILES} />
+        <HubTileGrid tiles={serviceTiles} />
       </View>
     ),
     disclaimer: (
@@ -329,7 +351,11 @@ export default function Home() {
             განახლება ვერ დასრულდა. ხელახლა ჩამოწიე გვერდი.
           </Text>
         ) : null}
-        {buildHomeSectionOrder({ includeCycle: female, primaryGoal: primaryGoalFromProfile(healthProfile) }).map((id) => (
+        {buildHomeSectionOrder({
+          includeCycle: female,
+          primaryGoal: primaryGoalFromProfile(healthProfile),
+          hidden: hiddenSections,
+        }).map((id) => (
           <React.Fragment key={id}>{sections[id]}</React.Fragment>
         ))}
       </ScrollView>

@@ -8,6 +8,7 @@ import { getToken } from './storage';
 import { UploadTimeoutError, uploadWithDeadline } from './uploadDeadline';
 import { withAuthConnectionRetry } from './authConnection';
 import { markReachable, markUnreachable } from './reachability';
+import { noteFeatureDisabled } from './featureFlags';
 /**
  * Resolves the API base URL.
  *
@@ -2042,6 +2043,10 @@ function parseJsonBody<T>(status: number, text: string, retryRaw?: string | null
         : undefined);
     // Consent was withdrawn (possibly on another device): forget the session memory so the next AI request asks again.
     if (status === 403 && (payload as { code?: string })?.code === 'AI_CONSENT_REQUIRED') forgetAiConsent();
+    // An admin paused this module: hide it now (ModuleGate, Home) instead of on the next status poll.
+    if (status === 503 && (payload as { code?: string })?.code === 'FEATURE_DISABLED') {
+      noteFeatureDisabled((payload as { feature?: string }).feature, serverError);
+    }
     throw new ApiError(serverError, status, payload as Record<string, unknown>, wait);
   }
   return payload as T;
@@ -2125,6 +2130,22 @@ export async function communityRequest<T = any>(path: string, method: 'GET'|'POS
   return result;
 }
 
+/** A Home news card (admin „სიახლეები“). `image` is an https URL or a server path. */
+export type Announcement = {
+  id: string;
+  placement: 'home';
+  title: string;
+  body: string;
+  details: string;
+  badge: string | null;
+  tone: 'teal' | 'violet' | 'amber' | 'rose' | 'blue' | 'green' | 'sky';
+  image: string | null;
+  cta: { label: string; kind: 'route' | 'url'; target: string } | null;
+  dismissible: boolean;
+  publishedAt: string | null;
+  endsAt: string | null;
+};
+
 export const api = {
   nutrition: {
     settings: () => request<{photoEnabled:boolean}>('/api/nutrition/settings'),
@@ -2194,6 +2215,19 @@ export const api = {
   },
   health: () => request<{ status: string }>('/health', { token: null, timeoutMs: 12_000 }),
 
+  announcements: {
+    list: (placement: 'home' = 'home') =>
+      request<{ announcements: Announcement[] }>(`/api/announcements?placement=${placement}`, { timeoutMs: 15_000 }),
+    get: (id: string) =>
+      request<{ announcement: Announcement }>(`/api/announcements/${encodeURIComponent(id)}`, { timeoutMs: 15_000 }),
+    event: (id: string, type: 'view' | 'click' | 'dismiss') =>
+      request<{ ok: boolean }>(`/api/announcements/${encodeURIComponent(id)}/events`, {
+        method: 'POST',
+        body: { type },
+        timeoutMs: 15_000,
+      }),
+  },
+
   app: {
     status: (version: string) =>
       request<{
@@ -2209,6 +2243,10 @@ export const api = {
         client: { version: string; needsUpdate: boolean; blockedByForceUpdate: boolean };
         packages?: UserPackage[];
         mapboxToken?: string;
+        /** Effective module switches (admin „მოდულები“); a missing key means on. */
+        features?: Record<string, boolean>;
+        /** User-facing text for each paused key. */
+        featureMessages?: Record<string, string>;
       }>(`/api/app/status?version=${encodeURIComponent(version)}`, { token: null, timeoutMs: 15_000 }),
   },
 

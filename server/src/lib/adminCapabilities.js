@@ -70,3 +70,6 @@ export const SUPPORT_CAPABILITIES = Object.freeze(['SUPPORT_VIEW', 'SUPPORT_MANA
 
 /** MEDI COACH (#/trainers): VIEW reads applications, certificates and gyms; MANAGE verifies/suspends trainers and edits gyms. */
 export const TRAINER_CAPABILITIES = Object.freeze(['TRAINER_VIEW', 'TRAINER_MANAGE']);
+
+/** Home news cards (#/news): everyone may read the list; MANAGE creates, edits, publishes and archives. */
+export const NEWS_CAPABILITIES = Object.freeze(['NEWS_MANAGE']);

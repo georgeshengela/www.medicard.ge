@@ -32,7 +32,8 @@ test('caller mutation cannot alter subsequent home composition', () => {
 test('the onboarding goal moves its section right after ask Medi, nothing disappears', () => {
   const base = buildHomeSectionOrder({ includeCycle: true });
   const nutrition = buildHomeSectionOrder({ includeCycle: true, primaryGoal: 'nutrition' });
-  assert.equal(nutrition[nutrition.indexOf('ask') + 1], 'nutrition');
+  assert.equal(nutrition[nutrition.indexOf('ask') + 1], 'news');
+  assert.equal(nutrition[nutrition.indexOf('ask') + 2], 'nutrition');
   assert.deepEqual([...nutrition].sort(), [...base].sort());
   const cycle = buildHomeSectionOrder({ includeCycle: true, primaryGoal: 'cycle' });
   assert.equal(cycle[cycle.indexOf('ask') + 1], 'cycle');
@@ -46,4 +47,19 @@ test('the trainer block sits with what is due today, before women’s health and
   const order = buildHomeSectionOrder({ includeCycle: true });
   assert.equal(order.indexOf('coach'), order.indexOf('nextDose') + 1);
   assert.ok(order.indexOf('coach') < order.indexOf('cycle'));
+});
+
+test('news sits directly above nutrition, wherever nutrition goes', () => {
+  for (const primaryGoal of [undefined, 'nutrition', 'cycle', 'medications'] as const) {
+    const order = buildHomeSectionOrder({ includeCycle: true, primaryGoal });
+    assert.equal(order.indexOf('news') + 1, order.indexOf('nutrition'), String(primaryGoal));
+  }
+});
+
+test('an admin-paused module drops its section and nothing else', () => {
+  const base = buildHomeSectionOrder({ includeCycle: true });
+  const paused = buildHomeSectionOrder({ includeCycle: true, hidden: new Set(['cycle', 'nutrition', 'coach']) });
+  assert.deepEqual(paused, base.filter((id) => !['cycle', 'nutrition', 'coach'].includes(id)));
+  // The goal of a paused module does not bring it back.
+  assert.ok(!buildHomeSectionOrder({ includeCycle: true, primaryGoal: 'nutrition', hidden: new Set(['nutrition']) }).includes('nutrition'));
 });

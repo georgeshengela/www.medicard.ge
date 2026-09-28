@@ -59,6 +59,7 @@ import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
 import { livingPlaceLine } from '@/lib/userLocation';
 import { useAuth } from '@/store/AuthContext';
 import { requestQuestRefresh } from '@/lib/quest/cache';
+import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import { rewardsApi } from '@/lib/quest/rewardsApi';
 import { rewardsCopy } from '@/i18n/quest/rewards.js';
 
@@ -83,6 +84,7 @@ export default function Profile() {
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
   const [showCyclePrompt, setShowCyclePrompt] = useState(false);
+  const features = useFeatureState();
   const [editingMedical, setEditingMedical] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -281,22 +283,28 @@ export default function Profile() {
         </View>
       </View>
 
-      {/* Quest */}
-      <View style={s.section}>
-        <HomeSectionHeading title="MEDI QUEST" />
-        <HomeMediQuestSection edgeInset={0} hideTitle />
-      </View>
+      {/* Quest — each module block disappears while an admin has it paused (admin „მოდულები“) */}
+      {isFeatureOn('quest', features) ? (
+        <View style={s.section}>
+          <HomeSectionHeading title="MEDI QUEST" />
+          <HomeMediQuestSection edgeInset={0} hideTitle />
+        </View>
+      ) : null}
 
       {/* Pets */}
-      <View style={s.section}>
-        <HomeSectionHeading title="ჩემი ცხოველები" linkLabel="ყველას ნახვა" onLink={() => router.push('/pets')} />
-        <ProfilePetsSection hideTitle />
-      </View>
+      {isFeatureOn('pets', features) ? (
+        <View style={s.section}>
+          <HomeSectionHeading title="ჩემი ცხოველები" linkLabel="ყველას ნახვა" onLink={() => router.push('/pets')} />
+          <ProfilePetsSection hideTitle />
+        </View>
+      ) : null}
 
       {/* MEDI COACH: trainer link, progress photos, trainer registration */}
-      <View style={{ paddingHorizontal: HUB.gutter }}>
-        <ProfileCoachSection />
-      </View>
+      {isFeatureOn('coach', features) ? (
+        <View style={{ paddingHorizontal: HUB.gutter }}>
+          <ProfileCoachSection />
+        </View>
+      ) : null}
 
       {/* Medical profile */}
       <View style={s.section}>

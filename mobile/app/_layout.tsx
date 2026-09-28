@@ -58,6 +58,9 @@ import { rememberMapboxToken } from '@/lib/run/mapbox';
 import { consumePendingCycleShare, isCycleShareCode, savePendingCycleShare } from '@/lib/cycleSharePending';
 import { getHomeLanding, resolveInitialRoute } from '@/lib/homeScreenPrefs';
 import { useStackMotion } from '@/hooks/useStackMotion';
+import { ModuleGate } from '@/components/ModuleGate';
+import { applyFeatureStatus, useFeature } from '@/lib/featureFlags';
+import { noteFeatureStatusFetched, startFeatureFlagSync } from '@/lib/featureFlagSync';
 
 // Native screens = GPU stack transitions. Do not set this to false — that is
 // what made page changes feel like a late pop. Tab chrome stays above via AppChromeOverlay.
@@ -89,10 +92,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
+    startFeatureFlagSync();
     api.app
       .status(APP_VERSION)
       .then((status) => {
         rememberMapboxToken(status.mapboxToken);
+        applyFeatureStatus(status.features, status.featureMessages);
+        noteFeatureStatusFetched();
         if (status.settings.maintenanceMode) {
           setGate({ kind: 'maintenance', message: status.settings.maintenanceMessage });
           return;
@@ -218,6 +224,7 @@ function AppShell() {
   const [notificationTick, setNotificationTick] = useState(0);
   const stackMotion = useStackMotion();
   const peerMotion = useStackMotion('peer');
+  const questOn = useFeature('quest');
   const tabChromeHidden = useTabChromeHidden();
   const activeRunChrome = useActiveRunChrome();
   const showTabBar =
@@ -413,16 +420,18 @@ function AppShell() {
               <Stack.Screen name="pharmacy" options={{ headerShown: false }} />
               <Stack.Screen name="run" options={{ headerShown: false }} />
               <Stack.Screen name="record/[id]" options={{ headerBackTitle: 'უკან' }} />
+              <Stack.Screen name="news/[id]" options={{ headerShown: false }} />
             </Stack>
+            {user ? <ModuleGate /> : null}
           </View>
           <AppChromeOverlay interactive={chromeInteractive}>
-            {user && !['(auth)', 'run', 'medi-quest', 'medi-companion', 'pets', 'assistant', 'community', 'nutrition', 'trainer', 'coach', 'c', 'u'].includes(segments[0]) && !((segments as string[]).join('/') === 'profile/complete') ? <FloatingTabBar visible={showTabBar} /> : null}
+            {user && !['(auth)', 'run', 'medi-quest', 'medi-companion', 'pets', 'assistant', 'community', 'nutrition', 'trainer', 'coach', 'c', 'u', 'news'].includes(segments[0]) && !((segments as string[]).join('/') === 'profile/complete') ? <FloatingTabBar visible={showTabBar} /> : null}
             {user ? <ActiveRunBadge /> : null}
           </AppChromeOverlay>
           <DailyCheckInHost />
           <QuotaReadyHost />
           <LocationAskHost />
-          <QuestHost />
+          {questOn ? <QuestHost /> : null}
           <OfflineBanner />
           <PermissionGateHost />
           <AiSharingConsentHost />

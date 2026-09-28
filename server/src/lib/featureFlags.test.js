@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it, beforeEach } from 'node:test';
-import { listFeatureFlags, isFeatureEnabled, setFeatureFlag, resetFeatureFlagCacheForTests, FEATURES } from './featureFlags.js';
+import {
+  listFeatureFlags, isFeatureEnabled, setFeatureFlag, resetFeatureFlagCacheForTests, FEATURES,
+  featureDisabledMessage, publicFeatureFlags, publicFeatureMessages,
+} from './featureFlags.js';
 
 function fakeDb(rows = []) {
   const db = {
@@ -48,5 +51,36 @@ describe('feature flags', () => {
   it('fails open when the table cannot be read', async () => {
     const db = { async $executeRawUnsafe() { throw new Error('down'); } };
     assert.equal(await isFeatureEnabled('medi', db), true);
+  });
+});
+
+describe('module hierarchy', () => {
+  beforeEach(() => resetFeatureFlagCacheForTests());
+
+  it('pauses a child while its parent module is paused, with the parent message', async () => {
+    const db = fakeDb();
+    await setFeatureFlag('pets', { enabled: false, message: 'ცხოველები ისვენებენ' }, { db });
+    resetFeatureFlagCacheForTests();
+    assert.equal(await isFeatureEnabled('mediVet', db), false);
+    assert.equal(await featureDisabledMessage('mediVet', db), 'ცხოველები ისვენებენ');
+    const vet = (await listFeatureFlags(db)).find((f) => f.key === 'mediVet');
+    assert.equal(vet.enabled, true);
+    assert.equal(vet.effective, false);
+    assert.equal(vet.blockedBy, 'pets');
+    const flags = await publicFeatureFlags(db);
+    assert.equal(flags.pets, false);
+    assert.equal(flags.mediVet, false);
+    assert.equal(flags.cycle, true);
+    const messages = await publicFeatureMessages(db);
+    assert.deepEqual(Object.keys(messages).sort(), ['mediVet', 'pets']);
+  });
+
+  it('every parent is a real module and every key is unique', () => {
+    const keys = FEATURES.map((f) => f.key);
+    assert.equal(new Set(keys).size, keys.length);
+    for (const f of FEATURES) {
+      assert.ok(['module', 'ai', 'system'].includes(f.group), f.key);
+      if (f.parent) assert.equal(FEATURES.find((p) => p.key === f.parent)?.group, 'module', f.key);
+    }
   });
 });
