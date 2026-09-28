@@ -24,7 +24,9 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
   const [asked, setAsked] = useState(false);
   const last = useRef<{ data: string; at: number } | null>(null);
   const keyboard = useKeyboardPad(Math.max(safe.bottom, 16));
-  const bottomStyle = useAnimatedStyle(() => ({ paddingBottom: keyboard.pad.value }));
+  // Worklets may capture only the shared value — never `keyboard` (it holds a view ref; crashes on UI thread).
+  const keyboardPad = keyboard.pad;
+  const bottomStyle = useAnimatedStyle(() => ({ paddingBottom: keyboardPad.value }));
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => setForeground(st === 'active'));
     return () => sub.remove();

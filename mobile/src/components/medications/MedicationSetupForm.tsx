@@ -73,9 +73,11 @@ export function MedicationSetupForm({
   const bottomClearance = Math.max(insets.bottom, 16);
   // Sign-in keyboard behaviour: the CTA rides just above the keyboard (measured overlap, both platforms).
   const keyboard = useKeyboardPad(bottomClearance);
-  const footerPad = useAnimatedStyle(() => ({ paddingBottom: keyboard.pad.value }));
+  // Worklets may capture only the shared value — never `keyboard` (it holds a view ref).
+  const keyboardPad = keyboard.pad;
+  const footerPad = useAnimatedStyle(() => ({ paddingBottom: keyboardPad.value }));
   const isAndroid = Platform.OS === 'android';
-  const androidSpacer = useAnimatedStyle(() => ({ height: isAndroid ? Math.max(0, keyboard.pad.value - bottomClearance) : 0 }));
+  const androidSpacer = useAnimatedStyle(() => ({ height: isAndroid ? Math.max(0, keyboardPad.value - bottomClearance) : 0 }));
   const ctaHeight = 80;
   const [medName] = useState(initialName);
   const [form, setForm] = useState<MedicationForm>('pills');
