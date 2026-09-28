@@ -104,7 +104,8 @@ export function CycleStatusGauge({
                     cx={b.x}
                     cy={b.y}
                     r={beadR}
-                    fill={cycleHexAlpha(c.fertile, b.lived ? 0.25 : 0.55)}
+                    fill={c.fertileFill}
+                    opacity={b.lived ? 0.4 : 1}
                     onPress={onPressFertile}
                   />
                 );

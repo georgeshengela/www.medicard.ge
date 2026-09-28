@@ -24,7 +24,7 @@ import {
   isPostpartumReturnLearning,
   suppressCycleLengthChrome,
 } from '@/lib/cycleForecastEligibility';
-import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
+import { useCycleColors } from '@/theme/cycle';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
 
 type Props = {
@@ -209,7 +209,7 @@ export function CycleHero({
           <View accessible={false} importantForAccessibility="no-hide-descendants" style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 10, rowGap: 4, marginTop: 12 }}>
             <LegendDot fill={c.todayRing} label={ka.cycle.gaugeLegendToday} />
             <LegendDot fill={c.period} label={ka.cycle.legendPeriod} />
-            {overlays.fertileDays ? <LegendDot fill={cycleHexAlpha(c.fertile, 0.55)} label={ka.cycle.legendFertile} /> : null}
+            {overlays.fertileDays ? <LegendDot fill={c.fertileFill} label={ka.cycle.legendFertile} /> : null}
           </View>
         ) : null}
 
