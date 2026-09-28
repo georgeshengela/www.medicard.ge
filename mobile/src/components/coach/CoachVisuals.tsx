@@ -1,10 +1,13 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { PanResponder, Pressable, StyleSheet, Text, TouchableOpacity, View, type LayoutChangeEvent } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 import { CalendarDays, House, UserRound, UsersRound } from 'lucide-react-native';
 import { PrivateImage } from '@/components/coach/CoachUI';
+import { TAB_BAR_HEIGHT, TAB_BAR_SIDE } from '@/components/navigation/FloatingTabBar';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { haptic } from '@/components/coach/CoachKit';
 import type { ProgressPhoto } from '@/lib/coach';
 import { daysBetween } from '@/lib/coach';
@@ -134,42 +137,67 @@ const TABS = [
   { href: '/coach/profile', label: 'პროფილი', Icon: UserRound, match: (p: string) => p.startsWith('/coach/profile') },
 ] as const;
 
-/** The trainer workspace has its own navigation: the consumer tab bar is hidden on /coach. */
+/**
+ * The trainer workspace has its own navigation (the consumer tab bar is hidden on /coach), drawn as the
+ * same floating pill as FloatingTabBar: raised surface, sliding accent indicator, small labels.
+ */
 export function CoachTabBar() {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const path = usePathname();
-  const dark = useIsDark();
+  const reduceMotion = usePrefersReducedMotion();
+  const activeIndex = TABS.findIndex((t) => t.match(path));
+  const [trackWidth, setTrackWidth] = useState(0);
+  const tabWidth = trackWidth > 0 ? (trackWidth - TAB_INNER_PAD * 2) / TABS.length : 0;
+  const translateX = useSharedValue(0);
+
+  useEffect(() => {
+    if (tabWidth === 0 || activeIndex < 0) return;
+    const position = TAB_INNER_PAD + activeIndex * tabWidth;
+    translateX.value = reduceMotion ? position : withTiming(position, { duration: 180, easing: Easing.out(Easing.cubic) });
+  }, [activeIndex, tabWidth, translateX, reduceMotion]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
+
   return (
-    <View style={[st.tabBar, { paddingBottom: Math.max(insets.bottom, 10), backgroundColor: c.surface, borderTopColor: c.bg300 }]} accessibilityRole="tablist">
-      {TABS.map(({ href, label, Icon, match }) => {
-        const active = match(path);
-        const color = active ? c.text100 : c.text300;
-        return (
-          <Pressable
-            key={href}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={label}
-            onPress={() => {
-              if (active) return;
-              haptic.tap();
-              router.replace(href as never);
-            }}
-            style={st.tab}
-          >
-            <View style={[st.tabPill, active ? { backgroundColor: dark ? 'rgba(20,184,166,0.18)' : '#CCFBF1' } : null]}>
-              <Icon size={22} color={active ? (dark ? '#5EEAD4' : '#0F766E') : c.text300} strokeWidth={active ? 2.3 : 1.9} />
-            </View>
-            <Text style={[hubText.small, { color, fontFamily: active ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_500Medium' }]}>{label}</Text>
-          </Pressable>
-        );
-      })}
+    <View pointerEvents="box-none" style={[st.tabWrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View
+        onLayout={(e: LayoutChangeEvent) => setTrackWidth(e.nativeEvent.layout.width)}
+        accessibilityRole="tablist"
+        style={[st.tabBar, { backgroundColor: c.surfaceRaised, borderColor: c.bg300 }]}
+      >
+        {tabWidth > 0 && activeIndex >= 0 ? (
+          <Animated.View pointerEvents="none" style={[st.tabIndicator, { width: tabWidth, backgroundColor: c.accent100 }, indicatorStyle]} />
+        ) : null}
+        {TABS.map(({ href, label, Icon, match }) => {
+          const active = match(path);
+          const color = active ? c.primary100 : c.text200;
+          return (
+            <TouchableOpacity
+              key={href}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={label}
+              activeOpacity={0.65}
+              onPress={() => {
+                if (active) return;
+                haptic.tap();
+                router.replace(href as never);
+              }}
+              style={st.tab}
+            >
+              <Icon size={20} color={color} strokeWidth={active ? 2.3 : 1.8} />
+              <Text numberOfLines={1} style={{ color, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 9, marginTop: 4 }}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
+const TAB_INNER_PAD = 5;
 export const COACH_TAB_HEIGHT = 64;
 
 const st = StyleSheet.create({
@@ -179,7 +207,8 @@ const st = StyleSheet.create({
   knobText: { fontSize: 16, color: '#0F1A1C', fontWeight: '700' },
   tag: { position: 'absolute', bottom: 10, backgroundColor: 'rgba(3,7,18,0.62)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   tagText: { color: '#FFFFFF', fontSize: 11, fontFamily: 'NotoSansGeorgian_600SemiBold' },
-  tabBar: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 8 },
-  tab: { flex: 1, alignItems: 'center', gap: 3, minHeight: 52, justifyContent: 'center' },
-  tabPill: { width: 60, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  tabWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: TAB_BAR_SIDE, paddingTop: 18 },
+  tabBar: { height: TAB_BAR_HEIGHT, borderRadius: TAB_BAR_HEIGHT / 2, borderWidth: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: TAB_INNER_PAD, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 16 },
+  tabIndicator: { position: 'absolute', left: 0, top: TAB_INNER_PAD, height: TAB_BAR_HEIGHT - TAB_INNER_PAD * 2, borderRadius: (TAB_BAR_HEIGHT - TAB_INNER_PAD * 2) / 2 },
+  tab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center', zIndex: 1 },
 });

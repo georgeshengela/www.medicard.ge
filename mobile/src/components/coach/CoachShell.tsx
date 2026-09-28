@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeftRight, Dumbbell } from 'lucide-react-native';
 import { CoachTabBar } from '@/components/coach/CoachVisuals';
+import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { Button, Card, ErrorBox, PrivateImage } from '@/components/coach/CoachUI';
 import { useMyAvatarUrl } from '@/lib/myAvatar';
 import { ApiError } from '@/lib/api';
@@ -12,13 +13,14 @@ import { useThemeColors } from '@/theme/colors';
 
 /**
  * The trainer workspace frame: a dark "MEDI COACH" band that makes the mode obvious, the page, and
- * the workspace's own tab bar. The consumer tab bar is hidden on /coach (app/_layout.tsx).
+ * the workspace's own floating tab bar (same pill as the consumer one). The consumer tab bar is hidden on /coach (app/_layout.tsx).
  */
 export function CoachShell({ title, subtitle, right, children, refreshing, onRefresh, scroll = true }: { title: string; subtitle?: string; right?: React.ReactNode; children: React.ReactNode; refreshing?: boolean; onRefresh?: () => void; scroll?: boolean }) {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const myPhoto = useMyAvatarUrl();
+  const tabInset = useTabBarInset(28);
   return (
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
       <View style={{ backgroundColor: HUB.spotlightBg, paddingTop: insets.top + 6, paddingHorizontal: HUB.gutter, paddingBottom: 18, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}>
@@ -56,14 +58,14 @@ export function CoachShell({ title, subtitle, right, children, refreshing, onRef
       </View>
       {scroll ? (
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingBottom: 28 }}
+          contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingBottom: tabInset }}
           keyboardShouldPersistTaps="handled"
           refreshControl={onRefresh ? <RefreshControl refreshing={Boolean(refreshing)} onRefresh={onRefresh} tintColor={c.primary200} /> : undefined}
         >
           {children}
         </ScrollView>
       ) : (
-        <View style={{ flex: 1 }}>{children}</View>
+        <View style={{ flex: 1, paddingBottom: tabInset }}>{children}</View>
       )}
       <CoachTabBar />
     </View>
