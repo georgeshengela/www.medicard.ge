@@ -65,7 +65,7 @@ export default function CoachClientsScreen() {
               <Share2 size={20} color="#FFFFFF" />
             </Pressable>
           ) : null}
-          <Pressable accessibilityRole="button" accessibilityLabel="კლიენტის QR-ის სკანირება" onPress={() => router.push('/coach/scan' as never)} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#14B8A6', alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="კლიენტის QR-ის სკანირება" onPress={() => router.push('/coach/scan' as never)} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#0D9488', alignItems: 'center', justifyContent: 'center' }}>
             <ScanLine size={22} color="#FFFFFF" />
           </Pressable>
         </View>

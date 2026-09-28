@@ -67,7 +67,7 @@ export default function CoachTodayScreen() {
           <Pressable accessibilityRole="button" accessibilityLabel="კლიენტის QR-ის სკანირება" onPress={() => router.push('/coach/scan' as never)} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}>
             <ScanLine size={21} color="#FFFFFF" />
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="ვარჯიშის დანიშვნა" onPress={() => router.push('/coach/session-new' as never)} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#14B8A6', alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="ვარჯიშის დანიშვნა" onPress={() => router.push('/coach/session-new' as never)} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#0D9488', alignItems: 'center', justifyContent: 'center' }}>
             <CalendarPlus size={22} color="#FFFFFF" />
           </Pressable>
         </View>

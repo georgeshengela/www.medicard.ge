@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowUpRight, Award, CalendarCheck2, Camera, ChevronRight, Dumbbell, QrCode, ScanLine } from 'lucide-react-native';
+import { ArrowUpRight, Award, BadgeCheck, CalendarCheck2, Camera, ChevronRight, CircleAlert, Clock3, Dumbbell, QrCode, ScanLine } from 'lucide-react-native';
 import { api } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
 import { clockOf, dayLabel, relativeStart, tbilisiYmd, type ClientOverview, type CoachMe } from '@/lib/coach';
@@ -108,15 +108,15 @@ export function ProfileCoachSection() {
       icon: Camera,
       ink: 'violet',
     },
-    {
-      key: 'trainer',
-      title: own?.status === 'VERIFIED' ? 'ტრენერის რეჟიმი' : 'ტრენერი ხარ?',
-      detail:
-        own?.status === 'VERIFIED' ? 'კალენდარი, კლიენტები, გეგმები' : own?.status === 'PENDING' ? 'განაცხადი განიხილება' : own?.status === 'REJECTED' ? 'დაზუსტება სჭირდება' : 'სამუშაო სივრცე უფასოდ',
-      href: own?.status === 'VERIFIED' ? '/coach' : '/trainer/apply',
-      icon: Award,
-      ink: 'amber',
-    },
+    own?.status === 'PENDING'
+      ? { key: 'trainer', title: 'განაცხადი განხილვაშია', detail: '1–2 სამუშაო დღე · შეტყობინება მოგივა', href: '/trainer/apply', icon: Clock3, ink: 'amber' }
+      : own?.status === 'REJECTED'
+        ? { key: 'trainer', title: 'განაცხადს დაზუსტება სჭირდება', detail: 'ნახე კომენტარი და გაასწორე', href: '/trainer/apply', icon: CircleAlert, ink: 'rose' }
+        : own?.status === 'VERIFIED'
+          ? { key: 'trainer', title: 'ტრენერის რეჟიმი', detail: 'დადასტურებული · კალენდარი და კლიენტები', href: '/coach', icon: BadgeCheck, ink: 'green' }
+          : own?.status === 'SUSPENDED'
+            ? { key: 'trainer', title: 'ტრენერის პროფილი შეჩერებულია', detail: 'დაგვიკავშირდი მხარდაჭერაში', href: '/trainer/apply', icon: CircleAlert, ink: 'rose' }
+            : { key: 'trainer', title: 'ტრენერი ხარ?', detail: 'დარეგისტრირდი — სამუშაო სივრცე უფასოდ', href: '/trainer/apply', icon: Award, ink: 'amber' },
   ];
 
   return (
@@ -221,9 +221,9 @@ function Stat({ value, label }: { value: string; label: string }) {
 
 function SpotButton({ label, icon: Icon, onPress, primary }: { label: string; icon: typeof QrCode; onPress: () => void; primary?: boolean }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={[s.btn, { backgroundColor: primary ? '#14B8A6' : 'rgba(255,255,255,0.1)' }]}>
-      <Icon size={18} color={primary ? '#042F2E' : '#FFFFFF'} />
-      <Text style={[s.btnText, { color: primary ? '#042F2E' : '#FFFFFF' }]}>{label}</Text>
+    <Pressable accessibilityRole="button" onPress={onPress} style={[s.btn, { backgroundColor: primary ? '#0D9488' : 'rgba(255,255,255,0.1)' }]}>
+      <Icon size={18} color="#FFFFFF" />
+      <Text style={[s.btnText, { color: '#FFFFFF' }]}>{label}</Text>
     </Pressable>
   );
 }

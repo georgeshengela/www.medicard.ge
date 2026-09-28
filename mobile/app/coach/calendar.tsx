@@ -57,7 +57,7 @@ export default function CoachCalendarScreen() {
       title="კალენდარი"
       subtitle={`${d0.getUTCDate()} ${MONTH_SHORT[d0.getUTCMonth()]} – ${d6.getUTCDate()} ${MONTH_SHORT[d6.getUTCMonth()]} · ${(sessions ?? []).filter((s) => s.status === 'SCHEDULED').length} ვარჯიში`}
       right={
-        <Pressable accessibilityRole="button" accessibilityLabel="ვარჯიშის დანიშვნა" onPress={() => router.push(`/coach/session-new?date=${day}` as never)} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#14B8A6', alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable accessibilityRole="button" accessibilityLabel="ვარჯიშის დანიშვნა" onPress={() => router.push(`/coach/session-new?date=${day}` as never)} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#0D9488', alignItems: 'center', justifyContent: 'center' }}>
           <CalendarPlus size={22} color="#FFFFFF" />
         </Pressable>
       }

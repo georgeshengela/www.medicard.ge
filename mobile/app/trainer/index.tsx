@@ -342,13 +342,13 @@ export default function MyTrainerScreen() {
         ) : null}
 
         {ov ? (
-          <Section title="ტრენერი ხარ?">
+          <Section title={own?.status === 'PENDING' ? 'შენი ტრენერის განაცხადი' : own?.status === 'VERIFIED' ? 'ტრენერის რეჟიმი' : 'ტრენერი ხარ?'}>
             <Card style={{ gap: 12 }} onPress={() => router.push((own?.status === 'VERIFIED' ? '/coach' : '/trainer/apply') as never)}>
               <View style={coachStyles.row}>
                 <IconTile icon={Award} ink="violet" />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={[hubText.cardTitle, { color: c.text100 }]}>
-                    {own?.status === 'VERIFIED' ? 'ტრენერის რეჟიმის გახსნა' : own ? 'ტრენერის განაცხადი' : 'დარეგისტრირდი როგორც ტრენერი'}
+                    {own?.status === 'VERIFIED' ? 'ტრენერის რეჟიმის გახსნა' : own?.status === 'PENDING' ? 'განაცხადი განხილვაშია' : own?.status === 'REJECTED' ? 'განაცხადს დაზუსტება სჭირდება' : own ? 'ტრენერის განაცხადი' : 'დარეგისტრირდი როგორც ტრენერი'}
                   </Text>
                   <Text style={[hubText.caption, { color: c.text300 }]}>
                     {own?.status === 'VERIFIED'

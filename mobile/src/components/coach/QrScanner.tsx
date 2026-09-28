@@ -91,7 +91,7 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
             style={s.input}
           />
           <Pressable accessibilityRole="button" accessibilityLabel="შემოწმება" disabled={!manual.trim() || busy} onPress={() => handle(manual.trim())} style={[s.go, { opacity: !manual.trim() || busy ? 0.45 : 1 }]}>
-            <Text style={[hubText.link, { color: '#042F2E' }]}>OK</Text>
+            <Text style={[hubText.link, { color: '#FFFFFF' }]}>OK</Text>
           </Pressable>
         </View>
       </Animated.View>
@@ -114,5 +114,5 @@ const s = StyleSheet.create({
   primary: { minHeight: 52, borderRadius: 16, backgroundColor: '#0D9488', flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
   manualRow: { flexDirection: 'row', gap: 8 },
   input: { flex: 1, minHeight: 48, borderRadius: 14, paddingHorizontal: 14, backgroundColor: '#1F2937', color: '#FFFFFF', borderWidth: 1, borderColor: '#374151', fontFamily: 'NotoSansGeorgian_400Regular' },
-  go: { minWidth: 64, borderRadius: 14, backgroundColor: '#14B8A6', alignItems: 'center', justifyContent: 'center' },
+  go: { minWidth: 64, borderRadius: 14, backgroundColor: '#0D9488', alignItems: 'center', justifyContent: 'center' },
 });

@@ -40,6 +40,8 @@ export type OwnTrainerProfile = {
   code: string | null;
   link: string | null;
   reviewNote: string | null;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
 };
 
 export type CoachMe = { trainerProfile: OwnTrainerProfile | null; clientLink: { id: string; status: 'REQUESTED' | 'ACTIVE'; trainerId: string } | null; consentVersion: string };
