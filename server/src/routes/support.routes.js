@@ -128,7 +128,21 @@ adminSupportRouter.get('/threads', view, guarded(async (req, res) => {
   ]);
   const counts = Object.fromEntries(SUPPORT_STATUSES.map((s) => [s, 0]));
   for (const g of grouped) counts[g.status] = g._count._all;
-  res.json({ total, threads: rows.map(threadView), counts, admins, me: req.admin.id });
+  // One-line preview of each thread's latest mail or reply (internal notes are not previews).
+  const latest = rows.length
+    ? await prisma.supportMessage.findMany({
+      where: { threadId: { in: rows.map((r) => r.id) }, direction: { in: ['inbound', 'outbound'] } },
+      orderBy: { createdAt: 'desc' },
+      distinct: ['threadId'],
+      select: { threadId: true, direction: true, textBody: true, bodyStatus: true },
+    })
+    : [];
+  const previewOf = Object.fromEntries(latest.map((m) => [m.threadId, {
+    direction: m.direction,
+    text: String(m.textBody || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+    pending: !m.textBody && m.bodyStatus !== 'ok',
+  }]));
+  res.json({ total, threads: rows.map((r) => ({ ...threadView(r), preview: previewOf[r.id] || null })), counts, admins, me: req.admin.id });
 }));
 
 async function loadThread(id) {
@@ -139,15 +153,22 @@ async function loadThread(id) {
 
 adminSupportRouter.get('/threads/:id', view, guarded(async (req, res) => {
   const thread = await loadThread(req.params.id);
-  const [messages, admins, user, suppressed] = await Promise.all([
+  const [messages, admins, user, suppressed, history] = await Promise.all([
     prisma.supportMessage.findMany({ where: { threadId: thread.id }, orderBy: { createdAt: 'asc' }, take: 500 }),
     adminDirectory(),
     // Basic account facts only — never health data.
     thread.userId ? prisma.user.findUnique({ where: { id: thread.userId }, select: { id: true, fullName: true, status: true, createdAt: true } }) : null,
     isSuppressed(hashEmail(thread.counterpartEmail)).catch(() => false),
+    // Earlier conversations with the same person (subject/status only).
+    prisma.supportThread.findMany({
+      where: { counterpartEmail: thread.counterpartEmail, id: { not: thread.id } },
+      orderBy: { lastMessageAt: 'desc' },
+      take: 10,
+      select: { id: true, subject: true, status: true, lastMessageAt: true, messageCount: true },
+    }),
   ]);
   if (thread.unread) await prisma.supportThread.update({ where: { id: thread.id }, data: { unread: false } });
-  res.json({ thread: { ...threadView(thread), unread: false }, messages: messages.map((m) => messageView(m, admins)), user, admins, suppressed, me: req.admin.id });
+  res.json({ thread: { ...threadView(thread), unread: false }, messages: messages.map((m) => messageView(m, admins)), user, admins, suppressed, history, me: req.admin.id });
 }));
 
 adminSupportRouter.patch('/threads/:id', manage, guarded(async (req, res) => {
