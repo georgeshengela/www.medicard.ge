@@ -33,6 +33,8 @@ export const cycleLight = {
   fertilitySoft: '#DDF3F2',
   /** Bright turquoise for ring beads / legend swatches (graphics only, never text). */
   fertileFill: '#2DB7AE',
+  /** Warm apricot for the follicular arc (graphics only). */
+  follicularFill: '#F0AE84',
   follicular: '#2F7D6D',
   luteal: '#7457A4',
   todayRing: '#2A1F2D',
@@ -89,6 +91,7 @@ export const cycleDark: CyclePalette = {
   ovulation: '#8BE3DE',
   fertilitySoft: '#0F2E2E',
   fertileFill: '#3CCBC2',
+  follicularFill: '#E8A078',
   follicular: '#9FD3C7',
   luteal: '#C8B6EE',
   todayRing: '#F7F0F4',

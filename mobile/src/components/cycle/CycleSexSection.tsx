@@ -23,10 +23,13 @@ export function CycleSexSection({
   form,
   onChange,
   disabled,
+  hideHeading,
 }: {
   form: SexForm;
   onChange: (patch: Partial<SexForm>) => void;
   disabled?: boolean;
+  /** The dedicated sheet already shows the title. */
+  hideHeading?: boolean;
 }) {
   const c = useCycleColors();
   const activity = form.sexTags.filter((id) => ACTIVITY_IDS.has(id));
@@ -47,8 +50,8 @@ export function CycleSexSection({
 
   return (
     <View>
-      <CycleLogSectionHeading icon={Heart}>{ka.cycle.sexSectionTitle}</CycleLogSectionHeading>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+      {hideHeading ? null : <CycleLogSectionHeading icon={Heart}>{ka.cycle.sexSectionTitle}</CycleLogSectionHeading>}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, marginTop: hideHeading ? 16 : 0 }}>
         <Lock size={12} color={c.mutedSoft} strokeWidth={2.2} />
         <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 17, flex: 1 }}>{ka.cycle.sexPrivateHint}</Text>
       </View>

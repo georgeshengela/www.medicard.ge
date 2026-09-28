@@ -13,6 +13,8 @@ import * as Haptics from 'expo-haptics';
 import { CalendarHeart, MessageSquareText, PencilLine } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleHero } from '@/components/cycle/CycleHero';
+import { CycleSexSheet } from '@/components/cycle/CycleSexSheet';
+import { CycleStoriesRow } from '@/components/cycle/CycleStoriesRow';
 import { CycleStatsCard } from '@/components/cycle/CycleStatsCard';
 import { CyclePeriodToast } from '@/components/cycle/CyclePeriodToast';
 import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
@@ -197,6 +199,8 @@ export default function CycleHome() {
   /** One-tap "period started" confirmation (with undo / add flow). */
   const [periodToast, setPeriodToast] = useState<string | null>(null);
   const [periodBusy, setPeriodBusy] = useState(false);
+  /** Sex and sex drive have their own private sheet (separate from the daily log). */
+  const [sexOpen, setSexOpen] = useState(false);
   const [daySheetOpen, setDaySheetOpen] = useState(false);
   const [startIntent, setStartIntent] = useState(false);
   const [selected, setSelected] = useState(todayKey());
@@ -641,6 +645,27 @@ export default function CycleHome() {
     return () => clearTimeout(t);
   }, [periodToast]);
 
+  /** After any sheet save: show the fresh view, reschedule reminders, refresh mode data. */
+  const handleSaved = (view?: CycleView | null) => {
+    if (view) {
+      setCycleView(view);
+      setBundle(view.display);
+      resyncReminders(view);
+      if (authReady && user?.id) {
+        const gen = ++ttcGen.current;
+        pregnancyGen.current = gen;
+        postpartumGen.current = gen;
+        void Promise.all([
+          refreshTtc(view, user.id, gen),
+          refreshPregnancy(view, user.id, gen),
+          refreshPostpartum(view, user.id, gen),
+        ]);
+      }
+      return;
+    }
+    void load();
+  };
+
   const endPeriod = () => {
     Alert.alert(ka.cycle.periodEndCta, ka.cycle.periodEndHint, [
       { text: ka.common.cancel, style: 'cancel' },
@@ -979,25 +1004,17 @@ export default function CycleHome() {
                 )}
               </Animated.View>
 
-              {/* Flo order: ring → today's insights → my cycle → today's log. */}
-              {modeCaps.showClassicCycleOverview ? (
-              <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
-                {forecastPresentationAllowed(bundle) ? <CycleInsightsPanel
-                  seed={(bundle.profile.aiInsights as never) || bundle.localInsights || null}
-                  phase={suppressCycleLengthChrome(bundle) ? { ...todayPhase, day: null } : todayPhase}
-                  mode={bundle.profile.mode}
-                  conditions={bundle.profile.conditions}
-                  log={todayLog}
-                  confidence={bundle.predictions?.confidence}
-                  isIrregular={bundle.profile.isIrregular}
-                  offline={Boolean(cycleView?.stale)}
-                  variant="stories"
+              {/* Flo order: ring → quick tiles → my cycle → today → Medi's tips. */}
+              <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
+                <CycleStoriesRow
+                  phase={suppressCycleLengthChrome(bundle) ? null : todayPhase}
+                  sexLogged={Boolean(todayLog?.sexualActivity)}
                   onLog={() => openQuickLog(today)}
+                  onSex={() => setSexOpen(true)}
+                  onPhase={() => Alert.alert(ka.cycle.howCalculated, ka.cycle.howCalculatedBody)}
                   onAskMedi={() => router.push('/assistant?mode=doctor' as never)}
-                /> : null}
-
+                />
               </View>
-              ) : null}
 
               {modeCaps.showClassicCycleOverview && !suppressCycleLengthChrome(bundle) ? (
                 <CycleStatsCard bundle={bundle} onOpen={() => router.push('/cycle/trends' as never)} />
@@ -1009,6 +1026,24 @@ export default function CycleHome() {
                   <CycleDaySummary log={todayLog} onPress={() => openQuickLog(today)} />
                 </CycleSection>
               </View>
+
+                            {modeCaps.showClassicCycleOverview ? (
+              <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+                {forecastPresentationAllowed(bundle) ? <CycleInsightsPanel
+                  seed={(bundle.profile.aiInsights as never) || bundle.localInsights || null}
+                  phase={suppressCycleLengthChrome(bundle) ? { ...todayPhase, day: null } : todayPhase}
+                  mode={bundle.profile.mode}
+                  conditions={bundle.profile.conditions}
+                  log={todayLog}
+                  confidence={bundle.predictions?.confidence}
+                  isIrregular={bundle.profile.isIrregular}
+                  offline={Boolean(cycleView?.stale)}
+                  variant="tips"
+                /> : null}
+
+              </View>
+              ) : null}
+
 
               {modeCaps.showPregnancyOverview ? (
                 <View style={{ paddingHorizontal: 20 }}>
@@ -1225,6 +1260,8 @@ export default function CycleHome() {
         />
       ) : null}
 
+      <CycleSexSheet visible={sexOpen} date={today} onClose={() => setSexOpen(false)} onSaved={handleSaved} />
+
       <CycleQuickLogSheet
         visible={quickOpen}
         date={selected}
@@ -1232,25 +1269,7 @@ export default function CycleHome() {
           setQuickOpen(false);
           setStartIntent(false);
         }}
-        onSaved={(view) => {
-          if (view) {
-            setCycleView(view);
-            setBundle(view.display);
-            resyncReminders(view);
-            if (authReady && user?.id) {
-              const gen = ++ttcGen.current;
-              pregnancyGen.current = gen;
-              postpartumGen.current = gen;
-              void Promise.all([
-                refreshTtc(view, user.id, gen),
-                refreshPregnancy(view, user.id, gen),
-                refreshPostpartum(view, user.id, gen),
-              ]);
-            }
-            return;
-          }
-          void load();
-        }}
+        onSaved={handleSaved}
         isPeriodStart={startIntent}
         onOpenFull={() => {
           setQuickOpen(false);

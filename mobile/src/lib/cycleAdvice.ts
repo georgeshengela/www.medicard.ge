@@ -14,6 +14,52 @@ type AdviceCtx = {
 };
 
 /** Client-side, cycle-aware tips — readable Georgian, not a diagnosis. */
+/**
+ * Everyday practical tips per phase (2026-09-29): movement, food, sleep, mood. Gentle, non-medical
+ * wording ("helps some people"); three are shown a day and rotate with the cycle day.
+ */
+const DAILY_TIPS: Record<string, { tone: string; title: string; body: string }[]> = {
+  period: [
+    { tone: 'care', title: 'სითბო ამშვიდებს', body: 'თბილი საფენი მუცელზე ან თბილი შხაპი კრუნჩხვისას ბევრს ეხმარება.' },
+    { tone: 'care', title: 'რკინით მდიდარი საკვები', body: 'ლობიო, ისპანახი, წითელი ხორცი ან თხილი რკინის მარაგის შენარჩუნებაში გეხმარება.' },
+    { tone: 'energy', title: 'მსუბუქი მოძრაობა', body: 'ნელი სეირნობა ან გაწელვა ზოგს ტკივილს უმსუბუქებს — მოუსმინე სხეულს.' },
+    { tone: 'calm', title: 'წყალი და თბილი ჩაი', body: 'საკმარისი სითხე შებერილობას ამცირებს, თბილი ჩაი კი სიმშვიდეს გმატებს.' },
+    { tone: 'calm', title: 'დასვენება ნორმალურია', body: 'ენერგია დაბალია? დღეს ადრე დაძინება კარგი არჩევანია.' },
+  ],
+  follicular: [
+    { tone: 'energy', title: 'ენერგიის დღეები', body: 'ენერგია ხშირად იზრდება — კარგი დროა აქტიური ვარჯიშისთვის ან ახალი გეგმისთვის.' },
+    { tone: 'care', title: 'ცილა და ბოსტნეული', body: 'ცილა, ბოსტნეული და მთლიანი მარცვლეული ენერგიას დღის განმავლობაში სტაბილურად ინარჩუნებს.' },
+    { tone: 'mood', title: 'ფოკუსის დრო', body: 'ამ დღეებში კონცენტრაცია ხშირად უფრო ადვილია — რთული საქმეები ახლა დაგეგმე.' },
+    { tone: 'energy', title: 'სცადე რამე ახალი', body: 'ახალი ვარჯიში, რეცეპტი ან ჰობი — ბევრი ქალი ამ ფაზაში უფრო ცნობისმოყვარედ გრძნობს თავს.' },
+    { tone: 'calm', title: 'ძილის რიტმი', body: 'ერთსა და იმავე დროს დაძინება მთელი ციკლის განმავლობაში ენერგიას აწონასწორებს.' },
+  ],
+  fertile: [
+    { tone: 'energy', title: 'აქტიური დღეები', body: 'ბევრი ქალი ამ დღეებში ყველაზე ენერგიულად და თავდაჯერებულად გრძნობს თავს.' },
+    { tone: 'calm', title: 'საკმარისი წყალი', body: 'დღეში 6–8 ჭიქა სითხე ენერგიასა და კონცენტრაციას ეხმარება.' },
+    { tone: 'care', title: 'სხეულის ნიშნები', body: 'გამონადენის ცვლილებები ამ დღეებში ჩვეულებრივია — შეგიძლია აღრიცხო და პატერნს დაინახავ.' },
+    { tone: 'mood', title: 'სოციალური დღეები', body: 'ურთიერთობები ახლა ხშირად უფრო მარტივია — კარგი დროა შეხვედრებისთვის.' },
+  ],
+  luteal: [
+    { tone: 'care', title: 'მაგნიუმით მდიდარი საკვები', body: 'მწვანე ფოთლოვანი, თხილეული და მუქი შოკოლადი მაგნიუმს შეიცავს — ზოგს PMS-ის შემსუბუქებაში ეხმარება.' },
+    { tone: 'calm', title: 'ძილი უფრო მნიშვნელოვანია', body: 'ამ ფაზაში ძილი შეიძლება გაუარესდეს — ეკრანები დაძინებამდე ერთი საათით ადრე გამორთე.' },
+    { tone: 'care', title: 'ნაკლები მარილი და კოფეინი', body: 'შებერილობისა და მკერდის მგრძნობელობისას მარილისა და კოფეინის შემცირება ზოგს ეხმარება.' },
+    { tone: 'energy', title: 'ნაზი მოძრაობა', body: 'იოგა, პილატესი ან სეირნობა განწყობასაც აუმჯობესებს და შებერილობასაც ამცირებს.' },
+    { tone: 'mood', title: 'იყავი შენთვის კეთილი', body: 'განწყობის რყევა ამ დღეებში ხშირია — დაგეგმე პატარა სასიამოვნო რამ საკუთარი თავისთვის.' },
+  ],
+};
+
+function dailyTips(phase: string, day: number | null): CycleInsightCard[] {
+  const key = phase === 'ovulation' ? 'fertile' : phase;
+  const list = DAILY_TIPS[key];
+  if (!list) return [];
+  const start = (day ?? 0) % list.length;
+  return [0, 1, 2].map((i) => {
+    const idx = (start + i) % list.length;
+    const tip = list[idx];
+    return { id: `tip_${key}_${idx}`, tone: tip.tone, title: tip.title, body: tip.body, action: null };
+  });
+}
+
 export function buildCycleAdvice({
   phase,
   mode,
@@ -139,7 +185,10 @@ export function buildCycleAdvice({
     });
   }
 
-  return cards.slice(0, 4);
+  // Practical everyday tips for the phase (not in pregnancy — its own guidance applies).
+  const main = cards.slice(0, 4);
+  if (!supportsCycleCapability(mode, 'showPregnancyOverview')) main.push(...dailyTips(phase.phase, phase.day));
+  return main;
 }
 
 export function mergeInsightCards(ai: CycleInsightCard[], local: CycleInsightCard[]): CycleInsightCard[] {
@@ -151,11 +200,13 @@ export function mergeInsightCards(ai: CycleInsightCard[], local: CycleInsightCar
       .replace(/_care|_support|_today|_window|_week|_period|_flow|_fatigue|_peri/, '');
   for (const card of [...local.slice(0, 1), ...ai, ...local.slice(1)]) {
     const key = norm(card.id);
-    if (seen.has(key) || seen.has(card.id)) continue;
+    const title = `title:${card.title.trim().toLowerCase()}`;
+    if (seen.has(key) || seen.has(card.id) || seen.has(title)) continue;
     seen.add(card.id);
     seen.add(key);
+    seen.add(title);
     out.push(card);
-    if (out.length >= 4) break;
+    if (out.length >= 5) break;
   }
   return out;
 }

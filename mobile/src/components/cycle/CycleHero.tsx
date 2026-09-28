@@ -7,6 +7,7 @@ import { PredictionBadge, ConfidenceHint } from '@/components/cycle/CycleBadges'
 import { CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
 import { Droplet, Plus } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
+import { MONTHS_KA } from '@/constants/cycle';
 import type { CycleBundle } from '@/lib/api';
 import {
   cycleHonestyFlags,
@@ -165,6 +166,26 @@ export function CycleHero({
           : forecastOn && inDays != null && inDays < 0 && day != null
             ? { top: ka.cycle.cycleDay, value: String(day), bottom: ka.cycle.heroLateBy(-inDays) }
             : undefined;
+  /** Finger on the dial → that day's date, cycle day and (estimated or logged) phase. */
+  const describeDay = (d: number): GaugeCenter | null => {
+    const date = dateForCycleDay(d);
+    if (!date) return null;
+    const [, mm, dd] = date.split('-').map(Number);
+    const mark = bundle.predictions?.calendar?.[date];
+    const logged = bundle.logs.some((l) => l.date === date && isBleedFlow(l.flow));
+    const phaseText = logged
+      ? ka.cycle.dialLoggedPeriod
+      : !hidePredicted && mark?.phaseKa && mark.phase !== 'unknown'
+        ? ka.cycle.dialEstimated(mark.phaseKa)
+        : null;
+    return {
+      top: date === today ? ka.cycle.heroToday : `${dd} ${MONTHS_KA[mm - 1]}`,
+      value: String(d),
+      bottom: phaseText ?? ka.cycle.cycleDay,
+      tone: logged ? 'period' : 'ink',
+    };
+  };
+
   /** "Period started" leads when it is plausible soon (or the rhythm is still unknown / late). */
   const startLeads = !onPeriod && (!forecastOn || predictedToday || (inDays != null && inDays <= 3));
   const startLabel = uncertainBleed ? ka.cycle.heroBleedingStarted : ka.cycle.heroPeriodStarted;
@@ -183,6 +204,8 @@ export function CycleHero({
         a11yLabel={gaugeA11y}
         center={center}
         phase={phase}
+        periodLength={bundle.averages?.usedPeriodLength ?? bundle.profile?.avgPeriodLength ?? 5}
+        describeDay={hideLengthChrome ? undefined : describeDay}
         onInfo={hideLengthChrome ? undefined : onInfo}
         onPressFertile={overlays.fertileDays ? openFertile : undefined}
       />
@@ -210,11 +233,15 @@ export function CycleHero({
 
         {!hideLengthChrome && (overlays.fertileDays || cycleStart) ? (
           <View accessible={false} importantForAccessibility="no-hide-descendants" style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 10, rowGap: 4, marginTop: 12 }}>
-            <LegendDot fill={c.todayRing} label={ka.cycle.gaugeLegendToday} />
             <LegendDot fill={c.period} label={ka.cycle.legendPeriod} />
-            {overlays.fertileDays ? <LegendDot fill={c.fertileFill} label={ka.cycle.legendFertile} /> : null}
-            {overlays.fertileDays ? <LegendDot fill={cycleHexAlpha(c.luteal, 0.35)} label={ka.cycle.adviceLutealTitle} /> : null}
+            <LegendDot fill={c.follicularFill} label={ka.cycle.dialFollicular} />
+            {overlays.fertileDays ? <LegendDot fill={c.fertileFill} label={ka.cycle.dialFertile} /> : null}
+            {overlays.fertileDays ? <LegendDot fill={c.luteal} label={ka.cycle.dialLuteal} /> : null}
           </View>
+        ) : null}
+
+        {!hideLengthChrome ? (
+          <Text style={{ color: c.mutedSoft, fontSize: 11, lineHeight: 15, textAlign: 'center', marginTop: 6 }}>{ka.cycle.dialHint}</Text>
         ) : null}
 
         {flags.pcos && fertilityVisible ? (

@@ -1,14 +1,12 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import {
   Baby,
   ChevronRight,
   Droplets,
   Heart,
-  MessageCircle,
   Moon,
-  Plus,
   RefreshCw,
   Sparkles,
   Sun,
@@ -70,13 +68,8 @@ type Props = {
   onLoaded?: (insights: CycleInsights) => void;
   /** §44: cap rendered insight cards (Overview passes 1). */
   maxCards?: number;
-  /**
-   * 'stories' (Overview, 2026-09-29): Flo's "My daily insights" — one horizontal row of small tiles:
-   * log today → cycle day → insight cards (react to what was logged) → ask Medi. Tap opens the detail sheet.
-   */
-  variant?: 'stack' | 'stories';
-  onLog?: () => void;
-  onAskMedi?: () => void;
+  /** 'tips' (Overview, 2026-09-29): "Medi's tips for today" — a list of several daily tips (AI + local advice). */
+  variant?: 'stack' | 'tips';
 };
 
 export function CycleInsightsPanel({
@@ -91,8 +84,6 @@ export function CycleInsightsPanel({
   onLoaded,
   maxCards,
   variant = 'stack',
-  onLog,
-  onAskMedi,
 }: Props) {
   const c = useCycleColors();
   const dark = useIsDark();
@@ -170,60 +161,66 @@ export function CycleInsightsPanel({
     phase?.phaseKa && phase.phase !== 'unknown' ? ka.cycle.estimatedPhase(phase.phaseKa) : null,
   ].filter((item): item is string => Boolean(item));
 
-  if (variant === 'stories') {
-    const phaseCard: CycleInsightCard | null =
-      phase?.day != null && phase.phase !== 'unknown'
-        ? {
-            id: 'phase-today',
-            tone: phase.phase === 'period' ? 'care' : phase.phase === 'fertile' || phase.phase === 'ovulation' ? 'fertile' : 'calm',
-            title: ka.cycle.storyCycleDay(phase.day),
-            body: insights?.headline || ka.cycle.estimatedPhase(phase.phaseKa),
-            action: null,
-          }
-        : null;
+  if (variant === 'tips') {
+    const tips = cards.slice(0, 5);
     return (
       <>
-        <View style={{ marginBottom: 8, marginTop: 4 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <Sparkles size={16} color={c.brand} strokeWidth={2.2} />
-            <HomeSectionTitle title={ka.cycle.storiesTitle} style={{ marginBottom: 0 }} />
+        <View style={{ marginTop: 4, marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+              <HomeSectionTitle title={ka.cycle.tipsTitle} style={{ marginBottom: 0 }} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: c.accentSoft }}>
+                <Sparkles size={11} color={c.brand} strokeWidth={2.4} />
+                <Text style={{ color: c.brand, fontSize: 11, lineHeight: 14, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>Medi</Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => undefined);
+                load(true);
+              }}
+              disabled={refreshing || loading || offline}
+              accessibilityRole="button"
+              accessibilityLabel={ka.cycle.aiTips}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', opacity: refreshing ? 0.6 : 1 }}
+            >
+              {refreshing ? <ActivityIndicator size="small" color={c.brand} /> : <RefreshCw size={15} color={c.brand} strokeWidth={2.3} />}
+            </Pressable>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ marginHorizontal: -20 }}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
-          >
-            {onLog ? (
-              <StoryTile
-                title={ka.cycle.storyLogTitle}
-                caption={ka.cycle.storyLogCaption}
-                accent={c.onPrimary}
-                wash={c.cta}
-                ink={c.onPrimary}
-                Icon={Plus}
-                onPress={onLog}
-              />
+
+          <View style={{ backgroundColor: c.card, borderRadius: 22, paddingVertical: 6 }}>
+            {loading && !tips.length ? <View style={{ padding: 16 }}><InsightCardsSkeleton /></View> : null}
+            {error && !tips.length ? (
+              <Pressable onPress={() => load(true)} style={{ padding: 16 }}>
+                <Text style={{ color: c.danger, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14 }}>{error}</Text>
+              </Pressable>
             ) : null}
-            {phaseCard ? (
-              <StoryTile
-                title={phaseCard.title}
-                caption={phase?.phaseKa ?? ''}
-                {...storyTone(c, phaseCard.tone)}
-                onPress={() => openDetail(phaseCard)}
-              />
-            ) : null}
-            {loading && !cards.length ? (
-              <View style={{ width: 118, height: 148, borderRadius: 20, backgroundColor: c.cardSoft }} />
-            ) : null}
-            {cards.slice(0, 6).map((card) => (
-              <StoryTile key={card.id} title={card.title} caption={card.action || ka.cycle.aiViewDetails} {...storyTone(c, card.tone)} onPress={() => openDetail(card)} />
-            ))}
-            {onAskMedi ? (
-              <StoryTile title={ka.cycle.storyAskMedi} caption="Medi" accent={c.brand} wash={c.accentSoft} ink={c.ink} Icon={MessageCircle} onPress={onAskMedi} />
-            ) : null}
-          </ScrollView>
-          {offline ? <Text style={{ color: c.muted, fontSize: 12, lineHeight: 17, marginTop: 8 }}>{ka.cycle.aiStale}</Text> : null}
+            {tips.map((card, idx) => {
+              const tone = toneVisual(c, c.accentSoft, card.tone);
+              const Icon = tone.Icon;
+              return (
+                <Pressable
+                  key={card.id}
+                  onPress={() => openDetail(card)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${card.title}. ${card.body}`}
+                  style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: idx ? StyleSheet.hairlineWidth : 0, borderTopColor: c.border }}
+                >
+                  <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: tone.wash, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon size={19} color={tone.accent} strokeWidth={2.1} />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text numberOfLines={2} style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 }}>{card.title}</Text>
+                    <Text numberOfLines={3} style={{ color: c.muted, fontSize: 13, lineHeight: 19, marginTop: 3 }}>{card.body}</Text>
+                  </View>
+                  <ChevronRight size={16} color={c.mutedSoft} style={{ alignSelf: 'center' }} />
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={{ color: c.mutedSoft, fontSize: 11, lineHeight: 16, marginTop: 8, paddingHorizontal: 4 }}>
+            {offline ? ka.cycle.aiStale : ka.cycle.tipsDisclaimer}
+          </Text>
         </View>
         <CycleInsightDetailSheet visible={detailCard != null} card={detailCard} headline={insights?.headline} onClose={() => setDetailCard(null)} />
         <QuotaSheet visible={quotaBlock !== undefined} resetsInMs={quotaBlock} onClose={() => setQuotaBlock(undefined)} />
@@ -631,49 +628,3 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-
-function storyTone(c: ReturnType<typeof useCycleColors>, tone: string) {
-  const t = toneVisual(c, c.accentSoft, tone);
-  return { accent: t.accent, wash: t.wash, ink: c.ink, Icon: t.Icon };
-}
-
-/** A Flo-style story tile: tinted square, icon, two-line title, one quiet caption. */
-function StoryTile({
-  title,
-  caption,
-  accent,
-  wash,
-  ink,
-  Icon,
-  onPress,
-}: {
-  title: string;
-  caption: string;
-  accent: string;
-  wash: string;
-  ink: string;
-  Icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={() => {
-        Haptics.selectionAsync().catch(() => undefined);
-        onPress();
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${caption}`}
-      style={{ width: 118, height: 148, borderRadius: 20, backgroundColor: wash, padding: 12, justifyContent: 'space-between' }}
-    >
-      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: hexAlpha(accent, 0.16), alignItems: 'center', justifyContent: 'center' }}>
-        <Icon size={17} color={accent} strokeWidth={2.2} />
-      </View>
-      <View>
-        <Text numberOfLines={3} style={{ color: ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 18 }}>{title}</Text>
-        {caption ? (
-          <Text numberOfLines={1} style={{ color: ink, opacity: 0.7, fontSize: 11, lineHeight: 15, marginTop: 4 }}>{caption}</Text>
-        ) : null}
-      </View>
-    </Pressable>
-  );
-}

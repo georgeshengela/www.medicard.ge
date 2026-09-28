@@ -19,7 +19,6 @@ import { CycleObservationIcon } from './CycleObservationIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { CycleFlowPicker } from '@/components/cycle/CycleFlowPicker';
-import { CycleSexSection } from '@/components/cycle/CycleSexSection';
 import { CycleTestResultRow } from '@/components/cycle/CycleTestResultRow';
 import { CycleMoreTracking } from '@/components/cycle/CycleMoreTracking';
 import { CyclePainEditor } from '@/components/cycle/CycleObservationFields';
@@ -221,12 +220,6 @@ export function CycleQuickLogSheet({
                 onChange={(id) => setForm((prev) => ({ ...prev, flow: id }))}
               />
 
-              <CycleSexSection
-                form={form}
-                disabled={saving}
-                onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
-              />
-
               {caps.showFertilityShortcuts ? (
                 <View style={{ marginTop: 14 }}>
                   <Text
@@ -376,15 +369,6 @@ export function CycleQuickLogSheet({
               </View>
                 </View>
               )}
-
-              {/* Other modes have their own quick logs; sex and sex drive follow them there. */}
-              {caps.showPregnancyObservations || caps.showPostpartumTracking || caps.showPerimenopauseTracking ? (
-                <CycleSexSection
-                  form={form}
-                  disabled={saving}
-                  onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
-                />
-              ) : null}
 
               <View style={{ marginTop: 16 }}>
                 <CycleMoreTracking
