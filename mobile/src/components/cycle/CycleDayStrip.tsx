@@ -17,6 +17,8 @@ import { PREDICTED_NUMERAL_PREFIX, classifyCycleDay, getCycleCalendarDayVisualSt
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
 const COLS = 7;
+/** The selected day (today by default) always sits in the middle column, three days either side. */
+const CENTER = 3;
 const WEEK_RANGE = 40;
 const GUTTER = 20;
 
@@ -90,13 +92,12 @@ export function CycleDayStrip({
     (animated = true) => {
       const idx = dates.indexOf(selected);
       if (idx < 0) return;
-      const weekStart = idx - (idx % COLS);
       listRef.current?.scrollToOffset({
-        offset: (weekStart / COLS) * screenWidth,
+        offset: Math.max(0, idx - CENTER) * itemWidth,
         animated,
       });
     },
-    [dates, selected, screenWidth],
+    [dates, selected, itemWidth],
   );
 
   useEffect(() => {
@@ -123,16 +124,34 @@ export function CycleDayStrip({
     [onSelect, selected],
   );
 
+  const todayIndex = dates.indexOf(today);
+  const [awayFromToday, setAwayFromToday] = useState(false);
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const centerIdx = Math.round(e.nativeEvent.contentOffset.x / itemWidth) + CENTER;
+    const away = todayIndex < 0 || Math.abs(centerIdx - todayIndex) > CENTER;
+    if (away !== awayFromToday) setAwayFromToday(away);
+  };
+  /** Quiet way home: today back in the middle column and selected. */
+  const backToToday = () => {
+    Haptics.selectionAsync().catch(() => undefined);
+    setAwayFromToday(false);
+    if (todayIndex >= 0) listRef.current?.scrollToOffset({ offset: Math.max(0, todayIndex - CENTER) * itemWidth, animated: true });
+    if (selected !== today) {
+      skipScrollRef.current = todayIndex >= 0;
+      onSelect(today);
+    }
+  };
+
   const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (ignoreSnapRef.current) return;
-    const page = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
-    const col = selectedIndex >= 0 ? selectedIndex % COLS : 0;
-    const next = dates[page * COLS + col];
+    // The day in the middle column becomes the selected day.
+    const next = dates[Math.round(e.nativeEvent.contentOffset.x / itemWidth) + CENTER];
     if (next) pickDate(next, true);
   };
 
   return (
-    <View style={{ width: screenWidth, alignSelf: 'center', borderRadius: 22, backgroundColor: c.card, overflow: 'hidden', paddingVertical: 6 }}>
+    <View style={{ width: screenWidth, alignSelf: 'center' }}>
+    <View style={{ borderRadius: 22, backgroundColor: c.card, overflow: 'hidden', paddingVertical: 6 }}>
       <FlatList
         ref={listRef}
         key={`${anchor}-${screenWidth}`}
@@ -140,10 +159,12 @@ export function CycleDayStrip({
         horizontal
         keyExtractor={(item) => item}
         showsHorizontalScrollIndicator={false}
-        pagingEnabled
+        snapToInterval={itemWidth}
+        snapToAlignment="start"
+        disableIntervalMomentum
         decelerationRate="fast"
         bounces
-        initialScrollIndex={selectedIndex >= 0 ? selectedIndex - (selectedIndex % COLS) : WEEK_RANGE * COLS}
+        initialScrollIndex={Math.max(0, (selectedIndex >= 0 ? selectedIndex : WEEK_RANGE * COLS) - CENTER)}
         getItemLayout={(_, index) => ({
           length: itemWidth,
           offset: itemWidth * index,
@@ -152,12 +173,14 @@ export function CycleDayStrip({
         onScrollToIndexFailed={(info) => {
           setTimeout(() => {
             listRef.current?.scrollToOffset({
-              offset: (Math.floor(info.index / COLS) * screenWidth),
+              offset: info.index * itemWidth,
               animated: false,
             });
           }, 50);
         }}
         onMomentumScrollEnd={onScrollEnd}
+        onScroll={onScroll}
+        scrollEventThrottle={48}
         renderItem={({ item }) => {
           const active = item === selected;
           const isToday = item === today;
@@ -278,6 +301,20 @@ export function CycleDayStrip({
           );
         }}
       />
+    </View>
+    {awayFromToday ? (
+      <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: -13, alignItems: 'center' }}>
+        <Pressable
+          onPress={backToToday}
+          accessibilityRole="button"
+          accessibilityLabel={ka.cycle.jumpToday}
+          hitSlop={8}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, height: 26, borderRadius: 13, backgroundColor: c.todayRing }}
+        >
+          <Text style={{ color: c.card, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 11, lineHeight: 15 }}>{ka.cycle.jumpToday}</Text>
+        </Pressable>
+      </View>
+    ) : null}
     </View>
   );
 }
