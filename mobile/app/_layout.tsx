@@ -61,6 +61,7 @@ import { useStackMotion } from '@/hooks/useStackMotion';
 import { ModuleGate } from '@/components/ModuleGate';
 import { applyFeatureStatus, useFeature } from '@/lib/featureFlags';
 import { noteFeatureStatusFetched, startFeatureFlagSync } from '@/lib/featureFlagSync';
+import { startOtaUpdates } from '@/lib/otaUpdates';
 
 // Native screens = GPU stack transitions. Do not set this to false — that is
 // what made page changes feel like a late pop. Tab chrome stays above via AppChromeOverlay.
@@ -93,6 +94,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     startFeatureFlagSync();
+    startOtaUpdates();
     api.app
       .status(APP_VERSION)
       .then((status) => {
