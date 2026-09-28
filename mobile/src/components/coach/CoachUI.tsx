@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type ViewStyle } from 'react-native';
-import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type ViewStyle } from 'react-native';
+import { KeyboardFormShell } from '@/components/ui/KeyboardFormShell';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, BadgeCheck, type LucideIcon } from 'lucide-react-native';
@@ -281,23 +281,13 @@ const s = StyleSheet.create({
   statValue: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 27 },
 });
 
-/**
- * Keyboard-safe form page (AGENTS.md "Keyboard comfort"): bounded scroll + pinned footer.
- * iOS uses KeyboardAvoidingView padding; Android pads the footer by the IME height. One mechanism each.
- */
+/** Keyboard-safe form page: the shared sign-in behaviour (see KeyboardFormShell). */
 export function CoachForm({ title, subtitle, children, footer, fallback }: { title: string; subtitle?: string; children: React.ReactNode; footer: React.ReactNode; fallback?: string }) {
   const c = useThemeColors();
-  const insets = useSafeAreaInsets();
-  const keyboardHeight = useKeyboardHeight();
-  const footerPad = Platform.OS === 'android' && keyboardHeight > 0 ? keyboardHeight + 8 : Math.max(insets.bottom, 16);
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg100 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <CoachHeader title={title} subtitle={subtitle} fallback={fallback} />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingBottom: 16 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-        {children}
-      </ScrollView>
-      <View style={{ paddingHorizontal: HUB.gutter, paddingTop: 10, paddingBottom: footerPad, backgroundColor: c.bg100, borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.bg300, gap: 8 }}>{footer}</View>
-    </KeyboardAvoidingView>
+    <KeyboardFormShell background={c.bg100} header={<CoachHeader title={title} subtitle={subtitle} fallback={fallback} />} contentStyle={{ paddingHorizontal: HUB.gutter }} footer={footer}>
+      {children}
+    </KeyboardFormShell>
   );
 }
 

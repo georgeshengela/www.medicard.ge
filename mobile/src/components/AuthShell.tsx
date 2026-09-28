@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { Keyboard, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { Keyboard, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { petFocusScrollOffset } from '@/lib/petKeyboardLayout';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -46,6 +47,31 @@ export function AuthShell({
   const { height: keyboardHeight, durationMs } = useKeyboardMetrics();
   const keyboardOpen = keyboardHeight > AUTH_KEYBOARD_OPEN_PX;
   const footerBottom = useSharedValue(authFooterBottomPad(0, insets.bottom));
+  const scrollRef = useRef<ScrollView>(null);
+  const offset = useRef(0);
+  // Keep the focused field visible above the footer (long forms like sign-up on small phones).
+  const revealFocus = useCallback(() => {
+    if (Platform.OS === 'web') return;
+    requestAnimationFrame(() => {
+      const input = TextInput.State.currentlyFocusedInput();
+      const scroll = scrollRef.current;
+      if (!input || !scroll) return;
+      scroll.getNativeScrollRef?.()?.measureInWindow((_x, top, _w, height) => {
+        input.measureInWindow((_ix, inputTop, _iw, inputHeight) => {
+          if (TextInput.State.currentlyFocusedInput() !== input) return;
+          const next = petFocusScrollOffset(offset.current, top, height, inputTop, inputHeight);
+          if (Math.abs(next - offset.current) > 1) scroll.scrollTo({ y: next, animated: true });
+        });
+      });
+    });
+  }, []);
+  useEffect(() => {
+    if (keyboardHeight > AUTH_KEYBOARD_OPEN_PX) {
+      const t = setTimeout(revealFocus, durationMs + 30);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [durationMs, keyboardHeight, revealFocus]);
 
   useEffect(() => {
     footerBottom.value = withTiming(authFooterBottomPad(keyboardHeight, insets.bottom), {
@@ -62,6 +88,12 @@ export function AuthShell({
     <View className="flex-1 font-sans" style={{ flex: 1, backgroundColor: colors.surface }}>
       <View className="flex-1">
         <ScrollView
+          ref={scrollRef}
+          onFocus={() => setTimeout(revealFocus, 60)}
+          onScroll={(e) => {
+            offset.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={32}
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingTop: authScrollTopPad(insets.top),

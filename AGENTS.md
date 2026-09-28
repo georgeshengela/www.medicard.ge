@@ -183,7 +183,7 @@ Always use the main MEDICARD database and https://medicard.ge API for the owner'
 
 ## Keyboard comfort (owner requirement, 2026-09-24)
 
-Every form must keep the focused input and primary action above the keyboard, with compact spacing and smooth opening/closing. Follow the existing sign-in pattern: a bounded scrolling form and a pinned, animated footer, with safe-area padding only when the keyboard is closed. Never combine two keyboard-inset mechanisms. Check small screens, iOS and Android, focus changes, dismissal and submission; browser-only checks are not proof of native keyboard behavior. This is a completion requirement for new and edited forms, including community nickname onboarding.
+Every form must keep the focused input and primary action above the keyboard, with compact spacing and smooth opening/closing. Follow the existing sign-in pattern: a bounded scrolling form and a pinned, animated footer, with safe-area padding only when the keyboard is closed. Owner 2026-09-28: the sign-in screen is THE reference for every screen with an input and a button — build pages on `mobile/src/components/ui/KeyboardFormShell.tsx` (measured keyboard overlap, animated footer, focused field scrolled into view, no KeyboardAvoidingView) and use its `useKeyboardPad` for bottom panels and sheets. Never combine two keyboard-inset mechanisms. Check small screens, iOS and Android, focus changes, dismissal and submission; browser-only checks are not proof of native keyboard behavior. This is a completion requirement for new and edited forms, including community nickname onboarding.
 
 ## Publish completed changes (owner requirement, 2026-09-24)
 

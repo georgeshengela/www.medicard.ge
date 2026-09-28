@@ -1,3 +1,6 @@
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { Platform } from 'react-native';
+import { useKeyboardPad } from '@/components/ui/KeyboardFormShell';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -68,6 +71,11 @@ export function MedicationSetupForm({
   const dark = useIsDark();
   const insets = useSafeAreaInsets();
   const bottomClearance = Math.max(insets.bottom, 16);
+  // Sign-in keyboard behaviour: the CTA rides just above the keyboard (measured overlap, both platforms).
+  const keyboard = useKeyboardPad(bottomClearance);
+  const footerPad = useAnimatedStyle(() => ({ paddingBottom: keyboard.pad.value }));
+  const isAndroid = Platform.OS === 'android';
+  const androidSpacer = useAnimatedStyle(() => ({ height: isAndroid ? Math.max(0, keyboard.pad.value - bottomClearance) : 0 }));
   const ctaHeight = 80;
   const [medName] = useState(initialName);
   const [form, setForm] = useState<MedicationForm>('pills');
@@ -176,10 +184,11 @@ export function MedicationSetupForm({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg100 }}>
+    <View ref={keyboard.frameRef} onLayout={keyboard.onLayout} style={{ flex: 1, backgroundColor: c.bg100 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={{ paddingBottom: bottomClearance + ctaHeight + 24 }}
       >
@@ -338,11 +347,12 @@ export function MedicationSetupForm({
             </View>
           </MedsCard>
         </View>
+        <Animated.View style={androidSpacer} />
       </ScrollView>
 
-      <View style={[styles.footer, { bottom: 0, paddingBottom: bottomClearance, backgroundColor: c.bg100 }]}>
+      <Animated.View style={[styles.footer, { bottom: 0, backgroundColor: c.bg100 }, footerPad]}>
         <MedsButton label={ka.meds.addMedicationCta} icon={Plus} loading={busy} onPress={save} />
-      </View>
+      </Animated.View>
 
       <MedicationDosageSheet
         visible={dosageSheet}

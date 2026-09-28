@@ -41,7 +41,9 @@ export default function ForgotPasswordEmail() {
   };
 
   return (
-    <AuthShell>
+    <AuthShell
+      footer={<AuthPrimaryButton label={ka.auth.forgotPasswordSend} loading={busy} onPress={submit} />}
+    >
       <AuthBackHeader title={ka.auth.forgotPasswordTitle} subtitle={ka.auth.forgotPasswordEmailHint} />
 
       <Input
@@ -58,10 +60,6 @@ export default function ForgotPasswordEmail() {
         onSubmitEditing={() => void submit()}
         figma
       />
-
-      <View style={{ marginTop: 24 }}>
-        <AuthPrimaryButton label={ka.auth.forgotPasswordSend} loading={busy} onPress={submit} />
-      </View>
 
       <Pressable
         accessibilityRole="button"

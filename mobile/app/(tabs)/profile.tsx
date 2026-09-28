@@ -30,6 +30,7 @@ import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
 import { ProfileCoachSection } from '@/components/coach/CoachEntry';
 import { PrivateImage } from '@/components/coach/CoachUI';
 import { useMyAvatarUrl } from '@/lib/myAvatar';
+import { useKeyboardScroll } from '@/components/ui/KeyboardFormShell';
 import { DeleteAccountModal } from '@/components/profile/DeleteAccountModal';
 import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { ProfileVersionCard } from '@/components/profile/ProfileVersionCard';
@@ -162,6 +163,8 @@ export default function Profile() {
   const avatarId = storedAvatar ? normalizeAvatarForGender(storedAvatar, user?.gender ?? null) : null;
   const avatarSource = avatarId && isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : null;
   const myPhoto = useMyAvatarUrl();
+  // Keyboard: the inline medical-profile editor keeps its fields and Save above the keyboard.
+  const kb = useKeyboardScroll();
 
   const bmi = healthProfile?.bmi ?? bmiFromWeight(healthProfile?.weightKg, healthProfile?.heightCm);
   const smoking = healthProfile?.smokingStatus != null ? optionLabel('smokingStatus', healthProfile.smokingStatus) : null;
@@ -197,7 +200,9 @@ export default function Profile() {
   const hasMedical = Boolean(user?.gender && user?.birthDate);
 
   return (
+    <View {...kb.frameProps}>
     <ScrollView
+      {...kb.scrollProps}
       style={{ flex: 1, backgroundColor: colors.bg100 }}
       contentContainerStyle={{ paddingBottom: tabInset, paddingTop: 6, width: '100%', maxWidth: 760, alignSelf: 'center' }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary100} />}
@@ -390,7 +395,9 @@ export default function Profile() {
         onClose={() => setDeleteOpen(false)}
         onConfirm={() => void confirmDelete()}
       />
+      {kb.spacer}
     </ScrollView>
+    </View>
   );
 }
 

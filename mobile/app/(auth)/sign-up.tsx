@@ -111,7 +111,7 @@ export default function SignUp() {
   };
 
   return (
-    <AuthShell>
+    <AuthShell footer={<AuthPrimaryButton label={ka.auth.signUp} loading={busy} onPress={submit} />}>
       <AuthScreenTitle>{ka.auth.signUp}</AuthScreenTitle>
       <SignUpSwitchLink />
 
@@ -217,10 +217,6 @@ export default function SignUp() {
           <Text className="font-sans text-sm text-state-danger">{errors.form}</Text>
         </View>
       ) : null}
-
-      <View className="mt-6">
-        <AuthPrimaryButton label={ka.auth.signUp} loading={busy} onPress={submit} />
-      </View>
 
       <Text className="mt-4 text-center font-sans text-xs leading-5 text-text-300">{ka.auth.terms}</Text>
     </AuthShell>

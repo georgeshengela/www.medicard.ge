@@ -75,7 +75,7 @@ export default function SymptomSearchScreen() {
     <View style={{ flex: 1, backgroundColor: T.white }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
         <SymptomNavHeader onBack={() => router.back()} />

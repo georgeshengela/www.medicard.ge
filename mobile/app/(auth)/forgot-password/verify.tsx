@@ -43,7 +43,9 @@ export default function ForgotPasswordVerify() {
   };
 
   return (
-    <AuthShell>
+    <AuthShell
+      footer={<AuthPrimaryButton label={ka.auth.forgotPasswordContinue} disabled={code.length !== 6} onPress={submit} />}
+    >
       <AuthBackHeader
         title={ka.auth.forgotPasswordEnterCode}
         subtitle={email ? ka.auth.forgotPasswordCodeHint(email) : undefined}
@@ -52,12 +54,6 @@ export default function ForgotPasswordVerify() {
       <View style={{ marginTop: 8, marginBottom: 28 }}>
         <OtpCodeInput value={code} onChange={(next) => { setCode(next); setError(null); }} error={error} length={6} />
       </View>
-
-      <AuthPrimaryButton
-        label={ka.auth.forgotPasswordContinue}
-        disabled={code.length !== 6}
-        onPress={submit}
-      />
 
       <Pressable accessibilityRole="button" onPress={() => void resend()} disabled={resending} style={{ marginTop: 20, alignItems: 'center' }}>
         <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: '#14B8A6' }}>

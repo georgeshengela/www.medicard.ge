@@ -26,9 +26,9 @@ export function ChatScreenShell({ header, footer, children, style }: {
   const [open, setOpen] = useState(false);
   const measure = useCallback(() => {
     frame.current?.measureInWindow((_x, top, _width, height) => {
-      if (!alive.current || Platform.OS !== 'ios') return;
+      if (!alive.current || Platform.OS === 'web') return;
       const next = keyboardFrameOverlap(top, height, keyboardTop.current);
-      setOverlap(next); setOpen(next > 0);
+      setOverlap(next); setOpen(next > 0 || keyboardTop.current !== null);
     });
   }, []);
   useEffect(() => {
@@ -38,7 +38,13 @@ export function ChatScreenShell({ header, footer, children, style }: {
       const { height, screenY } = event.endCoordinates;
       keyboardTop.current = height > 0 ? (screenY > 0 ? screenY : Dimensions.get('window').height - height) : null;
       if (Platform.OS === 'ios') { Keyboard.scheduleLayoutAnimation(event); measure(); }
-      else setOpen(height > 0); // Android already resizes the window.
+      else {
+        // Edge-to-edge Android does not resize the window: measure the real overlap (0 if it did resize),
+        // once now and once after the layout settles.
+        setOpen(height > 0);
+        measure();
+        setTimeout(measure, 90);
+      }
     };
     const hide = (event: KeyboardEvent) => {
       keyboardTop.current = null;

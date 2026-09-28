@@ -6,6 +6,8 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Flashlight, FlashlightOff, QrCode, X } from 'lucide-react-native';
 import { hubText } from '@/theme/hub';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useKeyboardPad } from '@/components/ui/KeyboardFormShell';
 
 /**
  * Full-screen QR viewfinder. The camera frame never leaves the phone — only the decoded text is used.
@@ -21,6 +23,8 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [asked, setAsked] = useState(false);
   const last = useRef<{ data: string; at: number } | null>(null);
+  const keyboard = useKeyboardPad(Math.max(safe.bottom, 16));
+  const bottomStyle = useAnimatedStyle(() => ({ paddingBottom: keyboard.pad.value }));
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => setForeground(st === 'active'));
     return () => sub.remove();
@@ -35,7 +39,7 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
     onScan(data);
   };
   return (
-    <View style={{ flex: 1, backgroundColor: '#030712' }}>
+    <View ref={keyboard.frameRef} onLayout={keyboard.onLayout} style={{ flex: 1, backgroundColor: '#030712' }}>
       {granted && foreground ? (
         <CameraView facing="back" enableTorch={torch} barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={busy ? undefined : (r) => handle(r.data)} style={StyleSheet.absoluteFill} />
       ) : null}
@@ -57,7 +61,7 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
         </View>
         <Text style={s.hint}>{busy ? 'ვამოწმებ…' : granted ? hint : 'კამერა გამორთულია — ჩართე ან ჩასვი ბმული'}</Text>
       </View>
-      <View style={[s.bottom, { paddingBottom: Math.max(safe.bottom, 16) }]}>
+      <Animated.View style={[s.bottom, bottomStyle]}>
         {error ? <Text accessibilityRole="alert" style={[s.hint, { color: '#FCA5A5', textAlign: 'left' }]}>{error}</Text> : null}
         {footer}
         {!granted ? (
@@ -90,7 +94,7 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
             <Text style={[hubText.link, { color: '#042F2E' }]}>OK</Text>
           </Pressable>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }

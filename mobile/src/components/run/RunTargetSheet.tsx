@@ -113,7 +113,7 @@ export function RunTargetSheet({ visible, onClose, onConfirm, heightCm, weightKg
           onPress={onClose}
           style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: APP_MODAL_OVERLAY }}
         />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ backgroundColor: 'transparent' }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ backgroundColor: 'transparent' }}>
           <View
             style={{
               backgroundColor: colors.surfaceRaised,

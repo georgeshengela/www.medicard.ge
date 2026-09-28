@@ -45,7 +45,9 @@ export default function ForgotPasswordReset() {
   };
 
   return (
-    <AuthShell>
+    <AuthShell
+      footer={<AuthPrimaryButton label={ka.auth.forgotPasswordReset} loading={busy} disabled={!canSubmit} onPress={submit} />}
+    >
       <AuthBackHeader title={ka.auth.forgotPasswordNewPassword} subtitle={ka.auth.forgotPasswordReset} />
 
       <View style={{ gap: 16 }}>
@@ -85,14 +87,6 @@ export default function ForgotPasswordReset() {
         </View>
       ) : null}
 
-      <View style={{ marginTop: 24 }}>
-        <AuthPrimaryButton
-          label={ka.auth.forgotPasswordReset}
-          loading={busy}
-          disabled={!canSubmit}
-          onPress={submit}
-        />
-      </View>
     </AuthShell>
   );
 }
