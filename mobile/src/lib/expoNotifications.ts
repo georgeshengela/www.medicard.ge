@@ -4,6 +4,16 @@
  * iOS Expo Go still can — do not stub getExpoPushTokenAsync when require() works.
  * Local reminders use the real module on both.
  */
+import Constants from 'expo-constants';
+import { LogBox, Platform } from 'react-native';
+
+// Expo Go Android (SDK 53+) logs a red console.error the moment expo-notifications loads, even
+// though local reminders still work and push registration already fails quietly. Hide only that
+// known platform notice, only in Expo Go Android dev — never in development or store builds.
+if (typeof __DEV__ !== 'undefined' && __DEV__ && Platform.OS === 'android' && Constants.appOwnership === 'expo') {
+  LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
+}
+
 const emptySub = { remove() {} };
 
 let nativeAvailable = false;
