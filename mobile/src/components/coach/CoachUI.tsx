@@ -134,10 +134,12 @@ export function Badge({ label, tone = 'neutral' }: { label: string; tone?: 'ok' 
 export function Avatar({ avatarId, photoUrl, name, size = 44, verified }: { avatarId?: string | null; photoUrl?: string | null; name: string; size?: number; verified?: boolean }) {
   const c = useThemeColors();
   const letter = (name || '?').trim().slice(0, 1).toUpperCase();
+  // A photo that cannot be loaded falls back to the preset avatar / initial, never an empty circle.
+  const [broken, setBroken] = useState<string | null>(null);
   return (
     <View style={{ width: size, height: size }}>
-      {photoUrl ? (
-        <PrivateImage path={photoUrl} label={name} style={{ width: size, height: size, borderRadius: size / 2 }} />
+      {photoUrl && broken !== photoUrl ? (
+        <PrivateImage path={photoUrl} label={name} style={{ width: size, height: size, borderRadius: size / 2 }} onFail={() => setBroken(photoUrl)} />
       ) : avatarId && isAvatarId(avatarId) ? (
         <Image source={AVATAR_SOURCES[avatarId]} style={{ width: size, height: size, borderRadius: size / 2 }} accessibilityIgnoresInvertColors />
       ) : (
@@ -225,36 +227,50 @@ export function Screen({ children, bottom = 32, refreshControl }: { children: Re
 }
 
 /** Private image served by /api/trainer (owner, or trainer with the photos scope). */
-export function PrivateImage({ path, style, label }: { path: string; style: any; label?: string }) {
+/**
+ * Auth-protected image. Native sends the bearer header with the request; web fetches a blob.
+ * A failed load is retried once (flaky mobile network), then `onFail` lets the caller show a fallback.
+ */
+export function PrivateImage({ path, style, label, onFail }: { path: string; style: any; label?: string; onFail?: () => void }) {
   const c = useThemeColors();
   const [source, setSource] = useState<{ uri: string; headers: { Authorization: string } } | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const owner = localAccountId();
+  useEffect(() => setAttempt(0), [path]);
   useEffect(() => {
     let alive = true;
     let objectUrl: string | null = null;
+    setSource(null);
+    const url = `${API_BASE_URL}${path}${attempt ? `${path.includes('?') ? '&' : '?'}r=${attempt}` : ''}`;
     void getToken().then(async (token) => {
       if (!alive || !token || localAccountId() !== owner) return;
       if (Platform.OS !== 'web') {
-        setSource({ uri: `${API_BASE_URL}${path}`, headers: { Authorization: `Bearer ${token}` } });
+        setSource({ uri: url, headers: { Authorization: `Bearer ${token}` } });
         return;
       }
       // react-native-web's <Image> cannot send headers: fetch with auth and show a blob URL.
       try {
-        const res = await fetch(`${API_BASE_URL}${path}`, { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok || !alive) return;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!alive) return;
+        if (!res.ok) return void (res.status === 404 ? onFail?.() : failed());
         objectUrl = URL.createObjectURL(await res.blob());
         if (alive) setSource({ uri: objectUrl, headers: { Authorization: '' } });
       } catch {
-        /* stays as the neutral placeholder */
+        if (alive) failed();
       }
     });
     return () => {
       alive = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [path, owner]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, owner, attempt]);
+  function failed() {
+    if (attempt < 1) setTimeout(() => setAttempt((n) => n + 1), 1200);
+    else onFail?.();
+  }
   if (!source) return <View style={[style, { backgroundColor: c.bg200 }]} />;
-  return <Image accessibilityLabel={label} source={source} style={[style, { backgroundColor: c.bg200 }]} resizeMode="cover" />;
+  return <Image accessibilityLabel={label} source={source} onError={failed} style={[style, { backgroundColor: c.bg200 }]} resizeMode="cover" />;
 }
 
 export const coachStyles = StyleSheet.create({

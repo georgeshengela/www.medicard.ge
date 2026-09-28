@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CloudSun, Flame } from 'lucide-react-native';
@@ -24,6 +24,7 @@ type Props = {
  */
 export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: Props) {
   const myPhoto = useMyAvatarUrl();
+  const [brokenPhoto, setBrokenPhoto] = useState<string | null>(null);
   const narrow = useWindowDimensions().width < 360;
   const c = useThemeColors();
   const dark = useIsDark();
@@ -93,8 +94,8 @@ export function HomeHeader({ firstName, initial, avatarId, streak, dateLabel }: 
         onPress={() => router.push('/(tabs)/profile' as never)}
         style={[s.avatar, { backgroundColor: c.accent100 }]}
       >
-        {myPhoto ? (
-          <PrivateImage path={myPhoto} label="ჩემი პროფილი" style={{ width: 48, height: 48, borderRadius: 24 }} />
+        {myPhoto && brokenPhoto !== myPhoto ? (
+          <PrivateImage path={myPhoto} label="ჩემი პროფილი" style={{ width: 48, height: 48, borderRadius: 24 }} onFail={() => setBrokenPhoto(myPhoto)} />
         ) : isAvatarId(avatarId) ? (
           <Image source={AVATAR_SOURCES[avatarId]} style={{ width: 48, height: 48, borderRadius: 24 }} />
         ) : (

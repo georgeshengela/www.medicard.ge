@@ -163,6 +163,7 @@ export default function Profile() {
   const avatarId = storedAvatar ? normalizeAvatarForGender(storedAvatar, user?.gender ?? null) : null;
   const avatarSource = avatarId && isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : null;
   const myPhoto = useMyAvatarUrl();
+  const [brokenPhoto, setBrokenPhoto] = useState<string | null>(null);
   // Keyboard: the inline medical-profile editor keeps its fields and Save above the keyboard.
   const kb = useKeyboardScroll();
 
@@ -225,8 +226,8 @@ export default function Profile() {
               }}
             >
               <View style={{ flex: 1, borderRadius: 33, overflow: 'hidden', backgroundColor: colors.accent100, alignItems: 'center', justifyContent: 'center' }}>
-                {myPhoto ? (
-                  <PrivateImage path={myPhoto} label="პროფილის ფოტო" style={{ width: 66, height: 66, borderRadius: 33 }} />
+                {myPhoto && brokenPhoto !== myPhoto ? (
+                  <PrivateImage path={myPhoto} label="პროფილის ფოტო" style={{ width: 66, height: 66, borderRadius: 33 }} onFail={() => setBrokenPhoto(myPhoto)} />
                 ) : avatarSource ? (
                   <Image source={avatarSource} resizeMode="contain" style={{ width: 66, height: 66, borderRadius: 33 }} />
                 ) : (
