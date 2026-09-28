@@ -198,7 +198,7 @@ export default function CoachCalendarScreen() {
 }
 
 const st = StyleSheet.create({
-  addBtn: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#0D9488', alignItems: 'center', justifyContent: 'center' },
+  addBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#0D9488', alignItems: 'center', justifyContent: 'center' },
   navBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   day: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 16, gap: 2, borderWidth: 1.5, minHeight: 64 },
   dayNum: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 17, lineHeight: 24 },

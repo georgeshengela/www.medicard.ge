@@ -93,7 +93,7 @@ export default function CoachTodayScreen() {
   return (
     <CoachShell
       title={data ? `გამარჯობა, ${data.trainer.displayName.split(' ')[0]}` : 'დღეს'}
-      subtitle={dateLine}
+      subtitle={booked.length ? `${dateLine} · დღეს ${booked.length} ვარჯიში` : dateLine}
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);

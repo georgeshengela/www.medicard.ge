@@ -90,8 +90,8 @@ export default function CoachClientsScreen() {
       right={
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {code ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="კოდის გაზიარება" onPress={invite} style={st.headBtn}>
-              <Share2 size={20} color="#FFFFFF" />
+            <Pressable accessibilityRole="button" accessibilityLabel="კოდის გაზიარება" onPress={invite} style={[st.headBtn, { backgroundColor: c.surface }]}>
+              <Share2 size={20} color={c.text100} />
             </Pressable>
           ) : null}
           <Pressable accessibilityRole="button" accessibilityLabel="კლიენტის QR-ის სკანირება" onPress={() => router.push('/coach/scan' as never)} style={[st.headBtn, { backgroundColor: '#0D9488' }]}>
@@ -253,7 +253,7 @@ const ClientRow = React.memo(function ClientRow({ client: x, onPress }: { client
 });
 
 const st = StyleSheet.create({
-  headBtn: { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  headBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5 },
   score: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, lineHeight: 24 },

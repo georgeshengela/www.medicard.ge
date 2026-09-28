@@ -151,10 +151,17 @@ export function CoachTabBar() {
   const [trackWidth, setTrackWidth] = useState(0);
   const tabWidth = trackWidth > 0 ? (trackWidth - TAB_INNER_PAD * 2) / TABS.length : 0;
   const translateX = useSharedValue(0);
+  const placed = useRef(false);
 
   useEffect(() => {
     if (tabWidth === 0 || activeIndex < 0) return;
     const position = TAB_INNER_PAD + activeIndex * tabWidth;
+    // Each coach screen mounts its own bar: start where the previous screen's indicator was, then slide.
+    if (!placed.current) {
+      placed.current = true;
+      translateX.value = TAB_INNER_PAD + (lastCoachTab >= 0 ? lastCoachTab : activeIndex) * tabWidth;
+    }
+    lastCoachTab = activeIndex;
     translateX.value = reduceMotion ? position : withTiming(position, { duration: 180, easing: Easing.out(Easing.cubic) });
   }, [activeIndex, tabWidth, translateX, reduceMotion]);
 
@@ -198,6 +205,7 @@ export function CoachTabBar() {
 }
 
 const TAB_INNER_PAD = 5;
+let lastCoachTab = -1;
 export const COACH_TAB_HEIGHT = 64;
 
 const st = StyleSheet.create({
