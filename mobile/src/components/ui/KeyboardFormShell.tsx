@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Dimensions, Keyboard, Platform, Pressable, ScrollView, TextInput, View, type KeyboardEvent, type NativeScrollEvent, type NativeSyntheticEvent, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { petFocusScrollOffset, petKeyboardOverlap } from '@/lib/petKeyboardLayout';
+import { keyboardTopFromEvent } from '@/lib/keyboardTop';
 
 const KEYBOARD_EASE = Easing.bezier(0.17, 0.59, 0.4, 0.77);
 const GUTTER = 12;
@@ -17,7 +17,7 @@ const GUTTER = 12;
  *    overlap is 0; if edge-to-edge ignored adjustResize it is the real keyboard height.
  *  - The primary action (footer) always sits just above the keyboard; the content shrinks and scrolls.
  *  - The focused field is scrolled into view (on focus and after the keyboard settles).
- *  - Tapping empty space dismisses the keyboard; a short fade separates the content from the footer.
+ *  - Tapping empty space dismisses the keyboard. No shadow/fade above the footer (owner 2026-09-28).
  */
 export function KeyboardFormShell({
   header,
@@ -80,7 +80,6 @@ export function KeyboardFormShell({
         </ScrollView>
         {footer ? (
           <Animated.View style={[{ paddingTop: 10, paddingHorizontal: 20, backgroundColor: background, gap: 8 }, footerStyle]}>
-            {open ? <LinearGradient pointerEvents="none" colors={['transparent', background]} style={{ position: 'absolute', left: 0, right: 0, top: -24, height: 24 }} /> : null}
             {footer}
           </Animated.View>
         ) : null}
@@ -99,6 +98,8 @@ export function useKeyboardPad(restPad: number, onSettled?: () => void) {
   const alive = useRef(true);
   const [open, setOpen] = useState(false);
   const pad = useSharedValue(restPad);
+  const bottomInset = useRef(0);
+  bottomInset.current = useSafeAreaInsets().bottom;
 
   const apply = useCallback(
     (ms: number) => {
@@ -121,8 +122,7 @@ export function useKeyboardPad(restPad: number, onSettled?: () => void) {
     };
     const ms = (e: KeyboardEvent) => (typeof e.duration === 'number' && e.duration > 0 ? e.duration : Platform.OS === 'ios' ? 250 : 160);
     const show = (e: KeyboardEvent) => {
-      const { screenY, height } = e.endCoordinates;
-      keyboardTop.current = height > 0 ? (screenY > 0 ? screenY : Dimensions.get('window').height - height) : null;
+      keyboardTop.current = keyboardTopFromEvent(e, bottomInset.current);
       apply(ms(e));
       // Android may resize the window after the event: re-measure once the layout settles.
       if (Platform.OS === 'android') setTimeout(() => apply(120), 90);

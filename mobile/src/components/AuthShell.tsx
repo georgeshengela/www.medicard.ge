@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Keyboard, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { petFocusScrollOffset } from '@/lib/petKeyboardLayout';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { FIGMA_AUTH } from '@/constants/figmaAuthLayout';
@@ -147,13 +146,6 @@ export function AuthShell({
               footerPadStyle,
             ]}
           >
-            {keyboardOpen ? (
-              <LinearGradient
-                pointerEvents="none"
-                colors={['transparent', colors.surface]}
-                style={{ position: 'absolute', left: 0, right: 0, top: -28, height: 28 }}
-              />
-            ) : null}
             {footer}
           </AnimatedPressable>
         ) : null}

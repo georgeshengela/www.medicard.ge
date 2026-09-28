@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { keyboardOverlapFromEvent } from '@/lib/keyboardTop';
 import { Dimensions, Keyboard, Platform, type KeyboardEvent } from 'react-native';
 
 export type KeyboardMetrics = {
@@ -6,7 +8,9 @@ export type KeyboardMetrics = {
   durationMs: number;
 };
 
-function overlapOf(event: KeyboardEvent) {
+function overlapOf(event: KeyboardEvent, bottomInset = 0) {
+  // Android reports the height without the navigation bar; see keyboardTop.ts.
+  if (Platform.OS === 'android') return keyboardOverlapFromEvent(event, bottomInset);
   const winH = Dimensions.get('window').height;
   const top = event.endCoordinates.screenY;
   const overlap = Number.isFinite(top) ? winH - top : event.endCoordinates.height;
@@ -22,13 +26,15 @@ function durationOf(event: KeyboardEvent) {
 /** IME overlay height + keyboard animation length. Android API 35 often ignores adjustResize. */
 export function useKeyboardMetrics(): KeyboardMetrics {
   const [metrics, setMetrics] = useState<KeyboardMetrics>({ height: 0, durationMs: 280 });
+  const bottomInset = useRef(0);
+  bottomInset.current = useSafeAreaInsets().bottom;
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
     const show = Keyboard.addListener(showEvent, (event) => {
-      setMetrics({ height: overlapOf(event), durationMs: durationOf(event) });
+      setMetrics({ height: overlapOf(event, bottomInset.current), durationMs: durationOf(event) });
     });
     const hide = Keyboard.addListener(hideEvent, (event) => {
       setMetrics({ height: 0, durationMs: durationOf(event) });

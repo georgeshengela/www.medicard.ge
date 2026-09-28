@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { Dimensions, Keyboard, Platform, TextInput, View, type KeyboardEvent, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollView } from 'react-native';
 import { petFocusScrollOffset, petKeyboardOverlap } from '@/lib/petKeyboardLayout';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { keyboardTopFromEvent } from '@/lib/keyboardTop';
 
 /** Measure the real screen instead of guessing the height of nested native headers. */
 export function usePetFormKeyboard(scrollRef: RefObject<ScrollView | null>) {
@@ -12,6 +14,8 @@ export function usePetFormKeyboard(scrollRef: RefObject<ScrollView | null>) {
   const alive = useRef(true);
   const focusFrame = useRef<number | null>(null);
   const [bottom, setBottom] = useState(0);
+  const bottomInset = useRef(0);
+  bottomInset.current = useSafeAreaInsets().bottom;
   const [open, setOpen] = useState(false);
 
   const revealFocus = useCallback(() => {
@@ -36,7 +40,7 @@ export function usePetFormKeyboard(scrollRef: RefObject<ScrollView | null>) {
     frameRef.current?.measureInWindow((_x, top, _width, height) => {
       if (!alive.current) return;
       bounds.current = { top, height };
-      if (Platform.OS === 'ios') setBottom(petKeyboardOverlap(top, height, keyboardTop.current));
+      setBottom(petKeyboardOverlap(top, height, keyboardTop.current));
     });
   }, []);
 
@@ -44,15 +48,13 @@ export function usePetFormKeyboard(scrollRef: RefObject<ScrollView | null>) {
     alive.current = true;
     if (Platform.OS === 'web') return () => { alive.current = false; };
     const update = (event: KeyboardEvent) => {
-      const { screenY, height } = event.endCoordinates;
-      // iOS cross-fade accessibility mode can report screenY=0.
-      const top = screenY > 0 ? screenY : Dimensions.get('window').height - height;
-      keyboardTop.current = height > 0 ? top : null;
+      const { height } = event.endCoordinates;
+      // iOS cross-fade mode can report screenY=0; Android omits the nav bar (see keyboardTop.ts).
+      keyboardTop.current = keyboardTopFromEvent(event, bottomInset.current);
       const overlap = petKeyboardOverlap(bounds.current.top, bounds.current.height, keyboardTop.current);
-      if (Platform.OS === 'ios') {
-        Keyboard.scheduleLayoutAnimation(event);
-        setBottom(overlap);
-      }
+      if (Platform.OS === 'ios') Keyboard.scheduleLayoutAnimation(event);
+      // Edge-to-edge Android does not resize the window, so both platforms use the measured overlap.
+      setBottom(overlap);
       setOpen(height > 0 && (Platform.OS !== 'ios' || overlap > 0));
       measureFrame();
     };

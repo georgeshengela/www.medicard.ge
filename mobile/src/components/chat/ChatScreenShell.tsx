@@ -3,6 +3,7 @@ import { Dimensions, Keyboard, Platform, ScrollView, TextInput, View, type Keybo
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { focusedFieldOffset, keyboardFrameOverlap } from '@/lib/analysisFlow';
+import { keyboardTopFromEvent } from '@/lib/keyboardTop';
 
 const ChatKeyboard = createContext(false);
 export function useChatKeyboardOpen() { return useContext(ChatKeyboard); }
@@ -22,6 +23,8 @@ export function ChatScreenShell({ header, footer, children, style }: {
   const frame = useRef<View>(null);
   const keyboardTop = useRef<number | null>(null);
   const alive = useRef(true);
+  const bottomInset = useRef(0);
+  bottomInset.current = useSafeAreaInsets().bottom;
   const [overlap, setOverlap] = useState(0);
   const [open, setOpen] = useState(false);
   const measure = useCallback(() => {
@@ -35,8 +38,8 @@ export function ChatScreenShell({ header, footer, children, style }: {
     alive.current = true;
     if (Platform.OS === 'web') return () => { alive.current = false; };
     const update = (event: KeyboardEvent) => {
-      const { height, screenY } = event.endCoordinates;
-      keyboardTop.current = height > 0 ? (screenY > 0 ? screenY : Dimensions.get('window').height - height) : null;
+      const { height } = event.endCoordinates;
+      keyboardTop.current = keyboardTopFromEvent(event, bottomInset.current);
       if (Platform.OS === 'ios') { Keyboard.scheduleLayoutAnimation(event); measure(); }
       else {
         // Edge-to-edge Android does not resize the window: measure the real overlap (0 if it did resize),
