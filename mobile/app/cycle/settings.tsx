@@ -141,14 +141,14 @@ export default function CycleSettings() {
   const [privacyLock, setPrivacyLock] = useState(false);
   const [conditions, setConditions] = useState<CycleCondition[]>([]);
   const [reminders, setReminders] = useState<CycleReminderPrefs>({
-    enabled: false,
+    enabled: true,
     periodDaysBefore: 2,
     ovulation: true,
     dailyLog: false,
     pms: true,
     opk: false,
     bbt: false,
-    maskNotifications: true,
+    maskNotifications: false,
     maskStyle: 'neutral',
   });
   const [pregnancySheet, setPregnancySheet] = useState(false);

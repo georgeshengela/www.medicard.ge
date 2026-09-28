@@ -16,6 +16,7 @@ import {
   nextPeriodEstimateBody,
   pcosCautionKa,
   ttcWindowBody,
+  formatDateKa,
   emptyCycleAiCache,
 } from './cycleHonesty.js';
 import {
@@ -1071,19 +1072,19 @@ export function buildCycleAiUserPrompt({ profile, logs, predictions, pregnancy, 
     forecastGated
       ? null
       : limited
-        ? `სავარაუდო შემდეგი სისხლდენა: ${predictions?.nextPeriodStart ?? '—'}`
-        : `სავარაუდო შემდეგი მენსტრუაცია: ${predictions?.nextPeriodStart ?? '—'}`,
+        ? `სავარაუდო შემდეგი სისხლდენა: ${formatDateKa(predictions?.nextPeriodStart)}`
+        : `სავარაუდო შემდეგი მენსტრუაცია: ${formatDateKa(predictions?.nextPeriodStart)}`,
     forecastGated
       ? null
       : limited
         ? 'ოვულაცია / ნაყოფიერი ფანჯარა: ნუ ხაზს უსვამ — კონტრაცეფციის კონტექსტში შეიძლება შეცდომაში შემყვანი იყოს.'
-        : `სავარაუდო ოვულაცია: ${predictions?.ovulationDate ?? '—'}`,
+        : `სავარაუდო ოვულაცია: ${formatDateKa(predictions?.ovulationDate)}`,
     forecastGated
       ? null
       : limited
         ? null
         : predictions?.fertileWindow
-          ? `სავარაუდო ნაყოფიერი ფანჯარა: ${predictions.fertileWindow.start} – ${predictions.fertileWindow.end}`
+          ? `სავარაუდო ნაყოფიერი ფანჯარა: ${formatDateKa(predictions.fertileWindow.start)} – ${formatDateKa(predictions.fertileWindow.end)}`
           : 'სავარაუდო ნაყოფიერი ფანჯარა: —',
     forecastGated ? null : `სიზუსტე: ${flags.confidence}`,
     `არარეგულარული (მომხმარებლის მითითება): ${profile.isIrregular ? 'კი' : 'არა'}`,

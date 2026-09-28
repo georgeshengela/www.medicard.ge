@@ -5,7 +5,7 @@ import { CycleGaugeExplainSheet, type GaugeExplain } from '@/components/cycle/Cy
 import { CycleStatusGauge, type GaugeCenter } from '@/components/cycle/CycleStatusGauge';
 import { PredictionBadge, ConfidenceHint } from '@/components/cycle/CycleBadges';
 import { CyclePrimaryButton, formatCycleDateKa } from '@/components/cycle/CycleUI';
-import { Droplet, Plus } from 'lucide-react-native';
+import { Check, Droplet, Heart, Plus } from 'lucide-react-native';
 import { ka } from '@/i18n/ka';
 import { MONTHS_KA } from '@/constants/cycle';
 import type { CycleBundle } from '@/lib/api';
@@ -39,6 +39,9 @@ type Props = {
   onStart: () => void;
   onEnd: () => void;
   onInfo?: () => void;
+  /** One tap: log sex for today (Flo's quick "log sex"); when already logged it opens the details. */
+  onSex?: () => void;
+  sexLogged?: boolean;
 };
 
 /**
@@ -57,6 +60,8 @@ export function CycleHero({
   onStart,
   onEnd,
   onInfo,
+  onSex,
+  sexLogged,
 }: Props) {
   const c = useCycleColors();
   const caps = cycleModeCapabilities(bundle.profile.mode);
@@ -254,17 +259,26 @@ export function CycleHero({
           {onPeriod ? (
             <>
               <CyclePrimaryButton label={ka.cycle.logTodayFlow} onPress={onLog} icon={Droplet} />
-              <HeroSecondary label={ka.cycle.periodEndCta} onPress={onEnd} />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flex: 1 }}><HeroSecondary label={ka.cycle.periodEndCta} onPress={onEnd} /></View>
+                {onSex ? <SexButton logged={Boolean(sexLogged)} onPress={onSex} /> : null}
+              </View>
             </>
           ) : startLeads ? (
             <>
               <CyclePrimaryButton label={startLabel} onPress={onStart} icon={Droplet} />
-              <HeroSecondary label={ka.cycle.logTodayCta} onPress={onLog} icon={Plus} />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flex: 1 }}><HeroSecondary label={ka.cycle.logTodayCta} onPress={onLog} icon={Plus} /></View>
+                {onSex ? <SexButton logged={Boolean(sexLogged)} onPress={onSex} /> : null}
+              </View>
             </>
           ) : (
             <>
               <CyclePrimaryButton label={ka.cycle.logTodayCta} onPress={onLog} icon={Plus} />
-              <HeroSecondary label={startLabel} onPress={onStart} icon={Droplet} />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flex: 1 }}><HeroSecondary label={startLabel} onPress={onStart} icon={Droplet} /></View>
+                {onSex ? <SexButton logged={Boolean(sexLogged)} onPress={onSex} /> : null}
+              </View>
             </>
           )}
         </View>
@@ -283,6 +297,22 @@ function LegendDot({ fill, ring, label }: { fill: string; ring?: string; label: 
   );
 }
 
+/** Rose heart button next to the secondary action — one tap logs sex for today. */
+function SexButton({ logged, onPress }: { logged: boolean; onPress: () => void }) {
+  const c = useCycleColors();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={logged ? ka.cycle.sexLoggedA11y : ka.cycle.sexLogA11y}
+      style={{ minHeight: 46, borderRadius: 23, paddingHorizontal: 14, backgroundColor: logged ? c.period : c.periodSoft, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+    >
+      {logged ? <Check size={15} color={c.onPeriod} strokeWidth={3} /> : <Heart size={16} color={c.period} strokeWidth={2.4} fill={c.period} />}
+      <Text style={{ color: logged ? c.onPeriod : c.period, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14 }}>{ka.cycle.sexShort}</Text>
+    </Pressable>
+  );
+}
+
 function HeroSecondary({ label, a11y, onPress, icon: Icon }: { label: string; a11y?: string; onPress: () => void; icon?: typeof Plus }) {
   const c = useCycleColors();
   return (
@@ -293,7 +323,7 @@ function HeroSecondary({ label, a11y, onPress, icon: Icon }: { label: string; a1
       style={{ minHeight: 46, borderRadius: 23, backgroundColor: c.cardSoft, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, paddingHorizontal: 10 }}
     >
       {Icon ? <Icon size={16} color={c.ink} strokeWidth={2.3} /> : null}
-      <Text numberOfLines={1} style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, flexShrink: 1 }}>
+      <Text numberOfLines={2} style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 17, textAlign: 'center', flexShrink: 1 }}>
         {label}
       </Text>
     </Pressable>

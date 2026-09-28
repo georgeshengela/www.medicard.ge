@@ -12,10 +12,18 @@ export function CyclePeriodToast({
   bottomInset,
   onAddFlow,
   onUndo,
+  title = ka.cycle.periodStartedToast,
+  hint = ka.cycle.periodStartedToastHint,
+  primaryLabel = ka.cycle.periodStartedAddFlow,
+  PrimaryIcon = Droplet,
 }: {
   bottomInset: number;
   onAddFlow: () => void;
   onUndo: () => void;
+  title?: string;
+  hint?: string;
+  primaryLabel?: string;
+  PrimaryIcon?: typeof Droplet;
 }) {
   const c = useCycleColors();
   const reduceMotion = usePrefersReducedMotion();
@@ -45,12 +53,12 @@ export function CyclePeriodToast({
             <Check size={16} color={c.onPeriod} strokeWidth={3} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: c.card, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 }}>{ka.cycle.periodStartedToast}</Text>
-            <Text style={{ color: c.card, opacity: 0.75, fontSize: 12, lineHeight: 17 }}>{ka.cycle.periodStartedToastHint}</Text>
+            <Text style={{ color: c.card, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 }}>{title}</Text>
+            <Text style={{ color: c.card, opacity: 0.75, fontSize: 12, lineHeight: 17 }}>{hint}</Text>
           </View>
         </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <ToastButton label={ka.cycle.periodStartedAddFlow} icon={<Droplet size={15} color={c.ink} strokeWidth={2.3} />} onPress={onAddFlow} primary />
+          <ToastButton label={primaryLabel} icon={<PrimaryIcon size={15} color={c.ink} strokeWidth={2.3} />} onPress={onAddFlow} primary />
           <ToastButton label={ka.cycle.periodStartedUndo} icon={<Undo2 size={15} color={c.card} strokeWidth={2.3} />} onPress={onUndo} />
         </View>
       </View>

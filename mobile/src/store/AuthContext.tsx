@@ -164,6 +164,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [applyVisualSession]);
 
+  // Cold start / sign-in: schedule cycle reminders without waiting for the cycle screen or a foreground.
+  useEffect(() => {
+    if (!user?.id || user.gender !== 'FEMALE') return;
+    void import('@/lib/cycleReminders').then(({ reconcileCycleReminders }) => reconcileCycleReminders(user.id, { force: true }));
+  }, [user?.id, user?.gender]);
+
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return;
@@ -174,6 +180,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
         runMediNotificationBrain(user, healthProfile),
       );
+      if (user?.id && user.gender === 'FEMALE') {
+        void import('@/lib/cycleReminders').then(({ reconcileCycleReminders }) => reconcileCycleReminders(user.id));
+      }
       if (user) {
         void import('@/lib/petCareReminders').then(({ reconcilePetCareReminders, flushPendingPetCareConfirms }) => {
           void flushPendingPetCareConfirms();

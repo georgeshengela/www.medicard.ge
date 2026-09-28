@@ -10,7 +10,7 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { CalendarHeart, MessageSquareText, PencilLine } from 'lucide-react-native';
+import { CalendarHeart, Heart, MessageSquareText, PencilLine } from 'lucide-react-native';
 import { CycleHomeHeader } from '@/components/cycle/CycleHomeHeader';
 import { CycleHero } from '@/components/cycle/CycleHero';
 import { CycleSexSheet } from '@/components/cycle/CycleSexSheet';
@@ -46,7 +46,8 @@ import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonic
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
 import { showContraceptionContextCard, showFertilityUi } from '@/lib/cycleContraception';
 import { alertPresentation, confidencePresentation, mergeOwnerClassifiedPeriodOntoMarks } from '@/lib/cyclePresentation.js';
-import { isBleedFlow } from '@/lib/cycleLogSave';
+import { formFromCycleLog, isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
+import type { CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { hasPmsPattern } from '@/lib/cycleAnalytics';
 import { CycleOfflineBanner } from '@/components/cycle/CycleOfflineBanner';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
@@ -201,6 +202,9 @@ export default function CycleHome() {
   const [periodBusy, setPeriodBusy] = useState(false);
   /** Sex and sex drive have their own private sheet (separate from the daily log). */
   const [sexOpen, setSexOpen] = useState(false);
+  /** One-tap sex log confirmation: holds the day's form before the tap, for undo. */
+  const [sexToast, setSexToast] = useState<CycleLogForm | null>(null);
+  const [sexBusy, setSexBusy] = useState(false);
   const [daySheetOpen, setDaySheetOpen] = useState(false);
   const [startIntent, setStartIntent] = useState(false);
   const [selected, setSelected] = useState(todayKey());
@@ -666,6 +670,46 @@ export default function CycleHome() {
     void load();
   };
 
+  /** Flo-style one tap: mark sex for today, keeping everything else logged that day. */
+  const logSexNow = async () => {
+    if (!user?.id || sexBusy) return;
+    const existing = bundle?.logs.find((l) => l.date === today);
+    const before = formFromCycleLog(existing);
+    if (before.sexual === true) {
+      setSexOpen(true);
+      return;
+    }
+    setSexBusy(true);
+    try {
+      const result = await persistCycleLog(user.id, today, { ...before, sexual: true });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      handleSaved(result.view);
+      setPeriodToast(null);
+      setSexToast(before);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : ka.common.error);
+    } finally {
+      setSexBusy(false);
+    }
+  };
+
+  const undoSex = async (before: CycleLogForm) => {
+    if (!user?.id) return;
+    setSexToast(null);
+    try {
+      const result = await persistCycleLog(user.id, today, before);
+      handleSaved(result.view);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : ka.common.error);
+    }
+  };
+
+  useEffect(() => {
+    if (!sexToast) return;
+    const t = setTimeout(() => setSexToast(null), 8000);
+    return () => clearTimeout(t);
+  }, [sexToast]);
+
   const endPeriod = () => {
     Alert.alert(ka.cycle.periodEndCta, ka.cycle.periodEndHint, [
       { text: ka.common.cancel, style: 'cancel' },
@@ -996,6 +1040,8 @@ export default function CycleHome() {
                     today={today}
                     onLog={() => openQuickLog(today)}
                     onStart={() => void startPeriodNow()}
+                    onSex={() => void logSexNow()}
+                    sexLogged={todayLog?.sexualActivity === true}
                     onEnd={endPeriod}
                     onInfo={() =>
                       Alert.alert(ka.cycle.howCalculated, ka.cycle.howCalculatedBody)
@@ -1257,6 +1303,21 @@ export default function CycleHome() {
             openQuickLog(periodToast);
           }}
           onUndo={() => void undoPeriodStart(periodToast)}
+        />
+      ) : null}
+
+      {sexToast ? (
+        <CyclePeriodToast
+          bottomInset={insets.bottom}
+          title={ka.cycle.sexLoggedToast}
+          hint={ka.cycle.sexLoggedToastHint}
+          primaryLabel={ka.cycle.sexLoggedDetails}
+          PrimaryIcon={Heart}
+          onAddFlow={() => {
+            setSexToast(null);
+            setSexOpen(true);
+          }}
+          onUndo={() => void undoSex(sexToast)}
         />
       ) : null}
 

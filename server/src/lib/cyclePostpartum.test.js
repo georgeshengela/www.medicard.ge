@@ -371,7 +371,7 @@ describe('Read model / fire walls', () => {
       today: TODAY,
     });
     assert.match(prompt, /რეჟიმი: TRACK_PERIOD/);
-    assert.match(prompt, /2026-08-29/);
+    assert.match(prompt, /29 აგვისტო 2026/);
     assert.equal(prompt.includes('POSTPARTUM'), false);
   });
 

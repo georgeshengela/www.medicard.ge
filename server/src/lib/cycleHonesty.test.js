@@ -56,7 +56,7 @@ describe('confidence copy', () => {
     const high = nextPeriodEstimateBody('2026-09-09', HIGH);
     const medium = nextPeriodEstimateBody('2026-09-09', MEDIUM);
     const low = nextPeriodEstimateBody('2026-09-09', LOW);
-    assert.match(high, /სავარაუდო თარიღი დაახლოებით 2026-09-09/);
+    assert.match(high, /სავარაუდო თარიღი დაახლოებით 9 სექტემბერი 2026/);
     assert.doesNotMatch(high, /დაიწყება 2026-09-09/);
     assert.match(medium, /შეიძლება ოდნავ გადაიწიოს/);
     assert.match(low, /შეიძლება შეიცვალოს/);

@@ -22,8 +22,18 @@ export function cycleHonestyFlags({
   };
 }
 
+const MONTHS_KA = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
+
+/** '2026-10-10' → '10 ოქტომბერი 2026' (user-facing copy never shows ISO keys). */
+export function formatDateKa(key) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key ?? ''));
+  if (!m) return key ?? '—';
+  return `${Number(m[3])} ${MONTHS_KA[Number(m[2]) - 1]} ${m[1]}`;
+}
+
 export function nextPeriodEstimateBody(date, flags) {
   if (!date) return 'სავარაუდო შემდეგი მენსტრუაციის თარიღი ჯერ არ არის.';
+  date = formatDateKa(date);
   if (flags.cautious) {
     return `სავარაუდო თარიღი დაახლოებით ${date}. ბოლო ციკლები იცვლება ან შეფასება ნაკლებად საიმედოა — თარიღი შეიძლება შეიცვალოს.`;
   }
@@ -34,9 +44,9 @@ export function nextPeriodEstimateBody(date, flags) {
 }
 
 export function ttcWindowBody(predictions, flags) {
-  const start = predictions?.fertileWindow?.start ?? '—';
-  const end = predictions?.fertileWindow?.end ?? '—';
-  const ovulation = predictions?.ovulationDate ?? '—';
+  const start = predictions?.fertileWindow?.start ? formatDateKa(predictions.fertileWindow.start) : '—';
+  const end = predictions?.fertileWindow?.end ? formatDateKa(predictions.fertileWindow.end) : '—';
+  const ovulation = predictions?.ovulationDate ? formatDateKa(predictions.ovulationDate) : '—';
   if (flags.pcos || flags.cautious) {
     return `სავარაუდო ნაყოფიერი ფანჯარა დაახლოებით ${start} – ${end}. ოვულაციის შეფასება (${ovulation}) ნაკლებად საიმედოა. ეს არ ადასტურებს ოვულაციას და არ არის კონტრაცეფცია.`;
   }

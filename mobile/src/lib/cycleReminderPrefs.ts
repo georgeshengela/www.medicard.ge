@@ -27,15 +27,20 @@ export const CYCLE_REMINDER_KEYS = {
   privacyLock: 'medicard.cycle.privacy.lock',
 } as const;
 
+/**
+ * On by default (owner 2026-09-29: women received no cycle notifications because this started off and
+ * lived only in cycle settings). Copy stays masked by default; one switch in cycle settings turns it off.
+ */
 const DEFAULTS: CycleReminderPrefs = {
-  enabled: false,
+  enabled: true,
   periodDaysBefore: 2,
   ovulation: true,
   dailyLog: false,
   pms: true,
   opk: false,
   bbt: false,
-  maskNotifications: true,
+  // Real text by default (like Flo / Apple Health) — a masked "Medi reminder" read as "no cycle notifications".
+  maskNotifications: false,
   maskStyle: 'neutral',
 };
 
@@ -60,14 +65,14 @@ export async function getCycleReminderPrefs(): Promise<CycleReminderPrefs> {
     : DEFAULTS.maskStyle;
 
   return {
-    enabled: enabled === '1',
+    enabled: enabled !== '0',
     periodDaysBefore: Math.min(5, Math.max(0, Number(periodDaysBefore) || DEFAULTS.periodDaysBefore)),
     ovulation: ovulation !== '0',
     dailyLog: dailyLog === '1',
     pms: pms !== '0',
     opk: opk === '1',
     bbt: bbt === '1',
-    maskNotifications: maskNotifications !== '0',
+    maskNotifications: maskNotifications === '1',
     maskStyle: style,
   };
 }

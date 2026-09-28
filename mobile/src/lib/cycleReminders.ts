@@ -113,3 +113,30 @@ export async function syncCycleReminders(
 
   return count;
 }
+
+let lastReconcileAt = 0;
+
+/**
+ * Keep cycle reminders scheduled without opening the cycle screen: runs on login and every foreground
+ * (at most every 10 minutes). Uses the cached/online cycle view; never throws.
+ */
+export async function reconcileCycleReminders(userId: string, opts: { force?: boolean } = {}): Promise<number> {
+  const now = Date.now();
+  if (!opts.force && now - lastReconcileAt < 10 * 60_000) return 0;
+  lastReconcileAt = now;
+  try {
+    const { isFeatureOn } = await import('@/lib/featureFlags');
+    if (!isFeatureOn('cycle')) {
+      await cancelCycleReminders();
+      return 0;
+    }
+    const { loadCycleView } = await import('@/lib/cycleOffline');
+    const { getCycleReminderPrefs } = await import('@/lib/cycleReminderPrefs');
+    const view = await loadCycleView(userId);
+    if (!view?.canonical?.profile) return 0;
+    const prefs = await getCycleReminderPrefs();
+    return await syncCycleReminders(view.canonical, prefs);
+  } catch {
+    return 0;
+  }
+}

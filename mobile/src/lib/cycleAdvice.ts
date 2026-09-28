@@ -191,6 +191,16 @@ export function buildCycleAdvice({
   return main;
 }
 
+const MONTHS_GEN = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
+
+/** Any ISO date inside insight copy (older cached AI text) → '10 ოქტომბერი 2026'. */
+export function humanizeDatesKa(text: string): string {
+  return text.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (all, y, m, d) => {
+    const month = MONTHS_GEN[Number(m) - 1];
+    return month ? `${Number(d)} ${month} ${y}` : all;
+  });
+}
+
 export function mergeInsightCards(ai: CycleInsightCard[], local: CycleInsightCard[]): CycleInsightCard[] {
   const seen = new Set<string>();
   const out: CycleInsightCard[] = [];
@@ -205,7 +215,7 @@ export function mergeInsightCards(ai: CycleInsightCard[], local: CycleInsightCar
     seen.add(card.id);
     seen.add(key);
     seen.add(title);
-    out.push(card);
+    out.push({ ...card, title: humanizeDatesKa(card.title), body: humanizeDatesKa(card.body) });
     if (out.length >= 5) break;
   }
   return out;
