@@ -12,7 +12,7 @@ import { useThemeColors } from '@/theme/colors';
 
 /**
  * Connect to a trainer: by code (trainer's invitation → active at once) or from search (request).
- * The consent sheet names every data category; photos are off by default (Law 3144: voluntary, scoped).
+ * The consent sheet names every data category; nothing is shared until switched on (Law 3144, App Review 5.1.1).
  */
 export default function ConnectTrainerScreen() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function ConnectTrainerScreen() {
   const [code, setCode] = useState(normalizeCoachCode(params.code) ?? '');
   const [trainer, setTrainer] = useState<TrainerCard | null>(null);
   const [consentVersion, setConsentVersion] = useState('');
-  const [scopes, setScopes] = useState<CoachScopes>({ workouts: true, nutrition: true, weight: true, photos: false });
+  const [scopes, setScopes] = useState<CoachScopes>({ workouts: false, nutrition: false, weight: false, photos: false });
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -174,15 +174,20 @@ export default function ConnectTrainerScreen() {
               <View style={[coachStyles.row, { paddingVertical: 10 }]}>
                 <Lock size={16} color={c.primary100} />
                 <Text style={[hubText.caption, { color: c.text200, flex: 1 }]}>
-                  ვარჯიშების განრიგი ორივე მხარეს ჩანს. ქვემოთ აირჩიე, კიდევ რა გაუზიარო. ჯანმრთელობის მონაცემი განსაკუთრებული კატეგორიაა — გაზიარება ნებაყოფლობითია და ნებისმიერ დროს შეწყდება.
+                  ტრენერი ყოველთვის ხედავს: შენს სახელს, ფოტოს, ასაკს, სქესს, სიმაღლეს და ვარჯიშების განრიგს. ქვემოთ აირჩიე, კიდევ რა გაუზიარო — ყველაფერი გამორთულია, სანამ შენ არ ჩართავ. ჯანმრთელობის მონაცემი განსაკუთრებული კატეგორიაა: გაზიარება ნებაყოფლობითია და ნებისმიერ დროს შეწყდება.
                 </Text>
               </View>
               {COACH_SCOPES.map((k) => (
                 <Toggle key={k} title={SCOPE_COPY[k].title} body={SCOPE_COPY[k].body} value={scopes[k]} onChange={(v) => setScopes((p) => ({ ...p, [k]: v }))} />
               ))}
             </Card>
-            <Text style={[hubText.small, { color: c.text300, marginTop: 8 }]}>ტრენერი ვერ ხედავს: სამედიცინო ჩანაწერებს, ანალიზებს, წამლებს, ციკლს, Medi-სთან საუბრებს.</Text>
+            <Text style={[hubText.small, { color: c.text300, marginTop: 8 }]}>ტრენერი ვერ ხედავს: სამედიცინო ჩანაწერებს, ანალიზებს, წამლებს, ციკლს, Medi-სთან საუბრებს. ტრენერები დამოუკიდებელი პროფესიონალები არიან; MEDICARD მათ სერტიფიკატებს ამოწმებს.</Text>
           </Section>
+          <Button
+            label="შეტყობინება დარღვევაზე"
+            kind="ghost"
+            onPress={() => router.push({ pathname: '/trainer/report', params: { id: trainer.id, name: trainer.displayName, role: 'trainer' } } as never)}
+          />
 
           {viaSearch ? (
             <Field label="მოკლე მესიჯი ტრენერს (არასავალდებულო)">

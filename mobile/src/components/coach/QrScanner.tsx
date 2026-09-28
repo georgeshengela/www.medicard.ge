@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -11,8 +11,9 @@ import { useKeyboardPad } from '@/components/ui/KeyboardFormShell';
 
 /**
  * Full-screen QR viewfinder. The camera frame never leaves the phone — only the decoded text is used.
- * Camera permission is requested only from the button (App Review 5.1.1, AGENTS.md). A pasted link
- * or code is the fallback when the camera is unavailable.
+ * Camera permission is requested only from the button (App Review 5.1.1, AGENTS.md). Until the system
+ * question is answered the screen is a primer: one „გაგრძელება“ button, no close, no alternatives.
+ * Afterwards a pasted link or code is the fallback when the camera is unavailable.
  */
 export function QrScanner({ title, hint, busy, error, onScan, footer }: { title: string; hint: string; busy?: boolean; error?: string | null; onScan: (data: string) => void; footer?: React.ReactNode }) {
   const router = useRouter();
@@ -32,6 +33,9 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
     return () => sub.remove();
   }, []);
   const granted = Boolean(permission?.granted);
+  // Primer until the OS question was answered once (then close/manual/settings are fine).
+  const primer = !granted && !asked && (!permission || permission.status === 'undetermined');
+  const blocked = !granted && Boolean(permission) && permission?.canAskAgain === false;
   const handle = (data: string) => {
     if (busy || !data) return;
     const now = Date.now();
@@ -46,13 +50,17 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
         <CameraView facing="back" enableTorch={torch} barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={busy ? undefined : (r) => handle(r.data)} style={StyleSheet.absoluteFill} />
       ) : null}
       <View style={[s.top, { paddingTop: safe.top + 8 }]}>
-        <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={() => (router.canGoBack() ? router.back() : router.replace('/' as never))} style={s.round}>
-          <X size={22} color="#FFFFFF" />
-        </Pressable>
+        {primer ? <View style={s.round0} /> : (
+          <Pressable accessibilityRole="button" accessibilityLabel="დახურვა" onPress={() => (router.canGoBack() ? router.back() : router.replace('/' as never))} style={s.round}>
+            <X size={22} color="#FFFFFF" />
+          </Pressable>
+        )}
         <Text style={[hubText.cardTitle, { color: '#FFFFFF', flex: 1, textAlign: 'center' }]}>{title}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={torch ? 'ფანარის გამორთვა' : 'ფანარის ჩართვა'} disabled={!granted} onPress={() => setTorch((v) => !v)} style={[s.round, { opacity: granted ? 1 : 0.4 }]}>
-          {torch ? <FlashlightOff size={20} color="#FFFFFF" /> : <Flashlight size={20} color="#FFFFFF" />}
-        </Pressable>
+        {granted ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={torch ? 'ფანარის გამორთვა' : 'ფანარის ჩართვა'} onPress={() => setTorch((v) => !v)} style={s.round}>
+            {torch ? <FlashlightOff size={20} color="#FFFFFF" /> : <Flashlight size={20} color="#FFFFFF" />}
+          </Pressable>
+        ) : <View style={s.round0} />}
       </View>
       <View style={s.center} pointerEvents="none">
         <View style={s.frame}>
@@ -61,24 +69,29 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
           ))}
           {busy ? <ActivityIndicator color="#5EEAD4" size="large" /> : null}
         </View>
-        <Text style={s.hint}>{busy ? 'ვამოწმებ…' : granted ? hint : 'კამერა გამორთულია — ჩართე ან ჩასვი ბმული'}</Text>
+        <Text style={s.hint}>{busy ? 'ვამოწმებ…' : granted ? hint : primer ? 'QR კოდის წასაკითხად კამერა გჭირდება. კადრი ტელეფონს არ ტოვებს — მხოლოდ კოდის ტექსტი გამოიყენება.' : 'კამერა გამორთულია — ჩართე პარამეტრებში ან ჩასვი ბმული'}</Text>
       </View>
       <Animated.View style={[s.bottom, bottomStyle]}>
         {error ? <Text accessibilityRole="alert" style={[s.hint, { color: '#FCA5A5', textAlign: 'left' }]}>{error}</Text> : null}
-        {footer}
+        {primer ? null : footer}
         {!granted ? (
           <Pressable
             accessibilityRole="button"
             onPress={async () => {
+              if (blocked) {
+                void Linking.openSettings().catch(() => undefined);
+                return;
+              }
               setAsked(true);
               await requestPermission().catch(() => undefined);
             }}
             style={s.primary}
           >
             <QrCode size={18} color="#FFFFFF" />
-            <Text style={[hubText.link, { color: '#FFFFFF' }]}>{asked && permission && !permission.canAskAgain ? 'კამერის ნებართვა პარამეტრებში ჩართე' : 'კამერის ჩართვა'}</Text>
+            <Text style={[hubText.link, { color: '#FFFFFF' }]}>{blocked ? 'პარამეტრების გახსნა' : 'გაგრძელება'}</Text>
           </Pressable>
         ) : null}
+        {primer ? null : (
         <View style={s.manualRow}>
           <TextInput
             accessibilityLabel="ბმულის ან კოდის ჩასმა"
@@ -96,6 +109,7 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
             <Text style={[hubText.link, { color: '#FFFFFF' }]}>OK</Text>
           </Pressable>
         </View>
+        )}
       </Animated.View>
     </View>
   );
@@ -104,6 +118,7 @@ export function QrScanner({ title, hint, busy, error, onScan, footer }: { title:
 const s = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 },
   round: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(17,24,39,0.7)', alignItems: 'center', justifyContent: 'center' },
+  round0: { width: 44, height: 44 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 },
   frame: { width: 250, height: 250, alignItems: 'center', justifyContent: 'center' },
   corner: { position: 'absolute', width: 36, height: 36, borderColor: '#5EEAD4' },

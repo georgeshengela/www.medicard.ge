@@ -277,7 +277,7 @@ export const POSE_LABEL: Record<ProgressPhoto['pose'], string> = { FRONT: 'წ�
 export const GOAL_TYPE_LABEL: Record<GoalProposal['type'], string> = { lose: 'წონის კლება', gain: 'წონის მატება', recomp: 'რეკომპოზიცია', performance: 'ფორმა და ძალა' };
 
 export const SCOPE_COPY: Record<CoachScope, { title: string; body: string }> = {
-  workouts: { title: 'ვარჯიშები და აქტივობა', body: 'ნაბიჯები, აქტიური წუთები, პულსი და ვარჯიშები Apple Health / Health Connect-იდან.' },
+  workouts: { title: 'ვარჯიშები და აქტივობა', body: 'ნაბიჯები, აქტიური წუთები, პულსი, ძილი და ვარჯიშები Apple Health / Health Connect-იდან.' },
   nutrition: { title: 'კვება', body: 'კვების დღიური, კალორიები, მაკროები და ტრენერის გეგმის დაცვა.' },
   weight: { title: 'წონა და მიზანი', body: 'აწონვები, წონის მიზანი და პროგრესი.' },
   photos: { title: 'პროგრეს-ფოტოები', body: 'შენი „მანამდე / შემდეგ“ ფოტოები. ნაგულისხმევად გამორთულია.' },

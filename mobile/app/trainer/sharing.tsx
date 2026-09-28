@@ -133,6 +133,14 @@ export default function TrainerSharingScreen() {
             ) : null}
             <Section title="კავშირი">
               <Button label="ტრენერთან კავშირის დასრულება" kind="danger" icon={Unlink} onPress={end} />
+              {ov?.trainer ? (
+                <Button
+                  label="შეტყობინება დარღვევაზე / დაბლოკვა"
+                  kind="ghost"
+                  style={{ marginTop: 8 }}
+                  onPress={() => router.push({ pathname: '/trainer/report', params: { id: ov.trainer!.id, name: ov.trainer!.displayName, role: 'trainer' } } as never)}
+                />
+              ) : null}
             </Section>
           </>
         ) : ov ? (

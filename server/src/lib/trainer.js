@@ -4,11 +4,12 @@
  */
 import { z } from 'zod';
 
-export const CONSENT_VERSION = 'coach-2026-09-28';
+export const CONSENT_VERSION = 'coach-2026-09-28b';
 
 /** What a client can share. Sessions are the link itself and always visible to both sides. */
 export const SCOPES = Object.freeze(['workouts', 'nutrition', 'weight', 'photos']);
-export const DEFAULT_SCOPES = Object.freeze({ workouts: true, nutrition: true, weight: true, photos: false });
+// Nothing is shared until the person switches it on (App Review 5.1.1 / Law 3144: voluntary, specific).
+export const DEFAULT_SCOPES = Object.freeze({ workouts: false, nutrition: false, weight: false, photos: false });
 
 export const SPECIALTIES = Object.freeze({
   weight_loss: 'წონის კლება',

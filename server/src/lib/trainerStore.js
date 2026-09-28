@@ -9,6 +9,7 @@ import { totals } from './nutrition.js';
 import { generateCode, normalizeCode } from './referral.js';
 import { gymsByIds, gymPublic } from './gyms.js';
 import { avatarUrl, userByQr } from './identity.js';
+import { assertTrainerMayInvite } from './coachSafety.js';
 import {
   CONSENT_VERSION,
   DEFAULT_SCOPES,
@@ -325,6 +326,7 @@ export async function inviteByQr(trainerId, token, note = '', db = prisma) {
     return { status: 'ACTIVE', userId: preview.user.id };
   }
   if (preview.link) return { status: 'REQUESTED', userId: preview.user.id };
+  await assertTrainerMayInvite(trainerId, preview.user.id, db);
   await db.$queryRaw`INSERT INTO "TrainerLink" (id, "trainerId", "clientId", status, initiator, scopes, "clientNote")
     VALUES (${randomUUID()}, ${trainerId}, ${preview.user.id}, 'REQUESTED', 'TRAINER', ${JSON.stringify(DEFAULT_SCOPES)}::jsonb, ${note || null})`;
   const trainer = await getTrainerProfile(trainerId, db);

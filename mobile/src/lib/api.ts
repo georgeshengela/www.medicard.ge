@@ -3355,6 +3355,8 @@ export const api = {
     setScopes: (scopes: Partial<import('@/lib/coach').CoachScopes>) =>
       request<import('@/lib/coach').ClientOverview>('/api/trainer/link', { method: 'PATCH', body: { scopes } }),
     unlink: () => request<{ ok: true }>('/api/trainer/link', { method: 'DELETE' }),
+    report: (body: { subjectId: string; reason: string; details?: string; block?: boolean }) =>
+      request<{ ok: true; id: string; blocked: boolean }>('/api/trainer/report', { method: 'POST', body }),
     answerGoal: (decision: 'accepted' | 'dismissed') =>
       request<{ ok: true; decision: string; trainerName: string | null }>('/api/trainer/link/goal', { method: 'POST', body: { decision } }),
     overview: () => request<import('@/lib/coach').ClientOverview>('/api/trainer/overview'),

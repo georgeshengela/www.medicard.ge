@@ -53,8 +53,11 @@ export async function deleteUserAccount(userId) {
   const coachFiles = await coachFilesOf(userId).catch(() => []);
 
   const locationTable = await prisma.$queryRaw`SELECT to_regclass('"UserLocation"')::text AS name`;
+  // A trainer keeps session rows about a deleted client (clientId → NULL); their notes about that person go.
+  const sessionTable = await prisma.$queryRaw`SELECT to_regclass('"TrainerSession"')::text AS name`;
   await prisma.$transaction([
     ...(locationTable[0]?.name ? [prisma.$executeRaw`DELETE FROM "UserLocation" WHERE "userId" = ${userId}`] : []),
+    ...(sessionTable[0]?.name ? [prisma.$executeRaw`UPDATE "TrainerSession" SET note = NULL WHERE "clientId" = ${userId}`] : []),
     prisma.dailyUsage.deleteMany({ where: { userId } }),
     prisma.phoneVerification.deleteMany({ where: { OR: [{ userId }, ...(user.phone ? [{ userId: null, phone: user.phone }] : [])] } }),
     prisma.smsLog.updateMany({ where: { OR: [{ userId }, ...(user.phone ? [{ userId: null, destination: user.phone }] : [])] }, data: smsLogAccountDeletePatch() }),

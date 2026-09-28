@@ -41,6 +41,8 @@ import * as store from '../lib/trainerStore.js';
 import { prisma } from '../lib/prisma.js';
 import { notifyCoach } from '../lib/trainerPush.js';
 import { parseQrToken } from '../lib/identity.js';
+import { listReports as listCoachReports, openReportCount, reportCoach, resolveReport } from '../lib/coachSafety.js';
+import { notifyOwner } from '../lib/director/service.js';
 
 /**
  * MEDI COACH (2026-09-28): gyms, trainer applications, consented client links, sessions, meal plans,
@@ -211,6 +213,15 @@ trainerRouter.delete('/link', asyncHandler(async (req, res) => {
   if (!link) throw coachError(404, 'ტრენერთან კავშირი არ გაქვს.');
   await store.endLink({ linkId: link.id, by: 'CLIENT', actorId: req.user.id });
   res.json({ ok: true });
+}));
+
+// Report (and optionally block) the other side of a coach relationship — App Review 1.2.
+trainerRouter.post('/report', asyncHandler(async (req, res) => {
+  const result = await reportCoach(req.user, req.body ?? {}, {
+    endLink: store.endLink,
+    notify: (text) => notifyOwner(text, { direction: 'system' }),
+  });
+  res.status(201).json({ ok: true, ...result });
 }));
 
 trainerRouter.post('/link/goal', asyncHandler(async (req, res) => {
@@ -428,6 +439,18 @@ const manage = requireAdminCapability('TRAINER_MANAGE');
 adminTrainerRouter.get('/', view, asyncHandler(async (req, res) => {
   const status = ['PENDING', 'VERIFIED', 'REJECTED', 'SUSPENDED', 'ALL'].includes(String(req.query.status)) ? String(req.query.status) : 'PENDING';
   res.json(await store.adminTrainerList({ status }));
+}));
+
+adminTrainerRouter.get('/reports', view, asyncHandler(async (req, res) => {
+  const status = ['open', 'resolved', 'all'].includes(String(req.query.status)) ? String(req.query.status) : 'open';
+  res.json({ reports: await listCoachReports({ status }), open: await openReportCount() });
+}));
+
+adminTrainerRouter.post('/reports/:id/resolve', manage, asyncHandler(async (req, res) => {
+  const { note } = z.object({ note: z.string().trim().max(500).optional().default('') }).parse(req.body ?? {});
+  await resolveReport(String(req.params.id), note);
+  await writeAdminAudit({ admin: req.admin, action: 'COACH_REPORT_RESOLVE', targetType: 'CoachReport', targetId: String(req.params.id), newValue: { note } });
+  res.json({ ok: true });
 }));
 
 adminTrainerRouter.post('/:userId/review', manage, asyncHandler(async (req, res) => {

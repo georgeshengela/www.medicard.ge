@@ -211,12 +211,45 @@
     })));
   }
 
+  let reportStatus = 'open';
+  function paintReports(root, data) {
+    const rows = data.reports || [];
+    const when = (iso) => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Tbilisi', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
+    root.querySelector('[data-body]').innerHTML = `
+      <div class="s-toolbar">
+        <div class="s-segment" role="tablist" aria-label="სტატუსი">${[['open', 'განსახილველი'], ['resolved', 'განხილული'], ['all', 'ყველა']].map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === reportStatus}" data-rstatus="${k}">${l}</button>`).join('')}</div>
+      </div>
+      <section class="s-card"><div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table">
+        <thead><tr><th>როდის</th><th>ვინ</th><th>ვიზე</th><th>მიზეზი</th><th>დეტალები</th><th>დაბლოკა</th><th></th></tr></thead>
+        <tbody>${rows.length ? rows.map((r) => `<tr data-report="${esc(r.id)}">
+          <td style="white-space:nowrap">${esc(when(r.createdAt))}</td>
+          <td>${esc(r.reporterName || '—')}<br><small class="s-muted">${r.reporterRole === 'CLIENT' ? 'კლიენტი' : 'ტრენერი'}</small></td>
+          <td>${esc(r.subjectName || '—')}</td>
+          <td>${esc(r.reasonLabel)}</td>
+          <td style="max-width:360px;white-space:normal">${esc(r.details || '—')}${r.resolvedNote ? `<br><small class="s-muted">განხილვა: ${esc(r.resolvedNote)}</small>` : ''}</td>
+          <td>${r.blocked ? '<span class="s-badge is-warn is-plain">დიახ</span>' : '—'}</td>
+          <td>${r.status === 'open' ? '<button class="btn ghost compact" data-resolve>განხილულია</button>' : '<span class="s-badge is-ok is-plain">განხილულია</span>'}</td>
+        </tr>`).join('') : '<tr><td colspan="7"><div class="s-empty">შეტყობინება არ არის.</div></td></tr>'}</tbody></table></div></div></section>
+      <div class="s-callout">${ico('info')}<p>კლიენტი და ტრენერი ერთმანეთზე შეტყობინებას აპიდან აგზავნის. საჭიროებისას ტრენერი შეაჩერე „ტრენერები“ ჩანართიდან. ახალ შეტყობინებაზე ტელეგრამში დირექტორიც გატყობინებს.</p></div>`;
+    root.querySelectorAll('[data-rstatus]').forEach((b) => b.addEventListener('click', () => { reportStatus = b.dataset.rstatus; void renderTrainers(); }));
+    root.querySelectorAll('[data-report] [data-resolve]').forEach((b) => b.addEventListener('click', async () => {
+      const id = b.closest('[data-report]').dataset.report;
+      const note = '';
+      b.disabled = true;
+      try {
+        await api(`/reports/${encodeURIComponent(id)}/resolve`, { method: 'POST', body: { note } });
+        toast('განხილულად მოინიშნა', 'ok');
+        await renderTrainers();
+      } catch (err) { toast(err.message, 'bad'); b.disabled = false; }
+    }));
+  }
+
   async function renderTrainers() {
     const root = $('tab-trainers');
     if (!root) return;
     if (!root.querySelector('[data-body]')) {
       root.innerHTML = `<div class="s-stack v3-tab-shell">
-        <div class="s-segment" role="tablist" aria-label="განყოფილება"><button type="button" role="tab" data-view="trainers">ტრენერები</button><button type="button" role="tab" data-view="gyms">დარბაზები</button></div>
+        <div class="s-segment" role="tablist" aria-label="განყოფილება"><button type="button" role="tab" data-view="trainers">ტრენერები</button><button type="button" role="tab" data-view="gyms">დარბაზები</button><button type="button" role="tab" data-view="reports">შეტყობინებები</button></div>
         <div class="s-stack" data-body>${skel()}</div></div>`;
       root.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => { view = b.dataset.view; void renderTrainers(); }));
     }
@@ -224,6 +257,7 @@
     const body = root.querySelector('[data-body]');
     try {
       if (view === 'trainers') paintTrainers(root, await api(`?status=${status}`));
+      else if (view === 'reports') paintReports(root, await api(`/reports?status=${reportStatus}`));
       else paintGyms(root, (await api(`/gyms?status=${gymStatus}`)).gyms || []);
     } catch (err) {
       body.innerHTML = `<div class="s-card"><div class="s-empty">${ico('alert')}<strong>ვერ ჩაიტვირთა</strong><span>${esc(err?.status === 403 ? 'შენს ანგარიშს არ აქვს TRAINER_VIEW უფლება.' : err?.message || '')}</span><button type="button" class="btn" data-retry>ხელახლა ცდა</button></div></div>`;

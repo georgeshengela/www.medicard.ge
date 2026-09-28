@@ -27,10 +27,10 @@ import {
 import { gymId, gymRowsFromDirectory, groupByBrand } from './gyms.js';
 import { matchWorkout, photoPublic } from './trainerStore.js';
 
-test('scopes: photos are off by default, unknown keys ignored, links must be ACTIVE', () => {
+test('scopes: nothing is shared by default, unknown keys ignored, links must be ACTIVE', () => {
   assert.deepEqual(normalizeScopes(undefined), { ...DEFAULT_SCOPES });
-  assert.equal(DEFAULT_SCOPES.photos, false);
-  assert.deepEqual(normalizeScopes({ photos: true, admin: true, nutrition: false }), { workouts: true, nutrition: false, weight: true, photos: true });
+  assert.deepEqual({ ...DEFAULT_SCOPES }, { workouts: false, nutrition: false, weight: false, photos: false });
+  assert.deepEqual(normalizeScopes({ photos: true, admin: true, nutrition: false }), { workouts: false, nutrition: false, weight: false, photos: true });
   assert.equal(linkAllows({ status: 'ACTIVE', scopes: { nutrition: true } }, 'nutrition'), true);
   assert.equal(linkAllows({ status: 'ACTIVE', scopes: { nutrition: false } }, 'nutrition'), false);
   assert.equal(linkAllows({ status: 'REQUESTED', scopes: { nutrition: true } }, 'nutrition'), false);

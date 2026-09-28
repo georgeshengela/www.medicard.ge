@@ -383,6 +383,7 @@ ${toc}
           <a href="/calculators">კალკულატორები</a>
           · <a href="/privacy"${privacyCurrent}>კონფიდენციალურობა</a>
           · <a href="/terms"${termsCurrent}>წესები</a>
+          · <a href="/delete-account">ანგარიშის წაშლა</a>
           · <a href="/#disclaimer">პასუხისმგებლობა</a>
         </p>
       </div>

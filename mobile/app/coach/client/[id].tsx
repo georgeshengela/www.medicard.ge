@@ -225,6 +225,12 @@ export default function CoachClientScreen() {
                 ) : null}
                 <Section title="კავშირი">
                   <Button label="კლიენტთან კავშირის დასრულება" icon={UserMinus} kind="danger" onPress={end} />
+                  <Button
+                    label="შეტყობინება დარღვევაზე"
+                    kind="ghost"
+                    style={{ marginTop: 8 }}
+                    onPress={() => router.push({ pathname: '/trainer/report', params: { id: d.client.id, name: d.client.name, role: 'client' } } as never)}
+                  />
                 </Section>
               </>
             ) : null}
