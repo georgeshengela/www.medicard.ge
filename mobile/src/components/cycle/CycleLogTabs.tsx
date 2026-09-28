@@ -47,7 +47,7 @@ export type CycleLogForm = {
   symptoms: string[];
   moods: string[];
   sexTags: string[];
-  sexual: boolean;
+  sexual: boolean | null;
   libido: number | null;
   bbt: string;
   mucus: string | null;
@@ -444,7 +444,9 @@ export function CycleLogTabs({
                         accessibilityState={{ checked: active }}
                         onPress={() => {
                           Haptics.selectionAsync().catch(() => undefined);
-                          onChange({ sexual: opt.val, sexTags: opt.val ? form.sexTags : [] });
+                          // Tapping the chosen answer again clears it (back to "not answered").
+                          const next = active ? null : opt.val;
+                          onChange({ sexual: next, sexTags: next ? form.sexTags : [] });
                         }}
                         style={{
                           minHeight: 52,

@@ -92,7 +92,7 @@ export function daysBetween(a, b) {
 export const PERIOD_FLOWS = ['light', 'medium', 'heavy'];
 
 /** Merge at most one interior calendar day (missing or spotting). Explicit `none` never bridges. */
-export const PERIOD_MERGE_MAX_INTERIOR_DAYS = 1;
+export const PERIOD_MERGE_MAX_INTERIOR_DAYS = 2;
 /** Inclusive calendar span when bridging a logging gap. Consecutive logged bleed is not split. */
 export const PERIOD_MERGE_MAX_SPAN_DAYS = 10;
 
@@ -119,7 +119,7 @@ function interiorHasExplicitNone(prevBleed, nextBleed, byDate) {
 
 /**
  * Same menstrual episode vs new episode.
- * Consecutive bleed always continues. A single missing/spotting day may continue
+ * Consecutive bleed always continues. Up to two missing/spotting days (people skip logging) may continue
  * if the episode span stays ≤ 10 days. Explicit flow=none never continues.
  */
 export function canContinuePeriod(runStart, lastBleed, nextBleed, byDate) {
@@ -331,6 +331,8 @@ export function buildPredictions({
   isIrregular = false,
   cycleLengths = null,
   logs = [],
+  /** Civil today. When given and the projected start has passed with no bleed logged, the cycle is late. */
+  today = null,
 }) {
   const confidence = predictionConfidence({ cycleCount, isIrregular, cycleLengths });
   if (!lastPeriodStart) {
@@ -353,8 +355,11 @@ export function buildPredictions({
   for (let cycle = 0; cycle < 4; cycle += 1) {
     const periodEnd = addDays(start, avgPeriodLength - 1);
     const ovulation = addDays(start, avgCycleLength - 14);
-    const fertileStart = addDays(ovulation, -5);
+    // Short cycles: never paint the fertile window over the projected period days.
+    const rawFertileStart = addDays(ovulation, -5);
     const fertileEnd = addDays(ovulation, 1);
+    const clampedStart = rawFertileStart <= periodEnd ? addDays(periodEnd, 1) : rawFertileStart;
+    const fertileStart = clampedStart > fertileEnd ? fertileEnd : clampedStart;
     const nextStart = addDays(start, avgCycleLength);
 
     phases.push({
@@ -395,12 +400,27 @@ export function buildPredictions({
 
   let marked = calendar;
   if (logs.length) marked = overlayLogsOnCalendar(marked, logs);
+  // Late: the projected start passed and no bleed was logged (a logged bleed would have moved the LMP).
+  // Everything projected from that missed start is no longer a forecast — past days must not keep
+  // painting "expected period", and later cycles must not be built on a period that never came.
+  const late = Boolean(today && next?.periodStart && today > next.periodStart);
+  if (late) {
+    marked = { ...marked };
+    for (const key of Object.keys(marked)) {
+      if (key < next.periodStart || marked[key].predicted === false) continue;
+      const { period, predicted, fertile, ovulation, estimated, ...rest } = marked[key];
+      if (Object.keys(rest).length) marked[key] = rest;
+      else delete marked[key];
+    }
+  }
   marked = stampCalendarPhases(marked, {
     lastPeriodStart,
     avgCycleLength,
     avgPeriodLength,
     fromKey: lastPeriodStart,
-    toKey: addDays(lastPeriodStart, horizonDays),
+    // A late cycle is stamped as one continuing cycle up to today (no invented next cycles).
+    toKey: late ? today : addDays(lastPeriodStart, horizonDays),
+    wrap: !late,
   });
 
   return {
@@ -414,6 +434,7 @@ export function buildPredictions({
     calendar: marked,
     confidence,
     estimated: true,
+    late,
   };
 }
 
@@ -424,6 +445,7 @@ export function stampCalendarPhases(calendar, {
   avgPeriodLength = DEFAULT_PERIOD_LENGTH,
   fromKey,
   toKey,
+  wrap = true,
 }) {
   if (!lastPeriodStart || !fromKey || !toKey) return calendar;
   const next = { ...calendar };
@@ -434,6 +456,7 @@ export function stampCalendarPhases(calendar, {
       avgCycleLength,
       avgPeriodLength,
       today: key,
+      wrap,
     });
     const prev = next[key] || {};
     const loggedActual = prev.predicted === false;
@@ -449,20 +472,48 @@ export function stampCalendarPhases(calendar, {
   return next;
 }
 
-/** Derived LMP from logs wins; stored onboarding LMP is the fallback. */
-export function resolveLastPeriodStart(stored, inferredStart) {
-  return inferredStart || stored || null;
+/**
+ * Which "last period start" drives the forecast.
+ * Logged bleeding wins — except when the stored date is newer than every logged bleed day: that is a
+ * period the person told us about ("started on the 20th") without logging it day by day, and it must
+ * not be overridden by an older logged period (2026-09-29 audit).
+ */
+export function resolveLastPeriodStart(stored, inferredStart, lastBleedDay = null) {
+  if (!inferredStart) return stored || null;
+  // A real new period: after every logged bleed day and at least a short cycle after the logged start.
+  if (stored && lastBleedDay && stored > lastBleedDay && daysBetween(inferredStart, stored) >= MIN_NEW_PERIOD_GAP) {
+    return stored;
+  }
+  return inferredStart;
 }
 
-/** Keep onboarding/profile start when logs have no confirmed bleed run. */
+/** Shortest start-to-start gap that can be a new period (matches the 18-day floor used for averages). */
+const MIN_NEW_PERIOD_GAP = 18;
+
+/** The last logged bleed day (end of the latest period run), or null. */
+export function lastLoggedBleedDay(inferred) {
+  const ranges = inferred?.periodRanges;
+  return ranges?.length ? ranges[ranges.length - 1].end : null;
+}
+
+/**
+ * Keep onboarding/profile start when logs have no confirmed bleed run.
+ * `touched` = dates changed in this request: a stored start on a touched date that no longer has a
+ * bleed log is stale (its log was deleted or edited) and falls back to what the logs say.
+ */
 export function pickLastPeriodStart(
   current,
   logs,
   fallbackCycle = DEFAULT_CYCLE_LENGTH,
   fallbackPeriod = DEFAULT_PERIOD_LENGTH,
+  touched = [],
 ) {
   const inferred = inferCycleStats(logs, fallbackCycle, fallbackPeriod);
-  return resolveLastPeriodStart(current, inferred.lastPeriodStart);
+  const stale =
+    current &&
+    touched.includes(current) &&
+    !logs.some((l) => toDateKey(l.date) === current && PERIOD_FLOWS.includes(l.flow));
+  return resolveLastPeriodStart(stale ? null : current, inferred.lastPeriodStart, lastLoggedBleedDay(inferred));
 }
 
 /**
@@ -478,7 +529,7 @@ export function overlayLogsOnCalendar(calendar, logs) {
       (Array.isArray(log.moods) && log.moods.length > 0) ||
       log.notes ||
       log.bbt != null ||
-      log.sexualActivity != null ||
+      log.sexualActivity === true ||
       log.ovulationTest != null ||
       log.pregnancyTest != null ||
       Boolean(log.cervicalMucus) ||
@@ -562,11 +613,17 @@ export function detectCyclePhase({
   avgCycleLength = DEFAULT_CYCLE_LENGTH,
   avgPeriodLength = DEFAULT_PERIOD_LENGTH,
   today = todayInTimeZone(),
+  /**
+   * Forecast stamping only: fold days beyond the average length into the next projected cycle.
+   * For a real day (today) the count never wraps — a late cycle keeps counting (day 32, still
+   * luteal until bleeding is logged). Wrapping made a late person read "day 4 · period" with no bleed.
+   */
+  wrap = false,
 }) {
   if (!lastPeriodStart) return { day: null, phase: 'unknown', phaseKa: 'უცნობი ფაზა' };
   const day = daysBetween(lastPeriodStart, today) + 1;
   if (day < 1) return { day: null, phase: 'unknown', phaseKa: 'უცნობი ფაზა' };
-  const cycleDay = ((day - 1) % avgCycleLength) + 1;
+  const cycleDay = wrap ? ((day - 1) % avgCycleLength) + 1 : day;
   // Same civil day as buildPredictions: ovulation = LMP + (length − 14) → cycle day length − 13.
   const ovulationCycleDay = avgCycleLength - 13;
   if (cycleDay <= avgPeriodLength) {

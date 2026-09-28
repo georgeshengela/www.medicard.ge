@@ -7,6 +7,8 @@ import {
   resolveForecastAverages,
   todayInTimeZone,
   toDateKey,
+  resolveLastPeriodStart,
+  lastLoggedBleedDay,
 } from './cycle.js';
 import {
   CYCLE_SEXUAL_SYMPTOM_KEYS,
@@ -185,7 +187,11 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
   const allowed = normalizeSharePermissions(permissions);
   const inferred = inferCycleStats(logs, profile.avgCycleLength, profile.avgPeriodLength);
   const averages = resolveForecastAverages(profile, inferred);
-  const lastPeriodStart = inferred.lastPeriodStart || toDateKey(profile.lastPeriodStart);
+  const lastPeriodStart = resolveLastPeriodStart(
+    toDateKey(profile.lastPeriodStart),
+    inferred.lastPeriodStart,
+    lastLoggedBleedDay(inferred),
+  );
   const predictions = buildPredictions({
     lastPeriodStart,
     avgCycleLength: averages.usedCycleLength,
@@ -194,6 +200,7 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
     isIrregular: profile.isIrregular,
     cycleLengths: inferred.cycleGaps,
     logs,
+    today,
   });
   const phase = detectCyclePhase({
     lastPeriodStart,

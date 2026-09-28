@@ -17,7 +17,10 @@ import { PREDICTED_NUMERAL_PREFIX, classifyCycleDay, getCycleCalendarDayVisualSt
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
 const COLS = 7;
-/** The selected day (today by default) always sits in the middle column, three days either side. */
+/**
+ * The strip opens with the selected day (today by default) in the middle column, three days either side.
+ * Tapping a side day selects it without moving the strip (today stays put); swiping selects the middle day.
+ */
 const CENTER = 3;
 const WEEK_RANGE = 40;
 const GUTTER = 20;
@@ -125,7 +128,10 @@ export function CycleDayStrip({
   );
 
   const todayIndex = dates.indexOf(today);
-  const [awayFromToday, setAwayFromToday] = useState(false);
+  // Opening already away from today (e.g. a date picked in the month calendar) shows the pill at once.
+  const [awayFromToday, setAwayFromToday] = useState(
+    () => todayIndex < 0 || selectedIndex < 0 || Math.abs(selectedIndex - todayIndex) > CENTER,
+  );
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const centerIdx = Math.round(e.nativeEvent.contentOffset.x / itemWidth) + CENTER;
     const away = todayIndex < 0 || Math.abs(centerIdx - todayIndex) > CENTER;

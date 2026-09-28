@@ -383,7 +383,10 @@ export function CycleMoreTracking({ form, onChange, compact, mode }: Props) {
                         key={String(opt.val)}
                         label={opt.label}
                         selected={form.sexual === opt.val}
-                        onPress={() => onChange({ sexual: opt.val, sexTags: opt.val ? form.sexTags : [] })}
+                        onPress={() => {
+                          const next = form.sexual === opt.val ? null : opt.val;
+                          onChange({ sexual: next, sexTags: next ? form.sexTags : [] });
+                        }}
                       />
                     ))}
                   </View>

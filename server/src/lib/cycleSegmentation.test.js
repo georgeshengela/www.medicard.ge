@@ -48,12 +48,20 @@ describe('period segmentation matrix', () => {
     assert.equal(inferCycleStats(logs([['2026-03-02', 'spotting']])).periodStarts.length, 0);
   });
 
-  it('E: two missing days do not merge', () => {
+  it('E: two missing days merge (people skip logging; a period cannot restart 3 days in)', () => {
     const inferred = inferCycleStats(logs([
       ['2026-03-01', 'medium'],
       ['2026-03-04', 'medium'],
     ]));
-    assert.deepEqual(inferred.periodStarts, ['2026-03-01', '2026-03-04']);
+    assert.deepEqual(inferred.periodStarts, ['2026-03-01']);
+  });
+
+  it('E2: three missing days do not merge', () => {
+    const inferred = inferCycleStats(logs([
+      ['2026-03-01', 'medium'],
+      ['2026-03-05', 'medium'],
+    ]));
+    assert.deepEqual(inferred.periodStarts, ['2026-03-01', '2026-03-05']);
   });
 
   it('F: heavy / light / missing / light stays one episode', () => {

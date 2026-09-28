@@ -280,7 +280,7 @@ function hasObservationExtras(body) {
     moods.length > 0 ||
     Boolean(body.notes) ||
     body.bbt != null ||
-    body.sexualActivity != null ||
+    body.sexualActivity === true ||
     body.libido != null ||
     Boolean(body.cervicalMucus) ||
     Boolean(body.ovulationTest) ||

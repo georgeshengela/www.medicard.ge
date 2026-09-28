@@ -682,8 +682,12 @@ export async function cycleAccountHasPending(userId: string): Promise<boolean> {
 
 export function formatCycleCachedAtKa(cachedAt: string | null, todayYmd: string): string {
   if (!cachedAt) return '';
-  const day = cachedAt.slice(0, 10);
   const date = new Date(cachedAt);
+  // Local civil day of the sync (the ISO string is UTC — Georgia is UTC+4, so slicing it was a day off at night).
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const day = Number.isNaN(date.getTime())
+    ? cachedAt.slice(0, 10)
+    : `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   const hh = Number.isNaN(date.getTime())
     ? ''
     : `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;

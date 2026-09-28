@@ -657,6 +657,8 @@ export const ka = {
     cycleSetupCta: 'ციკლის დაყენება',
     cycleDayOf: (day: number, length: number) => `ციკლის დღე ${day} · ${length} დღე`,
     cycleNextToday: 'სავარაუდო მენსტრუაცია დღეს',
+    /** Late: calm and factual, no alarm (2026-09-29 audit). */
+    cycleLateBy: (n: number) => `სავარაუდო თარიღიდან ${n} დღე გავიდა`,
     cycleNextTomorrow: 'სავარაუდო მენსტრუაცია ხვალ',
     cycleNextIn: (days: number) => `${days} დღეში სავარაუდო მენსტრუაცია`,
     cyclePregnantLine: (week: number, trimester: number) => `${week}-ე კვირა · ${trimester} ტრიმესტრი`,
@@ -1805,6 +1807,8 @@ export const ka = {
     heroLikely: 'სავარაუდოდ',
     heroToday: 'დღეს',
     heroCycleDayOf: (d: number, n: number) => `ციკლის ${d}-ე დღე · ${n}-დან`,
+    heroLateBy: (n: number) => `სავარაუდო თარიღიდან ${n} დღე`,
+    heroUsualLength: (n: number) => `ჩვეულებრივ ციკლი ${n} დღეა`,
     heroPeriodStarted: 'მენსტრუაცია დაიწყო',
     heroBleedingStarted: 'სისხლდენა დაიწყო',
     heroEndShort: 'დასრულდა',

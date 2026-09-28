@@ -34,6 +34,8 @@ import {
   inferCycleStats,
   parseCycleInsightsJson,
   pickLastPeriodStart,
+  resolveLastPeriodStart,
+  lastLoggedBleedDay,
   resolveForecastAverages,
   stampCalendarPhases,
   todayInTimeZone,
@@ -260,7 +262,8 @@ async function getOrCreateProfile(userId) {
   });
 }
 
-async function syncLastPeriodStart(userId, today = todayInTimeZone()) {
+/** `touched` = dates this request changed; a stored start on one of them that lost its bleed is dropped. */
+async function syncLastPeriodStart(userId, today = todayInTimeZone(), touched = []) {
   const profile = await getOrCreateProfile(userId);
   const logs = await prisma.cycleLog.findMany({
     where: engineLogWhere(userId, today),
@@ -268,12 +271,12 @@ async function syncLastPeriodStart(userId, today = todayInTimeZone()) {
     orderBy: { date: 'asc' },
   });
   const current = toDateKey(profile.lastPeriodStart);
-  const next = pickLastPeriodStart(current, logs);
-  if (next && next !== current) {
+  const next = pickLastPeriodStart(current, logs, undefined, undefined, touched);
+  if (next !== current) {
     await prisma.cycleProfile.update({
       where: { userId },
       data: {
-        lastPeriodStart: new Date(`${next}T00:00:00.000Z`),
+        lastPeriodStart: next ? new Date(`${next}T00:00:00.000Z`) : null,
         ...emptyCycleAiCache(),
       },
     });
@@ -377,7 +380,11 @@ async function loadBundle(userId, clock = null) {
   );
   const averages = resolveForecastAverages(profile, inferred);
 
-  const lastPeriodStart = inferred.lastPeriodStart || toDateKey(profile.lastPeriodStart);
+  const lastPeriodStart = resolveLastPeriodStart(
+    toDateKey(profile.lastPeriodStart),
+    inferred.lastPeriodStart,
+    lastLoggedBleedDay(inferred),
+  );
 
   const rawPredictions = buildPredictions({
     lastPeriodStart,
@@ -387,6 +394,7 @@ async function loadBundle(userId, clock = null) {
     cycleLengths: inferred.cycleGaps,
     isIrregular: profile.isIrregular,
     logs: shapedLogs,
+    today,
   });
   const contraception = interpretContraception(
     {
@@ -1538,6 +1546,7 @@ cycleRouter.put(
       })
       .parse(req.body ?? {});
     const flow = body.flow ?? DEFAULT_BLEED_FLOW;
+    const touched = [];
 
     if (body.action === 'start') {
       const date = assertCycleDateKey(body.date, today);
@@ -1562,6 +1571,7 @@ cycleRouter.put(
       });
       for (const key of plan.clear) {
         await clearBleedDay(req.user.id, key);
+        touched.push(key);
       }
     } else {
       const start = assertCycleDateKey(body.start, today);
@@ -1581,7 +1591,7 @@ cycleRouter.put(
       }
     }
 
-    await syncLastPeriodStart(req.user.id, today);
+    await syncLastPeriodStart(req.user.id, today, touched);
     return res.json(await bundleFor(req));
   }),
 );
@@ -1682,7 +1692,7 @@ cycleRouter.put(
       },
     });
 
-    await syncLastPeriodStart(req.user.id, today);
+    await syncLastPeriodStart(req.user.id, today, [date]);
 
     return res.json({ log: shapeCycleLog(log), bundle: await bundleFor(req) });
   }),
@@ -1695,7 +1705,7 @@ cycleRouter.delete(
     const { today } = await cycleClockForUser(req.user.id, clientTimezoneFromReq(req));
     const date = assertCycleDateKey(z.string().parse(req.params.date), today);
     await prisma.cycleLog.deleteMany({ where: { userId: req.user.id, date } });
-    await syncLastPeriodStart(req.user.id, today);
+    await syncLastPeriodStart(req.user.id, today, [date]);
     return res.json(await bundleFor(req));
   }),
 );

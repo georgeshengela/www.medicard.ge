@@ -583,6 +583,14 @@ export default function CycleHome() {
     setQuickOpen(true);
   };
 
+  /** After a save from this screen: reschedule cycle reminders from the fresh (synced) view. */
+  const resyncReminders = (view: CycleView | null | undefined) => {
+    if (!view || view.stale || view.pendingCount > 0) return;
+    void getCycleReminderPrefs()
+      .then((prefs) => syncCycleReminders(view.canonical, prefs))
+      .catch(() => undefined);
+  };
+
   const endPeriod = () => {
     Alert.alert(ka.cycle.periodEndCta, ka.cycle.periodEndHint, [
       { text: ka.common.cancel, style: 'cancel' },
@@ -599,6 +607,7 @@ export default function CycleHome() {
               if (result.view) {
                 setCycleView(result.view);
                 setBundle(result.view.display);
+                resyncReminders(result.view);
               }
             } catch (err) {
               setError(err instanceof Error ? err.message : ka.common.error);
@@ -1178,6 +1187,7 @@ export default function CycleHome() {
           if (view) {
             setCycleView(view);
             setBundle(view.display);
+            resyncReminders(view);
             if (authReady && user?.id) {
               const gen = ++ttcGen.current;
               pregnancyGen.current = gen;

@@ -274,7 +274,8 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
     const start = bundle?.predictions?.nextPeriodStart;
     if (!start) return null;
     const n = daysBetween(today, start);
-    if (n <= 0) return ka.home.cycleNextToday;
+    if (n < 0) return ka.home.cycleLateBy(-n);
+    if (n === 0) return ka.home.cycleNextToday;
     if (n === 1) return ka.home.cycleNextTomorrow;
     return ka.home.cycleNextIn(n);
   }, [bundle?.predictions?.nextPeriodStart, today]);

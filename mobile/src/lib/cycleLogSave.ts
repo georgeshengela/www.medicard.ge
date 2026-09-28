@@ -11,7 +11,8 @@ export const EMPTY_CYCLE_LOG: CycleLogForm = {
   symptoms: [],
   moods: [],
   sexTags: [],
-  sexual: false,
+  /** null = not answered (nothing sent as "no"); false = the person chose "no". */
+  sexual: null,
   libido: null,
   bbt: '',
   mucus: null,
@@ -44,7 +45,8 @@ export function formFromCycleLog(log: CycleLog | undefined): CycleLogForm {
     symptoms: all.filter((id) => !SEX_IDS.has(id)),
     sexTags: all.filter((id) => SEX_IDS.has(id)),
     moods: log.moods || [],
-    sexual: Boolean(log.sexualActivity) || all.some((id) => SEX_IDS.has(id)),
+    // Stored false cannot be told apart from the pre-2026-09-29 default "no" on every log → show as unanswered.
+    sexual: log.sexualActivity === true || all.some((id) => SEX_IDS.has(id)) ? true : null,
     libido: log.libido,
     bbt: log.bbt != null ? String(log.bbt) : '',
     mucus: log.cervicalMucus,

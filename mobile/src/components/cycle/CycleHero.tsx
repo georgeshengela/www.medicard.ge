@@ -92,17 +92,15 @@ export function CycleHero({
     if (!cycleStart || !cycleLength || hidePredicted) {
       return { fertileDays: null as { from: number; to: number } | null };
     }
-    const toDay = (dateKey: string | null | undefined) => {
-      if (!dateKey) return null;
-      const idx = daysBetween(cycleStart, dateKey) + 1;
-      if (idx < 1 || idx > cycleLength) return null;
-      return idx;
-    };
+    const toDay = (dateKey: string | null | undefined) => (dateKey ? daysBetween(cycleStart, dateKey) + 1 : null);
     const fw = fertilityVisible ? bundle.predictions?.fertileWindow : null;
-    const from = toDay(fw?.start);
-    const to = toDay(fw?.end);
+    const rawFrom = toDay(fw?.start);
+    const rawTo = toDay(fw?.end);
+    // Clip to this cycle instead of dropping a window that crosses its edge.
+    const from = rawFrom != null ? Math.max(1, rawFrom) : null;
+    const to = rawTo != null ? Math.min(cycleLength, rawTo) : null;
     return {
-      fertileDays: from != null && to != null ? { from, to } : null,
+      fertileDays: from != null && to != null && from <= to ? { from, to } : null,
     };
   }, [bundle.predictions, cycleStart, cycleLength, fertilityVisible, hidePredicted]);
 
@@ -164,7 +162,9 @@ export function CycleHero({
         ? { top: ka.cycle.heroLikely, value: ka.cycle.heroToday, bottom: ka.cycle.legendPeriodPredicted, tone: 'period' }
         : forecastOn && inDays != null && inDays > 0
           ? { top: uncertainBleed ? ka.cycle.heroUntilBleeding : ka.cycle.heroUntilPeriod, value: String(inDays), bottom: ka.cycle.heroDaysEstimated }
-          : undefined;
+          : forecastOn && inDays != null && inDays < 0 && day != null
+            ? { top: ka.cycle.cycleDay, value: String(day), bottom: ka.cycle.heroLateBy(-inDays) }
+            : undefined;
   /** "Period started" leads when it is plausible soon (or the rhythm is still unknown / late). */
   const startLeads = !onPeriod && (!forecastOn || predictedToday || (inDays != null && inDays <= 3));
   const startLabel = uncertainBleed ? ka.cycle.heroBleedingStarted : ka.cycle.heroPeriodStarted;
@@ -191,7 +191,9 @@ export function CycleHero({
       <View style={{ paddingHorizontal: 18, marginTop: 2 }}>
         {center && day != null ? (
           <Text style={{ color: c.muted, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 19, textAlign: 'center' }}>
-            {ka.cycle.heroCycleDayOf(day, Math.max(Math.round(cycleLength) || 28, day))}
+            {day > (Math.round(cycleLength) || 28)
+              ? ka.cycle.heroUsualLength(Math.round(cycleLength) || 28)
+              : ka.cycle.heroCycleDayOf(day, Math.round(cycleLength) || 28)}
           </Text>
         ) : (
           <Text style={{ color: statusLine ? c.ink : c.muted, fontFamily: statusLine ? 'NotoSansGeorgian_600SemiBold' : 'NotoSansGeorgian_500Medium', fontSize: 14, lineHeight: 21, textAlign: 'center' }}>

@@ -67,6 +67,13 @@ export function usedCycleLength(bundle: CycleBundle): number {
   return bundle.averages?.usedCycleLength ?? bundle.profile?.avgCycleLength ?? 28;
 }
 
+/**
+ * Civil today for the cycle screens: the server's day, but never behind the device. A cached (offline)
+ * bundle keeps the day it was fetched — without this, reopening offline the next day showed and
+ * saved logs on yesterday (2026-09-29 audit).
+ */
 export function cycleToday(bundle: CycleBundle | null | undefined, fallback: string): string {
-  return bundle?.meta?.today || fallback;
+  const serverToday = bundle?.meta?.today;
+  if (!serverToday) return fallback;
+  return fallback && fallback > serverToday ? fallback : serverToday;
 }

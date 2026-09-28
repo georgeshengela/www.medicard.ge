@@ -64,6 +64,8 @@ function CycleLogScreen() {
   const [saved, setSaved] = useState<string | null>(null);
   const [hasLog, setHasLog] = useState(false);
   const [mode, setMode] = useState('TRACK_PERIOD');
+  /** True only once the day's existing log was read — saving before that would overwrite it with blanks. */
+  const [hydrated, setHydrated] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions(cycleNavHeader(c, ka.cycle.logToday));
@@ -86,6 +88,7 @@ function CycleLogScreen() {
         } else if (typeof prefillNote === 'string' && prefillNote.trim()) {
           setForm({ ...EMPTY_CYCLE_LOG, notes: prefillNote.trim() });
         }
+        setHydrated(true);
       } catch (err) {
         setError(err instanceof ApiError ? err.message : ka.common.error);
       } finally {
@@ -120,7 +123,7 @@ function CycleLogScreen() {
   };
 
   const save = async () => {
-    if (saving || loading) return;
+    if (saving || loading || !hydrated) return;
     const ticket = task.begin();
     if (!ticket) return;
     setSaving(true);
@@ -246,7 +249,7 @@ function CycleLogScreen() {
             label={saving ? ka.common.loading : ka.cycle.saveLog}
             onPress={save}
             loading={saving}
-            disabled={saving}
+            disabled={saving || !hydrated}
           />
           {hasLog ? (
             <Pressable
