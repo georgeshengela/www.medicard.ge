@@ -3,18 +3,32 @@
  * The owner hands the shift to the Director („ცვლის ჩაბარება“) and takes it back. While on shift
  * the Director (Claude Code routine) reads aggregate metrics, writes to the owner on Telegram and
  * queues proposals; nothing is executed until the owner approves (here or with the Telegram buttons).
+ * Layout lives in v4/director.css; surfaces come from the s-* components.
  */
 (function adminV4Director(global) {
   const doc = document;
   const $ = (id) => doc.getElementById(id);
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ico = (n) => (typeof global.icon === 'function' ? global.icon(n) : '');
-  const when = (iso) => (iso ? new Date(iso).toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi', dateStyle: 'short', timeStyle: 'short' }) : '—');
+  const TBILISI = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Tbilisi', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  const when = (iso) => {
+    if (!iso) return '—';
+    const p = Object.fromEntries(TBILISI.formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+    return `${p.day}.${p.month} · ${p.hour}:${p.minute}`;
+  };
+  const ago = (iso) => {
+    const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (min < 1) return 'ახლახან';
+    if (min < 60) return `${min} წთ წინ`;
+    if (min < 1440) return `${Math.round(min / 60)} სთ წინ`;
+    return `${Math.round(min / 1440)} დღის წინ`;
+  };
   const api = (path, opts) => global.api(`/director${path}`, opts);
   const toast = (m, t) => global.toast?.(m, t);
   const skel = () => `<div class="s-stack"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div></div>`;
 
   const KIND = { decision: 'გადაწყვეტილება', post: 'პოსტი', email: 'მეილი', task: 'დავალება', team: 'გუნდი', change: 'ცვლილება' };
+  const KIND_ICON = { decision: 'zap', post: 'image', email: 'mail', task: 'check', team: 'users', change: 'settings' };
   const STATUS = {
     pending: ['ელოდება', 'is-warn'], approved: ['დადასტურდა', 'is-info'], rejected: ['უარყოფილია', 'is-bad'],
     done: ['შესრულდა', 'is-ok'], expired: ['გაუქმდა', ''],
@@ -33,66 +47,103 @@
   let pollTimer = null;
   let pairing = null;
 
-  const check = (ok, label, hint) => `<div class="s-switch-row"><div><b>${ok ? '✅' : '⬜'} ${esc(label)}</b>${hint ? `<small>${hint}</small>` : ''}</div></div>`;
-
   function heroCard(d) {
     const s = d.state;
-    const ready = d.config.telegram && s.paired && d.config.brainToken;
-    return `<section class="s-card">
-      <header class="s-card-head"><div>
-        <h3>${s.active ? '🟢 დირექტორი ცვლაზეა' : '⚪ დირექტორი ცვლაზე არ არის'}</h3>
-        <p>${s.active
-          ? `ცვლა ჩაიბარა ${when(s.activatedAt)}-ზე (${esc(s.activatedBy || '')}). აკვირდება მეტრიკებს, გწერს ტელეგრამში და ყველაფერს შენი თანხმობით აკეთებს.`
-          : 'როცა წახვალ, ჩააბარე ცვლა. დირექტორი მიხედავს MEDICARD-ს, დილით მოგწერს ბრიფს და ყველა ქმედებაზე ტელეგრამში გკითხავს.'}</p>
-      </div></header>
-      <div class="s-card-body" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center">
-        <button type="button" class="btn ${s.active ? '' : 'primary'}" data-shift style="min-width:220px;font-size:15px;padding:12px 22px">
-          ${s.active ? 'ცვლის დაბრუნება' : 'ცვლის ჩაბარება'}
-        </button>
-        <span class="s-muted" style="font-size:12.5px">ბოლო მუშაობა: <b>${when(s.lastBrainAt)}</b> · ბოლო გაღვიძება: <b>${when(s.lastTriggerAt)}</b></span>
-        ${ready ? '' : '<span class="s-badge is-warn">გამართვა დასასრულებელია ↓</span>'}
+    const pending = d.proposals.filter((p) => p.status === 'pending').length;
+    return `<section class="s-card dr-hero">
+      <header class="s-card-head">
+        <div>
+          <div class="dr-hero-title"><span class="dr-dot ${s.active ? 'is-on' : ''}"></span><h3>${s.active ? 'დირექტორი ცვლაზეა' : 'დირექტორი ცვლაზე არ არის'}</h3></div>
+          <p>${s.active
+            ? `ცვლა ჩაიბარა ${esc(when(s.activatedAt))}. აკვირდება მეტრიკებს, გწერს ტელეგრამში და ყველაფერს შენი თანხმობით აკეთებს.`
+            : 'როცა წახვალ, ჩააბარე ცვლა: დირექტორი მიხედავს MEDICARD-ს, დილით მოგწერს ბრიფს და ყოველ ქმედებაზე ტელეგრამში გკითხავს.'}</p>
+        </div>
+        <button type="button" class="btn ${s.active ? '' : 'primary'} dr-shift" data-shift>${s.active ? 'ცვლის დაბრუნება' : 'ცვლის ჩაბარება'}</button>
+      </header>
+      <div class="s-metrics">
+        <div class="s-metric"><span>სტატუსი</span><strong>${s.active ? 'მუშაობს' : 'პაუზა'}</strong><small>${s.active ? esc(s.activatedBy || '') : 'ცვლა შენთანაა'}</small></div>
+        <div class="s-metric ${pending ? 'is-warn' : ''}"><span>თანხმობას ელოდება</span><strong>${pending}</strong><small>შეთავაზება</small></div>
+        <div class="s-metric"><span>ბოლო მუშაობა</span><strong>${s.lastBrainAt ? esc(ago(s.lastBrainAt)) : '—'}</strong><small>${s.lastBrainAt ? esc(when(s.lastBrainAt)) : 'ჯერ არ უმუშავია'}</small></div>
+        <div class="s-metric"><span>ტელეგრამი</span><strong>${s.paired ? 'ჩართული' : '—'}</strong><small>${d.config.bot?.username ? `@${esc(d.config.bot.username)}` : 'ბოტი არ არის'}</small></div>
       </div>
     </section>`;
   }
 
-  function setupCard(d) {
+  function steps(d) {
     const c = d.config;
     const s = d.state;
-    const bot = c.bot?.username ? `@${esc(c.bot.username)}` : 'ბოტი';
+    const botOk = c.telegram && !c.bot?.error;
+    return [
+      {
+        done: botOk,
+        title: 'ტელეგრამის ბოტი',
+        hint: !c.telegram ? '@BotFather-ში შექმენი ბოტი და Render-ში ჩასვი <code>TELEGRAM_BOT_TOKEN</code>.'
+          : c.bot?.error ? 'ტოკენი არ მუშაობს — შეამოწმე <code>TELEGRAM_BOT_TOKEN</code>.' : `@${esc(c.bot?.username || '')}`,
+      },
+      {
+        done: c.brainToken,
+        title: 'დირექტორის გასაღები',
+        hint: c.brainToken ? 'Render-ში დაყენებულია.' : 'Render-ში <code>DIRECTOR_API_TOKEN</code> — შემთხვევითი, მინიმუმ 32 სიმბოლო.',
+      },
+      {
+        done: Boolean(c.webhook?.set),
+        title: 'ბოტის მიერთება სერვერზე',
+        hint: c.webhook?.lastError ? `ბოლო შეცდომა: ${esc(c.webhook.lastError)}` : 'ერთი დაჭერა — ტელეგრამი შენს მესიჯებს medicard.ge-ზე გამოგზავნის.',
+        action: botOk ? `<button type="button" class="btn ${c.webhook?.set ? 'ghost' : ''}" data-webhook>${c.webhook?.set ? 'თავიდან' : 'მიერთება'}</button>` : '',
+      },
+      {
+        done: s.paired,
+        title: 'შენი ტელეგრამი',
+        hint: s.paired ? 'დირექტორი მხოლოდ ამ ჩატს პასუხობს.' : 'გაიხსნება ბოტი — დააჭირე Start.',
+        action: s.paired ? '<button type="button" class="btn ghost" data-unpair>გათიშვა</button>'
+          : (botOk && c.webhook?.set ? '<button type="button" class="btn" data-pair>დაკავშირება</button>' : ''),
+      },
+      {
+        done: c.routine,
+        optional: true,
+        title: 'მყისიერი პასუხი',
+        hint: c.routine ? 'შენს მესიჯზე 1–2 წუთში პასუხობს.' : '<code>DIRECTOR_ROUTINE_URL</code> + <code>DIRECTOR_ROUTINE_TOKEN</code>. მის გარეშე დირექტორი საათში ერთხელ მუშაობს.',
+      },
+    ];
+  }
+
+  function stepRows(list) {
+    return list.map((x, i) => `<div class="dr-step ${x.done ? 'is-done' : ''}">
+        <span class="dr-step-n">${x.done ? ico('check') : i + 1}</span>
+        <div><b>${esc(x.title)}</b><small>${x.hint}</small></div>
+        <div class="dr-step-aside">${x.action || ''}${x.done ? '<span class="s-badge is-ok">მზადაა</span>'
+          : x.optional ? '<span class="s-badge is-plain">არჩევითი</span>' : '<span class="s-badge is-warn">საჭიროა</span>'}</div>
+      </div>`).join('');
+  }
+
+  function setupCard(d, left) {
+    const list = steps(d);
+    if (!left) {
+      return `<section class="s-card"><details class="s-details" style="border-top:0"><summary>გამართვა · ყველაფერი მზადაა</summary>
+        <div style="padding:0">${stepRows(list)}</div></details></section>`;
+    }
+    const pair = pairing && !d.state.paired
+      ? `<div class="s-callout is-ok dr-pair">${ico('send')}<p>გახსენი <a href="${esc(pairing.link)}" target="_blank" rel="noopener">${esc(pairing.link)}</a> და დააჭირე Start. კოდი <b>${esc(pairing.code)}</b> მოქმედებს 10 წუთი.</p></div>`
+      : '';
     return `<section class="s-card">
-      <header class="s-card-head"><div><h3>გამართვა</h3><p>ერთხელ გასაკეთებელი. ტოკენები Render-ის env-შია და აქ არასოდეს ჩანს.</p></div></header>
-      <div class="s-card-body is-flush">
-        ${check(c.telegram, 'ტელეგრამის ბოტი', c.telegram ? `${bot}${c.bot?.error ? ' — ტოკენი არ მუშაობს' : ''}` : '@BotFather-ში შექმენი ბოტი და Render-ში ჩასვი <code>TELEGRAM_BOT_TOKEN</code>.')}
-        ${check(c.telegram && s.paired, 'შენი ტელეგრამი დაკავშირებულია', s.paired ? 'დირექტორი მხოლოდ ამ ჩატს პასუხობს.' : 'ჯერ „webhook-ის დაყენება“, მერე „დაკავშირება“ და ბმულით ბოტს Start.')}
-        ${check(c.brainToken, 'დირექტორის გასაღები', c.brainToken ? '' : 'Render-ში <code>DIRECTOR_API_TOKEN</code> (მინ. 32 სიმბოლო, შემთხვევითი).')}
-        ${check(c.routine, 'მყისიერი გაღვიძება', c.routine ? 'შენს მესიჯზე დირექტორი 1–2 წუთში პასუხობს.' : 'არჩევითი: <code>DIRECTOR_ROUTINE_URL</code> + <code>DIRECTOR_ROUTINE_TOKEN</code>. მის გარეშე დირექტორი საათში ერთხელ მუშაობს.')}
-        ${pairing ? `<div class="s-callout is-ok" style="margin:12px 18px">${ico('check')}<p>გახსენი <a href="${esc(pairing.link)}" target="_blank" rel="noopener">${esc(pairing.link)}</a> და დააჭირე Start. კოდი: <b>${esc(pairing.code)}</b> (10 წუთი).</p></div>` : ''}
-      </div>
-      <footer class="s-card-foot">
-        <span class="s-foot-note">${c.telegram ? '' : 'ბოტის ტოკენის გარეშე ღილაკები არ იმუშავებს.'}</span>
-        <button type="button" class="btn ghost" data-webhook ${c.telegram ? '' : 'disabled'}>webhook-ის დაყენება</button>
-        ${s.paired
-          ? '<button type="button" class="btn ghost" data-unpair>გათიშვა</button>'
-          : `<button type="button" class="btn" data-pair ${c.telegram ? '' : 'disabled'}>ტელეგრამის დაკავშირება</button>`}
-      </footer>
+      <header class="s-card-head"><div><h3>გამართვა · დარჩა ${left}</h3><p>ერთხელ გასაკეთებელი. ტოკენები Render-ის env-შია და აქ არასოდეს ჩანს.</p></div></header>
+      <div class="s-card-body is-flush">${stepRows(list)}</div>${pair}
     </section>`;
   }
 
   function proposalItem(p) {
     const [label, cls] = STATUS[p.status] || [p.status, ''];
-    return `<article class="s-feed-item" style="padding:14px 18px;border-top:1px solid var(--s-line-soft)">
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <span class="s-badge is-plain">${esc(KIND[p.kind] || p.kind)}</span>
-        <span class="s-badge ${cls}">${esc(label)}</span>
-        <b style="font-size:13.5px">${esc(p.title)}</b>
-        <small class="s-muted" style="margin-left:auto">${when(p.createdAt)}</small>
+    return `<article class="s-feed-item dr-proposal">
+      <span class="s-avatar">${ico(KIND_ICON[p.kind] || 'spark')}</span>
+      <div>
+        <header><b>${esc(p.title)}</b><span class="s-badge is-plain">${esc(KIND[p.kind] || p.kind)}</span><span class="s-badge ${cls}">${esc(label)}</span><span>${esc(when(p.createdAt))}</span></header>
+        <p class="s-feed-body">${esc(p.body)}</p>
+        ${p.ownerNote ? `<p class="dr-note"><b>შენი შენიშვნა:</b> ${esc(p.ownerNote)}</p>` : ''}
+        ${p.result ? `<p class="dr-note"><b>შედეგი:</b> ${esc(p.result)}</p>` : ''}
+        ${p.status === 'pending' ? `<div class="s-feed-actions">
+          <button type="button" class="btn primary" data-decide="${esc(p.id)}" data-approve="1">${ico('check')} თანხმობა</button>
+          <button type="button" class="btn" data-decide="${esc(p.id)}" data-approve="0">${ico('x')} უარი</button></div>` : ''}
       </div>
-      <p style="white-space:pre-wrap;margin:8px 0 0;font-size:13px;line-height:1.55">${esc(p.body)}</p>
-      ${p.ownerNote ? `<p style="margin:6px 0 0;font-size:12.5px"><b>შენი შენიშვნა:</b> ${esc(p.ownerNote)}</p>` : ''}
-      ${p.result ? `<p style="margin:6px 0 0;font-size:12.5px"><b>შედეგი:</b> ${esc(p.result)}</p>` : ''}
-      ${p.status === 'pending' ? `<div style="display:flex;gap:8px;margin-top:10px">
-        <button type="button" class="btn primary" data-decide="${esc(p.id)}" data-approve="1">✅ თანხმობა</button>
-        <button type="button" class="btn ghost" data-decide="${esc(p.id)}" data-approve="0">❌ უარი</button></div>` : ''}
     </article>`;
   }
 
@@ -103,45 +154,49 @@
       <header class="s-card-head"><div><h3>შენს თანხმობას ელოდება${pending.length ? ` · ${pending.length}` : ''}</h3>
         <p>დირექტორი არაფერს აკეთებს დაუდასტურებლად. იგივე ღილაკები ტელეგრამშიც მოდის.</p></div></header>
       <div class="s-card-body is-flush">
-        ${pending.length ? pending.map(proposalItem).join('') : `<div class="s-empty">${ico('check')}<strong>რიგი ცარიელია</strong></div>`}
-        ${rest.length ? `<details style="border-top:1px solid var(--s-line-soft)"><summary style="padding:12px 18px;cursor:pointer;font-size:13px">ისტორია (${rest.length})</summary>${rest.map(proposalItem).join('')}</details>` : ''}
+        ${pending.length ? pending.map(proposalItem).join('') : `<div class="s-empty">${ico('check')}<strong>რიგი ცარიელია</strong><span>ახალი შეთავაზება აქაც და ტელეგრამშიც გამოჩნდება.</span></div>`}
       </div>
+      ${rest.length ? `<details class="s-details"><summary>ისტორია · ${rest.length}</summary><div style="padding:0">${rest.map(proposalItem).join('')}</div></details>` : ''}
     </section>`;
   }
 
   function chatCard(d) {
     const msgs = d.messages.slice(-40);
+    const bubble = (m) => `<div class="dr-msg${m.direction === 'owner' ? ' is-owner' : ''}${m.direction === 'system' ? ' is-system' : ''}">
+        <span class="dr-msg-meta">${esc(FROM[m.direction] || m.direction)} · ${esc(when(m.createdAt))}${m.direction === 'owner' && !m.handledAt ? ' · ელოდება პასუხს' : ''}</span>
+        <div class="dr-bubble">${esc(m.text)}</div></div>`;
     return `<section class="s-card">
-      <header class="s-card-head"><div><h3>საუბარი</h3><p>იგივე, რაც ტელეგრამში. აქედან დაწერილსაც დირექტორი ტელეგრამში გიპასუხებს.</p></div></header>
-      <div class="s-card-body" style="display:grid;gap:8px;max-height:460px;overflow:auto" data-chat>
-        ${msgs.length ? msgs.map((m) => `<div style="justify-self:${m.direction === 'owner' ? 'end' : 'start'};max-width:80%;background:${m.direction === 'owner' ? 'var(--s-accent-soft, var(--s-sunken))' : 'var(--s-sunken)'};border-radius:12px;padding:8px 12px">
-          <small class="s-muted">${esc(FROM[m.direction] || m.direction)} · ${when(m.createdAt)}${m.direction === 'owner' && !m.handledAt ? ' · ⏳' : ''}</small>
-          <div style="white-space:pre-wrap;font-size:13px;line-height:1.5">${esc(m.text)}</div></div>`).join('')
-          : '<div class="s-empty"><strong>ჯერ არაფერი</strong><span>ჩააბარე ცვლა ან მიწერე.</span></div>'}
+      <header class="s-card-head"><div><h3>საუბარი</h3><p>იგივე, რაც ტელეგრამში. აქ დაწერილზეც ტელეგრამში გიპასუხებს.</p></div></header>
+      ${msgs.length ? `<div class="dr-chat" data-chat>${msgs.map(bubble).join('')}</div>` : `<div class="s-empty">${ico('message')}<strong>ჯერ არაფერი</strong><span>ჩააბარე ცვლა ან მიწერე.</span></div>`}
+      <div class="dr-compose">
+        <textarea data-say rows="1" maxlength="4000" placeholder="მიწერე დირექტორს…" aria-label="მესიჯი დირექტორს"></textarea>
+        <button type="button" class="btn primary" data-send>${ico('send')} გაგზავნა</button>
       </div>
-      <footer class="s-card-foot" style="gap:8px">
-        <textarea data-say rows="2" maxlength="4000" placeholder="მიწერე დირექტორს…" style="flex:1;min-width:0;resize:vertical"></textarea>
-        <button type="button" class="btn primary" data-send>გაგზავნა</button>
-      </footer>
     </section>`;
   }
 
   function journalCard(d) {
     const mem = d.memory || [];
     return `<section class="s-card">
-      <header class="s-card-head"><div><h3>ჟურნალი და მეხსიერება</h3><p>რას აკეთებდა და რა ახსოვს: სტრატეგია, მიზნები, გადაწყვეტილებები.</p></div></header>
+      <header class="s-card-head"><div><h3>ჟურნალი</h3><p>რას აკეთებდა დირექტორი და რა გადაწყდა.</p></div></header>
       <div class="s-card-body is-flush">
-        ${d.journal.length ? d.journal.map((j) => `<div class="s-switch-row" style="padding:10px 18px"><div><b style="font-weight:500">${esc(j.summary)}</b><small>${esc(j.kind)} · ${when(j.createdAt)}</small></div></div>`).join('') : '<div class="s-empty"><strong>ჟურნალი ცარიელია</strong></div>'}
-        ${mem.length ? `<details style="border-top:1px solid var(--s-line-soft)"><summary style="padding:12px 18px;cursor:pointer;font-size:13px">მეხსიერება (${mem.length})</summary>
-          ${mem.map((m) => `<div style="padding:10px 18px;border-top:1px solid var(--s-line-soft)"><b style="font-size:12.5px">${esc(m.key)}</b><div style="white-space:pre-wrap;font-size:12.5px;color:var(--s-muted)">${esc(m.value)}</div></div>`).join('')}</details>` : ''}
+        ${d.journal.length ? d.journal.map((j) => `<div class="dr-log"><time>${esc(when(j.createdAt))}</time><span>${esc(j.summary)}</span></div>`).join('') : `<div class="s-empty">${ico('file')}<strong>ჟურნალი ცარიელია</strong></div>`}
       </div>
+      ${mem.length ? `<details class="s-details"><summary>მეხსიერება · ${mem.length}</summary><div>${mem.map((m) => `<div class="dr-mem"><b>${esc(m.key)}</b><div>${esc(m.value)}</div></div>`).join('')}</div></details>` : ''}
     </section>`;
   }
 
   function paint(root) {
     const scroll = root.querySelector('[data-chat]')?.scrollTop;
     const draft = root.querySelector('[data-say]')?.value || '';
-    root.innerHTML = `<div class="s-stack">${heroCard(data)}${proposalsCard(data)}${chatCard(data)}${setupCard(data)}${journalCard(data)}</div>`;
+    const left = steps(data).filter((x) => !x.done && !x.optional).length;
+    root.innerHTML = `<div class="s-stack">
+      ${heroCard(data)}
+      ${left ? setupCard(data, left) : ''}
+      <div class="dr-grid">${proposalsCard(data)}${chatCard(data)}</div>
+      ${journalCard(data)}
+      ${left ? '' : setupCard(data, 0)}
+    </div>`;
     const chat = root.querySelector('[data-chat]');
     if (chat) chat.scrollTop = scroll ?? chat.scrollHeight;
     const say = root.querySelector('[data-say]');
@@ -168,7 +223,7 @@
     });
     root.querySelector('[data-webhook]')?.addEventListener('click', () => void act(async () => {
       const r = await api('/telegram/webhook', { method: 'POST' });
-      toast(r.lastError ? `webhook: ${r.lastError}` : 'webhook დაყენდა', r.lastError ? 'warn' : 'ok');
+      toast(r.lastError ? `ტელეგრამი: ${r.lastError}` : 'ბოტი მიერთდა', r.lastError ? 'warn' : 'ok');
       return api('');
     }));
     root.querySelector('[data-pair]')?.addEventListener('click', () => void act(async () => {

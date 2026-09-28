@@ -1,0 +1,53 @@
+/* MediCard Admin V4 — #/director layout only. Surfaces, type and colours come from s-* components. */
+
+.dr-hero .s-card-head { align-items: center; padding: 20px 22px; }
+.dr-hero-title { display: flex; align-items: center; gap: 10px; }
+.dr-dot { width: 10px; height: 10px; border-radius: 99px; background: var(--s-line-strong); flex: none; }
+.dr-dot.is-on { background: var(--s-ok); box-shadow: 0 0 0 4px var(--s-ok-soft); }
+.dr-hero .s-card-head h3 { font-size: 17px; }
+.dr-hero .s-card-head p { margin-top: 6px; }
+html body .workspace .dr-hero .btn.dr-shift { height: 40px; padding: 0 20px; font-size: 14px; }
+.dr-hero .s-metrics { border: 0; border-top: 1px solid var(--s-line-soft); border-radius: 0 0 var(--s-radius-lg) var(--s-radius-lg); box-shadow: none; }
+
+.dr-grid { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+@media (max-width: 1100px) { .dr-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Setup steps */
+.dr-step { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 18px; border-top: 1px solid var(--s-line-soft); }
+.dr-step:first-child { border-top: 0; }
+.dr-step-n { width: 28px; height: 28px; border-radius: 99px; display: grid; place-items: center; background: var(--s-sunken); color: var(--s-muted); font-size: 12.5px; font-weight: 650; }
+.dr-step.is-done .dr-step-n { background: var(--s-ok-soft); color: var(--s-ok); }
+.dr-step b { display: block; font-size: 13.5px; font-weight: 600; color: var(--s-ink); }
+.dr-step small { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.5; color: var(--s-muted); }
+.dr-step code { font-size: 12px; padding: 1px 5px; border-radius: 5px; background: var(--s-sunken); color: var(--s-text-2); }
+.dr-step-aside { display: flex; align-items: center; gap: 8px; }
+.dr-pair { margin: 0 18px 16px; }
+.dr-pair a { color: inherit; font-weight: 600; word-break: break-all; }
+
+/* Proposals */
+.dr-proposal .s-avatar .icon { width: 16px; height: 16px; }
+.dr-note { margin: 8px 0 0; padding: 8px 12px; border-radius: var(--s-radius); background: var(--s-sunken); font-size: 12.5px; line-height: 1.55; color: var(--s-text-2); }
+.dr-note b { color: var(--s-ink); font-weight: 600; }
+
+/* Conversation */
+.dr-chat { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; max-height: 480px; overflow-y: auto; }
+.dr-msg { max-width: 82%; align-self: flex-start; }
+.dr-msg.is-owner { align-self: flex-end; }
+.dr-msg-meta { display: block; margin: 0 4px 4px; font-size: 11.5px; color: var(--s-faint); }
+.dr-msg.is-owner .dr-msg-meta { text-align: right; }
+.dr-bubble { padding: 9px 13px; border-radius: 14px; background: var(--s-sunken); color: var(--s-text); font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dr-msg.is-owner .dr-bubble { background: var(--s-accent-soft); color: var(--s-accent-ink); border-bottom-right-radius: 4px; }
+.dr-msg:not(.is-owner) .dr-bubble { border-bottom-left-radius: 4px; }
+.dr-msg.is-system .dr-bubble { background: transparent; border: 1px dashed var(--s-line); color: var(--s-muted); }
+.dr-compose { display: flex; gap: 10px; align-items: flex-end; padding: 12px 18px; border-top: 1px solid var(--s-line-soft); background: var(--s-raised); border-radius: 0 0 var(--s-radius-lg) var(--s-radius-lg); }
+html body .workspace .dr-compose textarea { flex: 1; min-width: 0; min-height: 40px; max-height: 160px; resize: vertical; padding: 9px 12px; box-sizing: border-box; font: inherit; font-size: 13.5px; }
+
+/* Journal */
+.dr-log { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 14px; padding: 11px 18px; border-top: 1px solid var(--s-line-soft); font-size: 13px; }
+.dr-log:first-child { border-top: 0; }
+.dr-log time { color: var(--s-faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dr-log span { color: var(--s-text); }
+.dr-mem { padding: 10px 0; border-top: 1px solid var(--s-line-soft); }
+.dr-mem:first-child { border-top: 0; }
+.dr-mem b { display: block; font-size: 12.5px; color: var(--s-ink); }
+.dr-mem div { white-space: pre-wrap; font-size: 12.5px; color: var(--s-muted); }

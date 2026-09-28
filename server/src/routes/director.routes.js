@@ -37,7 +37,13 @@ async function overview() {
     store.readMemory(),
   ]);
   let bot = null;
-  if (tg.telegramConfigured()) bot = await tg.getMe().then((me) => ({ username: me.username })).catch(() => ({ error: true }));
+  let webhook = null;
+  if (tg.telegramConfigured()) {
+    [bot, webhook] = await Promise.all([
+      tg.getMe().then((me) => ({ username: me.username })).catch(() => ({ error: true })),
+      tg.getWebhookInfo().then((w) => ({ set: /\/api\/director\/telegram$/.test(w.url || ''), lastError: w.last_error_message || null })).catch(() => null),
+    ]);
+  }
   return {
     state: {
       active: state.active,
@@ -50,6 +56,7 @@ async function overview() {
     config: {
       telegram: tg.telegramConfigured(),
       bot,
+      webhook,
       brainToken: Boolean(process.env.DIRECTOR_API_TOKEN),
       routine: routineConfigured(),
     },
