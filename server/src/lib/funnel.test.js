@@ -200,7 +200,8 @@ describe('funnel install script', () => {
     assert.throws(() => funnelStatements('DROP TABLE "FunnelEvent";'));
     assert.throws(() => funnelStatements('CREATE TABLE IF NOT EXISTS "User" (id TEXT);'));
     const pkg = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'));
-    assert.match(pkg.scripts.release, /install-funnel\.mjs/);
+    // release runs `npm run db:install` (see installChain.test.js); the chain holds the script.
+    assert.match(pkg.scripts['db:install'], /install-funnel\.mjs/);
     assert.match(readFileSync(new URL('../../prisma/schema.prisma', import.meta.url), 'utf8'), /^model FunnelEvent \{/m);
   });
 });

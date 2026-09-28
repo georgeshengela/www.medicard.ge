@@ -251,7 +251,9 @@ export function renderEmail({ content, vars = {}, allowed = CAMPAIGN_VARS, categ
   const unsubLinks = unsub
     ? ` <a href="${escapeHtml(unsub)}" style="color:#64748b;text-decoration:underline;">გამოწერის გაუქმება</a> · <a href="${escapeHtml(unsub)}" style="color:#64748b;text-decoration:underline;" lang="en">Unsubscribe</a>`
     : '';
-  const footerNoteHtml = marketing ? `${escapeHtml(MARKETING_NOTE)}${unsubLinks}` : escapeHtml(SERVICE_NOTE);
+  // 'support' = an admin's answer from #/support: no marketing or account footer, just who wrote.
+  const SUPPORT_NOTE = 'ეს არის მედიქარდის მხარდაჭერის პასუხი შენს წერილზე. უბრალოდ უპასუხე ამ წერილს.';
+  const footerNoteHtml = marketing ? `${escapeHtml(MARKETING_NOTE)}${unsubLinks}` : escapeHtml(category === 'support' ? SUPPORT_NOTE : SERVICE_NOTE);
 
   const html = `<!DOCTYPE html>
 <html lang="ka" xmlns="http://www.w3.org/1999/xhtml">
@@ -318,7 +320,7 @@ export function renderEmail({ content, vars = {}, allowed = CAMPAIGN_VARS, categ
     `${support} · ${PRIVACY_URL}`,
     marketing
       ? `ეს წერილი მიიღე, რადგან აპში ჩართე „სიახლეები და რჩევები ელფოსტით“.${unsub ? `\nგამოწერის გაუქმება / Unsubscribe: ${unsub}` : ''}`
-      : 'ეს სერვისული წერილია შენი მედიქარდის ანგარიშის შესახებ.',
+      : category === 'support' ? SUPPORT_NOTE : 'ეს სერვისული წერილია შენი მედიქარდის ანგარიშის შესახებ.',
   ].filter(Boolean);
 
   return { subject, preheader, html, text: textParts.join('\n\n') };

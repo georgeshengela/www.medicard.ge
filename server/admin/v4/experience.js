@@ -47,7 +47,7 @@
   /* ─────────────── Registry (derived from the sidebar, the single source) ─────────────── */
   const NAV_KEYS = {
     overview: 'o', users: 'u', push: 'p', 'poster-studio': 'i', nutrition: 'n', community: 'c', medipulsi: 'm',
-    health: 'h', ai: 'd', rewards: 'r', orders: 'e', sms: 'x', pharmacy: 'f', quality: 'q', testing: 't', audit: 'a', settings: 's', quests: 'k', features: 'l', funnel: 'v', email: 'j',
+    health: 'h', ai: 'd', rewards: 'r', orders: 'e', sms: 'x', pharmacy: 'f', quality: 'q', testing: 't', audit: 'a', settings: 's', quests: 'k', features: 'l', funnel: 'v', email: 'j', support: 'b',
   };
   const SUBPAGES = [
     ['push', 'brain', 'გადაწყვეტილებები', 'Brain decisions'],
@@ -65,6 +65,8 @@
     ['email', 'templates', 'ელფოსტის შაბლონები', 'email templates welcome password reset'],
     ['email', 'campaigns', 'ელფოსტის კამპანიები', 'email campaigns newsletter marketing'],
     ['email', 'log', 'ელფოსტის ჟურნალი', 'email log sent failed'],
+    ['support', 'inbox', 'მხარდაჭერა — შემოსული', 'support inbox mail reply შემოსული'],
+    ['support', 'snippets', 'მხარდაჭერის შაბლონები', 'support snippets canned replies'],
   ];
 
   function pages() {
@@ -179,7 +181,7 @@
     const tab = currentTab();
     const want = new URLSearchParams(location.hash.split('?')[1] || '').get('tab');
     if (!want) return;
-    const attr = { push: 'data-v3-sub', rewards: 'data-rewards-sub', email: 'data-email-sub' }[tab];
+    const attr = { push: 'data-v3-sub', rewards: 'data-rewards-sub', email: 'data-email-sub', support: 'data-support-sub' }[tab];
     if (!attr) return;
     const btn = doc.querySelector(`#tab-${tab} [${attr}="${CSS.escape(want)}"]`);
     if (btn && !btn.classList.contains('is-active') && btn.getAttribute('aria-selected') !== 'true') btn.click();

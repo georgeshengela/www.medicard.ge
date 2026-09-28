@@ -3,8 +3,9 @@
  *
  * Resend dashboard → Webhooks → endpoint https://medicard.ge/api/email/webhook with events
  * email.sent, email.delivered, email.delivery_delayed, email.bounced, email.complained,
- * email.opened, email.clicked. Its signing secret goes to RESEND_WEBHOOK_SECRET. Without the
- * secret the endpoint answers 503 — unsigned events are never accepted.
+ * email.opened, email.clicked — and email.received for the support inbox (src/lib/support/).
+ * Its signing secret goes to RESEND_WEBHOOK_SECRET. Without the secret the endpoint answers
+ * 503 — unsigned events are never accepted.
  *
  * Signature (https://docs.svix.com/receiving/verifying-payloads/how-manual):
  *   signed = `${svix-id}.${svix-timestamp}.${raw body}`, key = base64(secret without "whsec_"),
@@ -13,6 +14,7 @@
 import crypto from 'node:crypto';
 import { prisma } from '../prisma.js';
 import { hashEmail } from './address.js';
+import { applyInboundEmailEvent } from '../support/inbound.js';
 
 export const WEBHOOK_TOLERANCE_SEC = 5 * 60;
 
@@ -104,4 +106,10 @@ export async function applyEmailWebhookEvent(event, { db = prisma } = {}) {
     }
   }
   return { status, updated, suppressed };
+}
+
+/** One verified webhook event → inbound support mail or outbound delivery status. */
+export async function dispatchEmailWebhookEvent(event, deps = {}) {
+  if (event?.type === 'email.received') return applyInboundEmailEvent(event, deps);
+  return applyEmailWebhookEvent(event, deps);
 }

@@ -335,3 +335,46 @@ html body .v3-user-page .s-insights h3 .icon { width: 16px; height: 16px; color:
 .s-preview-text { margin: 0; max-height: 420px; overflow: auto; padding: 14px; border: 1px solid var(--s-line); border-radius: var(--s-radius-sm); background: var(--s-sunken); font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; color: var(--s-text); }
 .s-var-chip { cursor: pointer; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .s-field textarea.is-code { font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 260px; resize: vertical; }
+
+/* ─── Support inbox (#/support) ─── */
+.v3-sidebar .nav .s-nav-count { margin-left: auto; min-width: 18px; height: 18px; padding: 0 6px; box-sizing: border-box; border-radius: 99px; display: inline-grid; place-items: center; background: var(--s-accent); color: #fff; font-size: 11px; font-weight: 650; line-height: 1; }
+.v3-sidebar .nav .s-nav-count[hidden] { display: none; }
+.s-inbox { display: grid; gap: 16px; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); align-items: start; width: 100%; }
+@media (max-width: 1100px) { .s-inbox { grid-template-columns: minmax(0, 1fr); } }
+.s-inbox > * { min-width: 0; }
+.s-inbox-list { position: sticky; top: 12px; }
+.s-segment.s-segment-wrap { flex-wrap: wrap; overflow: visible; }
+.s-inbox-filters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.s-inbox-filters .s-field { flex: 1 1 100%; }
+.s-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--s-text-2); cursor: pointer; }
+.s-thread-list { list-style: none; margin: 0; padding: 0; max-height: calc(100vh - 330px); min-height: 200px; overflow: auto; }
+.s-thread-row { display: grid; gap: 4px; width: 100%; padding: 12px 18px; border: 0; border-top: 1px solid var(--s-line-soft); background: transparent; text-align: left; font: inherit; color: var(--s-text); cursor: pointer; }
+.s-thread-list li:first-child .s-thread-row { border-top: 0; }
+.s-thread-row:hover { background: var(--s-hover); }
+.s-thread-row.is-active { background: var(--s-accent-soft); }
+.s-thread-row.is-unread b, .s-thread-row.is-unread .s-thread-subject { color: var(--s-ink); font-weight: 650; }
+.s-thread-top { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; }
+.s-thread-top b { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-thread-top time { margin-left: auto; flex: none; font-size: 12px; color: var(--s-muted); }
+.s-thread-subject { font-size: 13px; color: var(--s-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-thread-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; }
+.s-dot { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 99px; background: var(--s-accent); vertical-align: middle; }
+.s-thread-head { flex-wrap: wrap; gap: 12px; }
+.s-thread-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-left: auto; }
+.s-thread-controls .s-field { min-width: 160px; }
+.s-user-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--s-line); border-radius: var(--s-radius-sm); background: var(--s-sunken); }
+.s-user-card > .icon { flex: none; width: 18px; height: 18px; color: var(--s-muted); }
+.s-user-card div { display: grid; gap: 2px; min-width: 0; }
+.s-user-card small { color: var(--s-muted); font-size: 12.5px; }
+.s-user-card .btn { margin-left: auto; }
+.s-mail-list { display: grid; gap: 0; border: 1px solid var(--s-line); border-radius: var(--s-radius-sm); overflow: hidden; }
+.s-mail { display: grid; gap: 10px; }
+.s-mail.is-out { background: var(--s-accent-soft); }
+.s-mail.is-note { background: var(--s-warn-soft); }
+.s-mail .s-callout { margin: 0; }
+.s-mail-frame { width: 100%; height: 420px; min-height: 160px; resize: vertical; border: 1px solid var(--s-line); border-radius: var(--s-radius-sm); background: #fff; }
+.s-att-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.s-composer { border-top: 1px solid var(--s-line-soft); }
+.s-composer textarea { min-height: 160px; resize: vertical; }
+.s-composer-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.s-field.s-inline { display: inline-grid; min-width: 180px; }

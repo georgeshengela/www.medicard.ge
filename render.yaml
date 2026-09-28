@@ -68,6 +68,10 @@ services:
         sync: false
       - key: RESEND_WEBHOOK_SECRET
         sync: false
+      - key: RESEND_INBOUND_API_KEY
+        sync: false
+      - key: SUPPORT_NOTIFY_EMAIL
+        sync: false
       - key: APP_STORE_URL
         sync: false
       - key: PLAY_STORE_URL

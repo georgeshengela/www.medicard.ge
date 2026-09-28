@@ -485,7 +485,8 @@ describe('email install script', () => {
     assert.throws(() => emailStatements('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "isAdmin" BOOLEAN NOT NULL DEFAULT true;'));
     assert.throws(() => emailStatements('DELETE FROM "EmailLog";'));
     const pkg = JSON.parse(read('../../../package.json'));
-    assert.match(pkg.scripts.release, /install-email\.mjs/);
+    // release runs `npm run db:install` (see installChain.test.js); the chain holds the script.
+    assert.match(pkg.scripts['db:install'], /install-email\.mjs/);
     const schema = read('../../prisma/schema.prisma');
     for (const model of ['EmailTemplate', 'EmailLog', 'EmailSuppression', 'EmailCampaign']) assert.match(schema, new RegExp(`^model ${model} \\{`, 'm'));
     assert.match(schema, /emailMarketingOptIn\s+Boolean\s+@default\(false\) @ignore/);

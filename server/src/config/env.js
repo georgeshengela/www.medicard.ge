@@ -43,6 +43,16 @@ const schema = z.object({
   RESEND_WEBHOOK_SECRET: z.string().default(''),
   /** Replies to any Medicard email go here. */
   EMAIL_REPLY_TO: z.string().default('support@medicard.ge'),
+  /**
+   * Optional Resend key with "Full access", used ONLY to read received mail (support inbox):
+   * GET /emails/receiving/{id} and its attachments. A "Sending access" key can only send, so
+   * without this the inbox keeps webhook metadata only (sender, subject, attachment names).
+   */
+  RESEND_INBOUND_API_KEY: z.string().default(''),
+  /** Sender of admin replies from #/support. */
+  SUPPORT_FROM: z.string().default('MEDICARD მხარდაჭერა <support@medicard.ge>'),
+  /** Owner notice on new support threads (subject only, max 1 per 10 min). Empty = off. */
+  SUPPORT_NOTIFY_EMAIL: z.string().default(''),
   /** Store links for the welcome email; empty = https://medicard.ge/#download. */
   APP_STORE_URL: z.string().default(''),
   PLAY_STORE_URL: z.string().default(''),

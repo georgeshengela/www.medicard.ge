@@ -64,3 +64,6 @@ export function requireAnyAdminCapability(...capabilities) {
     });
   };
 }
+
+/** Support inbox (#/support): VIEW reads threads and attachments; MANAGE replies, assigns, changes status, edits snippets. */
+export const SUPPORT_CAPABILITIES = Object.freeze(['SUPPORT_VIEW', 'SUPPORT_MANAGE']);

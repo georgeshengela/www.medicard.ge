@@ -2652,3 +2652,78 @@ model EmailCampaign {
 
   @@index([status, createdAt], map: "EmailCampaign_status_idx")
 }
+
+/// Support inbox thread (admin #/support). Full counterpart address is kept (needed to reply);
+/// admin-only (SUPPORT_VIEW). Closed threads older than 2 years are purged daily. See 20260928-support.sql.
+model SupportThread {
+  id               String    @id
+  subject          String    @default("")
+  subjectKey       String    @default("")
+  counterpartEmail String
+  counterpartName  String?
+  mailbox          String?
+  /// new | open | waiting | closed
+  status           String    @default("new")
+  assignedAdminId  String?
+  /// FK to User(id) ON DELETE SET NULL lives in the SQL; no Prisma relation on purpose.
+  userId           String?
+  unread           Boolean   @default(true)
+  messageCount     Int       @default(0)
+  lastMessageAt    DateTime  @default(now())
+  lastInboundAt    DateTime?
+  closedAt         DateTime?
+  notifiedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now())
+  messages         SupportMessage[]
+
+  @@index([status, lastMessageAt], map: "SupportThread_status_time_idx")
+  @@index([counterpartEmail, subjectKey], map: "SupportThread_counterpart_idx")
+  @@index([lastMessageAt], map: "SupportThread_lastMessageAt_idx")
+  @@index([userId], map: "SupportThread_userId_idx")
+  @@index([assignedAdminId], map: "SupportThread_assigned_idx")
+}
+
+/// inbound | outbound | note. Sanitized HTML only; attachments are metadata (proxied from Resend).
+model SupportMessage {
+  id            String        @id
+  threadId      String
+  thread        SupportThread @relation(fields: [threadId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  direction     String
+  resendId      String?       @unique(map: "SupportMessage_resendId_key")
+  messageId     String?
+  inReplyTo     String?
+  references    String?
+  fromEmail     String?
+  fromName      String?
+  toEmails      Json          @default("[]")
+  ccEmails      Json          @default("[]")
+  subject       String        @default("")
+  textBody      String?
+  htmlBody      String?
+  /// ok | pending | failed | restricted | none
+  bodyStatus    String        @default("none")
+  bodyAttempts  Int           @default(0)
+  bodyNextAt    DateTime?
+  bodyError     String?
+  attachments   Json          @default("[]")
+  isAuto        Boolean       @default(false)
+  authorAdminId String?
+  providerId    String?
+  sendStatus    String?
+  createdAt     DateTime      @default(now())
+
+  @@index([threadId, createdAt], map: "SupportMessage_thread_time_idx")
+  @@index([messageId], map: "SupportMessage_messageId_idx")
+  @@index([bodyStatus, bodyNextAt], map: "SupportMessage_body_idx")
+}
+
+/// Canned replies for the support composer.
+model SupportSnippet {
+  id          String   @id
+  title       String
+  body        String
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+}

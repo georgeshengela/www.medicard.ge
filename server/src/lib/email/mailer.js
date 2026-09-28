@@ -144,6 +144,10 @@ export async function sendEmail({
   subjectPrefix = '',
   ignoreTemplateSwitch = false,
   throwOnError = false,
+  // Support replies (#/support): own sender, threading headers (In-Reply-To / References).
+  from = null,
+  replyTo = null,
+  extraHeaders = null,
 } = {}, {
   db = prisma,
   transport = getDefaultTransport(),
@@ -185,7 +189,7 @@ export async function sendEmail({
   if (log === 'duplicate') return { status: 'skipped', reason: 'duplicate' };
   const logId = log?.id || null;
 
-  const headers = {};
+  const headers = { ...(extraHeaders || {}) };
   if (cat === 'marketing' && unsub) {
     headers['List-Unsubscribe'] = `<${unsub}>, <mailto:${env.EMAIL_REPLY_TO || 'support@medicard.ge'}?subject=unsubscribe>`;
     headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
@@ -193,12 +197,12 @@ export async function sendEmail({
 
   try {
     const result = await transport.send({
-      from: env.RESEND_FROM,
+      from: from || env.RESEND_FROM,
       to: email,
       subject,
       html: rendered.html,
       text: rendered.text,
-      replyTo: env.EMAIL_REPLY_TO || undefined,
+      replyTo: replyTo || env.EMAIL_REPLY_TO || undefined,
       headers,
       tags: [{ name: 'template', value: String(templateKey).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 256) }],
     }, { idempotencyKey: idempotencyKey || logId || undefined });

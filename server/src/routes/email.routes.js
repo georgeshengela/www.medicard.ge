@@ -15,6 +15,7 @@ import { requireAdmin } from '../middleware/adminAuth.js';
 import { writeAdminAudit } from '../lib/adminAudit.js';
 import { clientIp } from '../lib/rateLimitKey.js';
 import { isFeatureEnabled } from '../lib/featureFlags.js';
+import { inboundHealth, isMissingSupportTable } from '../lib/support/inbound.js';
 import {
   CAMPAIGN_VARS,
   DEFAULT_TEMPLATES,
@@ -23,11 +24,11 @@ import {
   LOG_RETENTION_DAYS,
   SAMPLE_VARS,
   TEMPLATE_FIELDS,
-  applyEmailWebhookEvent,
   campaignContent,
   cancelEmailCampaign,
   commonVars,
   countSegment,
+  dispatchEmailWebhookEvent,
   emailConfig,
   hashEmail,
   invalidateTemplateCache,
@@ -47,6 +48,8 @@ import {
 const httpError = (message, status = 400, code) => Object.assign(new Error(message), { status, ...(code ? { code } : {}) });
 
 /* ═════════ Resend webhook ═════════ */
+/** Indirection so tests can exercise the signed route without touching the database. */
+export const webhookHandlers = { dispatch: (event) => dispatchEmailWebhookEvent(event) };
 export const emailWebhookRouter = Router();
 emailWebhookRouter.post(
   '/webhook',
@@ -60,7 +63,14 @@ emailWebhookRouter.post(
     if (!check.ok) return res.status(401).json({ error: 'invalid signature', code: 'INVALID_SIGNATURE' });
     let event;
     try { event = JSON.parse(payload); } catch { return res.status(400).json({ error: 'invalid json' }); }
-    const result = await applyEmailWebhookEvent(event);
+    let result;
+    try {
+      result = await webhookHandlers.dispatch(event);
+    } catch (error) {
+      // Tables not installed yet (deploy in progress): 503 so Resend retries the event later.
+      if (isMissingSupportTable(error)) return res.status(503).json({ error: 'not installed', code: 'NOT_INSTALLED' });
+      throw error;
+    }
     return res.json({ ok: true, ...result });
   }),
 );
@@ -167,6 +177,7 @@ adminEmailRouter.get('/overview', asyncHandler(async (req, res) => {
     optIn,
     suppressions,
     retentionDays: LOG_RETENTION_DAYS,
+    inbound: await inboundHealth().catch(() => null),
   });
 }));
 

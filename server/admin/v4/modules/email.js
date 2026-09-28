@@ -101,6 +101,15 @@
     }
   }
 
+  /** Support inbox health (booleans and counts only — see /api/admin/support). */
+  function inboundRows(h, yes) {
+    if (h.installed === false) return '<div class="s-switch-row"><div><b>შემოსული ფოსტა (მხარდაჭერა)</b><small>ცხრილები შეიქმნება შემდეგი დეპლოისას (install-support).</small></div></div>';
+    const last = h.lastReceivedAt ? (typeof global.fmtDate === 'function' ? global.fmtDate(h.lastReceivedAt) : new Date(h.lastReceivedAt).toLocaleString('ka-GE')) : 'ჯერ არაფერი';
+    return `<div class="s-switch-row"><div><b>შემოსული ფოსტა (მხარდაჭერა)</b><small>${yes(h.eventsArriving, 'email.received მოდის (30 დღე)')} · ბოლო: ${esc(last)} · 7 დღე: ${fmt(h.count7)} · 30 დღე: ${fmt(h.count30)}</small></div>
+        <a class="btn compact" href="#/support">გახსნა</a></div>
+      <div class="s-switch-row"><div><b>შემოსულის წაკითხვის გასაღები</b><small>${yes(h.inboundKeyConfigured, 'RESEND_INBOUND_API_KEY')}${h.inboundKeyNeeded ? ' · <span class="s-badge is-warn">საჭიროა</span> მიმდინარე გასაღები მხოლოდ აგზავნის — წერილის ტექსტი არ ჩანს' : ''}</small></div></div>`;
+  }
+
   /* ═════════ მიმოხილვა ═════════ */
   async function paintOverview(pane) {
     const d = await api(`/overview?days=${st.days}`);
@@ -140,6 +149,7 @@
           <div class="s-switch-row"><div><b>Resend API გასაღები</b><small>${yes(d.config?.resendConfigured, 'RESEND_API_KEY')}</small></div></div>
           <div class="s-switch-row"><div><b>Webhook (მიწოდება, bounce, საჩივარი)</b><small>${yes(d.config?.webhookConfigured, 'RESEND_WEBHOOK_SECRET')} · https://medicard.ge/api/email/webhook</small></div></div>
           <div class="s-switch-row"><div><b>გამგზავნი</b><small>${esc(d.config?.from || '—')} · პასუხი: ${esc(d.config?.replyTo || '—')}</small></div></div>
+          ${d.inbound ? inboundRows(d.inbound, yes) : ''}
           <div class="s-switch-row"><div><b>დაბლოკილი მისამართები</b><small>${fmt(d.suppressions)} — hard bounce ან „სპამი“. მათზე არაფერი იგზავნება, სერვისული წერილებიც არა.</small></div>
             <button type="button" class="btn compact" data-suppress>${ico('search')} მისამართის შემოწმება</button></div>
         </div>
