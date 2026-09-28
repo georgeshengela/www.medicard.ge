@@ -404,7 +404,12 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
     console.log(`\n[medicard] ${signal} received, shutting down…`);
     stopQuotaResetSweeper();
     stopPharmacySyncScheduler();
-    server.close();
+    // Render sends SIGTERM on every deploy while the new instance takes traffic. Let in-flight
+    // requests (a Medi answer takes 20–40 s) finish before the database goes away; Render
+    // allows 30 s before SIGKILL.
+    const drained = new Promise((resolve) => server.close(resolve));
+    server.closeIdleConnections?.();
+    await Promise.race([drained, new Promise((resolve) => setTimeout(resolve, 27_000))]);
     await Promise.allSettled([prisma.$disconnect(), shutdownOcr()]);
     process.exit(0);
   });
