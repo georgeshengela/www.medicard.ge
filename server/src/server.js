@@ -35,6 +35,8 @@ import { adminTrainerRouter, trainerRouter } from './routes/trainer.routes.js';
 import { identityRouter } from './routes/identity.routes.js';
 import { startTrainerReminders } from './lib/trainerPush.js';
 import { adminFunnelRouter, funnelRouter } from './routes/funnel.routes.js';
+import { adminCapacityRouter } from './routes/capacity.routes.js';
+import { capacityMiddleware, startCapacityMonitor, stopCapacityMonitor } from './lib/capacity.js';
 import { adminDirectorRouter, directorRouter } from './routes/director.routes.js';
 import { startDirectorWorkers } from './lib/director/supportAgent.js';
 import { adminEmailRouter, emailWebhookRouter, unsubscribeRouter } from './routes/email.routes.js';
@@ -109,6 +111,7 @@ const serveAdmin = Boolean(ADMIN_DIST);
 const serveLanding = Boolean(PUBLIC_DIST);
 
 app.set('trust proxy', 1);
+app.use(capacityMiddleware);
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -282,6 +285,7 @@ app.use('/api/identity', identityRouter);
 app.use('/api/admin/referrals', adminReferralRouter);
 app.use('/api/funnel', funnelRouter);
 app.use('/api/admin/funnel', adminFunnelRouter);
+app.use('/api/admin/capacity', adminCapacityRouter);
 app.use('/api/admin/email', adminEmailRouter);
 app.use('/api/admin/support', adminSupportRouter);
 app.use('/api/medi-companion', mediCompanionRouter);
@@ -398,12 +402,15 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
 attachAdminRealtime(server);
 startQuotaResetSweeper();
 if (env.NODE_ENV === 'production') startPharmacySyncScheduler();
+// Production only: local servers point at the main DB and must not write samples or alert the owner.
+if (env.NODE_ENV === 'production' && process.env.CAPACITY_MONITOR !== 'off') startCapacityMonitor();
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, async () => {
     console.log(`\n[medicard] ${signal} received, shutting down…`);
     stopQuotaResetSweeper();
     stopPharmacySyncScheduler();
+    stopCapacityMonitor();
     // Render sends SIGTERM on every deploy while the new instance takes traffic. Let in-flight
     // requests (a Medi answer takes 20–40 s) finish before the database goes away; Render
     // allows 30 s before SIGKILL.
