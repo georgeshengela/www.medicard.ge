@@ -12,7 +12,7 @@ import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
  * Cycle ring (2026-09-28 redesign): one bead per cycle day, read clockwise from the top.
  * Grammar shared with the day strip and calendar — logged = solid, estimated = outline:
  *  - logged bleeding: solid clay bead
- *  - estimated fertile window: blue outline bead (tap → explanation)
+ *  - estimated fertile window: soft blue bead (tap → explanation) — same blue as the calendar
  *  - days already lived: quiet filled bead; days ahead: track bead
  *  - today: a larger teal marker
  * The centre carries one number and its words; the hero decides which (countdown or cycle day).
@@ -103,11 +103,8 @@ export function CycleStatusGauge({
                     key={b.d}
                     cx={b.x}
                     cy={b.y}
-                    r={beadR - 0.9}
-                    fill={c.fertilitySoft}
-                    stroke={c.fertile}
-                    strokeWidth={1.8}
-                    opacity={b.lived ? 0.5 : 1}
+                    r={beadR}
+                    fill={cycleHexAlpha(c.fertile, b.lived ? 0.25 : 0.55)}
                     onPress={onPressFertile}
                   />
                 );

@@ -751,55 +751,8 @@ export default function CycleHome() {
 
   return (
     <CycleAtmosphere>
-      <View style={{ flex: 1 }}>
-        <CycleHomeHeader
-          monthLabel={
-            pane === 'calendar'
-              ? `${MONTHS_KA[cursor.m]} ${cursor.y}`
-              : `${MONTHS_KA[selectedMonth.m]} ${selectedMonth.y}`
-          }
-          subtitle={headerSubtitle}
-          topInset={insets.top}
-          onBack={() => {
-            if (pane !== 'overview') {
-              setPane('overview');
-              setDaySheetOpen(false);
-              setQuickOpen(false);
-              return;
-            }
-            if (router.canGoBack()) router.back();
-            else router.replace('/(tabs)/home');
-          }}
-          onSettings={() => router.push('/cycle/settings' as never)}
-        />
-
-        <PaneSwitcher
-          pane={pane}
-          onChange={(next) => {
-            setPane(next);
-            if (next === 'overview') {
-              setDaySheetOpen(false);
-              setQuickOpen(false);
-            }
-          }}
-        />
-
-        {bundle ? (
-          <CycleDayStrip
-            selected={selected}
-            onSelect={setSelected}
-            onActivate={(date) => {
-              setSelected(date);
-              setDaySheetOpen(true);
-            }}
-            marks={marks}
-            today={today}
-            showFertility={fertilityVisible}
-            showPredicted={showPredicted}
-            loggedBleedLabel={bleedLegend}
-          />
-        ) : null}
-
+      {/* Status-bar spacer: the pinned week sits below it, never under the clock. */}
+      <View style={{ flex: 1, paddingTop: insets.top }}>
         <ScrollView
           style={{
             flex: 1,
@@ -812,7 +765,59 @@ export default function CycleHome() {
             <RefreshControl refreshing={loading} onRefresh={load} tintColor={c.brand} />
           }
           showsVerticalScrollIndicator={false}
+          stickyHeaderIndices={[2]}
         >
+          <CycleHomeHeader
+            monthLabel={
+              pane === 'calendar'
+                ? `${MONTHS_KA[cursor.m]} ${cursor.y}`
+                : `${MONTHS_KA[selectedMonth.m]} ${selectedMonth.y}`
+            }
+            subtitle={headerSubtitle}
+            topInset={0}
+            onBack={() => {
+              if (pane !== 'overview') {
+                setPane('overview');
+                setDaySheetOpen(false);
+                setQuickOpen(false);
+                return;
+              }
+              if (router.canGoBack()) router.back();
+              else router.replace('/(tabs)/home');
+            }}
+            onSettings={() => router.push('/cycle/settings' as never)}
+          />
+
+          <PaneSwitcher
+            pane={pane}
+            onChange={(next) => {
+              setPane(next);
+              if (next === 'overview') {
+                setDaySheetOpen(false);
+                setQuickOpen(false);
+              }
+            }}
+          />
+
+          {/* Pinned while scrolling: only the week of days (header and tabs scroll away). */}
+          <View style={{ backgroundColor: c.cream, paddingTop: bundle && pane !== 'calendar' ? 6 : 0, paddingBottom: bundle && pane !== 'calendar' ? 12 : 0 }}>
+            {bundle && pane !== 'calendar' ? (
+              <CycleDayStrip
+                selected={selected}
+                onSelect={setSelected}
+                onActivate={(date) => {
+                  setSelected(date);
+                  setDaySheetOpen(true);
+                }}
+                marks={marks}
+                today={today}
+                showFertility={fertilityVisible}
+                showPredicted={showPredicted}
+                loggedBleedLabel={bleedLegend}
+              />
+            ) : null}
+          </View>
+
           <CycleOfflineBanner
             view={cycleView}
             today={today}

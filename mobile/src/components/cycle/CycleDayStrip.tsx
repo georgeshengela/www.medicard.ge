@@ -18,6 +18,7 @@ import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
 const COLS = 7;
 const WEEK_RANGE = 40;
+const GUTTER = 20;
 
 function weekdayLabel(key: string) {
   const [y, m, d] = key.split('-').map(Number);
@@ -56,8 +57,10 @@ export function CycleDayStrip({
   loggedBleedLabel,
 }: Props) {
   const c = useCycleColors();
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const listRef = useRef<FlatList<string>>(null);
+  // Same edges as every section below (20 px gutters); one page = one week.
+  const screenWidth = Math.max(280, windowWidth - GUTTER * 2);
   const itemWidth = screenWidth / COLS;
   const today = todayProp || todayKey();
   const skipScrollRef = useRef(false);
@@ -129,7 +132,7 @@ export function CycleDayStrip({
   };
 
   return (
-    <View style={{ width: screenWidth, marginBottom: 4 }}>
+    <View style={{ width: screenWidth, alignSelf: 'center', borderRadius: 22, backgroundColor: c.card, overflow: 'hidden', paddingVertical: 6 }}>
       <FlatList
         ref={listRef}
         key={`${anchor}-${screenWidth}`}
@@ -163,15 +166,20 @@ export function CycleDayStrip({
           const weekday = weekdayLabel(item);
 
           const layers = classifyCycleDay(mark, { showFertility, showPredicted });
-          const inBand = (l: ReturnType<typeof classifyCycleDay>) => l.fertile || l.ovulation;
-          const band = inBand(layers);
-          const prevBand = band && inBand(classifyCycleDay(marks[addDaysToKey(item, -1)], { showFertility, showPredicted }));
-          const nextBand = band && inBand(classifyCycleDay(marks[addDaysToKey(item, 1)], { showFertility, showPredicted }));
           const visual = getCycleCalendarDayVisualState({
             layers,
             isSelected: active,
             isToday,
           });
+          const fertileDay = layers.fertile || layers.ovulation;
+          const dayFill = layers.loggedPeriod
+            ? c.period
+            : fertileDay
+              ? c.fertilitySoft
+              : visual.fill === 'selectedSoft'
+                ? cycleHexAlpha(c.ink, 0.07)
+                : 'transparent';
+          const dayInk = layers.loggedPeriod ? c.onPeriod : layers.predictedPeriod ? c.period : fertileDay ? c.fertile : c.ink;
           const a11y = [
             isToday ? ka.cycle.jumpToday : weekday,
             String(Number(dd)),
@@ -203,25 +211,25 @@ export function CycleDayStrip({
                 alignItems: 'center',
                 justifyContent: 'center',
                 paddingVertical: 2,
-                minHeight: 86,
+                minHeight: 76,
               }}
             >
               <Text
                 style={{
                   color: isToday ? c.todayRing : active ? c.ink : c.mutedSoft,
                   fontSize: 10,
-                  fontFamily: 'NotoSansGeorgian_600SemiBold',
+                  fontFamily: isToday ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_600SemiBold',
                   letterSpacing: 0.2,
-                  marginBottom: 6,
+                  marginBottom: 5,
                 }}
               >
                 {isToday ? ka.cycle.jumpToday : weekday}
               </Text>
               <View
                 style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderWidth: visual.ring === 'none' ? 0 : 1.5,
@@ -229,33 +237,28 @@ export function CycleDayStrip({
                     visual.ring === 'today'
                       ? c.todayRing
                       : visual.ring === 'selected'
-                        ? cycleHexAlpha(c.ink, 0.38)
+                        ? cycleHexAlpha(c.ink, 0.35)
                         : 'transparent',
                 }}
               >
                 <View
                   style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor:
-                      visual.fill === 'loggedPeriod'
-                        ? c.period
-                        : visual.fill === 'selectedSoft'
-                          ? cycleHexAlpha(c.ink, 0.07)
-                          : 'transparent',
-                    borderWidth: visual.showPredictedDash ? 1.5 : 0,
-                    borderColor: visual.showPredictedDash ? c.period : 'transparent',
+                    backgroundColor: dayFill,
+                    borderWidth: visual.showPredictedDash || layers.ovulation ? 1.5 : 0,
+                    borderColor: visual.showPredictedDash ? c.period : layers.ovulation ? c.fertile : 'transparent',
                     borderStyle: visual.showPredictedDash ? 'dashed' : 'solid',
                   }}
                 >
                   <Text
                     style={{
-                      color: layers.loggedPeriod ? c.onPeriod : layers.predictedPeriod ? c.period : c.ink,
+                      color: dayInk,
                       fontFamily: 'NotoSansGeorgian_700Bold',
-                      fontSize: 15,
+                      fontSize: 14,
                       fontVariant: ['tabular-nums'],
                     }}
                   >
@@ -263,35 +266,12 @@ export function CycleDayStrip({
                   </Text>
                 </View>
               </View>
-              {/* Marks row: logged spotting / symptoms as a dot, the estimated fertile window as one continuous band. */}
-              <View style={{ height: 14, width: itemWidth, marginTop: 4, justifyContent: 'flex-start', alignItems: 'center' }}>
+              {/* Only logged things get a dot under the date; estimates are carried by the circle itself. */}
+              <View style={{ height: 8, marginTop: 3, alignItems: 'center', justifyContent: 'center' }}>
                 {visual.semanticIndicator === 'spottingDot' ? (
                   <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: c.period }} />
                 ) : layers.symptomDot ? (
                   <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.mutedSoft }} />
-                ) : null}
-                {band ? (
-                  <View
-                    pointerEvents="none"
-                    style={{
-                      position: 'absolute',
-                      bottom: 2,
-                      left: prevBand ? 0 : itemWidth * 0.22,
-                      right: nextBand ? 0 : itemWidth * 0.22,
-                      height: 4,
-                      borderTopLeftRadius: prevBand ? 0 : 2,
-                      borderBottomLeftRadius: prevBand ? 0 : 2,
-                      borderTopRightRadius: nextBand ? 0 : 2,
-                      borderBottomRightRadius: nextBand ? 0 : 2,
-                      backgroundColor: cycleHexAlpha(c.fertile, 0.45),
-                    }}
-                  />
-                ) : null}
-                {layers.ovulation ? (
-                  <View
-                    pointerEvents="none"
-                    style={{ position: 'absolute', bottom: -1, width: 10, height: 10, borderRadius: 5, backgroundColor: c.fertile, borderWidth: 2, borderColor: c.cream }}
-                  />
                 ) : null}
               </View>
             </Pressable>

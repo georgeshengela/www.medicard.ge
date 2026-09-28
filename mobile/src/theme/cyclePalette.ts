@@ -29,7 +29,7 @@ export const cycleLight = {
   onPeriod: '#FFFFFF',
   fertile: '#2A64A8',
   ovulation: '#1F5594',
-  fertilitySoft: '#EAF1FA',
+  fertilitySoft: '#E1ECF9',
   follicular: '#3F786E',
   luteal: '#6A5A9C',
   todayRing: '#0F766E',
