@@ -1,5 +1,20 @@
 import { AppState, type AppStateStatus } from 'react-native';
-import * as Updates from 'expo-updates';
+import { requireOptionalNativeModule } from 'expo';
+
+type UpdatesModule = typeof import('expo-updates');
+
+/** Builds made before 1.0.0.17.0 (and Expo Go variants) may lack the native module: then OTA simply stays off. */
+function loadUpdates(): UpdatesModule | null {
+  if (!requireOptionalNativeModule('ExpoUpdates')) return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('expo-updates') as UpdatesModule;
+  } catch {
+    return null;
+  }
+}
+
+let Updates: UpdatesModule | null = null;
 
 /**
  * Over-the-air updates (EAS Update, `npm run ota`). expo-updates already checks on every cold
@@ -17,6 +32,7 @@ let ready = false;
 let backgroundedAt = 0;
 
 async function checkAndFetch() {
+  if (!Updates) return;
   if (Date.now() - lastCheck < CHECK_EVERY_MS) return;
   lastCheck = Date.now();
   try {
@@ -30,7 +46,9 @@ async function checkAndFetch() {
 }
 
 export function startOtaUpdates() {
-  if (started || __DEV__ || !Updates.isEnabled) return;
+  if (started || __DEV__) return;
+  Updates = loadUpdates();
+  if (!Updates?.isEnabled) return;
   started = true;
   AppState.addEventListener('change', (next: AppStateStatus) => {
     if (next === 'background') {
@@ -41,7 +59,7 @@ export function startOtaUpdates() {
     const away = backgroundedAt ? Date.now() - backgroundedAt : 0;
     backgroundedAt = 0;
     if (ready && away >= APPLY_AFTER_AWAY_MS) {
-      void Updates.reloadAsync().catch(() => undefined);
+      void Updates?.reloadAsync().catch(() => undefined);
       return;
     }
     void checkAndFetch();
