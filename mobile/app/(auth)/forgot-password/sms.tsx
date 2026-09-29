@@ -1,186 +1,373 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { KeyRound, Lock, Smartphone } from 'lucide-react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { ChevronLeft, CircleAlert, Lock, Mail, MessageSquareText, Smartphone } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
-import { AuthBackHeader } from '@/components/auth/AuthBackHeader';
+import { AuthPhoneField } from '@/components/auth/AuthPhoneField';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
+import { OtpCodeInput } from '@/components/auth/OtpCodeInput';
 import { PasswordStrengthHint } from '@/components/auth/PasswordStrengthHint';
 import { Input } from '@/components/ui/Input';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
 import { isPasswordStrongEnough, scorePassword } from '@/lib/passwordStrength';
+import { displayGeorgianMobile, isGeorgianMobile, toE164Georgian } from '@/lib/phoneFormat';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
 
+type Step = 'phone' | 'code' | 'password';
+type Problem = { kind: 'not-found' | 'phone-login' | 'other'; message: string } | null;
+
+const RESEND_SECONDS = 60;
+const STEPS: Step[] = ['phone', 'code', 'password'];
+
 /**
- * Password reset by SMS: number → 4-digit code + new password → signed in.
- * Works for accounts with a verified phone; phone-only accounts are sent to SMS sign-in.
+ * Password reset by SMS, three calm steps: number → 4-digit code → new password, then the
+ * person is signed in. Accounts without a linked number are pointed to email reset; phone-only
+ * accounts (no password) to SMS sign-in.
  */
 export default function ForgotPasswordSms() {
   const router = useRouter();
   const colors = useThemeColors();
+  const reduceMotion = usePrefersReducedMotion();
   const { resetPasswordWithSms } = useAuth();
 
-  const [step, setStep] = useState<'phone' | 'reset'>('phone');
-  const [phone, setPhone] = useState('');
+  const [step, setStep] = useState<Step>('phone');
+  const [local, setLocal] = useState('');
   const [code, setCode] = useState('');
+  const [codeKey, setCodeKey] = useState(0);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [devCode, setDevCode] = useState<string | null>(null);
-  const [errors, setErrors] = useState<{ phone?: string; code?: string; password?: string; confirmPassword?: string; form?: string }>({});
-  const [phoneLogin, setPhoneLogin] = useState(false);
+  const [problem, setProblem] = useState<Problem>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
+  const lock = useRef(false);
 
-  const normalised = `+995${phone.replace(/\D/g, '').replace(/^995/, '')}`;
+  const phoneValid = isGeorgianMobile(local);
+  const pretty = displayGeorgianMobile(local);
   const strength = useMemo(() => scorePassword(password), [password]);
+  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+  const canReset = isPasswordStrongEnough(password) && passwordsMatch;
 
-  const sendCode = async () => {
-    if (!/^\+9955\d{8}$/.test(normalised)) {
-      setErrors({ phone: ka.auth.invalidPhone });
-      return;
-    }
+  // Resend countdown.
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
+  const guarded = async (work: () => Promise<void>) => {
+    if (lock.current) return;
+    lock.current = true;
     setBusy(true);
-    setErrors({});
-    setPhoneLogin(false);
     try {
-      const result = await api.auth.passwordSmsStart(normalised);
-      setDevCode(result.devCode ?? null);
-      setStep('reset');
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'PHONE_LOGIN_ACCOUNT') setPhoneLogin(true);
-      setErrors({ phone: authErrorMessage(err) });
+      await work();
     } finally {
+      lock.current = false;
       setBusy(false);
     }
   };
 
-  const reset = async () => {
-    const next: typeof errors = {};
-    if (!/^\d{4}$/.test(code.trim())) next.code = ka.auth.invalidCodeLength(4);
-    if (!isPasswordStrongEnough(password)) next.password = ka.auth.shortPassword;
-    if (password !== confirmPassword) next.confirmPassword = ka.auth.passwordMismatch;
-    setErrors(next);
-    if (Object.keys(next).length) return;
-    setBusy(true);
-    try {
-      await resetPasswordWithSms({ phone: normalised, code: code.trim(), password, confirmPassword });
-      router.replace('/(tabs)/home');
-    } catch (err) {
-      setErrors({ form: authErrorMessage(err) });
-    } finally {
-      setBusy(false);
-    }
+  const sendCode = (again = false) =>
+    guarded(async () => {
+      setProblem(null);
+      try {
+        const result = await api.auth.passwordSmsStart(toE164Georgian(local));
+        setDevCode(result.devCode ?? null);
+        setResendIn(result.cooldownSec && result.cooldownSec > 0 ? result.cooldownSec : RESEND_SECONDS);
+        if (!again) {
+          setCode('');
+          setCodeError(null);
+          setStep('code');
+        }
+      } catch (err) {
+        const code = err instanceof ApiError ? err.code : undefined;
+        setProblem({
+          kind: code === 'PHONE_NOT_FOUND' ? 'not-found' : code === 'PHONE_LOGIN_ACCOUNT' ? 'phone-login' : 'other',
+          message: authErrorMessage(err),
+        });
+        if (again) setCodeError(authErrorMessage(err));
+      }
+    });
+
+  const onCode = (next: string) => {
+    setCode(next);
+    setCodeError(null);
+    // The code is checked together with the new password; move on as soon as it is complete.
+    if (next.length === 4) setTimeout(() => setStep('password'), 180);
   };
 
-  if (step === 'phone') {
-    return (
-      <AuthShell footer={<AuthPrimaryButton label={ka.auth.sendCode} loading={busy} onPress={sendCode} />}>
-        <AuthBackHeader title={ka.auth.forgotPasswordTitle} subtitle="ჩაწერე ანგარიშზე მიბმული ნომერი. SMS-ით კოდს გამოგიგზავნით." />
-        <Input
-          label={ka.auth.phone}
-          placeholder={ka.auth.phonePlaceholder}
-          icon={Smartphone}
-          value={phone}
-          onChangeText={(text) => {
-            setPhone(text);
-            setErrors({});
-            setPhoneLogin(false);
-          }}
-          error={errors.phone}
-          hint="+995"
-          keyboardType="phone-pad"
-          autoComplete="tel"
-          maxLength={14}
-          returnKeyType="send"
-          onSubmitEditing={() => void sendCode()}
-          figma
-        />
-        {phoneLogin ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.replace('/(auth)/phone')}
-            style={{ marginTop: 8, paddingVertical: 8, alignItems: 'center' }}
-          >
-            <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>
-              SMS კოდით შესვლა
-            </Text>
-          </Pressable>
-        ) : null}
-      </AuthShell>
+  const reset = () =>
+    guarded(async () => {
+      if (!canReset) return;
+      setPasswordError(null);
+      try {
+        await resetPasswordWithSms({ phone: toE164Georgian(local), code, password, confirmPassword });
+        router.replace('/(tabs)/home');
+      } catch (err) {
+        const message = authErrorMessage(err);
+        // A wrong or expired code sends the person back to the code step, password kept.
+        if (/კოდი/.test(message)) {
+          setCode('');
+          setCodeKey((k) => k + 1);
+          setCodeError(message);
+          setStep('code');
+        } else {
+          setPasswordError(message);
+        }
+      }
+    });
+
+  const enter = reduceMotion ? undefined : FadeInDown.duration(260);
+  const stepIndex = STEPS.indexOf(step);
+
+  const back = () => {
+    if (step === 'password') setStep('code');
+    else if (step === 'code') setStep('phone');
+    else router.back();
+  };
+
+  const footer =
+    step === 'phone' ? (
+      <AuthPrimaryButton label="კოდის გაგზავნა" loading={busy} disabled={!phoneValid} onPress={() => void sendCode()} />
+    ) : step === 'code' ? (
+      <AuthPrimaryButton label="გაგრძელება" disabled={code.length !== 4} onPress={() => setStep('password')} />
+    ) : (
+      <AuthPrimaryButton label="პაროლის შეცვლა და შესვლა" loading={busy} disabled={!canReset} onPress={() => void reset()} />
     );
-  }
 
   return (
-    <AuthShell
-      footer={<AuthPrimaryButton label={ka.auth.forgotPasswordReset} loading={busy} onPress={reset} />}
-    >
-      <AuthBackHeader title={ka.auth.forgotPasswordNewPassword} subtitle={`${ka.auth.codeSentTo} ${normalised}`} />
-      <View style={{ gap: 16 }}>
-        <Input
-          label={ka.auth.smsCode}
-          placeholder={ka.auth.smsCodePlaceholder}
-          icon={KeyRound}
-          value={code}
-          onChangeText={(text) => {
-            setCode(text);
-            setErrors((current) => ({ ...current, code: undefined, form: undefined }));
-          }}
-          error={errors.code}
-          hint={devCode ? `სატესტო კოდი: ${devCode}` : undefined}
-          keyboardType="number-pad"
-          autoComplete="sms-otp"
-          textContentType="oneTimeCode"
-          maxLength={4}
-          figma
-        />
-        <View>
+    <AuthShell footer={footer}>
+      <StepHeader
+        step={stepIndex}
+        onBack={back}
+        title={step === 'phone' ? 'აღდგენა SMS-ით' : step === 'code' ? 'შეიყვანე კოდი' : 'ახალი პაროლი'}
+        subtitle={
+          step === 'phone'
+            ? 'ჩაწერე ანგარიშზე მიბმული ნომერი — 4-ციფრიან კოდს SMS-ით გამოგიგზავნით.'
+            : step === 'code'
+              ? undefined
+              : 'მოიფიქრე ახალი პაროლი. შეცვლის შემდეგ პირდაპირ შეხვალ ანგარიშში.'
+        }
+      />
+
+      {step === 'phone' ? (
+        <Animated.View key="phone" entering={enter}>
+          <AuthPhoneField
+            label={ka.auth.phone}
+            value={local}
+            onChange={(next) => {
+              setLocal(next);
+              setProblem(null);
+            }}
+            hint={problem ? undefined : 'მხოლოდ საქართველოს მობილური ნომერი'}
+            autoFocus
+            returnKeyType="send"
+            onSubmitEditing={() => phoneValid && void sendCode()}
+          />
+          {problem ? <ProblemCard problem={problem} onEmail={() => router.replace('/(auth)/forgot-password/email')} onPhoneLogin={() => router.replace('/(auth)/phone')} /> : null}
+        </Animated.View>
+      ) : null}
+
+      {step === 'code' ? (
+        <Animated.View key="code" entering={enter}>
+          <SentToCard pretty={pretty} onChange={() => setStep('phone')} />
+          <View style={{ marginTop: 28, alignItems: 'center' }}>
+            <OtpCodeInput key={codeKey} value={code} onChange={onCode} error={codeError} length={4} variant="hero" resetKey={codeKey} />
+          </View>
+          {devCode ? (
+            <Text style={{ marginTop: 12, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: colors.text300 }}>
+              სატესტო კოდი: {devCode}
+            </Text>
+          ) : null}
+          <View style={{ marginTop: 28, alignItems: 'center' }}>
+            {resendIn > 0 ? (
+              <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: colors.text300 }}>
+                ხელახლა გაგზავნა შეგიძლია {Math.floor(resendIn / 60)}:{String(resendIn % 60).padStart(2, '0')}-ში
+              </Text>
+            ) : (
+              <Pressable accessibilityRole="button" onPress={() => void sendCode(true)} disabled={busy} hitSlop={8} style={{ paddingVertical: 6 }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: colors.text200 }}>
+                  კოდი არ მოვიდა?{' '}
+                  <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', color: colors.primary200 }}>ხელახლა გაგზავნა</Text>
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        </Animated.View>
+      ) : null}
+
+      {step === 'password' ? (
+        <Animated.View key="password" entering={enter} style={{ gap: 16 }}>
+          <View>
+            <Input
+              label={ka.auth.forgotPasswordNewPassword}
+              placeholder={ka.auth.passwordPlaceholder}
+              icon={Lock}
+              value={password}
+              onChangeText={(next) => {
+                setPassword(next);
+                setPasswordError(null);
+              }}
+              secure
+              autoFocus
+              autoCapitalize="none"
+              autoComplete="new-password"
+              textContentType="newPassword"
+              figma
+            />
+            {password ? <PasswordStrengthHint level={strength.level} /> : null}
+          </View>
           <Input
-            label={ka.auth.forgotPasswordNewPassword}
-            placeholder={ka.auth.passwordPlaceholder}
+            label={ka.auth.confirmPassword}
+            placeholder={ka.auth.confirmPasswordPlaceholder}
             icon={Lock}
-            value={password}
-            onChangeText={setPassword}
-            error={errors.password}
+            value={confirmPassword}
+            onChangeText={(next) => {
+              setConfirmPassword(next);
+              setPasswordError(null);
+            }}
+            error={confirmPassword.length >= password.length && confirmPassword.length > 0 && !passwordsMatch ? ka.auth.passwordMismatch : undefined}
             secure
             autoCapitalize="none"
             autoComplete="new-password"
+            textContentType="newPassword"
+            returnKeyType="done"
+            onSubmitEditing={() => canReset && void reset()}
             figma
           />
-          <PasswordStrengthHint level={strength.level} />
-        </View>
-        <Input
-          label={ka.auth.confirmPassword}
-          placeholder={ka.auth.confirmPasswordPlaceholder}
-          icon={Lock}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          error={errors.confirmPassword}
-          secure
-          autoCapitalize="none"
-          autoComplete="new-password"
-          figma
-        />
-      </View>
-
-      {errors.form ? (
-        <View style={{ marginTop: 16, borderRadius: 16, borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FEE2E2', padding: 14 }}>
-          <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, color: '#B91C1C' }}>{errors.form}</Text>
-        </View>
+          {passwordError ? <ProblemCard problem={{ kind: 'other', message: passwordError }} /> : null}
+        </Animated.View>
       ) : null}
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => {
-          setStep('phone');
-          setCode('');
-          setErrors({});
-        }}
-        style={{ marginTop: 20, paddingVertical: 8, alignItems: 'center' }}
-      >
-        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>{ka.auth.changeNumber}</Text>
-      </Pressable>
     </AuthShell>
+  );
+}
+
+/** Back chevron with three quiet progress segments beside it, then the title. */
+function StepHeader({ step, title, subtitle, onBack }: { step: number; title: string; subtitle?: string; onBack: () => void }) {
+  const colors = useThemeColors();
+  return (
+    <View style={{ marginBottom: 24 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="უკან"
+          onPress={onBack}
+          hitSlop={12}
+          style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginLeft: -4 }}
+        >
+          <ChevronLeft size={24} color={colors.text100} strokeWidth={2.2} />
+        </Pressable>
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel={`ნაბიჯი ${step + 1} / ${STEPS.length}`}
+          style={{ flex: 1, flexDirection: 'row', gap: 6 }}
+        >
+          {STEPS.map((_, index) => (
+            <View
+              key={index}
+              style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: index <= step ? colors.primary200 : colors.bg300 }}
+            />
+          ))}
+        </View>
+      </View>
+      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, lineHeight: 32, color: colors.text100 }}>{title}</Text>
+      {subtitle ? (
+        <Text style={{ marginTop: 8, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 15, lineHeight: 22, color: colors.text200 }}>
+          {subtitle}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/** "We sent it to +995 555 12 34 56 · change" */
+function SentToCard({ pretty, onChange }: { pretty: string; onChange: () => void }) {
+  const colors = useThemeColors();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 14,
+        borderRadius: 18,
+        backgroundColor: colors.bg200,
+      }}
+    >
+      <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent100 }}>
+        <MessageSquareText size={20} color={colors.primary200} strokeWidth={2.1} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: colors.text200 }}>კოდი გამოვაგზავნეთ ნომერზე</Text>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, lineHeight: 22, color: colors.text100, letterSpacing: 0.3 }}>{pretty}</Text>
+      </View>
+      <Pressable accessibilityRole="button" onPress={onChange} hitSlop={8} style={{ paddingVertical: 6, paddingHorizontal: 4 }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>შეცვლა</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/** Soft card for "no account with this number" (with the way forward) and other failures. */
+function ProblemCard({
+  problem,
+  onEmail,
+  onPhoneLogin,
+}: {
+  problem: NonNullable<Problem>;
+  onEmail?: () => void;
+  onPhoneLogin?: () => void;
+}) {
+  const colors = useThemeColors();
+  const action =
+    problem.kind === 'not-found' && onEmail
+      ? { label: 'აღდგენა ელ-ფოსტით', icon: Mail, onPress: onEmail }
+      : problem.kind === 'phone-login' && onPhoneLogin
+        ? { label: 'შესვლა SMS კოდით', icon: Smartphone, onPress: onPhoneLogin }
+        : null;
+  return (
+    <View
+      style={{
+        marginTop: 16,
+        padding: 16,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: `${colors.danger}33`,
+        backgroundColor: `${colors.danger}0F`,
+        gap: 12,
+      }}
+    >
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <CircleAlert size={20} color={colors.danger} strokeWidth={2.1} style={{ marginTop: 1 }} />
+        <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 20, color: colors.text100 }}>
+          {problem.message}
+        </Text>
+      </View>
+      {action ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={action.onPress}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            minHeight: 44,
+            borderRadius: 14,
+            backgroundColor: colors.surface,
+          }}
+        >
+          <action.icon size={18} color={colors.primary200} strokeWidth={2.1} />
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, color: colors.primary200 }}>{action.label}</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
