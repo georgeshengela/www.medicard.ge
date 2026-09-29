@@ -54,7 +54,8 @@ export async function connectQuestSocket() {
     disconnectQuestSocket();
     return;
   }
-  if (socket?.connected && lastSocketToken === token) return;
+  // `active` = connected or still trying: never tear down a socket that is mid-connect for the same token.
+  if (socket && lastSocketToken === token && (socket.connected || socket.active)) return;
   if (socket) disconnectQuestSocket();
   lastSocketToken = token;
   socket = io(QUEST_SOCKET_URL, {
@@ -64,8 +65,12 @@ export async function connectQuestSocket() {
     reconnection: true,
     reconnectionDelay: 1500,
   });
+  let connectedBefore = false;
   socket.on('connect', () => {
-    requestQuestRefresh();
+    // After a deploy every phone reconnects within seconds: spread the refresh out.
+    if (connectedBefore) setTimeout(requestQuestRefresh, Math.floor(Math.random() * 4000));
+    else requestQuestRefresh();
+    connectedBefore = true;
   });
   socket.io.on('reconnect_attempt', async () => {
     const next = await getToken();

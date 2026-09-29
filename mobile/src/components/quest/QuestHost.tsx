@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AppState, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { onReturnToForeground } from '@/lib/appForeground';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { useRouter, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -80,8 +81,7 @@ export function QuestHost() {
       if (journeyTimer.current) clearTimeout(journeyTimer.current);
       journeyTimer.current = setTimeout(() => setJourneyUnlock(null), reduce ? 1600 : 4200);
     });
-    const app = AppState.addEventListener('change', (next) => {
-      if (next !== 'active') return;
+    const offForeground = onReturnToForeground(() => {
       void (async () => {
         await syncQuestBridges('foreground');
         const cached = await readQuestCache();
@@ -93,7 +93,7 @@ export function QuestHost() {
       offLevel();
       offAchievement();
       offJourney();
-      app.remove();
+      offForeground();
       if (toastTimer.current) clearTimeout(toastTimer.current);
       if (achievementTimer.current) clearTimeout(achievementTimer.current);
       if (journeyTimer.current) clearTimeout(journeyTimer.current);

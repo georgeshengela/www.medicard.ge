@@ -293,7 +293,48 @@ async function detectLoggedPain(user: User | null | undefined, today: string): P
   }
 }
 
+/** At most one brain run per minute and never two at once (foreground used to fire it 3× in a row). */
+const BRAIN_MIN_GAP_MS = 60_000;
+let brainInFlight: Promise<number> | null = null;
+let brainLastAt = 0;
+let brainLastUser: string | null = null;
+let brainTrailing: ReturnType<typeof setTimeout> | null = null;
+
 export async function runMediNotificationBrain(
+  user?: User | null,
+  health?: HealthProfile | null,
+  opts: { markOpen?: boolean; force?: boolean } = {},
+): Promise<number> {
+  if (user) rememberEngageActor(user, health);
+  if (brainInFlight) return brainInFlight;
+  const uid = (user ?? lastActor.user)?.id ?? null;
+  const since = Date.now() - brainLastAt;
+  if (!opts.force && uid === brainLastUser && since < BRAIN_MIN_GAP_MS) {
+    // Too soon: one trailing run at the end of the gap picks up whatever changed.
+    if (!brainTrailing) {
+      brainTrailing = setTimeout(() => {
+        brainTrailing = null;
+        void runMediNotificationBrain(lastActor.user, lastActor.health, { markOpen: false });
+      }, BRAIN_MIN_GAP_MS - since);
+    }
+    return 0;
+  }
+  if (brainTrailing) {
+    clearTimeout(brainTrailing);
+    brainTrailing = null;
+  }
+  brainLastAt = Date.now();
+  brainLastUser = uid;
+  const run = runMediNotificationBrainNow(user, health, opts);
+  brainInFlight = run;
+  try {
+    return await run;
+  } finally {
+    brainInFlight = null;
+  }
+}
+
+async function runMediNotificationBrainNow(
   user?: User | null,
   health?: HealthProfile | null,
   opts: { markOpen?: boolean } = {},

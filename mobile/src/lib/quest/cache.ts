@@ -95,14 +95,21 @@ export function subscribeQuestRefresh(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Coalesced: a burst of socket events / health pushes / coin changes becomes one refresh. */
 export function requestQuestRefresh() {
-  listeners.forEach((fn) => {
-    try {
-      fn();
-    } catch {
-      /* ignore */
-    }
-  });
+  if (refreshTimer) return;
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null;
+    listeners.forEach((fn) => {
+      try {
+        fn();
+      } catch {
+        /* ignore */
+      }
+    });
+  }, 300);
 }
 
 export type QuestLevelUpShow = {

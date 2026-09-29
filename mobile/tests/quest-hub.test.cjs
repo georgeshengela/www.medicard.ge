@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, '..');
 function load(file, mocks = {}) {
   const exports = {};
   const js = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(js, { exports, require: name => { if (name in mocks) return mocks[name]; if (name.startsWith('.')) return require(path.resolve(root, path.dirname(file), name)); throw new Error('Unmocked: ' + name); }, Date, Set, Map, JSON, Promise, console });
+  vm.runInNewContext(js, { exports, require: name => { if (name in mocks) return mocks[name]; if (name.startsWith('.')) return require(path.resolve(root, path.dirname(file), name)); throw new Error('Unmocked: ' + name); }, Date, Set, Map, JSON, Promise, console, setTimeout, clearTimeout });
   return exports;
 }
 const presentation = load('src/lib/quest/hubPresentation.ts', { '@/lib/companion/cosmeticVisuals': load('src/lib/companion/cosmeticVisuals.ts') });

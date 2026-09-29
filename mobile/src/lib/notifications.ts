@@ -397,6 +397,9 @@ async function fetchExpoPushToken(): Promise<string | null> {
   return typeof token === 'string' && isExpoPushToken(token) ? token : null;
 }
 
+const PUSH_REREGISTER_MS = 6 * 60 * 60 * 1000;
+let lastPushRegistration: { token: string; account: string | null; at: number } | null = null;
+
 /** Registers the device for admin broadcast push via Expo Push Service. */
 export async function registerPushTokenWithServer(
   opts: { skipPermissionProbe?: boolean } = {},
@@ -417,12 +420,23 @@ export async function registerPushTokenWithServer(
 
     const platform =
       Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
-    await api.push.register({ token, platform });
+    const account = localAccountId();
+    const fresh =
+      lastPushRegistration &&
+      lastPushRegistration.token === token &&
+      lastPushRegistration.account === account &&
+      Date.now() - lastPushRegistration.at < PUSH_REREGISTER_MS;
+    // Same token, same account, registered recently: nothing to tell the server (was 2× per foreground).
+    if (!fresh || opts.skipPermissionProbe) {
+      await api.push.register({ token, platform });
+      lastPushRegistration = { token, account, at: Date.now() };
+    }
     await saveLastPushToken(token);
 
     // skipPermissionProbe means the user just opted in. Do not immediately
     // unregister if the opted-in pref read is still catching up.
     if (!opts.skipPermissionProbe && !(await isPushOptedIn())) {
+      lastPushRegistration = null;
       await api.push.unregister(token).catch(() => undefined);
       return { ok: false, reason: 'permission' };
     }
@@ -777,6 +791,7 @@ export async function presentNotificationNow(opts: {
 
 /** Removes this device from admin push broadcasts. */
 export async function unregisterPushFromServer(): Promise<void> {
+  lastPushRegistration = null;
   let token = await readLastPushToken();
   if (!token && Device.isDevice) {
     try {

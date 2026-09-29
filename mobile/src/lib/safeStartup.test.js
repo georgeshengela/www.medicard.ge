@@ -24,3 +24,9 @@ describe('safe startup', () => {
     assert.match(hydrate, /runPostLoginSideEffects/);
   });
 });
+
+it('post-login work runs once per account per 5 minutes unless forced', async () => {
+  const src = readFileSync(join(here, 'safeStartup.js'), 'utf8');
+  assert.match(src, /POST_LOGIN_MIN_GAP_MS = 5 \* 60_000/);
+  assert.match(src, /if \(!shouldRunPostLogin\(user\?\.id, \{ force \}\)\) return;/);
+});

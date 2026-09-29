@@ -143,6 +143,8 @@ export async function removeHydrationLog(id: string): Promise<HydrationLog[]> {
 async function syncHydrationEvent(clientEventId: string, date: string, deltaMl: number): Promise<void> {
   if (!deltaMl) return;
   try {
+    // Our own write: the server's `health:metrics` echo must not re-read every health hook.
+    await import('@/lib/healthDataSync').then(({ markOwnHealthPush }) => markOwnHealthPush()).catch(() => undefined);
     await api.healthMetrics.sync({
       daily: [],
       stepLogs: [],

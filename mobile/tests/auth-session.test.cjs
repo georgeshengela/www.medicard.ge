@@ -20,7 +20,7 @@ function harness(initialToken=null) {
   '@/lib/onboarding':{needsHealthAssessment:noop,needsProfileSetup:noop,assessmentPhaseComplete:noop},
   '@/lib/sessionSnapshot':{clearSessionSnapshot:asyncNoop,saveSessionSnapshot:asyncNoop,loadSessionSnapshot:async()=>null},
   '@/lib/storage':{getToken:async()=>token,setToken:async value=>{token=value;},clearToken:async()=>{token=null;}},
-  '@/lib/safeStartup':{runPostLoginSideEffects:()=>{postLoginCount++;}},'@/lib/authErrorMessage':{authErrorMessage:error=>error.message},
+  '@/lib/safeStartup':{runPostLoginSideEffects:()=>{postLoginCount++;}},'@/lib/appForeground':{onReturnToForeground:()=>noop},'@/lib/authErrorMessage':{authErrorMessage:error=>error.message},
   '@/lib/quest/devFixture':{isQuestDevEnabled:()=>false,isQuestVisualSession:()=>false,setQuestVisualSession:noop},
   '@/lib/healthDataSync':{resetHealthPullCache:noop},'@/lib/quest/socket':{disconnectQuestSocket:noop},'@/lib/accountSync':{resetAccountSync:noop},
   '@/lib/notifications':{unregisterPushFromServer:asyncNoop,cancelAllReminders:asyncNoop},'@/lib/petCareReminders':{onPetCareLogout:asyncNoop},

@@ -25,9 +25,28 @@ export function schedulePostLoginWork(label, work) {
   });
 }
 
+/**
+ * Home/Profile focus re-hydrate the session, which used to re-run all of this (~12–15 requests per
+ * tab switch). Same account within POST_LOGIN_MIN_GAP_MS → skip; sign-in passes `force`.
+ * Foreground work has its own AppState handler in AuthContext.
+ */
+export const POST_LOGIN_MIN_GAP_MS = 5 * 60_000;
+let lastPostLogin = { userId: null, at: 0 };
+
+export function shouldRunPostLogin(userId, { force = false, now = Date.now() } = {}) {
+  if (!userId) return false;
+  if (!force && lastPostLogin.userId === userId && now - lastPostLogin.at < POST_LOGIN_MIN_GAP_MS) return false;
+  lastPostLogin = { userId, at: now };
+  return true;
+}
+
+export function resetPostLoginGate() {
+  lastPostLogin = { userId: null, at: 0 };
+}
+
 /** Side effects that must not run in the same tick as session state updates (socket, push, sync). */
-export function runPostLoginSideEffects(user, healthProfile) {
-  if (!user?.id) return;
+export function runPostLoginSideEffects(user, healthProfile, { force = false } = {}) {
+  if (!shouldRunPostLogin(user?.id, { force })) return;
   schedulePostLoginWork('retired-preferences', () =>
     import('@/lib/localAccount').then(({ wipeRetiredFeaturePreferences }) => wipeRetiredFeaturePreferences(user.id)),
   );

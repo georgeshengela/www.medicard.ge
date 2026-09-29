@@ -36,10 +36,10 @@ async function pingNow(reason: 'foreground' | 'screen' | 'heartbeat'): Promise<v
   }
 }
 
+// The notification brain already runs on foreground from AuthContext; do not start it a second time here.
 function onAppState(next: AppStateStatus): void {
   if (next !== 'active') return;
   void pingNow('foreground');
-  void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
 }
 
 export function setLivePresenceScreen(screen: string): void {

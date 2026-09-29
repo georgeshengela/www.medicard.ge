@@ -153,7 +153,7 @@ export default function NotificationSettingsScreen() {
   const persist = async (next: MediEngagePrefs) => {
     setPrefs(next);
     await saveEngagePrefs(next);
-    void runMediNotificationBrain(user, healthProfile);
+    void runMediNotificationBrain(user, healthProfile, { force: true });
   };
 
   const setTopic = (topic: EngageTopic, value: boolean) => {

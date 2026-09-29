@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { onReturnToForeground } from '@/lib/appForeground';
 import { resetRunMemory } from '@/lib/run/store';
 import { ka } from '@/i18n/ka';
 import { ApiError, api, type AiEngineId, type CheckInState, type Gender, type HealthProfile, type Usage, type User } from '@/lib/api';
@@ -58,6 +58,15 @@ type AuthState = {
 };
 
 const AuthContext = createContext<AuthState | null>(null);
+
+function sameJson(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -120,10 +129,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (await getToken() !== token) return;
           setSessionRestoreError(null);
           setLocalAccountId(me.user.id);
-          setUser(me.user);
+          // Keep the same object when nothing changed, so effects keyed on [user] (quest socket,
+          // reminders) do not re-run on every Home/Profile focus.
+          setUser((prev) => (sameJson(prev, me.user) ? prev : me.user));
           setUsage(me.usage);
           setStats(me.stats);
-          setHealthProfile(me.healthProfile ?? null);
+          setHealthProfile((prev) => (sameJson(prev, me.healthProfile ?? null) ? prev : (me.healthProfile ?? null)));
           if (me.checkInAwarded && me.checkIn) setPendingDailyBonus(me.checkIn);
           runPostLoginSideEffects(me.user, me.healthProfile ?? null);
         } catch (error) {
@@ -171,8 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id, user?.gender]);
 
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (next) => {
-      if (next !== 'active') return;
+    return onReturnToForeground(() => {
       void import('@/lib/notifications').then(({ syncPushRegistration }) =>
         syncPushRegistration(),
       );
@@ -190,7 +200,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
     });
-    return () => sub.remove();
   }, [user, healthProfile]);
 
   const adopt = useCallback(
@@ -217,7 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStats(stats);
         setHealthProfile(healthProfile);
         await saveSessionSnapshot({ user, usage, stats, healthProfile });
-        runPostLoginSideEffects(user, healthProfile);
+        runPostLoginSideEffects(user, healthProfile, { force: true });
       };
 
       const readMe = async () => {

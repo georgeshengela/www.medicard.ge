@@ -157,6 +157,10 @@ let lastLocalPushAt = 0;
 export function isOwnHealthEcho(now = Date.now()): boolean {
   return now - lastLocalPushAt < 5000;
 }
+/** Other writers to /api/health-metrics/sync (hydration log) mark their push too. */
+export function markOwnHealthPush(now = Date.now()): void {
+  lastLocalPushAt = now;
+}
 
 export async function pullStoredHealth(
   from?: string,

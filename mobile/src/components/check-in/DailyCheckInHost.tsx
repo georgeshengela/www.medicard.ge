@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { onReturnToForeground } from '@/lib/appForeground';
 import * as Haptics from 'expo-haptics';
 import { useRouter, useSegments } from 'expo-router';
 import {
@@ -59,8 +59,8 @@ export function DailyCheckInHost() {
 
   useEffect(() => {
     if (!user) return;
-    const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') {
+    return onReturnToForeground(() => {
+      {
         void refresh();
         void import('@/lib/notifications').then(async ({ getNotificationPermissionGranted }) => {
           const granted = await getNotificationPermissionGranted();
@@ -74,7 +74,6 @@ export function DailyCheckInHost() {
         }
       }
     });
-    return () => sub.remove();
   }, [user, refresh]);
 
   return null;

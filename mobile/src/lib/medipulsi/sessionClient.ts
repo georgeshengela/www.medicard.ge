@@ -19,6 +19,9 @@ export class PulseSessionClient {
  private opening:Promise<void>|null=null;
  private writes:Promise<void>=Promise.resolve();
  private disposed=false;
+ /** Background uploads back off after a failure (5 s → 5 min) instead of retrying every tick forever. */
+ private failures=0;
+ private retryAt=0;
  private loaded=false;
  private listeners=new Set<()=>void>();
  private view:PulseView={snapshot:null,journey:createJourney('gps'),book:emptyBook(),signal:EMPTY_SIGNAL,loading:false,running:false,pending:0,message:'შენი გზა ყველგან გრძელდება',conflict:false};
@@ -66,6 +69,8 @@ export class PulseSessionClient {
   })().finally(()=>{this.opening=null;});return this.opening;
  }
  private seal(){if(!this.sessionId||!this.fixes.length)return;for(let i=0;i<this.fixes.length;i+=60)this.queue.push({path:`/sessions/${this.sessionId}/batches`,body:{id:this.adapter.id(),seq:++this.seq,fixes:this.fixes.slice(i,i+60)}});this.fixes=[];void this.persist();}
+ /** Timer / GPS-driven flush: waits out the back-off. User actions call flush() directly. */
+ private backgroundFlush():Promise<void>{return Date.now()<this.retryAt?Promise.resolve():this.flush();}
  flush():Promise<void>{
   if(this.task)return this.task;
   this.task=(async()=>{
@@ -86,9 +91,11 @@ export class PulseSessionClient {
       this.queue=[];this.fixes=[];this.sessionId=null;this.seq=0;
       this.set({running:false,signal:EMPTY_SIGNAL,conflict:true,journey:pauseJourney(this.view.journey),message:'სესია სხვა მოწყობილობაზე შეიცვალა. ჩანაწერი ადგილობრივად დარჩა. გააგრძელე ერთი მოწყობილობიდან.'});await this.persist();return;
      }
+     this.failures+=1;this.retryAt=Date.now()+Math.min(300_000,5_000*2**Math.min(this.failures-1,6));
      this.set({message:status===400?'GPS ჩანაწერის გაგზავნა ვერ მოხერხდა · ასლი ტელეფონში შენარჩუნებულია':'კავშირი შეწყდა · ჩანაწერი გაგზავნას ელოდება'});await this.persist();throw error;
     }
    }
+   this.failures=0;this.retryAt=0;
    if(!this.view.conflict)this.set({message:'ანგარიშში შენახულია'});
   })().finally(()=>{this.task=null;});return this.task;
  }
@@ -111,7 +118,7 @@ export class PulseSessionClient {
   const mission=this.view.snapshot?.missions.find(m=>m.id===this.view.book.selected)||null;
   const book=advanceMission(this.view.book,before,journey,fix.timestamp,mission);
   this.set({journey,book,message:'გზა ინახება…'});void this.persist();
-  if(this.fixes.length>=5){this.seal();void this.flush().catch(()=>{});}return journey;
+  if(this.fixes.length>=5){this.seal();void this.backgroundFlush().catch(()=>{});}return journey;
  }
  stop(finish=false){
   this.seal();if(this.sessionId)this.queue.push({path:`/sessions/${this.sessionId}/${finish?'finish':'pause'}`});
@@ -119,7 +126,7 @@ export class PulseSessionClient {
   this.set({running:false,signal:EMPTY_SIGNAL,journey:finish?resetSession(this.view.journey):pauseJourney(this.view.journey),message:'გასეირნება შენახულია · სინქრონიზდება'});
   void this.persist();void this.flush().catch(()=>{});
  }
- async tick(){this.seal();try{await this.flush();if(this.view.running){const signal=await this.adapter.request<GiftSignal>('/nearby');this.set({signal});}}catch{this.set({signal:EMPTY_SIGNAL});}}
+ async tick(){this.seal();if(Date.now()<this.retryAt)return;try{await this.flush();if(this.view.running){const signal=await this.adapter.request<GiftSignal>('/nearby');this.set({signal});}}catch{this.set({signal:EMPTY_SIGNAL});}}
  async refresh(){await this.init();if(!this.view.running&&(this.queue.length||this.fixes.length)){this.seal();try{await this.flush();}catch{/* Reading saved progress remains available while an upload waits. */}}const snapshot=await this.adapter.request<Snapshot>('/bootstrap');this.apply(snapshot,!this.view.running&&!this.queue.length&&!this.fixes.length);await this.persist();return snapshot;}
  async selectMission(id:string|null){this.seal();await this.flush();const snapshot=await this.adapter.request<Snapshot>('/mission','PUT',{id});this.apply(snapshot);this.set({book:snapshot.state.book});await this.persist();}
  async settings(value:PulseSettings|{handle:string;leaderboardOptIn:boolean}){const snapshot=await this.adapter.request<Snapshot>('/settings','PATCH',value);this.apply(snapshot);await this.persist();}

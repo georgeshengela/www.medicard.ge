@@ -5,7 +5,9 @@
 export function isTransientConnectionError(error: unknown): boolean {
   const failure = error as { name?: string; status?: number; message?: string };
   if (failure?.name === 'AbortError') return false;
-  if ([502, 503, 504].includes(failure?.status ?? 0)) return true;
+  // 502 = the proxy while a deploy switches over. 503/504 mean the server is shedding load
+  // (or maintenance / a paused module): replaying would double traffic exactly then.
+  if (failure?.status === 502) return true;
   if (failure?.name === 'TypeError') return true;
   const message = String(failure?.message ?? '').toLowerCase();
   return /connection reset|econnreset|econnrefused|econnaborted|socketexception|broken pipe|failed to connect|network request failed|software caused connection abort|connection abort|connection closed/.test(message);

@@ -7,6 +7,9 @@ const immediate=async()=>{};
 test('android socket reset is a transient connection error',()=>{
  assert.equal(isTransientConnectionError(new Error('java.net.SocketException: Connection reset')),true);
  assert.equal(isTransientConnectionError(Object.assign(new Error('Request aborted'),{name:'AbortError'})),false);
+ assert.equal(isTransientConnectionError({status:502}),true);
+ assert.equal(isTransientConnectionError({status:503}),false);
+ assert.equal(isTransientConnectionError({status:504}),false);
 });
 test('one dropped native connection recovers with exactly one replay',async()=>{
  let count=0;
@@ -28,7 +31,12 @@ for(const status of [400,401,403,409,422,429,500])test('does not replay HTTP '+s
  await assert.rejects(()=>withAuthConnectionRetry(async()=>{count++;throw error;},new AbortController().signal,immediate),e=>e===error);
  assert.equal(count,1);
 });
-for(const status of [502,503,504])test('gateway '+status+' can recover once',async()=>{
+for(const status of [503,504])test('overloaded gateway '+status+' is not replayed',async()=>{
+ let count=0;const error=Object.assign(new Error('Gateway unavailable'),{status});
+ await assert.rejects(()=>withAuthConnectionRetry(async()=>{count++;throw error;},new AbortController().signal,immediate),e=>e===error);
+ assert.equal(count,1);
+});
+for(const status of [502])test('gateway '+status+' can recover once',async()=>{
  let count=0;
  assert.equal(await withAuthConnectionRetry(async()=>{if(++count===1)throw Object.assign(new Error('Gateway unavailable'),{status});return 'ok';},new AbortController().signal,immediate),'ok');
  assert.equal(count,2);
