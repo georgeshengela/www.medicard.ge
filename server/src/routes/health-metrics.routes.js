@@ -1,4 +1,5 @@
 import { rateLimit } from 'express-rate-limit';
+import { clientIp, RATE_LIMIT_VALIDATE } from '../lib/rateLimitKey.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
@@ -105,9 +106,10 @@ function publicDaily(row) {
 const syncLimit = rateLimit({
   windowMs: 60_000,
   limit: 30,
-  keyGenerator: (req) => req.user?.id || req.ip,
+  keyGenerator: (req) => (req.user?.id ? `sync:${req.user.id}` : `sync-ip:${clientIp(req)}`),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  validate: RATE_LIMIT_VALIDATE,
   message: { error: 'ძალიან ხშირი სინქრონიზაცია — ცოტა ხანში ისევ ვცდით.' },
 });
 
