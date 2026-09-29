@@ -50,7 +50,6 @@
     { key: 'home', href: '/', label: 'მთავარი', hint: 'დღე მედიქარდთან', icon: 'home' },
     { key: 'about', href: '/about', label: 'ჩვენ შესახებ', hint: 'ვინ ვართ და რისი გვჯერა', icon: 'about' },
     { key: 'calculators', href: '/calculators', label: 'კალკულატორები', hint: 'ციკლი და ორსულობა — 10 უფასო', icon: 'calc', mega: true },
-    { key: 'medirun', href: '/medipulsi/', label: 'MEDIRUN', hint: 'ქალაქის აღმოჩენა ფეხით', icon: 'run' },
     { key: 'faq', href: onHome ? '#faq' : '/#faq', label: 'კითხვები', hint: 'ხშირი კითხვები', icon: 'faq' },
     { key: 'contact', href: '/contact', label: 'კონტაქტი', hint: 'მოგვწერე', icon: 'mail' }
   ];

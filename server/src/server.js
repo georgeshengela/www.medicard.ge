@@ -335,7 +335,10 @@ app.use('/api/admin/rewards', adminRewardsRouter);
 app.use('/api/admin/medipulsi', adminMedipulsiRouter);
 app.use('/api/admin/qa', adminQaRouter);
 
+// The MEDIRUN web page is hidden for now (owner, 2026-09-29): browsers go to the front page.
+// The app's MEDIRUN is native (/run) and does not load this page. MEDIPULSI_WEB=on shows it again.
 app.get(['/medipulsi', '/medipulsi/', '/medipulsi/index.html'], (_req,res) => {
+  if (process.env.MEDIPULSI_WEB !== 'on') return res.redirect(302, '/');
   const file=path.resolve(__dirname,'../public/medipulsi/index.html');
   res.set('Cache-Control','no-store');
   if(!existsSync(file))return res.status(503).send('MEDIPULSI მზადდება.');
