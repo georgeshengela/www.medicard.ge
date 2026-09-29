@@ -1,6 +1,7 @@
 import { api } from '@/lib/api';
 import { ENGAGE_FALLBACKS } from '@/lib/mediEngageCopy';
 import { redactCyclePushLog } from '@/lib/cycleNotificationContract.js';
+import { getToken } from '@/lib/storage';
 
 export type PushTemplate = {
   key: string;
@@ -157,13 +158,28 @@ export function interpolatePushCopy(
   return tidyPushCopy(filled);
 }
 
-export async function loadPushTemplates(): Promise<void> {
-  try {
-    const { templates } = await api.push.templates();
-    cache = Object.fromEntries((templates ?? []).map((row) => [row.key, row]));
-  } catch {
-    /* keep previous cache / fallbacks */
-  }
+/** Admin-edited copy changes rarely: read at most every 10 minutes, and only when signed in. */
+const TEMPLATES_TTL_MS = 10 * 60_000;
+let templatesAt = 0;
+let templatesInFlight: Promise<void> | null = null;
+
+export async function loadPushTemplates(opts: { force?: boolean } = {}): Promise<void> {
+  if (!opts.force && Date.now() - templatesAt < TEMPLATES_TTL_MS) return;
+  if (templatesInFlight) return templatesInFlight;
+  templatesInFlight = (async () => {
+    try {
+      if (!(await getToken())) return; // signed out: the endpoint answers 401, fallbacks are fine
+      const { templates } = await api.push.templates();
+      cache = Object.fromEntries((templates ?? []).map((row) => [row.key, row]));
+      templatesAt = Date.now();
+    } catch {
+      // keep previous cache / fallbacks; a failure also waits out the TTL instead of retrying at once
+      templatesAt = Date.now();
+    } finally {
+      templatesInFlight = null;
+    }
+  })();
+  return templatesInFlight;
 }
 
 export function applyPushCopy(
