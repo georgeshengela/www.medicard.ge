@@ -461,13 +461,26 @@ function start() {
       layout = { x: -viewW * 0.19, y: viewH * 0.06, s };
     } else {
       // Desktop: between the headline (left) and the dial (right)
-      const s = Math.min(0.95, (viewH * 0.5) / BH);
-      layout = { x: viewW * 0.06, y: 0.12, s };
+      // Sit in the middle of the real gap between the headline and the dial, and fit inside it
+      const copy = document.querySelector('.hero-copy');
+      const dialCard = document.querySelector('.dial-wrap');
+      const box = canvas.getBoundingClientRect();
+      let x = viewW * 0.015;
+      let s = Math.min(0.95, (viewH * 0.5) / BH);
+      if (copy && dialCard) {
+        const left = copy.getBoundingClientRect().right - box.left;
+        const right = dialCard.getBoundingClientRect().left - box.left;
+        const gap = Math.max(0, right - left);
+        x = ((left + right) / 2 / w - 0.5) * viewW;
+        s = Math.min(s, ((gap * 0.5) / w) * viewW / BW);
+      }
+      layout = { x, y: 0.12, s };
     }
     // Keep the ring clear of the dial text on wide layouts
     ringGroup.scale.setScalar(window.innerWidth <= 860 ? 0.9 : 0.78);
   }
   new ResizeObserver(resize).observe(canvas);
+  if (document.fonts) document.fonts.ready.then(resize);
   resize();
 
   /* ───── Loop ───── */
