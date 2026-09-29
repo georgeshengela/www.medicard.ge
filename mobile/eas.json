@@ -25,7 +25,12 @@
     }
   },
   "submit": {
-    "production": {},
+    "production": {
+      "ios": {
+        "ascAppId": "6812517519",
+        "appleTeamId": "7699S4PS73"
+      }
+    },
     "beta": {
       "android": {
         "track": "internal",
