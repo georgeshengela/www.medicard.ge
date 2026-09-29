@@ -26,6 +26,11 @@ const HELP = [
 
 /** Sends a message to the owner and logs it. Returns false when Telegram isn't paired. */
 export async function notifyOwner(text, { buttons = null, direction = 'director', replyTo = null } = {}) {
+  // Automated tests run against the real .env (main DB + Telegram). They must never reach the owner:
+  // on 2026-09-29 a daily-cap test sent seven fake "AI cap reached" notices.
+  if (process.env.NODE_TEST_CONTEXT || process.env.NODE_ENV === 'test') {
+    return { delivered: false, suppressed: 'test' };
+  }
   const state = await store.getState();
   if (!state.ownerChatId || !tg.telegramConfigured()) {
     await store.addMessage({ direction, text });

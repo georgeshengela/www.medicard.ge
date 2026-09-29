@@ -154,3 +154,11 @@ describe('pharmacy scrape in the web process', async () => {
     assert.equal(pharmacySyncInWebEnabled({ PHARMACY_SYNC_IN_WEB: 'OFF' }), false);
   });
 });
+
+describe('owner notices never leave a test run', async () => {
+  it('notifyOwner is a no-op under node --test (2026-09-29: a cap test sent real Telegram notices)', async () => {
+    const { notifyOwner } = await import('./director/service.js');
+    const result = await notifyOwner('test run — must not be delivered');
+    assert.deepEqual(result, { delivered: false, suppressed: 'test' });
+  });
+});

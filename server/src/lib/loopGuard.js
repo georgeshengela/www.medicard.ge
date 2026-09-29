@@ -55,6 +55,8 @@ function clientMeta(req) {
 export function createLoopNotifier({ notify, now = Date.now, gapMs = NOTICE_GAP_MS } = {}) {
   const last = new Map();
   const send = notify || (async (text) => {
+    // Only the production server alerts the owner; local runs and tests just log.
+    if (process.env.NODE_ENV !== 'production') return { delivered: false };
     const { notifyOwner } = await import('./director/service.js');
     return notifyOwner(text, { direction: 'system' });
   });
@@ -100,7 +102,7 @@ export function createLoopNotifier({ notify, now = Date.now, gapMs = NOTICE_GAP_
     if (!shouldSend(`ai:${name}`)) return false;
     void Promise.resolve(send([
       `💸 ერთმა მომხმარებელმა AI-ის დღიურ ჭერს მიაღწია: ${name} (${limit}/დღე).`,
-      `აპი: ${platform} ${version}`,
+      `სესია: ${sessionTag(req)} · აპი: ${platform} ${version}`,
       'შემდეგი მოთხოვნები 24 საათით შეჩერებულია. სავარაუდოდ მარყუჟი ან ბოროტად გამოყენებაა.',
     ].join('\n'))).catch(() => {});
     return true;
