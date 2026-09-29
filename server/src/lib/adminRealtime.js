@@ -9,7 +9,7 @@ import { registerQuestRealtimeEmitter } from './questRealtime.js';
 
 const ROOM = ADMIN_SOCKET_ROOM;
 const LIVE_MS = 90_000;
-const DEBOUNCE_MS = 300;
+const DEBOUNCE_MS = 2000;
 
 let io = null;
 let flushTimer = null;
@@ -67,6 +67,8 @@ export function attachAdminRealtime(httpServer) {
 export function notifyOpsActivity(row) {
   if (row?.userId) seen.set(row.userId, Date.now());
   if (!io) return;
+  // The snapshot scans today's activity: only build it when an admin is actually watching.
+  if (!(io.sockets.adapter.rooms.get(ROOM)?.size > 0)) return;
   if (flushTimer) return;
   flushTimer = setTimeout(() => {
     flushTimer = null;

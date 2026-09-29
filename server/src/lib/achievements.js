@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { sumRewardLedger } from './rewardLedgerSum.js';
 import {
   ACHIEVEMENT_DEFINITIONS,
   assertAchievementEconomy,
@@ -86,16 +87,11 @@ export async function computeAchievementCounters(userId, options = {}) {
       include: { template: true },
     }),
     db.userQuestProfile.findUnique({ where: { userId } }).catch(() => null),
-    db.rewardLedger.findMany({ where: { userId } }),
+    sumRewardLedger(db, userId),
   ]);
 
-  let xpTotal = 0;
-  let coinsEarned = 0;
-  for (const row of ledger) {
-    const amount = Number(row.amount) || 0;
-    if (row.currency === 'XP') xpTotal += amount;
-    if (row.currency === 'COIN' && amount > 0) coinsEarned += amount;
-  }
+  const xpTotal = ledger.xp;
+  const coinsEarned = ledger.coinsEarned;
 
   const byCategory = { MOVEMENT: 0, HYDRATION: 0, MEDI: 0 };
   let weeklyCompleted = 0;
@@ -279,13 +275,7 @@ export async function reconcileAchievements(userId, options = {}) {
 }
 
 async function rewardBalance(db, userId) {
-  const rows = await db.rewardLedger.findMany({ where: { userId } });
-  let xp = 0;
-  let coins = 0;
-  for (const row of rows) {
-    if (row.currency === 'XP') xp += row.amount;
-    if (row.currency === 'COIN') coins += row.amount;
-  }
+  const { xp, coins } = await sumRewardLedger(db, userId);
   return { xp, coins };
 }
 

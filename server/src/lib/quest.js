@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { sumRewardLedger } from './rewardLedgerSum.js';
 import {
   QUEST_ECONOMY,
   assertIssuableQuestReward,
@@ -980,14 +981,7 @@ export async function claimQuest(userId, userQuestId, options = {}) {
 }
 
 export async function getRewardBalance(userId, options = {}) {
-  const db = dbOf(options);
-  const rows = await db.rewardLedger.findMany({ where: { userId } });
-  let xp = 0;
-  let coins = 0;
-  for (const row of rows) {
-    if (row.currency === 'XP') xp += row.amount;
-    if (row.currency === 'COIN') coins += row.amount;
-  }
+  const { xp, coins } = await sumRewardLedger(dbOf(options), userId);
   return { xp, coins };
 }
 

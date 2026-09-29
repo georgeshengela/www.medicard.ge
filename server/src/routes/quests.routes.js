@@ -13,6 +13,23 @@ import {
   setQuestTimezone,
 } from '../lib/quest.js';
 
+/**
+ * The dashboard GET recomputes and writes quest state (~15–25 queries). The app can ask for it
+ * from several hooks at once (socket connect, foreground, health push): concurrent requests for
+ * the same person share one computation instead of racing each other.
+ */
+const dashboardInFlight = new Map();
+function sharedDashboard(userId, timezone) {
+  const key = `${userId}|${timezone || ''}`;
+  const running = dashboardInFlight.get(key);
+  if (running) return running;
+  const promise = getUserQuestDashboard(userId, { deviceTimezone: timezone }).finally(() => {
+    dashboardInFlight.delete(key);
+  });
+  dashboardInFlight.set(key, promise);
+  return promise;
+}
+
 export const questsRouter = Router();
 questsRouter.use(requireAuth);
 questsRouter.use((_req, res, next) => {
@@ -43,7 +60,7 @@ questsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const timezone = typeof req.query.timezone === 'string' ? req.query.timezone : undefined;
-    res.json(await getUserQuestDashboard(req.user.id, { deviceTimezone: timezone }));
+    res.json(await sharedDashboard(req.user.id, timezone));
   }),
 );
 

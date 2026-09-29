@@ -29,6 +29,44 @@ async function parseJsonResponse(res) {
  * Send SMS via SMSOffice.ge (POST, urgent for OTP).
  * @returns {{ ok: boolean, reference?: string, errorCode?: number, message?: string }}
  */
+/**
+ * Cost fuse for OTP SMS (sign-in, phone link, password reset). Per-number and per-IP limits
+ * exist upstream, but rotating IPs and numbers could still pump paid SMS: cap the whole service
+ * per rolling 24 h (SMS_OTP_DAILY_CAP, default 1000) and each number (8/day).
+ */
+export const SMS_OTP_PER_NUMBER_DAILY = 8;
+export function smsOtpDailyCap(value = process.env.SMS_OTP_DAILY_CAP) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1000;
+}
+
+async function otpCapReached(dest) {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [perNumber, total] = await Promise.all([
+    prisma.smsLog.count({ where: { destination: dest, purpose: 'OTP', createdAt: { gt: since } } }),
+    prisma.smsLog.count({ where: { purpose: 'OTP', createdAt: { gt: since } } }),
+  ]);
+  if (total >= smsOtpDailyCap()) return 'service';
+  if (perNumber >= SMS_OTP_PER_NUMBER_DAILY) return 'number';
+  return null;
+}
+
+let lastCapNoticeAt = 0;
+function notifySmsCap(kind) {
+  console.warn('[sms] OTP cap reached', kind);
+  if (kind !== 'service' || Date.now() - lastCapNoticeAt < 60 * 60 * 1000) return;
+  lastCapNoticeAt = Date.now();
+  void import('./director/service.js')
+    .then(({ notifyOwner }) =>
+      notifyOwner(
+        `📵 SMS კოდების დღიური ჭერი (${smsOtpDailyCap()}/24სთ) ამოიწურა — ახალი კოდები აღარ იგზავნება.
+თუ ეს ნამდვილი ზრდაა, Render-ში SMS_OTP_DAILY_CAP გაზარდე; თუ არა, შეამოწმე admin → SMS ჟურნალი.`,
+        { direction: 'system' },
+      ),
+    )
+    .catch(() => undefined);
+}
+
 export async function sendSms({
   destination,
   content,
@@ -41,6 +79,14 @@ export async function sendSms({
   const dest = normalizeSmsDestination(destination);
   const sender = env.SMS_OFFICE_SENDER || 'MEDICARD';
   const ref = reference ?? `${purpose}-${Date.now()}`.slice(0, 20);
+
+  if (purpose === 'OTP') {
+    const cap = await otpCapReached(dest);
+    if (cap) {
+      notifySmsCap(cap);
+      return { ok: false, reference: ref, message: 'SMS კოდების დღიური ლიმიტი ამოიწურა. სცადე მოგვიანებით ან დაგვიკავშირდი.', capped: cap };
+    }
+  }
 
   const log = await prisma.smsLog.create({
     data: {
@@ -79,6 +125,7 @@ export async function sendSms({
   try {
     const res = await fetch(SEND_URL, {
       method: 'POST',
+      signal: AbortSignal.timeout(15_000),
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
       signal: AbortSignal.timeout(8000),

@@ -108,6 +108,10 @@ export async function requestPhoneOtp({ phone, purpose = 'AUTH', userId = null }
       urgent: true,
     });
 
+    if (!sms.ok && sms.capped) {
+      return { ok: false, status: 429, error: sms.message };
+    }
+
     if (!sms.ok && env.NODE_ENV === 'production' && !(await isQaOtpEnabled())) {
       return { ok: false, status: 502, error: sms.message || 'SMS გაგზავნა ვერ მოხერხდა.' };
     }

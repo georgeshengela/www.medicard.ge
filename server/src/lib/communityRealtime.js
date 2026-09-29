@@ -6,6 +6,8 @@ let realtime;
 let timer;
 let flushing = false;
 let pending = false;
+const BATCH_MS = 1500;
+const SPREAD_MS = 2500;
 
 export function attachCommunityRealtime(io) {
   realtime = io;
@@ -44,7 +46,8 @@ async function flush() {
       if (!allowed.has(socket.data.userId) || socket.data.expiresAt <= Date.now()) socket.disconnect(true);
       // Never broadcast author IDs, content, post IDs or private health information.
       // Clients re-fetch through the authenticated, block-aware HTTP endpoints.
-      else socket.emit('community:changed', {});
+      // Spread the members' refetches over a few seconds instead of all at the same instant.
+      else setTimeout(() => socket.connected && socket.emit('community:changed', {}), Math.floor(Math.random() * SPREAD_MS)).unref?.();
     }
   } catch { /* HTTP reconciliation on reconnect/foreground is the fallback. */ }
   finally {
@@ -55,6 +58,7 @@ async function flush() {
 
 export function communityChanged() {
   if (!namespace || timer) return;
-  timer = setTimeout(() => void flush(), 180);
+  // Writes in a burst become one signal; every member then refetches 2–4 GETs, so batch generously.
+  timer = setTimeout(() => void flush(), BATCH_MS);
   timer.unref();
 }
