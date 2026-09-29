@@ -60,7 +60,13 @@ type Props = {
   onPrev?: () => void;
   onNext?: () => void;
   canPrev: boolean;
+  /** Landing only: copy in the language highlighted on the welcome picker. */
+  landingCopy?: LandingCopy;
+  /** Landing only: rendered above the body (language picker). */
+  landingTop?: React.ReactNode;
 };
+
+export type LandingCopy = { getStarted: string; alreadyHaveAccount: string; signIn: string };
 
 export function FigmaWelcomeSlide({
   frame,
@@ -73,6 +79,8 @@ export function FigmaWelcomeSlide({
   onPrev,
   onNext,
   canPrev,
+  landingCopy,
+  landingTop,
 }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
@@ -138,6 +146,8 @@ export function FigmaWelcomeSlide({
           bottomInset={insets.bottom}
           onPrimary={onPrimary}
           onSignIn={onSignIn}
+          copy={landingCopy}
+          top={landingTop}
         />
       ) : (
         <CarouselFooter
@@ -253,12 +263,17 @@ function LandingFooter({
   bottomInset,
   onPrimary,
   onSignIn,
+  copy,
+  top,
 }: {
   body: string;
   bottomInset: number;
   onPrimary?: () => void;
   onSignIn?: () => void;
+  copy?: LandingCopy;
+  top?: React.ReactNode;
 }) {
+  const labels = copy ?? { getStarted: ka.onboarding.getStarted, alreadyHaveAccount: ka.onboarding.alreadyHaveAccount, signIn: ka.auth.signIn };
   return (
     <View
       pointerEvents="box-none"
@@ -270,6 +285,7 @@ function LandingFooter({
         zIndex: 20,
       }}
     >
+      {top}
       <Text
         style={{
           textAlign: 'center',
@@ -282,7 +298,7 @@ function LandingFooter({
         {body}
       </Text>
       <View style={{ marginTop: 32 }}>
-        <AuthPrimaryButton tone="inverse" label={ka.onboarding.getStarted} onPress={onPrimary} />
+        <AuthPrimaryButton tone="inverse" label={labels.getStarted} onPress={onPrimary} />
       </View>
       <Pressable
         accessibilityRole="button"
@@ -297,8 +313,8 @@ function LandingFooter({
             color: 'rgba(255,255,255,0.86)',
           }}
         >
-          {ka.onboarding.alreadyHaveAccount}{' '}
-          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: '#FFFFFF' }}>{ka.auth.signIn}</Text>
+          {labels.alreadyHaveAccount}{' '}
+          <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', color: '#FFFFFF' }}>{labels.signIn}</Text>
         </Text>
       </Pressable>
     </View>

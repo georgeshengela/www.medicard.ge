@@ -10,3 +10,7 @@ export function dateLocale(): 'ka-GE' | 'en-GB';
 export function deviceLanguage(): AppLang;
 export function saveLanguage(lang: AppLang): void;
 export function setLanguageAndReload(lang: AppLang): Promise<boolean>;
+/** Route to open once after a language reload. */
+export function setPendingRoute(route: string): void;
+/** Read and clear the pending route. */
+export function takePendingRoute(): string | null;

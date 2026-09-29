@@ -114,7 +114,48 @@ export function deviceLanguage() {
   }
 }
 
-/** Save without reloading (first-launch picker before any screen rendered copy). */
+const NEXT_KEY = 'medicard.language.next';
+const IOS_NEXT_KEY = `@medicard/pref/${NEXT_KEY}`;
+
+/** Route to open once after a language reload (welcome → sign-in continues where the person was). */
+export function setPendingRoute(route) {
+  const value = String(route || '');
+  const RN = rn();
+  try {
+    if (!RN || RN.Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(NEXT_KEY, value);
+    } else if (RN.Platform.OS === 'ios') RN.Settings.set({ [IOS_NEXT_KEY]: value });
+    else require('expo-secure-store').setItem(NEXT_KEY, value);
+  } catch {
+    /* the person lands on welcome instead */
+  }
+}
+
+/** Read and clear the pending route (null when none). */
+export function takePendingRoute() {
+  const RN = rn();
+  let value = null;
+  try {
+    if (!RN || RN.Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') {
+        value = localStorage.getItem(NEXT_KEY);
+        localStorage.removeItem(NEXT_KEY);
+      }
+    } else if (RN.Platform.OS === 'ios') {
+      value = RN.Settings.get(IOS_NEXT_KEY) ?? null;
+      if (value) RN.Settings.set({ [IOS_NEXT_KEY]: '' });
+    } else {
+      const store = require('expo-secure-store');
+      value = store.getItem(NEXT_KEY);
+      if (value) store.setItem(NEXT_KEY, '');
+    }
+  } catch {
+    value = null;
+  }
+  return typeof value === 'string' && value.startsWith('/') ? value : null;
+}
+
+/** Save without reloading (the chosen language is already the running one). */
 export function saveLanguage(lang) {
   if (!isLang(lang)) return;
   writeStored(lang);

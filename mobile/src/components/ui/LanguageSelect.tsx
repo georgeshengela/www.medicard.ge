@@ -10,12 +10,6 @@ export const LANGUAGE_OPTIONS: { value: AppLang; badge: string; native: string; 
   { value: 'en', badge: 'EN', native: 'English', other: 'ინგლისური' },
 ];
 
-/** Picker copy follows the highlighted option, not the current app language. */
-export const LANGUAGE_PICKER_COPY: Record<AppLang, { continue: string; note: string }> = {
-  ka: { continue: 'გაგრძელება', note: 'ენას ნებისმიერ დროს შეცვლი პროფილიდან.' },
-  en: { continue: 'Continue', note: 'You can change it anytime in Profile.' },
-};
-
 const SWITCH_COPY: Record<AppLang, { title: string; body: string; confirm: string; cancel: string }> = {
   ka: {
     title: 'ენის შეცვლა',

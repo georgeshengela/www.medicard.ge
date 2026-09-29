@@ -4,14 +4,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
-import { hasChosenLanguage } from '@/i18n/locale';
+import { takePendingRoute } from '@/i18n/locale';
 
 const FILL_MS = 1600;
 const PERCENT_SIZE = 56;
 const PERCENT_LINE = 76;
 const LOGO = 52;
 
-/** Water-fill progress, then the language picker (first launch) or welcome. */
+/** Water-fill progress, then welcome (where the language is picked). */
 export default function AuthSplash() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -20,6 +20,12 @@ export default function AuthSplash() {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    // Just restarted in the language picked on welcome: continue where the person was going.
+    const pending = takePendingRoute();
+    if (pending) {
+      router.replace(pending as never);
+      return undefined;
+    }
     let cancelled = false;
     const started = Date.now();
 
@@ -35,7 +41,7 @@ export default function AuthSplash() {
 
     const done = setTimeout(() => {
       clearInterval(tick);
-      if (!cancelled) router.replace(hasChosenLanguage() ? '/(auth)/welcome' : '/(auth)/language');
+      if (!cancelled) router.replace('/(auth)/welcome');
     }, FILL_MS);
 
     return () => {
