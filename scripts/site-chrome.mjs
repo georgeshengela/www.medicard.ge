@@ -1,11 +1,11 @@
 // Shared header/footer for the generated public pages (calculators, privacy, terms).
 // The navigation itself is rendered by server/public/site-nav.js so every page gets the same menu.
 
-export const SITE_STYLES = `  <link rel="stylesheet" href="/site-nav.css?v=3" />
+export const SITE_STYLES = `  <link rel="stylesheet" href="/site-nav.css?v=7" />
   <link rel="stylesheet" href="/site-refresh.css?v=2" />`;
 
 export const SITE_HEADER = `  <header class="tb" id="topbar"></header>
-  <script src="/site-nav.js?v=5"></script>`;
+  <script src="/site-nav.js?v=6"></script>`;
 
 const FOOT_LINKS = [
   ["/about", "ჩვენ შესახებ"],

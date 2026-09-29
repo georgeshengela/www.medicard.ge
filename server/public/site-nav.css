@@ -132,8 +132,26 @@ body.tb-offset { padding-top: 92px; }
 .store-badge b { font-family: inherit !important; font-size: 23px; font-weight: 600; line-height: 1; letter-spacing: -.025em; }
 a.store-badge:hover { transform: translateY(-2px); box-shadow: 0 16px 30px -16px rgba(0, 0, 0, .7); }
 a.store-badge:active { transform: scale(.98); }
-.store-badge.is-soon { opacity: .5; cursor: default; }
-.store-badge.is-soon small { text-transform: none; }
+.store-badge.is-soon { cursor: default; height: 54px; padding: 0 16px 0 12px; gap: 10px; box-shadow: 0 10px 24px -14px rgba(0, 0, 0, .55); }
+.store-badge.is-soon b { font-size: 21px; letter-spacing: -.01em; }
+.store-badge.is-soon small { font-size: 10px; letter-spacing: .06em; opacity: .85; }
+.store-badge.is-soon img { width: 26px; height: 26px; }
+.store-badge.is-soon small { text-transform: uppercase; }
+.store-badge { border-radius: 9px; }
+/* Apple's own artwork: no box of ours around it, just lift and a light sweep */
+.store-badge.is-official {
+  position: relative; overflow: hidden; height: auto; padding: 0; border: 0; background: none; border-radius: 9px;
+  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, .55);
+}
+.store-badge.is-official img { display: block; width: auto; height: 54px; }
+.store-badge.is-official::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .28) 50%, transparent 65%);
+  transform: translateX(-120%); transition: transform .7s cubic-bezier(.2, .7, .1, 1);
+}
+a.store-badge.is-official:hover { transform: translateY(-2px); box-shadow: 0 20px 36px -16px rgba(0, 0, 0, .6); }
+a.store-badge.is-official:hover::after { transform: translateX(120%); }
+.store-badge.is-official:focus-visible { outline: 3px solid #14B8A6; outline-offset: 3px; }
 
 /* Mobile */
 .tb-burger { display: none; }
@@ -192,6 +210,8 @@ a.store-badge:active { transform: scale(.98); }
   .tb-sheet-text small { font-size: 13px; color: var(--tb-ink-2); }
   .tb-sheet-list a > svg:last-child { opacity: .35; width: 18px; height: 18px; }
   .tb-sheet-foot .store-badge { height: 48px; }
+  .tb-sheet-foot .store-badge.is-official { height: auto; }
+  .tb-sheet-foot .store-badge.is-official img { height: 48px; }
   .tb-sheet-foot .store-badge b { font-size: 20px; }
   .tb-sheet-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 6px 6px; border-top: 1px solid var(--tb-line); }
   .tb-sheet-mail { width: 100%; padding: 8px 6px 2px; font-size: 14px; color: var(--tb-ink-2) !important; }

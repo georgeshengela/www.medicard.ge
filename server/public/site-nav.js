@@ -110,7 +110,7 @@
     '<div class="tb-sheet" id="tb-sheet" aria-label="მენიუ">' +
       '<ul class="tb-sheet-list">' + sheetItems + '</ul>' +
       '<div class="tb-sheet-foot">' +
-        '<a class="store-badge" href="' + APP_STORE + '" aria-label="Download on the App Store">' + ICON.apple + '<span><small>Download on the</small><b>App Store</b></span></a>' +
+        '<a class="store-badge is-official" href="' + APP_STORE + '"><img src="/icons/app-store-badge.svg" alt="Download on the App Store" width="144" height="48" /></a>' +
         '<span class="store-badge is-soon" aria-label="Google Play — Coming soon"><img src="/icons/google-play.svg" alt="" width="24" height="24" /><span><small>Coming soon</small><b>Google Play</b></span></span>' +
         '<a class="tb-sheet-login" href="/app">' + ICON.user + '<span>' + (signedIn ? 'ჩემი ანგარიში' : 'შესვლა ვებ-ვერსიაში') + '</span>' + ICON.arrow + '</a>' +
         '<a class="tb-sheet-mail" href="mailto:support@medicard.ge">support@medicard.ge</a>' +
