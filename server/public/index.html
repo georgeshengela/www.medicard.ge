@@ -20,7 +20,7 @@
   <link rel="preload" href="/fonts/firago/FiraGO-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="modulepreload" href="/vendor/three/three.module.min.js" />
   <link rel="stylesheet" href="/site-nav.css?v=2" />
-  <link rel="stylesheet" href="/home.css?v=5" />
+  <link rel="stylesheet" href="/home.css?v=8" />
   <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.min.js" } }</script>
 </head>
 <body>
@@ -30,7 +30,7 @@
   <script src="/site-nav.js?v=3"></script>
 
   <main id="main">
-    <!-- A day with MEDICARD: sticky WebGL stage + scrolling moments -->
+    <!-- A day with MEDICARD: one screen, a vertical clock that moves the 3D phone through the day -->
     <section class="day" id="day" data-tone="light" aria-label="დღე მედიქარდთან">
       <div class="stage" aria-hidden="true">
         <div class="sky"></div>
@@ -39,67 +39,67 @@
         <figure class="poster">
           <img src="/screens/v3/home.webp?v=1" alt="" width="880" height="1912" />
         </figure>
-        <div class="clock">
-          <span class="clock-time" id="clock-time">08:40</span>
-          <span class="clock-label" id="clock-label">დილა</span>
-        </div>
+        <div class="clock"><span class="clock-time" id="clock-time">08:40</span></div>
       </div>
 
-      <ol class="rail" id="rail" aria-label="დღის მომენტები">
-        <li><a href="#day" data-i="0"><span>08:40</span></a></li>
-        <li><a href="#m-meds" data-i="1"><span>11:00</span></a></li>
-        <li><a href="#m-food" data-i="2"><span>13:40</span></a></li>
-        <li><a href="#m-quest" data-i="3"><span>18:10</span></a></li>
-        <li><a href="#m-lab" data-i="4"><span>21:00</span></a></li>
-        <li><a href="#m-cycle" data-i="5"><span>22:30</span></a></li>
-      </ol>
-
-      <div class="moments">
-        <div class="moment moment-hero" data-key="home" data-time="08:40" data-label="დილა">
-          <div class="hero-copy">
-            <h1 class="hero-title">
-              <span class="line"><span>ჯანმრთელობა</span></span>
-              <span class="line"><span>დღის ყოველ</span></span>
-              <span class="line"><span>საათში.</span></span>
-            </h1>
-            <p class="hero-lead">MEDICARD ქართული ჯანმრთელობის აპია. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა — ერთ ტელეფონში და ყველაფერი უფასოდ.</p>
-            <div class="hero-actions">
-              <a class="btn btn-solid" href="#download" data-download>აპის ჩამოტვირთვა</a>
-              <a class="btn btn-quiet" href="#m-meds">ნახე, როგორ გადის დღე</a>
-            </div>
+      <div class="day-ui">
+        <div class="hero-copy">
+          <h1 class="hero-title">
+            <span class="line"><span>ჯანმრთელობა</span></span>
+            <span class="line"><span>დღის ყოველ</span></span>
+            <span class="line"><span>საათში.</span></span>
+          </h1>
+          <p class="hero-lead">MEDICARD ქართული ჯანმრთელობის აპია. Medi, მედიკამენტები, კვება, ანალიზები, ციკლი და მოძრაობა — ერთ ტელეფონში და ყველაფერი უფასოდ.</p>
+          <div class="hero-actions">
+            <a class="btn btn-solid" href="#download" data-download>აპის ჩამოტვირთვა</a>
+            <a class="btn btn-quiet" href="#medi">გაიცანი Medi</a>
           </div>
         </div>
 
-        <article class="moment" id="m-meds" data-key="meds" data-time="11:00" data-label="დილა">
-          <p class="m-time">11:00</p>
-          <h2>წამალი დროზე, ყოველდღე.</h2>
-          <p>შეხსენება ზუსტ დროს მოდის, მიღებას ერთი შეხებით მონიშნავ, სტატისტიკა კი გაჩვენებს, რამდენად რეგულარული ხარ.</p>
-        </article>
-
-        <article class="moment" id="m-food" data-key="nutrition" data-time="13:40" data-label="შუადღე">
-          <p class="m-time">13:40</p>
-          <h2>გადაუღე თეფშს.</h2>
-          <p>ფოტოდან Medi კალორიებსა და მაკროებს შეაფასებს — შენ ასწორებ და ინახავ. დღის ბალანსი ყოველთვის თვალწინაა.</p>
-        </article>
-
-        <article class="moment" id="m-quest" data-key="quest" data-time="18:10" data-label="საღამო">
-          <p class="m-time">18:10</p>
-          <h2>მისიები, რომლებიც გამოძრავებს.</h2>
-          <p>MEDI QUEST ნაბიჯებს, წყალს და მიღებებს დღის მისიებად აქცევს — ჯილდოებით, სერიით და Medi Coins-ით.</p>
-        </article>
-
-        <article class="moment" id="m-lab" data-key="lab-dark" data-time="21:00" data-label="საღამო">
-          <p class="m-time">21:00</p>
-          <h2>ანალიზის ფურცელი, გასაგებ ენაზე.</h2>
-          <p>გადაუღე ან ატვირთე PDF — ციფრები და ნორმები ქართულად აიხსნება, დინამიკა კი გრაფიკზე ჩანს. დიაგნოზს არ გისვამს, გაგებაში გეხმარება.</p>
-        </article>
-
-        <article class="moment" id="m-cycle" data-key="cycle-dark" data-time="22:30" data-label="ღამე">
-          <p class="m-time">22:30</p>
-          <h2>დღის ბოლოს — ორი წამი შენთვის.</h2>
-          <p>ციკლის რგოლი, სწრაფი აღრიცხვა და პროგნოზი, რომელიც ყოველთვის გეუბნება, რომ სავარაუდოა.</p>
-        </article>
+        <div class="dial-wrap">
+          <p class="dial-hint" id="dial-hint">აირჩიე დრო</p>
+          <div class="dial" id="dial" role="tablist" aria-orientation="vertical" aria-labelledby="dial-hint">
+            <span class="dial-track" aria-hidden="true"><i class="dial-fill"></i><i class="dial-bead"></i></span>
+          <button class="stop" type="button" role="tab" id="stop-0" aria-selected="true" aria-controls="moment-panel" tabindex="0" data-key="home" data-time="08:40" data-label="დილა" data-title="დღე ერთი შეხედვით." data-text="ნაბიჯები, წყალი, წამლები და ციკლი — ერთ ეკრანზე, როგორც კი აპს გახსნი.">
+            <span class="stop-dot" aria-hidden="true"></span>
+            <time>08:40</time>
+            <span class="stop-name">მთავარი</span>
+          </button>
+          <button class="stop" type="button" role="tab" id="stop-1" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="meds" data-time="11:00" data-label="დილა" data-title="წამალი დროზე, ყოველდღე." data-text="შეხსენება ზუსტ დროს მოდის, მიღებას ერთი შეხებით მონიშნავ, სტატისტიკა კი გაჩვენებს, რამდენად რეგულარული ხარ.">
+            <span class="stop-dot" aria-hidden="true"></span>
+            <time>11:00</time>
+            <span class="stop-name">წამლები</span>
+          </button>
+          <button class="stop" type="button" role="tab" id="stop-2" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="nutrition" data-time="13:40" data-label="შუადღე" data-title="გადაუღე თეფშს." data-text="ფოტოდან Medi კალორიებსა და მაკროებს შეაფასებს — შენ ასწორებ და ინახავ.">
+            <span class="stop-dot" aria-hidden="true"></span>
+            <time>13:40</time>
+            <span class="stop-name">კვება</span>
+          </button>
+          <button class="stop" type="button" role="tab" id="stop-3" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="quest" data-time="18:10" data-label="საღამო" data-title="მისიები, რომლებიც გამოძრავებს." data-text="ნაბიჯები, წყალი და მიღებები დღის მისიებად იქცევა — ჯილდოებით და სერიით.">
+            <span class="stop-dot" aria-hidden="true"></span>
+            <time>18:10</time>
+            <span class="stop-name">MEDI QUEST</span>
+          </button>
+          <button class="stop" type="button" role="tab" id="stop-4" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="lab-dark" data-time="21:00" data-label="საღამო" data-title="ანალიზი, გასაგებ ენაზე." data-text="ციფრები და ნორმები ქართულად აიხსნება. დიაგნოზს არ გისვამს — გაგებაში გეხმარება.">
+            <span class="stop-dot" aria-hidden="true"></span>
+            <time>21:00</time>
+            <span class="stop-name">ანალიზები</span>
+          </button>
+          <button class="stop" type="button" role="tab" id="stop-5" aria-selected="false" aria-controls="moment-panel" tabindex="-1" data-key="cycle-dark" data-time="22:30" data-label="ღამე" data-title="ორი წამი შენთვის." data-text="ციკლის რგოლი, სწრაფი აღრიცხვა და პროგნოზი, რომელიც ყოველთვის სავარაუდოდ მოინიშნება.">
+            <span class="stop-dot" aria-hidden="true"></span>
+            <time>22:30</time>
+            <span class="stop-name">ციკლი</span>
+          </button>
+          </div>
+          <div class="moment-panel" id="moment-panel" role="tabpanel" aria-labelledby="stop-0" aria-live="polite">
+            <p class="moment-label" id="moment-label">დილა · 08:40</p>
+            <h2 id="moment-title">დღე ერთი შეხედვით.</h2>
+            <p id="moment-text">ნაბიჯები, წყალი, წამლები და ციკლი — ერთ ეკრანზე, როგორც კი აპს გახსნი.</p>
+          </div>
+        </div>
       </div>
+
+      <a class="scroll-cue" href="#medi" aria-label="ქვემოთ გადასვლა"><span></span></a>
     </section>
 
     <!-- Medi -->
@@ -276,7 +276,7 @@
     </div>
   </footer>
 
-  <script src="/home.js?v=3" defer></script>
-  <script type="module" src="/home-scene.js?v=4"></script>
+  <script src="/home.js?v=4" defer></script>
+  <script type="module" src="/home-scene.js?v=7"></script>
 </body>
 </html>

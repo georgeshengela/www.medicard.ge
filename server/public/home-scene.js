@@ -435,14 +435,17 @@ function start() {
     camera.updateProjectionMatrix();
     const viewH = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z;
     const viewW = viewH * camera.aspect;
-    if (camera.aspect < 0.85) {
-      // Phone: phone up top, words below
-      const s = Math.min(1, (viewH * 0.3) / BH);
-      layout = { x: 0, y: viewH * 0.235, s };
+    if (window.innerWidth <= 860) {
+      // Phone screens: the phone sits left of the dial in the top part of the section
+      const s = Math.min(1, (viewH * 0.6) / BH);
+      layout = { x: -viewW * 0.2, y: viewH * 0.03, s };
     } else {
-      const s = Math.min(1.08, (viewH * 0.62) / BH);
-      layout = { x: Math.min(viewW * 0.22, 3.2), y: 0.1, s };
+      // Desktop: between the headline (left) and the dial (right)
+      const s = Math.min(1.05, (viewH * 0.6) / BH);
+      layout = { x: viewW * 0.075, y: 0, s };
     }
+    // Keep the ring clear of the dial text on wide layouts
+    ringGroup.scale.setScalar(window.innerWidth <= 860 ? 0.9 : 0.8);
   }
   new ResizeObserver(resize).observe(canvas);
   resize();
