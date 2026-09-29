@@ -16,6 +16,13 @@ describe('API request-count limiters', () => {
     assert.match(src, /Do not request-count all of \/api/);
   });
 
+  it('mounts only the per-session loop ceiling on all of /api (guests skipped, ≥600/min)', () => {
+    assert.match(src, /app\.use\('\/api', userCeilingLimiter\)/);
+    assert.match(src, /attachRateLimitHandler\('user-ceiling'\)/);
+    assert.match(src, /keyGenerator: apiTrafficKey,\s*skip: isCeilingExempt/);
+    assert.match(src, /limit: USER_CEILING_PER_MIN/);
+  });
+
   it('mounts a write-only auth limiter that skips GET /me', () => {
     assert.match(src, /attachRateLimitHandler\('auth-write'\)/);
     assert.match(src, /skip:\s*\(req\)\s*=>\s*!isAuthWriteRequest\(req\)/);

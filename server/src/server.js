@@ -13,11 +13,13 @@ import { prisma } from './lib/prisma.js';
 import { requireFeature } from './lib/featureFlags.js';
 import { adminManageRouter } from './routes/adminManage.routes.js';
 import {
+  apiTrafficKey,
   attachRateLimitHandler,
   authWriteKey,
   isAuthWriteRequest,
   RATE_LIMIT_VALIDATE,
 } from './lib/rateLimitKey.js';
+import { USER_CEILING_PER_MIN, isCeilingExempt, loopNotifier } from './lib/loopGuard.js';
 import { denyLegacyPublicUploads } from './lib/privateUploads.js';
 import { shutdownOcr } from './lib/ocr.js';
 import { errorHandler, notFound } from './middleware/error.js';
@@ -232,6 +234,25 @@ app.get('/health', (req, res) => {
 });
 
 app.use(enforceAppAvailability);
+
+// Loop guard: a per-session ceiling, not the old per-IP /api bucket above. Guests are never counted,
+// and USER_CEILING_PER_MIN is ~10× the busiest real session, so only a runaway loop reaches it
+// (the 2026-09-29 health-sync loop sent 3 354/min from one phone). See lib/loopGuard.js.
+const userCeilingHandler = attachRateLimitHandler('user-ceiling');
+const userCeilingLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: USER_CEILING_PER_MIN,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  validate: RATE_LIMIT_VALIDATE,
+  keyGenerator: apiTrafficKey,
+  skip: isCeilingExempt,
+  handler: (req, res, next, options) => {
+    if (req.rateLimit?.used === USER_CEILING_PER_MIN + 1) loopNotifier.ceilingHit(req);
+    return userCeilingHandler(req, res, next, options);
+  },
+});
+app.use('/api', userCeilingLimiter);
 
 const authWriteLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

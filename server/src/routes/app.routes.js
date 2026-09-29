@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
+import { attachRateLimitHandler, clientIp, RATE_LIMIT_VALIDATE } from '../lib/rateLimitKey.js';
+import { loopNotifier, parseClientGuardReport } from '../lib/loopGuard.js';
 import { getAppSettings, publicAppSettings } from '../lib/settings.js';
 import { isAppVersionBelow } from '../lib/appVersion.js';
 import { mapboxPublicToken } from '../lib/adminUserGeo.js';
@@ -37,4 +40,24 @@ appRouter.get(
       },
     });
   }),
+);
+
+/** The app's circuit breaker stopped a request loop on the phone (mobile/src/lib/requestBreaker.ts). */
+appRouter.post(
+  '/client-guard',
+  rateLimit({
+    windowMs: 60_000,
+    limit: 10,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    validate: RATE_LIMIT_VALIDATE,
+    keyGenerator: (req) => `client-guard:${clientIp(req)}`,
+    handler: attachRateLimitHandler('client-guard'),
+  }),
+  (req, res) => {
+    const report = parseClientGuardReport(req.body);
+    if (!report) return res.status(400).json({ error: 'invalid report' });
+    loopNotifier.clientReport(req, report);
+    res.status(202).json({ ok: true });
+  },
 );

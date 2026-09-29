@@ -1,5 +1,5 @@
 import {useSyncExternalStore} from 'react';
-import {API_BASE_URL} from '@/lib/api';
+import {API_BASE_URL,guardRequest} from '@/lib/api';
 import {getToken,getPreference,setPreferenceStrict} from '@/lib/storage';
 import {localAccountId} from '@/lib/localAccount';
 import {rememberMapboxToken} from '@/lib/run/mapbox';
@@ -11,6 +11,7 @@ const uuid=()=>globalThis.crypto?.randomUUID?.()||'xxxxxxxx-xxxx-4xxx-yxxx-xxxxx
 export async function pulseApi<T>(path:string,method='GET',body?:unknown,owner=localAccountId()):Promise<T>{
  if(!owner||localAccountId()!==owner)throw new Error('შედი MEDICARD ანგარიშში.');
  if(!allowedApi(path,method))throw new Error('მოთხოვნა დაუშვებელია.');
+ guardRequest(method,'/api/medipulsi'+path);
  const token=await getToken();if(!token||localAccountId()!==owner)throw new Error('ანგარიში შეიცვალა.');
  const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),15000);
  try{

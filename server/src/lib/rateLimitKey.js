@@ -1,5 +1,6 @@
 /**
  * Do not request-count all of /api. A global bucket 429s Expo /me retries.
+ * The one exception is the per-session loop ceiling (loopGuard.js, 600/min, signed-in only).
  * Auth writes (register/login/OTP/password) are IP-limited in server.js;
  * GET /me and other reads are skipped via isAuthWriteRequest.
  *

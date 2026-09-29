@@ -3,12 +3,13 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { forgetAiConsent, hasFreshAiConsent, rememberAiConsent } from '@/lib/aiSharingRoutes.js';
-import { publicApiErrorMessage } from './rateLimitCopy.js';
+import { formatRateLimitMessage, publicApiErrorMessage } from './rateLimitCopy.js';
 import { getToken } from './storage';
 import { UploadTimeoutError, uploadWithDeadline } from './uploadDeadline';
 import { withAuthConnectionRetry } from './authConnection';
 import { markReachable, markUnreachable } from './reachability';
 import { noteFeatureDisabled } from './featureFlags';
+import { createRequestBreaker, type BreakerTrip } from './requestBreaker';
 /**
  * Resolves the API base URL.
  *
@@ -1960,8 +1961,48 @@ export async function ensureAiSharingConsentForRequest(path: string, method = 'P
   if (owner !== localAccountId() || token !== await getToken()) throw new ApiError('ანგარიში შეიცვალა.', 401);
 }
 
+const TRIP_REPORT_GAP_MS = 5 * 60_000;
+let lastTripReportAt = 0;
+
+/** Tells the server a loop was stopped on this phone. Bypasses the breaker; at most once per 5 min. */
+function reportBreakerTrip(trip: BreakerTrip) {
+  console.warn('[api-breaker]', trip.scope, trip.method, trip.route, trip.count);
+  const at = Date.now();
+  if (at - lastTripReportAt < TRIP_REPORT_GAP_MS) return;
+  lastTripReportAt = at;
+  void (async () => {
+    try {
+      const token = await getToken();
+      await fetch(`${API_BASE_URL}/api/app/client-guard`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Medicard-Platform': Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web',
+          'X-Medicard-App-Version': String(Constants.expoConfig?.version || ''),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ scope: trip.scope, method: trip.method, route: trip.route, count: trip.count }),
+      });
+    } catch {
+      // Reporting is best effort; the breaker already protected the server.
+    }
+  })();
+}
+
+const requestBreaker = createRequestBreaker({ onTrip: reportBreakerTrip });
+
+/** Refuses a request locally when this phone is repeating it in a loop (see requestBreaker.ts). */
+export function guardRequest(method: string, path: string) {
+  const decision = requestBreaker.check(method, path);
+  if (decision.ok) return;
+  const seconds = Math.max(1, Math.ceil(decision.retryAfterMs / 1000));
+  throw new ApiError(formatRateLimitMessage(seconds), 429, { code: 'CLIENT_LOOP_GUARD' }, seconds);
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, formData, timeoutMs = 180_000, cache } = options;
+  guardRequest(method, path);
   const token = options.token !== undefined ? options.token : await getToken();
   // Check before starting upload/stream timers; the person can read at their own pace.
   if (!path.startsWith('/api/ai-consent')) await ensureAiSharingConsentForRequest(path, method, token);
@@ -2074,6 +2115,7 @@ async function uploadNativeMultipart<T>(
   fieldName: string,
   parameters: Record<string, string> = {},
 ): Promise<T> {
+  guardRequest('POST', path);
   const token = await getToken();
   await ensureAiSharingConsentForRequest(path, 'POST', token);
   try {
