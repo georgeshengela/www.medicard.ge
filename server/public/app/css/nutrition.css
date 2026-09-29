@@ -30,8 +30,9 @@
 /* Tiles */
 .nu-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .nu-tile { display: flex; align-items: center; gap: 12px; padding: 14px 16px; color: inherit; }
+.nu-tile > div { min-width: 0; }
 .nu-tile b { display: block; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.nu-tile span { display: block; font-size: 12px; color: var(--text3); }
+.nu-tile > div > span { display: block; font-size: 12px; color: var(--text3); }
 .nu-review { background: var(--warn-bg); }
 
 .nu-week-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -137,4 +138,13 @@
   .nu-fix { flex-direction: column; }
   .nu-tabs .segmented button { padding: 8px 10px; font-size: 12.5px; }
   .nu-entry-actions { opacity: 1; }
+}
+
+/* Balance + macros sit side by side in the dashboard column: when a card is narrow,
+   put the ring above the text instead of squeezing both into one row. */
+.nu-top > .card { container-type: inline-size; }
+@container (max-width: 400px) {
+  .nu-balance-body, .nu-macro-body { flex-direction: column; align-items: stretch; }
+  .nu-balance-body .ring, .nu-macro-body .ring { align-self: center; }
+  .nu-macro-body .meters { width: 100%; }
 }

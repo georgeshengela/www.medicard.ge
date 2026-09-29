@@ -59,6 +59,11 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
+/* Icons and icon tiles keep their own box whatever a module's `.x span { … }` rule says
+   (a descendant `span` rule once turned every tile into a block and knocked icons off centre). */
+.ic:not([hidden]) { display: inline-flex !important; align-items: center; justify-content: center; overflow: visible !important; flex: none; }
+.tile:not([hidden]) { display: grid !important; place-items: center; flex: none; }
+.tile > .ic { margin: 0 !important; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
@@ -190,7 +195,8 @@ p { margin: 0; }
 .card.flush { padding: 0; overflow: hidden; }
 .card.hover { transition: transform .18s ease, box-shadow .18s ease; }
 .card.hover:hover { transform: translateY(-2px); box-shadow: 0 10px 30px -14px rgba(15, 26, 28, .25); }
-a.card { display: block; }
+/* Zero specificity: a module's own layout class on a link card (.x { display: flex }) must win. */
+:where(a.card) { display: block; }
 .card-title { font-size: 15px; font-weight: 600; line-height: 22px; }
 .card-sub { font-size: 13px; color: var(--text2); margin-top: 2px; }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
@@ -221,6 +227,8 @@ a.card { display: block; }
 .stat-delta { font-size: 12.5px; margin-top: 6px; color: var(--text3); font-weight: 500; }
 .stat-delta.up { color: var(--ok); } .stat-delta.down { color: var(--danger); }
 .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+.stat-value { overflow-wrap: anywhere; }
+@media (max-width: 640px) { .stats-row { gap: 12px; } .stats-row .stat-value { font-size: 20px; } }
 .kpi { display: flex; flex-direction: column; gap: 10px; }
 .kpi .spark { margin-top: auto; }
 
@@ -369,6 +377,8 @@ a.card { display: block; }
 @keyframes fade { from { opacity: 0; } }
 .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; line-height: 1.1; }
 .ring-center strong { font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.ring-center > div { display: flex; flex-direction: column; align-items: center; }
+.ring-center strong, .ring-center span:not(.ic) { display: block; }
 .ring-center span { font-size: 12px; color: var(--text2); margin-top: 3px; }
 .spotlight .ring-center span { color: color-mix(in srgb, var(--spot-text) 70%, transparent); }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--text2); }
