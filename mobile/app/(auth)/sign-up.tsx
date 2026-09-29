@@ -8,6 +8,7 @@ import { SignUpSwitchLink } from '@/components/auth/AuthSwitchLink';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { PasswordStrengthHint } from '@/components/auth/PasswordStrengthHint';
 import { Input } from '@/components/ui/Input';
+import { EmailTypoHint } from '@/components/auth/EmailTypoHint';
 import { ka } from '@/i18n/ka';
 import { ApiError } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
@@ -159,6 +160,13 @@ export default function SignUp() {
           blurOnSubmit={false}
           onSubmitEditing={() => passwordRef.current?.focus()}
           figma
+        />
+        <EmailTypoHint
+          email={email}
+          onApply={(fixed) => {
+            setEmail(fixed);
+            setErrors((current) => ({ ...current, email: undefined }));
+          }}
         />
 
         <View>

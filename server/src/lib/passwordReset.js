@@ -20,12 +20,25 @@ async function compareCode(code, hash) {
   return bcrypt.compare(code, hash);
 }
 
-/** Always returns generic success — never reveals whether the email exists. */
+export const EMAIL_NOT_FOUND_MESSAGE =
+  'ამ ელ-ფოსტით ანგარიში ვერ მოიძებნა. შეამოწმე მისამართი. თუ ტელეფონის ნომრით დარეგისტრირდი, შედი SMS კოდით.';
+
+/**
+ * Owner decision 2026-09-29: say plainly when no account uses this email (a typo like icoud.com
+ * otherwise looks like "sent" and nothing arrives). Registration already reveals taken emails, so
+ * hiding it here protected nothing; the route is IP-limited instead (forgotPasswordLimiter).
+ * Blocked accounts still get the neutral answer.
+ */
 export async function requestPasswordReset(email) {
   const normalized = email.trim().toLowerCase();
-  const user = await prisma.user.findUnique({ where: { email: normalized } });
+  const user = normalized.endsWith('@phone.medicard.ge')
+    ? null
+    : await prisma.user.findUnique({ where: { email: normalized } });
 
-  if (!user || user.status === 'BLOCKED') {
+  if (!user) {
+    return { sent: false, code: 'EMAIL_NOT_FOUND', message: EMAIL_NOT_FOUND_MESSAGE };
+  }
+  if (user.status === 'BLOCKED') {
     return { sent: true, message: 'თუ ელ-ფოსტა რეგისტრირებულია, კოდს მიიღებ რამდენიმე წუთში.' };
   }
 

@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
+import { attachRateLimitHandler, clientIp, RATE_LIMIT_VALIDATE } from '../lib/rateLimitKey.js';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
@@ -180,11 +182,26 @@ authRouter.post(
   }),
 );
 
+// Reset now tells whether an account exists, so checking many addresses is capped per IP.
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  validate: RATE_LIMIT_VALIDATE,
+  keyGenerator: (req) => `forgot:${clientIp(req)}`,
+  handler: attachRateLimitHandler('password-forgot'),
+});
+
 authRouter.post(
   '/password/forgot',
+  forgotPasswordLimiter,
   asyncHandler(async (req, res) => {
     const { email } = forgotPasswordSchema.parse(req.body);
     const result = await requestPasswordReset(email);
+    if (result.code === 'EMAIL_NOT_FOUND') {
+      return res.status(404).json({ error: result.message, code: result.code });
+    }
     return res.json(result);
   }),
 );

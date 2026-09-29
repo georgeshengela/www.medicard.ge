@@ -6,6 +6,7 @@ import { AuthShell } from '@/components/AuthShell';
 import { AuthBackHeader } from '@/components/auth/AuthBackHeader';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { Input } from '@/components/ui/Input';
+import { EmailTypoHint } from '@/components/auth/EmailTypoHint';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
@@ -16,6 +17,7 @@ export default function ForgotPasswordEmail() {
   const params = useLocalSearchParams<{ email?: string }>();
   const [email, setEmail] = useState(params.email ?? '');
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState(false);
   const colors = useThemeColors();
 
@@ -27,6 +29,7 @@ export default function ForgotPasswordEmail() {
 
     setBusy(true);
     setError(null);
+    setNotFound(false);
     try {
       const result = await api.auth.passwordForgot(email.trim().toLowerCase());
       router.push({
@@ -34,6 +37,8 @@ export default function ForgotPasswordEmail() {
         params: { email: email.trim().toLowerCase(), devCode: result.devCode ?? '' },
       });
     } catch (err) {
+      // No account uses this address: say so, and offer the typo fix / sign-up below.
+      if (err instanceof ApiError && err.code === 'EMAIL_NOT_FOUND') setNotFound(true);
       setError(authErrorMessage(err));
     } finally {
       setBusy(false);
@@ -60,6 +65,25 @@ export default function ForgotPasswordEmail() {
         onSubmitEditing={() => void submit()}
         figma
       />
+      <EmailTypoHint
+        email={email}
+        onApply={(fixed) => {
+          setEmail(fixed);
+          setError(null);
+          setNotFound(false);
+        }}
+      />
+      {notFound ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.replace('/(auth)/sign-up')}
+          style={{ marginTop: 4, paddingVertical: 8, alignItems: 'center' }}
+        >
+          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>
+            ახალი ანგარიშის შექმნა
+          </Text>
+        </Pressable>
+      ) : null}
 
       <Pressable
         accessibilityRole="button"
