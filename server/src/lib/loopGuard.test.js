@@ -114,3 +114,43 @@ describe('client-guard report', () => {
     assert.equal(routeTemplate('/api/health-metrics/sync'), '/api/health-metrics/sync');
   });
 });
+
+describe('AI daily cap', async () => {
+  const { aiDailyCap, aiDailyCapMessage, AI_DAILY_CAPS } = await import('./aiDailyCap.js');
+
+  it('caps are far above real daily use', () => {
+    assert.ok(AI_DAILY_CAPS.nutritionEstimate >= 100);
+    assert.ok(AI_DAILY_CAPS.assistantPlan >= 300);
+    assert.ok(AI_DAILY_CAPS.onboardingAnalysis >= 10);
+  });
+
+  it('refuses one user past the cap with an hours message, others keep going', async () => {
+    const app = express();
+    app.use((req, _res, next) => { req.user = { id: String(req.headers['x-user'] || 'u1') }; next(); });
+    app.post('/x', aiDailyCap('nutritionEstimate', { limit: 2 }), (_req, res) => res.json({ ok: true }));
+    await withServer(app, async (url) => {
+      const post = (user) => fetch(`${url}/x`, { method: 'POST', headers: { 'x-user': user } });
+      assert.equal((await post('u1')).status, 200);
+      assert.equal((await post('u1')).status, 200);
+      const blocked = await post('u1');
+      assert.equal(blocked.status, 429);
+      const body = await blocked.json();
+      assert.equal(body.code, 'AI_DAILY_CAP');
+      assert.match(body.error, /საათში/);
+      assert.equal((await post('u2')).status, 200);
+    });
+  });
+
+  it('message rounds up to whole hours', () => {
+    assert.match(aiDailyCapMessage(90).error, /1 საათში/);
+    assert.match(aiDailyCapMessage(5 * 3600 + 1).error, /6 საათში/);
+  });
+});
+
+describe('pharmacy scrape in the web process', async () => {
+  const { pharmacySyncInWebEnabled } = await import('./pharmacy/scheduler.js');
+  it('stays on unless explicitly switched off', () => {
+    assert.equal(pharmacySyncInWebEnabled({}), true);
+    assert.equal(pharmacySyncInWebEnabled({ PHARMACY_SYNC_IN_WEB: 'OFF' }), false);
+  });
+});

@@ -137,6 +137,7 @@ async function nominatimSearch(q, { countryOnly = false, viewboxBias = false } =
   }
 
   const response = await fetch(url.toString(), {
+    signal: AbortSignal.timeout(8_000),
     headers: {
       Accept: 'application/json',
       'Accept-Language': 'ka,en',

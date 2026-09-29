@@ -21,6 +21,8 @@ async function ensureQaOtpColumn() {
 }
 
 async function readSettingsRow() {
+  const existing = await prisma.appSettings.findUnique({ where: { id: 'default' } });
+  if (existing) return existing;
   return prisma.appSettings.upsert({
     where: { id: 'default' },
     create: DEFAULTS,
@@ -28,7 +30,36 @@ async function readSettingsRow() {
   });
 }
 
+/**
+ * Every /api request checks maintenance mode, so the row is cached for SETTINGS_TTL_MS per instance
+ * (one read instead of an upsert per request; a request loop used to write here 3 000×/min).
+ * Admin writes call invalidateAppSettings(); other instances pick the change up within the TTL.
+ */
+const SETTINGS_TTL_MS = 10_000;
+let settingsCache = { at: 0, value: null, pending: null };
+
+export function invalidateAppSettings() {
+  settingsCache = { at: 0, value: null, pending: null };
+}
+
 export async function getAppSettings() {
+  if (settingsCache.value && Date.now() - settingsCache.at < SETTINGS_TTL_MS) return settingsCache.value;
+  if (settingsCache.pending) return settingsCache.pending;
+  const cache = settingsCache;
+  const pending = loadAppSettings()
+    .then((value) => {
+      if (settingsCache === cache) settingsCache = { at: Date.now(), value, pending: null };
+      return value;
+    })
+    .catch((error) => {
+      if (settingsCache === cache) cache.pending = null;
+      throw error;
+    });
+  cache.pending = pending;
+  return pending;
+}
+
+async function loadAppSettings() {
   let row;
   try {
     row = await readSettingsRow();

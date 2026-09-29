@@ -233,8 +233,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.use(enforceAppAvailability);
-
 // Loop guard: a per-session ceiling, not the old per-IP /api bucket above. Guests are never counted,
 // and USER_CEILING_PER_MIN is ~10× the busiest real session, so only a runaway loop reaches it
 // (the 2026-09-29 health-sync loop sent 3 354/min from one phone). See lib/loopGuard.js.
@@ -253,6 +251,8 @@ const userCeilingLimiter = rateLimit({
   },
 });
 app.use('/api', userCeilingLimiter);
+// After the ceiling, so a refused loop never reaches the settings lookup.
+app.use(enforceAppAvailability);
 
 const authWriteLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

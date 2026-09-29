@@ -80,6 +80,7 @@ export async function fetchExpoPushReceipts(ids, { fetchImpl = fetch } = {}) {
   if (!unique.length) return {};
   const response = await fetchImpl(EXPO_RECEIPTS_URL, {
     method: 'POST',
+    signal: AbortSignal.timeout(20_000),
     headers: expoHeaders(),
     body: JSON.stringify({ ids: unique }),
   });

@@ -13,7 +13,7 @@ function sleep(ms) {
 
 async function fetchWithRetry(url, attempt = 1) {
   try {
-    const res = await fetch(url, { headers: FETCH_HEADERS });
+    const res = await fetch(url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error(`Pharmadepot HTTP ${res.status} for ${url}`);
     return res.text();
   } catch (err) {

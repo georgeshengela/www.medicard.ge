@@ -58,6 +58,9 @@ export async function sweepStaleAiReservations(userId, now = new Date()) {
 
 export function noteAiProviderStart(userId) {
   const now = Date.now();
+  if (aiStartTimes.size > 5000) {
+    for (const [id, times] of aiStartTimes) if (!times.some((time) => now - time < AI_START_WINDOW_MS)) aiStartTimes.delete(id);
+  }
   const prev = (aiStartTimes.get(userId) || []).filter((time) => now - time < AI_START_WINDOW_MS);
   if (prev.length >= AI_START_MAX) return false;
   prev.push(now);

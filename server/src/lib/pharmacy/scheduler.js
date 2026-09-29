@@ -41,8 +41,20 @@ async function tick() {
   }
 }
 
+/**
+ * PHARMACY_SYNC_IN_WEB=off keeps the Playwright scrape out of the web process (memory on a single
+ * instance). Only set it once the separate Render cron `medicard-pharmacy-sync` is confirmed running.
+ */
+export function pharmacySyncInWebEnabled(env = process.env) {
+  return String(env.PHARMACY_SYNC_IN_WEB || '').trim().toLowerCase() !== 'off';
+}
+
 export function startPharmacySyncScheduler() {
   if (timer) return;
+  if (!pharmacySyncInWebEnabled()) {
+    console.log('[pharmacy-scheduler] off in the web process (PHARMACY_SYNC_IN_WEB=off) — the cron service syncs prices');
+    return;
+  }
   timer = setTimeout(() => {
     void tick();
     timer = setInterval(() => void tick(), CHECK_MS);

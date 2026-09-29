@@ -39,6 +39,7 @@ function sleep(ms) {
 async function graphql(query, variables = {}) {
   const res = await fetch(GRAPHQL, {
     method: 'POST',
+    signal: AbortSignal.timeout(30_000),
     headers: {
       ...FETCH_HEADERS,
       'Content-Type': 'application/json',

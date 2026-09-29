@@ -10,6 +10,7 @@ import { z } from "zod";
 import { saveMeal, listMeals, deleteMeal } from "../lib/nutritionStore.js";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
+import { aiDailyCap } from "../lib/aiDailyCap.js";
 import { requireAdmin } from "../middleware/adminAuth.js";
 import { requireAdminCapability } from "../lib/adminCapabilities.js";
 import { asyncHandler as wrap } from "../middleware/error.js";
@@ -50,6 +51,8 @@ const settings = async () =>
   )[0] || { photoEnabled: false };
 const publicMeal = (row) => ({ ...row, totals: totals(row.items), healthScore: healthScore(row.items) });
 const today = (req) => todayInTimeZone(clientTimezoneFromReq(req) || "UTC");
+// Estimate and quick-log share one daily fuse.
+const nutritionDailyCap = aiDailyCap("nutritionEstimate");
 const estimateLimiter = rateLimit({
   windowMs: 60000,
   limit: 8,
@@ -195,6 +198,7 @@ r.post(
   "/estimate",
   requireAiConsent,
   estimateLimiter,
+  nutritionDailyCap,
   upload.single("photo"),
   wrap(async (req, res) => {
     const request = parseEstimateRequest(req.body);
@@ -211,6 +215,7 @@ r.post(
   "/quick-log",
   requireAiConsent,
   estimateLimiter,
+  nutritionDailyCap,
   wrap(async (req, res) => {
     const input = z
       .object({

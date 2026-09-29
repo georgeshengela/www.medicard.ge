@@ -649,7 +649,9 @@ export async function setQuestTimezone(userId, timezone, options = {}) {
     throw httpError('არასწორი დროის სარტყელი.', 400);
   }
   const db = dbOf(options);
-  await ensureProfile(db, userId, tz);
+  const profile = await ensureProfile(db, userId, tz);
+  // The dashboard GET sends the device zone every time: write only when it actually changed.
+  if (profile?.timezone === tz) return profile;
   return db.userQuestProfile.update({
     where: { userId },
     data: { timezone: tz },

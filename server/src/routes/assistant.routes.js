@@ -7,6 +7,7 @@ import { literalAssistantAction, assistantContextSelection, assistantDefaultDoma
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
+import { aiDailyCap } from '../lib/aiDailyCap.js';
 import { asyncHandler } from '../middleware/error.js';
 import { requireAiConsent } from '../lib/aiConsent.js';
 import { hasOpenRouter } from '../lib/aiEngine.js';
@@ -75,7 +76,7 @@ assistantRouter.get('/state', asyncHandler(async (req, res) => {
   const state = await loadAppState(req.user.id);
   res.json({ weightGoal: state.weightGoal, stepsGoal: state.stepsGoal });
 }));
-assistantRouter.post('/plan', limit, requireAiConsent, asyncHandler(async (req, res) => {
+assistantRouter.post('/plan', limit, aiDailyCap('assistantPlan'), requireAiConsent, asyncHandler(async (req, res) => {
   const original = planSchema.parse(req.body);
   const pets = original.scope === 'auto' ? await prisma.pet.findMany({ where: { userId: req.user.id, archivedAt: null }, select: { id: true, name: true, speciesId: true }, take: 100 }) : [];
   const subject = resolveAssistantSubject(original, pets);
@@ -166,7 +167,7 @@ assistantRouter.post('/execute', asyncHandler(async (req, res) => {
   const plan = verifyAssistantPlan(req.user.id, token);
   res.json(await executeAssistantPlan(plan, { userId: req.user.id, authorization: req.headers.authorization, timezone: clock(req).timezone }));
 }));
-assistantRouter.post('/transcribe', rateLimit({ windowMs: 60000, limit: 12, keyGenerator: req => req.user.id, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'მცირე შესვენება გავაკეთოთ — ერთ წუთში ისევ სცადე.' } }), requireAiConsent, asyncHandler(async (req, res) => {
+assistantRouter.post('/transcribe', rateLimit({ windowMs: 60000, limit: 12, keyGenerator: req => req.user.id, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'მცირე შესვენება გავაკეთოთ — ერთ წუთში ისევ სცადე.' } }), aiDailyCap('assistantTranscribe'), requireAiConsent, asyncHandler(async (req, res) => {
   const { data, format } = z.object({ data: z.string().min(100).max(1750000).regex(/^[A-Za-z0-9+/]+={0,2}$/), format: z.enum(['m4a', 'wav', 'webm', 'mp3', 'ogg']) }).strict().parse(req.body);
   const bytes = Buffer.from(data, 'base64');
   const signatures = {
@@ -186,7 +187,7 @@ assistantRouter.post('/transcribe', rateLimit({ windowMs: 60000, limit: 12, keyG
 }));
 const speechLimit = rateLimit({ windowMs: 60000, limit: 20, keyGenerator: req => req.user.id, standardHeaders: 'draft-7', legacyHeaders: false,
   message: { error: 'ხმოვანი პასუხებისთვის მცირე შესვენება გავაკეთოთ.' } });
-assistantRouter.post('/speak', speechLimit, requireAiConsent, asyncHandler(async (req, res) => {
+assistantRouter.post('/speak', speechLimit, aiDailyCap('assistantSpeak'), requireAiConsent, asyncHandler(async (req, res) => {
   const { text } = z.object({ text: z.string().trim().min(1).max(2000) }).strict().parse(req.body);
   res.json(await synthesizeAssistantSpeech(req.user.id, text));
 }));

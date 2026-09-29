@@ -45,6 +45,7 @@ export function createResendTransport({ apiKey, fetchImpl = fetch, sleep = defau
       try {
         res = await fetchImpl(`${API}${path}`, {
           method: 'POST',
+          signal: AbortSignal.timeout(20_000),
           headers: {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',

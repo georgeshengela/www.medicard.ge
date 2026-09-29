@@ -7,7 +7,7 @@ import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { publicPackage, buildPackageAssignment } from '../lib/packages.js';
 import { renewSubscriptionDates } from '../lib/billing.js';
-import { getAppSettings, publicAppSettings } from '../lib/settings.js';
+import { getAppSettings, invalidateAppSettings, publicAppSettings } from '../lib/settings.js';
 import { getMobileAppVersion } from '../lib/mobileAppVersion.js';
 import { getUsage, peekListUsage, resetUsage, ROLLING_DAILY_KEY } from '../lib/usage.js';
 import { getPushStats } from '../lib/push.js';
@@ -732,6 +732,7 @@ adminRouter.patch(
       create: { id: 'default', ...body },
       update: body,
     });
+    invalidateAppSettings();
     await writeAdminAudit({
       admin: req.admin,
       action: 'settings.update',

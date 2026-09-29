@@ -14,7 +14,7 @@ function sleep(ms) {
 
 async function fetchHtml(url, attempt = 1) {
   try {
-    const res = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow' });
+    const res = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow', signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error(`Pharmadepot HTTP ${res.status} for ${url}`);
     return res.text();
   } catch (err) {

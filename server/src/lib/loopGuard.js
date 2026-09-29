@@ -94,7 +94,19 @@ export function createLoopNotifier({ notify, now = Date.now, gapMs = NOTICE_GAP_
     return true;
   }
 
-  return { ceilingHit, clientReport };
+  function aiCapHit(req, name, limit) {
+    const { platform, version } = clientMeta(req);
+    console.warn('[loop-guard] ai daily cap', { session: sessionTag(req), name, limit, platform, version });
+    if (!shouldSend(`ai:${name}`)) return false;
+    void Promise.resolve(send([
+      `💸 ერთმა მომხმარებელმა AI-ის დღიურ ჭერს მიაღწია: ${name} (${limit}/დღე).`,
+      `აპი: ${platform} ${version}`,
+      'შემდეგი მოთხოვნები 24 საათით შეჩერებულია. სავარაუდოდ მარყუჟი ან ბოროტად გამოყენებაა.',
+    ].join('\n'))).catch(() => {});
+    return true;
+  }
+
+  return { ceilingHit, clientReport, aiCapHit };
 }
 
 /** Validates the app's breaker report. Returns null for anything malformed. */

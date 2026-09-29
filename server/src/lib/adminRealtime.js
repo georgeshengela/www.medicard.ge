@@ -86,6 +86,10 @@ const healthEmits = new Map();
 export function emitUserHealthMetrics(userId, payload = {}) {
   if (!io || !userId) return false;
   const now = Date.now();
+  // Forget idle users so the map does not grow with every user who ever synced.
+  if (healthEmits.size > 2000) {
+    for (const [id, s] of healthEmits) if (!s.timer && now - s.last > 60_000) healthEmits.delete(id);
+  }
   const slot = healthEmits.get(userId) || { last: 0, timer: null, pending: null };
   const send = (flags) => {
     slot.last = Date.now();

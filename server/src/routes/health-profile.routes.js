@@ -6,11 +6,25 @@ import { generateOnboardingAnalysis } from '../lib/onboardingAnalysis.js';
 import { resolveOpenRouterModel } from '../lib/aiEngine.js';
 import { birthDateAgeError, birthDateInputSchema, genderSchema, publicHealthProfile, publicUser } from '../lib/patient.js';
 import { requireAuth } from '../middleware/auth.js';
+import rateLimit from 'express-rate-limit';
+import { aiDailyCap } from '../lib/aiDailyCap.js';
+import { attachRateLimitHandler, RATE_LIMIT_VALIDATE } from '../lib/rateLimitKey.js';
 import { asyncHandler } from '../middleware/error.js';
 
 export const healthProfileRouter = Router();
 
 healthProfileRouter.use(requireAuth);
+
+// Every analysis call can go to the model (force:true skips the cache): bound it like other AI routes.
+const onboardingAnalysisPerMinute = rateLimit({
+  windowMs: 60_000,
+  limit: 4,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  validate: RATE_LIMIT_VALIDATE,
+  keyGenerator: (req) => `onboarding-analysis:${req.user.id}`,
+  handler: attachRateLimitHandler('onboarding-analysis'),
+});
 
 const stringArray = z.array(z.string().trim().min(1).max(120)).max(40);
 
@@ -107,6 +121,8 @@ healthProfileRouter.put(
 
 healthProfileRouter.post(
   '/onboarding-analysis',
+  onboardingAnalysisPerMinute,
+  aiDailyCap('onboardingAnalysis'),
   requireAiConsent,
   asyncHandler(async (req, res) => {
     const profile = await loadProfile(req.user.id);
