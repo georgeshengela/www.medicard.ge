@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, View } from 'react-native';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Archive, ChevronDown, MessageCircle, Pencil, Phone, Plus, Stethoscope } from 'lucide-react-native';
 import { PetAction, PetButton, PetIntro, PetLoading, PetPanel, PetText } from '@/components/pets/PetUi';
 import { PetPhoto } from '@/components/pets/PetPhoto';
@@ -16,16 +16,24 @@ import { petBreedLabel, petSetupItems } from '@/lib/petsPresentation';
 import { localAccountId } from '@/lib/localAccount';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { FRESH } from '@/lib/queryClient';
 
 export default function PetProfileScreen() { const { id } = useLocalSearchParams<{ id: string }>(), { user } = useAuth(); return id && user ? <PetProfile key={`${user.id}:${id}`} id={id} owner={user.id} /> : <PetLoading />; }
 function PetProfile({ id, owner }: { id: string; owner: string }) {
-  const c = useThemeColors(), router = useRouter(), revision = useRef(0), archiveLock = useRef(false);
-  const [pet, setPet] = useState<Pet | null>(null), [error, setError] = useState<string | null>(null), [ready, setReady] = useState(false), [archiving, setArchiving] = useState(false), [details, setDetails] = useState(false);
+  const c = useThemeColors(), router = useRouter(), archiveLock = useRef(false);
+  const [actionError, setActionError] = useState<string | null>(null), [archiving, setArchiving] = useState(false), [details, setDetails] = useState(false);
   const current = () => localAccountId() === owner;
-  const load = useCallback(async () => { const request = ++revision.current; setError(null); try { const { pet } = await api.pets.get(id); if (request === revision.current && localAccountId() === owner) setPet(pet); } catch (error) { if (request === revision.current && localAccountId() === owner) setError(error instanceof ApiError ? error.message : ka.pets.loadError); } finally { if (request === revision.current && localAccountId() === owner) setReady(true); } }, [id, owner]);
-  useFocusEffect(useCallback(() => { void load(); return () => { revision.current++; }; }, [load]));
+  // Pet edits, weights, care and photos all write /api/pets (invalidates 'pets'); 30 s fresh is safe.
+  const query = useAccountQuery<Pet>({ key: ['pets', 'detail', id], fetch: async () => (await api.pets.get(id)).pet, staleTime: FRESH.SHORT });
+  const pet = current() ? query.data ?? null : null;
+  const ready = !query.isPending || query.fetchStatus === 'idle';
+  const loadError = query.isError && !query.isFetching ? (query.error instanceof ApiError ? query.error.message : ka.pets.loadError) : null;
+  const error = actionError ?? loadError;
+  const { refetch } = query;
+  const load = useCallback(() => { setActionError(null); void refetch(); }, [refetch]);
   const edit = () => router.push(`/pets/${id}/edit`);
-  const archive = () => Alert.alert(ka.pets.archiveConfirmTitle, ka.pets.archiveConfirmBody, [{ text: ka.common.cancel, style: 'cancel' }, { text: ka.pets.archiveAction, style: 'destructive', onPress: async () => { if (archiveLock.current || !current()) return; archiveLock.current = true; setArchiving(true); setError(null); try { await api.pets.archive(id); if (!current()) return; void import('@/lib/petCareReminders').then(module => module.reconcilePetCareReminders({ reason: 'archive' })).catch(() => undefined); router.replace('/pets'); } catch (error) { if (current()) setError(error instanceof ApiError ? error.message : ka.common.networkError); } finally { archiveLock.current = false; if (current()) setArchiving(false); } } }]);
+  const archive = () => Alert.alert(ka.pets.archiveConfirmTitle, ka.pets.archiveConfirmBody, [{ text: ka.common.cancel, style: 'cancel' }, { text: ka.pets.archiveAction, style: 'destructive', onPress: async () => { if (archiveLock.current || !current()) return; archiveLock.current = true; setArchiving(true); setActionError(null); try { await api.pets.archive(id); if (!current()) return; void import('@/lib/petCareReminders').then(module => module.reconcilePetCareReminders({ reason: 'archive' })).catch(() => undefined); router.replace('/pets'); } catch (error) { if (current()) setActionError(error instanceof ApiError ? error.message : ka.common.networkError); } finally { archiveLock.current = false; if (current()) setArchiving(false); } } }]);
   if (!ready) return <PetLoading />;
   if (!pet) return <PetPageScroll><PetIntro title="პროფილი ვერ ჩაიტვირთა" body="შეამოწმე ინტერნეტკავშირი და ხელახლა სცადე." /><PetErrorText message={error} /><PetButton label="ხელახლა ცდა" onPress={() => void load()} /></PetPageScroll>;
   const missing = petSetupItems(pet).filter(item => !item.done);

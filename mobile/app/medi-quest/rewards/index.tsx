@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -25,6 +25,11 @@ import {
 import { trackQuestEvent } from '@/lib/productObservability';
 import { getMediCoinBalanceHint, subscribeMediCoinBalance } from '@/lib/quest/cache';
 import { QUEST } from '@/theme/questTokens';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { accountKey, FRESH, queryClient } from '@/lib/queryClient';
+
+/** Under 'quest' so the Quest refresh signal (coins, claims) also refreshes eligibility. */
+const CATALOG_KEY = ['quest', 'rewards', 'catalog'] as const;
 
 export default function RewardsStoreScreen() {
   const router = useRouter();
@@ -34,50 +39,56 @@ export default function RewardsStoreScreen() {
   const offline = useOffline();
   const reduce = usePrefersReducedMotion();
   const copy = rewardsCopy('ka');
-  const [data, setData] = useState<StoreCatalog | null>(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [liveCoins, setLiveCoins] = useState<number | null>(() => getMediCoinBalanceHint());
+  const devScenario = isQuestDevEnabled() ? getQuestDevScenario() : 'LIVE';
+  const devActive = devScenario !== 'LIVE';
 
-  const load = useCallback(async () => {
-    if (isQuestDevEnabled() && getQuestDevScenario() !== 'LIVE') {
-      setData(buildRewardsDevCatalog(getQuestDevScenario() as never) as StoreCatalog);
-      setLoadError(null);
-      setLoading(false);
-      return;
-    }
-    try {
-      setData(await rewardsApi.catalog());
-      setLoadError(null);
-    } catch (e) {
-      setData(null);
-      setLoadError(e instanceof Error && e.message ? e.message : copy.loadFailed);
-    } finally {
-      setLoading(false);
-    }
-  }, [copy.loadFailed]);
+  // The catalog rarely changes; coin changes and redeems invalidate 'quest' / 'rewards' anyway.
+  const query = useAccountQuery<StoreCatalog>({
+    key: [...CATALOG_KEY],
+    fetch: () => rewardsApi.catalog(),
+    staleTime: FRESH.LONG,
+    enabled: !devActive,
+  });
+  const devCatalog = useMemo(
+    () => (devActive ? (buildRewardsDevCatalog(devScenario as never) as StoreCatalog) : null),
+    [devActive, devScenario],
+  );
+  const data = devCatalog ?? query.data ?? null;
+  const loading = !devActive && query.isPending && query.fetchStatus !== 'idle';
+  const loadError =
+    !devActive && !query.data && query.isError
+      ? query.error instanceof Error && query.error.message
+        ? query.error.message
+        : copy.loadFailed
+      : null;
+  const { refetch } = query;
 
   useEffect(() => {
     void trackQuestEvent('rewards_store_opened');
-    void load();
-  }, [load]);
+  }, []);
 
   useEffect(() => {
     return subscribeMediCoinBalance((coins) => {
       setLiveCoins(coins);
       if (coins != null) {
-        setData((prev) => (prev ? { ...prev, balance: { ...prev.balance, coins } } : prev));
+        queryClient.setQueryData<StoreCatalog>(accountKey(...CATALOG_KEY), (prev) =>
+          prev ? { ...prev, balance: { ...prev.balance, coins } } : prev,
+        );
       } else {
-        void load();
+        void refetch();
       }
     });
-  }, [load]);
+  }, [refetch]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
-    setRefreshing(false);
+    try {
+      if (!devActive) await refetch();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const balance = liveCoins ?? data?.balance.coins ?? 0;

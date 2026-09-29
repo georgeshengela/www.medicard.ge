@@ -19,7 +19,14 @@ function set(next: boolean) {
 /** The server answered with any HTTP status. */
 export function markReachable() {
   fails = 0;
+  lastAnswerAt = Date.now();
   set(false);
+}
+
+let lastAnswerAt = 0;
+/** When the server last answered anything (0 = never this session). */
+export function lastServerAnswerAt() {
+  return lastAnswerAt;
 }
 
 /** A request got no response (DNS, socket, timeout). */

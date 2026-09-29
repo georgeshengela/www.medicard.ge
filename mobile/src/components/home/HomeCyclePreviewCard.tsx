@@ -12,7 +12,7 @@ import { useThemeColors } from '@/theme/colors';
 import { MetricCardSkeleton } from '@/components/ui/Skeleton';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import type { CycleBundle, CycleDayMark } from '@/lib/api';
-import { loadCycleView } from '@/lib/cycleOffline';
+import { useCycleView } from '@/lib/cycleViewCache';
 import { isCyclePrivacyLockEnabled } from '@/lib/cycleReminderPrefs';
 import { addDaysToKey, daysBetween, parseDateKey } from '@/lib/cyclePhase';
 import {
@@ -29,8 +29,6 @@ import {
   suppressCycleLengthChrome,
 } from '@/lib/cycleForecastEligibility';
 import { useAuth } from '@/store/AuthContext';
-import { useAccountQuery } from '@/hooks/useAccountQuery';
-import { FRESH } from '@/lib/queryClient';
 
 const RING = 88;
 const STROKE = 8;
@@ -219,18 +217,10 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
       };
     }, []),
   );
-  // Cached cycle view (shared with the cycle screens' key); cycle writes invalidate it.
-  const view = useAccountQuery<{ bundle: CycleBundle; offline: boolean }>({
-    key: ['cycle', 'view'],
-    staleTime: FRESH.SHORT,
-    enabled: Boolean(user?.id) && privacyLocked === false,
-    fetch: async () => {
-      const loaded = await loadCycleView(user!.id);
-      return { bundle: loaded.display, offline: loaded.reachable === false };
-    },
-  });
-  const bundle: CycleBundle | null = privacyLocked === false ? (view.data?.bundle ?? null) : null;
-  const offline = privacyLocked === false && Boolean(view.data?.offline);
+  // Cached cycle view (same key and shape as the cycle screens); cycle writes invalidate / replace it.
+  const view = useCycleView(user?.id, privacyLocked === false);
+  const bundle: CycleBundle | null = privacyLocked === false ? (view.data?.display ?? null) : null;
+  const offline = privacyLocked === false && view.data?.reachable === false;
   const ready =
     !user?.id || privacyLocked === true || (privacyLocked === false && (view.data !== undefined || view.isError));
   const today = cycleToday(bundle, todayKey());

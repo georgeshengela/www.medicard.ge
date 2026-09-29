@@ -42,6 +42,10 @@ export function subscribeCompanionRefresh(listener: () => void) {
 }
 
 export function requestCompanionRefresh() {
+  // The journey read lives in the shared query cache under ['quest', 'journey'] (useQuestJourney).
+  void import('@/lib/queryClient')
+    .then(({ invalidate }) => invalidate('quest', 'journey'))
+    .catch(() => undefined);
   listeners.forEach((fn) => {
     try {
       fn();

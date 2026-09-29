@@ -13,25 +13,28 @@ import { privateFileImageSource } from '@/lib/privateFile';
 import { useAuthImageSource } from '@/lib/authImageCache';
 import { localAccountId } from '@/lib/localAccount';
 import { formatDateTime } from '@/lib/format';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { FRESH } from '@/lib/queryClient';
 
 export default function RecordDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [record, setRecord] = useState<MedicalRecord | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     void getToken().then(setToken);
   }, []);
 
-  useEffect(() => {
-    if (!id) return;
-    api.records
-      .get(id)
-      .then((response) => setRecord(response.record))
-      .catch((err) => setError(err instanceof ApiError ? err.message : ka.common.error));
-  }, [id]);
+  // A saved record does not change by itself; deleting it writes /api/records (invalidates 'records').
+  const query = useAccountQuery<MedicalRecord>({
+    key: ['records', 'detail', id],
+    fetch: async () => (await api.records.get(String(id))).record,
+    staleTime: FRESH.SHORT,
+    enabled: Boolean(id),
+  });
+  const record = query.data ?? null;
+  const error =
+    !record && query.isError ? (query.error instanceof ApiError ? query.error.message : ka.common.error) : null;
 
   // Android's <Image> drops the Authorization header — show an authorised cached download instead.
   const imageSource = useAuthImageSource(privateFileImageSource(record?.imageUrl ?? null, token, API_BASE_URL), localAccountId());

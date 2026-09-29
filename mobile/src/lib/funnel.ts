@@ -7,7 +7,7 @@
 import { AppState, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, guardRequest } from '@/lib/api';
 import { localAccountId } from '@/lib/localAccount';
 import { petCareInstallId } from '@/lib/petCareReminderPrefs';
 import { getPreference, getToken, setPreference } from '@/lib/storage';
@@ -25,6 +25,12 @@ const onceKey = (account: string, name: string) => `medicard.funnel.once.v1.${ac
 const FLUSH_INTERVAL_MS = 60_000;
 
 async function send(events: Array<{ name: FunnelEventName; props?: Record<string, string>; at: string }>): Promise<SendResult> {
+  // Same loop breaker as every other request; a refused batch simply waits for the next flush.
+  try {
+    guardRequest('POST', '/api/funnel/events');
+  } catch {
+    return 'retry';
+  }
   const [installId, token] = await Promise.all([petCareInstallId(), getToken()]);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15_000);

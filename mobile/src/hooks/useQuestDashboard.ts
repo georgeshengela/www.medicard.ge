@@ -1,69 +1,80 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
 import { useAuth } from '@/store/AuthContext';
 import { localAccountId } from '@/lib/localAccount';
 import { questApi, type QuestClaimResult, type QuestDashboard } from '@/lib/quest/api';
-import { readQuestCache, subscribeQuestRefresh, writeQuestCache, invalidateMediCoinBalance } from '@/lib/quest/cache';
+import { readQuestCache, subscribeMediCoinBalance, writeQuestCache, invalidateMediCoinBalance } from '@/lib/quest/cache';
 import { deviceIanaTimezone } from '@/lib/quest/sync';
 import { markQuestCelebration } from '@/lib/quest/socket';
 import { beginClaimLock, endClaimLock, homeQuestMood } from '@/lib/quest/logic.js';
 import { applyClaimToDashboard } from '@/lib/quest/hubPresentation';
 import { applyQuestDevView, claimQuestDevFixture, getQuestDevScenario, isQuestDevEnabled, subscribeQuestDevScenario } from '@/lib/quest/devFixture';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { useDeviceSeed } from '@/hooks/queryFallback';
+import { accountKey, FRESH, queryClient } from '@/lib/queryClient';
+
+type QuestSnapshot = { dashboard: QuestDashboard; savedAt: number; fallback: boolean };
+
+/** Shared cache key: `requestQuestRefresh()` (socket, health pushes, coins) invalidates everything under 'quest'. */
+const DASH_KEY = ['quest', 'dashboard'] as const;
+
+async function fetchDashboard(): Promise<QuestSnapshot> {
+  const owner = localAccountId();
+  try {
+    const dashboard = await questApi.dashboard(deviceIanaTimezone() || undefined);
+    if (owner && owner === localAccountId()) await writeQuestCache(dashboard, owner);
+    return { dashboard, savedAt: Date.now(), fallback: false };
+  } catch (error) {
+    // Offline / server trouble: the last device copy for this account, shown as stale.
+    const cached = owner ? await readQuestCache(owner) : null;
+    if (cached) return { dashboard: cached.dashboard, savedAt: cached.savedAt, fallback: true };
+    throw error;
+  }
+}
+
+async function readSeed(owner: string): Promise<QuestSnapshot | null> {
+  const cached = await readQuestCache(owner);
+  return cached ? { dashboard: cached.dashboard, savedAt: cached.savedAt, fallback: true } : null;
+}
 
 const claimLocks = new Set<string>();
 export function useQuestDashboard() {
   const { user } = useAuth();
   const ownerId = user?.id ?? null;
-  const [stateOwner, setStateOwner] = useState(ownerId);
-  const [dashboard, setDashboard] = useState<QuestDashboard | null>(null);
-  const dashboardRef = useRef<QuestDashboard | null>(null);
-  const [loading, setLoading] = useState(true), [error, setError] = useState(false), [stale, setStale] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [claimError, setClaimError] = useState<{ id: string; message: string } | null>(null);
   const [devScenario, setDevScenario] = useState(() => isQuestDevEnabled() ? getQuestDevScenario() : 'LIVE');
-  const generation = useRef(0), mounted = useRef(true);
-  const apply = useCallback((next: QuestDashboard, fromCache: boolean, at: number) => {
-    dashboardRef.current = next; setDashboard(next); setStale(fromCache); setSavedAt(at); setError(false);
-  }, []);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; generation.current++; }; }, []);
-  useEffect(() => {
-    generation.current++; setStateOwner(ownerId); dashboardRef.current = null; setDashboard(null); setLoading(true); setError(false); setClaimError(null); setStale(false);
-  }, [ownerId]);
-  const refresh = useCallback(async (silent = false) => {
-    if (!ownerId) { setLoading(false); return; }
-    if (isQuestDevEnabled() && getQuestDevScenario() !== 'LIVE') { setLoading(false); return; }
-    const sequence = ++generation.current;
-    const current = () => mounted.current && sequence === generation.current && localAccountId() === ownerId;
-    if (!silent) setLoading(true);
-    if (!dashboardRef.current) {
-      const cached = await readQuestCache(ownerId);
-      if (!current()) return;
-      if (cached) apply(cached.dashboard, true, cached.savedAt);
-    }
-    try {
-      const next = await questApi.dashboard(deviceIanaTimezone() || undefined);
-      if (!current()) return;
-      apply(next, false, Date.now());
-      await writeQuestCache(next, ownerId);
-    } catch {
-      if (!current()) return;
-      const cached = await readQuestCache(ownerId);
-      if (!current()) return;
-      if (!dashboardRef.current && cached) apply(cached.dashboard, true, cached.savedAt);
-      setStale(true); setError(!dashboardRef.current);
-    } finally { if (current()) setLoading(false); }
-  }, [ownerId, apply]);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { setClaimError(null); }, [ownerId]);
   useEffect(() => {
     if (!isQuestDevEnabled()) return;
     const off = subscribeQuestDevScenario(setDevScenario);
     return () => { off(); };
   }, []);
-  useFocusEffect(useCallback(() => {
-    void refresh(true);
-    const off = subscribeQuestRefresh(() => void refresh(true));
-    return () => { generation.current++; off(); };
-  }, [refresh, devScenario]));
-  const presented = applyQuestDevView({ dashboard: stateOwner === ownerId ? dashboard : null, loading, error, stale, scenario: isQuestDevEnabled() ? devScenario : 'LIVE' });
+
+  const devActive = isQuestDevEnabled() && devScenario !== 'LIVE';
+  // Coins and mission progress change on their own (steps, socket events): always re-read on focus.
+  const query = useAccountQuery<QuestSnapshot>({ key: [...DASH_KEY], fetch: fetchDashboard, staleTime: FRESH.LIVE, enabled: Boolean(ownerId) && !devActive });
+  const seed = useDeviceSeed(readSeed, Boolean(ownerId) && !devActive && query.data === undefined);
+  const snapshot = ownerId && ownerId === localAccountId() ? query.data ?? seed : null;
+
+  // Same-device coin changes (redeem, achievement claim) show at once; the refresh signal reconciles.
+  useEffect(() => subscribeMediCoinBalance((coins) => {
+    if (coins == null) return;
+    queryClient.setQueryData<QuestSnapshot>(accountKey(...DASH_KEY), (old) =>
+      old?.dashboard?.profile ? { ...old, dashboard: { ...old.dashboard, profile: { ...old.dashboard.profile, coinBalance: coins } } } : old);
+  }), []);
+
+  const { refetch } = query;
+  const refresh = useCallback(async (_silent = false) => {
+    if (isQuestDevEnabled() && getQuestDevScenario() !== 'LIVE') return;
+    await refetch();
+  }, [refetch]);
+
+  const loading = Boolean(ownerId) && !devActive && query.isPending && query.fetchStatus !== 'idle';
+  const error = !snapshot && query.isError;
+  const stale = Boolean(snapshot && (snapshot.fallback || query.isError));
+  const presented = applyQuestDevView({ dashboard: snapshot?.dashboard ?? null, loading, error, stale, scenario: isQuestDevEnabled() ? devScenario : 'LIVE' });
+
   const claim = useCallback(async (id: string): Promise<QuestClaimResult | null> => {
     if (!ownerId) return null;
     const lock = ownerId + ':' + id;
@@ -76,12 +87,14 @@ export function useQuestDashboard() {
       const result = await questApi.claim(id);
       if (!mounted.current || localAccountId() !== ownerId) return null;
       if (!result.ok) throw new Error('claim_failed');
-      ++generation.current;
-      setLoading(false);
-      const current = dashboardRef.current;
+      // A read that started before the claim must not repaint the pre-claim dashboard.
+      const key = accountKey(...DASH_KEY);
+      await queryClient.cancelQueries({ queryKey: key, exact: true });
+      if (localAccountId() !== ownerId) return null;
+      const current = queryClient.getQueryData<QuestSnapshot>(key);
       if (current) {
-        const next = applyClaimToDashboard(current, result);
-        apply(next, false, Date.now());
+        const next = applyClaimToDashboard(current.dashboard, result);
+        queryClient.setQueryData<QuestSnapshot>(key, { dashboard: next, savedAt: Date.now(), fallback: false });
         await writeQuestCache(next, ownerId);
       }
       if (!mounted.current || localAccountId() !== ownerId) return null;
@@ -92,8 +105,8 @@ export function useQuestDashboard() {
       if (mounted.current && localAccountId() === ownerId) setClaimError({ id, message: 'ჯილდოს მიღება ვერ დადასტურდა. სცადე ხელახლა — ერთი მისიის ჯილდო მხოლოდ ერთხელ ირიცხება.' });
       return null;
     } finally { endClaimLock(claimLocks, lock); }
-  }, [ownerId, apply]);
+  }, [ownerId]);
   const mood = homeQuestMood({ dailyTotal: presented.dashboard?.summary.dailyTotal, dailyCompleted: presented.dashboard?.summary.dailyCompleted, dailyClaimable: presented.dashboard?.summary.dailyClaimable,
     nearCompletion: (presented.dashboard as QuestDashboard | null)?.daily.quests.some(q => q.status === 'ACTIVE' && q.progressPercent >= 80) });
-  return { dashboard: presented.dashboard, loading: presented.loading, error: presented.error, stale: presented.stale, savedAt, refresh, claim, claimError, mood, fixtureOffline: presented.fixtureOffline };
+  return { dashboard: presented.dashboard, loading: presented.loading, error: presented.error, stale: presented.stale, savedAt: snapshot?.savedAt ?? null, refresh, claim, claimError, mood, fixtureOffline: presented.fixtureOffline };
 }

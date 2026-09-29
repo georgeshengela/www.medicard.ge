@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { api } from '@/lib/api';
-import { isOffline, subscribeReachability } from '@/lib/reachability';
+import { isOffline, lastServerAnswerAt, subscribeReachability } from '@/lib/reachability';
 
 /**
  * One shared /health ping for the whole app. The request layer reports every
@@ -11,6 +11,8 @@ import { isOffline, subscribeReachability } from '@/lib/reachability';
 let watching = false;
 
 function ping() {
+  // Other requests already prove the server is reachable: ping only quiet, online sessions.
+  if (!isOffline() && Date.now() - lastServerAnswerAt() < 20_000) return;
   // `request` records the outcome; an HTTP error still means the server answered.
   void api.health().catch(() => undefined);
 }

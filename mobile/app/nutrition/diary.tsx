@@ -64,6 +64,8 @@ import {
   healthScore,
   newUuid,
   sourceLabels,
+  upsertDayMeals,
+  withoutMeal,
   type FoodItem,
   type Meal,
   type MealSource,
@@ -73,6 +75,21 @@ import { useThemeColors } from "@/theme/colors";
 import { hubText } from "@/theme/hub";
 import { APP_MODAL_PROPS, APP_MODAL_OVERLAY, Modal } from "@/components/ui/appModal";
 import { useAuth } from "@/store/AuthContext";
+import { useAccountQuery } from "@/hooks/useAccountQuery";
+import { accountKey, FRESH, queryClient } from "@/lib/queryClient";
+
+type DayMeals = { meals: Meal[]; truncated: boolean };
+const EMPTY_MEALS: Meal[] = [];
+const mealsKey = (date: string) => ["nutrition", "meals", date];
+const fetchDayMeals = (date: string): Promise<DayMeals> => api.nutrition.list(date);
+/** Put a change into the cached day list at once (the write's invalidation then confirms it from the server). */
+function patchDayMeals(date: string, patch: (list: Meal[]) => Meal[]) {
+  queryClient.setQueryData<DayMeals>(accountKey(...mealsKey(date)), (old) => (old ? { ...old, meals: patch(old.meals) } : old));
+}
+/** Home's nutrition card is not on screen while the diary is; re-read its totals now so they are ready on return. */
+function refreshNutritionDashboard() {
+  void queryClient.refetchQueries({ queryKey: accountKey("nutrition", "dashboard"), type: "all" }).catch(() => undefined);
+}
 
 type Photo = { uri: string; name: string; mimeType: string; size?: number };
 type Sheet = null | "methods" | "barcode" | "search" | "saved" | "describe";
@@ -87,16 +104,37 @@ function NutritionScreen({ owner }: { owner: string }) {
     router = useRouter();
   const params = useLocalSearchParams<{ method?: string }>();
   const [day, setDay] = useState(localDay()),
-    [meals, setMeals] = useState<Meal[]>([]),
     [draft, setDraft] = useState<Meal | null>(null);
   const [busy, setBusy] = useState(false),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState(""),
+    [actionError, setError] = useState(""),
     [message, setMessage] = useState("");
   const [photo, setPhoto] = useState<Photo | null>(null),
     [photoMode, setPhotoMode] = useState<"photo" | "label">("photo"),
-    [enabled, setEnabled] = useState(false),
     [explanation, setExplanation] = useState("");
+  // Day list and photo setting from the shared cache: a revisit shows them at once and re-reads only when stale.
+  const mealsQuery = useAccountQuery<DayMeals>({
+    key: mealsKey(day),
+    fetch: () => fetchDayMeals(day),
+    staleTime: FRESH.SHORT,
+    enabled: Boolean(owner),
+  });
+  const settingsQuery = useAccountQuery<{ photoEnabled: boolean }>({
+    key: ["nutrition", "settings"],
+    fetch: () => api.nutrition.settings().catch(() => ({ photoEnabled: false })),
+    staleTime: FRESH.LONG,
+    enabled: Boolean(owner),
+  });
+  const meals = mealsQuery.data?.meals ?? EMPTY_MEALS;
+  const enabled = settingsQuery.data?.photoEnabled ?? false;
+  const loading = mealsQuery.isPending && mealsQuery.fetchStatus !== "idle";
+  const loadError = mealsQuery.data
+    ? mealsQuery.data.truncated
+      ? "დღის ჩანაწერების ნაწილი ვერ გამოიტანა."
+      : ""
+    : mealsQuery.error
+      ? (mealsQuery.error as Error).message
+      : "";
+  const error = actionError || loadError;
   const [editing, setEditing] = useState<number | null>(null),
     [fields, setFields] = useState(foodFields());
   const [confirmation, setConfirmation] = useState<{ title: string; message: string; action: () => void } | null>(null);
@@ -126,40 +164,19 @@ function NutritionScreen({ owner }: { owner: string }) {
     };
   }, []);
   const alive = useRef(true),
-    lock = useRef(false),
-    generation = useRef(0);
+    lock = useRef(false);
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
-      generation.current++;
     };
   }, []);
+  /** Explicit reload (retry, after a change here): always re-reads the day. */
+  const { refetch: refetchMeals } = mealsQuery;
   const load = useCallback(async () => {
-    const gen = ++generation.current;
-    setLoading(true);
-    setMeals([]);
     setError("");
-    try {
-      const [data, config] = await Promise.all([
-        api.nutrition.list(day),
-        api.nutrition.settings().catch(() => ({ photoEnabled: false })),
-      ]);
-      if (!alive.current || gen !== generation.current) return;
-      setMeals(data.meals);
-      setEnabled(config.photoEnabled);
-      if (data.truncated) setError("დღის ჩანაწერების ნაწილი ვერ გამოიტანა.");
-    } catch (e) {
-      if (alive.current && gen === generation.current) setError((e as Error).message);
-    } finally {
-      if (alive.current && gen === generation.current) setLoading(false);
-    }
-  }, [day]);
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+    await refetchMeals();
+  }, [refetchMeals]);
   const run = async (work: () => Promise<void>) => {
     if (lock.current) return;
     lock.current = true;
@@ -422,11 +439,12 @@ function NutritionScreen({ owner }: { owner: string }) {
       void import('@/lib/funnel').then(({ trackFirstHealthAction }) => trackFirstHealthAction('meal')).catch(() => undefined);
       void syncMealsToHealth([saved]);
       if (!alive.current) return;
+      patchDayMeals(saved.date, (list) => upsertDayMeals(list, [saved], saved.date));
+      refreshNutritionDashboard();
       setDraft(null);
       resetResult();
       setMessage("კვება შენახულია");
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      await load();
     });
   const saveItemAsFood = (item: FoodItem, index: number) =>
     run(async () => {
@@ -442,7 +460,8 @@ function NutritionScreen({ owner }: { owner: string }) {
         void run(async () => {
           await api.nutrition.remove(meal.id);
           void removeMealFromHealth(meal.id);
-          if (alive.current) await load();
+          patchDayMeals(meal.date, (list) => withoutMeal(list, meal.id));
+          refreshNutritionDashboard();
         }),
     });
   /** Copy the chosen meals with fresh ids; a retry after a network error reuses them. */
@@ -460,12 +479,13 @@ function NutritionScreen({ owner }: { owner: string }) {
         const { meals: created } = await api.nutrition.copy({ date, type, copies });
         copyIds.current = {};
         void syncMealsToHealth(created);
+        patchDayMeals(date, (list) => upsertDayMeals(list, created, date));
+        refreshNutritionDashboard();
         if (!alive.current) return;
         setCopying(null);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         setMessage(created.length === 1 ? "კვება დაკოპირდა" : `${created.length} კვება დაკოპირდა`);
         if (date !== day) setDay(date);
-        else await load();
       } catch (e) {
         setCopyError((e as Error).message);
       }
@@ -473,7 +493,12 @@ function NutritionScreen({ owner }: { owner: string }) {
   /** Today is empty: offer yesterday's meals in one step. */
   const repeatYesterday = () =>
     run(async () => {
-      const { meals: previous } = await api.nutrition.list(shiftDay(localDay(), -1));
+      const yesterday = shiftDay(localDay(), -1);
+      const { meals: previous } = await queryClient.fetchQuery({
+        queryKey: accountKey(...mealsKey(yesterday)),
+        queryFn: () => fetchDayMeals(yesterday),
+        staleTime: FRESH.SHORT,
+      });
       if (!alive.current) return;
       if (!previous.length) {
         setMessage("გუშინ ჩანაწერი არ არის.");

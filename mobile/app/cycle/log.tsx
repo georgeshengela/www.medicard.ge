@@ -9,7 +9,8 @@ import * as Haptics from 'expo-haptics';
 import { CycleLogTabs, type CycleLogForm } from '@/components/cycle/CycleLogTabs';
 import { EMPTY_CYCLE_LOG, formFromCycleLog, persistCycleLog } from '@/lib/cycleLogSave';
 import { api, ApiError, type CycleCustomTag, type CycleLog } from '@/lib/api';
-import { loadCycleView, queueRemoveCycleLog } from '@/lib/cycleOffline';
+import { queueRemoveCycleLog } from '@/lib/cycleOffline';
+import { useCycleView } from '@/lib/cycleViewCache';
 import { useAuth } from '@/store/AuthContext';
 import {
   CycleAtmosphere,
@@ -71,34 +72,38 @@ function CycleLogScreen() {
     navigation.setOptions(cycleNavHeader(c, ka.cycle.logToday));
   }, [navigation, c]);
 
+  // The day's log comes from the shared cached cycle view. The form fills once, from an answer that is
+  // not being refreshed (a fresh cache hit at once, otherwise the re-read) — never from a stale copy
+  // that a refresh could still change, so saving cannot overwrite the day with old values.
+  const viewQuery = useCycleView(user?.id);
+  const viewData = viewQuery.data;
+  const viewIdle = viewQuery.fetchStatus === 'idle';
+  const viewError = viewQuery.error;
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        if (!user?.id) throw new ApiError(ka.common.error, 401);
-        const view = await loadCycleView(user.id);
-        if (!alive) return;
-        const bundle = view.display;
-        setMode(bundle.profile.mode);
-        setCustomTags(bundle.customTags ?? []);
-        const existing = bundle.logs.find((l) => l.date === date) as CycleLog | undefined;
-        setHasLog(Boolean(existing));
-        if (existing) {
-          setForm(formFromCycleLog(existing));
-        } else if (typeof prefillNote === 'string' && prefillNote.trim()) {
-          setForm({ ...EMPTY_CYCLE_LOG, notes: prefillNote.trim() });
-        }
-        setHydrated(true);
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : ka.common.error);
-      } finally {
-        if (alive) setLoading(false);
+    if (hydrated) return;
+    if (!user?.id) {
+      setError(ka.common.error);
+      setLoading(false);
+      return;
+    }
+    if (viewData && viewIdle) {
+      const bundle = viewData.display;
+      setMode(bundle.profile.mode);
+      setCustomTags(bundle.customTags ?? []);
+      const existing = bundle.logs.find((l) => l.date === date) as CycleLog | undefined;
+      setHasLog(Boolean(existing));
+      if (existing) {
+        setForm(formFromCycleLog(existing));
+      } else if (typeof prefillNote === 'string' && prefillNote.trim()) {
+        setForm({ ...EMPTY_CYCLE_LOG, notes: prefillNote.trim() });
       }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [date, prefillNote, user?.id]);
+      setHydrated(true);
+      setLoading(false);
+    } else if (!viewData && viewError && viewIdle) {
+      setError(viewError instanceof ApiError ? viewError.message : ka.common.error);
+      setLoading(false);
+    }
+  }, [hydrated, viewData, viewIdle, viewError, date, prefillNote, user?.id]);
 
   const patchForm = (patch: Partial<CycleLogForm>) => {
     setForm((prev) => ({ ...prev, ...patch }));

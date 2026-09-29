@@ -260,3 +260,20 @@ export function itemFromFields(fields: FoodFields): { item: FoodItem | null; err
   }
   return { item, error: "" };
 }
+
+/** Cached day list after a save / copy: same id → replaced in place, new meals on that day appended. */
+export function upsertDayMeals(list: readonly Meal[], saved: readonly Meal[], date: string): Meal[] {
+  const next = [...list];
+  for (const meal of saved) {
+    if (meal.date !== date) continue;
+    const at = next.findIndex((m) => m.id === meal.id);
+    if (at >= 0) next[at] = meal;
+    else next.push(meal);
+  }
+  return next;
+}
+
+/** Cached day list after a delete. */
+export function withoutMeal(list: readonly Meal[], id: string): Meal[] {
+  return list.filter((m) => m.id !== id);
+}

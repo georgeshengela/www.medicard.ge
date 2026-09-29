@@ -6,7 +6,7 @@ import {
   ScrollView,
   Text,
   View} from 'react-native';
-import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -56,10 +56,10 @@ import { syncPregnancyCareReminders } from '@/lib/pregnancyCareReminders';
 import {
   cacheCycleBundle,
   discardCycleMutation,
-  loadCycleView,
   queueApplyPeriod,
   type CycleView,
 } from '@/lib/cycleOffline';
+import { putCycleBundle, putCycleView, useCycleView } from '@/lib/cycleViewCache';
 import { api, ApiError, type CycleBundle, type CyclePregnancyPayload, type CyclePostpartumPayload, type CycleTtcPayload } from '@/lib/api';
 import { CyclePregnancyCard } from '@/components/cycle/CyclePregnancyCard';
 import { CyclePerimenopauseCard } from '@/components/cycle/CyclePerimenopauseCard';
@@ -181,10 +181,8 @@ export default function CycleHome() {
   const c = useCycleColors();
   const [pane, setPane] = useState<CyclePane>('overview');
 
-  const [bundle, setBundle] = useState<CycleBundle | null>(null);
-  const [cycleView, setCycleView] = useState<CycleView | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [onboardSaving, setOnboardSaving] = useState(false);
   const [holdOnboarding, setHoldOnboarding] = useState(false);
@@ -400,67 +398,74 @@ export default function CycleHome() {
     [authReady],
   );
 
+  // Shared cached cycle view (same key as Home's cycle card): a visit shows the last view at once and
+  // refreshes in the background only when stale; saves put their optimistic view into the cache.
+  const viewEnabled = authReady && user?.gender === 'FEMALE' && Boolean(user?.id);
+  const viewQuery = useCycleView(user?.id, viewEnabled);
+  const cycleView: CycleView | null = viewEnabled ? (viewQuery.data ?? null) : null;
+  const bundle: CycleBundle | null = cycleView?.display ?? null;
+  const viewStamp = viewQuery.dataUpdatedAt;
+  const loading = !authReady || (viewEnabled && viewQuery.data === undefined && !viewQuery.isError);
+  const loadError =
+    viewEnabled && !viewQuery.data && viewQuery.error
+      ? viewQuery.error instanceof ApiError
+        ? viewQuery.error.message
+        : ka.common.error
+      : null;
+  const error = actionError ?? loadError;
+
+  /** Explicit reload (pull-to-refresh, retry, after a change here): always re-reads. */
+  const { refetch: refetchView } = viewQuery;
   const load = useCallback(async () => {
+    setError(null);
+    setRefreshing(true);
+    try {
+      await refetchView();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchView]);
+
+  // Every new view (cache hit on mount, background refresh, a save): mode data + reminders follow it.
+  useEffect(() => {
     if (!authReady) return;
     if (!user?.id) {
       setTtcQuery(emptyTtcQueryState(null));
       setPregnancyQuery(emptyPregnancyQueryState(null));
       setPostpartumQuery(emptyPostpartumQueryState(null));
-      setLoading(false);
       return;
     }
+    if (!cycleView) return;
+    const view = cycleView;
     const gen = ++ttcGen.current;
     pregnancyGen.current = gen;
     postpartumGen.current = gen;
     const userId = user.id;
-    ttcQueryTrace('auth_hydrated', { gen, userId, t: Date.now() });
-    ttcQueryTrace('cycle_bundle_start', { gen, userId, t: Date.now() });
-    try {
-      setError(null);
-      const view = await loadCycleView(userId);
-      if (gen !== ttcGen.current) return;
-      ttcQueryTrace('cycle_bundle_response', { gen, userId, t: Date.now() });
-      setCycleView(view);
-      setBundle(view.display);
+    ttcQueryTrace('cycle_bundle_response', { gen, userId, t: Date.now() });
+    void (async () => {
       await refreshTtc(view, userId, gen);
       await refreshPregnancy(view, userId, gen);
       await refreshPostpartum(view, userId, gen);
-      if (!view.stale && view.pendingCount === 0) {
-        try {
-          const prefs = await getCycleReminderPrefs();
-          await syncCycleReminders(view.canonical, prefs);
-          if (supportsCycleCapability(view.canonical.profile.mode, 'showPregnancyCarePlanner')) {
-            const carePlan = await api.cycle.pregnancyCarePlan();
-            await syncPregnancyCareReminders({
-              plan: carePlan,
-              userId: userId,
-              mode: view.canonical.profile.mode,
-              today: cycleToday(view.canonical, todayKey()),
-              privacyEnabled: Boolean(view.canonical.profile.privacyEnabled),
-            });
-          }
-        } catch {
-          /* Reminders must not block last-period date pick. */
+      if (gen !== ttcGen.current || view.stale || view.pendingCount > 0) return;
+      try {
+        const prefs = await getCycleReminderPrefs();
+        await syncCycleReminders(view.canonical, prefs);
+        if (supportsCycleCapability(view.canonical.profile.mode, 'showPregnancyCarePlanner')) {
+          const carePlan = await api.cycle.pregnancyCarePlan();
+          await syncPregnancyCareReminders({
+            plan: carePlan,
+            userId: userId,
+            mode: view.canonical.profile.mode,
+            today: cycleToday(view.canonical, todayKey()),
+            privacyEnabled: Boolean(view.canonical.profile.privacyEnabled),
+          });
         }
+      } catch {
+        /* Reminders must not block last-period date pick. */
       }
-    } catch (err) {
-      if (gen !== ttcGen.current) return;
-      setError(err instanceof ApiError ? err.message : ka.common.error);
-    } finally {
-      if (gen === ttcGen.current) setLoading(false);
-    }
-  }, [authReady, user?.id, refreshTtc, refreshPregnancy, refreshPostpartum]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!authReady) return;
-      if (user?.gender !== 'FEMALE') {
-        setLoading(false);
-        return;
-      }
-      void load();
-    }, [authReady, user?.gender, load]),
-  );
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewStamp, cycleView, authReady, user?.id, refreshTtc, refreshPregnancy, refreshPostpartum]);
 
   const lastPeriod = bundle?.profile.lastPeriodStart ?? null;
   const needsOnboarding =
@@ -566,7 +571,7 @@ export default function CycleHome() {
           : optimistic
             ? { ...optimistic, profile: { ...optimistic.profile, lastPeriodStart: stamped } }
             : data;
-      if (next) setBundle(next);
+      if (next) putCycleBundle(owner, next);
       if (user?.id && next) {
         try {
           await cacheCycleBundle(user.id, next);
@@ -596,12 +601,9 @@ export default function CycleHome() {
     setQuickOpen(true);
   };
 
-  /** After a save from this screen: reschedule cycle reminders from the fresh (synced) view. */
-  const resyncReminders = (view: CycleView | null | undefined) => {
-    if (!view || view.stale || view.pendingCount > 0) return;
-    void getCycleReminderPrefs()
-      .then((prefs) => syncCycleReminders(view.canonical, prefs))
-      .catch(() => undefined);
+  /** After a save from this screen: the view goes into the shared cache; the view effect reschedules reminders. */
+  const showView = (view: CycleView | null | undefined) => {
+    if (view && user?.id) putCycleView(user.id, view);
   };
 
   /**
@@ -614,11 +616,7 @@ export default function CycleHome() {
     try {
       const result = await queueApplyPeriod(user.id, { action: 'start', date: today });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      if (result.view) {
-        setCycleView(result.view);
-        setBundle(result.view.display);
-        resyncReminders(result.view);
-      }
+      showView(result.view);
       setPeriodToast(today);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
@@ -633,11 +631,7 @@ export default function CycleHome() {
     try {
       // "end" on the first day clears that one-day period again (server planEndPeriod).
       const result = await queueApplyPeriod(user.id, { action: 'end', date });
-      if (result.view) {
-        setCycleView(result.view);
-        setBundle(result.view.display);
-        resyncReminders(result.view);
-      }
+      showView(result.view);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
     }
@@ -649,22 +643,10 @@ export default function CycleHome() {
     return () => clearTimeout(t);
   }, [periodToast]);
 
-  /** After any sheet save: show the fresh view, reschedule reminders, refresh mode data. */
+  /** After any sheet save: show the fresh view (the view effect reschedules reminders and refreshes mode data). */
   const handleSaved = (view?: CycleView | null) => {
     if (view) {
-      setCycleView(view);
-      setBundle(view.display);
-      resyncReminders(view);
-      if (authReady && user?.id) {
-        const gen = ++ttcGen.current;
-        pregnancyGen.current = gen;
-        postpartumGen.current = gen;
-        void Promise.all([
-          refreshTtc(view, user.id, gen),
-          refreshPregnancy(view, user.id, gen),
-          refreshPostpartum(view, user.id, gen),
-        ]);
-      }
+      showView(view);
       return;
     }
     void load();
@@ -723,11 +705,7 @@ export default function CycleHome() {
                 action: 'end',
                 date: today,
               });
-              if (result.view) {
-                setCycleView(result.view);
-                setBundle(result.view.display);
-                resyncReminders(result.view);
-              }
+              showView(result.view);
             } catch (err) {
               setError(err instanceof Error ? err.message : ka.common.error);
             }
@@ -821,7 +799,7 @@ export default function CycleHome() {
                 contraceptionMethod: method,
                 contraceptionStartedAt: startedAt,
               });
-              if (data?.profile) setBundle(data);
+              if (data?.profile && user?.id) putCycleBundle(user.id, data);
               if (data?.contraception?.ttcConflict) setTtcConflictOpen(true);
             }
             setHoldOnboarding(false);
@@ -890,7 +868,7 @@ export default function CycleHome() {
             paddingBottom: insets.bottom + 100,
           }}
           refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={load} tintColor={c.brand} />
+            <RefreshControl refreshing={refreshing} onRefresh={load} tintColor={c.brand} />
           }
           showsVerticalScrollIndicator={false}
           stickyHeaderIndices={[2]}
@@ -1374,7 +1352,7 @@ export default function CycleHome() {
           void api.cycle
             .updateProfile({ mode: 'TRACK_PERIOD' })
             .then((data) => {
-              if (data?.profile) setBundle(data);
+              if (data?.profile && user?.id) putCycleBundle(user.id, data);
             })
             .catch(() => undefined);
         }}

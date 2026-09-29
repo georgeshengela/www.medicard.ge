@@ -528,6 +528,19 @@ async function commitPlanned(
   userId: string,
   planned: { operation: CycleOfflineOperation; payload: Record<string, unknown> }[],
 ): Promise<PersistResult> {
+  const result = await commitPlannedInner(userId, planned);
+  // Every reader of the cached cycle view (Home card, cycle screens) shows the saved day at once.
+  if (result.view) {
+    const view = result.view;
+    void import('@/lib/cycleViewCache').then(({ putCycleView }) => putCycleView(userId, view)).catch(() => undefined);
+  }
+  return result;
+}
+
+async function commitPlannedInner(
+  userId: string,
+  planned: { operation: CycleOfflineOperation; payload: Record<string, unknown> }[],
+): Promise<PersistResult> {
   try {
     for (const step of planned) {
       await enqueueCycleOp(userId, step.operation, step.payload);

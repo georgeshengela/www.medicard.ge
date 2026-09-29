@@ -15,4 +15,14 @@ describe('keysForWrite', () => {
   it('does not match a longer sibling prefix', () => {
     assert.deepEqual(keysForWrite('POST', '/api/medicationsx'), []);
   });
+  it('read-like POSTs never invalidate (would loop with the screen that calls them)', () => {
+    assert.deepEqual(keysForWrite('POST', '/api/cycle/insights'), []);
+    assert.deepEqual(keysForWrite('POST', '/api/nutrition/estimate'), []);
+    assert.deepEqual(keysForWrite('POST', '/api/quests/timezone'), []);
+    assert.deepEqual(keysForWrite('POST', '/api/cycle/profile'), ['cycle', 'home']);
+  });
+  it('Medi answers refresh records', () => {
+    assert.deepEqual(keysForWrite('POST', '/api/ai/query'), ['records']);
+    assert.deepEqual(keysForWrite('POST', '/api/ai-consent'), []);
+  });
 });

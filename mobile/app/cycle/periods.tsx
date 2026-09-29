@@ -12,7 +12,8 @@ import { ka } from '@/i18n/ka';
 import { api, ApiError, type CycleBundle } from '@/lib/api';
 import { cycleToday } from '@/lib/cycleCanonical';
 import { isBleedFlow } from '@/lib/cycleLogSave';
-import { cacheCycleBundle, loadCycleView } from '@/lib/cycleOffline';
+import { cacheCycleBundle } from '@/lib/cycleOffline';
+import { putCycleBundle, useCycleView } from '@/lib/cycleViewCache';
 import { useAuth } from '@/store/AuthContext';
 import { cycleHexAlpha, useCycleColors } from '@/theme/cycle';
 
@@ -54,22 +55,32 @@ export default function CyclePeriodDatesScreen() {
     navigation.setOptions(cycleNavHeader(c, ka.cycle.periodDatesTitle));
   }, [navigation, c]);
 
+  // Shared cached cycle view; the ticks fill once from an answer that is not being refreshed, so the
+  // editor never starts from a copy that a refresh could still change.
+  const viewQuery = useCycleView(user?.id);
+  const viewData = viewQuery.data;
+  const viewIdle = viewQuery.fetchStatus === 'idle';
+  const viewError = viewQuery.error;
+  const filled = useRef(false);
   useEffect(() => {
+    if (filled.current) return;
     if (!user?.id) {
       setLoading(false);
       return;
     }
-    loadCycleView(user.id)
-      .then((view) => {
-        const b = view.display;
-        setBundle(b);
-        const bleed = new Set(b.logs.filter((l) => isBleedFlow(l.flow)).map((l) => l.date));
-        setLogged(bleed);
-        setPicked(new Set(bleed));
-      })
-      .catch((err) => setError(err instanceof ApiError ? err.message : ka.common.error))
-      .finally(() => setLoading(false));
-  }, [user?.id]);
+    if (viewData && viewIdle) {
+      filled.current = true;
+      const b = viewData.display;
+      setBundle(b);
+      const bleed = new Set(b.logs.filter((l) => isBleedFlow(l.flow)).map((l) => l.date));
+      setLogged(bleed);
+      setPicked(new Set(bleed));
+      setLoading(false);
+    } else if (!viewData && viewError && viewIdle) {
+      setError(viewError instanceof ApiError ? viewError.message : ka.common.error);
+      setLoading(false);
+    }
+  }, [viewData, viewIdle, viewError, user?.id]);
 
   const today = cycleToday(bundle, todayKey());
   const months = useMemo(() => {
@@ -101,6 +112,7 @@ export default function CyclePeriodDatesScreen() {
     try {
       const next = await api.cycle.editPeriodDays({ add, remove });
       await cacheCycleBundle(user.id, next).catch(() => undefined);
+      putCycleBundle(user.id, next);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       router.back();
     } catch (err) {

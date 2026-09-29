@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,8 @@ import { getQuestDevScenario, isQuestDevEnabled } from '@/lib/quest/devFixture';
 import { rewardTitle, rewardsCopy } from '@/i18n/quest/rewards.js';
 import { trackQuestEvent } from '@/lib/productObservability';
 import { QUEST } from '@/theme/questTokens';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { FRESH } from '@/lib/queryClient';
 
 export default function MyRewardsScreen() {
   const router = useRouter();
@@ -20,32 +22,27 @@ export default function MyRewardsScreen() {
   const colors = useThemeColors();
   const dark = useIsDark();
   const copy = rewardsCopy('ka');
-  const [groups, setGroups] = useState<{ active: RedemptionItem[]; used: RedemptionItem[]; expired: RedemptionItem[] }>({
-    active: [],
-    used: [],
-    expired: [],
+  const devScenario = isQuestDevEnabled() ? getQuestDevScenario() : 'LIVE';
+  const devActive = devScenario !== 'LIVE';
+  // Redeems write /api/rewards, which invalidates this key; SHORT covers expiry on its own.
+  const query = useAccountQuery({
+    key: ['quest', 'rewards', 'mine'],
+    fetch: async () => groupMineRedemptions(await rewardsApi.mine()),
+    staleTime: FRESH.SHORT,
+    enabled: !devActive,
   });
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (isQuestDevEnabled() && getQuestDevScenario() !== 'LIVE') {
-      setGroups(groupMineRedemptions(buildRewardsDevMine(getQuestDevScenario() as never)));
-      setLoading(false);
-      return;
-    }
-    try {
-      setGroups(groupMineRedemptions(await rewardsApi.mine()));
-    } catch {
-      setGroups({ active: [], used: [], expired: [] });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const groups = useMemo<{ active: RedemptionItem[]; used: RedemptionItem[]; expired: RedemptionItem[] }>(
+    () =>
+      devActive
+        ? groupMineRedemptions(buildRewardsDevMine(devScenario as never))
+        : query.data ?? { active: [], used: [], expired: [] },
+    [devActive, devScenario, query.data],
+  );
+  const loading = !devActive && query.isPending && query.fetchStatus !== 'idle';
 
   useEffect(() => {
     void trackQuestEvent('my_rewards_opened');
-    void load();
-  }, [load]);
+  }, []);
 
   return (
     <View className="flex-1 bg-bg-100" style={{ paddingTop: insets.top }}>

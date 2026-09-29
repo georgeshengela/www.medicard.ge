@@ -97,11 +97,24 @@ export function subscribeQuestRefresh(listener: () => void) {
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Marks the shared server-data cache stale for these Quest keys (TanStack Query, see
+ * queryClient.ts): whatever Quest screen is on screen refetches, hidden ones refetch on their next
+ * visit. Loaded lazily so this module stays importable without the query client.
+ */
+function invalidateQuestQueries(...parts: string[]) {
+  void import('@/lib/queryClient')
+    .then(({ invalidate }) => invalidate(...parts))
+    .catch(() => undefined);
+}
+
 /** Coalesced: a burst of socket events / health pushes / coin changes becomes one refresh. */
 export function requestQuestRefresh() {
   if (refreshTimer) return;
   refreshTimer = setTimeout(() => {
     refreshTimer = null;
+    // Dashboard, journey, achievements and the rewards catalog all live under 'quest'.
+    invalidateQuestQueries('quest');
     listeners.forEach((fn) => {
       try {
         fn();
@@ -253,6 +266,7 @@ export function subscribeAchievementsRefresh(listener: () => void) {
 }
 
 export function requestAchievementsRefresh() {
+  invalidateQuestQueries('quest', 'achievements');
   achievementRefreshListeners.forEach((fn) => {
     try {
       fn();

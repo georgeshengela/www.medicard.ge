@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import {
   ChevronRight,
   FileText,
@@ -25,7 +25,17 @@ import { formatRelative } from '@/lib/format';
 import { mediModeForSession, mediRoute } from '@/lib/mediModes';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { HUB, hubInk, hubText, hubTint, type HubInk } from '@/theme/hub';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { accountKey, FRESH, queryClient } from '@/lib/queryClient';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+
+const RECORDS_KEY = ['records', 'list'] as const;
+/** Under 'records' so a write to /api/records (or `invalidate('records')`) refreshes the whole tab. */
+const CHATS_KEY = ['records', 'chats'] as const;
+const EMPTY_RECORDS: MedicalRecord[] = [];
+const EMPTY_CHATS: ChatSummary[] = [];
+const fetchRecords = async () => (await api.records.list()).records;
+const fetchChats = async () => (await api.chats.list()).sessions;
 
 const FILTERS = ['ALL', 'LAB', 'CT_MRI', 'SKIN', 'SKINCARE', 'SYMPTOM'] as const;
 
@@ -53,30 +63,28 @@ export default function Records() {
   const dark = useIsDark();
   const tabInset = useTabBarInset();
 
-  const [records, setRecords] = useState<MedicalRecord[]>([]);
-  const [chats, setChats] = useState<ChatSummary[]>([]);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('ALL');
   const [refreshing, setRefreshing] = useState(false);
-  const [ready, setReady] = useState(false);
 
-  const load = useCallback(async () => {
-    const [recordResult, chatResult] = await Promise.allSettled([api.records.list(), api.chats.list()]);
-    if (recordResult.status === 'fulfilled') setRecords(recordResult.value.records);
-    if (chatResult.status === 'fulfilled') setChats(chatResult.value.sessions);
-    setReady(true);
-  }, []);
+  // Records: AI endpoints (lab, skin, Medi) and uploads invalidate 'records' after they save, so 30 s
+  // fresh is safe. Chats stay LIVE: streamed Medi answers bypass api.ts and never signal.
+  const recordsQuery = useAccountQuery({ key: [...RECORDS_KEY], fetch: fetchRecords, staleTime: FRESH.SHORT });
+  const chatsQuery = useAccountQuery({ key: [...CHATS_KEY], fetch: fetchChats, staleTime: FRESH.LIVE });
+  const records = recordsQuery.data ?? EMPTY_RECORDS;
+  const chats = chatsQuery.data ?? EMPTY_CHATS;
+  const settled = (q: { isPending: boolean; fetchStatus: string }) => !q.isPending || q.fetchStatus === 'idle';
+  const ready = settled(recordsQuery) && settled(chatsQuery);
 
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
-
+  const refetchRecords = recordsQuery.refetch;
+  const refetchChats = chatsQuery.refetch;
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load();
-    setRefreshing(false);
-  }, [load]);
+    try {
+      await Promise.all([refetchRecords(), refetchChats()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchRecords, refetchChats]);
 
   const visible = useMemo(
     () => (filter === 'ALL' ? records : records.filter((record) => record.type === filter)),
@@ -92,14 +100,16 @@ export default function Records() {
 
   const removeRecord = (id: string) =>
     confirmDelete(ka.records.deleteConfirm, () => {
-      setRecords((prev) => prev.filter((record) => record.id !== id));
-      void api.records.remove(id).catch(() => load());
+      queryClient.setQueryData<MedicalRecord[]>(accountKey(...RECORDS_KEY), (prev) =>
+        prev?.filter((record) => record.id !== id),
+      );
+      void api.records.remove(id).catch(() => refetchRecords());
     });
 
   const removeChat = (id: string) =>
     confirmDelete(ka.chats.deleteConfirm, () => {
-      setChats((prev) => prev.filter((chat) => chat.id !== id));
-      void api.chats.remove(id).catch(() => load());
+      queryClient.setQueryData<ChatSummary[]>(accountKey(...CHATS_KEY), (prev) => prev?.filter((chat) => chat.id !== id));
+      void api.chats.remove(id).catch(() => refetchChats());
     });
 
   const isEmpty = records.length === 0 && chats.length === 0;
