@@ -1,0 +1,66 @@
+/* MEDICARD web — „მაჩვენებლები“ (weight, steps, water) + Home activity card. */
+
+.hm-kpis { margin-bottom: 28px; }
+.hm-kpi { text-align: left; border: 0; cursor: pointer; font: inherit; color: inherit; display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.hm-kpi .stat-value { margin-top: 12px; }
+.hm-kpi .spark { flex: none; }
+
+.hm-mini-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.hm-mini { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.hm-mini span { font-size: 12px; color: var(--text3); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-mini b { font-size: 18px; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.hm-mini small { font-size: 11.5px; color: var(--text3); }
+.hm-mini b.good, .hm-delta.good { color: var(--ok); }
+.hm-mini b.bad, .hm-delta.bad { color: var(--warn); }
+.hm-delta { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text2); }
+.hm-foot { margin-top: 14px; font-size: 12.5px; flex-wrap: wrap; }
+.hm-big { font-size: 24px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.hm-mt { margin-top: 12px; }
+.hm-goal-done { display: flex; align-items: center; gap: 8px; color: var(--ok); font-weight: 600; font-size: 14px; }
+.hm-goal-from { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-radius: 14px; background: var(--bg); }
+
+.hm-bmi-scale {
+  position: relative; height: 10px; border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8 0%, #38bdf8 14%, #14b8a6 14%, #14b8a6 40%, #f59e0b 40%, #f59e0b 60%, #f43f5e 60%, #f43f5e 100%);
+  opacity: .9;
+}
+.hm-bmi-scale i {
+  position: absolute; top: 50%; width: 18px; height: 18px; border-radius: 50%; transform: translate(-50%, -50%);
+  background: var(--surface); box-shadow: 0 0 0 3px var(--text), 0 2px 6px rgba(0, 0, 0, .2);
+}
+.hm-bmi-ticks { position: relative; height: 16px; margin-top: 6px; font-size: 11px; color: var(--text3); font-variant-numeric: tabular-nums; }
+.hm-bmi-ticks span { position: absolute; transform: translateX(-50%); }
+.hm-bmi-ticks span:nth-child(1) { left: 0; transform: none; }
+.hm-bmi-ticks span:nth-child(2) { left: 14%; }
+.hm-bmi-ticks span:nth-child(3) { left: 40%; }
+.hm-bmi-ticks span:nth-child(4) { left: 60%; }
+.hm-bmi-ticks span:nth-child(5) { right: 0; left: auto; transform: none; }
+
+.hm-water-grid { align-items: stretch; }
+.hm-water-today { display: flex; flex-direction: column; gap: 16px; }
+.hm-water-ring { display: grid; place-items: center; padding: 4px 0; }
+.hm-water-ring .ring-center strong { color: var(--spot-text); }
+.hm-water-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1; }
+.hm-water-note { font-size: 12px; text-align: center; color: color-mix(in srgb, var(--spot-text) 60%, transparent); }
+.hm-chips { margin-bottom: 4px; }
+
+/* Home activity card */
+.hm-home { display: flex; flex-direction: column; gap: 16px; }
+.hm-home-top { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.hm-home-legend { flex: 1; min-width: 160px; align-items: flex-start; }
+.hm-home-metric { display: flex; align-items: center; gap: 10px; color: inherit; }
+.hm-home-metric i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.hm-home-metric span { display: block; font-size: 12px; color: var(--text3); }
+.hm-home-metric b { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hm-home-metric small { font-size: 12px; color: var(--text3); font-weight: 500; }
+.hm-home-weight { display: flex; align-items: center; gap: 12px; padding: 12px; margin: 0 -8px -8px; border-radius: 16px; color: inherit; transition: background .15s; }
+.hm-home-weight:hover { background: var(--bg); }
+.hm-home-weight .row-main { flex: 1; min-width: 0; }
+
+@media (max-width: 900px) {
+  .hm-mini-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .hm-kpis { grid-template-columns: 1fr; gap: 10px; }
+  .hm-kpi .stat-value { margin-top: 6px; }
+}

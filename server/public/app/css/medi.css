@@ -1,0 +1,270 @@
+/* MEDICARD web — Medi chat (history column + conversation). Tokens come from app.css. */
+
+/* The chat owns the viewport height: trim the page's bottom padding while Medi is mounted. */
+.content:has(> .page > .medi) { padding-bottom: 16px; }
+
+.medi {
+  --medi-h: calc(100dvh - 92px);
+  display: grid; grid-template-columns: 292px minmax(0, 1fr); gap: 18px;
+  height: var(--medi-h); min-height: 440px; margin-top: 6px;
+}
+
+/* ── History column ─────────────────────────────────── */
+.medi-side {
+  display: flex; flex-direction: column; gap: 12px; min-height: 0;
+  background: var(--surface); border-radius: var(--radius); padding: 14px 10px 10px;
+}
+.medi-side.in-modal { background: none; padding: 0; max-height: 64vh; }
+.medi-side-top { display: flex; flex-direction: column; gap: 10px; padding: 0 4px; }
+.medi-new { width: 100%; justify-content: center; }
+.medi-hist-search { padding-top: 9px; padding-bottom: 9px; font-size: 14px; }
+.medi-hist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; padding: 0 2px 4px; }
+.medi-hist-group { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); padding: 14px 10px 6px; }
+.medi-hist-item {
+  position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 14px;
+  cursor: pointer; transition: background .15s; outline-offset: -2px;
+}
+.medi-hist-item:hover { background: var(--bg); }
+.medi-hist-item.on { background: color-mix(in srgb, var(--brand) 10%, transparent); }
+.medi-hist-item.on .medi-hist-title { color: var(--brand-ink); }
+.medi-hist-main { flex: 1; min-width: 0; }
+.medi-hist-title { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.medi-hist-sub { font-size: 12px; color: var(--text3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.medi-hist-del {
+  flex: none; width: 30px; height: 30px; border: 0; border-radius: 10px; background: transparent; color: var(--text3);
+  display: grid; place-items: center; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s, color .15s;
+}
+.medi-hist-item:hover .medi-hist-del, .medi-hist-item:focus-within .medi-hist-del, .medi-hist-del:focus-visible { opacity: 1; }
+.medi-hist-del:hover { background: var(--danger-bg); color: var(--danger); }
+@media (hover: none) { .medi-hist-del { opacity: .7; } }
+.medi-hist-empty { color: var(--text3); font-size: 13.5px; text-align: center; padding: 28px 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.medi-hist-sk { display: flex; flex-direction: column; gap: 8px; padding: 12px 10px; }
+
+/* ── Conversation panel ─────────────────────────────── */
+.medi-main {
+  position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  background: var(--surface); border-radius: var(--radius); overflow: hidden;
+}
+.medi-head {
+  display: flex; align-items: center; gap: 14px; padding: 12px 14px 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.medi-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.medi-id-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.medi-id-text b { font-size: 15px; font-weight: 700; }
+.medi-id-text span { font-size: 12.5px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.medi-modes {
+  margin: 0 auto; display: inline-flex; gap: 2px; padding: 4px; border-radius: 14px; background: var(--bg);
+}
+.medi-modes button {
+  display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; cursor: pointer;
+  padding: 7px 13px; border-radius: 10px; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text2);
+  white-space: nowrap; transition: background .15s, color .15s, box-shadow .15s;
+}
+.medi-modes button:hover { color: var(--text); }
+.medi-modes button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(15, 26, 28, .1); }
+.medi-modes button.on .ic { color: var(--brand-ink); }
+.medi-actions { display: flex; align-items: center; gap: 2px; }
+.medi-only-narrow { display: none; }
+
+/* Medi mark: a soft, luminous tile tinted by the mode ink. */
+.medi-orb {
+  flex: none; display: grid; place-items: center; color: #fff; border-radius: 12px;
+  background: radial-gradient(120% 120% at 20% 10%, color-mix(in srgb, var(--ink) 70%, #fff) 0%, var(--ink) 55%, color-mix(in srgb, var(--ink) 70%, #000) 100%);
+}
+:root[data-theme=dark] .medi-orb { color: #04121a; }
+.medi-orb.xs { width: 28px; height: 28px; border-radius: 9px; }
+.medi-orb.sm { width: 36px; height: 36px; }
+.medi-orb.lg {
+  width: 68px; height: 68px; border-radius: 22px;
+  box-shadow: 0 16px 40px -14px color-mix(in srgb, var(--ink) 70%, transparent);
+  animation: mediFloat 6s ease-in-out infinite;
+}
+@keyframes mediFloat { 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .medi-orb.lg { animation: none; } }
+
+/* ── Thread ─────────────────────────────────────────── */
+.medi-body { position: relative; flex: 1; min-height: 0; display: flex; }
+.medi-log { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.medi-thread { max-width: 800px; margin: 0 auto; padding: 26px 24px 18px; display: flex; flex-direction: column; gap: 22px; }
+
+.medi-msg { display: flex; gap: 12px; animation: pageIn .25s ease; }
+.medi-msg.me { flex-direction: column; align-items: flex-end; gap: 4px; }
+.medi-bubble.me {
+  max-width: min(620px, 86%); padding: 11px 16px; border-radius: 20px 20px 6px 20px;
+  background: color-mix(in srgb, var(--brand) 11%, var(--bg)); color: var(--text);
+  font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.medi-msg.ai .medi-orb { margin-top: 2px; }
+.medi-msg-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.medi-answer { font-size: 15px; line-height: 1.7; color: var(--text); overflow-wrap: anywhere; }
+.medi-answer .md p { margin-bottom: 12px; }
+.medi-answer .md h3, .medi-answer .md h4 { font-size: 16px; margin: 18px 0 8px; }
+.medi-answer .md h3:first-child, .medi-answer .md h4:first-child { margin-top: 0; }
+.medi-answer .md li { margin: 5px 0; }
+.medi-answer .md strong { font-weight: 700; }
+.medi-msg.local .medi-answer { color: var(--text2); }
+.medi-meta { font-size: 11.5px; color: var(--text3); font-variant-numeric: tabular-nums; }
+
+.medi-caret {
+  display: inline-block; width: 8px; height: 1.05em; margin-left: 3px; vertical-align: -0.15em;
+  border-radius: 2px; background: var(--brand-2); animation: mediCaret 1s steps(2, start) infinite;
+}
+@keyframes mediCaret { to { visibility: hidden; } }
+.medi-thinking { display: inline-flex; align-items: center; gap: 10px; color: var(--text3); font-size: 14px; padding: 4px 0; }
+.medi-loading { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--text3); font-size: 14px; padding: 60px 0; }
+.medi-inline-error { margin-top: 20px; }
+
+.medi-tools { display: flex; align-items: center; gap: 2px; min-height: 30px; margin-left: -6px; opacity: .85; }
+.medi-tools .medi-meta { margin-left: 8px; }
+.medi-tool.icon-btn { width: 30px; height: 30px; border-radius: 9px; color: var(--text3); }
+.medi-tool.icon-btn:hover { color: var(--text); background: var(--bg); }
+.medi-tool.on { color: var(--brand-ink); background: color-mix(in srgb, var(--brand) 12%, transparent); }
+.medi-tool:disabled { cursor: default; }
+.medi-tools-sep { width: 1px; height: 14px; background: var(--line); margin: 0 4px; }
+.medi-stopped { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text3); }
+.medi-app-link { align-self: flex-start; }
+
+/* ── Empty state ───────────────────────────────────── */
+.medi-hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 5vh 0 10px; }
+.medi-hero h2 { font-size: clamp(22px, 2.6vw, 28px); font-weight: 800; letter-spacing: -.02em; margin-top: 8px; }
+.medi-hero > p { color: var(--text2); font-size: 14.5px; line-height: 1.6; max-width: 54ch; }
+.medi-checklist { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 560px; text-align: left; }
+.medi-checklist li { display: flex; gap: 8px; align-items: center; font-size: 13.5px; color: var(--text2); padding: 10px 12px; border-radius: 14px; background: var(--bg); }
+.medi-checklist .ic { color: var(--brand-ink); }
+.medi-starters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 600px; margin-top: 12px; }
+.medi-starter {
+  display: flex; align-items: center; gap: 12px; text-align: left; border: 0; cursor: pointer; font: inherit;
+  padding: 12px 14px; border-radius: 18px; background: var(--bg); color: var(--text); font-size: 14px; font-weight: 500; line-height: 1.4;
+  transition: background .15s, transform .12s;
+}
+.medi-starter > span:nth-child(2) { flex: 1; }
+.medi-starter:hover { background: var(--bg2); }
+.medi-starter:active { transform: scale(.99); }
+.medi-starter-go { color: var(--text3); opacity: 0; transform: translateX(-4px); transition: opacity .15s, transform .15s; }
+.medi-starter:hover .medi-starter-go { opacity: 1; transform: none; }
+.medi-link { margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--brand-ink); padding: 6px 10px; border-radius: 10px; }
+.medi-link:hover { background: color-mix(in srgb, var(--brand) 9%, transparent); }
+
+/* ── Planner task card ─────────────────────────────── */
+.medi-task { display: flex; flex-direction: column; gap: 12px; padding-left: 40px; }
+.medi-suggest { display: flex; flex-wrap: wrap; gap: 8px; }
+.medi-review {
+  border-radius: 20px; padding: 16px; background: var(--bg);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--brand) 22%, transparent);
+  display: flex; flex-direction: column; gap: 14px; max-width: 560px; animation: pageIn .25s ease;
+}
+.medi-review-head { display: flex; align-items: center; gap: 12px; }
+.medi-review-kicker { font-size: 12px; font-weight: 600; color: var(--brand-ink); letter-spacing: .02em; }
+.medi-review-title { font-size: 15.5px; font-weight: 700; margin-top: 1px; }
+.medi-review-rows { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.medi-review-rows div { min-width: 0; }
+.medi-review-rows dt { font-size: 11.5px; color: var(--text3); font-weight: 600; }
+.medi-review-rows dd { margin: 2px 0 0; font-size: 14px; font-weight: 500; white-space: pre-wrap; overflow-wrap: anywhere; }
+.medi-review-hint { font-size: 12.5px; color: var(--text3); margin: 0; }
+.medi-review-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.medi-review .btn-ghost { background: var(--surface); }
+
+/* ── Jump to latest ────────────────────────────────── */
+.medi-jump {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 2;
+  display: inline-flex; align-items: center; gap: 6px; border: 0; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
+  padding: 8px 14px; border-radius: 999px; background: var(--surface); color: var(--brand-ink);
+  box-shadow: 0 6px 22px -6px rgba(3, 7, 18, .28), inset 0 0 0 1px var(--line);
+}
+.medi-jump[hidden] { display: none; }
+
+/* ── Composer dock ─────────────────────────────────── */
+.medi-dock { padding: 6px 18px 12px; display: flex; flex-direction: column; gap: 8px; max-width: 848px; width: 100%; margin: 0 auto; }
+.medi-status { display: flex; flex-direction: column; gap: 6px; }
+.medi-status:empty { display: none; }
+.medi-note, .medi-error, .medi-draft {
+  display: flex; align-items: center; gap: 10px; padding: 9px 8px 9px 14px; border-radius: 14px; font-size: 13.5px; line-height: 1.45;
+}
+.medi-note > span, .medi-error > span, .medi-draft > span { flex: 1; min-width: 0; white-space: pre-line; }
+.medi-note { background: var(--bg); color: var(--text2); }
+.medi-note .ic { color: var(--text3); }
+.medi-error { background: var(--danger-bg); color: var(--danger); }
+.medi-draft { background: color-mix(in srgb, var(--brand) 8%, var(--bg)); color: var(--text2); }
+.medi-draft b { color: var(--text); }
+.medi-note .icon-btn, .medi-error .icon-btn { width: 30px; height: 30px; color: inherit; }
+.medi-retry {
+  flex: none; display: inline-flex; align-items: center; gap: 5px; border: 0; cursor: pointer; font: inherit; font-size: 13px; font-weight: 700;
+  padding: 6px 10px; border-radius: 10px; background: transparent; color: inherit;
+}
+.medi-retry:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+
+.medi-composer {
+  display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 18px; border-radius: 22px; background: var(--bg);
+  box-shadow: inset 0 0 0 1.5px transparent; transition: box-shadow .18s, background .18s;
+}
+.medi-composer:focus-within { background: var(--surface); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--brand-2) 55%, transparent), 0 0 0 4px color-mix(in srgb, var(--brand-2) 12%, transparent); }
+.medi-composer textarea {
+  flex: 1; min-width: 0; border: 0; background: transparent; resize: none; outline: none; font: inherit; font-size: 15px; line-height: 1.55;
+  color: var(--text); padding: 9px 0; max-height: 220px; min-height: 24px; overflow-y: auto;
+}
+.medi-composer textarea::placeholder { color: var(--text3); }
+.medi-count { align-self: center; font-size: 11.5px; color: var(--text3); font-variant-numeric: tabular-nums; }
+.medi-send {
+  flex: none; width: 42px; height: 42px; border: 0; border-radius: 14px; cursor: pointer; display: grid; place-items: center;
+  background: var(--brand); color: var(--on-brand); transition: background .15s, opacity .15s, transform .1s;
+}
+.medi-send:hover:not(:disabled) { background: var(--brand-ink); }
+:root[data-theme=dark] .medi-send:hover:not(:disabled) { background: var(--brand-2); }
+.medi-send:active:not(:disabled) { transform: scale(.95); }
+.medi-send:disabled { opacity: .35; cursor: default; }
+.medi-send.is-stop { background: var(--text); color: var(--surface); }
+.medi-foot { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--text3); padding: 0 6px; line-height: 1.45; }
+.medi-disc { display: inline-flex; gap: 6px; align-items: flex-start; }
+.medi-disc .ic { margin-top: 1px; }
+.medi-keys { white-space: nowrap; }
+.medi-keys .kbd { font-size: 10.5px; }
+
+/* ── Directory modal ───────────────────────────────── */
+.medi-dir { display: flex; flex-direction: column; gap: 14px; }
+.medi-dir-groups { display: flex; flex-direction: column; gap: 22px; margin-top: 14px; }
+.medi-dir-title { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14.5px; margin-bottom: 10px; }
+.medi-dir-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.medi-dir-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; border: 0; cursor: pointer; font: inherit;
+  padding: 12px 14px; border-radius: 16px; background: var(--bg); color: var(--text); transition: background .15s; position: relative;
+}
+.medi-dir-item:hover { background: var(--bg2); }
+.medi-dir-item b { font-size: 14px; font-weight: 600; padding-right: 44px; }
+.medi-dir-item span { font-size: 12.5px; color: var(--text2); line-height: 1.45; }
+.medi-dir-item em { position: absolute; top: 10px; right: 10px; font-style: normal; }
+
+/* ── Responsive ────────────────────────────────────── */
+@media (max-width: 1180px) {
+  .medi { grid-template-columns: 250px minmax(0, 1fr); }
+  .medi-modes button span { display: none; }
+  .medi-modes button.on span { display: inline; }
+}
+@media (max-width: 900px) {
+  .medi { grid-template-columns: minmax(0, 1fr); }
+  .medi > .medi-side { display: none; }
+  .medi-only-narrow { display: inline-grid; }
+  .medi-modes button span { display: inline; }
+}
+@media (max-width: 760px) {
+  .content:has(> .page > .medi) { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
+  .medi { --medi-h: calc(100dvh - 64px - 90px - env(safe-area-inset-bottom)); margin-top: 0; min-height: 380px; }
+  .medi-main { border-radius: 20px; }
+  .medi-head { flex-wrap: wrap; gap: 10px; padding: 10px 10px 10px 14px; }
+  .medi-id { flex: 1; }
+  .medi-modes { order: 3; width: 100%; margin: 0; }
+  .medi-modes button { flex: 1; justify-content: center; padding: 7px 6px; font-size: 13px; }
+  .medi-thread { padding: 18px 14px 12px; gap: 18px; }
+  .medi-msg { gap: 10px; }
+  .medi-task { padding-left: 0; }
+  .medi-bubble.me { max-width: 92%; }
+  .medi-dock { padding: 4px 10px 10px; }
+  .medi-composer { padding-left: 14px; }
+  .medi-keys { display: none; }
+  .medi-starters, .medi-checklist, .medi-dir-grid, .medi-review-rows { grid-template-columns: minmax(0, 1fr); }
+  .medi-hero { padding-top: 2vh; }
+  .medi-review-actions .btn { flex: 1; }
+}
+@media (max-width: 380px) {
+  .medi-modes button .ic { display: none; }
+}

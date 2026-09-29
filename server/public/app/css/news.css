@@ -1,0 +1,37 @@
+/* Home news („სიახლეები“) + /news/:id. Flat surface cards; the tone (--ink) only tints badge, tile and button. */
+.news-cards { display: grid; gap: 14px; grid-template-columns: 1fr; }
+.news-cards.many { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-bottom: 4px; }
+.news-cards.many::-webkit-scrollbar { display: none; }
+.news-cards.many > .news-card { flex: 0 0 min(440px, calc(100% - 28px)); scroll-snap-align: start; }
+
+.news-card { padding: 0; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; }
+.news-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: var(--bg); }
+.news-body { padding: 18px 20px 14px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+.news-head { display: flex; align-items: flex-start; gap: 14px; }
+.news-tile { width: 42px; height: 42px; }
+.news-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding-right: 26px; }
+.news-badge { align-self: flex-start; font-size: 12px; font-weight: 600; line-height: 1; padding: 5px 10px; border-radius: 999px;
+  color: var(--ink); background: color-mix(in srgb, var(--ink) 10%, transparent); }
+:root[data-theme='dark'] .news-badge, :root[data-theme='dark'] .news-cta { color: color-mix(in srgb, var(--ink) 45%, #fff); }
+.news-title { font-size: 16px; font-weight: 600; line-height: 1.45; }
+.news-sub { color: var(--text2); font-size: 14px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.news-cta { margin-top: auto; display: flex; align-items: center; gap: 8px; justify-content: space-between; min-height: 44px; padding-top: 12px;
+  border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); font: inherit; font-weight: 600; font-size: 14px; cursor: pointer; text-align: left; }
+.news-cta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.news-close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: transparent; color: var(--text2); cursor: pointer; }
+.news-close:hover { background: var(--bg); }
+.news-close.on-image { background: rgba(0, 0, 0, .45); color: #fff; }
+.news-close.on-image:hover { background: rgba(0, 0, 0, .6); }
+
+.news-page { max-width: 760px; margin: 14px auto 0; }
+.news-detail { display: flex; flex-direction: column; gap: 16px; }
+.news-hero { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; display: block; background: var(--bg); }
+.news-detail-title { font-size: clamp(22px, 3vw, 28px); line-height: 1.35; font-weight: 700; letter-spacing: -.01em; }
+.news-lead { font-size: 15.5px; line-height: 1.65; color: var(--text); }
+.news-para { font-size: 15px; line-height: 1.7; color: var(--text2); white-space: pre-line; }
+.news-actions { padding-top: 6px; }
+.news-main-cta[class*='ink-'] { background: var(--ink); color: #fff; }
+.news-main-cta[class*='ink-']:hover { filter: brightness(1.06); }
+@media (max-width: 560px) { .news-main-cta { width: 100%; justify-content: center; } }
+.news-tile[hidden], .news-card [hidden] { display: none !important; }

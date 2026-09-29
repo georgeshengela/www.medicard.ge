@@ -1,0 +1,72 @@
+/* ჩემი ცხოველები + Medi Vet. Flat surface cards, tinted tiles; no spotlight on these pages. */
+.modal .field[hidden], .modal [hidden].stack, .pet-body [hidden], .pet-chat [hidden] { display: none !important; }
+
+.pet-photo { display: inline-grid; place-items: center; flex: none; border-radius: 30%; overflow: hidden; font-weight: 700;
+  color: var(--ink-teal); background: color-mix(in srgb, var(--ink-teal) 10%, transparent); }
+:root[data-theme='dark'] .pet-photo { color: #5eead4; }
+.pet-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Hub */
+.pets-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.pet-card { display: flex; flex-direction: column; gap: 14px; }
+.pet-card-link { position: absolute; inset: 0; border-radius: inherit; z-index: 0; }
+.pet-card-top { display: flex; align-items: center; gap: 14px; }
+.pet-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pet-card-name { font-size: 17px; font-weight: 700; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-card-actions, .pet-card-links { position: relative; z-index: 1; }
+.pet-card-actions { display: flex; gap: 2px; align-self: flex-start; }
+.pet-card-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.pet-card-links .chip { display: inline-flex; align-items: center; gap: 6px; }
+.pets-lower { margin-top: 28px; gap: 28px; }
+.pets-steps { gap: 14px; }
+.pet-clinic-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.pet-clinic-tools .input { flex: 1; min-width: 180px; }
+.pet-clinic .row-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-clinic .row-trail .icon-btn { color: var(--brand-ink); }
+
+/* Detail */
+.pet-hero { display: flex; align-items: center; gap: 20px; margin: 14px 0 6px; flex-wrap: wrap; }
+.pet-hero-main { flex: 1; min-width: 220px; }
+.pet-hero-main h1 { font-size: clamp(24px, 3vw, 30px); font-weight: 700; letter-spacing: -.02em; line-height: 1.2; margin-bottom: 4px; }
+.pet-hero .chip { display: inline-flex; align-items: center; gap: 6px; }
+.pet-tabs { margin: 18px 0 22px; max-width: 560px; }
+.pet-grid { gap: 28px; }
+.pet-dl { display: grid; grid-template-columns: minmax(120px, auto) 1fr; gap: 10px 18px; font-size: 14px; }
+.pet-dl dt { color: var(--text2); }
+.pet-dl dd { margin: 0; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.pet-vet { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 16px; }
+.pet-weight-card { display: flex; flex-direction: column; gap: 10px; }
+.pet-subhead { font-size: 13px; font-weight: 600; color: var(--text2); margin: 14px 0 4px; }
+.pet-scroll { max-height: 340px; overflow-y: auto; }
+.pet-voided .row-title { text-decoration: line-through; color: var(--text3); }
+.pet-care-actions { gap: 10px; }
+@media (max-width: 560px) { .pet-dl { grid-template-columns: 1fr; gap: 2px; } .pet-dl dd { margin-bottom: 8px; } .pet-care-actions .btn { flex: 1 1 100%; justify-content: center; } }
+
+/* Forms */
+.pet-form-head { display: flex; align-items: center; gap: 16px; }
+.pet-file-btn { position: relative; align-self: flex-start; cursor: pointer; overflow: hidden; }
+.pet-file { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pet-details { background: var(--bg); border-radius: 16px; padding: 12px 14px; }
+.pet-details summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; }
+.pet-details summary::-webkit-details-marker { display: none; }
+.pet-details summary > span:nth-child(2) { flex: 1; display: flex; flex-direction: column; }
+.pet-details summary small { color: var(--text3); font-size: 12px; }
+.pet-details summary > .ic { transition: transform .2s; color: var(--text3); }
+.pet-details[open] summary > .ic { transform: rotate(180deg); }
+
+/* Medi Vet chat */
+.pet-chat { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.pet-chat-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.pet-chat-body { height: calc(100vh - 330px); min-height: 460px; padding: 12px 16px 16px; background: var(--surface2); }
+.pet-chat-body .chat-input { box-shadow: inset 0 0 0 1px var(--line); }
+.pet-vet-intro { max-width: 640px; }
+.pet-vet-intro .card { background: var(--surface); }
+.pet-ai-content .md > :first-child { margin-top: 0; }
+.pet-ai-extra { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.pet-ai-status { color: var(--warn); font-size: 13px; }
+.pet-ai-sources { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.pet-draft { display: flex; flex-direction: column; gap: 6px; background: var(--bg); border-radius: 14px; padding: 12px; }
+.pet-draft .btn { align-self: flex-start; }
+.pet-cancel { font-size: 13px; color: var(--brand-ink); padding: 4px 8px; }
+@media (max-width: 760px) { .pet-chat-body { height: calc(100vh - 300px); min-height: 420px; padding: 10px; } }
+.pet-tabs[hidden], .page-head-actions [hidden] { display: none !important; }

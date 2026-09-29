@@ -150,7 +150,8 @@ export function mergeAppState(local, remote) {
   return {
     labPanels: mergeLabPanelLists(left.labPanels, right.labPanels),
     weightGoal: pickNewer(left.weightGoal, right.weightGoal),
-    weightLogs: mergeById(left.weightLogs, right.weightLogs, (row) => row.id, (a, b) => String(a.at ?? '') > String(b.at ?? '')).slice(0, MAX_LOGS),
+    // Newest first before the cap: otherwise a full list keeps its oldest rows and drops every new one.
+    weightLogs: newestFirst(mergeById(left.weightLogs, right.weightLogs, (row) => row.id, (a, b) => String(a.at ?? '') > String(b.at ?? '')), (row) => String(row.at ?? '')).slice(0, MAX_LOGS),
     stepsGoal: pickNewer(left.stepsGoal, right.stepsGoal),
     stepsGoalHistory: mergeById(left.stepsGoalHistory, right.stepsGoalHistory, (row) => row.id, (a, b) => String(a.completedYmd ?? '') > String(b.completedYmd ?? '')).slice(0, MAX_STEPS_HISTORY),
     runHistory: mergeById(left.runHistory, right.runHistory, (row) => row.id, (a, b) => String(a.endedAt ?? '') > String(b.endedAt ?? '')).slice(0, MAX_RUNS),
@@ -159,10 +160,18 @@ export function mergeAppState(local, remote) {
       right.doseLogs,
       (row) => `${row.medicationId}|${row.date}|${row.time}`,
       (a, b) => String(a.updatedAt ?? '') > String(b.updatedAt ?? ''),
-    ).slice(0, MAX_LOGS),
+    ).sort((a, b) => doseKey(b).localeCompare(doseKey(a))).slice(0, MAX_LOGS),
     symptomHistory: mergeById(left.symptomHistory, right.symptomHistory, (row) => row.recordId, (a, b) => String(a.createdAt ?? '') > String(b.createdAt ?? '')).slice(0, MAX_SYMPTOMS),
     updatedAt: [left.updatedAt, right.updatedAt].filter(Boolean).sort().at(-1) ?? new Date().toISOString(),
   };
+}
+
+function newestFirst(rows, key) {
+  return rows.sort((a, b) => key(b).localeCompare(key(a)));
+}
+
+function doseKey(row) {
+  return `${row.date ?? ''} ${row.time ?? ''}`;
 }
 
 function pickNewer(a, b) {

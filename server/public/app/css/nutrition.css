@@ -1,0 +1,140 @@
+/* MEDICARD web — „კვება“ (dashboard left, diary right) + Home nutrition card. */
+
+.nu-layout { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; gap: 20px; }
+.nu-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.nu-col > .hub-section { margin: 12px 0 0; }
+@media (max-width: 1180px) { .nu-layout { grid-template-columns: 1fr; } }
+
+/* Day navigation */
+.nu-daybar { display: flex; align-items: center; gap: 6px; margin: -10px 0 20px; flex-wrap: wrap; }
+.nu-daylabel { position: relative; display: flex; align-items: center; padding: 8px 14px; border-radius: 12px; background: var(--surface); min-width: 0; }
+.nu-daylabel b { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.nu-datepick { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; padding: 0; border: 0; }
+.nu-datepick::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+.nu-daybar .icon-btn:disabled { opacity: .35; cursor: default; }
+
+/* Balance spotlight */
+.nu-top { align-items: stretch; }
+.nu-balance { display: flex; flex-direction: column; gap: 16px; }
+.nu-balance-body { display: flex; align-items: center; gap: 20px; position: relative; z-index: 1; }
+.nu-balance .ring-center strong { color: var(--spot-text); }
+.nu-headline { font-size: 17px; font-weight: 700; line-height: 1.35; }
+.nu-formula { font-size: 12.5px; line-height: 1.5; color: color-mix(in srgb, var(--spot-text) 70%, transparent); font-variant-numeric: tabular-nums; }
+.nu-spot-link { display: inline-flex; align-items: center; gap: 4px; color: #5eead4; font-weight: 600; font-size: 13.5px; }
+
+.nu-macros { display: flex; flex-direction: column; }
+.nu-macro-body { display: flex; align-items: center; gap: 20px; }
+.nu-macro-body .meters { flex: 1; min-width: 0; }
+.nu-micros { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--text2); }
+
+/* Tiles */
+.nu-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.nu-tile { display: flex; align-items: center; gap: 12px; padding: 14px 16px; color: inherit; }
+.nu-tile b { display: block; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nu-tile span { display: block; font-size: 12px; color: var(--text3); }
+.nu-review { background: var(--warn-bg); }
+
+.nu-week-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.nu-wstat { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.nu-wstat span { font-size: 12px; color: var(--text3); font-weight: 500; }
+.nu-wstat b { font-size: 16.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.nu-wstat small { font-size: 12px; }
+.nu-measure { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 14px; }
+.nu-big { font-size: 30px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.nu-big small { font-size: 13px; font-weight: 500; color: var(--text3); letter-spacing: 0; }
+.nu-kg { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+.nu-kg b { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+.nu-kg b.brand { color: var(--brand-ink); }
+.nu-kg span { color: var(--text3); }
+.nu-kg small { color: var(--text3); font-size: 13px; }
+.nu-fast { overflow: hidden; }
+
+/* Diary */
+.nu-diary-head { padding: 0 2px; }
+.nu-diary-head h2 { font-size: 17px; font-weight: 700; }
+.nu-diary-head .faint { font-size: 13px; }
+.nu-meal { padding: 16px 16px 12px 18px; }
+.nu-entries { display: flex; flex-direction: column; margin-top: 10px; border-top: 1px solid var(--line); }
+.nu-entry { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.nu-entry:last-child { border-bottom: 0; padding-bottom: 2px; }
+.nu-entry-main { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font: inherit; }
+.nu-entry-title { font-weight: 600; font-size: 14px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.nu-entry-sub { font-size: 12.5px; color: var(--text2); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.nu-entry-items { font-size: 12px; color: var(--text3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nu-entry-side { display: flex; align-items: center; gap: 4px; flex: none; }
+.nu-entry-actions { display: flex; opacity: .55; transition: opacity .15s; }
+.nu-entry:hover .nu-entry-actions, .nu-entry:focus-within .nu-entry-actions { opacity: 1; }
+.nu-entry-actions .icon-btn { width: 34px; height: 34px; }
+.nu-pref { align-items: flex-start; gap: 16px; }
+
+/* Meal editor */
+.nu-editor-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.nu-type { max-width: 100%; }
+.nu-items { display: flex; flex-direction: column; gap: 8px; }
+.nu-items-empty { display: flex; align-items: center; gap: 10px; padding: 16px; border-radius: 14px; background: var(--bg); color: var(--text3); font-size: 13.5px; }
+.nu-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--bg); }
+.nu-item-name { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+.nu-item-sub { font-size: 12.5px; color: var(--text2); font-variant-numeric: tabular-nums; }
+.nu-item-grams { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text3); }
+.nu-grams { width: 78px; padding: 7px 10px; text-align: right; background: var(--surface) !important; }
+.nu-item-actions { display: flex; }
+.nu-item-actions .icon-btn { width: 32px; height: 32px; }
+.nu-item-actions .icon-btn.on { color: var(--warn); }
+.nu-draft-totals { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--brand) 8%, transparent); font-size: 14px; font-variant-numeric: tabular-nums; }
+.nu-estimate { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: color-mix(in srgb, var(--ink-violet) 8%, transparent); font-size: 13.5px; }
+.nu-estimate .hstack { color: var(--ink-violet); }
+.nu-estimate p { color: var(--text2); line-height: 1.5; }
+.nu-fix { display: flex; gap: 8px; }
+.nu-fix .input { flex: 1; min-width: 0; background: var(--surface); }
+.nu-add { display: flex; flex-direction: column; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+.nu-add-title { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14.5px; }
+.nu-tabs .segmented { width: 100%; }
+.nu-tabs .segmented button { flex: 1; }
+.nu-panel { min-height: 120px; }
+.nu-hint { font-size: 13px; padding: 4px 2px; }
+.nu-search { display: flex; flex-direction: column; gap: 10px; }
+.nu-search-in { position: relative; display: flex; align-items: center; }
+.nu-search-in .ic { position: absolute; left: 13px; color: var(--text3); pointer-events: none; }
+.nu-search-in .input { padding-left: 40px; }
+.nu-results { display: flex; flex-direction: column; gap: 14px; max-height: 340px; overflow-y: auto; overscroll-behavior: contain; }
+.nu-group { display: flex; flex-direction: column; gap: 4px; }
+.nu-group-title { font-size: 11.5px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; padding: 0 4px 2px; }
+.nu-food { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: transparent; color: inherit; font: inherit; padding: 9px 10px; border-radius: 12px; cursor: pointer; transition: background .15s; }
+.nu-food:hover, .nu-food:focus-visible { background: var(--bg); }
+.nu-food-main { flex: 1; min-width: 0; }
+.nu-food-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nu-food-sub { font-size: 12.5px; color: var(--text3); }
+.nu-food-add { color: var(--brand-ink); }
+.nu-fav { color: var(--warn); }
+.nu-portion { display: flex; flex-direction: column; gap: 10px; }
+.nu-portion .back { background: none; border: 0; padding: 0; cursor: pointer; align-self: flex-start; margin: 0; }
+.nu-portion-name { font-size: 15px; }
+.nu-portion-row { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.nu-portion-row .field { width: 160px; }
+.nu-portion-preview { padding-bottom: 12px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.nu-drop { padding: 18px; }
+.nu-photo { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.nu-photo img { max-height: 200px; max-width: 100%; border-radius: 14px; object-fit: cover; }
+.nu-manual-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+
+/* Home card */
+.nu-home { display: flex; flex-direction: column; gap: 14px; }
+.nu-home-top { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.nu-home-head { font-size: 15px; font-weight: 700; }
+.nu-home-foot { font-size: 13px; }
+
+@media (max-width: 900px) {
+  .nu-tiles, .nu-week-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nu-manual-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .nu-balance-body, .nu-macro-body { flex-direction: column; align-items: flex-start; }
+  .nu-balance-body .ring, .nu-macro-body .ring { align-self: center; }
+  .nu-macro-body .meters { width: 100%; }
+  .nu-item { grid-template-columns: minmax(0, 1fr) auto; }
+  .nu-item-actions { grid-column: 1 / -1; justify-content: flex-end; margin-top: -4px; }
+  .nu-manual-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nu-fix { flex-direction: column; }
+  .nu-tabs .segmented button { padding: 8px 10px; font-size: 12.5px; }
+  .nu-entry-actions { opacity: 1; }
+}

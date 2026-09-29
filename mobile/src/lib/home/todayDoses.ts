@@ -45,6 +45,11 @@ export function computeTodayDoses(
     progressByMed.set(dose.medicationId, prev);
   }
 
-  const pending = todayDoses.filter((dose) => !findDoseLog(doseLogs, dose.medicationId, today, dose.time));
+  // A 'pending' log is an undone answer (web undo writes it), so it still counts as due.
+  const answered = (dose: ScheduledDose) => {
+    const status = findDoseLog(doseLogs, dose.medicationId, today, dose.time)?.status;
+    return status === 'taken' || status === 'skipped';
+  };
+  const pending = todayDoses.filter((dose) => !answered(dose));
   return { pending, progressByMed, taken, total: todayDoses.length };
 }

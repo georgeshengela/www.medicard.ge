@@ -1,0 +1,291 @@
+// MEDICARD web — boot, router and app shell.
+import { h, mount, icon, clear, iconButton, toast, openModal } from './ui.js';
+import { getToken, onTokenChange } from './api.js';
+import {
+  session, loadSession, signOut, featureOn, isFemale, initials, onSession, applyTheme, getThemePref, needsOnboarding,
+} from './session.js';
+
+const BASE = '/app';
+
+/* Route table. `page` is a lazy module whose default export is
+   async (root, ctx) => cleanup?  ctx = { params, query, navigate, setTitle } */
+const ROUTES = [
+  { path: '/', page: () => import('./pages/home.js'), title: 'მთავარი' },
+  { path: '/medi', page: () => import('./pages/medi.js'), title: 'Medi', feature: 'medi' },
+  { path: '/medications', page: () => import('./pages/medications.js'), title: 'მედიკამენტები' },
+  { path: '/medications/:id', page: () => import('./pages/medications.js'), title: 'მედიკამენტი' },
+  { path: '/records', page: () => import('./pages/records.js'), title: 'ჩემი ბარათი' },
+  { path: '/records/:id', page: () => import('./pages/records.js'), title: 'ჩანაწერი' },
+  { path: '/lab', page: () => import('./pages/lab.js'), title: 'ანალიზები' },
+  { path: '/visits', page: () => import('./pages/visits.js'), title: 'ვიზიტები' },
+  { path: '/health', page: () => import('./pages/health.js'), title: 'მაჩვენებლები' },
+  { path: '/nutrition', page: () => import('./pages/nutrition.js'), title: 'კვება', feature: 'nutrition' },
+  { path: '/cycle', page: () => import('./pages/cycle.js'), title: 'ციკლი', feature: 'cycle' },
+  { path: '/quest', page: () => import('./pages/quest.js'), title: 'Medi Quest', feature: 'quest' },
+  { path: '/pets', page: () => import('./pages/pets.js'), title: 'ჩემი ცხოველები', feature: 'pets' },
+  { path: '/pets/:id', page: () => import('./pages/pets.js'), title: 'ცხოველი', feature: 'pets' },
+  { path: '/news/:id', page: () => import('./pages/news.js'), title: 'სიახლე', feature: 'news' },
+  { path: '/profile', page: () => import('./pages/profile.js'), title: 'პროფილი' },
+];
+
+const NAV = [
+  { group: null, items: [
+    { href: '/', label: 'მთავარი', icon: 'home' },
+    { href: '/medi', label: 'Medi', icon: 'sparkles', feature: 'medi' },
+  ] },
+  { group: 'ჯანმრთელობა', items: [
+    { href: '/medications', label: 'მედიკამენტები', icon: 'pill' },
+    { href: '/records', label: 'ჩემი ბარათი', icon: 'folder' },
+    { href: '/lab', label: 'ანალიზები', icon: 'flask' },
+    { href: '/visits', label: 'ვიზიტები', icon: 'stethoscope' },
+    { href: '/health', label: 'მაჩვენებლები', icon: 'activity' },
+  ] },
+  { group: 'ცხოვრების წესი', items: [
+    { href: '/nutrition', label: 'კვება', icon: 'apple', feature: 'nutrition' },
+    { href: '/cycle', label: 'ციკლი', icon: 'flower', feature: 'cycle', female: true },
+    { href: '/quest', label: 'Medi Quest', icon: 'trophy', feature: 'quest' },
+    { href: '/pets', label: 'ჩემი ცხოველები', icon: 'paw', feature: 'pets' },
+  ] },
+];
+
+const BOTTOM = [
+  { href: '/', label: 'მთავარი', icon: 'home' },
+  { href: '/medications', label: 'წამლები', icon: 'pill' },
+  { href: '/medi', label: 'Medi', icon: 'sparkles', feature: 'medi' },
+  { href: '/records', label: 'ბარათი', icon: 'folder' },
+  { menu: true, label: 'მენიუ', icon: 'grid' },
+];
+
+/** Phone: every section in one sheet (the bottom bar only fits five). */
+function openMenu() {
+  const items = [...NAV.flatMap((g) => g.items), { href: '/profile', label: 'პროფილი', icon: 'user' }].filter(visible);
+  const m = openModal({
+    title: 'ყველა სივრცე',
+    size: 'sm',
+    body: h('div', { class: 'menu-grid' }, items.map((it) => h('a', {
+      href: it.href, 'data-link': '', class: 'menu-tile',
+      onClick: () => setTimeout(() => m.close(), 0),
+    }, icon(it.icon, { size: 22 }), h('span', null, it.label)))),
+  });
+}
+
+const root = document.getElementById('root');
+let shell = null;
+let cleanup = null;
+let renderSeq = 0;
+
+function stripBase(pathname) {
+  let p = pathname.startsWith(BASE) ? pathname.slice(BASE.length) : pathname;
+  if (!p.startsWith('/')) p = `/${p}`;
+  if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+  return p;
+}
+
+function match(path) {
+  for (const r of ROUTES) {
+    const a = r.path.split('/').filter(Boolean);
+    const b = path.split('/').filter(Boolean);
+    if (a.length !== b.length) continue;
+    const params = {};
+    let ok = true;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i].startsWith(':')) params[a[i].slice(1)] = decodeURIComponent(b[i]);
+      else if (a[i] !== b[i]) { ok = false; break; }
+    }
+    if (ok) return { route: r, params };
+  }
+  return null;
+}
+
+export function navigate(to, opts = {}) {
+  const url = to.startsWith('/app') ? to : `${BASE}${to === '/' ? '' : to}`;
+  if (opts.replace) history.replaceState({}, '', url || BASE);
+  else history.pushState({}, '', url || BASE);
+  route();
+}
+window.medicardNavigate = navigate;
+
+// Intercept in-app links: <a href="/medications" data-link>
+document.addEventListener('click', (e) => {
+  const a = e.target.closest?.('a[data-link]');
+  if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+  const href = a.getAttribute('href');
+  if (!href || /^https?:/.test(href)) return;
+  e.preventDefault();
+  navigate(href);
+});
+window.addEventListener('popstate', () => route());
+
+function visible(item) {
+  if (item.feature && !featureOn(item.feature)) return false;
+  if (item.female && !isFemale()) return false;
+  return true;
+}
+
+function buildShell() {
+  const side = h('aside', { class: 'side', 'aria-label': 'ნავიგაცია' },
+    h('a', { class: 'side-brand', href: '/', 'data-link': '' },
+      h('img', { src: '/icon.png', alt: '' }),
+      h('span', null, 'მედიქარდი', h('small', null, 'ჩემი ჯანმრთელობა'))),
+    h('nav', { class: 'side-nav' }, NAV.map((g) => [
+      g.group ? h('div', { class: 'side-group' }, g.group) : null,
+      g.items.filter(visible).map((it) => h('a', { class: 'nav-item', href: it.href, 'data-link': '', 'data-nav': it.href, title: it.label }, icon(it.icon, { size: 20 }), h('span', null, it.label))),
+    ])),
+    h('div', { class: 'side-foot' },
+      h('a', { class: 'nav-item', href: '/profile', 'data-link': '', 'data-nav': '/profile', title: 'პროფილი' }, icon('settings', { size: 20 }), h('span', null, 'პროფილი და პარამეტრები')),
+      h('a', { class: 'side-user', href: '/profile', 'data-link': '' },
+        avatarEl(),
+        h('div', { class: 'who' }, h('b', null, session.user?.fullName || 'მომხმარებელი'), h('span', null, session.user?.phone || session.user?.email?.replace(/@phone\.medicard\.ge$/, '') || '')))));
+
+  const crumb = h('div', { class: 'crumb' });
+  const themeBtn = iconButton(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon', { title: 'თემის შეცვლა', onClick: () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    mount(themeBtn, icon(next === 'dark' ? 'sun' : 'moon', { size: 20 }));
+  } });
+  const top = h('div', { class: 'topbar' },
+    h('a', { class: 'mobile-brand', href: '/', 'data-link': '' }, h('img', { src: '/icon.png', alt: '' }), 'მედიქარდი'),
+    crumb,
+    h('div', { class: 'spacer' }),
+    themeBtn,
+    iconButton('logout', { title: 'გასვლა', onClick: () => { signOut(); navigate('/', { replace: true }); } }));
+  const content = h('main', { class: 'content', id: 'main' });
+  const bottom = h('nav', { class: 'bottom-nav', 'aria-label': 'ნავიგაცია' },
+    BOTTOM.filter(visible).map((it) => (it.menu
+      ? h('a', { href: '#', role: 'button', onClick: (e) => { e.preventDefault(); openMenu(); } }, icon(it.icon, { size: 22 }), it.label)
+      : h('a', { href: it.href, 'data-link': '', 'data-nav': it.href }, icon(it.icon, { size: 22 }), it.label))));
+  const el = h('div', { class: 'shell' }, side, h('div', { class: 'main' }, top, content), bottom);
+  return { el, content, crumb };
+}
+
+function avatarEl() {
+  const a = h('span', { class: 'avatar' }, initials());
+  return a;
+}
+
+function markNav(path) {
+  document.querySelectorAll('[data-nav]').forEach((a) => {
+    const href = a.getAttribute('data-nav');
+    const on = href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
+    a.classList.toggle('on', on);
+    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+}
+
+async function route() {
+  const seq = ++renderSeq;
+  const path = stripBase(location.pathname);
+  const query = Object.fromEntries(new URLSearchParams(location.search));
+
+  if (!getToken()) {
+    shell = null;
+    if (typeof cleanup === 'function') { try { cleanup(); } catch { /* ignore */ } }
+    cleanup = null;
+    const mod = await import('./auth.js');
+    if (seq !== renderSeq) return;
+    mod.renderAuth(root, { query, onDone: () => boot() });
+    return;
+  }
+
+  if (!session.user) { await boot(); return; }
+
+  if (needsOnboarding() && path !== '/profile') {
+    shell = null;
+    const mod = await import('./onboarding.js');
+    if (seq !== renderSeq) return;
+    mod.renderOnboarding(root, { onDone: () => { navigate('/', { replace: true }); } });
+    return;
+  }
+
+  if (!shell) { shell = buildShell(); mount(root, shell.el); }
+
+  const m = match(path);
+  if (typeof cleanup === 'function') { try { cleanup(); } catch { /* ignore */ } }
+  cleanup = null;
+  markNav(path);
+
+  if (!m || (m.route.feature && !featureOn(m.route.feature))) {
+    mount(shell.crumb, '');
+    mount(shell.content, h('div', { class: 'page' }, h('div', { class: 'empty', style: { paddingTop: '80px' } },
+      h('div', { class: 'empty-art' }, icon(m ? 'lock' : 'search', { size: 26 })),
+      h('h3', null, m ? 'ეს სივრცე დროებით შეჩერებულია' : 'გვერდი ვერ მოიძებნა'),
+      h('p', null, m ? (session.featureMessages?.[m.route.feature] || 'მალე ისევ ჩაირთვება.') : 'შეამოწმე მისამართი ან დაბრუნდი მთავარზე.'),
+      h('a', { class: 'btn btn-primary', href: '/', 'data-link': '' }, 'მთავარზე დაბრუნება'))));
+    return;
+  }
+
+  document.title = `${m.route.title} — მედიქარდი`;
+  mount(shell.crumb, m.route.title);
+  const page = h('div', { class: 'page' });
+  mount(shell.content, page);
+  window.scrollTo({ top: 0 });
+  try {
+    const mod = await m.route.page();
+    if (seq !== renderSeq) return;
+    const result = await mod.default(page, {
+      params: m.params,
+      query,
+      navigate,
+      setTitle: (t) => { mount(shell.crumb, t); document.title = `${t} — მედიქარდი`; },
+    });
+    if (seq !== renderSeq) { if (typeof result === 'function') result(); return; }
+    cleanup = result;
+  } catch (err) {
+    console.error(err);
+    if (seq !== renderSeq) return;
+    mount(page, h('div', { class: 'error-box' }, icon('alert'), h('div', null, h('strong', null, 'გვერდი ვერ ჩაიტვირთა'), h('p', null, err?.message || ''))));
+  }
+}
+
+async function boot() {
+  applyTheme(getThemePref());
+  if (!getToken()) { route(); return; }
+  try {
+    await loadSession();
+  } catch (err) {
+    if (!getToken()) { route(); return; }
+    mount(root, h('div', { class: 'boot' }, h('div', { class: 'empty' },
+      h('div', { class: 'empty-art' }, icon('alert', { size: 26 })),
+      h('h3', null, 'კავშირი ვერ დამყარდა'),
+      h('p', null, err?.message || 'სცადე ხელახლა.'),
+      h('button', { class: 'btn btn-primary', onClick: () => boot() }, 'ხელახლა'))));
+    return;
+  }
+  shell = null;
+  route();
+}
+
+onTokenChange((t) => {
+  if (!t && session.user) {
+    Object.assign(session, { user: null, profile: null });
+    toast('სესია დასრულდა. შედი ხელახლა.', 'info');
+    shell = null;
+    route();
+  }
+});
+
+let lastName = '';
+onSession(() => {
+  // Rebuild the shell when name/gender change (nav + user card).
+  const key = `${session.user?.fullName}|${session.user?.gender}`;
+  if (shell && lastName && key !== lastName) {
+    const path = stripBase(location.pathname);
+    const content = shell.content.firstChild;
+    shell = buildShell();
+    mount(root, shell.el);
+    if (content) shell.content.appendChild(content);
+    markNav(path);
+  }
+  lastName = key;
+});
+
+// Wake-up refresh: back to the tab after a while re-reads the session (flags, check-in).
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (getToken() && session.user && Date.now() - hiddenAt > 5 * 60_000) loadSession().catch(() => {});
+});
+
+clear(root);
+root.appendChild(h('div', { class: 'boot' }, h('img', { class: 'boot-mark', src: '/icon.png', alt: 'მედიქარდი' })));
+boot();

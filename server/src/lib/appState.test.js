@@ -96,3 +96,14 @@ describe('appState legacy goal query', () => {
     for (const col of picked) assert.ok(columns.has(col), `NutritionProgram has no column ${col}`);
   });
 });
+
+it('mergeAppState keeps the newest dose logs when the list is full', () => {
+  const old = Array.from({ length: 400 }, (_, i) => ({
+    medicationId: 'm1', date: `2026-01-${String((i % 28) + 1).padStart(2, '0')}`, time: `${String(i % 24).padStart(2, '0')}:${String(Math.floor(i / 24)).padStart(2, '0')}`,
+    status: 'taken', updatedAt: '2026-02-01T00:00:00.000Z',
+  }));
+  const fresh = { medicationId: 'm1', date: '2026-09-29', time: '08:00', status: 'taken', updatedAt: '2026-09-29T08:00:00.000Z' };
+  const merged = mergeAppState({ doseLogs: old }, { doseLogs: [fresh] });
+  assert.equal(merged.doseLogs.length, 400);
+  assert.equal(merged.doseLogs[0].date, '2026-09-29');
+});

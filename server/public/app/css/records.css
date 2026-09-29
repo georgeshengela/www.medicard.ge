@@ -1,0 +1,53 @@
+/* MEDICARD web — /records (ჩემი ბარათი). */
+.rec-top { margin-bottom: 28px; }
+.rec-overview { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.rec-donut { flex: none; }
+.rec-overview-stats { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 18px; }
+.rec-legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 18px; }
+.rec-legend-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text2); }
+.rec-legend-row i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.rec-legend-row b { margin-left: auto; color: var(--text); font-weight: 600; }
+.rec-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 16px; border-top: 1px solid var(--line); }
+.rec-kpi { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rec-kpi-v { font-size: 18px; font-weight: 700; letter-spacing: -.01em; margin-top: 1px; }
+.rec-lab { display: flex; align-items: center; gap: 14px; }
+.rec-tools { display: flex; flex-direction: column; gap: 10px; }
+.rec-tools .input { max-width: 420px; }
+
+.rec-list { padding: 6px 8px; }
+.rec-list > .rec-row + .rec-row { border-top: 1px solid var(--line); }
+.rec-row { display: flex; align-items: center; gap: 4px; }
+.rec-row-main { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 14px; padding: 13px 8px; border-radius: 14px; transition: background .12s; }
+.rec-row-main:hover { background: var(--bg); }
+.rec-row-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rec-row-top .row-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-row-body { font-size: 13.5px; color: var(--text2); margin-top: 4px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rec-del { flex: none; color: var(--text3); }
+.rec-del:hover { color: var(--danger); }
+
+.rec-add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rec-add { display: flex; flex-direction: column; gap: 12px; border: 0; cursor: pointer; text-align: left; font: inherit; color: inherit; width: 100%; }
+.rec-choice { display: flex; align-items: center; gap: 14px; width: 100%; border: 0; background: var(--bg); border-radius: 16px; padding: 12px 14px; cursor: pointer; text-align: left; font: inherit; color: inherit; transition: background .12s; }
+.rec-choice:hover { background: var(--bg2); }
+.rec-hero { margin-bottom: 28px; }
+
+.rec-pick { display: flex; align-items: center; gap: 12px; padding: 8px; background: var(--bg); border-radius: 14px; }
+.rec-pick img { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; flex: none; }
+.rec-pick .row-title { white-space: nowrap; text-overflow: ellipsis; }
+
+/* Detail */
+.rec-analysis { font-size: 15px; line-height: 1.65; }
+.rec-file { position: sticky; top: 76px; }
+.rec-file-frame { height: 320px; border-radius: 16px; overflow: hidden; background: var(--bg); display: grid; place-items: center; }
+.rec-file-frame img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
+.rec-file-pdf { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 20px; }
+
+@media (max-width: 1180px) { .rec-file { position: static; } }
+@media (max-width: 640px) {
+  .rec-overview { gap: 18px; justify-content: center; }
+  .rec-kpis { grid-template-columns: 1fr; }
+  .rec-add-grid { grid-template-columns: 1fr 1fr; }
+  .rec-file-frame { height: 240px; }
+  .rec-tools .input { max-width: none; }
+}
+@media (max-width: 380px) { .rec-add-grid { grid-template-columns: 1fr; } }

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>მედიქარდი — ჩემი ანგარიში</title>
+  <meta name="description" content="MEDICARD ვებზე: მედიკამენტები, ანალიზები, კვება, ციკლი, Medi და შენი ჯანმრთელობის სტატისტიკა ერთ ადგილას." />
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#f5f7f7" />
+  <link rel="icon" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/icon.png" />
+  <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/firago/FiraGO-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/firago/FiraGO-Bold.woff2" as="font" type="font/woff2" crossorigin />
+  <script>
+    // Apply the theme before first paint (no flash).
+    (function () {
+      var t = 'system';
+      try { t = localStorage.getItem('medicard.web.theme') || 'system'; } catch (e) {}
+      var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    })();
+  </script>
+  <link rel="stylesheet" href="/app/app.css" />
+</head>
+<body>
+  <div id="root"><div class="boot"><img class="boot-mark" src="/icon.png" alt="მედიქარდი" /></div></div>
+  <noscript>MEDICARD ვებ-აპს JavaScript სჭირდება.</noscript>
+  <script type="module" src="/app/js/main.js"></script>
+</body>
+</html>

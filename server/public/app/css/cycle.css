@@ -1,0 +1,238 @@
+/* MEDICARD web — Cycle module. Palette mirrors mobile/src/theme/cyclePalette.ts:
+   rose-red bleeding (solid = logged, dashed = expected), turquoise fertile / ovulation,
+   apricot follicular, lilac luteal, today in calm ink. Flat hub cards, no decorative arcs. */
+
+.cy {
+  --cy-period: #c92a55;
+  --cy-period-soft: #fdeef2;
+  --cy-on-period: #ffffff;
+  --cy-fertile: #0b6f6e;
+  --cy-ovulation: #095c5b;
+  --cy-fertile-soft: #ddf3f2;
+  --cy-fertile-fill: #2db7ae;
+  --cy-follicular: #f0ae84;
+  --cy-luteal: #7457a4;
+  --cy-luteal-soft: #f1ecf8;
+  --cy-soft: #f8f1f4;
+  --cy-ink: #2a1f2d;
+  --cy-muted: #6b5e6e;
+  --cy-muted-soft: #76687a;
+  --cy-control: #928295;
+  --cy-success: #2f7d6d;
+  --cy-knob-bg: #ffffff;
+  --cy-cta: #c92a55;
+  --cy-cta-hover: #b8254c;
+}
+
+:root[data-theme='dark'] .cy {
+  --cy-period: #ff8fa8;
+  --cy-period-soft: #3a1b26;
+  --cy-on-period: #2a0e17;
+  --cy-fertile: #5ed6d0;
+  --cy-ovulation: #8be3de;
+  --cy-fertile-soft: #0f2e2e;
+  --cy-fertile-fill: #3ccbc2;
+  --cy-follicular: #e8a078;
+  --cy-luteal: #c8b6ee;
+  --cy-luteal-soft: #261f36;
+  --cy-soft: #1c2130;
+  --cy-ink: #f7f0f4;
+  --cy-muted: #cdbfc8;
+  --cy-muted-soft: #b4a5af;
+  --cy-control: #8f8290;
+  --cy-success: #9fd3c7;
+  --cy-knob-bg: #111827;
+  --cy-cta: #c92a55;
+  --cy-cta-hover: #b8254c;
+}
+
+/* ── Layout ─────────────────────────────────────────── */
+.cy-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 24px; align-items: start; }
+.cy-col { min-width: 0; }
+@media (max-width: 1080px) { .cy-layout { grid-template-columns: 1fr; } }
+
+.cy .btn-rose { background: var(--cy-cta); color: #fff; }
+.cy .btn-rose:hover { background: var(--cy-cta-hover); }
+.cy-soft-btn { background: var(--cy-soft) !important; color: var(--text) !important; }
+
+/* ── Hero dial ──────────────────────────────────────── */
+.cy-hero { display: flex; flex-direction: column; align-items: center; padding: 24px 22px 22px; }
+.cy-dial { position: relative; width: 100%; max-width: 300px; aspect-ratio: 1; margin: 0 auto; touch-action: pan-y; }
+.cy-dial.compact { width: 136px; max-width: 136px; flex: none; margin: 0; }
+.cy-dial svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.cy-dial-center {
+  position: absolute; inset: 0 20%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; pointer-events: none; gap: 2px;
+}
+.cy-dial-top { font-size: 13px; line-height: 18px; color: var(--cy-muted); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cy-dial-value { font-size: 64px; line-height: 1.1; font-weight: 700; letter-spacing: -1.5px; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cy-dial-value.period { color: var(--cy-period); }
+.cy-dial-value.word { font-size: 44px; }
+.cy-dial-bottom { font-size: 12px; line-height: 17px; color: var(--cy-muted-soft); font-weight: 500; }
+.cy-dial.compact .cy-dial-top { font-size: 10.5px; line-height: 14px; }
+.cy-dial.compact .cy-dial-value { font-size: 30px; letter-spacing: -.8px; }
+.cy-dial.compact .cy-dial-value.word { font-size: 20px; }
+.cy-dial.compact .cy-dial-bottom { font-size: 10px; line-height: 13px; }
+
+.cy-tick { stroke: var(--cy-ink); stroke-opacity: .16; stroke-width: 1.1; stroke-linecap: round; }
+.cy-tick.long { stroke-opacity: .35; stroke-width: 1.6; }
+.cy-tick.logged { stroke: var(--cy-period); stroke-opacity: 1; stroke-width: 2.4; }
+.cy-arc { fill: none; stroke-linecap: round; }
+.cy-arc.base { stroke-opacity: .24; }
+.cy-arc.period { stroke: var(--cy-period); }
+.cy-arc.follicular { stroke: var(--cy-follicular); }
+.cy-arc.fertile { stroke: var(--cy-fertile-fill); }
+.cy-arc.luteal { stroke: var(--cy-luteal); }
+.cy-arc.empty { stroke: var(--cy-ink); stroke-opacity: .06; }
+.cy-fert-hit { cursor: pointer; }
+.cy-knob-bg { fill: var(--cy-knob-bg); }
+.cy-knob-ring { fill: none; stroke-width: 3.5; }
+.cy-halo { transform-box: fill-box; transform-origin: center; animation: cy-breathe 3.6s ease-in-out infinite; }
+@keyframes cy-breathe { 0%, 100% { transform: scale(.85); opacity: .28; } 50% { transform: scale(1.18); opacity: .12; } }
+.cy-dial-anim { animation: cy-zoom .56s cubic-bezier(.2, .8, .2, 1) both; transform-origin: center; }
+@keyframes cy-zoom { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+
+.cy-phase-pill {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: var(--cy-soft);
+  color: var(--text); font-size: 12.5px; font-weight: 600; margin-top: 10px; border: 0; cursor: pointer; font-family: inherit;
+}
+.cy-phase-pill.period { background: var(--cy-period-soft); color: var(--cy-period); }
+.cy-phase-pill i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.cy-status { margin-top: 10px; text-align: center; font-size: 14px; line-height: 21px; color: var(--text2); font-weight: 500; }
+.cy-status.strong { color: var(--text); font-weight: 600; }
+.cy-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+.cy-pred {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  background: var(--cy-soft); color: var(--text); border: 1px dashed color-mix(in srgb, var(--cy-ink) 18%, transparent); max-width: 100%;
+}
+.cy-pred-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--cy-period); display: inline-block; flex: none; }
+.cy-conf { display: inline-flex; align-items: center; padding: 5px 11px; border-radius: 999px; font-size: 12px; color: var(--cy-muted); background: var(--cy-soft); }
+.cy-dial-legend { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 12px; row-gap: 4px; margin-top: 12px; font-size: 11.5px; color: var(--cy-muted-soft); font-weight: 500; }
+.cy-dial-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.cy-dial-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.cy-hint { font-size: 11.5px; color: var(--cy-muted-soft); text-align: center; margin-top: 6px; }
+.cy-caution { font-size: 11.5px; color: var(--cy-muted); text-align: center; margin-top: 10px; line-height: 1.5; }
+.cy-actions { width: 100%; display: grid; gap: 8px; margin-top: 18px; }
+.cy-actions .btn { width: 100%; justify-content: center; min-height: 46px; }
+.cy-actions-row { display: flex; gap: 8px; }
+.cy-actions-row > .btn:first-child { flex: 1; }
+.cy-sex-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 46px; padding: 0 16px; border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--cy-period-soft); color: var(--cy-period); font: inherit; font-weight: 700; font-size: 14px; flex: none;
+}
+.cy-sex-btn.on { background: var(--cy-period); color: var(--cy-on-period); }
+.cy-sex-btn:disabled { opacity: .6; cursor: default; }
+
+/* Legend swatches (tiny day circles, same grammar as the calendar). */
+.cy-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.cy-dot.period { background: var(--cy-period); }
+.cy-dot.follicular { background: var(--cy-follicular); }
+.cy-dot.fertile { background: var(--cy-fertile-fill); }
+.cy-dot.luteal { background: var(--cy-luteal); }
+
+/* ── Calendar ───────────────────────────────────────── */
+.cy-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.cy-cal-head h3 { font-size: 17px; font-weight: 700; letter-spacing: -.3px; text-align: center; flex: 1; }
+.cy-cal-head .icon-btn { color: var(--cy-period); }
+.cy-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 4px; }
+.cy-cal-h { text-align: center; font-size: 11px; font-weight: 700; color: var(--cy-muted-soft); letter-spacing: .3px; padding-bottom: 6px; }
+.cy-day {
+  position: relative; height: 54px; display: grid; place-items: center; border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; color: var(--text); border-radius: 14px;
+}
+.cy-day:disabled { cursor: default; opacity: .32; }
+.cy-day:not(:disabled):hover .cy-day-in { box-shadow: 0 0 0 1.5px var(--cy-control); }
+.cy-day-ring { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
+.cy-day.today .cy-day-ring { box-shadow: inset 0 0 0 1.5px var(--cy-ink); }
+.cy-day.selected .cy-day-ring { box-shadow: inset 0 0 0 1.5px var(--cy-control); }
+.cy-day-in {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; font-weight: 600;
+  font-variant-numeric: tabular-nums; transition: box-shadow .12s, background .12s;
+}
+.cy-day.today .cy-day-in, .cy-day.selected .cy-day-in { font-weight: 700; }
+.cy-day.logged .cy-day-in { background: var(--cy-period); color: var(--cy-on-period); }
+.cy-day.expected .cy-day-in { border: 1.5px dashed var(--cy-period); color: var(--cy-period); }
+.cy-day.fertile .cy-day-in { background: var(--cy-fertile-soft); color: var(--cy-fertile); }
+.cy-day.ovulation .cy-day-in { background: var(--cy-fertile-soft); color: var(--cy-fertile); border: 1.5px solid var(--cy-fertile); }
+.cy-day.spotting .cy-day-in { color: var(--cy-period); }
+.cy-day .cy-sym { position: absolute; bottom: 3px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--cy-luteal); }
+.cy-day .cy-spot { position: absolute; bottom: 3px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--cy-period); }
+/* Period-date editing: pending add = solid rose with a tick, pending remove = hollow. */
+.cy-cal.editing .cy-day:not(:disabled) .cy-day-in { box-shadow: inset 0 0 0 1.5px var(--cy-control); }
+.cy-cal.editing .cy-day.logged .cy-day-in { box-shadow: none; }
+.cy-day.add .cy-day-in { background: var(--cy-period); color: var(--cy-on-period); box-shadow: none !important; }
+.cy-day.remove .cy-day-in { background: transparent !important; color: var(--cy-period) !important; box-shadow: inset 0 0 0 1.5px var(--cy-period) !important; text-decoration: line-through; }
+.cy-legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 14px; font-size: 12px; color: var(--cy-muted); }
+.cy-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cy-lg { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex: none; }
+.cy-lg.logged { background: var(--cy-period); }
+.cy-lg.expected { border: 1.5px dashed var(--cy-period); }
+.cy-lg.fertile { background: var(--cy-fertile-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cy-fertile) 25%, transparent); }
+.cy-lg.ovulation { background: var(--cy-fertile-soft); border: 1.5px solid var(--cy-fertile); }
+.cy-lg.sym { width: 6px; height: 6px; background: var(--cy-luteal); margin: 0 4px; }
+.cy-edit-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; margin-top: 14px; padding: 12px 14px; border-radius: 16px; background: var(--cy-soft); font-size: 13px; color: var(--cy-muted); }
+
+/* ── Stats ──────────────────────────────────────────── */
+.cy-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cy-stat { background: var(--cy-soft); border-radius: 16px; padding: 12px; min-width: 0; }
+.cy-stat-label { font-size: 12px; color: var(--cy-muted); font-weight: 500; }
+.cy-stat-value { display: flex; align-items: baseline; gap: 4px; margin-top: 4px; }
+.cy-stat-value b { font-size: 26px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--text); }
+.cy-stat-value small { font-size: 12px; color: var(--cy-muted); font-weight: 500; }
+.cy-stat-hint { font-size: 11px; color: var(--cy-muted-soft); margin-top: 6px; line-height: 1.4; }
+.cy-tone { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600; }
+.cy-tone i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; display: inline-block; }
+.cy-tone.ok { color: var(--cy-success); background: color-mix(in srgb, var(--cy-success) 12%, transparent); }
+.cy-tone.off { color: var(--cy-luteal); background: color-mix(in srgb, var(--cy-luteal) 12%, transparent); }
+.cy-tone.none { color: var(--cy-muted-soft); padding: 0; }
+@media (max-width: 420px) { .cy-stat-value b { font-size: 22px; } .cy-stat { padding: 10px; } }
+
+.cy-period-list .row-title { font-variant-numeric: tabular-nums; }
+
+/* ── Today / tips ───────────────────────────────────── */
+.cy-facts { display: flex; flex-wrap: wrap; gap: 6px; }
+.cy-fact { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 999px; background: var(--cy-soft); font-size: 12.5px; color: var(--text); font-weight: 500; }
+.cy-fact.period { background: var(--cy-period-soft); color: var(--cy-period); font-weight: 600; }
+.cy-fact.private { color: var(--cy-period); }
+.cy-tips { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.cy-tip { background: var(--surface); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cy-tip h4 { font-size: 15px; font-weight: 700; line-height: 1.35; }
+.cy-tip p { font-size: 13.5px; color: var(--text2); line-height: 1.55; }
+.cy-tip .cy-tip-act { font-size: 12.5px; color: var(--cy-muted); font-weight: 600; margin-top: auto; }
+.cy-tip-tile { width: 38px; height: 38px; border-radius: 13px; display: grid; place-items: center; }
+.cy-tip-tile.care { background: color-mix(in srgb, var(--cy-period) 12%, transparent); color: var(--cy-period); }
+.cy-tip-tile.energy { background: color-mix(in srgb, var(--cy-follicular) 22%, transparent); color: #b45309; }
+:root[data-theme='dark'] .cy-tip-tile.energy { color: var(--cy-follicular); }
+.cy-tip-tile.fertile { background: color-mix(in srgb, var(--cy-fertile-fill) 16%, transparent); color: var(--cy-fertile); }
+.cy-tip-tile.calm, .cy-tip-tile.mood, .cy-tip-tile.pregnancy { background: color-mix(in srgb, var(--cy-luteal) 14%, transparent); color: var(--cy-luteal); }
+.cy-src { font-size: 11px; font-weight: 600; color: var(--cy-muted-soft); text-transform: none; }
+
+.cy-alert { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 18px; background: var(--cy-luteal-soft); color: var(--text); margin-bottom: 20px; font-size: 14px; line-height: 1.5; }
+.cy-alert.warn, .cy-alert.urgent { background: var(--cy-period-soft); }
+.cy-alert .ic { color: var(--cy-luteal); flex: none; margin-top: 1px; }
+.cy-alert.warn .ic, .cy-alert.urgent .ic { color: var(--cy-period); }
+
+/* ── Day log modal ──────────────────────────────────── */
+.cy-log { display: flex; flex-direction: column; gap: 20px; }
+.cy-log-sec h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 7px; }
+.cy-log-sec .cy-sub { font-size: 12px; color: var(--cy-muted-soft); margin-bottom: 10px; line-height: 1.45; }
+.cy-log-sec .cy-sub-label { font-size: 12px; color: var(--cy-muted); font-weight: 600; margin: 12px 0 8px; }
+.cy .chip.cy-chip, .cy-log .chip.cy-chip { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--line); color: var(--text); }
+.cy-log .chip.cy-chip:hover { box-shadow: inset 0 0 0 1px var(--cy-control); }
+.cy-log .chip.cy-chip.on { background: var(--cy-period-soft); color: var(--cy-period); box-shadow: inset 0 0 0 1.5px var(--cy-period); font-weight: 600; }
+.cy-log .chip.cy-chip.on.teal { background: var(--cy-fertile-soft); color: var(--cy-fertile); box-shadow: inset 0 0 0 1.5px var(--cy-fertile); }
+.cy-private { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--cy-muted-soft); margin-bottom: 10px; }
+.cy-pain-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; }
+.cy-pain-row + .cy-pain-row { border-top: 1px solid var(--line); }
+.cy-life { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px 12px; align-items: center; }
+@media (max-width: 520px) { .cy-life { grid-template-columns: 1fr; gap: 4px; } .cy-life .chips { margin-bottom: 8px; } }
+.cy-life-label { font-size: 13px; color: var(--text2); font-weight: 600; }
+.cy-mode-note { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--text2); line-height: 1.5; padding: 12px 14px; background: var(--cy-soft); border-radius: 16px; }
+.cy-mode-note .ic { color: var(--cy-muted); flex: none; margin-top: 1px; }
+
+/* ── Home card ──────────────────────────────────────── */
+.cy-home { display: flex; align-items: center; gap: 18px; }
+.cy-home-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.cy-home-main h3 { font-size: 16px; font-weight: 700; line-height: 1.35; }
+.cy-home-main p { font-size: 13.5px; color: var(--text2); line-height: 1.5; }
+@media (max-width: 420px) { .cy-home { gap: 12px; } .cy-dial.compact { width: 112px; max-width: 112px; } }

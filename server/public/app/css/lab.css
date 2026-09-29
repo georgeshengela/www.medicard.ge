@@ -1,0 +1,87 @@
+/* MEDICARD web — /lab (ანალიზები) + lab upload modal. */
+.lab-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); gap: 16px; align-items: start; margin-bottom: 28px; }
+.lab-side { position: sticky; top: 76px; }
+.lab-side-card { display: flex; flex-direction: column; max-height: calc(100vh - 96px); }
+.lab-params { overflow-y: auto; margin: 0 -8px; padding: 0 2px; scrollbar-width: thin; flex: 1; min-height: 120px; }
+.lab-param { gap: 12px; }
+.lab-param.on { background: color-mix(in srgb, var(--brand) 10%, transparent); }
+.lab-param.on .row-title { color: var(--brand-ink); }
+.lab-param-val { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
+.lab-param-val strong { font-size: 15px; }
+.lab-param-val span { font-size: 11.5px; color: var(--text3); }
+.lab-flag-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--bg3); }
+.lab-flag-dot.f-N { background: var(--ok); }
+.lab-flag-dot.f-H, .lab-flag-dot.f-L { background: var(--danger); box-shadow: 0 0 0 4px var(--danger-bg); }
+.lab-chip-n { font-size: 11.5px; opacity: .7; font-variant-numeric: tabular-nums; }
+
+.lab-chart-card { display: flex; flex-direction: column; gap: 14px; }
+.lab-chart-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.lab-param-title { font-size: 22px; line-height: 1.25; font-weight: 800; letter-spacing: -.01em; }
+.lab-latest { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.lab-latest-val { display: flex; align-items: baseline; gap: 6px; }
+.lab-latest-val strong { font-size: 40px; line-height: 1; font-weight: 800; letter-spacing: -.03em; }
+.lab-latest-val span { font-size: 15px; color: var(--text2); font-weight: 500; }
+.lab-delta { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--text2); }
+.lab-delta.good { color: var(--brand-ink); }
+.lab-delta.bad { color: var(--danger); }
+.lab-chart-host { min-height: 260px; }
+.lab-chart-empty { height: 260px; display: grid; place-items: center; color: var(--text3); font-size: 14px; background: var(--bg); border-radius: 16px; }
+.lab-chart .lab-band { fill: color-mix(in srgb, var(--ok) 11%, transparent); }
+.lab-chart .lab-band-edge { stroke: color-mix(in srgb, var(--ok) 45%, transparent); stroke-width: 1; stroke-dasharray: 3 4; }
+.lab-chart .lab-dot { fill: var(--surface); stroke: var(--brand-2); stroke-width: 2.5; }
+.lab-chart .lab-dot.ok { stroke: var(--brand-2); }
+.lab-chart .lab-dot.off { stroke: var(--danger); fill: var(--danger); }
+.lab-chart .lab-dot-ring { fill: none; stroke: var(--text3); stroke-width: 1.5; transition: opacity .12s; }
+.lab-legend-band { background: color-mix(in srgb, var(--ok) 22%, transparent) !important; }
+
+.lab-meta { display: flex; flex-direction: column; gap: 8px; }
+.lab-meta-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.lab-meta-row strong { font-weight: 600; text-align: right; }
+.lab-hist { max-height: 260px; overflow-y: auto; margin: 0 -8px; scrollbar-width: thin; }
+
+.lab-medi { display: flex; align-items: center; gap: 14px; width: 100%; border: 0; cursor: pointer; text-align: left; font: inherit; color: inherit;
+  background: color-mix(in srgb, var(--brand) 9%, var(--surface)); }
+.lab-mover { display: flex; flex-direction: column; gap: 10px; border: 0; cursor: pointer; text-align: left; font: inherit; color: inherit; width: 100%; }
+.lab-mover .spark { width: 100%; height: 36px; }
+.lab-mover-vals { display: flex; align-items: baseline; gap: 8px; font-size: 14px; }
+.lab-mover-vals strong { font-size: 20px; }
+.lab-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.lab-below > .hub-section:last-child { margin-bottom: 8px; }
+.lab-dates { padding: 6px 8px; }
+.stat-value.lab-danger { color: var(--danger); }
+
+/* Date modal */
+.lab-modal-filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.lab-modal-filters .input { flex: 1; min-width: 180px; }
+.lab-tr { cursor: pointer; transition: background .12s; }
+.lab-tr:hover, .lab-tr:focus-visible { background: var(--bg); }
+.lab-analysis { background: var(--bg); border-radius: 16px; padding: 16px; font-size: 14.5px; line-height: 1.6; }
+.lab-analysis-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+@media (max-width: 560px) { .lab-hide-sm { display: none; } }
+
+/* Upload modal */
+.lab-drop-art { width: 52px; height: 52px; border-radius: 16px; margin: 0 auto 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--brand) 10%, transparent); color: var(--brand-ink); }
+.lab-drop-title { font-weight: 600; color: var(--text); }
+.lab-files { display: flex; flex-direction: column; gap: 6px; }
+.lab-file { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 10px; background: var(--bg); border-radius: 14px; }
+.lab-file .row-title { white-space: nowrap; text-overflow: ellipsis; }
+.lab-stage { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--brand) 9%, transparent); color: var(--brand-ink); font-weight: 600; font-size: 14px; }
+.lab-spinner { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; flex: none; }
+.lab-saved { display: flex; align-items: center; gap: 12px; }
+.lab-mini-table { display: flex; flex-direction: column; max-height: 260px; overflow-y: auto; border-radius: 14px; background: var(--bg); padding: 4px 12px; }
+.lab-mini-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 14px; }
+.lab-mini-row + .lab-mini-row { border-top: 1px solid var(--line); }
+.lab-mini-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 1180px) {
+  .lab-layout { grid-template-columns: 1fr; }
+  .lab-side { position: static; }
+  .lab-side-card { max-height: none; }
+  .lab-params { max-height: 420px; }
+}
+@media (max-width: 560px) {
+  .lab-latest-val strong { font-size: 32px; }
+  .lab-param-title { font-size: 19px; }
+  .lab-chart-head .segmented { width: 100%; }
+  .lab-chart-head .segmented button { flex: 1; }
+}
