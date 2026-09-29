@@ -305,18 +305,6 @@ h1, h2, h3, p { margin: 0; }
 .dawn h2 { font-size: clamp(40px, 5.6vw, 84px); margin-bottom: 22px; text-wrap: balance; }
 .dawn-copy > p { color: var(--ink-2); font-size: 19px; max-width: 30rem; }
 .stores { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
-.store {
-  display: inline-flex; align-items: center; gap: 12px; padding: 12px 20px 12px 16px;
-  border-radius: 16px; background: var(--ink); color: #fff;
-}
-a.store { text-decoration: none; transition: background-color .2s, transform .2s var(--ease); }
-a.store:hover { background: var(--teal); }
-.store-soon { background: transparent; color: var(--ink); border: 1.5px dashed rgba(11, 43, 46, .3); }
-.store-soon img { filter: none; opacity: .6; }
-.store img { filter: invert(1); }
-.store-soon img { filter: none; }
-.store small { display: block; font-size: 12px; opacity: .7; line-height: 1.2; }
-.store b { display: block; font-size: 17px; line-height: 1.2; }
 .dawn-mail { display: inline-block; margin-top: 26px; color: var(--ink-2); font-size: 16px; text-underline-offset: 4px; }
 .dawn-mail:hover { color: var(--teal); }
 .qr-card {

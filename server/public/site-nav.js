@@ -107,8 +107,8 @@
     '<div class="tb-sheet" id="tb-sheet" aria-label="მენიუ">' +
       '<ul class="tb-sheet-list">' + sheetItems + '</ul>' +
       '<div class="tb-sheet-foot">' +
-        '<a class="tb-store" href="' + APP_STORE + '">' + ICON.apple + '<span><small>ჩამოტვირთე</small><b>App Store</b></span></a>' +
-        '<span class="tb-store tb-store-soon"><span><small>Coming soon</small><b>Google Play</b></span></span>' +
+        '<a class="store-badge" href="' + APP_STORE + '" aria-label="Download on the App Store">' + ICON.apple + '<span><small>Download on the</small><b>App Store</b></span></a>' +
+        '<span class="store-badge is-soon" aria-label="Google Play — Coming soon"><img src="/icons/google-play.svg" alt="" width="24" height="24" /><span><small>Coming soon</small><b>Google Play</b></span></span>' +
         '<a class="tb-sheet-mail" href="mailto:support@medicard.ge">support@medicard.ge</a>' +
       '</div>' +
     '</div>';
