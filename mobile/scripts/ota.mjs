@@ -51,6 +51,8 @@ async function nativeFingerprint() {
       SourceSkips.ExpoConfigExtraSection |
       SourceSkips.PackageJsonScriptsAll |
       SourceSkips.GitIgnore,
+    // Submit/build profiles do not change the binary; an ascAppId edit once blocked an OTA.
+    ignorePaths: ['eas.json'],
   });
   delete process.env.MEDICARD_FINGERPRINT;
   return fp.hash;
