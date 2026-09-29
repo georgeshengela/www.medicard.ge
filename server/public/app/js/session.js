@@ -30,6 +30,10 @@ export async function loadSession() {
     session.features = status.features || {};
     session.featureMessages = status.featureMessages || {};
   }
+  // Trainer workspace entry: only for trainers (any application status); never blocks boot.
+  if (featureOn('coach')) {
+    try { session.trainer = await get('/api/trainer/me'); } catch { session.trainer = null; }
+  }
   emit();
   return session;
 }
@@ -62,6 +66,9 @@ export function signOut() {
 
 /** Missing flag = on (server treats a missing row as enabled). */
 export function featureOn(key) { return session.features?.[key] !== false; }
+
+/** A trainer profile exists (applied / verified) — shows the /coach workspace in the menu. */
+export function isTrainer() { return Boolean(session.trainer?.trainerProfile); }
 
 export function isFemale() { return String(session.user?.gender || '').toUpperCase() === 'FEMALE'; }
 

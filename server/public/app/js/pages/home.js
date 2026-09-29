@@ -85,10 +85,11 @@ export default async function home(root, { navigate }) {
     nutrition: () => featureOn('nutrition') ? section('კვება', lazyCard(() => import('./nutrition.js'), 'homeCard'), { link: { href: '/nutrition', label: 'დღიური' } }) : null,
     cycle: () => featureOn('cycle') && isFemale() ? section('ციკლი', lazyCard(() => import('./cycle.js'), 'homeCard'), { link: { href: '/cycle', label: 'გახსნა' } }) : null,
     quest: () => featureOn('quest') ? section('Medi Quest', lazyCard(() => import('./quest.js'), 'homeCard'), { link: { href: '/quest', label: 'მისიები' } }) : null,
+    coach: () => featureOn('coach') ? section('ჩემი ტრენერი', lazyCard(() => import('./trainer.js'), 'homeCard'), { link: { href: '/trainer', label: 'გახსნა' } }) : null,
   };
 
   // Primary goal first (after "ask Medi"), then the usual order.
-  const order = ['meds', 'activity', 'nutrition', 'cycle', 'quest'];
+  const order = ['meds', 'activity', 'nutrition', 'cycle', 'quest', 'coach'];
   const first = { medications: 'meds', nutrition: 'nutrition', cycle: 'cycle' }[goal];
   if (first) order.splice(order.indexOf(first), 1), order.unshift(first);
 

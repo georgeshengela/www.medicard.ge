@@ -2,7 +2,7 @@
 import { h, mount, icon, clear, iconButton, toast, openModal } from './ui.js';
 import { getToken, onTokenChange } from './api.js';
 import {
-  session, loadSession, signOut, featureOn, isFemale, initials, onSession, applyTheme, getThemePref, needsOnboarding,
+  session, loadSession, signOut, featureOn, isFemale, isTrainer, initials, onSession, applyTheme, getThemePref, needsOnboarding,
 } from './session.js';
 
 const BASE = '/app';
@@ -25,6 +25,12 @@ const ROUTES = [
   { path: '/pets', page: () => import('./pages/pets.js'), title: 'ჩემი ცხოველები', feature: 'pets' },
   { path: '/pets/:id', page: () => import('./pages/pets.js'), title: 'ცხოველი', feature: 'pets' },
   { path: '/news/:id', page: () => import('./pages/news.js'), title: 'სიახლე', feature: 'news' },
+  { path: '/trainer', page: () => import('./pages/trainer.js'), title: 'ჩემი ტრენერი', feature: 'coach' },
+  { path: '/trainer/:section', page: () => import('./pages/trainer.js'), title: 'ჩემი ტრენერი', feature: 'coach' },
+  { path: '/trainer/:section/:id', page: () => import('./pages/trainer.js'), title: 'ჩემი ტრენერი', feature: 'coach' },
+  { path: '/coach', page: () => import('./pages/coach.js'), title: 'ტრენერის სივრცე', feature: 'coach' },
+  { path: '/coach/:section', page: () => import('./pages/coach.js'), title: 'ტრენერის სივრცე', feature: 'coach' },
+  { path: '/coach/:section/:id', page: () => import('./pages/coach.js'), title: 'ტრენერის სივრცე', feature: 'coach' },
   { path: '/profile', page: () => import('./pages/profile.js'), title: 'პროფილი' },
 ];
 
@@ -45,6 +51,8 @@ const NAV = [
     { href: '/cycle', label: 'ციკლი', icon: 'flower', feature: 'cycle', female: true },
     { href: '/quest', label: 'Medi Quest', icon: 'trophy', feature: 'quest' },
     { href: '/pets', label: 'ჩემი ცხოველები', icon: 'paw', feature: 'pets' },
+    { href: '/trainer', label: 'ჩემი ტრენერი', icon: 'dumbbell', feature: 'coach' },
+    { href: '/coach', label: 'ტრენერის სივრცე', icon: 'users', feature: 'coach', trainer: true },
   ] },
 ];
 
@@ -119,6 +127,7 @@ window.addEventListener('popstate', () => route());
 function visible(item) {
   if (item.feature && !featureOn(item.feature)) return false;
   if (item.female && !isFemale()) return false;
+  if (item.trainer && !isTrainer()) return false;
   return true;
 }
 
@@ -267,7 +276,7 @@ onTokenChange((t) => {
 let lastName = '';
 onSession(() => {
   // Rebuild the shell when name/gender change (nav + user card).
-  const key = `${session.user?.fullName}|${session.user?.gender}`;
+  const key = `${session.user?.fullName}|${session.user?.gender}|${isTrainer()}`;
   if (shell && lastName && key !== lastName) {
     const path = stripBase(location.pathname);
     const content = shell.content.firstChild;
