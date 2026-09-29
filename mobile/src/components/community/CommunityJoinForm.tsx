@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Keyboard, Linking, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ChevronDown, ChevronUp, ShieldCheck, Users } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AUTH_KEYBOARD_OPEN_PX, authFooterBottomPad } from '@/lib/authChrome';
 import { useKeyboardMetrics } from '@/lib/useKeyboardHeight';
 import { useThemeColors } from '@/theme/colors';
+import { openEmail } from '@/lib/openEmail';
 
 type Props = {
   alias: string;
@@ -96,7 +97,7 @@ export function CommunityJoinForm({ alias, onAliasChange, accepted, onAcceptedCh
           {rulesExpanded && !compact ? <ChevronUp size={18} color={c.primary100} /> : <ChevronDown size={18} color={c.primary100} />}
         </Pressable>
         {rulesExpanded && !compact && <Text style={copy}>{rules}</Text>}
-        {!compact && <Pressable accessibilityRole="link" onPress={() => void Linking.openURL('mailto:support@medicard.ge')} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={copy}>დახმარება · support@medicard.ge</Text></Pressable>}
+        {!compact && <Pressable accessibilityRole="link" onPress={() => void openEmail('support@medicard.ge')} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={copy}>დახმარება · support@medicard.ge</Text></Pressable>}
       </ScrollView>
 
       <Animated.View style={[{ paddingHorizontal: 22, paddingTop: 12, borderTopWidth: 1, borderColor: c.bg300, backgroundColor: c.surface }, footerStyle]}>

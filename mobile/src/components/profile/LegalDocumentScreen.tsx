@@ -1,12 +1,13 @@
 import React from 'react';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import type { LegalSection } from '@/constants/privacyPolicyKa';
-import { SUPPORT_EMAIL, SUPPORT_MAILTO } from '@/constants/legal';
+import { SUPPORT_EMAIL } from '@/constants/legal';
 import { ka } from '@/i18n/ka';
 import { useThemeColors } from '@/theme/colors';
+import { openEmail } from '@/lib/openEmail';
 
 type Props = {
   title: string;
@@ -175,7 +176,7 @@ export function LegalDocumentScreen({ title, effectiveDate, intro, highlight, se
 
         <Pressable
           accessibilityRole="link"
-          onPress={() => void Linking.openURL(SUPPORT_MAILTO)}
+          onPress={() => void openEmail(SUPPORT_EMAIL)}
           style={{ marginTop: 28, alignItems: 'center' }}
         >
           <Text

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
   QrCode,
@@ -36,7 +36,7 @@ import { ProfileMenuRow } from '@/components/profile/ProfileMenuRow';
 import { ProfileVersionCard } from '@/components/profile/ProfileVersionCard';
 import { useTabBarInset } from '@/components/navigation/FloatingTabBar';
 import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
-import { SUPPORT_MAILTO } from '@/constants/legal';
+import { SUPPORT_EMAIL } from '@/constants/legal';
 import { resolveConditionLabel } from '@/constants/conditionCatalog';
 import { ka } from '@/i18n/ka';
 import { ApiError, type Gender } from '@/lib/api';
@@ -62,6 +62,7 @@ import { requestQuestRefresh } from '@/lib/quest/cache';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import { rewardsApi } from '@/lib/quest/rewardsApi';
 import { rewardsCopy } from '@/i18n/quest/rewards.js';
+import { openEmail } from '@/lib/openEmail';
 
 const GENDER_LABELS: Record<Gender, string> = {
   MALE: ka.auth.genderMale,
@@ -379,7 +380,7 @@ export default function Profile() {
           <ProfileMenuRow icon={Gift} ink="amber" label={ka.referral.profileRow} onPress={() => router.push('/profile/invite' as never)} />
           <ProfileMenuRow icon={Lock} ink="neutral" label={ka.profile.privacyPolicy} onPress={() => router.push('/profile/privacy')} />
           <ProfileMenuRow icon={FileText} ink="neutral" label={ka.profile.terms} onPress={() => router.push('/profile/terms')} />
-          <ProfileMenuRow icon={Mail} ink="neutral" label={ka.profile.support} value={ka.profile.supportEmail} onPress={() => void Linking.openURL(SUPPORT_MAILTO)} />
+          <ProfileMenuRow icon={Mail} ink="neutral" label={ka.profile.support} value={ka.profile.supportEmail} onPress={() => void openEmail(SUPPORT_EMAIL)} />
           <ProfileVersionCard />
         </View>
       </View>

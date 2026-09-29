@@ -1,13 +1,13 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Linking from 'expo-linking';
 import { Mail } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { ka } from '@/i18n/ka';
 import { showDevUi } from '@/lib/devUi';
 import { useThemeColors } from '@/theme/colors';
+import { openEmail } from '@/lib/openEmail';
 
 export default function ForgotPasswordSent() {
   const router = useRouter();
@@ -87,7 +87,7 @@ export default function ForgotPasswordSent() {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() => Linking.openURL('mailto:')}
+        onPress={() => void openEmail()}
         style={{ marginTop: 14, alignItems: 'center', paddingVertical: 8 }}
       >
         <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: colors.primary200 }}>
