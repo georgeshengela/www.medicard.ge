@@ -38,6 +38,8 @@ import { identityRouter } from './routes/identity.routes.js';
 import { startTrainerReminders } from './lib/trainerPush.js';
 import { adminFunnelRouter, funnelRouter } from './routes/funnel.routes.js';
 import { adminCapacityRouter } from './routes/capacity.routes.js';
+import { adminErrorsRouter } from './routes/errors.routes.js';
+import { errorMonitorEnabled, recordFatalError, startErrorPurge, stopErrorPurge } from './lib/errorMonitor.js';
 import { capacityMiddleware, startCapacityMonitor, stopCapacityMonitor } from './lib/capacity.js';
 import { adminDirectorRouter, directorRouter } from './routes/director.routes.js';
 import { startDirectorWorkers } from './lib/director/supportAgent.js';
@@ -308,6 +310,7 @@ app.use('/api/admin/referrals', adminReferralRouter);
 app.use('/api/funnel', funnelRouter);
 app.use('/api/admin/funnel', adminFunnelRouter);
 app.use('/api/admin/capacity', adminCapacityRouter);
+app.use('/api/admin/errors', adminErrorsRouter);
 app.use('/api/admin/announcements', adminAnnouncementsRouter);
 app.use('/api/admin/email', adminEmailRouter);
 app.use('/api/admin/support', adminSupportRouter);
@@ -428,6 +431,20 @@ startQuotaResetSweeper();
 if (env.NODE_ENV === 'production') startPharmacySyncScheduler();
 // Production only: local servers point at the main DB and must not write samples or alert the owner.
 if (env.NODE_ENV === 'production' && process.env.CAPACITY_MONITOR !== 'off') startCapacityMonitor();
+// Error monitoring retention (30 days, daily under a lease); recording itself is production-only too.
+if (errorMonitorEnabled()) startErrorPurge();
+
+// Fatal process errors: log, record (lib/errorMonitor.js) and still exit with code 1 as Node would
+// by default — the only change is up to 2 s to flush the ErrorEvent row before exiting.
+let fatalExiting = false;
+for (const origin of ['uncaughtException', 'unhandledRejection']) {
+  process.on(origin, (error) => {
+    console.error(`[medicard] ${origin}:`, error);
+    if (fatalExiting) return;
+    fatalExiting = true;
+    void Promise.resolve(recordFatalError(error, origin)).finally(() => process.exit(1));
+  });
+}
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, async () => {
@@ -435,6 +452,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
     stopQuotaResetSweeper();
     stopPharmacySyncScheduler();
     stopCapacityMonitor();
+    stopErrorPurge();
     // Render sends SIGTERM on every deploy while the new instance takes traffic. Let in-flight
     // requests (a Medi answer takes 20–40 s) finish before the database goes away; Render
     // allows 30 s before SIGKILL.

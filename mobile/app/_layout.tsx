@@ -20,6 +20,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
+import { installErrorReporting, reportError, setErrorRoute } from '@/lib/errorReporter';
 import * as SplashScreen from 'expo-splash-screen';
 import type { NotificationResponse } from 'expo-notifications';
 import { Notifications } from '@/lib/expoNotifications';
@@ -64,6 +65,9 @@ import { ModuleGate } from '@/components/ModuleGate';
 import { applyFeatureStatus, useFeature } from '@/lib/featureFlags';
 import { noteFeatureStatusFetched, startFeatureFlagSync } from '@/lib/featureFlagSync';
 import { startOtaUpdates } from '@/lib/otaUpdates';
+
+// Self-hosted error monitoring: fatals, render errors and unhandled rejections → our server.
+installErrorReporting();
 
 // Native screens = GPU stack transitions. Do not set this to false — that is
 // what made page changes feel like a late pop. Tab chrome stays above via AppChromeOverlay.
@@ -260,6 +264,7 @@ function AppShell() {
     }
     startLivePresence();
     setLivePresenceScreen(segments.filter(Boolean).join('/') || 'home');
+    setErrorRoute(segments.filter(Boolean).join('/') || 'home');
   }, [user, segments]);
 
   useEffect(() => {
@@ -454,6 +459,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => undefined);
     console.error('[Medicard] screen error:', error);
+    reportError('render', error, { fatal: true });
     try {
       Settings.set({ 'medicard.lastFatal': String(error?.message ?? error).slice(0, 1800) });
     } catch {

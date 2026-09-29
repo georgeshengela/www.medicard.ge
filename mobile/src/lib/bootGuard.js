@@ -10,8 +10,14 @@
   if (!EU || typeof EU.getGlobalHandler !== 'function' || typeof EU.setGlobalHandler !== 'function') {
     return;
   }
-  EU.setGlobalHandler((error) => {
+  EU.setGlobalHandler((error, isFatal) => {
     console.error('[Medicard] production fatal suppressed:', error);
+    try {
+      // errorReporter.ts installs this hook; sends the fatal to our server (self-hosted monitoring).
+      if (typeof globalThis.__medicardReportError === 'function') globalThis.__medicardReportError(error, isFatal !== false);
+    } catch {
+      /* never rethrow from the handler */
+    }
     try {
       const Settings = require('react-native').Settings;
       if (Settings && typeof Settings.set === 'function') {

@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -669,6 +669,7 @@ async function switchTab(tab, opts = {}) {
     features: ['Production', 'მოდულები', 'რომელი მოდული მუშაობს და რომელი შეჩერებულია?', ''],
     quests: ['Engagement', 'Medi Quest', 'მისიები, სამიზნეები და Medi Coins ჯილდოები.', ''],
     news: ['Engagement', 'სიახლეები', 'ბარათები აპის მთავარ გვერდზე: ღონისძიებები, საჩუქრები და სიახლეები.', ''],
+    errors: ['System', 'შეცდომები', 'აპის ავარიები და სერვერის შეცდომები — რა გატყდა, რამდენს შეეხო და სად.', ''],
     capacity: ['System', 'სერვერის დატვირთვა', 'CPU, მეხსიერება, პასუხის დრო და როდის გაზარდო სერვერი Render-ზე.', ''],
     funnel: ['Growth', 'ფუნელი', 'ინსტალაციიდან რეგისტრაციამდე, პირველ ქმედებამდე და დაბრუნებამდე.', ''],
     director: ['Overview', 'დირექტორი', 'ცვლის ჩაბარება: დირექტორი მართავს, შენ ტელეგრამში ადასტურებ.', ''],
@@ -705,6 +706,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'quests' && typeof renderQuests === 'function') await renderQuests();
     if (tab === 'funnel' && typeof renderFunnel === 'function') await renderFunnel();
     if (tab === 'capacity' && typeof renderCapacity === 'function') await renderCapacity();
+    if (tab === 'errors' && typeof renderErrorsAdmin === 'function') await renderErrorsAdmin();
     if (tab === 'news' && typeof renderNews === 'function') await renderNews();
     if (tab === 'director' && typeof renderDirector === 'function') await renderDirector();
     if (tab === 'email' && typeof renderEmailAdmin === 'function') await renderEmailAdmin();

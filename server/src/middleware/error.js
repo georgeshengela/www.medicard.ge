@@ -2,6 +2,7 @@ import multer from 'multer';
 import { ZodError } from 'zod';
 import { AiEngineError } from '../lib/evidencemd.js';
 import { env } from '../config/env.js';
+import { recordServerError } from '../lib/errorMonitor.js';
 
 export function notFound(req, res) {
   res.status(404).json({ error: 'მოთხოვნილი მისამართი ვერ მოიძებნა.', path: req.originalUrl });
@@ -47,6 +48,8 @@ export function errorHandler(error, req, res, next) {
   }
 
   console.error('[medicard] Unhandled error:', error);
+  // Fire-and-forget: a scrubbed summary goes to ErrorEvent (#/errors); never throws or delays the response.
+  recordServerError(error, req);
   return res.status(500).json({
     error: 'სერვერზე მოხდა შეცდომა. სცადე მოგვიანებით.',
     ...(env.NODE_ENV === 'development' ? { detail: error?.message } : {}),
