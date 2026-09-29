@@ -5,7 +5,6 @@
 
   var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var root = document.documentElement;
-  var nav = document.getElementById('nav');
   var day = document.getElementById('day');
   var moments = Array.prototype.slice.call(document.querySelectorAll('.moment'));
   var rail = document.getElementById('rail');
@@ -13,7 +12,6 @@
   var clockTime = document.getElementById('clock-time');
   var clockLabel = document.getElementById('clock-label');
   var posterImg = document.querySelector('.poster img');
-  var themeMeta = document.querySelector('meta[name="theme-color"]');
   var year = document.getElementById('y');
   if (year) year.textContent = String(new Date().getFullYear());
 
@@ -99,22 +97,10 @@
     state.visible = dayRect.bottom > 0 && dayRect.top < window.innerHeight;
     if (rail) rail.classList.toggle('is-on', inDay);
 
-    // Nav tone follows whatever sits under it
-    var tone = 'light';
-    var probe = document.elementFromPoint(Math.round(window.innerWidth / 2), 40);
-    var sec = probe && probe.closest ? probe.closest('[data-tone]:not(.nav)') : null;
-    if (!sec || sec === nav) {
-      var list = document.querySelectorAll('main > section, footer');
-      for (var q = 0; q < list.length; q++) {
-        var r = list[q].getBoundingClientRect();
-        if (r.top <= 40 && r.bottom > 40) { sec = list[q]; break; }
-      }
-    }
-    if (sec) tone = sec.dataset.tone || 'light';
+    var tone = day.dataset.tone;
     if (tone !== lastTone) {
       lastTone = tone;
-      nav.dataset.tone = tone;
-      if (themeMeta) themeMeta.setAttribute('content', tone === 'dark' ? '#030712' : '#E8F5F2');
+      window.dispatchEvent(new Event('medicard:tone'));
     }
   }
 
@@ -139,31 +125,6 @@
 
   // Preload the day's screens for the poster fallback
   state.keys.forEach(function (key) { var im = new Image(); im.src = SCREEN(key); });
-
-  /* ───── On an iPhone/iPad the download buttons open the App Store directly ───── */
-  var APP_STORE = 'https://apps.apple.com/app/id6812517519';
-  var isApple = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if (isApple) {
-    Array.prototype.forEach.call(document.querySelectorAll('[data-download]'), function (a) { a.href = APP_STORE; });
-  }
-
-  /* ───── Mobile menu ───── */
-  var menuBtn = document.getElementById('nav-menu');
-  function closeMenu() {
-    nav.classList.remove('is-open');
-    if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
-  }
-  if (menuBtn) {
-    menuBtn.addEventListener('click', function () {
-      var open = !nav.classList.contains('is-open');
-      nav.classList.toggle('is-open', open);
-      menuBtn.setAttribute('aria-expanded', String(open));
-    });
-    document.getElementById('nav-links').addEventListener('click', function (e) {
-      if (e.target.closest('a')) closeMenu();
-    });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
-  }
 
   /* ───── Medi demo conversation ───── */
   var CHATS = {

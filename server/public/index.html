@@ -19,30 +19,15 @@
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/firago/FiraGO-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="modulepreload" href="/vendor/three/three.module.min.js" />
-  <link rel="stylesheet" href="/home.css?v=3" />
+  <link rel="stylesheet" href="/site-nav.css?v=1" />
+  <link rel="stylesheet" href="/home.css?v=4" />
   <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.min.js" } }</script>
 </head>
 <body>
   <a class="skip" href="#main">გადადი შინაარსზე</a>
 
-  <header class="nav" id="nav" data-tone="light">
-    <a class="nav-brand" href="/" aria-label="მედიქარდი, მთავარი გვერდი">
-      <img src="/icon.png" width="32" height="32" alt="" />
-      <span>მედიქარდი</span>
-    </a>
-    <nav class="nav-links" id="nav-links" aria-label="მთავარი მენიუ">
-      <a href="#day">დღე</a>
-      <a href="#medi">Medi</a>
-      <a href="#spaces">სივრცეები</a>
-      <a href="#faq">კითხვები</a>
-      <a href="/calculators">კალკულატორები</a>
-      <a href="/medipulsi/">MEDIPULSI</a>
-    </nav>
-    <a class="nav-cta" href="#download" data-download>ჩამოტვირთვა</a>
-    <button class="nav-menu" id="nav-menu" type="button" aria-expanded="false" aria-controls="nav-links">
-      <span class="sr">მენიუ</span><i></i><i></i>
-    </button>
-  </header>
+  <header class="tb" id="topbar"></header>
+  <script src="/site-nav.js?v=2"></script>
 
   <main id="main">
     <!-- A day with MEDICARD: sticky WebGL stage + scrolling moments -->
@@ -277,8 +262,10 @@
     <div class="wrap">
       <p class="disclaimer" id="disclaimer"><strong>ეს არ არის დიაგნოზი.</strong> Medi და აპის ანალიზები ეხმარება გაგებაში, მაგრამ არ ცვლის ექიმის კონსულტაციას, დანიშნულებას ან სასწრაფო დახმარებას. თუ მდგომარეობა მძიმეა — მიმართე სპეციალისტს ან დარეკე 112-ზე.</p>
       <div class="foot-row">
-        <a class="nav-brand" href="/"><img src="/icon.png" width="28" height="28" alt="" /><span>მედიქარდი</span></a>
-        <nav class="foot-links" aria-label="იურიდიული ბმულები">
+        <a class="foot-brand" href="/"><img src="/icon.png" width="28" height="28" alt="" /><span>მედიქარდი</span></a>
+        <nav class="foot-links" aria-label="საიტის ბმულები">
+          <a href="/about">ჩვენ შესახებ</a>
+          <a href="/contact">კონტაქტი</a>
           <a href="/privacy">კონფიდენციალურობა</a>
           <a href="/terms">წესები</a>
           <a href="/delete-account">ანგარიშის წაშლა</a>
@@ -289,7 +276,7 @@
     </div>
   </footer>
 
-  <script src="/home.js?v=2" defer></script>
+  <script src="/home.js?v=3" defer></script>
   <script type="module" src="/home-scene.js?v=4"></script>
 </body>
 </html>

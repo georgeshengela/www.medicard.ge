@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { SITE_STYLES, SITE_HEADER, siteFooter, DISCLAIMER_CALC } from "./site-chrome.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const OUT = path.join(root, "server/public/calculators");
@@ -151,19 +152,6 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;");
 }
 
-function nav(current) {
-  const item = (href, label, icon, key) =>
-    `<a href="${href}"${current === key ? ' aria-current="page"' : ""}><span class="ic ic-${icon}" aria-hidden="true"></span>${label}</a>`;
-  return `<nav class="nav-links" aria-label="მენიუ">
-        ${item("/", "მთავარი გვერდი", "house", "home")}
-        ${item("/#how", "Medi", "chat")}
-        ${item("/#features", "ფუნქციები", "health")}
-        ${item("/calculators", "კალკულატორები", "calc", "calculators")}
-        ${item("/#plans", "გეგმები", "wallet")}
-        <a class="nav-download" href="/#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
-      </nav>`;
-}
-
 function chrome(page, body) {
   return `<!DOCTYPE html>
 <html lang="ka" data-theme="light">
@@ -173,19 +161,7 @@ function chrome(page, body) {
   <title>${escapeHtml(page.title)} — მედიქარდი</title>
   <meta name="description" content="${escapeHtml(page.description)}" />
   <link rel="canonical" href="https://medicard.ge${page.path}" />
-  <meta name="theme-color" content="#f3f5f6" />
-  <script>
-    (function () {
-      try {
-        var t = localStorage.getItem("medicard.landing.theme");
-        if (t !== "light" && t !== "dark") {
-          t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-        }
-        document.documentElement.dataset.theme = t;
-        document.documentElement.style.colorScheme = t;
-      } catch (e) {}
-    })();
-  </script>
+  <meta name="theme-color" content="#E8F5F2" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="ka_GE" />
   <meta property="og:url" content="https://medicard.ge${page.path}" />
@@ -196,60 +172,16 @@ function chrome(page, body) {
   <link rel="icon" href="/favicon.png" />
   <link rel="apple-touch-icon" href="/icon.png" />
   <link rel="preload" href="/fonts/firago/FiraGO-Regular.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="/fonts/davit-guramishvili/DM-Davit-Guramishvili.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="${CSS}" />
   <link rel="stylesheet" href="${CALC_CSS}" />
+${SITE_STYLES}
 </head>
-<body>
-  <header class="nav">
-    <div class="wrap nav-inner">
-      <a class="brand" href="/">
-        <img src="/icon.png" width="36" height="36" alt="" />
-        მედიქარდი
-      </a>
-      ${nav(page.current)}
-      <div class="nav-actions">
-        <button class="theme-btn" id="theme-toggle" type="button" aria-pressed="false" aria-label="გადართე მუქ თემაზე">
-          <span class="ic ic-moon icon-moon" aria-hidden="true"></span>
-          <span class="ic ic-sun icon-sun" aria-hidden="true"></span>
-        </button>
-        <button class="menu-btn" id="menu-toggle" type="button" aria-label="მენიუ" aria-expanded="false">
-          <span class="ic ic-menu" aria-hidden="true"></span>
-        </button>
-        <a class="btn btn-cta" href="/#download"><span class="ic ic-download" aria-hidden="true"></span>ჩამოტვირთვა</a>
-      </div>
-    </div>
-  </header>
+<body class="site-refresh">
+${SITE_HEADER}
   <main>
 ${body}
   </main>
-  <footer class="band-paper">
-    <div class="wrap">
-      <div class="disclaimer" id="disclaimer"><strong>ეს არ არის საბოლოო დიაგნოზი.</strong>
-          კალკულატორები, Medi და აპის ანალიზები ეხმარება გაგებაში, მაგრამ არ ცვლის ექიმის კონსულტაციას,
-          დანიშნულებას ან სასწრაფო დახმარებას. ციკლის პროგნოზი არ არის კონტრაცეფცია. თუ მდგომარეობა მძიმეა — მიმართე სპეციალისტს ან 112-ს.</div>
-      <div class="foot-top">
-        <div>
-          <a class="brand" href="/">
-            <img src="/icon.png" width="36" height="36" alt="" />
-            მედიქარდი
-          </a>
-          <p class="foot-note">Medicard.GE · მხოლოდ iOS და Android</p>
-        </div>
-        <a class="foot-mail" href="mailto:support@medicard.ge">support@medicard.ge</a>
-        <p class="foot-note">ანგარიში, ჩატი და ციკლი მხოლოდ ტელეფონზეა.</p>
-      </div>
-      <div class="foot-legal">
-        <p>© <span id="y"></span> Medicard.GE</p>
-        <p>
-          <a href="/calculators">კალკულატორები</a>
-          · <a href="/privacy">კონფიდენციალურობა</a>
-          · <a href="/terms">წესები</a>
-          · <a href="#disclaimer">პასუხისმგებლობა</a>
-        </p>
-      </div>
-    </div>
-  </footer>
+${siteFooter({ disclaimer: DISCLAIMER_CALC, current: page.current === "calculators" ? "/calculators" : "" })}
   <script src="/landing.js?v=16"></script>
   ${page.module ? `<script type="module" src="${JS}"></script>` : ""}
 </body>

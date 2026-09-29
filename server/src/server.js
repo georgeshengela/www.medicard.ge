@@ -205,6 +205,15 @@ app.get(['/delete-account', '/delete-account/', '/en/delete-account'], (_req, re
   res.sendFile(path.join(PUBLIC_DIST, 'delete-account.html'));
 });
 
+// Public site pages with clean URLs.
+for (const [route, file] of [['/about', 'about.html'], ['/contact', 'contact.html']]) {
+  app.get([route, `${route}/`], (_req, res, next) => {
+    if (!PUBLIC_DIST) return next();
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(PUBLIC_DIST, file));
+  });
+}
+
 // One-click marketing unsubscribe (email links + RFC 8058 POST). Public, no auth.
 app.use(unsubscribeRouter);
 
@@ -360,6 +369,8 @@ if (serveLanding) {
       index: false,
       setHeaders(res, filePath) {
         if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
+        // Web app modules import each other without version stamps: revalidate every load.
+        else if (/[\\/]app[\\/]/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
         else if (filePath.endsWith('.css')) res.setHeader('Cache-Control', 'public, max-age=3600');
         else if (/\.(woff2|woff|ttf|otf)$/i.test(filePath)) {
           res.setHeader('Access-Control-Allow-Origin', '*');
@@ -368,6 +379,11 @@ if (serveLanding) {
       },
     }),
   );
+  // Signed-in web app (vanilla ES modules, history routing under /app).
+  app.get(['/app', /^\/app\/(?!.*\.[a-z0-9]+$).*/i], (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(PUBLIC_DIST, 'app', 'index.html'));
+  });
   app.get('/i/:code', (_req, res) => {
     res.set('Cache-Control', 'no-store');
     res.sendFile(path.join(PUBLIC_DIST, 'invite.html'));
